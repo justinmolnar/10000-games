@@ -90,35 +90,40 @@ function SettingsView:draw(current_settings)
 end
 
 function SettingsView:mousepressed(x, y, button)
+    -- x, y are LOCAL coords relative to content area (0,0)
     if button ~= 1 then return nil end
 
+    -- Check UI elements using local x, y
     for _, opt in ipairs(self.options) do
+        -- Use RELATIVE positions defined in init/updateLayout
+        local opt_x = opt.x -- Already relative
+        local opt_y = opt.y -- Already relative
+        local opt_w = opt.w
+        local opt_h = opt.h
+
         if opt.type == "slider" then
-            if x >= opt.x and x <= opt.x + opt.w and y >= opt.y and y <= opt.y + opt.h then
+            -- Check using LOCAL x, y against relative opt_x, opt_y
+            if x >= opt_x and x <= opt_x + opt_w and y >= opt_y and y <= opt_y + opt_h then
                 self.dragging_slider = opt.id
-                local value = math.max(0, math.min(1, (x - opt.x) / opt.w))
+                local value = math.max(0, math.min(1, (x - opt_x) / opt_w))
                 return { name = "set_setting", id = opt.id, value = value }
             end
         elseif opt.type == "toggle" then
-             if x >= opt.x and x <= opt.x + opt.w and y >= opt.y and y <= opt.y + opt.h then
+             -- Check using LOCAL x, y against relative opt_x, opt_y
+             if x >= opt_x and x <= opt_x + opt_w and y >= opt_y and y <= opt_y + opt_h then
                  local current_value = self.controller:getSetting(opt.id)
-                 
-                 -- Handle different toggle logic
-                 if opt.id == "tutorial_shown" then
-                     -- Tutorial: toggle means opposite of what's shown
-                     return { name = "set_setting", id = opt.id, value = not current_value }
-                 elseif opt.id == "fullscreen" then
-                     -- Fullscreen: toggle normally
-                     return { name = "set_setting", id = opt.id, value = not current_value }
-                 end
+                 local new_value = not current_value -- Basic toggle
+                 -- Specific logic for tutorial_shown inversion handled by state/manager
+                 return { name = "set_setting", id = opt.id, value = new_value }
              end
         elseif opt.type == "button" then
-            if x >= opt.x and x <= opt.x + opt.w and y >= opt.y and y <= opt.y + opt.h then
+             -- Check using LOCAL x, y against relative opt_x, opt_y
+             if x >= opt_x and x <= opt_x + opt_w and y >= opt_y and y <= opt_y + opt_h then
                 return { name = "button_click", id = opt.id }
             end
         end
     end
-    return nil
+    return nil -- Clicked empty space within the view
 end
 
 function SettingsView:mousereleased(x, y, button)

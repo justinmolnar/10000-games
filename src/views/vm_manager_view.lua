@@ -180,13 +180,14 @@ function VMManagerView:drawWindowed(filtered_games, viewport_width, viewport_hei
 end
 
 function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width, viewport_height)
+    -- x, y are LOCAL coords relative to content area (0,0)
     if button ~= 1 then return nil end
 
-    -- Check game selection modal first
+    -- Check game selection modal first (using local coords for checks)
     if self.game_selection_open then
-        -- Check if click was inside the modal content area
+        -- Check click relative to modal's position *within the content area*
         if x >= self.modal_x and x <= self.modal_x + self.modal_w and y >= self.modal_y and y <= self.modal_y + self.modal_h then
-            local clicked_game = self:getGameAtPosition(x, y, filtered_games, viewport_width, viewport_height)
+            local clicked_game = self:getGameAtPosition(x, y, filtered_games, viewport_width, viewport_height) -- Pass local coords
             if clicked_game then
                 if self.vm_manager:isGameAssigned(clicked_game.id) then
                     print("Game already in use by another VM!")
@@ -198,7 +199,7 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
                 self.selected_slot = nil
                 return {name = "assign_game", slot_index = slot_to_assign, game_id = clicked_game.id}
             else
-                -- Clicked inside modal but not on a game item or scrollbar etc.
+                 -- Clicked inside modal but not on a game item or scrollbar etc.
                  return nil -- Consume click inside modal background
             end
         else
@@ -209,8 +210,8 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
         end
     end
 
-    -- Check VM slots
-    local clicked_slot_index = self:getSlotAtPosition(x, y, viewport_width, viewport_height)
+    -- Check VM slots (using local coords)
+    local clicked_slot_index = self:getSlotAtPosition(x, y, viewport_width, viewport_height) -- Pass local coords
     if clicked_slot_index then
         local slot = self.vm_manager.vm_slots[clicked_slot_index]
         if slot.active then
@@ -218,18 +219,17 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
         else
             self.selected_slot = clicked_slot_index
             self.game_selection_open = true
-            -- State needs to refresh the filtered game list before drawing modal
-            -- self.controller:updateGameList() -- Called by state now
             return {name = "modal_opened", slot_index = clicked_slot_index}
         end
     end
 
-    -- Check upgrade buttons
+    -- Check upgrade buttons (using local coords)
     local Config = require('src.config')
     local upgrades = {"cpu_speed", "overclock"}
     for i, upgrade_type in ipairs(upgrades) do
         local bx = self.upgrade_x + (i - 1) * (self.upgrade_w + self.upgrade_spacing)
-        local by = self.upgrade_y -- Use recalculated y
+        local by = self.upgrade_y -- Use layout-calculated y
+        -- Check using LOCAL x, y
         if x >= bx and x <= bx + self.upgrade_w and y >= by and y <= by + self.upgrade_h then
             local current_level = self.player_data.upgrades[upgrade_type] or 0
             local cost = Config.upgrade_costs[upgrade_type] * (current_level + 1)
@@ -242,8 +242,8 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
         end
     end
 
-    -- Check purchase button
-    if self:isPurchaseButtonClicked(x, y, viewport_width, viewport_height) then
+    -- Check purchase button (using local coords)
+    if self:isPurchaseButtonClicked(x, y, viewport_width, viewport_height) then -- Pass local coords
          local cost = self.vm_manager:getVMCost(#self.vm_manager.vm_slots)
          if self.player_data:hasTokens(cost) then
              return {name = "purchase_vm"}

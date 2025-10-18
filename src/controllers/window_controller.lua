@@ -4,9 +4,10 @@
 local Object = require('class')
 local WindowController = Object:extend('WindowController')
 
-function WindowController:init(window_manager, program_registry)
+function WindowController:init(window_manager, program_registry, window_states_map)
     self.window_manager = window_manager
     self.program_registry = program_registry -- Injected dependency
+    self.window_states = window_states_map -- Store reference to DesktopState's map
 
     -- Drag state
     self.dragging_window_id = nil
@@ -23,11 +24,6 @@ function WindowController:init(window_manager, program_registry)
     -- Minimum window size
     self.min_window_width = 200
     self.min_window_height = 150
-end
-
--- Update window controller
-function WindowController:update(dt)
-    -- Could handle window animations here in future
 end
 
 -- Handle mouse press
@@ -254,35 +250,32 @@ function WindowController:handleResize(mouse_x, mouse_y)
 
     -- Adjust position again if minimum clamping changed size significantly when resizing left/top
     if edge:find("left") and new_w == self.min_window_width then
-        new_x = math.min(new_x, screen_w - self.min_window_width)
+        new_x = math.min(new_x, screen_w - self.min_window_width) -- Ensure x doesn't go negative if clamped width pushes it left
+        new_x = math.max(0, new_x) -- Re-clamp x >= 0
     end
      if edge:find("top") and new_h == self.min_window_height then
-        new_y = math.min(new_y, screen_h - taskbar_h - self.min_window_height)
+        new_y = math.min(new_y, screen_h - taskbar_h - self.min_window_height) -- Ensure y doesn't go below taskbar if clamped height pushes it up
+        new_y = math.max(0, new_y) -- Re-clamp y >= 0
     end
 
     -- Update the window model
     self.window_manager:updateWindowBounds(self.resizing_window_id, new_x, new_y, new_w, new_h)
 
     -- *** Notify the state about the new viewport ***
-    local window_state = nil
-    -- Need DesktopState's window_states map. This is awkward access.
-    -- TODO: Refactor later to pass DesktopState or use events. For now, assume global access (bad practice).
-    if _G.state_machine and _G.state_machine.states['desktop'] then
-        local desktop_state = _G.state_machine.states['desktop']
-        local window_data = desktop_state.window_states[self.resizing_window_id]
-        window_state = window_data and window_data.state
-    end
+    local window_data = self.window_states[self.resizing_window_id] -- Use the injected map
+    local window_state = window_data and window_data.state
 
     if window_state and window_state.setViewport then
-        -- Need WindowChrome to calculate content bounds based on NEW window size
         -- Use pcall for safety, ensure chrome is available
         local chrome_ok, chrome = pcall(require, 'src.views.window_chrome')
         if chrome_ok and chrome then
             local chrome_instance = chrome:new()
-            -- We need the updated window object after updateWindowBounds
+            -- Get the updated window object *after* updateWindowBounds
             local updated_window = self.window_manager:getWindowById(self.resizing_window_id)
             if updated_window then
                 local new_content_bounds = chrome_instance:getContentBounds(updated_window)
+                print(string.format("Resizing Window %d: Notifying state with viewport x:%.1f, y:%.1f, w:%.1f, h:%.1f",
+                      self.resizing_window_id, new_content_bounds.x, new_content_bounds.y, new_content_bounds.width, new_content_bounds.height))
                 -- Call setViewport with absolute screen coordinates + dimensions
                 local success, err = pcall(window_state.setViewport, window_state,
                       new_content_bounds.x, new_content_bounds.y,
@@ -294,6 +287,8 @@ function WindowController:handleResize(mouse_x, mouse_y)
         else
             print("Error: Could not require window_chrome during resize.")
         end
+    else
+        print(string.format("Resizing Window %d: State not found or no setViewport method.", self.resizing_window_id))
     end
 end
 

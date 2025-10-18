@@ -123,15 +123,9 @@ end
 
 function VMManagerState:draw()
     if not self.viewport then return end
-
-    love.graphics.push()
-    love.graphics.translate(self.viewport.x, self.viewport.y)
-    love.graphics.setScissor(self.viewport.x, self.viewport.y, self.viewport.width, self.viewport.height)
-
+    -- REMOVED push/translate/scissor/pop
     self.view:drawWindowed(self.filtered_games, self.viewport.width, self.viewport.height)
-
-    love.graphics.setScissor()
-    love.graphics.pop()
+    -- REMOVED setScissor/pop
 end
 
 function VMManagerState:keypressed(key)
@@ -152,19 +146,20 @@ end
 
 
 function VMManagerState:mousepressed(x, y, button)
+     -- x, y are ALREADY LOCAL content coordinates from DesktopState
      if not self.viewport then return false end
 
-    -- x, y are already translated to local coordinates by DesktopState
-    -- Check bounds
+    -- Check if click is outside the logical content bounds (0,0 to width, height)
     if x < 0 or x > self.viewport.width or y < 0 or y > self.viewport.height then
         return false
     end
 
-    -- Delegate to view with local coordinates
+    -- Delegate directly to view with the LOCAL coordinates
     local event = self.view:mousepressed(x, y, button, self.filtered_games, self.viewport.width, self.viewport.height)
 
     if not event then return false end
 
+    -- Handle view events as before...
     if event.name == "assign_game" then
         self:assignGameToSlot(event.game_id, event.slot_index)
     elseif event.name == "remove_game" then
@@ -180,6 +175,7 @@ function VMManagerState:mousepressed(x, y, button)
         print("Game selection closed")
     end
 
+    -- Return generic interaction signal if view handled it
     return { type = "content_interaction" }
 end
 

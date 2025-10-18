@@ -338,11 +338,7 @@ end
 
 function SpaceDefenderState:draw()
     if not self.viewport then return end -- Don't draw if no viewport
-
-    love.graphics.push()
-    love.graphics.translate(self.viewport.x, self.viewport.y)
-    love.graphics.setScissor(self.viewport.x, self.viewport.y, self.viewport.width, self.viewport.height)
-
+    -- REMOVED push/translate/scissor/pop
     -- Draw background specific to the viewport
     love.graphics.setColor(0,0,0.1) -- Dark space background
     love.graphics.rectangle('fill', 0, 0, self.viewport.width, self.viewport.height)
@@ -363,9 +359,7 @@ function SpaceDefenderState:draw()
         love.graphics.setColor(1,0,0)
         love.graphics.print("Error: BulletSystem not loaded!", 10, 10)
     end
-
-    love.graphics.setScissor()
-    love.graphics.pop()
+    -- REMOVED setScissor/pop
 end
 
 
@@ -442,15 +436,22 @@ function SpaceDefenderState:onLevelFailed()
 end
 
 function SpaceDefenderState:mousepressed(x, y, button)
-    -- Translate coordinates if mouse interaction is added later
+    -- x, y are ALREADY LOCAL content coordinates from DesktopState
     if not self.viewport then return false end
-    local local_x = x - self.viewport.x
-    local local_y = y - self.viewport.y
-    if local_x < 0 or local_x > self.viewport.width or local_y < 0 or local_y > self.viewport.height then
-        return false -- Click outside viewport
+
+    -- Check if click is outside the logical content bounds (0,0 to width, height)
+    if x < 0 or x > self.viewport.width or y < 0 or y > self.viewport.height then
+        return false -- Click outside viewport content area
     end
-    -- No mouse actions currently
-    return false
+
+    -- Gameplay logic likely doesn't use mouse, but if view handles UI buttons:
+    -- local event = self.view:mousepressed(x, y, button)
+    -- if event then
+    --     -- Handle view events if any
+    --     return { type = "content_interaction" }
+    -- end
+
+    return false -- No mouse actions currently handled
 end
 
 

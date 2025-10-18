@@ -316,24 +316,28 @@ function FileExplorerView:drawStatusBar(x, y, width, contents)
 end
 
 function FileExplorerView:mousepressed(x, y, button, contents, viewport_width, viewport_height)
-    -- Check toolbar buttons first
+    -- x, y are LOCAL coords relative to content area (0,0)
+
+    -- Check toolbar buttons first (using local coords)
     local is_recycle_bin = (self.controller.current_path == "/Recycle Bin")
-    local toolbar_button = self:getButtonAtPosition(x, y, is_recycle_bin)
+    local toolbar_button = self:getButtonAtPosition(x, y, is_recycle_bin) -- Pass local coords
     if toolbar_button then
-        if toolbar_button == "back" then return { name = "navigate_back" }
-        elseif toolbar_button == "forward" then return { name = "navigate_forward" }
-        elseif toolbar_button == "up" then return { name = "navigate_up" }
-        elseif toolbar_button == "refresh" then return { name = "refresh" }
-        elseif toolbar_button == "empty_recycle_bin" then return { name = "empty_recycle_bin" }
-        end
+        -- Return events based on button ID (logic unchanged)
+        if toolbar_button == "back" and self.controller:canGoBack() then return { name = "navigate_back" } end
+        if toolbar_button == "forward" and self.controller:canGoForward() then return { name = "navigate_forward" } end
+        if toolbar_button == "up" and self.controller.current_path ~= "/" then return { name = "navigate_up" } end
+        if toolbar_button == "refresh" then return { name = "refresh" } end
+        if toolbar_button == "empty_recycle_bin" then return { name = "empty_recycle_bin" } end
+        -- If button check returned an ID but it's disabled, consume the click
+        return nil
     end
 
-    -- Check item list
+    -- Check item list (using local coords)
     if contents and type(contents) == "table" and #contents > 0 then
-        local content_y = self.toolbar_height + self.address_bar_height
+        local content_y = self.toolbar_height + self.address_bar_height -- Relative y start
         local content_h = viewport_height - content_y - self.status_bar_height
 
-        local clicked_item = self:getItemAtPosition(x, y, contents, content_y, content_h, viewport_width)
+        local clicked_item = self:getItemAtPosition(x, y, contents, content_y, content_h, viewport_width) -- Pass local coords
 
         if clicked_item then
             if button == 1 then -- Left click
@@ -351,13 +355,13 @@ function FileExplorerView:mousepressed(x, y, button, contents, viewport_width, v
                     return { name = "item_click", item = clicked_item }
                 end
             elseif button == 2 then -- Right click detected
-                -- Emit a specific right-click event for the state
                 return { name = "item_right_click", item = clicked_item }
             end
         end
     end
 
-    return nil -- Clicked on empty space, scrollbar, or unhandled button
+    -- If click wasn't on toolbar or item list, it's considered empty space within the view
+    return nil
 end
 
 function FileExplorerView:wheelmoved(x, y, viewport_width, viewport_height)

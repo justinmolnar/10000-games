@@ -220,6 +220,21 @@ function SpaceDefenderView:drawPauseScreenWindowed(viewport_width, viewport_heig
     love.graphics.printf("Press P to resume", 0, viewport_height/2 + 40, viewport_width, "center")
 end
 
+-- Add this function if you add UI buttons to the Space Defender view
+function SpaceDefenderView:mousepressed(x, y, button)
+    -- x, y are LOCAL coords relative to content area (0,0)
+    if button ~= 1 then return nil end
+
+    -- Example: Check if a pause button was clicked
+    -- local pause_btn = { x = viewport_width - 50, y = 10, w = 40, h = 20 } -- Relative coords
+    -- if x >= pause_btn.x and x <= pause_btn.x + pause_btn.w and
+    --    y >= pause_btn.y and y <= pause_btn.y + pause_btn.h then
+    --     return { name = "toggle_pause" }
+    -- end
+
+    return nil -- No view UI elements clicked
+end
+
 
 function SpaceDefenderView:update(dt)
     -- Currently no view-specific update logic needed here.

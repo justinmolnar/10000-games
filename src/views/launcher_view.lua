@@ -91,33 +91,33 @@ function LauncherView:draw(filtered_games, tokens)
 end
 
 function LauncherView:mousepressed(x, y, button, filtered_games, viewport_width, viewport_height)
+    -- x, y are LOCAL coordinates relative to the content area top-left (0,0)
     if button ~= 1 then return nil end
 
-    -- 1. Check category buttons
-    -- Category button layout might need adjustment based on viewport_width
+    -- 1. Check category buttons (using local coords)
     local categories = {"all", "action", "puzzle", "arcade", "locked", "unlocked", "completed", "easy", "medium", "hard"}
-    local button_width = 75 -- Keep fixed or make dynamic?
-    local cat_button_y = 10 -- Adjusted y position
+    local button_width = 75
+    local cat_button_y = 10 -- Position relative to content area top
     local cat_button_x_start = 10
 
     for i, category in ipairs(categories) do
         local bx = cat_button_x_start + (i - 1) * (button_width + 5)
-        local by = cat_button_y
+        local by = cat_button_y -- Relative y
 
+        -- Check using LOCAL x, y
         if x >= bx and x <= bx + button_width and y >= by and y <= by + self.category_button_height then
             self.selected_category = category
             return {name = "filter_changed", category = category}
         end
     end
 
-    -- 2. Check game list
-    -- Define list area based on viewport
-    local list_y = 50
+    -- 2. Check game list (using local coords)
+    local list_y = 50 -- Relative y
     local list_h = viewport_height - list_y - 10
-    local list_x = 10
+    local list_x = 10 -- Relative x
     local list_width = (self.detail_panel_open and self.selected_game) and (viewport_width - self.detail_panel_width - 20) or (viewport_width - 20)
 
-    local clicked_game_id = self:getGameAtPosition(x, y, filtered_games, list_x, list_y, list_width, list_h)
+    local clicked_game_id = self:getGameAtPosition(x, y, filtered_games, list_x, list_y, list_width, list_h) -- Pass LOCAL coords
     if clicked_game_id then
         for i, g in ipairs(filtered_games) do
             if g.id == clicked_game_id then
@@ -125,9 +125,21 @@ function LauncherView:mousepressed(x, y, button, filtered_games, viewport_width,
                                         love.timer.getTime() - self.last_click_time < 0.5)
 
                 if is_double_click then
-                    return {name = "launch_game", id = clicked_game_id}
+                    -- Important: Check unlock status *before* returning launch event
+                    if self.player_data:isGameUnlocked(clicked_game_id) then
+                        return {name = "launch_game", id = clicked_game_id}
+                    else
+                        -- If locked, treat double-click as single-click to open details/prompt
+                        self.selected_index = i
+                        self.selected_game = g
+                        self.detail_panel_open = true
+                        self.last_click_game = clicked_game_id
+                        self.last_click_time = love.timer.getTime()
+                        return {name = "game_selected", game = g}
+                    end
                 end
 
+                -- Single click logic
                 self.selected_index = i
                 self.selected_game = g
                 self.detail_panel_open = true -- Open panel on single click
@@ -139,38 +151,47 @@ function LauncherView:mousepressed(x, y, button, filtered_games, viewport_width,
         end
     end
 
-    -- 3. Check detail panel buttons if open
+    -- 3. Check detail panel buttons if open (using local coords)
+    local detail_panel_hit = false
     if self.detail_panel_open and self.selected_game then
-         local effective_detail_width = math.min(self.detail_panel_width, viewport_width * 0.5)
-         list_width = viewport_width - effective_detail_width - 20 -- Recalculate list_width
-         local panel_x = list_x + list_width + 10 -- Adjusted x
-         local panel_y = list_y
-         local panel_h = list_h
+        local effective_detail_width = math.min(self.detail_panel_width, viewport_width * 0.5)
+        local current_list_width = viewport_width - effective_detail_width - 20 -- Recalculate list_width based on current state
+        local panel_x = list_x + current_list_width + 10 -- Adjusted x relative to content area
+        local panel_y = list_y -- Relative y
+        local panel_h = list_h
 
-        -- Use Button component coordinates from drawGameDetailPanel
-        local button_y = panel_y + panel_h - 45
-        local button_w = effective_detail_width - 20
-        local button_h = 35
-        local button_x = panel_x + 10
+        -- Check if click is within detail panel bounds first
+        if x >= panel_x and x <= panel_x + effective_detail_width and y >= panel_y and y <= panel_y + panel_h then
+             detail_panel_hit = true -- Click was inside detail panel area
+             -- Check the PLAY/UNLOCK button specifically
+             local button_y = panel_y + panel_h - 45 -- Relative y within panel area (which starts at panel_y)
+             local button_w = effective_detail_width - 20
+             local button_h = 35
+             local button_x = panel_x + 10 -- Relative x within panel area
 
-        if x >= button_x and x <= button_x + button_w and
-           y >= button_y and y <= button_y + button_h then
-            return {name = "launch_game", id = self.selected_game.id}
+             -- Need to check LOCAL x, y against button's calculated screen position? No, check LOCAL x,y against button's position relative to content area.
+             if x >= button_x and x <= button_x + button_w and
+                y >= button_y and y <= button_y + button_h then
+                 -- Clicked the button
+                 return {name = "launch_game", id = self.selected_game.id}
+             end
+             -- If click was in panel but not button, it's consumed, return nil to prevent closing panel
+             return nil
         end
     end
 
-    -- If click wasn't on list, panel buttons, or categories, close detail panel
-    local detail_panel_x = list_x + list_width + 10 -- Use potentially recalculated list_width
-    local effective_detail_width = math.min(self.detail_panel_width, viewport_width * 0.5)
-    if self.detail_panel_open and not (x >= detail_panel_x and x <= detail_panel_x + effective_detail_width and y >= list_y and y <= list_y + list_h) then
-        -- Also check if the click was *not* on the game list itself
+    -- 4. If click wasn't on list, panel, or categories, potentially close detail panel
+    -- Check only if detail_panel_hit is false (click was outside panel bounds)
+    if self.detail_panel_open and not detail_panel_hit then
+        -- Also check if the click was *not* on the game list itself (already checked above)
          if not clicked_game_id then
              self.detail_panel_open = false
+             -- Return nil here as well, because the click *did* something (closed the panel)
+             return nil
          end
     end
 
-
-    return nil -- No specific UI element clicked
+    return nil -- No specific UI element clicked, and panel wasn't closed by this click
 end
 
 function LauncherView:wheelmoved(x, y, filtered_games, viewport_width, viewport_height)

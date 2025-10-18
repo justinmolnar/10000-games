@@ -308,23 +308,25 @@ function CheatEngineView:drawPanel(x, y, w, h, title)
 end
 
 function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, available_cheats, viewport_width, viewport_height)
+    -- x, y are LOCAL coords relative to content area (0,0)
     if button ~= 1 then return nil end
 
-    -- Check game list
+    -- Check game list (using local coords)
     local visible_games = self:getVisibleGameCount(viewport_height) -- Use helper
     local start_index = self.controller.scroll_offset or 1 -- Get from controller
 
     for i = 0, visible_games - 1 do
         local game_index = start_index + i
         if game_index <= #games then
-            local by = self.list_y + i * self.item_h
+            local by = self.list_y + i * self.item_h -- Relative y
+            -- Check using LOCAL x, y
             if x >= self.list_x and x <= self.list_x + self.list_w and y >= by and y <= by + self.item_h then
                 return { name = "select_game", id = games[game_index].id }
             end
         end
     end
 
-    -- Check detail panel
+    -- Check detail panel (using local coords)
     if selected_game_id then
         local game = self.controller.selected_game -- Get from controller
         if not game then return nil end -- Guard against missing game
@@ -336,31 +338,33 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, ava
             return nil -- No buttons active
 
         elseif not ce_is_unlocked then
-            -- Check unlock button
-            local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + 100, self.detail_w - 20, 40
+            -- Check unlock button (using local coords)
+            local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + 100, self.detail_w - 20, 40 -- Relative positions
             local cost = self.controller:getScaledCost(game.cheat_engine_base_cost or 99999)
             local can_afford = self.controller.player_data:hasTokens(cost)
+            -- Check using LOCAL x, y
             if x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h and can_afford then
                 return { name = "unlock_cheat_engine" }
             end
         else
-            -- Check cheat list purchase buttons
+            -- Check cheat list purchase buttons (using local coords)
             local available_height_for_cheats = self.detail_h - 160
             local cheat_item_total_height = self.item_h + 20
             local visible_cheats = math.floor(available_height_for_cheats / cheat_item_total_height)
-            visible_cheats = math.max(1, visible_cheats) -- Ensure at least 1
+            visible_cheats = math.max(1, visible_cheats)
             local cheat_scroll_offset = self.controller.cheat_scroll_offset or 0
             local cheat_index = 0
 
             for _, cheat in ipairs(available_cheats or {}) do
                  cheat_index = cheat_index + 1
                  if cheat_index > cheat_scroll_offset and cheat_index <= cheat_scroll_offset + visible_cheats then
-                     local display_y = self.detail_y + 100 + (cheat_index - 1 - cheat_scroll_offset) * cheat_item_total_height
-                     local btn_x, btn_y, btn_w, btn_h = self.detail_x + self.detail_w - 120, display_y, 110, 30
+                     local display_y = self.detail_y + 100 + (cheat_index - 1 - cheat_scroll_offset) * cheat_item_total_height -- Relative y
+                     local btn_x, btn_y, btn_w, btn_h = self.detail_x + self.detail_w - 120, display_y, 110, 30 -- Relative positions
 
                      local at_max_level = (cheat.current_level >= cheat.max_level)
                      local can_afford = self.controller.player_data:hasTokens(cheat.cost_for_next)
 
+                     -- Check using LOCAL x, y
                      if x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h then
                          if not at_max_level and can_afford then
                              return { name = "purchase_cheat", id = cheat.id }
@@ -371,15 +375,16 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, ava
                  end
             end
 
-            -- Check launch button
-            local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + self.detail_h - 50, self.detail_w - 20, 40
+            -- Check launch button (using local coords)
+            local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + self.detail_h - 50, self.detail_w - 20, 40 -- Relative positions
+            -- Check using LOCAL x, y
             if game_is_unlocked and x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h then
                 return { name = "launch_game" }
             end
         end
     end
 
-    return nil
+    return nil -- Clicked on empty space within the view's area
 end
 
 function CheatEngineView:wheelmoved(x, y, item_count, viewport_width, viewport_height)

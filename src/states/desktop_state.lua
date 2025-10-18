@@ -13,6 +13,154 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
                            window_manager, desktop_icons, file_system, recycle_bin, program_registry,
                            vm_manager_dep, cheat_system_dep, save_manager_dep, game_data_dep)
 
+    print("[DesktopState:init] Starting initialization...") -- Debug Start
+
+    self.state_machine = state_machine
+    self.player_data = player_data
+    self.statistics = statistics
+    self.window_manager = window_manager
+    self.desktop_icons = desktop_icons -- Injected
+    self.file_system = file_system
+    self.recycle_bin = recycle_bin -- Injected
+    self.program_registry = program_registry
+    self.vm_manager = vm_manager_dep
+    self.cheat_system = cheat_system_dep
+    self.save_manager = save_manager_dep
+    self.game_data = game_data_dep
+
+    -- Initialize basic properties first
+    self.window_chrome = WindowChrome:new()
+    self.window_states = {} -- Initialize the map *before* passing it
+
+    -- *** Crucial: Instantiate WindowController AFTER its dependencies are ready ***
+    if WindowController then -- Check if require succeeded
+        -- Ensure dependencies are valid before passing
+        if not window_manager then print("CRITICAL ERROR: window_manager is nil during DesktopState:init!") end
+        if not program_registry then print("CRITICAL ERROR: program_registry is nil during DesktopState:init!") end
+        if not self.window_states then print("CRITICAL ERROR: self.window_states is nil during DesktopState:init!") end
+
+        -- Only instantiate if dependencies seem okay
+        if window_manager and program_registry and self.window_states then
+             self.window_controller = WindowController:new(window_manager, program_registry, self.window_states)
+             print("[DesktopState:init] WindowController instantiated successfully.") -- Debug Success
+             if not self.window_controller then print("CRITICAL ERROR: WindowController:new() returned nil!") end -- Check instantiation result
+        else
+             print("CRITICAL ERROR: Cannot instantiate WindowController due to missing dependencies.")
+             self.window_controller = nil
+        end
+    else
+        print("CRITICAL ERROR: Cannot instantiate WindowController because require failed.")
+        self.window_controller = nil -- Explicitly set to nil if require failed
+    end
+
+    -- Initialize Views and other properties AFTER window_controller
+    self.view = DesktopView:new(self.program_registry, self.player_data, self.window_manager, self.desktop_icons, self.recycle_bin)
+    self.tutorial_view = TutorialView:new(self)
+    self.context_menu_view = ContextMenuView:new()
+
+    self.wallpaper_color = {0, 0.5, 0.5}
+    self.show_tutorial = show_tutorial_on_startup or false
+
+    self.start_menu_open = false
+    self.run_dialog_open = false
+    self.run_text = ""
+
+    -- Icon interaction state
+    self.dragging_icon_id = nil
+    self.drag_offset_x = 0
+    self.drag_offset_y = 0
+    self.last_icon_click_time = 0
+    self.last_icon_click_id = nil
+
+    -- Title bar double-click state
+    self.last_title_bar_click_time = 0
+    self.last_title_bar_click_id = nil
+
+    -- Context Menu State
+    self.context_menu_open = false
+    self.menu_x = 0
+    self.menu_y = 0
+    self.menu_options = {} -- Will hold { id="action", label="Text", enabled=true/false }
+    self.menu_context = nil -- Store data related to what was clicked (e.g., program_id, window_id)
+
+    -- Dependency provider map (used by launchProgram)
+    self.dependency_provider = {
+        player_data = self.player_data, game_data = self.game_data, state_machine = self.state_machine,
+        save_manager = self.save_manager, statistics = self.statistics, window_manager = self.window_manager,
+        desktop_icons = self.desktop_icons, file_system = self.file_system, recycle_bin = self.recycle_bin,
+        program_registry = self.program_registry, vm_manager = self.vm_manager, cheat_system = self.cheat_system,
+        window_controller = self.window_controller -- Pass controller itself if needed by states (e.g. Settings)
+    }
+
+    -- Store cursors (created in main.lua)
+    self.cursors = {} -- This will be populated by main.lua
+
+    print("[DesktopState:init] Initialization finished.") -- Debug End
+end
+
+function DesktopState:enter()
+    self:updateClock()
+    print("Desktop loaded. Tutorial active: " .. tostring(self.show_tutorial))
+    self.view:calculateDefaultIconPositionsIfNeeded() -- View uses model data now
+end
+
+function DesktopState:update(dt)
+    -- Update window controller (handles drag/resize state)
+    self.window_controller:update(dt)
+
+    -- Update active window states
+    local windows = self.window_manager:getAllWindows()
+    for _, window in ipairs(windows) do
+        if not window.is_minimized then
+            local window_data = self.window_states[window.id]
+            -- Check if state object exists FIRST
+            if window_data and window_data.state then
+                 -- Check if the 'update' method actually exists and is a function BEFORE pcall
+                 if type(window_data.state.update) == "function" then
+                    -- Safely call the update method using pcall
+                    local success, err = pcall(window_data.state.update, window_data.state, dt)
+                    if not success then
+                        -- Log error if pcall fails
+                        print("Error *during* pcall update on state for window " .. window.id .. ": " .. tostring(err))
+                    end
+                 else
+                     -- Log a warning if a state instance lacks an update method (this shouldn't cause a crash now)
+                     -- print("Debug: State for window ID", window.id, "(Program:", window.program_type, ") exists but lacks an update method.")
+                 end
+            else
+               -- Log a warning if the state object itself is missing
+               -- print("Debug: No state object found for window ID", window.id, "(Program:", window.program_type, ")")
+            end
+        end
+    end
+
+    -- Update context menu view if open
+    if self.context_menu_open then
+        self.context_menu_view:update(dt, self.menu_options, self.menu_x, self.menu_y)
+    end
+
+    -- Update main desktop view or tutorial
+    if self.show_tutorial then
+        self.tutorial_view:update(dt)
+    else
+        self.view:update(dt, self.start_menu_open, self.dragging_icon_id)
+    end
+
+    -- Update system cursor based on context
+    local mx, my = love.mouse.getPosition()
+    local cursor_type = self.window_controller:getCursorType(mx, my, self.window_chrome)
+    local cursor_obj = self.cursors[cursor_type] or self.cursors["arrow"] -- Fallback to arrow
+    if cursor_obj then love.mouse.setCursor(cursor_obj) end
+end
+
+function DesktopState:updateClock()
+    self.current_time = os.date("%H:%M")
+end
+
+function DesktopState:init(state_machine, player_data, show_tutorial_on_startup, statistics,
+                           window_manager, desktop_icons, file_system, recycle_bin, program_registry,
+                           vm_manager_dep, cheat_system_dep, save_manager_dep, game_data_dep)
+
     self.state_machine = state_machine
     self.player_data = player_data
     self.statistics = statistics
@@ -27,11 +175,12 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
     self.game_data = game_data_dep
 
     self.window_chrome = WindowChrome:new()
-    -- Inject program_registry into window_controller
-    self.window_controller = WindowController:new(window_manager, self.program_registry)
 
-    -- Window state instances (store {state = state_instance})
+    -- Window state instances (store {state = state_instance}) - Kept here
     self.window_states = {}
+
+    -- Inject program_registry AND self.window_states into window_controller
+    self.window_controller = WindowController:new(window_manager, self.program_registry, self.window_states)
 
     -- Pass desktop_icons to the view for position data
     self.view = DesktopView:new(self.program_registry, self.player_data, self.window_manager, self.desktop_icons, self.recycle_bin)
@@ -63,7 +212,7 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
     self.menu_options = {} -- Will hold { id="action", label="Text", enabled=true/false }
     self.menu_context = nil -- Store data related to what was clicked (e.g., program_id, window_id)
 
-    -- Dependency provider map
+    -- Dependency provider map (used by launchProgram)
     self.dependency_provider = {
         player_data = self.player_data, game_data = self.game_data, state_machine = self.state_machine,
         save_manager = self.save_manager, statistics = self.statistics, window_manager = self.window_manager,
@@ -74,93 +223,6 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
 
     -- Store cursors (created in main.lua)
     self.cursors = {} -- This will be populated by main.lua
-end
-
-function DesktopState:enter()
-    self:updateClock()
-    print("Desktop loaded. Tutorial active: " .. tostring(self.show_tutorial))
-    self.view:calculateDefaultIconPositionsIfNeeded() -- View uses model data now
-end
-
-function DesktopState:update(dt)
-    -- Update window controller (handles drag/resize state)
-    self.window_controller:update(dt)
-
-    -- Update active window states
-    local windows = self.window_manager:getAllWindows()
-    for _, window in ipairs(windows) do
-        if not window.is_minimized then
-            local window_data = self.window_states[window.id]
-            if window_data and window_data.state and window_data.state.update then
-                pcall(window_data.state.update, window_data.state, dt)
-            end
-        end
-    end
-
-    -- Update context menu view if open
-    if self.context_menu_open then
-        self.context_menu_view:update(dt, self.menu_options, self.menu_x, self.menu_y)
-    end
-
-    -- Update main desktop view or tutorial
-    if self.show_tutorial then
-        self.tutorial_view:update(dt)
-    else
-        self.view:update(dt, self.start_menu_open, self.dragging_icon_id)
-    end
-
-    -- Update system cursor based on context
-    local mx, my = love.mouse.getPosition()
-    local cursor_type = self.window_controller:getCursorType(mx, my, self.window_chrome)
-    local cursor_obj = self.cursors[cursor_type] or self.cursors["arrow"] -- Fallback to arrow
-    if cursor_obj then love.mouse.setCursor(cursor_obj) end
-end
-
-function DesktopState:updateClock()
-    self.current_time = os.date("%H:%M")
-end
-
-function DesktopState:draw()
-    -- Pass dragging state for visual feedback
-    self.view:draw(
-        self.wallpaper_color,
-        self.player_data.tokens,
-        self.start_menu_open,
-        self.run_dialog_open,
-        self.run_text,
-        self.dragging_icon_id
-    )
-
-    -- Draw windows respecting z-order from window manager
-    local windows = self.window_manager:getAllWindows()
-    for i = 1, #windows do
-        local window = windows[i]
-        if not window.is_minimized then
-            self:drawWindow(window)
-        end
-    end
-
-     -- Draw the icon being dragged on top of windows
-    if self.dragging_icon_id then
-        local program = self.program_registry:getProgram(self.dragging_icon_id)
-        if program then
-            local mx, my = love.mouse.getPosition()
-            local drag_x = mx - self.drag_offset_x
-            local drag_y = my - self.drag_offset_y
-            local temp_pos = { x = drag_x, y = drag_y }
-            self.view:drawIcon(program, true, temp_pos, true) -- Pass dragging flag
-        end
-    end
-
-    -- Draw context menu on top if open
-    if self.context_menu_open then
-        self.context_menu_view:draw()
-    end
-
-    -- Draw tutorial overlay last if active
-    if self.show_tutorial then
-        self.tutorial_view:draw()
-    end
 end
 
 
@@ -177,25 +239,32 @@ function DesktopState:drawWindow(window)
     if window_state and window_state.draw then
         local content_bounds = self.window_chrome:getContentBounds(window)
 
-        -- Pass viewport info to the state for rendering
-        if window_state.setViewport then
-             -- Pass the absolute screen coordinates and dimensions
-             window_state:setViewport(content_bounds.x, content_bounds.y,
-                                      content_bounds.width, content_bounds.height)
-        end
-        -- The state's draw function should handle drawing within its designated area.
-        -- It might use the viewport info passed above or rely on push/pop/translate/scissor itself.
+        love.graphics.push() -- Save current graphics state
+        -- Set scissor BEFORE translating
+        love.graphics.setScissor(content_bounds.x, content_bounds.y, content_bounds.width, content_bounds.height)
+        -- Translate origin to content area's top-left AFTER setting scissor
+        love.graphics.translate(content_bounds.x, content_bounds.y)
+
+        -- The state's draw function draws relative to (0,0) within the clipped area
         local draw_ok, err = pcall(window_state.draw, window_state)
-         if not draw_ok then
-              print("Error during window state draw for ID " .. window.id .. ": " .. tostring(err))
-              -- Draw error within the content bounds using absolute coordinates
-              love.graphics.push()
-              love.graphics.setScissor(content_bounds.x, content_bounds.y, content_bounds.width, content_bounds.height)
-              love.graphics.setColor(1,0,0)
-              love.graphics.printf("Error drawing window content:\n" .. tostring(err), content_bounds.x + 5, content_bounds.y + 5, content_bounds.width - 10)
-              love.graphics.setScissor()
-              love.graphics.pop()
-         end
+
+        love.graphics.pop() -- Restore previous graphics state (removes translation and scissor setting from the push)
+
+        -- *** ADD EXPLICIT SCISSOR RESET ***
+        -- Reset scissor to full screen just in case pop didn't fully restore it
+        love.graphics.setScissor()
+        -- *** END ADDED LINE ***
+
+        if not draw_ok then
+            print("Error during window state draw for ID " .. window.id .. ": " .. tostring(err))
+            -- Draw error message (this part seems okay, uses push/pop locally)
+            love.graphics.push()
+            love.graphics.setScissor(content_bounds.x, content_bounds.y, content_bounds.width, content_bounds.height)
+            love.graphics.setColor(1,0,0)
+            love.graphics.printf("Error drawing window content:\n" .. tostring(err), content_bounds.x + 5, content_bounds.y + 5, content_bounds.width - 10)
+            love.graphics.setScissor()
+            love.graphics.pop()
+        end
     end
 end
 

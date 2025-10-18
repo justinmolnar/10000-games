@@ -201,8 +201,8 @@ function love.update(dt)
 end
 
 function love.draw()
-    -- Base background color (will be overridden by desktop wallpaper)
-    love.graphics.clear(0.2, 0.2, 0.2)
+    -- Explicitly clear the entire screen with a background color FIRST
+    love.graphics.clear(0, 0.5, 0.5, 1) -- Use the desktop wallpaper color or a neutral one
 
     -- The active state machine state draws. If it's DesktopState, it handles drawing windows.
     if state_machine then

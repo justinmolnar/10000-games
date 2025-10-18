@@ -66,12 +66,16 @@ end
 
 
 function StatisticsView:mousepressed(x, y, button)
+    -- x, y are LOCAL coords relative to content area (0,0)
     if button ~= 1 then return nil end
+
+    -- Use relative button coordinates calculated in updateLayout
+    -- Check using LOCAL x, y
     if x >= self.back_button.x and x <= self.back_button.x + self.back_button.w and
        y >= self.back_button.y and y <= self.back_button.y + self.back_button.h then
         return { name = "back" } -- State interprets this as close_window
     end
-    return nil
+    return nil -- Clicked empty space within the view
 end
 
 return StatisticsView

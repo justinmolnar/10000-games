@@ -28,15 +28,9 @@ end
 
 function SettingsState:draw()
     if not self.viewport then return end
-    
-    love.graphics.push()
-    love.graphics.translate(self.viewport.x, self.viewport.y)
-    love.graphics.setScissor(self.viewport.x, self.viewport.y, self.viewport.width, self.viewport.height)
-    
-    self:drawWindowed()
-    
-    love.graphics.setScissor()
-    love.graphics.pop()
+    -- REMOVED push/translate/scissor/pop
+    self:drawWindowed() -- Keep the call to the state's own draw helper
+    -- REMOVED setScissor/pop
 end
 
 function SettingsState:drawWindowed()
@@ -117,47 +111,29 @@ function SettingsState:keypressed(key)
 end
 
 function SettingsState:mousepressed(x, y, button)
+    -- x, y are ALREADY LOCAL content coordinates from DesktopState
     if not self.viewport then return false end
-    
-    -- x, y are already local coordinates from DesktopState
+
+    -- Check if click is outside the logical content bounds (0,0 to width, height)
     if x < 0 or x > self.viewport.width or y < 0 or y > self.viewport.height then
         return false
     end
-    
-    -- Check back button
-    if x >= 10 and x <= 160 and 
-       y >= self.viewport.height - 50 and y <= self.viewport.height - 15 then
-        return {type = "close_window"}
-    end
-    
-    -- Check sliders and toggles
-    local y_pos = 50
-    local line_height = 40
-    
-    for _, opt in ipairs(self.view.options) do
-        if opt.type == "slider" then
-            local slider_x = 200
-            local slider_w = 200
-            
-            if x >= slider_x and x <= slider_x + slider_w and
-               y >= y_pos and y <= y_pos + 20 then
-                local value = math.max(0, math.min(1, (x - slider_x) / slider_w))
-                return {type = "set_setting", id = opt.id, value = value}
-            end
-        elseif opt.type == "toggle" then
-            if x >= 200 and x <= 220 and
-               y >= y_pos and y <= y_pos + 20 then
-                local current_value = self:getSetting(opt.id)
-                return {type = "set_setting", id = opt.id, value = not current_value}
-            end
+
+    -- Delegate directly to view with the LOCAL coordinates
+    local event = self.view:mousepressed(x, y, button)
+
+    if event then
+        if event.name == "set_setting" then
+            self:setSetting(event.id, event.value)
+            return { type = "content_interaction" }
+        elseif event.name == "button_click" and event.id == "back" then
+            return {type = "close_window"}
         end
-        
-        if opt.type ~= "button" then
-            y_pos = y_pos + line_height
-        end
+        -- If view returned something else, treat as handled interaction
+        return { type = "content_interaction" }
     end
-    
-    return false
+
+    return false -- No specific view element handled it
 end
 
 function SettingsState:mousereleased(x, y, button)

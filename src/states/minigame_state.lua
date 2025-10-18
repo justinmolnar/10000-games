@@ -3,124 +3,131 @@ local Object = require('class')
 local ProgressionManager = require('models.progression_manager')
 local MinigameState = Object:extend('MinigameState')
 
--- Add viewport and window context properties
 function MinigameState:init(player_data, game_data_model, state_machine, save_manager, cheat_system)
+    print("[MinigameState] init() called")
     self.player_data = player_data
-    self.game_data_model = game_data_model -- Store the main game data model
+    self.game_data_model = game_data_model
     self.state_machine = state_machine
     self.save_manager = save_manager
-    self.cheat_system = cheat_system -- Injected dependency
+    self.cheat_system = cheat_system
 
     self.current_game = nil
-    self.game_data = nil -- This will hold the specific game's data
+    self.game_data = nil
     self.completion_screen_visible = false
     self.previous_best = 0
-    self.current_performance = 0 -- Will hold the final calculated performance
-    self.base_performance = 0 -- Will hold performance before cheat multiplier
+    self.current_performance = 0
+    self.base_performance = 0
     self.auto_completed_games = {}
     self.auto_complete_power = 0
-    self.active_cheats = {} -- Store cheats for this run
+    self.active_cheats = {}
 
-    -- Windowing additions
-    self.viewport = nil -- Will be set by DesktopState {x,y,width,height} are SCREEN coords + dimensions
+    self.viewport = nil
     self.window_id = nil
-    self.window_manager = nil -- Will be set by DesktopState
-    self.gameCanvas = nil -- Canvas for rendering
+    self.window_manager = nil
+    self.gameCanvas = nil
     self.canvasScale = 1
-    self.canvasOffsetX = 0 -- Offset RELATIVE TO VIEWPORT ORIGIN (0,0) after translate
-    self.canvasOffsetY = 0 -- Offset RELATIVE TO VIEWPORT ORIGIN (0,0) after translate
-    self.nativeGameWidth = 1920 -- Assuming native resolution, adjust if needed
+    self.canvasOffsetX = 0
+    self.canvasOffsetY = 0
+    self.nativeGameWidth = 1920
     self.nativeGameHeight = 1080
+    print("[MinigameState] init() completed")
 end
 
--- Add setViewport method
 function MinigameState:setViewport(x, y, width, height)
-    -- Store the content area bounds passed by DesktopState (absolute screen coords + dimensions)
+    print("[MinigameState] setViewport() called - canvas exists:", self.gameCanvas ~= nil)
     self.viewport = { x = x, y = y, width = width, height = height }
-    -- Recalculate scaling and offset whenever viewport changes
-    self:calculateCanvasTransform()
-    print(string.format("Minigame %s viewport updated: sx=%.1f, sy=%.1f, w=%.1f, h=%.1f -> scale=%.3f, ox=%.1f, oy=%.1f",
-        (self.game_data and self.game_data.id or "N/A"), x, y, width, height, self.canvasScale or -1, self.canvasOffsetX or -1, self.canvasOffsetY or -1))
+    if self.gameCanvas then
+        print("[MinigameState] Canvas exists, calculating transform")
+        self:calculateCanvasTransform()
+    else
+        print("[MinigameState] Canvas is nil, skipping transform calculation")
+    end
 end
 
-
--- Add setWindowContext method
 function MinigameState:setWindowContext(window_id, window_manager)
     self.window_id = window_id
     self.window_manager = window_manager
 end
 
--- Helper to calculate canvas scaling and offset for letterboxing
 function MinigameState:calculateCanvasTransform()
-    -- Check if canvas exists and is valid
+    print("[MinigameState] calculateCanvasTransform() called")
+
     if not self.gameCanvas then
-        print("Warning: calculateCanvasTransform called before canvas is ready.")
-        self.canvasScale = 0
-        self.canvasOffsetX = 0
-        self.canvasOffsetY = 0
-        return
-    end
-    
-    -- Try to check if canvas is released, with error handling
-    local canvas_released = false
-    local check_ok = pcall(function()
-        canvas_released = self.gameCanvas:isReleased()
-    end)
-    
-    if not check_ok or canvas_released then
-        print("Warning: Canvas is invalid or released in calculateCanvasTransform.")
+        print("[MinigameState] No canvas, setting defaults")
         self.canvasScale = 0
         self.canvasOffsetX = 0
         self.canvasOffsetY = 0
         return
     end
 
-    -- Validate viewport dimensions
+    -- Check for valid viewport dimensions *before* using them
     if not self.viewport or
        type(self.viewport.width) ~= "number" or self.viewport.width <= 0 or
-       type(self.viewport.height) ~= "number" or self.viewport.height <= 0 or
-       not self.nativeGameWidth or self.nativeGameWidth <= 0 or
-       not self.nativeGameHeight or self.nativeGameHeight <= 0 then
-
-        print("Warning: Invalid dimensions for canvas transform calculation.")
+       type(self.viewport.height) ~= "number" or self.viewport.height <= 0 then
+        print("[MinigameState] Invalid viewport dimensions received:",
+              self.viewport and self.viewport.width, self.viewport and self.viewport.height)
         self.canvasScale = 0
         self.canvasOffsetX = 0
         self.canvasOffsetY = 0
         return
     end
 
-    -- Calculate scale and offset
+    -- Ensure native dimensions are valid
+    if not self.nativeGameWidth or self.nativeGameWidth <= 0 or
+       not self.nativeGameHeight or self.nativeGameHeight <= 0 then
+       print("[MinigameState] Invalid native game dimensions")
+       self.canvasScale = 0
+       self.canvasOffsetX = 0
+       self.canvasOffsetY = 0
+       return
+    end
+
+
+    -- *** Use viewport dimensions ***
     local vpWidth = self.viewport.width
     local vpHeight = self.viewport.height
     local canvasWidth = self.nativeGameWidth
     local canvasHeight = self.nativeGameHeight
 
+    -- Calculate scale based on viewport, maintaining aspect ratio
     local scaleX = vpWidth / canvasWidth
     local scaleY = vpHeight / canvasHeight
     self.canvasScale = math.min(scaleX, scaleY)
 
+    -- Prevent division by zero or negative scale if dimensions are bad
     if self.canvasScale <= 0 then self.canvasScale = 0.0001 end
 
+    -- Calculate the dimensions of the scaled canvas
     local scaledWidth = canvasWidth * self.canvasScale
     local scaledHeight = canvasHeight * self.canvasScale
 
+    -- Calculate offsets to center the canvas *within the viewport*
     self.canvasOffsetX = (vpWidth - scaledWidth) / 2
     self.canvasOffsetY = (vpHeight - scaledHeight) / 2
+
+    print(string.format("[MinigameState] Transform calculated - vpW: %d, vpH: %d, scale: %.4f, offX: %.1f, offY: %.1f",
+          vpWidth, vpHeight, self.canvasScale, self.canvasOffsetX, self.canvasOffsetY))
 end
 
-
 function MinigameState:enter(game_data)
+    print("[MinigameState] enter() called for game:", game_data and game_data.id or "UNKNOWN")
+    
     self.game_data = game_data
     self.gameCanvas = love.graphics.newCanvas(self.nativeGameWidth, self.nativeGameHeight)
+    print("[MinigameState] Canvas created:", self.gameCanvas ~= nil)
+    
     self:calculateCanvasTransform()
+    
     self.active_cheats = self.cheat_system:getActiveCheats(game_data.id) or {}
     local class_name = game_data.game_class
     local logic_file_name = class_name:gsub("(%u)", function(c) return "_" .. c:lower() end):sub(2)
     local require_ok, GameClass = pcall(require, 'src.games.' .. logic_file_name)
     if not require_ok or not GameClass then
+        print("[MinigameState] ERROR: Failed to load game class")
         self.current_game = nil
         return
     end
+    
     self.current_game = GameClass:new(game_data, self.active_cheats)
     self.cheat_system:consumeCheats(game_data.id)
     local perf = self.player_data:getGamePerformance(game_data.id)
@@ -130,87 +137,10 @@ function MinigameState:enter(game_data)
     self.base_performance = 0
     self.auto_completed_games = {}
     self.auto_complete_power = 0
-end
-
-function MinigameState:calculateCanvasTransform()
-    if not self.gameCanvas or not self.viewport then
-        self.canvasScale = 0
-        self.canvasOffsetX = 0
-        self.canvasOffsetY = 0
-        return
-    end
-
-    local vpWidth = self.viewport.width
-    local vpHeight = self.viewport.height
-
-    local scaleX = vpWidth / self.nativeGameWidth
-    local scaleY = vpHeight / self.nativeGameHeight
-    self.canvasScale = math.min(scaleX, scaleY)
-
-    local scaledWidth = self.nativeGameWidth * self.canvasScale
-    local scaledHeight = self.nativeGameHeight * self.canvasScale
-
-    self.canvasOffsetX = (vpWidth - scaledWidth) / 2
-    self.canvasOffsetY = (vpHeight - scaledHeight) / 2
-end
-
-function MinigameState:draw()
-    if not self.viewport or not self.gameCanvas then
-        return
-    end
-
-    love.graphics.setCanvas(self.gameCanvas)
-    love.graphics.clear(0, 0, 0, 1)
-    
-    if self.current_game and self.current_game.draw then
-        pcall(self.current_game.draw, self.current_game)
-    end
-    
-    love.graphics.setCanvas()
-
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(self.gameCanvas, self.canvasOffsetX, self.canvasOffsetY, 0, self.canvasScale, self.canvasScale)
-
-    if self.completion_screen_visible then
-        self:drawCompletionScreenWindowed(self.viewport.width, self.viewport.height)
-    end
-end
-
-function MinigameState:calculateCanvasTransform()
-    if not self.gameCanvas or not self.viewport then
-        self.canvasScale = 0
-        self.canvasOffsetX = 0
-        self.canvasOffsetY = 0
-        return
-    end
-    local scaleX = self.viewport.width / self.nativeGameWidth
-    local scaleY = self.viewport.height / self.nativeGameHeight
-    self.canvasScale = math.min(scaleX, scaleY)
-    local scaledWidth = self.nativeGameWidth * self.canvasScale
-    local scaledHeight = self.nativeGameHeight * self.canvasScale
-    self.canvasOffsetX = (self.viewport.width - scaledWidth) / 2
-    self.canvasOffsetY = (self.viewport.height - scaledHeight) / 2
-end
-
-function MinigameState:draw()
-    if not self.viewport or not self.gameCanvas then
-        return
-    end
-    love.graphics.setCanvas(self.gameCanvas)
-    love.graphics.clear(0, 0, 0, 1)
-    if self.current_game and self.current_game.draw then
-        pcall(self.current_game.draw, self.current_game)
-    end
-    love.graphics.setCanvas()
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(self.gameCanvas, self.canvasOffsetX, self.canvasOffsetY, 0, self.canvasScale, self.canvasScale)
-    if self.completion_screen_visible then
-        self:drawCompletionScreenWindowed(self.viewport.width, self.viewport.height)
-    end
+    print("[MinigameState] enter() completed")
 end
 
 function MinigameState:update(dt)
-    -- *** Update runs regardless of focus ***
     if self.current_game and not self.completion_screen_visible then
         if self.current_game:checkComplete() and not self.current_game.completed then
             self:onGameComplete()
@@ -227,119 +157,125 @@ function MinigameState:update(dt)
     end
 end
 
--- Re-corrected draw function
 function MinigameState:draw()
-    -- Ensure viewport and canvas are valid AND transform values are calculated
-    if not self.viewport or not self.gameCanvas or self.gameCanvas:isReleased() or self.canvasScale == nil or self.canvasScale <= 0 then
-        -- Draw error message relative to the translated origin (0,0) established by DesktopState
-        love.graphics.setColor(1,0,0)
-        love.graphics.printf("Error: Minigame state draw prerequisites not met.", 5, 5, (self.viewport and self.viewport.width or 100) - 10)
+    -- Check for valid viewport and canvas early
+    if not self.gameCanvas then
+        love.graphics.setColor(1, 0, 0)
+        -- Still draw relative to the current origin set by DesktopState
+        love.graphics.printf("Loading...", 5, 5, 200)
         return
     end
 
-    -- *** DesktopState has already applied love.graphics.translate to the content area's origin ***
-    -- *** DesktopState has already applied love.graphics.setScissor to the content area ***
-    -- *** This function draws relative to (0,0) which IS the top-left of the content area ***
+    if not self.viewport or self.canvasScale == nil or self.canvasScale <= 0 then
+        love.graphics.setColor(1, 0, 0)
+        -- Still draw relative to the current origin set by DesktopState
+        love.graphics.printf("Initializing viewport...", 5, 5, 200)
+        return
+    end
 
-    local g = love.graphics -- Alias
+    local g = love.graphics
 
-    -- 1. Render game onto the canvas (off-screen)
+    -- 1. Render game onto its internal canvas (Keep this part the same as the last fix)
     g.setCanvas(self.gameCanvas)
-    g.push("all") -- Save graphics state for canvas rendering
-    g.origin()    -- Work in canvas's local coordinates (0,0 top-left)
-    g.clear(0, 0, 0, 1) -- Black background for canvas
+    g.push()
+    g.clear(0, 0, 0, 1) -- Clear the canvas
+
     if self.current_game then
         local draw_ok, err = pcall(self.current_game.draw, self.current_game)
         if not draw_ok then
-             print("ERROR drawing game " .. (self.game_data and self.game_data.id or "unknown") .. ": " .. tostring(err))
-             g.setColor(1,0,0)
-             g.printf("Error during game draw:\n" .. tostring(err), 10, 10, self.nativeGameWidth - 20)
+             print("ERROR drawing game:", tostring(err))
+             g.setColor(1, 0, 0)
+             g.printf("Error drawing game", 10, 10, self.nativeGameWidth - 20)
         end
     else
-        g.setColor(1,0,0)
-        g.printf("Error: Game instance not loaded.", 0, self.nativeGameHeight/2 - 10, self.nativeGameWidth, "center")
+        g.setColor(1, 0, 0)
+        g.printf("Error: Game not loaded", 0, self.nativeGameHeight/2 - 10, self.nativeGameWidth, "center")
     end
-    g.pop() -- Restore graphics state before switching canvas
-    g.setCanvas() -- Back to the main screen target (which is already translated and scissored)
+    g.pop()
+    g.setCanvas() -- Switch back to drawing to the screen
 
-    -- 2. Draw the scaled canvas *onto the already translated viewport*
+    -- 2. Draw the prepared canvas onto the screen
+    -- *** CHANGE: Draw canvas relative to the CURRENT ORIGIN (content area top-left) ***
+    -- DesktopState has already translated the origin to the content area's top-left.
+    -- self.canvasOffsetX/Y are calculated offsets *within* that content area.
+    -- So, drawing at (self.canvasOffsetX, self.canvasOffsetY) should be correct now.
     g.setColor(1, 1, 1, 1)
-    -- Draw the canvas at the calculated offset (self.canvasOffsetX, self.canvasOffsetY)
-    -- These offsets are relative to the viewport's top-left corner (which is currently 0,0 due to translate)
     g.draw(self.gameCanvas, self.canvasOffsetX, self.canvasOffsetY, 0, self.canvasScale, self.canvasScale)
+    -- The scissor set by DesktopState will clip this draw call correctly.
 
-    -- 3. Draw completion screen overlay if visible
+    -- 3. Draw completion screen overlay if needed
+    -- This is drawn *after* the canvas, still relative to the content area top-left (0,0)
     if self.completion_screen_visible then
-        -- Draw overlay relative to the viewport's top-left corner (0,0)
+        -- Make sure this draws relative to 0,0 (which is the content area top-left)
         self:drawCompletionScreenWindowed(self.viewport.width, self.viewport.height)
-        -- No extra push/pop/origin needed here as drawCompletionScreenWindowed draws relative to 0,0
     end
 end
 
-
 function MinigameState:drawCompletionScreenWindowed(vpWidth, vpHeight)
-    -- Use a temporary push/pop to ensure overlay draws correctly without affecting canvas draw state later
     love.graphics.push()
-    love.graphics.origin() -- Draw relative to viewport 0,0
+    love.graphics.origin()
 
-    -- Semi-transparent background within viewport
     love.graphics.setColor(0, 0, 0, 0.8)
     love.graphics.rectangle('fill', 0, 0, vpWidth, vpHeight)
 
     love.graphics.setColor(1, 1, 1)
     local metrics = self.current_game and self.current_game:getMetrics() or {}
 
-    -- Adjust layout based on viewport size
     local x = vpWidth * 0.15
     local y = vpHeight * 0.1
-    local line_height = math.max(18, vpHeight * 0.04) -- Scale line height
+    local line_height = math.max(18, vpHeight * 0.04)
     local title_scale = math.max(1, vpWidth / 600)
     local text_scale = math.max(0.8, vpWidth / 800)
 
-    -- Title
-    love.graphics.print("GAME COMPLETE!", x, y, 0, title_scale, title_scale); y = y + line_height * 2
+    love.graphics.print("GAME COMPLETE!", x, y, 0, title_scale, title_scale)
+    y = y + line_height * 2
 
     local tokens_earned = math.floor(self.current_performance)
     local performance_mult = (self.active_cheats and self.active_cheats.performance_modifier) or 1.0
 
-    -- Tokens earned
     love.graphics.setColor(1, 1, 0)
-    love.graphics.print("Tokens Earned: +" .. tokens_earned, x, y, 0, text_scale * 1.2, text_scale * 1.2); y = y + line_height * 1.5
+    love.graphics.print("Tokens Earned: +" .. tokens_earned, x, y, 0, text_scale * 1.2, text_scale * 1.2)
+    y = y + line_height * 1.5
 
-    -- Metrics
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Your Performance:", x, y, 0, text_scale, text_scale); y = y + line_height
+    love.graphics.print("Your Performance:", x, y, 0, text_scale, text_scale)
+    y = y + line_height
 
     if self.game_data and self.game_data.metrics_tracked then
         for _, metric_name in ipairs(self.game_data.metrics_tracked) do
             local value = metrics[metric_name]
             if value ~= nil then
                 if type(value) == "number" then value = string.format("%.1f", value) end
-                love.graphics.print("  " .. metric_name .. ": " .. value, x + 20, y, 0, text_scale, text_scale); y = y + line_height
+                love.graphics.print("  " .. metric_name .. ": " .. value, x + 20, y, 0, text_scale, text_scale)
+                y = y + line_height
             end
         end
     end
 
-    -- Formula calculation
     y = y + line_height
-    love.graphics.print("Formula Calculation:", x, y, 0, text_scale, text_scale); y = y + line_height
+    love.graphics.print("Formula Calculation:", x, y, 0, text_scale, text_scale)
+    y = y + line_height
     if self.game_data and self.game_data.formula_string then
-        love.graphics.print(self.game_data.formula_string, x + 20, y, 0, text_scale * 0.9, text_scale * 0.9); y = y + line_height
+        love.graphics.print(self.game_data.formula_string, x + 20, y, 0, text_scale * 0.9, text_scale * 0.9)
+        y = y + line_height
     end
 
     if performance_mult ~= 1.0 then
-        love.graphics.print("Base Result: " .. math.floor(self.base_performance), x + 20, y, 0, text_scale, text_scale); y = y + line_height
+        love.graphics.print("Base Result: " .. math.floor(self.base_performance), x + 20, y, 0, text_scale, text_scale)
+        y = y + line_height
         love.graphics.setColor(0, 1, 1)
-        love.graphics.print("Cheat Bonus: x" .. string.format("%.1f", performance_mult), x + 20, y, 0, text_scale, text_scale); y = y + line_height
+        love.graphics.print("Cheat Bonus: x" .. string.format("%.1f", performance_mult), x + 20, y, 0, text_scale, text_scale)
+        y = y + line_height
     end
+    
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("Final Result: " .. math.floor(self.current_performance), x + 20, y, 0, text_scale * 1.2, text_scale * 1.2)
 
-    -- Compare with previous best
     y = y + line_height * 2
     if self.current_performance > self.previous_best then
         love.graphics.setColor(0, 1, 0)
-        love.graphics.print("NEW RECORD!", x, y, 0, text_scale * 1.3, text_scale * 1.3); y = y + line_height
+        love.graphics.print("NEW RECORD!", x, y, 0, text_scale * 1.3, text_scale * 1.3)
+        y = y + line_height
         love.graphics.setColor(1, 1, 1)
         love.graphics.print("Previous best: " .. math.floor(self.previous_best), x, y, 0, text_scale, text_scale)
         love.graphics.print("Improvement: +" .. math.floor(self.current_performance - self.previous_best), x, y + line_height, 0, text_scale, text_scale)
@@ -347,27 +283,28 @@ function MinigameState:drawCompletionScreenWindowed(vpWidth, vpHeight)
         if #self.auto_completed_games > 0 then
             y = y + line_height * 2
             love.graphics.setColor(1, 1, 0)
-            love.graphics.print("AUTO-COMPLETION!", x, y, 0, text_scale * 1.2, text_scale * 1.2); y = y + line_height
+            love.graphics.print("AUTO-COMPLETION!", x, y, 0, text_scale * 1.2, text_scale * 1.2)
+            y = y + line_height
             love.graphics.setColor(1, 1, 1)
-            love.graphics.print("Completed " .. #self.auto_completed_games .. " variants!", x, y, 0, text_scale, text_scale); y = y + line_height
+            love.graphics.print("Completed " .. #self.auto_completed_games .. " variants!", x, y, 0, text_scale, text_scale)
+            y = y + line_height
             love.graphics.print("Power gained: +" .. math.floor(self.auto_complete_power), x, y, 0, text_scale, text_scale)
         end
     else
         love.graphics.setColor(1, 1, 0)
-        love.graphics.print("Best: " .. math.floor(self.previous_best), x, y, 0, text_scale, text_scale); y = y + line_height
+        love.graphics.print("Best: " .. math.floor(self.previous_best), x, y, 0, text_scale, text_scale)
+        y = y + line_height
         love.graphics.setColor(0.8, 0.8, 0.8)
         love.graphics.print("Try again to beat your record!", x, y, 0, text_scale, text_scale)
     end
 
-    -- Instructions
     love.graphics.setColor(1, 1, 1)
     y = vpHeight * 0.85
     love.graphics.printf("Press ENTER to play again", 0, y, vpWidth, "center", 0, text_scale, text_scale)
     love.graphics.printf("Press ESC to close window", 0, y + line_height, vpWidth, "center", 0, text_scale, text_scale)
 
-    love.graphics.pop() -- Restore graphics state after drawing overlay
+    love.graphics.pop()
 end
-
 
 function MinigameState:onGameComplete()
     if not self.current_game then return end
@@ -379,12 +316,13 @@ function MinigameState:onGameComplete()
     self.current_performance = self.base_performance * performance_mult
     local tokens_earned = math.floor(self.current_performance)
     self.player_data:addTokens(tokens_earned)
-    print("Awarded " .. tokens_earned .. " tokens for completing " .. (self.game_data and self.game_data.display_name or "Unknown Game"))
+    
     local is_new_best = self.player_data:updateGamePerformance(
         self.game_data.id,
         self.current_game:getMetrics(),
         self.current_performance
     )
+    
     if is_new_best then
         local progression = ProgressionManager:new()
         self.auto_completed_games, self.auto_complete_power =
@@ -395,6 +333,7 @@ function MinigameState:onGameComplete()
                 self.player_data
             )
     end
+    
     self.save_manager.save(self.player_data)
 end
 
@@ -411,59 +350,70 @@ function MinigameState:keypressed(key)
             return { type = "close_window" }
         end
     else
-        if self.current_game then
-            if key == 'escape' then
-                return { type = "close_window" }
-            else
-                if self.current_game.keypressed then
-                    local game_handled = false
-                    local success, result = pcall(self.current_game.keypressed, self.current_game, key)
-                    if success then game_handled = result
-                    else print("Error in game keypressed for " .. (self.game_data and self.game_data.id or "unknown") .. ": " .. tostring(result)) end
-                    return game_handled and { type = "content_interaction" } or false
+        if key == 'escape' then
+            return { type = "close_window" }
+        else
+            if self.current_game and self.current_game.keypressed then
+                local success, result = pcall(self.current_game.keypressed, self.current_game, key)
+                if success then
+                    return result and { type = "content_interaction" } or false
+                else
+                    print("Error in game keypressed:", tostring(result))
                 end
             end
-        else
-             if key == 'escape' then return { type = "close_window" } end
         end
     end
+    
     return false
 end
 
 function MinigameState:mousepressed(x, y, button)
+    -- x, y are ALREADY LOCAL content coordinates from DesktopState
+    -- Check focus (already done in previous version, keep it)
     if not self.window_manager or self.window_id ~= self.window_manager:getFocusedWindowId() then
         return false
     end
 
     if not self.completion_screen_visible then
         if self.current_game and self.current_game.mousepressed then
-            -- Transform coordinates ONLY if scale is valid
-            if not self.viewport or self.canvasScale == nil or self.canvasScale <= 0 then return false end
+            -- Ensure canvas transform calculation is valid before translating coords
+            if not self.viewport or self.canvasScale == nil or self.canvasScale <= 0 then
+                print("[MinigameState:mousepressed] Warning: Invalid canvas transform, cannot process click.")
+                return false -- Cannot translate coords if transform is invalid
+            end
 
+            -- Translate LOCAL viewport coords (x,y) to LOCAL canvas coords
             local canvas_x = (x - self.canvasOffsetX) / self.canvasScale
             local canvas_y = (y - self.canvasOffsetY) / self.canvasScale
 
-            -- Check if click is within the rendered canvas bounds before passing
+            -- Check if the translated coords are within the canvas bounds
             if canvas_x >= 0 and canvas_x <= self.nativeGameWidth and
                canvas_y >= 0 and canvas_y <= self.nativeGameHeight then
+                -- Pass the translated CANVAS coordinates to the game logic
                 local success, result = pcall(self.current_game.mousepressed, self.current_game, canvas_x, canvas_y, button)
                 if not success then
-                     print("Error in game mousepressed for " .. (self.game_data and self.game_data.id or "unknown") .. ": " .. tostring(result))
+                     print("Error in game mousepressed:", tostring(result))
                 end
+                -- Regardless of game handling, clicking inside is an interaction
                 return { type = "content_interaction" }
+            else
+                -- Click was inside viewport but outside the scaled canvas (e.g., letterbox area)
+                return false -- Don't pass to game, let DesktopState handle focus if needed
             end
         end
     end
+
+    -- If completion screen is visible or game doesn't handle mouse,
+    -- return false to let DesktopState handle focus etc.
     return false
 end
 
-
 function MinigameState:leave()
-    if self.gameCanvas and not self.gameCanvas:isReleased() then
+    if self.gameCanvas then
         self.gameCanvas:release()
         self.gameCanvas = nil
     end
-    print("MinigameState leaving for window ID: " .. tostring(self.window_id) .. ", Canvas released.")
+    print("MinigameState leaving, canvas released")
 end
 
 return MinigameState

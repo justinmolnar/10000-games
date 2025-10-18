@@ -91,17 +91,10 @@ function LauncherState:update(dt)
 end
 
 function LauncherState:draw()
-    if not self.viewport then return end -- Don't draw if viewport isn't set
-
-    love.graphics.push()
-    love.graphics.translate(self.viewport.x, self.viewport.y)
-    love.graphics.setScissor(self.viewport.x, self.viewport.y, self.viewport.width, self.viewport.height)
-
-    -- Delegate drawing to the view, passing viewport dimensions for layout
+    if not self.viewport then return end
+    -- REMOVED push/translate/scissor/pop
     self.view:drawWindowed(self.filtered_games, self.player_data.tokens, self.viewport.width, self.viewport.height)
-
-    love.graphics.setScissor()
-    love.graphics.pop()
+    -- REMOVED setScissor/pop
 end
 
 function LauncherState:keypressed(key)
@@ -241,25 +234,25 @@ function LauncherState:showGameDetails(game_id)
     self.view.detail_panel_open = true
 end
 
-function LauncherState:mousepressed(x, y, button, filtered_games, viewport_width, viewport_height)
-    if button ~= 1 then return nil end
+function LauncherState:mousepressed(x, y, button)
+    -- x, y are ALREADY LOCAL content coordinates from DesktopState
+    if not self.viewport then return false end
 
-    -- x, y are already translated to local coordinates by DesktopState
-    -- Check if click is outside viewport bounds
+    -- Check if click is outside the logical content bounds (0,0 to width, height)
+    -- This check might be redundant if DesktopState already clips, but adds safety.
     if x < 0 or x > self.viewport.width or y < 0 or y > self.viewport.height then
         return false
     end
 
-    -- Delegate to view, which expects local coordinates
+    -- Delegate directly to view with the LOCAL coordinates
     local view_event = self.view:mousepressed(x, y, button, self.filtered_games, self.viewport.width, self.viewport.height)
 
-    -- If the view generated an event (like a button click), handle it
+    -- Handle the view event as before...
     if view_event then
         if view_event.name == "filter_changed" then
             self:updateFilter(view_event.category)
             return { type = "content_interaction" } -- Indicate interaction
         elseif view_event.name == "launch_game" then
-            -- Call launchGame which now returns an event object
             return self:launchGame(view_event.id) -- Bubble up the event object
         elseif view_event.name == "game_selected" then
             print("Selected game: " .. view_event.game.display_name)
@@ -267,8 +260,7 @@ function LauncherState:mousepressed(x, y, button, filtered_games, viewport_width
         end
     end
 
-    -- If no specific view event was handled, return false or nil
-    return false
+    return false -- No specific view element handled it
 end
 
 function LauncherState:launchSpaceDefender()

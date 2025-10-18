@@ -93,11 +93,7 @@ end
 
 function CheatEngineState:draw()
     if not self.viewport then return end
-
-    love.graphics.push()
-    love.graphics.translate(self.viewport.x, self.viewport.y)
-    love.graphics.setScissor(self.viewport.x, self.viewport.y, self.viewport.width, self.viewport.height)
-
+    -- REMOVED push/translate/scissor/pop
     self.view:drawWindowed(
         self.all_games,
         self.selected_game_id,
@@ -105,12 +101,10 @@ function CheatEngineState:draw()
         self.player_data,
         self.viewport.width,
         self.viewport.height,
-        self.scroll_offset, -- Pass scroll offsets
+        self.scroll_offset,
         self.cheat_scroll_offset
     )
-
-    love.graphics.setScissor()
-    love.graphics.pop()
+    -- REMOVED setScissor/pop
 end
 
 
@@ -165,21 +159,21 @@ end
 
 
 function CheatEngineState:mousepressed(x, y, button)
+    -- x, y are ALREADY LOCAL content coordinates from DesktopState
     if not self.viewport then return false end
 
-    -- x, y are already translated to local coordinates by DesktopState
-    -- No need to translate again
-
-    -- Check if click is outside viewport bounds
+    -- Check if click is outside the logical content bounds (0,0 to width, height)
     if x < 0 or x > self.viewport.width or y < 0 or y > self.viewport.height then
         return false
     end
 
+    -- Delegate directly to view with the LOCAL coordinates
     local event = self.view:mousepressed(x, y, button, self.all_games, self.selected_game_id, self.available_cheats, self.viewport.width, self.viewport.height)
     if not event then return false end
 
     local result_event = nil -- To store event to bubble up
 
+    -- Handle view events as before...
     if event.name == "select_game" then
         self.selected_game_id = event.id
         self.selected_game = self.game_data:getGame(event.id)
