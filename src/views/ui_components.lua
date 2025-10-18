@@ -30,6 +30,24 @@ function UIComponents.drawButton(x, y, w, h, text, enabled, hovered)
     love.graphics.print(text, x + (w - text_width) / 2, y + (h - text_height) / 2)
 end
 
+function UIComponents.drawTokenCounter(x, y, tokens)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print("Tokens: ", x, y, 0, 1.5, 1.5)
+    
+    local token_color = {0, 1, 0} -- Default Green
+    if tokens < 100 then
+        token_color = {1, 0, 0} -- Red
+    elseif tokens < 500 then
+        token_color = {1, 1, 0} -- Yellow
+    end
+    
+    love.graphics.setColor(token_color)
+    -- Calculate width of "Tokens: " to position the number correctly
+    local font = love.graphics.getFont()
+    local text_width = font:getWidth("Tokens: ") * 1.5 -- Match scale
+    love.graphics.print(tokens, x + text_width, y, 0, 1.5, 1.5)
+end
+
 function UIComponents.drawWindow(x, y, w, h, title)
     -- Window background
     love.graphics.setColor(0.75, 0.75, 0.75)

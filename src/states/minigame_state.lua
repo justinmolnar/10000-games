@@ -1,45 +1,91 @@
+-- src/states/minigame_state.lua
 local Object = require('class')
+local ProgressionManager = require('models.progression_manager')
 local MinigameState = Object:extend('MinigameState')
 
-function MinigameState:init(context)
-    self.context = context
+function MinigameState:init(player_data, game_data, state_machine, save_manager, cheat_system)
+    self.player_data = player_data
+    self.game_data_model = game_data -- Store the main game data model
+    self.state_machine = state_machine
+    self.save_manager = save_manager
+    self.cheat_system = cheat_system -- Injected dependency
+
     self.current_game = nil
-    self.game_data = nil
+    self.game_data = nil -- This will hold the specific game's data
     self.completion_screen_visible = false
     self.previous_best = 0
     self.current_performance = 0
     self.auto_completed_games = {}
     self.auto_complete_power = 0
+    self.active_cheats = {} -- Store cheats for this run
 end
 
 function MinigameState:enter(game_data)
-    self.game_data = game_data
+    self.game_data = game_data -- This is the specific game's data
     
-    -- Load the game class dynamically
+    -- Get active cheats *before* instantiating the game
+    self.active_cheats = self.cheat_system:getActiveCheats(game_data.id) or {}
+    
+    -- Load the game logic class dynamically
     local class_name = game_data.game_class
-    local file_name = class_name:gsub("(%u)", function(c) return "_" .. c:lower() end):sub(2)
+    local logic_file_name = class_name:gsub("(%u)", function(c) return "_" .. c:lower() end):sub(2)
     
-    print("Loading game class: " .. file_name)
-    local GameClass = require('src.games.' .. file_name)
-    self.current_game = GameClass:new(game_data)
+    print("Loading game logic class: " .. logic_file_name)
+    local GameClass = require('src.games.' .. logic_file_name)
+    if not GameClass then 
+        print("ERROR: Could not load game logic class: " .. logic_file_name)
+        self.state_machine:switch('launcher') -- Go back if load fails
+        return 
+    end
+    -- Instantiate the game logic class, passing active cheats
+    self.current_game = GameClass:new(game_data, self.active_cheats)
     
+    -- Consume the cheats now that they've been applied
+    self.cheat_system:consumeCheats(game_data.id)
+    
+    -- Load the corresponding view class dynamically (assuming view file exists)
+    -- View file name is assumed to be the same as logic, but in games/views/
+    local view_file_name = logic_file_name:gsub(".lua$", "") .. "_view" -- e.g., snake_game_view
+    local view_path = 'src.games.views.' .. view_file_name
+    
+    -- Use pcall for safety in case a view file doesn't exist
+    local view_load_ok, GameView = pcall(require, view_path)
+    if view_load_ok and GameView and type(GameView.new) == 'function' then
+         -- Instantiate the view inside the game object (as done in the game init methods)
+         -- self.current_game.view = GameView:new(self.current_game) 
+         -- Or handle view creation directly in the game's init, which we did.
+         print("Loaded game view: " .. view_file_name)
+    else
+        print("Warning: Could not load or instantiate view for " .. class_name .. " at " .. view_path .. ". Drawing might fail. Error: " .. tostring(GameView))
+        -- self.current_game.view = nil -- Ensure view is nil if load failed
+    end
+
     -- Get previous best performance
-    local perf = self.context.player_data:getGamePerformance(game_data.id)
+    local perf = self.player_data:getGamePerformance(game_data.id)
     self.previous_best = perf and perf.best_score or 0
     
-    -- Reset completion screen
+    -- Reset completion screen state
     self.completion_screen_visible = false
     self.auto_completed_games = {}
     self.auto_complete_power = 0
 end
 
 function MinigameState:update(dt)
+    -- Call view update (placeholder for future refactor)
+    -- if self.view and self.view.update then self.view:update(dt) end
+
     if self.current_game and not self.completion_screen_visible then
-        self.current_game:update(dt)
-        
-        -- Check for game completion
+        -- Run base game update logic (timer, completion check which sets self.current_game.completed)
+        self.current_game:updateBase(dt) 
+        -- Run specific game logic (movement, spawning, etc.)
+        -- Only run game logic if base update didn't already complete it
+        if not self.current_game.completed then
+            self.current_game:updateGameLogic(dt) 
+        end
+
+        -- Check if updateBase or updateGameLogic set the completed flag
         if self.current_game.completed then
-            self:onGameComplete()
+            self:onGameComplete() -- Trigger the state's completion logic (show screen, save)
         end
     end
 end
@@ -73,6 +119,12 @@ function MinigameState:drawCompletionScreen()
     love.graphics.print("GAME COMPLETE!", x, y, 0, 1.5, 1.5)
     y = y + line_height * 2
     
+    -- Performance calculation *before* applying cheat multiplier
+    local base_performance = self.current_game:calculatePerformance()
+    -- Get the performance multiplier (e.g., 1.2) or default to 1.0
+    local performance_mult = self.active_cheats.performance_modifier or 1.0
+    self.current_performance = base_performance * performance_mult
+
     -- Tokens earned
     local tokens_earned = math.floor(self.current_performance)
     love.graphics.setColor(1, 1, 0)
@@ -99,7 +151,15 @@ function MinigameState:drawCompletionScreen()
     y = y + line_height
     love.graphics.print(self.game_data.formula_string, x + 20, y, 0, 0.9, 0.9)
     y = y + line_height
-    love.graphics.print("Result: " .. math.floor(self.current_performance), x + 20, y, 0, 1.2, 1.2)
+    if performance_mult ~= 1.0 then
+        love.graphics.print("Base Result: " .. math.floor(base_performance), x + 20, y, 0, 1.0, 1.0)
+        y = y + line_height
+        love.graphics.setColor(0, 1, 1)
+        love.graphics.print("Cheat Bonus: x" .. string.format("%.1f", performance_mult), x + 20, y, 0, 1.0, 1.0)
+        y = y + line_height
+    end
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print("Final Result: " .. math.floor(self.current_performance), x + 20, y, 0, 1.2, 1.2)
     
     -- Compare with previous best
     y = y + line_height * 2
@@ -139,15 +199,17 @@ end
 
 function MinigameState:onGameComplete()
     self.completion_screen_visible = true
-    self.current_performance = self.current_game:calculatePerformance()
     
-    -- Award tokens based on performance
+    -- Performance is now calculated in drawCompletionScreen to show pre-cheat results
+    -- self.current_performance = self.current_game:calculatePerformance() * (self.active_cheats.performance_modifier or 1)
+    
+    -- Award tokens based on final performance
     local tokens_earned = math.floor(self.current_performance)
-    self.context.player_data:addTokens(tokens_earned)
+    self.player_data:addTokens(tokens_earned)
     print("Awarded " .. tokens_earned .. " tokens for completing " .. self.game_data.display_name)
     
     -- Update player performance
-    local is_new_best = self.context.player_data:updateGamePerformance(
+    local is_new_best = self.player_data:updateGamePerformance(
         self.game_data.id,
         self.current_game:getMetrics(),
         self.current_performance
@@ -155,17 +217,21 @@ function MinigameState:onGameComplete()
     
     -- Check for auto-completion trigger using progression manager
     if is_new_best then
-        local ProgressionManager = require('models.progression_manager')
         local progression = ProgressionManager:new()
         
-        -- Pass game_data as part of context
-        local context = {game_data = self.context.game_data}
+        -- Pass the specific game data (self.game_data)
+        -- AND the main game data model (self.game_data_model)
         self.auto_completed_games, self.auto_complete_power = 
-            progression:checkAutoCompletion(self.game_data.id, self.game_data, self.context.player_data)
+            progression:checkAutoCompletion(
+                self.game_data.id, 
+                self.game_data, 
+                self.game_data_model, 
+                self.player_data
+            )
     end
     
     -- Save game
-    self.context.save_manager.save(self.context.player_data)
+    self.save_manager.save(self.player_data)
 end
 
 function MinigameState:keypressed(key)
@@ -173,21 +239,32 @@ function MinigameState:keypressed(key)
         if key == 'return' then
             -- Replay the game
             self:enter(self.game_data)
+            return true -- Handled
         elseif key == 'escape' then
             -- Return to desktop
-            self.context.state_machine:switch('desktop')
+            self.state_machine:switch('desktop')
+            return true -- Handled
         end
     else
         if key == 'escape' then
             -- Return to desktop
-            self.context.state_machine:switch('desktop')
+            self.state_machine:switch('desktop')
+            return true -- Handled
         else
-            -- Forward to game
+            -- Forward to game if the method exists
             if self.current_game and self.current_game.keypressed then
-                self.current_game:keypressed(key)
+                self.current_game:keypressed(key) 
+                -- We always return true here now, regardless of what the game did.
+                -- This signifies that the MinigameState itself handled the input
+                -- by deciding to forward it, thus blocking global keys.
+                return true 
             end
         end
     end
+    
+    -- If the key wasn't escape/return and wasn't forwarded (e.g., game has no keypressed),
+    -- still consider it handled by this state to block globals.
+    return true 
 end
 
 function MinigameState:mousepressed(x, y, button)

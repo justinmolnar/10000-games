@@ -1,23 +1,29 @@
 -- vm_manager_state.lua: UI for managing virtual machines
 
 local Object = require('class')
+local VMManagerView = require('views.vm_manager_view')
 local VMManagerState = Object:extend('VMManagerState')
 
-function VMManagerState:init(context)
-    self.context = context
-    self.selected_slot = nil
-    self.game_selection_open = false
+function VMManagerState:init(vm_manager, player_data, game_data, state_machine, save_manager)
+    self.vm_manager = vm_manager
+    self.player_data = player_data
+    self.game_data = game_data
+    self.state_machine = state_machine
+    self.save_manager = save_manager
+
+    -- Create the view instance
+    self.view = VMManagerView:new(self, vm_manager, player_data, game_data)
+
     self.filtered_games = {}
-    self.scroll_offset = 0
-    self.hovered_slot = nil
 end
 
 function VMManagerState:enter()
-    self.selected_slot = nil
-    self.game_selection_open = false
-    self.filtered_games = {}
+    -- Reset view state
+    self.view.selected_slot = nil
+    self.view.game_selection_open = false
+    self.view.scroll_offset = 0
     
-    -- Get all completed games for assignment
+    -- Get all completed games for assignment (state still manages this list)
     self:updateGameList()
 end
 
@@ -25,8 +31,8 @@ function VMManagerState:updateGameList()
     self.filtered_games = {}
     
     -- Only show completed games
-    for game_id, perf in pairs(self.context.player_data.game_performance) do
-        local game_data = self.context.game_data:getGame(game_id)
+    for game_id, perf in pairs(self.player_data.game_performance) do
+        local game_data = self.game_data:getGame(game_id)
         if game_data then
             table.insert(self.filtered_games, game_data)
         end
@@ -34,215 +40,99 @@ function VMManagerState:updateGameList()
     
     -- Sort by power (descending)
     table.sort(self.filtered_games, function(a, b)
-        local perf_a = self.context.player_data:getGamePerformance(a.id)
-        local perf_b = self.context.player_data:getGamePerformance(b.id)
-        return perf_a.best_score > perf_b.best_score
+        local perf_a = self.player_data:getGamePerformance(a.id)
+        local perf_b = self.player_data:getGamePerformance(b.id)
+        -- Handle case where performance might be nil briefly during loading
+        return (perf_a and perf_a.best_score or 0) > (perf_b and perf_b.best_score or 0)
     end)
 end
 
 function VMManagerState:update(dt)
     -- Update VM manager (generates tokens)
-    self.context.vm_manager:update(dt, self.context.player_data, self.context.game_data)
+    self.vm_manager:update(dt, self.player_data, self.game_data)
     
-    -- Update hovered slot
-    local mx, my = love.mouse.getPosition()
-    self.hovered_slot = self:getSlotAtPosition(mx, my)
+    -- Update view (handles hover states)
+    self.view:update(dt)
 end
 
 function VMManagerState:draw()
-    local VMManagerView = require('views.vm_manager_view')
-    
-    -- Draw main window
-    love.graphics.setColor(0.75, 0.75, 0.75)
-    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    
-    -- Title bar
-    love.graphics.setColor(0, 0, 0.5)
-    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), 30)
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("VM Manager", 10, 8, 0, 1.2, 1.2)
-    
-    -- Token counter
-    love.graphics.print("Tokens: " .. self.context.player_data.tokens, love.graphics.getWidth() - 200, 8, 0, 1.2, 1.2)
-    
-    -- Tokens per minute display
-    VMManagerView.drawTokensPerMinute(10, 50, self.context.vm_manager.total_tokens_per_minute)
-    
-    -- VM slots grid
-    local slots = self.context.vm_manager.vm_slots
-    local slot_width = 180
-    local slot_height = 120
-    local padding = 10
-    local cols = 5
-    
-    for i, slot in ipairs(slots) do
-        local col = (i - 1) % cols
-        local row = math.floor((i - 1) / cols)
-        local x = 10 + col * (slot_width + padding)
-        local y = 100 + row * (slot_height + padding)
-        
-        VMManagerView.drawVMSlot(x, y, slot_width, slot_height, slot, 
-            i == self.selected_slot, i == self.hovered_slot, self.context)
-    end
-    
-    -- Purchase VM button
-    if #slots < self.context.vm_manager.max_slots then
-        local cost = self.context.vm_manager:getVMCost(#slots)
-        local can_afford = self.context.player_data:hasTokens(cost)
-        VMManagerView.drawPurchaseVMButton(10, love.graphics.getHeight() - 60, cost, can_afford)
-    end
-    
-    -- Game selection modal
-    if self.game_selection_open then
-        VMManagerView.drawGameSelectionModal(self.filtered_games, self.scroll_offset, self, self.context)
-    end
-    
-    -- Instructions
-    love.graphics.setColor(0.7, 0.7, 0.7)
-    love.graphics.print("Click empty slot to assign game | Click assigned game to remove | ESC to return", 
-        10, love.graphics.getHeight() - 25, 0, 0.8, 0.8)
+    -- Delegate drawing to the view
+    self.view:draw(self.filtered_games)
 end
 
 function VMManagerState:keypressed(key)
     if key == 'escape' then
-        if self.game_selection_open then
-            self.game_selection_open = false
-            self.selected_slot = nil
+        if self.view.game_selection_open then
+            self.view.game_selection_open = false
+            self.view.selected_slot = nil
         else
-            self.context.state_machine:switch('desktop')
+            self.state_machine:switch('desktop')
         end
     end
 end
 
 function VMManagerState:mousepressed(x, y, button)
-    if button ~= 1 then return end
-    
-    -- Check game selection modal
-    if self.game_selection_open then
-        local clicked_game = self:getGameAtPosition(x, y)
-        if clicked_game then
-            -- Check if game is already assigned
-            if self.context.vm_manager:isGameAssigned(clicked_game.id) then
-                print("Game already in use by another VM!")
-                return
-            end
-            
-            self:assignGameToSlot(clicked_game.id)
-            self.game_selection_open = false
-            self.selected_slot = nil
-        end
-        return
-    end
-    
-    -- Check VM slots
-    local clicked_slot = self:getSlotAtPosition(x, y)
-    if clicked_slot then
-        local slot = self.context.vm_manager.vm_slots[clicked_slot]
-        
-        if slot.active then
-            -- Remove game
-            self.context.vm_manager:removeGame(clicked_slot, self.context.player_data)
-            self.context.save_manager.save(self.context.player_data)
-        else
-            -- Open game selection
-            self.selected_slot = clicked_slot
-            self.game_selection_open = true
-        end
-        return
-    end
-    
-    -- Check purchase button
-    if self:isPurchaseButtonClicked(x, y) then
+    -- Delegate input handling to the view
+    local event = self.view:mousepressed(x, y, button, self.filtered_games)
+
+    if not event then return end
+
+    -- Handle events returned by the view
+    if event.name == "assign_game" then
+        self:assignGameToSlot(event.game_id, event.slot_index)
+    elseif event.name == "remove_game" then
+        self:removeGameFromSlot(event.slot_index)
+    elseif event.name == "purchase_vm" then
         self:purchaseNewVM()
+    elseif event.name == "modal_opened" then
+        -- Optional: Logic when modal opens (e.g., pause something)
+        print("Game selection opened for slot " .. event.slot_index)
+    elseif event.name == "modal_closed" then
+        -- Optional: Logic when modal closes
+        print("Game selection closed")
     end
 end
 
 function VMManagerState:wheelmoved(x, y)
-    if self.game_selection_open then
-        self.scroll_offset = math.max(0, self.scroll_offset - y)
-    end
+    -- Delegate scrolling to the view
+    self.view:wheelmoved(x, y)
 end
 
-function VMManagerState:getSlotAtPosition(x, y)
-    local slot_width = 180
-    local slot_height = 120
-    local padding = 10
-    local cols = 5
-    
-    for i = 1, #self.context.vm_manager.vm_slots do
-        local col = (i - 1) % cols
-        local row = math.floor((i - 1) / cols)
-        local sx = 10 + col * (slot_width + padding)
-        local sy = 100 + row * (slot_height + padding)
-        
-        if x >= sx and x <= sx + slot_width and y >= sy and y <= sy + slot_height then
-            return i
-        end
-    end
-    
-    return nil
-end
-
-function VMManagerState:getGameAtPosition(x, y)
-    -- Check if clicking on game in selection modal
-    local modal_x = love.graphics.getWidth() / 2 - 200
-    local modal_y = 100
-    local modal_w = 400
-    local item_height = 40
-    
-    if x < modal_x or x > modal_x + modal_w or y < modal_y + 50 then
-        return nil
-    end
-    
-    local relative_y = y - (modal_y + 50)
-    local index = math.floor(relative_y / item_height) + 1 + self.scroll_offset
-    
-    if index >= 1 and index <= #self.filtered_games then
-        return self.filtered_games[index]
-    end
-    
-    return nil
-end
-
-function VMManagerState:isPurchaseButtonClicked(x, y)
-    if #self.context.vm_manager.vm_slots >= self.context.vm_manager.max_slots then
-        return false
-    end
-    
-    local button_x = 10
-    local button_y = love.graphics.getHeight() - 60
-    local button_w = 200
-    local button_h = 40
-    
-    return x >= button_x and x <= button_x + button_w and 
-           y >= button_y and y <= button_y + button_h
-end
-
-function VMManagerState:assignGameToSlot(game_id)
-    if not self.selected_slot then return end
-    
-    local success, err = self.context.vm_manager:assignGame(
-        self.selected_slot, 
+-- Action handlers called by mousepressed based on view events
+function VMManagerState:assignGameToSlot(game_id, slot_index)
+    -- Slot index now comes from the event, not self.selected_slot
+    local success, err = self.vm_manager:assignGame(
+        slot_index, 
         game_id, 
-        self.context.game_data, 
-        self.context.player_data
+        self.game_data, 
+        self.player_data
     )
     
     if success then
-        self.context.save_manager.save(self.context.player_data)
+        self.save_manager.save(self.player_data)
     else
         print("Failed to assign game: " .. (err or "unknown error"))
     end
 end
 
+function VMManagerState:removeGameFromSlot(slot_index)
+    local success = self.vm_manager:removeGame(slot_index, self.player_data)
+    if success then
+        self.save_manager.save(self.player_data)
+        print("Removed game from VM slot " .. slot_index)
+    end
+end
+
 function VMManagerState:purchaseNewVM()
-    local success, err = self.context.vm_manager:purchaseVM(self.context.player_data)
+    local success, err = self.vm_manager:purchaseVM(self.player_data)
     
     if success then
-        self.context.save_manager.save(self.context.player_data)
+        self.save_manager.save(self.player_data)
         print("Purchased new VM!")
     else
         print("Failed to purchase VM: " .. (err or "unknown error"))
+        -- Optional: Show error message to user via the view
+        -- self.view:showError("Purchase failed: " .. (err or "unknown error"))
     end
 end
 

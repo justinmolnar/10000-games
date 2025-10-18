@@ -1,98 +1,104 @@
-local BaseGame = require('src.games.base_game')
+local BaseGame = require('src/games/base_game')
+local Collision = require('src/utils/collision') 
+local SpaceShooterView = require('src/games.views.space_shooter_view') -- Added view require
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
--- Constants for game settings
+-- Constants remain here as they define game logic/balance
+local PLAYER_WIDTH = 30
+local PLAYER_HEIGHT = 30
 local PLAYER_SPEED = 200
-local BULLET_SPEED = 400
-local ENEMY_BASE_SPEED = 100
-local FIRE_COOLDOWN = 0.2
-local SPAWN_BASE_RATE = 1.0
+local PLAYER_START_Y_OFFSET = 50
+local PLAYER_MAX_DEATHS_BASE = 5 -- Renamed to BASE
 
-function SpaceShooter:init(game_data)
-    SpaceShooter.super.init(self, game_data)
+local BULLET_WIDTH = 4
+local BULLET_HEIGHT = 8
+local BULLET_SPEED = 400
+local FIRE_COOLDOWN = 0.2 
+
+local ENEMY_WIDTH = 30
+local ENEMY_HEIGHT = 30
+local ENEMY_BASE_SPEED = 100
+local ENEMY_START_Y = -30
+local ENEMY_OFFSCREEN_Y = love.graphics.getHeight() + 20
+local ENEMY_BASE_SHOOT_RATE_MIN = 1.0
+local ENEMY_BASE_SHOOT_RATE_MAX = 3.0
+local ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR = 0.5 
+
+local SPAWN_BASE_RATE = 1.0 
+local BASE_TARGET_KILLS = 20 
+local ZIGZAG_FREQUENCY = 2 
+
+function SpaceShooter:init(game_data, cheats)
+    SpaceShooter.super.init(self, game_data, cheats) -- Pass cheats to base
     
-    -- Game state
+    -- Apply Cheats
+    -- self.cheats.speed_modifier is now a value like 0.85 (for 15% slow)
+    local speed_modifier = self.cheats.speed_modifier or 1.0 
+    
+    -- self.cheats.advantage_modifier is now a table like { deaths = 3 }
+    local advantage_modifier = self.cheats.advantage_modifier or {}
+    local extra_deaths = advantage_modifier.deaths or 0
+    
+    -- Make constant accessible to view via self, applying cheat
+    self.PLAYER_MAX_DEATHS = PLAYER_MAX_DEATHS_BASE + extra_deaths 
+
     self.player = {
         x = love.graphics.getWidth() / 2,
-        y = love.graphics.getHeight() - 50,
-        width = 30,
-        height = 30,
+        y = love.graphics.getHeight() - PLAYER_START_Y_OFFSET,
+        width = PLAYER_WIDTH,
+        height = PLAYER_HEIGHT,
         fire_cooldown = 0
     }
-    
+
     self.enemies = {}
     self.player_bullets = {}
     self.enemy_bullets = {}
-    
-    -- Metrics (use proper names from game_data)
+
     self.metrics.kills = 0
     self.metrics.deaths = 0
-    
-    -- Apply difficulty scaling
-    self.enemy_speed = ENEMY_BASE_SPEED * self.difficulty_modifiers.speed
+
+    -- Apply speed cheat to enemy speed
+    self.enemy_speed = (ENEMY_BASE_SPEED * self.difficulty_modifiers.speed) * speed_modifier
     self.spawn_rate = SPAWN_BASE_RATE / self.difficulty_modifiers.count
     self.spawn_timer = 0
     self.can_shoot_back = self.difficulty_modifiers.complexity > 2
+
+    self.target_kills = math.floor(BASE_TARGET_KILLS * self.difficulty_modifiers.complexity)
     
-    -- Target kills scales with difficulty
-    self.target_kills = math.floor(20 * self.difficulty_modifiers.complexity)
+    -- Create the view instance
+    self.view = SpaceShooterView:new(self) 
 end
 
-function SpaceShooter:update(dt)
-    if self.completed then return end
-    SpaceShooter.super.update(self, dt)
-    
-    -- Update player
+function SpaceShooter:updateGameLogic(dt)
     self:updatePlayer(dt)
-    
-    -- Update spawn timer
     self.spawn_timer = self.spawn_timer - dt
     if self.spawn_timer <= 0 then
         self:spawnEnemy()
         self.spawn_timer = self.spawn_rate
     end
-    
-    -- Update enemies
     self:updateEnemies(dt)
-    
-    -- Update bullets
     self:updateBullets(dt)
 end
 
+
 function SpaceShooter:updatePlayer(dt)
-    -- Move player
-    if love.keyboard.isDown('left', 'a') then
-        self.player.x = self.player.x - PLAYER_SPEED * dt
-    end
-    if love.keyboard.isDown('right', 'd') then
-        self.player.x = self.player.x + PLAYER_SPEED * dt
-    end
-    
-    -- Clamp to screen
+    if love.keyboard.isDown('left', 'a') then self.player.x = self.player.x - PLAYER_SPEED * dt end
+    if love.keyboard.isDown('right', 'd') then self.player.x = self.player.x + PLAYER_SPEED * dt end
     self.player.x = math.max(0, math.min(love.graphics.getWidth() - self.player.width, self.player.x))
-    
-    -- Update fire cooldown
-    if self.player.fire_cooldown > 0 then
-        self.player.fire_cooldown = self.player.fire_cooldown - dt
-    end
-    
-    -- Auto-fire
-    if love.keyboard.isDown('space') and self.player.fire_cooldown <= 0 then
-        self:playerShoot()
-    end
+    if self.player.fire_cooldown > 0 then self.player.fire_cooldown = self.player.fire_cooldown - dt end
+    if love.keyboard.isDown('space') and self.player.fire_cooldown <= 0 then self:playerShoot() end
 end
 
 function SpaceShooter:updateEnemies(dt)
-    for i = #self.enemies, 1, -1 do
+     for i = #self.enemies, 1, -1 do
         local enemy = self.enemies[i]
-        
-        -- Move enemy
+        if not enemy then goto continue_enemy_loop end -- Safety check
+
         enemy.y = enemy.y + self.enemy_speed * dt
         if enemy.movement_pattern == 'zigzag' then
-            enemy.x = enemy.x + math.sin(self.time_elapsed * 2) * self.enemy_speed * dt
+            enemy.x = enemy.x + math.sin(self.time_elapsed * ZIGZAG_FREQUENCY) * self.enemy_speed * dt
         end
-        
-        -- Enemy shooting
+
         if self.can_shoot_back then
             enemy.shoot_timer = enemy.shoot_timer - dt
             if enemy.shoot_timer <= 0 then
@@ -100,138 +106,111 @@ function SpaceShooter:updateEnemies(dt)
                 enemy.shoot_timer = enemy.shoot_rate
             end
         end
-        
-        -- Remove if offscreen
-        if enemy.y > love.graphics.getHeight() + 20 then
+
+        if enemy.y > ENEMY_OFFSCREEN_Y then
             table.remove(self.enemies, i)
         end
+        ::continue_enemy_loop::
     end
 end
 
+
 function SpaceShooter:updateBullets(dt)
-    -- Update player bullets
     for i = #self.player_bullets, 1, -1 do
         local bullet = self.player_bullets[i]
+        if not bullet then goto next_player_bullet end
         bullet.y = bullet.y - BULLET_SPEED * dt
-        
-        -- Check enemy collisions
+
         for j = #self.enemies, 1, -1 do
             local enemy = self.enemies[j]
-            if self:checkCollision(bullet, enemy) then
+            if enemy and self:checkCollision(bullet, enemy) then
                 table.remove(self.player_bullets, i)
                 table.remove(self.enemies, j)
                 self.metrics.kills = self.metrics.kills + 1
-                break
+                goto next_player_bullet
             end
         end
-        
-        -- Remove if offscreen
-        if bullet.y < -10 then
-            table.remove(self.player_bullets, i)
-        end
+
+        if bullet.y < -BULLET_HEIGHT then table.remove(self.player_bullets, i) end
+        ::next_player_bullet::
     end
-    
-    -- Update enemy bullets
+
     for i = #self.enemy_bullets, 1, -1 do
         local bullet = self.enemy_bullets[i]
+         if not bullet then goto next_enemy_bullet end
         bullet.y = bullet.y + BULLET_SPEED * dt
-        
-        -- Check player collision
+
         if self:checkCollision(bullet, self.player) then
             table.remove(self.enemy_bullets, i)
             self.metrics.deaths = self.metrics.deaths + 1
-            -- Game over if too many deaths
-            if self.metrics.deaths >= 5 then
+            if self.metrics.deaths >= self.PLAYER_MAX_DEATHS then
                 self:onComplete()
+                return
             end
+             goto next_enemy_bullet
         end
-        
-        -- Remove if offscreen
-        if bullet.y > love.graphics.getHeight() + 10 then
-            table.remove(self.enemy_bullets, i)
-        end
+
+        if bullet.y > love.graphics.getHeight() + BULLET_HEIGHT then table.remove(self.enemy_bullets, i) end
+        ::next_enemy_bullet::
     end
 end
 
+-- Draw method now delegates to the view
 function SpaceShooter:draw()
-    -- Draw player
-    love.graphics.setColor(0, 1, 0)
-    love.graphics.rectangle('fill', self.player.x, self.player.y, self.player.width, self.player.height)
-    
-    -- Draw enemies
-    love.graphics.setColor(1, 0, 0)
-    for _, enemy in ipairs(self.enemies) do
-        love.graphics.rectangle('fill', enemy.x, enemy.y, enemy.width, enemy.height)
+    if self.view then
+        self.view:draw()
+    else
+         love.graphics.print("Error: View not loaded!", 10, 100)
     end
-    
-    -- Draw player bullets
-    love.graphics.setColor(0, 1, 1)
-    for _, bullet in ipairs(self.player_bullets) do
-        love.graphics.rectangle('fill', bullet.x, bullet.y, bullet.width, bullet.height)
-    end
-    
-    -- Draw enemy bullets
-    love.graphics.setColor(1, 1, 0)
-    for _, bullet in ipairs(self.enemy_bullets) do
-        love.graphics.rectangle('fill', bullet.x, bullet.y, bullet.width, bullet.height)
-    end
-    
-    -- Draw HUD
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Kills: " .. self.metrics.kills .. "/" .. self.target_kills, 10, 10)
-    love.graphics.print("Deaths: " .. self.metrics.deaths .. "/5", 10, 30)
-    love.graphics.print("Difficulty: " .. self.difficulty_level, 10, 50)
 end
+
 
 function SpaceShooter:playerShoot()
     table.insert(self.player_bullets, {
-        x = self.player.x + self.player.width/2 - 2,
+        x = self.player.x + self.player.width/2 - BULLET_WIDTH/2,
         y = self.player.y,
-        width = 4,
-        height = 8
+        width = BULLET_WIDTH, height = BULLET_HEIGHT
     })
     self.player.fire_cooldown = FIRE_COOLDOWN
 end
 
 function SpaceShooter:enemyShoot(enemy)
     table.insert(self.enemy_bullets, {
-        x = enemy.x + enemy.width/2 - 2,
+        x = enemy.x + enemy.width/2 - BULLET_WIDTH/2,
         y = enemy.y + enemy.height,
-        width = 4,
-        height = 8
+        width = BULLET_WIDTH, height = BULLET_HEIGHT
     })
 end
 
 function SpaceShooter:spawnEnemy()
-    -- Different patterns based on difficulty
     local movement = 'straight'
     if self.difficulty_modifiers.complexity >= 2 then
         movement = math.random() > 0.5 and 'zigzag' or 'straight'
     end
-    
     local enemy = {
-        x = math.random(0, love.graphics.getWidth() - 30),
-        y = -30,
-        width = 30,
-        height = 30,
+        x = math.random(0, love.graphics.getWidth() - ENEMY_WIDTH), y = ENEMY_START_Y,
+        width = ENEMY_WIDTH, height = ENEMY_HEIGHT,
         movement_pattern = movement,
-        shoot_timer = math.random(1, 3),
-        shoot_rate = math.max(1, 3 - self.difficulty_modifiers.complexity * 0.5)
+        shoot_timer = math.random() * (ENEMY_BASE_SHOOT_RATE_MAX - ENEMY_BASE_SHOOT_RATE_MIN) + ENEMY_BASE_SHOOT_RATE_MIN,
+        shoot_rate = math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR))
     }
-    
     table.insert(self.enemies, enemy)
 end
 
 function SpaceShooter:checkCollision(a, b)
-    return a.x < b.x + b.width and
-           a.x + a.width > b.x and
-           a.y < b.y + b.height and
-           a.y + a.height > b.y
+    -- Check for nil objects before accessing properties
+    if not a or not b then return false end
+    -- Assuming x,y is top-left
+    return Collision.checkAABB(a.x, a.y, a.width or 0, a.height or 0, b.x, b.y, b.width or 0, b.height or 0)
 end
 
+
 function SpaceShooter:checkComplete()
-    -- Complete if player died too many times or got enough kills
-    return self.metrics.deaths >= 5 or self.metrics.kills >= self.target_kills
+    return self.metrics.deaths >= self.PLAYER_MAX_DEATHS or self.metrics.kills >= self.target_kills
+end
+
+function SpaceShooter:keypressed(key)
+    return false
 end
 
 return SpaceShooter

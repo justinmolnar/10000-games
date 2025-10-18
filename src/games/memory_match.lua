@@ -1,135 +1,123 @@
 local BaseGame = require('src.games.base_game')
+local MemoryMatchView = require('src.games.views.memory_match_view') -- Added view require
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
+-- Constants remain for logic/balance
 local CARD_WIDTH = 60
 local CARD_HEIGHT = 80
 local CARD_SPACING = 10
-local MEMORIZE_TIME = 5
+local MEMORIZE_TIME_BASE = 5 
+local MATCH_VIEW_TIME = 1    
 
-function MemoryMatch:init(game_data)
-    MemoryMatch.super.init(self, game_data)
+function MemoryMatch:init(game_data, cheats)
+    MemoryMatch.super.init(self, game_data, cheats) -- Pass cheats to base
     
-    local pairs_count = math.floor(6 * self.difficulty_modifiers.complexity)
-    self.grid_size = math.ceil(math.sqrt(pairs_count * 2))
+    -- Apply Cheats
+    -- speed_modifier will be < 1.0, e.g., 0.8. We want to *increase* time.
+    -- The value is (1.0 - 0.2) = 0.8. We want (1.0 + 0.2) = 1.2
+    local speed_modifier_value = self.cheats.speed_modifier or 1.0
+    local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
+    
+    -- Make constants accessible to view
+    self.CARD_WIDTH = CARD_WIDTH
+    self.CARD_HEIGHT = CARD_HEIGHT
+    self.CARD_SPACING = CARD_SPACING
+    
+    local pairs_count = math.floor(6 * self.difficulty_modifiers.complexity) 
+    self.grid_size = math.ceil(math.sqrt(pairs_count * 2)) 
+    local total_cards = self.grid_size * self.grid_size
+    if total_cards % 2 ~= 0 then total_cards = total_cards -1 end
+    pairs_count = total_cards / 2 
+    self.total_pairs = pairs_count
     
     self.cards = {}
     self:createCards(pairs_count)
     
-    self.selected_cards = {}
-    self.matched_pairs = {}
+    self.selected_indices = {} 
+    self.matched_pairs = {}    
     self.memorize_phase = true
-    self.memorize_timer = MEMORIZE_TIME / self.difficulty_modifiers.time_limit
+    -- Apply cheat: 
+    self.memorize_timer = (MEMORIZE_TIME_BASE / self.difficulty_modifiers.time_limit) * time_bonus_multiplier
+    self.match_check_timer = 0 
     
     self.metrics.matches = 0
-    self.metrics.perfect = 0
-    self.metrics.time = 0
+    self.metrics.perfect = 0 
+    self.metrics.time = 0    
     
-    self.start_x = (love.graphics.getWidth() - (CARD_WIDTH + CARD_SPACING) * self.grid_size) / 2
-    self.start_y = (love.graphics.getHeight() - (CARD_HEIGHT + CARD_SPACING) * self.grid_size) / 2
+    local total_grid_width = (CARD_WIDTH + CARD_SPACING) * self.grid_size - CARD_SPACING
+    local total_grid_height = (CARD_HEIGHT + CARD_SPACING) * self.grid_size - CARD_SPACING
+    self.start_x = (love.graphics.getWidth() - total_grid_width) / 2
+    self.start_y = (love.graphics.getHeight() - total_grid_height) / 2
+    
+    -- Create the view instance
+    self.view = MemoryMatchView:new(self)
 end
 
-function MemoryMatch:update(dt)
-    if self.completed then return end
-    MemoryMatch.super.update(self, dt)
-    
+function MemoryMatch:updateGameLogic(dt)
     if self.memorize_phase then
         self.memorize_timer = self.memorize_timer - dt
         if self.memorize_timer <= 0 then
             self.memorize_phase = false
-            if self.difficulty_modifiers.complexity > 1 then
-                self:shuffleCards()
-            end
+            self.time_elapsed = 0 
+            if self.difficulty_modifiers.complexity > 1 then self:shuffleCards() end
         end
     else
-        self.metrics.time = self.time_elapsed
+        self.metrics.time = self.time_elapsed 
         
-        if #self.selected_cards == 2 then
-            local card1 = self.cards[self.selected_cards[1]]
-            local card2 = self.cards[self.selected_cards[2]]
-            
-            if card1.value == card2.value then
-                self.matched_pairs[card1.value] = true
-                self.metrics.matches = self.metrics.matches + 1
-                if #card1.attempts == 1 then
-                    self.metrics.perfect = self.metrics.perfect + 1
+        if self.match_check_timer > 0 then
+            self.match_check_timer = self.match_check_timer - dt
+            if self.match_check_timer <= 0 then
+                local idx1 = self.selected_indices[1]
+                local idx2 = self.selected_indices[2]
+                if idx1 and idx2 and self.cards[idx1] and self.cards[idx2] then 
+                    if self.cards[idx1].value == self.cards[idx2].value then
+                        self.matched_pairs[self.cards[idx1].value] = true
+                        self.metrics.matches = self.metrics.matches + 1
+                        if #self.cards[idx1].attempts == 1 and #self.cards[idx2].attempts == 1 then
+                             self.metrics.perfect = self.metrics.perfect + 1
+                        end
+                    end
                 end
-            end
-            
-            if self.time_elapsed - card2.flip_time > 1 then
-                self.selected_cards = {}
+                 self.selected_indices = {}
             end
         end
     end
 end
 
+-- Draw method now delegates to the view
 function MemoryMatch:draw()
-    for i, card in ipairs(self.cards) do
-        local row = math.floor((i-1) / self.grid_size)
-        local col = (i-1) % self.grid_size
-        
-        local x = self.start_x + col * (CARD_WIDTH + CARD_SPACING)
-        local y = self.start_y + row * (CARD_HEIGHT + CARD_SPACING)
-        
-        local face_up = self.memorize_phase or
-                       self.matched_pairs[card.value] or
-                       self:isSelected(i)
-        
-        if face_up then
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.rectangle('fill', x, y, CARD_WIDTH, CARD_HEIGHT)
-            love.graphics.setColor(0, 0, 0)
-            love.graphics.print(card.value, x + CARD_WIDTH/3, y + CARD_HEIGHT/3)
-        else
-            love.graphics.setColor(0.5, 0.5, 1)
-            love.graphics.rectangle('fill', x, y, CARD_WIDTH, CARD_HEIGHT)
-        end
+    if self.view then
+        self.view:draw()
     end
-    
-    love.graphics.setColor(1, 1, 1)
-    if self.memorize_phase then
-        love.graphics.print("Memorize! " .. string.format("%.1f", self.memorize_timer), 10, 10)
-    else
-        love.graphics.print("Matches: " .. self.metrics.matches, 10, 10)
-        love.graphics.print("Perfect: " .. self.metrics.perfect, 10, 30)
-        love.graphics.print("Time: " .. string.format("%.1f", self.metrics.time), 10, 50)
-    end
-    love.graphics.print("Difficulty: " .. self.difficulty_level, 10, 70)
 end
+
 
 function MemoryMatch:mousepressed(x, y, button)
-    if self.memorize_phase or #self.selected_cards >= 2 then return end
+    if self.memorize_phase or self.match_check_timer > 0 or #self.selected_indices >= 2 then return end
     
     for i, card in ipairs(self.cards) do
         local row = math.floor((i-1) / self.grid_size)
         local col = (i-1) % self.grid_size
-        
         local card_x = self.start_x + col * (CARD_WIDTH + CARD_SPACING)
         local card_y = self.start_y + row * (CARD_HEIGHT + CARD_SPACING)
         
-        if x >= card_x and x <= card_x + CARD_WIDTH and
-           y >= card_y and y <= card_y + CARD_HEIGHT and
-           not self.matched_pairs[card.value] and
-           not self:isSelected(i) then
-            
-            table.insert(card.attempts, self.time_elapsed)
-            card.flip_time = self.time_elapsed
-            table.insert(self.selected_cards, i)
-            break
+        if x >= card_x and x <= card_x + CARD_WIDTH and y >= card_y and y <= card_y + CARD_HEIGHT then
+            if not self.matched_pairs[card.value] and not self:isSelected(i) then
+                table.insert(card.attempts, self.time_elapsed) 
+                table.insert(self.selected_indices, i)
+                if #self.selected_indices == 2 then self.match_check_timer = MATCH_VIEW_TIME end
+                break 
+            end
         end
     end
 end
 
 function MemoryMatch:createCards(pairs_count)
     for i = 1, pairs_count do
-        for j = 1, 2 do
-            table.insert(self.cards, {
-                value = i,
-                attempts = {},
-                flip_time = 0
-            })
+        for j = 1, 2 do 
+            table.insert(self.cards, { value = i, attempts = {} })
         end
     end
-    
     self:shuffleCards()
 end
 
@@ -141,24 +129,21 @@ function MemoryMatch:shuffleCards()
 end
 
 function MemoryMatch:isSelected(index)
-    for _, selected in ipairs(self.selected_cards) do
-        if selected == index then
-            return true
-        end
+    for _, selected_index in ipairs(self.selected_indices) do
+        if selected_index == index then return true end
     end
     return false
 end
 
 function MemoryMatch:checkComplete()
     if self.memorize_phase then return false end
-    
-    local total_pairs = #self.cards / 2
     local matched_count = 0
-    for _ in pairs(self.matched_pairs) do
-        matched_count = matched_count + 1
-    end
-    
-    return matched_count >= total_pairs
+    for _ in pairs(self.matched_pairs) do matched_count = matched_count + 1 end
+    return matched_count >= self.total_pairs
+end
+
+function MemoryMatch:keypressed(key)
+    return false
 end
 
 return MemoryMatch

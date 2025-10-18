@@ -6,9 +6,9 @@ local ProgressionManager = Object:extend('ProgressionManager')
 function ProgressionManager:init()
 end
 
-function ProgressionManager:checkAutoCompletion(game_id, game_data, player_data)
+function ProgressionManager:checkAutoCompletion(game_id, specific_game_data, main_game_data_model, player_data)
     -- Only trigger if this is a variant (not base game)
-    if not game_data.variant_of then 
+    if not specific_game_data.variant_of then 
         return {}, 0 
     end
     
@@ -22,7 +22,7 @@ function ProgressionManager:checkAutoCompletion(game_id, game_data, player_data)
     local auto_complete_power = 0
     
     -- Auto-complete all easier variants of the same base game
-    local base_id = game_data.variant_of
+    local base_id = specific_game_data.variant_of
     
     for i = 1, variant_num - 1 do
         local variant_id = base_id:gsub("_1$", "_" .. i)
@@ -31,7 +31,7 @@ function ProgressionManager:checkAutoCompletion(game_id, game_data, player_data)
             variant_id = base_id:gsub("_1$", "") .. "_" .. i
         end
         
-        local variant = game_data.game_data:getGame(variant_id)
+        local variant = main_game_data_model:getGame(variant_id)
         if variant then
             -- Check if not already completed manually
             local existing_perf = player_data:getGamePerformance(variant_id)

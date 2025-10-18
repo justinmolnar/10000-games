@@ -1,9 +1,12 @@
 local Object = require('class')
 local BaseGame = Object:extend('BaseGame')
 
-function BaseGame:init(game_data)
+function BaseGame:init(game_data, cheats)
     -- Store game definition
     self.data = game_data
+    
+    -- Store active cheats
+    self.cheats = cheats or {}
     
     -- Performance tracking
     self.metrics = {}
@@ -27,14 +30,24 @@ function BaseGame:init(game_data)
     self.difficulty_level = self.data.difficulty_level or 1
 end
 
-function BaseGame:update(dt)
+function BaseGame:updateBase(dt)
     if not self.completed then
         self.time_elapsed = self.time_elapsed + dt
         
+        -- Update time_remaining if the game uses it (like HiddenObject)
+        if self.time_limit and self.time_remaining then
+             self.time_remaining = math.max(0, self.time_limit - self.time_elapsed)
+        end
+
         if self:checkComplete() then
             self:onComplete()
         end
     end
+end
+
+function BaseGame:updateGameLogic(dt)
+    -- Override in subclasses to implement game-specific update logic
+    -- No need to call super.update from subclasses anymore
 end
 
 function BaseGame:draw()
@@ -64,6 +77,8 @@ end
 
 function BaseGame:calculatePerformance()
     if not self.completed then return 0 end
+    -- Note: This returns the *base* performance. 
+    -- The MinigameState is responsible for applying performance-modifying cheats.
     return self.data.formula_function(self.metrics)
 end
 

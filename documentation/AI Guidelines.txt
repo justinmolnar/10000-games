@@ -1,0 +1,46 @@
+# AI Development Guidelines for "10,000 Games Collection"
+
+This document outlines the best practices and coding standards to follow when using an AI assistant (like Gemini) to generate or modify code for this project. Adhering to these guidelines will help maintain code quality, consistency, and prevent regressions that require later refactoring.
+
+## 1. Code Presentation
+
+When receiving code from the AI:
+
+* **Full Files:** If a file is being created *new* or requires *heavy modification* (e.g., more than 2-3 functions changed, significant structural changes), the AI should provide the **entire file content** within a single, dedicated code block.
+* **Functions Only:** If only one or two functions within an existing file are being added or modified, the AI should provide only the **complete, non-truncated function definitions**, each within its own dedicated code block.
+* **Clear Instructions:** Outside the code block(s), the AI must provide clear instructions, including:
+    * The **full file path** the code belongs to.
+    * Whether the code is **new**, **replacing** existing code, or **adding** to existing code.
+    * A brief explanation of **what the code does** or **what changes were made**.
+* **Testing Guidance:** Every response containing code modifications should end with:
+    * A description of the **expected outcome** (e.g., "no change in functionality", "a new debug menu appears").
+    * Specific steps on **how to test** the changes to verify correctness.
+
+## 2. Architectural Principles
+
+* **Dependency Injection:**
+    * Avoid passing large "context" or "god objects" between states or major components.
+    * Instead, inject only the **specific dependencies** (e.g., `player_data`, `state_machine`, `save_manager`) required by a class or state through its constructor (`init` method).
+    * Do not use global variables to share state between modules; pass data explicitly.
+* **MVC / State Pattern Adherence:**
+    * **Models:** Contain data and core logic, should be unaware of views or states (e.g., `player_data.lua`, `game_data.lua`).
+    * **Views:** Handle *all* drawing logic. Should be stateful classes, managing UI-specific state (hover, scroll) and handling UI input calculation. Input methods (`mousepressed`, `keypressed`) in views should return simple events/data for the controller/state to act upon. Views receive data needed for drawing from the controller/state.
+    * **Controllers / States:** Mediate between models and views. Handle application flow, respond to view events, update models, and pass data to views for rendering (e.g., `launcher_state.lua`, `minigame_state.lua`). Game logic resides within the game state/instance itself (`src/games/`).
+* **State Machine:** Use the central state machine (`state_machine.lua`) for managing transitions between major application sections (Desktop, Launcher, Minigame, etc.).
+
+## 3. Code Quality & Refactoring Practices
+
+* **Avoid `require` Inside Loops/Functions:** All `require` calls should be placed at the **top (file scope)** of the Lua file, outside any function definitions, to ensure modules are loaded only once. The only exception is dynamic loading based on data (e.g., loading specific game classes in `MinigameState:enter`).
+* **Externalize Data:**
+    * Game definitions (base stats, formulas, costs, metrics) should be stored in **data files (like JSON)** (e.g., `base_game_definitions.json`), not hardcoded in Lua code.
+    * Level data (waves, boss stats) should also be externalized (e.g., `space_defender_levels.json`).
+    * Use safe methods (like `loadstring` within `pcall`) to dynamically create functions from data (e.g., formulas) when necessary.
+* **Avoid Magic Numbers:** Use **named constants** (defined with `local CONSTANT_NAME = value` at the top of the file or in `config.lua`) instead of hardcoding numeric literals directly in game logic or UI layout code.
+* **Centralize Configuration:** Game balance parameters (costs, multipliers, base speeds, timers, limits) that might need tweaking should be defined in a central `config.lua` file rather than being scattered across different game logic files.
+* **Use Utility Modules:** Leverage shared utility functions (e.g., `collision.lua`, `ui_components.lua`) consistently across the codebase to avoid duplication.
+* **Safe Update Flow:** For classes with inheritance (like `BaseGame`), ensure base class logic (e.g., timers, completion checks) runs reliably without requiring subclasses to remember `super` calls. Use patterns like `updateBase()` + `updateGameLogic()`.
+* **Object Pooling:** For objects created and destroyed frequently in large numbers (like bullets), implement object pooling to reuse tables and reduce garbage collector load.
+* **Input Handling:** Input should generally be handled by the **active state/view first**. Global shortcuts (like debug keys) should only trigger if the active state does not handle the input. States/Views should indicate if they handled input (e.g., by returning `true`).
+* **Error Handling:** Use `pcall` when dealing with potentially problematic operations like file I/O (`love.filesystem.read/write`), JSON parsing (`json.decode`), or dynamic code execution (`loadstring`) to prevent hard crashes and allow for graceful error logging or fallbacks.
+
+By requesting the AI to follow these guidelines, the codebase should remain more organized, performant, and maintainable as it grows.

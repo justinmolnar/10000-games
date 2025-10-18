@@ -1,20 +1,22 @@
--- desktop_state.lua: Main desktop environment state
+-- src/states/desktop_state.lua: Main desktop environment state
 
 local Object = require('class')
+local DesktopView = require('views.desktop_view')
 local DesktopState = Object:extend('DesktopState')
 
-function DesktopState:init(context)
-    self.context = context
+function DesktopState:init(state_machine, player_data)
+    self.state_machine = state_machine
+    self.player_data = player_data
+    
+    -- Create the view instance
+    self.view = DesktopView:new(self, player_data)
+    
     self.icons = {}
     self.wallpaper_color = {0, 0.5, 0.5}
-    self.taskbar_height = 40
-    self.clock_update_timer = 0
-    self.current_time = ""
     
     -- Double-click tracking
     self.last_click_time = 0
     self.last_click_icon = nil
-    self.hovered_icon = nil
 end
 
 function DesktopState:enter()
@@ -48,6 +50,15 @@ function DesktopState:enter()
             program = "space_defender"
         },
         {
+            name = "CheatEngine",
+            x = 320,
+            y = 20,
+            width = 80,
+            height = 100,
+            icon_color = {0.1, 0.8, 0.1},
+            program = "cheat_engine"
+        },
+        {
             name = "Recycle Bin",
             x = 20,
             y = 140,
@@ -66,16 +77,8 @@ function DesktopState:enter()
 end
 
 function DesktopState:update(dt)
-    -- Update clock every second
-    self.clock_update_timer = self.clock_update_timer + dt
-    if self.clock_update_timer >= 1.0 then
-        self:updateClock()
-        self.clock_update_timer = 0
-    end
-    
-    -- Update hovered icon
-    local mx, my = love.mouse.getPosition()
-    self.hovered_icon = self:getIconAtPosition(mx, my)
+    -- Delegate clock updates and hover checks to the view
+    self.view:update(dt, self.icons)
 end
 
 function DesktopState:updateClock()
@@ -83,71 +86,48 @@ function DesktopState:updateClock()
 end
 
 function DesktopState:draw()
-    local DesktopView = require('views.desktop_view')
-    
-    -- Draw wallpaper
-    DesktopView.drawWallpaper(self.wallpaper_color)
-    
-    -- Draw desktop icons
-    for i, icon in ipairs(self.icons) do
-        DesktopView.drawIcon(icon, i == self.hovered_icon)
-    end
-    
-    -- Draw taskbar
-    DesktopView.drawTaskbar(self.taskbar_height, self.current_time, self.context.player_data.tokens)
+    -- Delegate all drawing to the view
+    self.view:draw(self.icons, self.wallpaper_color, self.player_data.tokens)
 end
 
 function DesktopState:mousepressed(x, y, button)
     if button ~= 1 then return end
+
+    -- Get click event from the view
+    local event = self.view:mousepressed(x, y, button, self.icons)
     
-    -- Check if clicking taskbar (ignore for MVP)
-    if y >= love.graphics.getHeight() - self.taskbar_height then
-        return
-    end
-    
-    -- Check desktop icons
-    local clicked_icon = self:getIconAtPosition(x, y)
-    if clicked_icon then
-        local icon = self.icons[clicked_icon]
+    if not event then return end
+
+    if event.name == "icon_click" then
+        local icon = self.icons[event.icon_index]
         
-        -- Check if disabled
         if icon.disabled then
             print(icon.name .. " is not available in MVP")
             return
         end
         
         -- Check for double-click
-        local is_double_click = (self.last_click_icon == clicked_icon and 
+        local is_double_click = (self.last_click_icon == event.icon_index and 
                                 love.timer.getTime() - self.last_click_time < 0.5)
         
         if is_double_click then
-            -- Launch program
             self:launchProgram(icon.program)
         end
         
-        -- Update double-click tracking
-        self.last_click_icon = clicked_icon
+        self.last_click_icon = event.icon_index
         self.last_click_time = love.timer.getTime()
     end
 end
 
-function DesktopState:getIconAtPosition(x, y)
-    for i, icon in ipairs(self.icons) do
-        if x >= icon.x and x <= icon.x + icon.width and
-           y >= icon.y and y <= icon.y + icon.height then
-            return i
-        end
-    end
-    return nil
-end
-
 function DesktopState:launchProgram(program_name)
     if program_name == "launcher" then
-        self.context.state_machine:switch('launcher')
+        self.state_machine:switch('launcher')
     elseif program_name == "vm_manager" then
-        self.context.state_machine:switch('vm_manager')
+        self.state_machine:switch('vm_manager')
     elseif program_name == "space_defender" then
-        self.context.state_machine:switch('space_defender', 1)
+        self.state_machine:switch('space_defender', 1)
+    elseif program_name == "cheat_engine" then
+        self.state_machine:switch('cheat_engine')
     elseif program_name == "recycle_bin" then
         print("Recycle Bin not implemented in MVP")
     else
@@ -158,7 +138,9 @@ end
 function DesktopState:keypressed(key)
     if key == 'escape' then
         love.event.quit()
+        return true -- Indicate the key was handled
     end
+    return false -- Indicate the key was not handled
 end
 
 return DesktopState
