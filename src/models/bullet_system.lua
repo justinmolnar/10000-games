@@ -1,16 +1,19 @@
--- bullet_system.lua: Manages all bullets from completed games using object pooling
-
+-- src/models/bullet_system.lua
 local Object = require('class')
 local Collision = require('utils.collision')
 local BulletSystem = Object:extend('BulletSystem')
 
-function BulletSystem:init()
+-- Accept statistics instance
+function BulletSystem:init(statistics_instance)
+    self.statistics = statistics_instance -- Store injected instance
+
     self.bullet_types = {}
     self.active_bullets = {}
-    self.inactive_bullets = {} -- Pool for reusable bullet tables
+    self.inactive_bullets = {}
     self.fire_timers = {}
     self.global_fire_rate_multiplier = 1.0
     self.global_damage_multiplier = 1.0
+    self.bullets_fired_this_frame = 0 -- Stat tracking
 end
 
 function BulletSystem:loadBulletTypes(player_data, game_data)
@@ -51,15 +54,16 @@ function BulletSystem:getColorForGame(game)
 end
 
 function BulletSystem:update(dt, player_pos, enemies, boss)
+    self.bullets_fired_this_frame = 0 -- Reset counter each frame
+
     -- Update fire timers and spawn bullets
-    if player_pos then -- Only spawn if player exists
+    if player_pos then
         for _, bullet_type in ipairs(self.bullet_types) do
             self.fire_timers[bullet_type.id] = self.fire_timers[bullet_type.id] - dt
             if self.fire_timers[bullet_type.id] <= 0 then
                 self:spawnBullet(bullet_type, player_pos)
-                -- Reset timer, adding the overshoot
                 local cooldown = 1 / bullet_type.fire_rate
-                self.fire_timers[bullet_type.id] = cooldown + self.fire_timers[bullet_type.id] 
+                self.fire_timers[bullet_type.id] = cooldown + self.fire_timers[bullet_type.id]
             end
         end
     end
@@ -69,34 +73,35 @@ function BulletSystem:update(dt, player_pos, enemies, boss)
         local bullet = self.active_bullets[i]
         bullet.y = bullet.y + bullet.vy * dt
 
-        -- Check if off screen
-        if bullet.y < -bullet.height then -- Check top edge
-            -- Recycle bullet
+        if bullet.y < -bullet.height then
             table.insert(self.inactive_bullets, bullet)
             table.remove(self.active_bullets, i)
         else
-            -- Check collisions
             local hit = false
             -- Check enemies
-            for j = #enemies, 1, -1 do -- Iterate backwards for safe removal
+            for j = #enemies, 1, -1 do
                 local enemy = enemies[j]
-                 -- Use checkBulletCollision which assumes target has width/height centered at x,y
-                 -- Need consistency: are enemy x,y top-left or center? Assuming center based on view draw.
-                 -- Bullet x,y is top-left in spawnBullet, center it for collision check?
-                 -- Let's stick to AABB based on current implementation
-                 local bullet_x1 = bullet.x - bullet.width/2
-                 local bullet_y1 = bullet.y - bullet.height/2
-                 local enemy_x1 = enemy.x - enemy.width/2
-                 local enemy_y1 = enemy.y - enemy.height/2
+                local bullet_x1 = bullet.x - bullet.width/2
+                local bullet_y1 = bullet.y - bullet.height/2
+                local enemy_x1 = enemy.x - enemy.width/2
+                local enemy_y1 = enemy.y - enemy.height/2
                 if Collision.checkAABB(bullet_x1, bullet_y1, bullet.width, bullet.height,
                                       enemy_x1, enemy_y1, enemy.width, enemy.height) then
-                    enemy.hp = enemy.hp - bullet.damage
+                    local damage_dealt = bullet.damage
+                    enemy.hp = enemy.hp - damage_dealt
                     enemy.damaged = true
+                    -- Update statistics using self.statistics
+                    if self.statistics and self.statistics.recordDamageDealt then
+                        self.statistics:recordDamageDealt(damage_dealt)
+                        -- print("Debug BulletSys: Called recordDamageDealt (Enemy)") -- Optional
+                    else
+                        -- print("Debug BulletSys: Statistics object not found (Enemy Hit)") -- Optional
+                    end
                     if enemy.hp <= 0 then
                         table.remove(enemies, j)
                     end
                     hit = true
-                    break -- Bullet hits one enemy max
+                    break
                 end
             end
 
@@ -108,16 +113,33 @@ function BulletSystem:update(dt, player_pos, enemies, boss)
                 local boss_y1 = boss.y - boss.height/2
                 if Collision.checkAABB(bullet_x1, bullet_y1, bullet.width, bullet.height,
                                       boss_x1, boss_y1, boss.width, boss.height) then
-                    boss.hp = boss.hp - bullet.damage
+                    local damage_dealt = bullet.damage
+                    boss.hp = boss.hp - damage_dealt
+                    -- Update statistics using self.statistics
+                    if self.statistics and self.statistics.recordDamageDealt then
+                        self.statistics:recordDamageDealt(damage_dealt)
+                        -- print("Debug BulletSys: Called recordDamageDealt (Boss)") -- Optional
+                    else
+                        -- print("Debug BulletSys: Statistics object not found (Boss Hit)") -- Optional
+                    end
                     hit = true
                 end
             end
 
-            -- Recycle bullet if it hit something
             if hit then
                 table.insert(self.inactive_bullets, bullet)
                 table.remove(self.active_bullets, i)
             end
+        end
+    end
+
+    -- Update total bullets fired statistic at end of frame using self.statistics
+    if self.bullets_fired_this_frame > 0 then
+        if self.statistics and self.statistics.addBulletsFired then
+            self.statistics:addBulletsFired(self.bullets_fired_this_frame)
+            -- print("Debug BulletSys: Called addBulletsFired") -- Optional
+        else
+            -- print("Debug BulletSys: Statistics object not found (End Frame)") -- Optional
         end
     end
 end
@@ -125,49 +147,39 @@ end
 
 function BulletSystem:spawnBullet(bullet_type, player_pos)
     local bullet = nil
-    -- Try to reuse from pool first
     if #self.inactive_bullets > 0 then
         bullet = table.remove(self.inactive_bullets)
-    else -- Create new if pool is empty
+    else
         bullet = {}
     end
 
-    -- Initialize/Reset bullet properties
-    bullet.x = player_pos.x -- Spawn at player center
-    bullet.y = player_pos.y - player_pos.height/2 -- Spawn slightly above center
+    bullet.x = player_pos.x
+    bullet.y = player_pos.y - player_pos.height/2
     bullet.width = 4
     bullet.height = 8
-    bullet.vy = -400  -- Move upward
+    bullet.vy = -400
     bullet.damage = bullet_type.damage
     bullet.color = bullet_type.color
     bullet.special = bullet_type.special
-    -- Add any other properties bullets might have
 
     table.insert(self.active_bullets, bullet)
+    self.bullets_fired_this_frame = self.bullets_fired_this_frame + 1 -- Increment counter
 end
 
 
 function BulletSystem:draw()
     for _, bullet in ipairs(self.active_bullets) do
         love.graphics.setColor(bullet.color)
-        -- Draw centered
         love.graphics.rectangle('fill', bullet.x - bullet.width/2, bullet.y - bullet.height/2,
             bullet.width, bullet.height)
     end
-    -- Optional: Draw pool size for debugging
-    -- love.graphics.setColor(1,1,1)
-    -- love.graphics.print("Active Bullets: " .. #self.active_bullets, 10, love.graphics.getHeight() - 40)
-    -- love.graphics.print("Inactive Pool: " .. #self.inactive_bullets, 10, love.graphics.getHeight() - 20)
 end
 
--- Clear now recycles bullets
 function BulletSystem:clear()
-    -- Move all active bullets to the inactive pool
     for i = #self.active_bullets, 1, -1 do
         local bullet = table.remove(self.active_bullets, i)
         table.insert(self.inactive_bullets, bullet)
     end
-    -- self.active_bullets should now be empty
 end
 
 
