@@ -105,7 +105,9 @@ function LauncherState:draw()
 end
 
 function LauncherState:keypressed(key)
-    local handled = true
+    local result_event = nil -- To store the event to be returned
+    local handled = true -- Assume handled unless proven otherwise
+
     if key == 'up' or key == 'w' then
         local old_index = self.view.selected_index
         self.view.selected_index = math.max(1, self.view.selected_index - 1)
@@ -118,26 +120,25 @@ function LauncherState:keypressed(key)
     elseif key == 'down' or key == 's' then
         local old_index = self.view.selected_index
         self.view.selected_index = math.min(#self.filtered_games, self.view.selected_index + 1)
-         if self.view.selected_index ~= old_index and self.view.selected_index <= #self.filtered_games then
+        if self.view.selected_index ~= old_index and self.view.selected_index <= #self.filtered_games then
             self.view.selected_game = self.filtered_games[self.view.selected_index]
         end
-         local visible_games = self.view:getVisibleGameCount(self.viewport and self.viewport.height or 600)
+        local visible_games = self.view:getVisibleGameCount(self.viewport and self.viewport.height or 600)
         if self.view.selected_index >= self.view.scroll_offset + visible_games then
-             self.view.scroll_offset = self.view.selected_index - visible_games + 1
+            self.view.scroll_offset = self.view.selected_index - visible_games + 1
         end
     elseif key == 'return' or key == 'space' then
-        self:selectGame()
+        result_event = self:selectGame() -- selectGame now returns the event
     elseif key == 'tab' then
         self.view.detail_panel_open = not self.view.detail_panel_open
         if self.view.detail_panel_open and self.view.selected_index <= #self.filtered_games then
             self.view.selected_game = self.filtered_games[self.view.selected_index]
         end
     elseif key == 'escape' then
-        -- Close detail panel first if open, otherwise close window
         if self.view.detail_panel_open then
             self.view.detail_panel_open = false
         else
-            return { type = "close_window" }
+            result_event = { type = "close_window" } -- Signal window close
         end
     elseif key >= '1' and key <= '9' or key == '0' then
         local filters = {"all", "action", "puzzle", "arcade", "locked", "unlocked", "completed", "easy", "medium", "hard"}
@@ -150,29 +151,40 @@ function LauncherState:keypressed(key)
     else
         handled = false
     end
-    
-    return handled and { type = "content_interaction" } or false
+
+    -- Determine what to return
+    if result_event then
+        return result_event -- Return the specific event (launch or close)
+    elseif handled then
+        return { type = "content_interaction" } -- Return generic interaction if handled
+    else
+        return false -- Return false if not handled
+    end
 end
 
 function LauncherState:selectGame()
-    if self.view.selected_index > #self.filtered_games then return end
-    
+    if self.view.selected_index > #self.filtered_games then return nil end
+
     local selected_game = self.filtered_games[self.view.selected_index]
-    if not selected_game then return end
-    
-    self:launchGame(selected_game.id)
+    if not selected_game then return nil end
+
+    return self:launchGame(selected_game.id) -- Return the event from launchGame
 end
 
 function LauncherState:launchGame(game_id)
     local game_data = self.game_data:getGame(game_id)
-    if not game_data then return end
-    
+    if not game_data then return nil end -- Return nil if game not found
+
     local is_unlocked = self.player_data:isGameUnlocked(game_id)
-    
+
     if not is_unlocked then
-        self:showUnlockPrompt(game_data)
+        -- showUnlockPrompt might internally call launchGame again after unlock,
+        -- or we can handle the return value here. Let's assume it handles it
+        -- and might return a launch event if successful.
+        return self:showUnlockPrompt(game_data) -- showUnlockPrompt needs modification
     else
-        self.state_machine:switch('minigame', game_data)
+        -- Return an event for DesktopState to handle
+        return { type = "event", name = "launch_minigame", game_data = game_data }
     end
 end
 
@@ -180,19 +192,19 @@ function LauncherState:showUnlockPrompt(game_data)
     local cost = game_data.unlock_cost
     local has_tokens = self.player_data:hasTokens(cost)
     local difficulty = game_data.difficulty_level or 1
-    
+
     local difficulty_text = "Easy"
     if difficulty > 6 then
         difficulty_text = "Hard"
     elseif difficulty > 3 then
         difficulty_text = "Medium"
     end
-    
+
     local warning = ""
     if difficulty > 8 then
         warning = "\n\nWARNING: This is a very difficult variant!"
     end
-    
+
     local message = string.format(
         "Unlock %s?\n\nCost: %d tokens (You have: %d)\nDifficulty: %s\nMultiplier: %.1fx%s",
         game_data.display_name,
@@ -202,25 +214,26 @@ function LauncherState:showUnlockPrompt(game_data)
         game_data.variant_multiplier,
         warning
     )
-    
+
     if not has_tokens then
         message = "Not enough tokens!\n\n" .. message
         love.window.showMessageBox("Cannot Unlock", message, "error")
-        return
+        return nil -- Indicate failure or no action needed
     end
-    
+
     local buttons = {"Unlock", "Cancel"}
     local pressed = love.window.showMessageBox("Unlock Game", message, buttons, "info")
-    
+
     if pressed == 1 then
         if self.player_data:spendTokens(cost) then
             self.player_data:unlockGame(game_data.id)
             self.save_manager.save(self.player_data)
             print("Unlocked: " .. game_data.display_name)
-            
-            self.state_machine:switch('minigame', game_data)
+            -- Return the launch event instead of switching state
+            return { type = "event", name = "launch_minigame", game_data = game_data }
         end
     end
+    return nil -- Indicate cancellation or failure
 end
 
 function LauncherState:showGameDetails(game_id)
@@ -238,19 +251,24 @@ function LauncherState:mousepressed(x, y, button, filtered_games, viewport_width
     end
 
     -- Delegate to view, which expects local coordinates
-    local event = self.view:mousepressed(x, y, button, self.filtered_games, self.viewport.width, self.viewport.height)
+    local view_event = self.view:mousepressed(x, y, button, self.filtered_games, self.viewport.width, self.viewport.height)
 
-    if not event then return false end
-
-    if event.name == "filter_changed" then
-        self:updateFilter(event.category)
-    elseif event.name == "launch_game" then
-        self:launchGame(event.id)
-    elseif event.name == "game_selected" then
-        print("Selected game: " .. event.game.display_name)
+    -- If the view generated an event (like a button click), handle it
+    if view_event then
+        if view_event.name == "filter_changed" then
+            self:updateFilter(view_event.category)
+            return { type = "content_interaction" } -- Indicate interaction
+        elseif view_event.name == "launch_game" then
+            -- Call launchGame which now returns an event object
+            return self:launchGame(view_event.id) -- Bubble up the event object
+        elseif view_event.name == "game_selected" then
+            print("Selected game: " .. view_event.game.display_name)
+            return { type = "content_interaction" } -- Indicate interaction
+        end
     end
 
-    return { type = "content_interaction" }
+    -- If no specific view event was handled, return false or nil
+    return false
 end
 
 function LauncherState:launchSpaceDefender()

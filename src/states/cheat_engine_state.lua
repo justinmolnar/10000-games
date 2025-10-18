@@ -115,51 +115,52 @@ end
 
 
 function CheatEngineState:keypressed(key)
+    local result_event = nil
+    local handled = true -- Assume handled
+
     if key == 'escape' then
-        -- Signal close instead of switching state
-        return { type = "close_window" }
-    end
-
-    local handled = false
-    -- Add up/down arrow key support for list navigation
-    if key == 'up' then
-         local current_idx = -1
-         for i, g in ipairs(self.all_games) do if g.id == self.selected_game_id then current_idx = i; break end end
-         if current_idx > 1 then
-             local prev_game = self.all_games[current_idx - 1]
-             self.selected_game_id = prev_game.id
-             self.selected_game = prev_game
-             self:buildAvailableCheats()
-             -- Adjust scroll
-             if current_idx - 1 < self.scroll_offset then self.scroll_offset = current_idx - 1 end
-             handled = true
-         end
+        result_event = { type = "close_window" }
+    elseif key == 'up' then
+        local current_idx = -1
+        for i, g in ipairs(self.all_games) do if g.id == self.selected_game_id then current_idx = i; break end end
+        if current_idx > 1 then
+            local prev_game = self.all_games[current_idx - 1]
+            self.selected_game_id = prev_game.id
+            self.selected_game = prev_game
+            self:buildAvailableCheats()
+            if current_idx - 1 < self.scroll_offset then self.scroll_offset = current_idx - 1 end
+        end
     elseif key == 'down' then
-         local current_idx = -1
-         for i, g in ipairs(self.all_games) do if g.id == self.selected_game_id then current_idx = i; break end end
-         if current_idx > 0 and current_idx < #self.all_games then -- Ensure current_idx is valid
-             local next_game = self.all_games[current_idx + 1]
-             self.selected_game_id = next_game.id
-             self.selected_game = next_game
+        local current_idx = -1
+        for i, g in ipairs(self.all_games) do if g.id == self.selected_game_id then current_idx = i; break end end
+        if current_idx > 0 and current_idx < #self.all_games then
+            local next_game = self.all_games[current_idx + 1]
+            self.selected_game_id = next_game.id
+            self.selected_game = next_game
+            self:buildAvailableCheats()
+            local visible_items = self.view:getVisibleGameCount(self.viewport and self.viewport.height or 600)
+            if current_idx + 1 >= self.scroll_offset + visible_items then
+                 self.scroll_offset = current_idx + 1 - visible_items + 1
+            end
+        elseif current_idx == -1 and #self.all_games > 0 then
+             self.selected_game_id = self.all_games[1].id
+             self.selected_game = self.all_games[1]
              self:buildAvailableCheats()
-              -- Adjust scroll
-             local visible_items = self.view:getVisibleGameCount(self.viewport and self.viewport.height or 600)
-             if current_idx + 1 >= self.scroll_offset + visible_items then
-                  self.scroll_offset = current_idx + 1 - visible_items + 1
-             end
-             handled = true
-          elseif current_idx == -1 and #self.all_games > 0 then -- Handle case where nothing is selected yet
-              self.selected_game_id = self.all_games[1].id
-              self.selected_game = self.all_games[1]
-              self:buildAvailableCheats()
-              handled = true
-         end
+        end
     elseif key == 'return' then -- Launch selected game
-        if self.selected_game_id then self:launchGame() end
-        handled = true -- Assume handled even if launch fails
+        result_event = self:launchGame() -- launchGame now returns the event object or nil
+    else
+        handled = false
     end
 
-    return handled and { type = "content_interaction" } or false
+    -- Determine what to return
+    if result_event then
+        return result_event -- Return the specific event (launch or close)
+    elseif handled then
+        return { type = "content_interaction" } -- Return generic interaction if handled
+    else
+        return false -- Return false if not handled
+    end
 end
 
 
@@ -177,23 +178,28 @@ function CheatEngineState:mousepressed(x, y, button)
     local event = self.view:mousepressed(x, y, button, self.all_games, self.selected_game_id, self.available_cheats, self.viewport.width, self.viewport.height)
     if not event then return false end
 
+    local result_event = nil -- To store event to bubble up
+
     if event.name == "select_game" then
         self.selected_game_id = event.id
         self.selected_game = self.game_data:getGame(event.id)
         self:buildAvailableCheats()
         self.cheat_scroll_offset = 0
+        result_event = { type = "content_interaction" }
 
     elseif event.name == "unlock_cheat_engine" then
         self:unlockCheatEngine()
+        result_event = { type = "content_interaction" }
 
     elseif event.name == "purchase_cheat" then
         self:purchaseCheat(event.id)
+        result_event = { type = "content_interaction" }
 
     elseif event.name == "launch_game" then
-        self:launchGame()
+        result_event = self:launchGame() -- launchGame now returns the event object or nil
     end
 
-    return { type = "content_interaction" }
+    return result_event -- Return the event object or generic interaction signal
 end
 
 -- Calculates the scaled cost for a base cost and game
@@ -313,13 +319,13 @@ end
 
 function CheatEngineState:launchGame()
     if not self.selected_game_id then
-         love.window.showMessageBox("Error", "No game selected.", "warning")
-         return
+        love.window.showMessageBox("Error", "No game selected.", "warning")
+        return nil -- Return nil on failure
     end
     if not self.player_data:isGameUnlocked(self.selected_game_id) then
         print("Cannot launch a locked game via Cheat Engine")
         love.window.showMessageBox("Error", "Game is locked. Unlock it in the Game Collection first.", "warning")
-        return
+        return nil -- Return nil on failure
     end
 
     -- Prepare the final cheat values to be activated
@@ -346,10 +352,15 @@ function CheatEngineState:launchGame()
     -- Activate cheats in the system
     self.cheat_system:activateCheats(self.selected_game_id, cheats_to_activate)
 
-    -- Launch the minigame state (this still uses the global state machine)
-    self.state_machine:switch('minigame', self.selected_game)
+    -- Get the game data for the selected game
+    local game_data = self.game_data:getGame(self.selected_game_id)
+    if not game_data then
+        love.window.showMessageBox("Error", "Could not find game data to launch.", "error")
+        return nil -- Return nil on failure
+    end
 
-    -- Do NOT signal window close here, minigame state takes over fullscreen
+    -- Return an event for DesktopState to handle
+    return { type = "event", name = "launch_minigame", game_data = game_data }
 end
 
 return CheatEngineState

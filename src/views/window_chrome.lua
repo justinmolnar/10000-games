@@ -40,21 +40,21 @@ end
 -- Draw title bar
 function WindowChrome:drawTitleBar(window, is_focused)
     local bar_height = self.TITLE_BAR_HEIGHT
-    
+
     -- Title bar background (gradient effect)
     if is_focused then
         love.graphics.setColor(0, 0, 0.5)
     else
         love.graphics.setColor(0.5, 0.5, 0.5)
     end
-    love.graphics.rectangle('fill', 
-        window.x + 2, window.y + 2, 
+    love.graphics.rectangle('fill',
+        window.x + 2, window.y + 2,
         window.width - 4, bar_height)
-    
-    -- Title text
+
+    -- Title text (Uses window.title)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(window.title, 
-        window.x + 5, window.y + 6, 
+    love.graphics.print(window.title,
+        window.x + 5, window.y + 6,
         0, 0.9, 0.9)
 end
 
@@ -166,30 +166,33 @@ end
 
 -- Check if point is on window edge for resizing
 function WindowChrome:getResizeEdge(window, x, y, program_registry, program_id)
-    -- Check if window is resizable
-    local program = program_registry:getProgram(program_id)
-    if program and program.window_resizable == false then
+    -- Check if window is resizable using program registry
+    local program = program_registry and program_registry:getProgram(program_id)
+    local defaults = program and program.window_defaults or {}
+    local is_resizable = defaults.resizable ~= false -- Default to true if not specified
+
+    if not is_resizable or window.is_maximized then -- Cannot resize if not resizable or maximized
         return nil
     end
-    
+
     local edge_size = 8
     local on_left = x >= window.x and x <= window.x + edge_size
     local on_right = x >= window.x + window.width - edge_size and x <= window.x + window.width
     local on_top = y >= window.y and y <= window.y + edge_size
     local on_bottom = y >= window.y + window.height - edge_size and y <= window.y + window.height
-    
+
     -- Corner detection (prioritize corners)
     if on_top and on_left then return "top_left" end
     if on_top and on_right then return "top_right" end
     if on_bottom and on_left then return "bottom_left" end
     if on_bottom and on_right then return "bottom_right" end
-    
+
     -- Edge detection
     if on_left then return "left" end
     if on_right then return "right" end
     if on_top then return "top" end
     if on_bottom then return "bottom" end
-    
+
     return nil
 end
 

@@ -175,15 +175,15 @@ function FileSystem:openItem(item_path)
     if item.type == "folder" then
         return {type = "navigate", path = item_path}
     end
-    
+
     if item.type == "executable" then
         return {type = "launch_program", program_id = item.program_id}
     end
-    
+
     if item.type == "file" then
         return {type = "show_text", content = item.content, title = item_path}
     end
-    
+
     if item.type == "special" then
         return {type = "special", special_type = item.special_type}
     end

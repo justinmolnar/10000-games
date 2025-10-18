@@ -4,7 +4,7 @@ package.path = "./src/?.lua;" .. "./lib/?.lua;" .. package.path
 local Object = require('class')
 local json = require('json')
 
--- Global systems needed by DesktopState launch logic
+-- Global systems needed by DesktopState launch logic and love callbacks
 local player_data = nil
 local game_data = nil
 local vm_manager = nil
@@ -19,11 +19,35 @@ local desktop_icons = nil
 local file_system = nil
 local recycle_bin = nil
 
+-- Global storage for cursors
+local system_cursors = {}
+
 -- Keep track of current state name for debug toggle
 local current_state_name = nil
 
 function love.load()
     print("=== Starting love.load() ===")
+
+    -- Create standard system cursors
+    -- Use try-catch (pcall) in case a cursor type isn't supported on some OS
+    local cursor_types = {"arrow", "ibeam", "wait", "crosshair", "waitarrow", "sizenwse", "sizenesw", "sizewe", "sizens", "sizeall", "no", "hand"}
+    for _, type in ipairs(cursor_types) do
+        local success, cursor = pcall(love.mouse.getSystemCursor, type)
+        if success and cursor then
+            system_cursors[type] = cursor
+        else
+            print("Warning: Could not get system cursor for type:", type)
+            -- Use arrow as fallback if creation failed
+            if not system_cursors["arrow"] then
+                 local success_arrow, arrow_cursor = pcall(love.mouse.getSystemCursor, "arrow")
+                 if success_arrow then system_cursors["arrow"] = arrow_cursor end
+            end
+            system_cursors[type] = system_cursors["arrow"] -- Fallback
+        end
+    end
+    -- Set default cursor
+    if system_cursors["arrow"] then love.mouse.setCursor(system_cursors["arrow"]) end
+
 
     -- Require necessary classes/modules FIRST
     local PlayerData = require('models.player_data')
@@ -42,7 +66,7 @@ function love.load()
     local ProgramRegistry = require('models.program_registry')
 
 
-    -- Load settings FIRST
+    -- Load settings FIRST (applies fullscreen/windowed mode)
     SettingsManager.load()
 
     -- Instantiate Statistics FIRST
@@ -62,22 +86,20 @@ function love.load()
     local saved_data = SaveManager.load()
     if saved_data then
         print("Loading saved game...")
-        -- Basic loading logic (consider a dedicated function in PlayerData?)
+        -- Basic loading logic
         for key, value in pairs(saved_data) do
             if player_data[key] ~= nil then
                player_data[key] = value
             elseif key == 'cheat_engine_data' then -- Handle specific nested tables
                  if type(value) == 'table' then player_data[key] = value
                  else print("Warning: Ignoring invalid cheat_engine_data from save."); player_data[key] = {} end
-            else
-                print("Warning: Unknown key in save data ignored: " .. key)
-            end
+            else print("Warning: Unknown key in save data ignored: " .. key) end
         end
         -- Ensure required tables exist after loading potentially old save
         player_data.unlocked_games = player_data.unlocked_games or {}
         player_data.completed_games = player_data.completed_games or {}
         player_data.game_performance = player_data.game_performance or {}
-        player_data.active_vms = player_data.active_vms or {}
+        player_data.active_vms = player_data.active_vms or {} -- VM state now loaded in VMManager:initialize
         player_data.cheat_engine_data = player_data.cheat_engine_data or {}
         player_data.upgrades = player_data.upgrades or { cpu_speed=0, overclock=0, auto_dodge=0 }
     else
@@ -92,12 +114,12 @@ function love.load()
         player_data.upgrades = { cpu_speed=0, overclock=0, auto_dodge=0 }
     end
 
-    -- Initialize VM Manager *after* player data is loaded/initialized
+    -- Initialize VM Manager *after* player data is loaded/initialized (loads VM state from player_data.active_vms)
     vm_manager:initialize(player_data)
 
-    -- Initialize Windowing/Desktop system models
-    window_manager = WindowManager:new() -- Assign to global
-    desktop_icons = DesktopIcons:new() -- Assign to global
+    -- Initialize Windowing/Desktop system models AFTER SettingsManager.load()
+    window_manager = WindowManager:new() -- Assign to global (loads remembered positions)
+    desktop_icons = DesktopIcons:new() -- Assign to global (loads layout)
     file_system = FileSystem:new() -- Assign to global
     recycle_bin = RecycleBin:new(desktop_icons) -- Assign to global, inject dependency
     program_registry = ProgramRegistry:new() -- Assign to global
@@ -109,38 +131,30 @@ function love.load()
     state_machine = StateMachine:new() -- Assign to global
 
     -- Require state classes (just before instantiation)
-    local LauncherState = require('states.launcher_state')
-    local MinigameState = require('states.minigame_state')
-    local SpaceDefenderState = require('states.space_defender_state')
-    local VMManagerState = require('states.vm_manager_state')
-    local DesktopState = require('states.desktop_state')
-    local DebugState = require('states.debug_state')
-    local CheatEngineState = require('states.cheat_engine_state')
-    local SettingsState = require('states.settings_state') -- Fullscreen version (might not be used)
-    local StatisticsState = require('states.statistics_state')
+    -- Remove MinigameState require here as it's no longer a global state
     local CompletionState = require('states.completion_state')
-    -- Note: SettingsStateWindowed is required inside DesktopState:launchProgram
+    local DebugState = require('states.debug_state') -- Overlay state
+    local DesktopState = require('states.desktop_state')
 
-    -- Instantiate states, passing necessary dependencies
-    -- Minigame state still launches fullscreen for now
-    local minigame = MinigameState:new(player_data, game_data, state_machine, SaveManager, cheat_system)
+    -- Instantiate states that are switched to globally
     local completion_state = CompletionState:new(state_machine, statistics) -- Fullscreen for now
     local debug_state = DebugState:new(player_data, game_data, state_machine, SaveManager) -- Overlay state
 
-    -- Desktop state now needs more dependencies for launching programs
+    -- Desktop state now needs more dependencies
     local desktop = DesktopState:new(state_machine, player_data, show_tutorial_on_startup, statistics,
                                      window_manager, desktop_icons, file_system, recycle_bin, program_registry,
                                      vm_manager, cheat_system, SaveManager, game_data) -- Pass globals
 
+    -- Pass system cursors to DesktopState
+    desktop.cursors = system_cursors
 
-    -- Register states that are still switched to globally
-    state_machine:register('minigame', minigame) -- For launching from Cheat Engine/Launcher windows
+    -- Register states (Minigame state is removed)
     state_machine:register('completion', completion_state) -- Launched from Space Defender window signal
     state_machine:register('debug', debug_state) -- Launched via F5
     state_machine:register('desktop', desktop) -- Initial state
 
-    -- States launched as windows are instantiated *by* DesktopState, not registered globally here
-    -- (Launcher, VMManager, SpaceDefender, CheatEngine, Settings, Statistics)
+    -- States launched as windows (Launcher, VMManager, SpaceDefender, CheatEngine, Settings, Statistics, FileExplorer, MinigameRunner)
+    -- are instantiated *by* DesktopState, not registered globally here.
 
     print("Starting game - switching to desktop")
     current_state_name = 'desktop'
@@ -157,17 +171,17 @@ function love.update(dt)
     if statistics then statistics:addPlaytime(dt) end
 
     -- VM Manager needs to run even if DesktopState isn't the active *state machine* state
-    -- (e.g., if a fullscreen minigame is running)
     if vm_manager and player_data and game_data then
         vm_manager:update(dt, player_data, game_data)
     end
 
-    -- Update the core state machine (handles Desktop, Minigame, Completion, Debug)
+    -- Update the core state machine (handles Desktop, Completion, Debug)
     if state_machine then
         state_machine:update(dt)
+        -- Cursor setting is now handled within DesktopState:update
     end
 
-    -- Auto-save logic remains the same
+    -- Auto-save logic
     auto_save_timer = auto_save_timer + dt
     if auto_save_timer >= AUTO_SAVE_INTERVAL then
         auto_save_timer = auto_save_timer - AUTO_SAVE_INTERVAL
@@ -181,12 +195,13 @@ function love.update(dt)
         end
         -- Save window/desktop state periodically too
         if desktop_icons then desktop_icons:save() end
-        if window_manager then window_manager:saveWindowPositions() end
+        -- Window positions are saved on window close and game quit now
+        -- if window_manager then window_manager:saveWindowPositions() end
     end
 end
 
 function love.draw()
-    -- Base background color (might be overridden by desktop wallpaper)
+    -- Base background color (will be overridden by desktop wallpaper)
     love.graphics.clear(0.2, 0.2, 0.2)
 
     -- The active state machine state draws. If it's DesktopState, it handles drawing windows.
@@ -198,7 +213,7 @@ function love.draw()
     end
 end
 
--- Helper function remains for switching fullscreen states (Minigame, Completion, Debug)
+-- Helper for switching fullscreen states (Completion, Debug)
 local function switchState(new_state, ...)
     if state_machine and state_machine.states[new_state] then
         print("Switching state to: " .. new_state)
@@ -212,13 +227,20 @@ end
 function love.keypressed(key, scancode, isrepeat)
     if not state_machine or not player_data then return end
 
-    -- Debug toggle key (F5) - Switches between 'desktop' and 'debug' states
+    -- Give the current state machine state first dibs
+    if state_machine.current_state and state_machine.current_state.keypressed then
+       local handled = state_machine.current_state:keypressed(key)
+       -- If state returns true or an event table, it handled it. Stop processing.
+       if handled then return end
+    end
+
+    -- If not handled by active state, check global fallbacks
+
+    -- Debug toggle key (F5) - Always available unless state handled it
     if key == 'f5' then
         if current_state_name == 'debug' then
-             -- If in debug, tell it to close (which switches back)
-             if state_machine.current_state and state_machine.current_state.keypressed then
-                 state_machine.current_state:keypressed(key) -- Debug state handles F5 to close
-             end
+             -- Let Debug state handle closing itself via its keypressed (already tried above)
+             print("Debug state should handle F5 close")
         elseif current_state_name == 'desktop' then -- Only allow opening from desktop
             switchState('debug', current_state_name)
         end
@@ -236,17 +258,13 @@ function love.keypressed(key, scancode, isrepeat)
         end
     end
 
-    -- Forward keypress to the current *state machine* state
-    -- If the current state is DesktopState, it will handle forwarding to the focused *window* state
-    if state_machine.current_state and state_machine.current_state.keypressed then
-       local handled = state_machine.current_state:keypressed(key)
-       -- If state returns true or an event table, it handled it.
-       if handled then return end
+    -- Global Alt+F4 to quit if no window handled it (redundant with DesktopState handling, but safe fallback)
+    local alt_down = love.keyboard.isDown('lalt') or love.keyboard.isDown('ralt')
+    if key == 'f4' and alt_down then
+         print("Global Alt+F4 fallback triggered - Quitting game")
+         love.event.quit() -- Trigger clean quit
+         return
     end
-
-    -- If not handled by active state (or window within DesktopState), check global fallbacks
-    -- (Removed old F1-F6 shortcuts as programs are launched via desktop now)
-    -- (Removed global ESC quit, DesktopState handles it contextually)
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
@@ -261,6 +279,7 @@ function love.mousemoved(x, y, dx, dy, istouch)
     if state_machine and state_machine.current_state and state_machine.current_state.mousemoved then
         state_machine.current_state:mousemoved(x, y, dx, dy)
     end
+    -- Cursor setting happens in DesktopState:update based on WindowController state
 end
 
 function love.textinput(text)
@@ -290,21 +309,22 @@ function love.quit()
     if SaveManager and player_data then SaveManager.save(player_data) end
     if statistics then statistics:save() end
     if desktop_icons then desktop_icons:save() end
-    if window_manager then window_manager:saveWindowPositions() end
+    if window_manager then window_manager:saveWindowPositions() end -- Save window positions on quit
 
     print("Exiting game.")
+    return false -- Allow LÖVE to close cleanly
 end
 
 function love.errorhandler(msg)
     print("ERROR:", msg)
     print(debug.traceback())
-    -- Try to save before showing error screen? Risky if error is in saving...
-    -- love.quit() -- Call save logic
+    -- Attempt a final save, wrapped in pcall in case saving is the problem
+    pcall(love.quit)
 
     return function()
         -- Basic error screen drawing
         love.graphics.origin()
-        love.graphics.setBackgroundColor(0.2, 0, 0) -- Reddish background
+        love.graphics.setBackgroundColor(0.2, 0, 0)
         love.graphics.clear()
         love.graphics.setColor(1, 1, 1)
         love.graphics.printf("FATAL ERROR:\n" .. tostring(msg) .. "\n\n" .. debug.traceback(),
