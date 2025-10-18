@@ -32,17 +32,35 @@ end
 
 
 function CheatEngineState:enter()
-    self:updateGameList()
+    -- Load ALL games from game_data
+    self.all_games = self.game_data:getAllGames()
+    
+    -- Sort by ID with natural number sorting
+    table.sort(self.all_games, function(a, b)
+        local a_base, a_num = a.id:match("^(.-)_(%d+)$")
+        local b_base, b_num = b.id:match("^(.-)_(%d+)$")
+        if a_base and b_base and a_num and b_num then
+            if a_base == b_base then
+                return tonumber(a_num) < tonumber(b_num)
+            else
+                return a_base < b_base
+            end
+        end
+        return a.id < b.id
+    end)
+    
     -- Select the first game by default if list is not empty
     if #self.all_games > 0 then
         self.selected_game_id = self.all_games[1].id
         self.selected_game = self.all_games[1]
         self:buildAvailableCheats()
-        self.scroll_offset = 1 -- Reset scroll on enter
+        self.scroll_offset = 1
         self.cheat_scroll_offset = 0
     else
         self:resetSelection()
     end
+    
+    print("CheatEngine loaded " .. #self.all_games .. " games")
 end
 
 function CheatEngineState:updateGameList()

@@ -79,20 +79,17 @@ function SpaceDefenderState:enter(level_number)
 
     if not self:loadLevelData() then
         print("FATAL: Could not load level data. Cannot start Space Defender.")
-        -- Need a way to signal failure back to DesktopState to close window
-        -- For now, just print error. DesktopState won't know it failed.
         return
     end
 
     self.current_level_data = self.all_level_data[self.current_level]
     if not self.current_level_data then
-         print("ERROR: No data found for level " .. self.current_level .. ". Using level 1 data as fallback.")
-         self.current_level_data = self.all_level_data[1]
-         if not self.current_level_data then
-              print("FATAL: No level 1 data found. Cannot start Space Defender.")
-              -- Signal failure
-              return
-         end
+        print("ERROR: No data found for level " .. self.current_level .. ". Using level 1 data as fallback.")
+        self.current_level_data = self.all_level_data[1]
+        if not self.current_level_data then
+            print("FATAL: No level 1 data found. Cannot start Space Defender.")
+            return
+        end
     end
 
     self.level_complete = false
@@ -101,7 +98,6 @@ function SpaceDefenderState:enter(level_number)
     self.tokens_earned = 0
     self.paused = false
 
-    -- Use love.graphics dimensions for gameplay logic, even if viewport is smaller
     local game_width = love.graphics.getWidth()
     local game_height = love.graphics.getHeight()
 
@@ -111,8 +107,8 @@ function SpaceDefenderState:enter(level_number)
         hp = 3, max_hp = 3, bombs = 3, max_bombs = 3
     }
 
-    -- Initialize bullet system, injecting statistics
-    self.bullet_system = BulletSystem:new(self.statistics) -- Pass statistics here
+    -- Initialize bullet system IMMEDIATELY with statistics
+    self.bullet_system = BulletSystem:new(self.statistics)
     local fire_rate_mult, damage_mult = self:getLevelBonuses()
     self.bullet_system:setGlobalMultipliers(fire_rate_mult, damage_mult)
     self.bullet_system:loadBulletTypes(self.player_data, self.game_data)
@@ -142,9 +138,6 @@ function SpaceDefenderState:getLevelBonuses()
 end
 
 function SpaceDefenderState:update(dt)
-    -- Only update if viewport is set (ensures enter finished successfully)
-    if not self.viewport then return end
-
     if self.view and self.view.update then self.view:update(dt) end
     if self.paused or self.level_complete or self.game_over then return end
 
@@ -156,7 +149,6 @@ function SpaceDefenderState:update(dt)
     if self.boss_active and self.boss then self:updateBoss(dt) end
     if not self.boss_active then self:updateWaveSpawning(dt) end
 
-    -- Check win/loss conditions
     if self.boss_active and self.boss and self.boss.hp <= 0 then self:onLevelComplete() end
     if self.player_ship and self.player_ship.hp <= 0 then self:onLevelFailed() end
 end
