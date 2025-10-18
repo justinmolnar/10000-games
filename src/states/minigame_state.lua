@@ -52,31 +52,44 @@ end
 
 -- Helper to calculate canvas scaling and offset for letterboxing
 function MinigameState:calculateCanvasTransform()
-    -- *** Add explicit check for self.gameCanvas existence ***
-    if not self.gameCanvas or self.gameCanvas:isReleased() then
+    -- Check if canvas exists and is valid
+    if not self.gameCanvas then
         print("Warning: calculateCanvasTransform called before canvas is ready.")
         self.canvasScale = 0
         self.canvasOffsetX = 0
         self.canvasOffsetY = 0
         return
     end
+    
+    -- Try to check if canvas is released, with error handling
+    local canvas_released = false
+    local check_ok = pcall(function()
+        canvas_released = self.gameCanvas:isReleased()
+    end)
+    
+    if not check_ok or canvas_released then
+        print("Warning: Canvas is invalid or released in calculateCanvasTransform.")
+        self.canvasScale = 0
+        self.canvasOffsetX = 0
+        self.canvasOffsetY = 0
+        return
+    end
 
-    -- Ensure viewport dimensions are valid numbers > 0 before calculating
+    -- Validate viewport dimensions
     if not self.viewport or
        type(self.viewport.width) ~= "number" or self.viewport.width <= 0 or
        type(self.viewport.height) ~= "number" or self.viewport.height <= 0 or
        not self.nativeGameWidth or self.nativeGameWidth <= 0 or
        not self.nativeGameHeight or self.nativeGameHeight <= 0 then
 
-        print("Warning: Invalid dimensions for canvas transform calculation. VP:",
-              (self.viewport and json.encode(self.viewport) or "nil"),
-              "Native:", self.nativeGameWidth, self.nativeGameHeight)
-        self.canvasScale = 0 -- Set invalid scale
+        print("Warning: Invalid dimensions for canvas transform calculation.")
+        self.canvasScale = 0
         self.canvasOffsetX = 0
         self.canvasOffsetY = 0
         return
     end
 
+    -- Calculate scale and offset
     local vpWidth = self.viewport.width
     local vpHeight = self.viewport.height
     local canvasWidth = self.nativeGameWidth
@@ -97,74 +110,103 @@ end
 
 
 function MinigameState:enter(game_data)
-    self.game_data = game_data -- This is the specific game's data
-
-    -- Create canvas if needed (robust check)
-    local canvas_ok = false
-    pcall(function() -- Wrap canvas creation/check in pcall
-        if not self.gameCanvas or self.gameCanvas:isReleased() or
-           self.gameCanvas:getWidth() ~= self.nativeGameWidth or
-           self.gameCanvas:getHeight() ~= self.nativeGameHeight then
-            if self.gameCanvas and not self.gameCanvas:isReleased() then self.gameCanvas:release() end
-            self.gameCanvas = love.graphics.newCanvas(self.nativeGameWidth, self.nativeGameHeight)
-            print("Created Minigame Canvas:", self.nativeGameWidth, "x", self.nativeGameHeight)
-        end
-        canvas_ok = true
-    end)
-    if not canvas_ok then
-        print("FATAL ERROR: Failed to create rendering canvas for minigame.")
-        self.gameCanvas = nil -- Ensure it's nil if creation failed
-        -- Should signal window close here if possible
-        return
-    end
-
-    -- Recalculate transform based on current viewport (which should have been set by launchProgram)
+    self.game_data = game_data
+    self.gameCanvas = love.graphics.newCanvas(self.nativeGameWidth, self.nativeGameHeight)
     self:calculateCanvasTransform()
-
-    -- Get active cheats *before* instantiating the game
     self.active_cheats = self.cheat_system:getActiveCheats(game_data.id) or {}
-
-    -- Load the game logic class dynamically
     local class_name = game_data.game_class
     local logic_file_name = class_name:gsub("(%u)", function(c) return "_" .. c:lower() end):sub(2)
-
-    print("Loading game logic class: " .. logic_file_name)
     local require_ok, GameClass = pcall(require, 'src.games.' .. logic_file_name)
     if not require_ok or not GameClass then
-        print("ERROR: Could not load game logic class: " .. logic_file_name .. " - " .. tostring(GameClass))
-        love.window.showMessageBox("Error", "Failed to load game logic for: " .. logic_file_name, "error")
         self.current_game = nil
         return
     end
-    -- Instantiate the game logic class, passing active cheats
     self.current_game = GameClass:new(game_data, self.active_cheats)
-
-    -- Consume the cheats now that they've been applied
     self.cheat_system:consumeCheats(game_data.id)
-
-    -- View loading logic (game's init handles view creation)
-    local base_name = logic_file_name:match("(.+)_game$") or logic_file_name
-    if logic_file_name == "space_shooter" then base_name = "space_shooter" end
-    local view_file_name = base_name .. "_view"
-    local view_path = 'src.games.views.' .. view_file_name
-    local view_load_ok, GameView = pcall(require, view_path)
-    if view_load_ok and GameView and type(GameView.new) == 'function' then
-         print("Verified game view should load: " .. view_path)
-    else
-        print("Warning: Could not load or instantiate view for " .. class_name .. " at " .. view_path .. ". Drawing might fail. Error: " .. tostring(GameView))
-        if self.current_game then self.current_game.view = nil end
-    end
-
-    -- Get previous best performance
     local perf = self.player_data:getGamePerformance(game_data.id)
     self.previous_best = perf and perf.best_score or 0
-
-    -- Reset completion screen state
     self.completion_screen_visible = false
     self.current_performance = 0
     self.base_performance = 0
     self.auto_completed_games = {}
     self.auto_complete_power = 0
+end
+
+function MinigameState:calculateCanvasTransform()
+    if not self.gameCanvas or not self.viewport then
+        self.canvasScale = 0
+        self.canvasOffsetX = 0
+        self.canvasOffsetY = 0
+        return
+    end
+
+    local vpWidth = self.viewport.width
+    local vpHeight = self.viewport.height
+
+    local scaleX = vpWidth / self.nativeGameWidth
+    local scaleY = vpHeight / self.nativeGameHeight
+    self.canvasScale = math.min(scaleX, scaleY)
+
+    local scaledWidth = self.nativeGameWidth * self.canvasScale
+    local scaledHeight = self.nativeGameHeight * self.canvasScale
+
+    self.canvasOffsetX = (vpWidth - scaledWidth) / 2
+    self.canvasOffsetY = (vpHeight - scaledHeight) / 2
+end
+
+function MinigameState:draw()
+    if not self.viewport or not self.gameCanvas then
+        return
+    end
+
+    love.graphics.setCanvas(self.gameCanvas)
+    love.graphics.clear(0, 0, 0, 1)
+    
+    if self.current_game and self.current_game.draw then
+        pcall(self.current_game.draw, self.current_game)
+    end
+    
+    love.graphics.setCanvas()
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(self.gameCanvas, self.canvasOffsetX, self.canvasOffsetY, 0, self.canvasScale, self.canvasScale)
+
+    if self.completion_screen_visible then
+        self:drawCompletionScreenWindowed(self.viewport.width, self.viewport.height)
+    end
+end
+
+function MinigameState:calculateCanvasTransform()
+    if not self.gameCanvas or not self.viewport then
+        self.canvasScale = 0
+        self.canvasOffsetX = 0
+        self.canvasOffsetY = 0
+        return
+    end
+    local scaleX = self.viewport.width / self.nativeGameWidth
+    local scaleY = self.viewport.height / self.nativeGameHeight
+    self.canvasScale = math.min(scaleX, scaleY)
+    local scaledWidth = self.nativeGameWidth * self.canvasScale
+    local scaledHeight = self.nativeGameHeight * self.canvasScale
+    self.canvasOffsetX = (self.viewport.width - scaledWidth) / 2
+    self.canvasOffsetY = (self.viewport.height - scaledHeight) / 2
+end
+
+function MinigameState:draw()
+    if not self.viewport or not self.gameCanvas then
+        return
+    end
+    love.graphics.setCanvas(self.gameCanvas)
+    love.graphics.clear(0, 0, 0, 1)
+    if self.current_game and self.current_game.draw then
+        pcall(self.current_game.draw, self.current_game)
+    end
+    love.graphics.setCanvas()
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(self.gameCanvas, self.canvasOffsetX, self.canvasOffsetY, 0, self.canvasScale, self.canvasScale)
+    if self.completion_screen_visible then
+        self:drawCompletionScreenWindowed(self.viewport.width, self.viewport.height)
+    end
 end
 
 function MinigameState:update(dt)
