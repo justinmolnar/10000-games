@@ -2,41 +2,50 @@ local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local DesktopView = Object:extend('DesktopView')
 
--- Dependency injection: receive what we need to draw
-function DesktopView:init(program_registry, player_data)
+function DesktopView:init(program_registry, player_data, window_manager)
     self.program_registry = program_registry
     self.player_data = player_data
-    
+    self.window_manager = window_manager -- Added dependency
+
     self.taskbar_height = 40
     self.clock_update_timer = 0
     self.current_time = ""
-    
+
     -- Hover state
     self.hovered_program_id = nil
     self.hovered_start_program_id = nil
     self.start_button_hovered = false
-    
+    self.hovered_taskbar_button_id = nil -- Added for taskbar hover
+
     -- Icon layout
     self.icon_width = 80
     self.icon_height = 100
     self.icon_padding = 20
     self.icon_start_x = 20
     self.icon_start_y = 20
-    
-    -- Calculate desktop icon positions
+
+    -- Calculate desktop icon positions (Make sure this line is present and uncommented)
     self:calculateIconPositions()
-    
+
     -- Start menu layout - position directly above start button
     self.start_menu_w = 200
     self.start_menu_h = 300
     self.start_menu_x = 0
     self.start_menu_y = love.graphics.getHeight() - self.taskbar_height - self.start_menu_h
-    
+
     -- Run dialog layout
     self.run_dialog_w = 400
     self.run_dialog_h = 150
     self.run_dialog_x = (love.graphics.getWidth() - self.run_dialog_w) / 2
     self.run_dialog_y = (love.graphics.getHeight() - self.run_dialog_h) / 2
+
+     -- Taskbar button layout constants
+    self.taskbar_start_button_width = 60
+    self.taskbar_sys_tray_width = 150
+    self.taskbar_button_max_width = 160
+    self.taskbar_button_min_width = 80
+    self.taskbar_button_padding = 4
+    self.taskbar_button_start_x = self.taskbar_start_button_width + 10 -- Start after "Start" button
 end
 
 function DesktopView:calculateIconPositions()
@@ -257,18 +266,126 @@ end
 
 function DesktopView:drawTaskbar(tokens)
     local y = love.graphics.getHeight() - self.taskbar_height
-    
+    local screen_width = love.graphics.getWidth()
+
     -- Background
     love.graphics.setColor(0.75, 0.75, 0.75)
-    love.graphics.rectangle('fill', 0, y, love.graphics.getWidth(), self.taskbar_height)
+    love.graphics.rectangle('fill', 0, y, screen_width, self.taskbar_height)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.line(0, y, love.graphics.getWidth(), y)
-    
+    love.graphics.line(0, y, screen_width, y)
+
     -- Start button
-    self:drawStartButton(10, y + 5, self.taskbar_height - 10)
-    
+    self:drawStartButton(10, y + 5, self.taskbar_height - 10) -- Use existing method
+
     -- System tray
-    self:drawSystemTray(love.graphics.getWidth() - 150, y + 5, 140, self.taskbar_height - 10, tokens)
+    self:drawSystemTray(screen_width - self.taskbar_sys_tray_width, y + 5,
+                        self.taskbar_sys_tray_width - 10, self.taskbar_height - 10, tokens) -- Use existing method
+
+    -- Window buttons area
+    local button_area_start_x = self.taskbar_button_start_x
+    local button_area_end_x = screen_width - self.taskbar_sys_tray_width
+    local button_area_width = button_area_end_x - button_area_start_x
+
+    local windows = self.window_manager:getAllWindows()
+    local num_windows = #windows
+    if num_windows == 0 then return end -- No buttons to draw
+
+    -- Calculate button width
+    local total_padding = (num_windows - 1) * self.taskbar_button_padding
+    local available_width_for_buttons = button_area_width - total_padding
+    local button_width = available_width_for_buttons / num_windows
+    button_width = math.max(self.taskbar_button_min_width, math.min(self.taskbar_button_max_width, button_width))
+
+    -- Draw each button
+    local focused_window_id = self.window_manager:getFocusedWindowId()
+    local font = love.graphics.getFont()
+
+    for i, window in ipairs(windows) do
+        local button_x = button_area_start_x + (i - 1) * (button_width + self.taskbar_button_padding)
+        local button_y = y + 3
+        local button_h = self.taskbar_height - 6
+        local is_focused = (window.id == focused_window_id)
+        local is_minimized = window.is_minimized
+
+        -- Button Appearance
+        if is_focused and not is_minimized then
+            love.graphics.setColor(0.6, 0.6, 0.6) -- Pressed-in look
+            love.graphics.rectangle('fill', button_x, button_y, button_width, button_h)
+            love.graphics.setColor(0.2, 0.2, 0.2) -- Inner shadow top/left
+            love.graphics.line(button_x, button_y, button_x + button_width, button_y)
+            love.graphics.line(button_x, button_y, button_x, button_y + button_h)
+            love.graphics.setColor(1, 1, 1) -- Highlight bottom/right
+            love.graphics.line(button_x + button_width, button_y, button_x + button_width, button_y + button_h)
+            love.graphics.line(button_x, button_y + button_h, button_x + button_width, button_y + button_h)
+        else
+            love.graphics.setColor(0.75, 0.75, 0.75) -- Raised look
+             love.graphics.rectangle('fill', button_x, button_y, button_width, button_h)
+            love.graphics.setColor(1, 1, 1) -- Highlight top/left
+            love.graphics.line(button_x, button_y, button_x + button_width, button_y)
+            love.graphics.line(button_x, button_y, button_x, button_y + button_h)
+            love.graphics.setColor(0.2, 0.2, 0.2) -- Shadow bottom/right
+            love.graphics.line(button_x + button_width, button_y, button_x + button_width, button_y + button_h)
+            love.graphics.line(button_x, button_y + button_h, button_x + button_width, button_y + button_h)
+        end
+
+        -- Title Text (Truncated)
+        love.graphics.setColor(0, 0, 0)
+        local max_text_width = button_width - 10 -- Padding
+        local truncated_title = window.title or "Untitled"
+        if font:getWidth(truncated_title) > max_text_width then
+            -- Simple truncation with ellipsis
+            local ellipsis_width = font:getWidth("...")
+            while font:getWidth(truncated_title) + ellipsis_width > max_text_width and #truncated_title > 0 do
+                truncated_title = truncated_title:sub(1, -2)
+            end
+            truncated_title = truncated_title .. "..."
+        end
+
+        local text_y = button_y + (button_h - font:getHeight()) / 2
+        love.graphics.print(truncated_title, button_x + 5, text_y)
+
+        -- Minimized indicator (optional visual cue)
+        if is_minimized then
+            love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
+            love.graphics.rectangle('fill', button_x, button_y, button_width, button_h)
+        end
+    end
+end
+
+function DesktopView:getTaskbarButtonAtPosition(x, y)
+    local taskbar_y = love.graphics.getHeight() - self.taskbar_height
+    if y < taskbar_y or y > love.graphics.getHeight() then return nil end -- Not in taskbar vertically
+
+    local screen_width = love.graphics.getWidth()
+    local button_area_start_x = self.taskbar_button_start_x
+    local button_area_end_x = screen_width - self.taskbar_sys_tray_width
+    local button_area_width = button_area_end_x - button_area_start_x
+
+    if x < button_area_start_x or x > button_area_end_x then return nil end -- Not in button area horizontally
+
+    local windows = self.window_manager:getAllWindows()
+    local num_windows = #windows
+    if num_windows == 0 then return nil end
+
+    -- Calculate button width (same logic as in drawTaskbar)
+    local total_padding = (num_windows - 1) * self.taskbar_button_padding
+    local available_width_for_buttons = button_area_width - total_padding
+    local button_width = available_width_for_buttons / num_windows
+    button_width = math.max(self.taskbar_button_min_width, math.min(self.taskbar_button_max_width, button_width))
+
+    -- Check which button contains the x coordinate
+    local relative_x = x - button_area_start_x
+    local button_index = math.floor(relative_x / (button_width + self.taskbar_button_padding)) + 1
+
+    -- Verify click wasn't in the padding between buttons
+    local button_start_x = button_area_start_x + (button_index - 1) * (button_width + self.taskbar_button_padding)
+    if x >= button_start_x and x <= button_start_x + button_width then
+        if button_index >= 1 and button_index <= num_windows then
+            return windows[button_index].id
+        end
+    end
+
+    return nil
 end
 
 function DesktopView:drawStartButton(x, y, size)

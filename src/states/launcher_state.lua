@@ -42,6 +42,12 @@ function LauncherState:enter()
     self:updateFilter(self.view.selected_category)
 end
 
+function LauncherState:setViewport(x, y, width, height)
+    self.viewport = {x = x, y = y, width = width, height = height}
+    -- Recalculate view layout if necessary based on new viewport size
+    self.view.detail_panel_width = math.min(350, width * 0.4) -- Example adjustment
+end
+
 function LauncherState:updateFilter(category)
     self.view.selected_category = category -- Update view's state
     self.filtered_games = {}
@@ -85,21 +91,42 @@ function LauncherState:update(dt)
 end
 
 function LauncherState:draw()
-    -- Delegate all drawing to the view
-    self.view:draw(self.filtered_games, self.player_data.tokens)
+    if not self.viewport then return end -- Don't draw if viewport isn't set
+
+    love.graphics.push()
+    love.graphics.translate(self.viewport.x, self.viewport.y)
+    love.graphics.setScissor(self.viewport.x, self.viewport.y, self.viewport.width, self.viewport.height)
+
+    -- Delegate drawing to the view, passing viewport dimensions for layout
+    self.view:drawWindowed(self.filtered_games, self.player_data.tokens, self.viewport.width, self.viewport.height)
+
+    love.graphics.setScissor()
+    love.graphics.pop()
 end
 
 function LauncherState:keypressed(key)
+    -- Key events are not relative to viewport, handle normally
     local handled = true -- Assume handled unless proven otherwise
     if key == 'up' or key == 'w' then
+        local old_index = self.view.selected_index
         self.view.selected_index = math.max(1, self.view.selected_index - 1)
-        if self.view.selected_index <= #self.filtered_games then
+        if self.view.selected_index ~= old_index and self.view.selected_index <= #self.filtered_games then
             self.view.selected_game = self.filtered_games[self.view.selected_index]
         end
+        -- Adjust scroll if selection goes out of view
+        if self.view.selected_index < self.view.scroll_offset then
+            self.view.scroll_offset = self.view.selected_index
+        end
     elseif key == 'down' or key == 's' then
+        local old_index = self.view.selected_index
         self.view.selected_index = math.min(#self.filtered_games, self.view.selected_index + 1)
-        if self.view.selected_index <= #self.filtered_games then
+         if self.view.selected_index ~= old_index and self.view.selected_index <= #self.filtered_games then
             self.view.selected_game = self.filtered_games[self.view.selected_index]
+        end
+         -- Adjust scroll if selection goes out of view
+        local visible_games = self.view:getVisibleGameCount(self.viewport and self.viewport.height or 600)
+        if self.view.selected_index >= self.view.scroll_offset + visible_games then
+             self.view.scroll_offset = self.view.selected_index - visible_games + 1
         end
     elseif key == 'return' or key == 'space' then
         self:selectGame()
@@ -109,10 +136,13 @@ function LauncherState:keypressed(key)
             self.view.selected_game = self.filtered_games[self.view.selected_index]
         end
     elseif key == 'escape' then
+        -- Only close detail panel, don't switch state
         if self.view.detail_panel_open then
             self.view.detail_panel_open = false
         else
-            self.state_machine:switch('desktop')
+            -- If view/state had other modals, handle closing them here
+            -- Otherwise, do nothing (window close button handles closing)
+            handled = false -- Let window manager handle close if desired via Alt+F4 later
         end
     elseif key >= '1' and key <= '9' or key == '0' then
         local filters = {"all", "action", "puzzle", "arcade", "locked", "unlocked", "completed", "easy", "medium", "hard"}
@@ -120,10 +150,10 @@ function LauncherState:keypressed(key)
         if filters[index] then
             self:updateFilter(filters[index])
         else
-            handled = false -- Key wasn't a valid filter shortcut
+            handled = false
         end
     else
-        handled = false -- Key wasn't used by this state
+        handled = false
     end
     return handled
 end
@@ -203,23 +233,34 @@ function LauncherState:showGameDetails(game_id)
 end
 
 function LauncherState:mousepressed(x, y, button)
-    -- Delegate input handling to the view
-    local event = self.view:mousepressed(x, y, button, self.filtered_games)
-    
-    if not event then return end
-    
+    if not self.viewport then return false end
+
+    -- Translate coordinates
+    local local_x = x - self.viewport.x
+    local local_y = y - self.viewport.y
+
+    -- Check if click is outside viewport bounds (relative to window)
+    if local_x < 0 or local_x > self.viewport.width or local_y < 0 or local_y > self.viewport.height then
+        return false -- Click was outside this window's content area
+    end
+
+    -- Delegate input handling to the view using local coordinates
+    local event = self.view:mousepressed(local_x, local_y, button, self.filtered_games, self.viewport.width, self.viewport.height)
+
+    if not event then return false end -- View didn't handle it
+
     -- Handle the event returned by the view
     if event.name == "filter_changed" then
         self:updateFilter(event.category)
-    
     elseif event.name == "launch_game" then
-        self:launchGame(event.id)
-    
+        self:launchGame(event.id) -- This still switches state machine, which is correct
     elseif event.name == "game_selected" then
-        -- This logic is now handled inside the view,
-        -- but we could add controller logic here if needed.
         print("Selected game: " .. event.game.display_name)
     end
+
+    -- Return event object for DesktopState (or nil if view didn't handle)
+    -- Add a type for window closing if needed, e.g., if a back button exists
+    return { type = "content_interaction" } -- Signify content was interacted with
 end
 
 function LauncherState:launchSpaceDefender()
@@ -227,8 +268,17 @@ function LauncherState:launchSpaceDefender()
 end
 
 function LauncherState:wheelmoved(x, y)
-    -- Delegate scrolling to the view
-    self.view:wheelmoved(x, y, self.filtered_games)
+     if not self.viewport then return end
+
+     -- Get mouse position relative to screen
+     local mx, my = love.mouse.getPosition()
+
+     -- Check if mouse is within this window's viewport
+     if mx >= self.viewport.x and mx <= self.viewport.x + self.viewport.width and
+        my >= self.viewport.y and my <= self.viewport.y + self.viewport.height then
+         -- Delegate scrolling to the view
+         self.view:wheelmoved(x, y, self.filtered_games, self.viewport.width, self.viewport.height)
+     end
 end
 
 return LauncherState

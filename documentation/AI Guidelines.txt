@@ -8,6 +8,7 @@ When receiving code from the AI:
 
 * **Full Files:** If a file is being created *new* or requires *heavy modification* (e.g., more than 2-3 functions changed, significant structural changes), the AI should provide the **entire file content** within a single, dedicated code block.
 * **Functions Only:** If only one or two functions within an existing file are being added or modified, the AI should provide only the **complete, non-truncated function definitions**, each within its own dedicated code block.
+* ** NEVER TRUNCATE FILES OR FUNCTIONS: Send one or the other, always in their complete form.
 * **Clear Instructions:** Outside the code block(s), the AI must provide clear instructions, including:
     * The **full file path** the code belongs to.
     * Whether the code is **new**, **replacing** existing code, or **adding** to existing code.

@@ -5,7 +5,8 @@
     "executable": "gamecollection.exe",
     "icon_color": [1.0, 0.8, 0.0],
     "on_desktop": true,
-    "in_start_menu": true
+    "in_start_menu": true,
+    "window_defaults": { "w": 800, "h": 600, "resizable": true, "single_instance": true }
   },
   {
     "id": "vm_manager",
@@ -13,7 +14,8 @@
     "executable": "vmmanager.exe",
     "icon_color": [0.5, 0.5, 1.0],
     "on_desktop": true,
-    "in_start_menu": true
+    "in_start_menu": true,
+    "window_defaults": { "w": 700, "h": 500, "resizable": true, "single_instance": true }
   },
   {
     "id": "space_defender",
@@ -21,7 +23,8 @@
     "executable": "spacedefender.exe",
     "icon_color": [1.0, 0.0, 0.0],
     "on_desktop": true,
-    "in_start_menu": true
+    "in_start_menu": true,
+    "window_defaults": { "w": 1024, "h": 768, "resizable": true, "single_instance": true, "prefer_maximized": true }
   },
   {
     "id": "cheat_engine",
@@ -29,7 +32,8 @@
     "executable": "cheatengine.exe",
     "icon_color": [0.1, 0.8, 0.1],
     "on_desktop": true,
-    "in_start_menu": true
+    "in_start_menu": true,
+    "window_defaults": { "w": 650, "h": 550, "resizable": false, "single_instance": true }
   },
   {
     "id": "settings",
@@ -37,7 +41,8 @@
     "executable": "settings.exe",
     "icon_color": [0.8, 0.8, 0.8],
     "on_desktop": true,
-    "in_start_menu": true
+    "in_start_menu": true,
+    "window_defaults": { "w": 500, "h": 450, "resizable": false, "single_instance": true }
   },
   {
     "id": "statistics",
@@ -45,7 +50,8 @@
     "executable": "statistics.exe",
     "icon_color": [1.0, 1.0, 0.5],
     "on_desktop": true,
-    "in_start_menu": true
+    "in_start_menu": true,
+    "window_defaults": { "w": 450, "h": 350, "resizable": false, "single_instance": true }
   },
   {
     "id": "recycle_bin",
@@ -54,16 +60,18 @@
     "icon_color": [0.6, 0.6, 0.6],
     "on_desktop": true,
     "in_start_menu": false,
-    "disabled": true
+    "disabled": true,
+    "window_defaults": { "w": 600, "h": 400, "resizable": true, "single_instance": false }
   },
   {
     "id": "my_computer",
     "name": "My Computer",
     "executable": "mycomputer.exe",
     "icon_color": [0.7, 0.7, 0.9],
-    "on_desktop": false,
+    "on_desktop": true,
     "in_start_menu": true,
-    "disabled": true
+    "disabled": true,
+    "window_defaults": { "w": 600, "h": 400, "resizable": true, "single_instance": false }
   },
   {
     "id": "notepad",
@@ -72,7 +80,8 @@
     "icon_color": [0.9, 0.9, 1.0],
     "on_desktop": false,
     "in_start_menu": true,
-    "disabled": true
+    "disabled": true,
+    "window_defaults": { "w": 500, "h": 400, "resizable": true, "single_instance": false }
   },
   {
     "id": "paint",
@@ -81,7 +90,8 @@
     "icon_color": [1.0, 0.8, 0.8],
     "on_desktop": false,
     "in_start_menu": true,
-    "disabled": true
+    "disabled": true,
+    "window_defaults": { "w": 700, "h": 500, "resizable": true, "single_instance": false }
   },
   {
     "id": "config",
@@ -90,6 +100,7 @@
     "icon_color": [1.0, 1.0, 1.0],
     "on_desktop": false,
     "in_start_menu": false,
-    "disabled": true
+    "disabled": true,
+    "window_defaults": { "w": 400, "h": 300, "resizable": true, "single_instance": false }
   }
 ]

@@ -6,16 +6,16 @@ local SpaceDefenderView = require('views.space_defender_view')
 local json = require('json')
 local SpaceDefenderState = Object:extend('SpaceDefenderState')
 
-function SpaceDefenderState:init(player_data, game_data, state_machine, save_manager, statistics)
+function SpaceDefenderState:init(player_data, game_data, state_machine, save_manager, statistics, level_number)
     self.player_data = player_data
     self.game_data = game_data
-    self.state_machine = state_machine
+    self.state_machine = state_machine -- Keep reference for now, though signals are used
     self.save_manager = save_manager
     self.statistics = statistics -- Store statistics model
     self.view = SpaceDefenderView:new(self)
     self.all_level_data = nil
     self.current_level_data = nil
-    self.current_level = 1
+    self.current_level = level_number or 1
     self.player_ship = nil
     self.enemies = {}
     self.bullet_system = nil -- Will be created in enter
@@ -29,7 +29,16 @@ function SpaceDefenderState:init(player_data, game_data, state_machine, save_man
     self.game_over = false
     self.score = 0
     self.tokens_earned = 0
+    self.viewport = nil -- Initialize viewport
 end
+
+function SpaceDefenderState:setViewport(x, y, width, height)
+    self.viewport = {x = x, y = y, width = width, height = height}
+    -- Note: Gameplay logic uses love.graphics.getWidth/Height. This won't scale automatically.
+    -- For Phase 4, we just clip rendering. A full solution needs scaling/resolution change.
+    print("Warning: Space Defender viewport set, but gameplay logic might not scale correctly.")
+end
+
 
 function SpaceDefenderState:loadLevelData()
     if self.all_level_data then return true end
@@ -69,8 +78,9 @@ function SpaceDefenderState:enter(level_number)
     self.current_level = level_number or 1
 
     if not self:loadLevelData() then
-        print("FATAL: Could not load level data. Returning to desktop.")
-        self.state_machine:switch('desktop')
+        print("FATAL: Could not load level data. Cannot start Space Defender.")
+        -- Need a way to signal failure back to DesktopState to close window
+        -- For now, just print error. DesktopState won't know it failed.
         return
     end
 
@@ -80,7 +90,7 @@ function SpaceDefenderState:enter(level_number)
          self.current_level_data = self.all_level_data[1]
          if not self.current_level_data then
               print("FATAL: No level 1 data found. Cannot start Space Defender.")
-              self.state_machine:switch('desktop')
+              -- Signal failure
               return
          end
     end
@@ -91,8 +101,12 @@ function SpaceDefenderState:enter(level_number)
     self.tokens_earned = 0
     self.paused = false
 
+    -- Use love.graphics dimensions for gameplay logic, even if viewport is smaller
+    local game_width = love.graphics.getWidth()
+    local game_height = love.graphics.getHeight()
+
     self.player_ship = {
-        x = love.graphics.getWidth() / 2, y = love.graphics.getHeight() - 80,
+        x = game_width / 2, y = game_height - 80,
         width = 30, height = 30, speed = 250,
         hp = 3, max_hp = 3, bombs = 3, max_bombs = 3
     }
@@ -115,19 +129,26 @@ function SpaceDefenderState:enter(level_number)
 end
 
 function SpaceDefenderState:getLevelBonuses()
+    -- These bonuses might come from PlayerData later based on highest level reached
     local fire_rate = 1.0
     local damage = 1.0
     if self.current_level >= 3 then damage = 1.5 end
-    if self.current_level >= 5 then damage = 2.0; fire_rate = 2.0 end
+    if self.current_level >= 5 then damage = 2.0; fire_rate = 1.2 end -- Adjusted fire rate bonus
+    -- Example using PlayerData if available
+    -- local highest_level = self.player_data and self.player_data.space_defender_level or 1
+    -- fire_rate = 1 + (highest_level * 0.1)
+    -- damage = 1 + (highest_level * 0.2)
     return fire_rate, damage
 end
 
 function SpaceDefenderState:update(dt)
+    -- Only update if viewport is set (ensures enter finished successfully)
+    if not self.viewport then return end
+
     if self.view and self.view.update then self.view:update(dt) end
     if self.paused or self.level_complete or self.game_over then return end
 
     self:updatePlayer(dt)
-    -- Safety check bullet_system exists before updating
     if self.bullet_system then
         self.bullet_system:update(dt, self.player_ship, self.enemies, self.boss)
     end
@@ -135,32 +156,37 @@ function SpaceDefenderState:update(dt)
     if self.boss_active and self.boss then self:updateBoss(dt) end
     if not self.boss_active then self:updateWaveSpawning(dt) end
 
+    -- Check win/loss conditions
     if self.boss_active and self.boss and self.boss.hp <= 0 then self:onLevelComplete() end
     if self.player_ship and self.player_ship.hp <= 0 then self:onLevelFailed() end
 end
 
+
 function SpaceDefenderState:updatePlayer(dt)
     local ship = self.player_ship
     if not ship then return end
+    -- Use love.graphics dimensions for boundary checks
+    local game_width = love.graphics.getWidth()
+    local game_height = love.graphics.getHeight()
+
     if love.keyboard.isDown('left', 'a') then ship.x = ship.x - ship.speed * dt end
     if love.keyboard.isDown('right', 'd') then ship.x = ship.x + ship.speed * dt end
     if love.keyboard.isDown('up', 'w') then ship.y = ship.y - ship.speed * dt end
     if love.keyboard.isDown('down', 's') then ship.y = ship.y + ship.speed * dt end
-    ship.x = math.max(ship.width/2, math.min(love.graphics.getWidth() - ship.width/2, ship.x))
-    ship.y = math.max(ship.height/2, math.min(love.graphics.getHeight() - ship.height/2, ship.y))
+    ship.x = math.max(ship.width/2, math.min(game_width - ship.width/2, ship.x))
+    ship.y = math.max(ship.height/2, math.min(game_height - ship.height/2, ship.y))
 end
 
 function SpaceDefenderState:updateEnemies(dt)
+    local game_height = love.graphics.getHeight()
     for i = #self.enemies, 1, -1 do
         local enemy = self.enemies[i]
-        -- Safety check enemy exists
         if not enemy then goto continue_enemy_loop end
 
         enemy.y = enemy.y + enemy.speed * dt
         if enemy.pattern == "zigzag" then enemy.x = enemy.x + math.sin(enemy.y / 30) * 100 * dt
         elseif enemy.pattern == "sine" then enemy.x = enemy.x + math.cos(enemy.y / 50) * 80 * dt end
 
-        -- Safety check player_ship exists
         if self.player_ship then
             local p_x1 = self.player_ship.x - self.player_ship.width/2
             local p_y1 = self.player_ship.y - self.player_ship.height/2
@@ -174,7 +200,7 @@ function SpaceDefenderState:updateEnemies(dt)
             end
         end
 
-        if enemy.y > love.graphics.getHeight() + 20 then
+        if enemy.y > game_height + 20 then
             table.remove(self.enemies, i)
         end
         ::continue_enemy_loop::
@@ -184,14 +210,14 @@ end
 function SpaceDefenderState:updateBoss(dt)
     local boss = self.boss
     if not boss then return end
+    local game_width = love.graphics.getWidth()
     boss.x = boss.x + boss.vx * dt
-    if boss.x <= boss.width/2 or boss.x >= love.graphics.getWidth() - boss.width/2 then boss.vx = -boss.vx end
+    if boss.x <= boss.width/2 or boss.x >= game_width - boss.width/2 then boss.vx = -boss.vx end
     boss.attack_timer = boss.attack_timer - dt
     if boss.attack_timer <= 0 then
         self:bossAttack()
         boss.attack_timer = boss.attack_rate
     end
-    -- Safety check player_ship exists
     if self.player_ship then
         local p_x1 = self.player_ship.x - self.player_ship.width/2
         local p_y1 = self.player_ship.y - self.player_ship.height/2
@@ -205,17 +231,19 @@ end
 function SpaceDefenderState:bossAttack()
     if not self.boss or not self.current_level_data or not self.current_level_data.boss then return end
     local enemy_hp = self.current_level_data.boss.attack_power or 50
+    -- Example attack: Spawn enemies around boss
     for i = 1, 3 do
-        local angle = (i / 3) * math.pi * 2
+        local angle = (i / 3) * math.pi * 2 + (self.current_level * 0.1) -- Add variation
         self:spawnEnemy(
-            self.boss.x + math.cos(angle) * 50, self.boss.y,
-            "straight", enemy_hp, 150
+            self.boss.x + math.cos(angle) * 70, self.boss.y + math.sin(angle) * 30,
+            "straight", enemy_hp, 150 + self.current_level * 5 -- Scale speed slightly
         )
     end
 end
 
 function SpaceDefenderState:updateWaveSpawning(dt)
     if not self.current_level_data or not self.current_level_data.waves then return end
+    local game_width = love.graphics.getWidth()
 
     local waves = self.current_level_data.waves
     if self.current_wave > #waves then
@@ -231,7 +259,7 @@ function SpaceDefenderState:updateWaveSpawning(dt)
         if self.wave_spawn_timer <= 0 then
             local pattern = wave.patterns[math.random(#wave.patterns)] or "straight"
             self:spawnEnemy(
-                math.random(20, love.graphics.getWidth() - 20), -20,
+                math.random(20, game_width - 20), -20,
                 pattern, wave.enemy_hp, wave.enemy_speed
             )
             self.wave_enemies_spawned = self.wave_enemies_spawned + 1
@@ -263,16 +291,17 @@ end
 function SpaceDefenderState:spawnBoss()
     if not self.current_level_data or not self.current_level_data.boss then
         print("ERROR: Cannot spawn boss, data missing for level " .. self.current_level)
-        self:onLevelComplete()
+        self:onLevelComplete() -- Auto-complete if no boss data? Risky.
         return
     end
 
     print("BOSS SPAWNED!")
     self.boss_active = true
     local boss_data = self.current_level_data.boss
+    local game_width = love.graphics.getWidth()
 
     self.boss = {
-        x = love.graphics.getWidth() / 2, y = 100,
+        x = game_width / 2, y = 100,
         width = boss_data.width or 80,
         height = boss_data.height or 80,
         hp = boss_data.hp or 5000,
@@ -292,93 +321,104 @@ function SpaceDefenderState:takeDamage(amount)
 end
 
 function SpaceDefenderState:useBomb()
-    -- Safety check bullet_system
     if self.player_ship and self.player_ship.bombs > 0 and self.bullet_system then
         self.player_ship.bombs = self.player_ship.bombs - 1
-        self.bullet_system:clear()
+        self.bullet_system:clear() -- Clear player bullets
 
+        -- Damage enemies
         for i = #self.enemies, 1, -1 do
-            -- Safety check enemy exists before accessing properties
             local enemy = self.enemies[i]
             if enemy then
-                enemy.hp = enemy.hp - (enemy.max_hp * 0.5)
+                local damage = (enemy.max_hp * 0.5) + 50 -- Ensure some flat damage
+                enemy.hp = enemy.hp - damage
                 if enemy.hp <= 0 then table.remove(self.enemies, i) end
             end
         end
-        if self.boss then self.boss.hp = self.boss.hp - (self.boss.max_hp * 0.1) end
+        -- Damage boss
+        if self.boss then
+             local boss_damage = (self.boss.max_hp * 0.1) + 500
+             self.boss.hp = self.boss.hp - boss_damage
+        end
 
         print("BOMB! Remaining: " .. self.player_ship.bombs)
     end
 end
 
 function SpaceDefenderState:draw()
-    local FINAL_MVP_LEVEL = 5
-    local show_standard_victory = self.level_complete and self.current_level ~= FINAL_MVP_LEVEL
+    if not self.viewport then return end -- Don't draw if no viewport
 
-    -- Safety check bullet_system exists before drawing
+    love.graphics.push()
+    love.graphics.translate(self.viewport.x, self.viewport.y)
+    love.graphics.setScissor(self.viewport.x, self.viewport.y, self.viewport.width, self.viewport.height)
+
+    -- Draw background specific to the viewport
+    love.graphics.setColor(0,0,0.1) -- Dark space background
+    love.graphics.rectangle('fill', 0, 0, self.viewport.width, self.viewport.height)
+
+    -- View drawing needs to be aware of viewport dimensions
     if self.bullet_system then
-        self.view:draw(
+        local FINAL_MVP_LEVEL = 5 -- Define or get from config
+        self.view:drawWindowed(
             self.player_ship, self.enemies, self.boss, self.boss_active,
             self.bullet_system, self.current_wave,
             (self.current_level_data and #self.current_level_data.waves or 0),
             self.current_level, self.tokens_earned,
-            show_standard_victory,
-            self.game_over, self.paused
+            self.level_complete and self.current_level ~= FINAL_MVP_LEVEL,
+            self.game_over, self.paused,
+            self.viewport.width, self.viewport.height -- Pass dimensions
         )
     else
-        -- Draw an error message if bullet system failed to initialize
         love.graphics.setColor(1,0,0)
         love.graphics.print("Error: BulletSystem not loaded!", 10, 10)
     end
+
+    love.graphics.setScissor()
+    love.graphics.pop()
 end
+
 
 function SpaceDefenderState:keypressed(key)
     local handled = true
-    local FINAL_MVP_LEVEL = 5
-    
-    -- Handle level complete (but not final level)
+    local FINAL_MVP_LEVEL = 5 -- Use constant
+
     if self.level_complete and self.current_level ~= FINAL_MVP_LEVEL then
         if key == 'return' then
-            -- Progress to next level
-            local next_level = self.current_level + 1
-            print("Progressing to level " .. next_level)
-            self.state_machine:switch('space_defender', next_level)
+            return { type = "event", name = "next_level", level = self.current_level + 1 }
         elseif key == 'escape' then
-            -- Allow returning to desktop
-            self.state_machine:switch('desktop')
+             return { type = "close_window" }
         else
             handled = false
         end
-        return handled
+        return handled and { type = "content_interaction" } or false -- Return event object or false
     end
-    
-    -- Handle game over
+
     if self.game_over then
         if key == 'return' then
-            self.state_machine:switch('desktop')
+             return { type = "close_window" }
         else
             handled = false
         end
-        return handled
+        return handled and { type = "content_interaction" } or false
     end
-    
-    -- Final level completion is handled by automatic switch to completion state
+
     if self.level_complete and self.current_level == FINAL_MVP_LEVEL then
-        return false
+         -- Needs to signal completion state launch
+         return { type = "event", name = "show_completion" }
     end
 
     -- Normal gameplay controls
-    if key == 'escape' then 
-        self.state_machine:switch('desktop')
-    elseif key == 'p' then 
+    if key == 'escape' then
+        return { type = "close_window" }
+    elseif key == 'p' then
         self.paused = not self.paused
-    elseif key == 'x' or key == 'space' then 
+    elseif key == 'x' or key == 'space' then
         self:useBomb()
-    else 
-        handled = false 
+    else
+        handled = false
     end
-    
-    return handled
+
+    -- If handled by gameplay, return true, otherwise false or event object
+    return handled and { type = "content_interaction" } or false
 end
 
 function SpaceDefenderState:onLevelComplete()
@@ -387,7 +427,7 @@ function SpaceDefenderState:onLevelComplete()
     self.paused = true
 
     local base_reward = 500
-    local level_multiplier = self.current_level * 2
+    local level_multiplier = 1 + (self.current_level * 0.5) -- Adjusted multiplier
     self.tokens_earned = math.floor(base_reward * level_multiplier)
 
     self.player_data:addTokens(self.tokens_earned)
@@ -396,16 +436,9 @@ function SpaceDefenderState:onLevelComplete()
     if self.statistics then self.statistics:save() end
 
     print("Level " .. self.current_level .. " complete! Earned " .. self.tokens_earned .. " tokens")
-    print("Unlocked level: " .. self.player_data.space_defender_level)
+    print("Unlocked level progress up to: " .. self.player_data.space_defender_level)
 
-    local FINAL_MVP_LEVEL = 5
-    if self.current_level == FINAL_MVP_LEVEL then
-        print("Final level complete! Switching to completion state.")
-        self.state_machine:switch('completion')
-    else
-        print("Standard victory screen will be shown.")
-        -- Victory screen is shown by draw(), player presses ENTER to continue
-    end
+    -- Don't switch state here, rely on keypressed returning event
 end
 
 function SpaceDefenderState:onLevelFailed()
@@ -413,6 +446,20 @@ function SpaceDefenderState:onLevelFailed()
     self.game_over = true
     self.paused = true
     print("Game Over!")
+    -- Don't switch state here, rely on keypressed returning event
 end
+
+function SpaceDefenderState:mousepressed(x, y, button)
+    -- Translate coordinates if mouse interaction is added later
+    if not self.viewport then return false end
+    local local_x = x - self.viewport.x
+    local local_y = y - self.viewport.y
+    if local_x < 0 or local_x > self.viewport.width or local_y < 0 or local_y > self.viewport.height then
+        return false -- Click outside viewport
+    end
+    -- No mouse actions currently
+    return false
+end
+
 
 return SpaceDefenderState
