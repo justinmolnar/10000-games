@@ -86,6 +86,8 @@ end
 
 function CheatEngineState:update(dt)
     if not self.viewport then return end
+    
+    -- Delegate to view with properly translated coordinates
     self.view:update(dt, self.all_games, self.selected_game_id, self.available_cheats, self.viewport.width, self.viewport.height)
 end
 
@@ -164,21 +166,22 @@ end
 function CheatEngineState:mousepressed(x, y, button)
     if not self.viewport then return false end
 
-    local local_x = x - self.viewport.x
-    local local_y = y - self.viewport.y
+    -- x, y are already translated to local coordinates by DesktopState
+    -- No need to translate again
 
-    if local_x < 0 or local_x > self.viewport.width or local_y < 0 or local_y > self.viewport.height then
-        return false -- Click outside content area
+    -- Check if click is outside viewport bounds
+    if x < 0 or x > self.viewport.width or y < 0 or y > self.viewport.height then
+        return false
     end
 
-    local event = self.view:mousepressed(local_x, local_y, button, self.all_games, self.selected_game_id, self.available_cheats, self.viewport.width, self.viewport.height)
-    if not event then return false end -- View didn't handle click
+    local event = self.view:mousepressed(x, y, button, self.all_games, self.selected_game_id, self.available_cheats, self.viewport.width, self.viewport.height)
+    if not event then return false end
 
     if event.name == "select_game" then
         self.selected_game_id = event.id
         self.selected_game = self.game_data:getGame(event.id)
-        self:buildAvailableCheats() -- Build the new cheat list
-        self.cheat_scroll_offset = 0 -- Reset cheat scroll on game change
+        self:buildAvailableCheats()
+        self.cheat_scroll_offset = 0
 
     elseif event.name == "unlock_cheat_engine" then
         self:unlockCheatEngine()
@@ -187,10 +190,10 @@ function CheatEngineState:mousepressed(x, y, button)
         self:purchaseCheat(event.id)
 
     elseif event.name == "launch_game" then
-        self:launchGame() -- Still uses state_machine switch, this is correct
+        self:launchGame()
     end
 
-    return { type = "content_interaction" } -- Handled
+    return { type = "content_interaction" }
 end
 
 -- Calculates the scaled cost for a base cost and game

@@ -28,9 +28,39 @@ function LauncherView:init(controller, player_data, game_data)
 end
 
 function LauncherView:update(dt)
-    -- Update hovered game based on mouse position
+    -- Get mouse position relative to controller's viewport
+    if not self.controller.viewport then
+        self.hovered_game_id = nil
+        return
+    end
+    
     local mx, my = love.mouse.getPosition()
-    self.hovered_game_id = self:getGameAtPosition(mx, my)
+    local view_x = self.controller.viewport.x
+    local view_y = self.controller.viewport.y
+    local local_mx = mx - view_x
+    local local_my = my - view_y
+    
+    -- Check if mouse is within viewport
+    if local_mx < 0 or local_mx > self.controller.viewport.width or
+       local_my < 0 or local_my > self.controller.viewport.height then
+        self.hovered_game_id = nil
+        return
+    end
+    
+    -- Calculate list dimensions
+    local list_y = 50
+    local list_h = self.controller.viewport.height - list_y - 10
+    local list_x = 10
+    local list_width = (self.detail_panel_open and self.selected_game) and 
+                       (self.controller.viewport.width - self.detail_panel_width - 20) or 
+                       (self.controller.viewport.width - 20)
+    
+    -- Update hovered game
+    self.hovered_game_id = self:getGameAtPosition(
+        local_mx, local_my,
+        self.controller.filtered_games,
+        list_x, list_y, list_width, list_h
+    )
 end
 
 function LauncherView:getVisibleGameCount(list_height)

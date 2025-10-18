@@ -105,15 +105,13 @@ function LauncherState:draw()
 end
 
 function LauncherState:keypressed(key)
-    -- Key events are not relative to viewport, handle normally
-    local handled = true -- Assume handled unless proven otherwise
+    local handled = true
     if key == 'up' or key == 'w' then
         local old_index = self.view.selected_index
         self.view.selected_index = math.max(1, self.view.selected_index - 1)
         if self.view.selected_index ~= old_index and self.view.selected_index <= #self.filtered_games then
             self.view.selected_game = self.filtered_games[self.view.selected_index]
         end
-        -- Adjust scroll if selection goes out of view
         if self.view.selected_index < self.view.scroll_offset then
             self.view.scroll_offset = self.view.selected_index
         end
@@ -123,8 +121,7 @@ function LauncherState:keypressed(key)
          if self.view.selected_index ~= old_index and self.view.selected_index <= #self.filtered_games then
             self.view.selected_game = self.filtered_games[self.view.selected_index]
         end
-         -- Adjust scroll if selection goes out of view
-        local visible_games = self.view:getVisibleGameCount(self.viewport and self.viewport.height or 600)
+         local visible_games = self.view:getVisibleGameCount(self.viewport and self.viewport.height or 600)
         if self.view.selected_index >= self.view.scroll_offset + visible_games then
              self.view.scroll_offset = self.view.selected_index - visible_games + 1
         end
@@ -136,13 +133,11 @@ function LauncherState:keypressed(key)
             self.view.selected_game = self.filtered_games[self.view.selected_index]
         end
     elseif key == 'escape' then
-        -- Only close detail panel, don't switch state
+        -- Close detail panel first if open, otherwise close window
         if self.view.detail_panel_open then
             self.view.detail_panel_open = false
         else
-            -- If view/state had other modals, handle closing them here
-            -- Otherwise, do nothing (window close button handles closing)
-            handled = false -- Let window manager handle close if desired via Alt+F4 later
+            return { type = "close_window" }
         end
     elseif key >= '1' and key <= '9' or key == '0' then
         local filters = {"all", "action", "puzzle", "arcade", "locked", "unlocked", "completed", "easy", "medium", "hard"}
@@ -155,7 +150,8 @@ function LauncherState:keypressed(key)
     else
         handled = false
     end
-    return handled
+    
+    return handled and { type = "content_interaction" } or false
 end
 
 function LauncherState:selectGame()
@@ -232,35 +228,29 @@ function LauncherState:showGameDetails(game_id)
     self.view.detail_panel_open = true
 end
 
-function LauncherState:mousepressed(x, y, button)
-    if not self.viewport then return false end
+function LauncherState:mousepressed(x, y, button, filtered_games, viewport_width, viewport_height)
+    if button ~= 1 then return nil end
 
-    -- Translate coordinates
-    local local_x = x - self.viewport.x
-    local local_y = y - self.viewport.y
-
-    -- Check if click is outside viewport bounds (relative to window)
-    if local_x < 0 or local_x > self.viewport.width or local_y < 0 or local_y > self.viewport.height then
-        return false -- Click was outside this window's content area
+    -- x, y are already translated to local coordinates by DesktopState
+    -- Check if click is outside viewport bounds
+    if x < 0 or x > self.viewport.width or y < 0 or y > self.viewport.height then
+        return false
     end
 
-    -- Delegate input handling to the view using local coordinates
-    local event = self.view:mousepressed(local_x, local_y, button, self.filtered_games, self.viewport.width, self.viewport.height)
+    -- Delegate to view, which expects local coordinates
+    local event = self.view:mousepressed(x, y, button, self.filtered_games, self.viewport.width, self.viewport.height)
 
-    if not event then return false end -- View didn't handle it
+    if not event then return false end
 
-    -- Handle the event returned by the view
     if event.name == "filter_changed" then
         self:updateFilter(event.category)
     elseif event.name == "launch_game" then
-        self:launchGame(event.id) -- This still switches state machine, which is correct
+        self:launchGame(event.id)
     elseif event.name == "game_selected" then
         print("Selected game: " .. event.game.display_name)
     end
 
-    -- Return event object for DesktopState (or nil if view didn't handle)
-    -- Add a type for window closing if needed, e.g., if a back button exists
-    return { type = "content_interaction" } -- Signify content was interacted with
+    return { type = "content_interaction" }
 end
 
 function LauncherState:launchSpaceDefender()

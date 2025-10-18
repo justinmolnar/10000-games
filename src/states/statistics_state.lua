@@ -51,18 +51,16 @@ end
 
 function StatisticsState:mousepressed(x, y, button)
     if not self.viewport then return false end
-    local local_x = x - self.viewport.x
-    local local_y = y - self.viewport.y
-    if local_x < 0 or local_x > self.viewport.width or local_y < 0 or local_y > self.viewport.height then
-        return false -- Click outside content area
+    
+    -- x, y are already translated to local coordinates by DesktopState
+    if x < 0 or x > self.viewport.width or y < 0 or y > self.viewport.height then
+        return false
     end
 
-    local event = self.view:mousepressed(local_x, local_y, button) -- Pass local coords
+    local event = self.view:mousepressed(x, y, button)
     if event and event.name == "back" then
-        -- Don't switch state, signal close
         return { type = "close_window" }
     end
-    -- Return true if view handled it (even if no specific action taken by state)
     return event and { type = "content_interaction" } or false
 end
 

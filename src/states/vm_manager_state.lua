@@ -115,8 +115,8 @@ function VMManagerState:update(dt)
     -- Update VM manager (generates tokens)
     self.vm_manager:update(dt, self.player_data, self.game_data)
 
-    -- Update view (handles hover states)
-    if self.viewport then -- Only update view if viewport exists
+    -- Update view (handles hover states) - view handles coordinate translation internally
+    if self.viewport then
        self.view:update(dt, self.viewport.width, self.viewport.height)
     end
 end
@@ -154,20 +154,17 @@ end
 function VMManagerState:mousepressed(x, y, button)
      if not self.viewport then return false end
 
-    local local_x = x - self.viewport.x
-    local local_y = y - self.viewport.y
-
-    -- Check bounds first
-    if local_x < 0 or local_x > self.viewport.width or local_y < 0 or local_y > self.viewport.height then
-        return false -- Click outside this window's content
+    -- x, y are already translated to local coordinates by DesktopState
+    -- Check bounds
+    if x < 0 or x > self.viewport.width or y < 0 or y > self.viewport.height then
+        return false
     end
 
-    -- Delegate input handling to the view, ALWAYS pass filtered_games
-    local event = self.view:mousepressed(local_x, local_y, button, self.filtered_games, self.viewport.width, self.viewport.height)
+    -- Delegate to view with local coordinates
+    local event = self.view:mousepressed(x, y, button, self.filtered_games, self.viewport.width, self.viewport.height)
 
-    if not event then return false end -- View didn't handle it
+    if not event then return false end
 
-    -- Handle events returned by the view
     if event.name == "assign_game" then
         self:assignGameToSlot(event.game_id, event.slot_index)
     elseif event.name == "remove_game" then
@@ -177,13 +174,13 @@ function VMManagerState:mousepressed(x, y, button)
     elseif event.name == "purchase_upgrade" then
         self:purchaseUpgrade(event.upgrade_type)
     elseif event.name == "modal_opened" then
-        self:updateGameList() -- Ensure list is fresh when modal opens
+        self:updateGameList()
         print("Game selection opened for slot " .. event.slot_index)
     elseif event.name == "modal_closed" then
         print("Game selection closed")
     end
 
-    return { type = "content_interaction" } -- Signify content handled input
+    return { type = "content_interaction" }
 end
 
 function VMManagerState:wheelmoved(x, y)

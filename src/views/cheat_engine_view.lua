@@ -38,6 +38,7 @@ function CheatEngineView:updateLayout(viewport_width, viewport_height)
 end
 
 function CheatEngineView:update(dt, games, selected_game_id, available_cheats, viewport_width, viewport_height)
+    -- Get mouse position relative to the controller's viewport
     local mx, my = love.mouse.getPosition()
     local view_x = self.controller.viewport and self.controller.viewport.x or 0
     local view_y = self.controller.viewport and self.controller.viewport.y or 0
@@ -47,6 +48,11 @@ function CheatEngineView:update(dt, games, selected_game_id, available_cheats, v
     self.hovered_game_id = nil
     self.hovered_cheat_id = nil
     self.hovered_button_id = nil
+
+    -- Only check hover if mouse is within viewport bounds
+    if local_mx < 0 or local_mx > viewport_width or local_my < 0 or local_my > viewport_height then
+        return
+    end
 
     -- Check game list hover
     local visible_games = self:getVisibleGameCount(viewport_height)
@@ -66,7 +72,7 @@ function CheatEngineView:update(dt, games, selected_game_id, available_cheats, v
     -- Check detail panel hover
     if selected_game_id then
         local game = self.controller.selected_game
-        if not game then return end -- Guard against missing game data
+        if not game then return end
 
         local game_is_unlocked = self.controller.player_data:isGameUnlocked(selected_game_id)
         local ce_is_unlocked = self.controller.player_data:isCheatEngineUnlocked(selected_game_id)
@@ -84,7 +90,7 @@ function CheatEngineView:update(dt, games, selected_game_id, available_cheats, v
             end
         else
             -- Check cheat list purchase button hover
-            local available_height_for_cheats = self.detail_h - 160 -- Header, title, launch button
+            local available_height_for_cheats = self.detail_h - 160
             local cheat_item_total_height = self.item_h + 20
             local visible_cheats = math.floor(available_height_for_cheats / cheat_item_total_height)
             local cheat_scroll_offset = self.controller.cheat_scroll_offset or 0
@@ -104,11 +110,10 @@ function CheatEngineView:update(dt, games, selected_game_id, available_cheats, v
                            self.hovered_cheat_id = cheat.id
                            self.hovered_button_id = "purchase_cheat"
                         end
-                        break -- Found hovered button in cheat list
+                        break
                     end
                  end
             end
-
 
             -- Check launch button hover
             local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + self.detail_h - 50, self.detail_w - 20, 40
