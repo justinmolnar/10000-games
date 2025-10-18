@@ -70,7 +70,8 @@ function LauncherView.drawGameList(x, y, w, h, games, selected_index, hovered_ga
         local game_data = games[i]
         if game_data then
             local by = y + (i - start_index) * (button_height + button_padding)
-            LauncherView.drawGameIcon(x, by, w, button_height, game_data, i == selected_index, hovered_game == game_data.id)
+            LauncherView.drawGameIcon(x, by, w, button_height, game_data, i == selected_index, 
+                hovered_game == game_data.id, launcher_state.context.player_data, launcher_state.context.game_data)
         end
     end
     
@@ -85,11 +86,12 @@ function LauncherView.drawGameList(x, y, w, h, games, selected_index, hovered_ga
     love.graphics.print(string.format("Showing %d-%d of %d games", start_index, end_index, #games), x, y + h + 5, 0, 0.9, 0.9)
 end
 
-function LauncherView.drawGameIcon(x, y, w, h, game_data, selected, hovered)
-    local is_unlocked = game.player_data:isGameUnlocked(game_data.id)
-    local perf = game.player_data:getGamePerformance(game_data.id)
+function LauncherView.drawGameIcon(x, y, w, h, game_data, selected, hovered, player_data, game_data_obj)
+    local is_unlocked = player_data:isGameUnlocked(game_data.id)
+    local perf = player_data:getGamePerformance(game_data.id)
     local is_completed = perf ~= nil
     local is_auto_completed = is_completed and perf.auto_completed
+    
     if selected then
         love.graphics.setColor(0.3, 0.3, 0.7)
     elseif hovered then
@@ -100,6 +102,7 @@ function LauncherView.drawGameIcon(x, y, w, h, game_data, selected, hovered)
     love.graphics.rectangle('fill', x, y, w, h)
     love.graphics.setColor(0.5, 0.5, 0.5)
     love.graphics.rectangle('line', x, y, w, h)
+    
     local badge_x, badge_y = x + 5, y + 5
     if is_auto_completed then
         love.graphics.setColor(0.5, 0.5, 1)
@@ -117,16 +120,20 @@ function LauncherView.drawGameIcon(x, y, w, h, game_data, selected, hovered)
         love.graphics.setColor(1, 1, 1)
         love.graphics.print("L", badge_x + 3, badge_y + 2, 0, 0.8, 0.8)
     end
+    
     love.graphics.setColor(1, 1, 1)
     love.graphics.print(game_data.display_name, x + 25, y + 5, 0, 1.0, 1.0)
+    
     local difficulty = game_data.difficulty_level or 1
     local diff_text, diff_color = "Easy", {0, 1, 0}
     if difficulty > 6 then diff_text, diff_color = "Hard", {1, 0, 0}
     elseif difficulty > 3 then diff_text, diff_color = "Medium", {1, 1, 0} end
     love.graphics.setColor(diff_color)
     love.graphics.print("Difficulty: " .. diff_text .. " (" .. difficulty .. ")", x + 25, y + 25, 0, 0.8, 0.8)
+    
     love.graphics.setColor(0.8, 0.8, 0.8)
     love.graphics.print(game_data.formula_string, x + 25, y + 40, 0, 0.7, 0.7)
+    
     if is_completed and perf then
         love.graphics.setColor(0, 1, 0)
         love.graphics.print("Power: " .. math.floor(perf.best_score), x + w - 150, y + 5)
@@ -134,6 +141,7 @@ function LauncherView.drawGameIcon(x, y, w, h, game_data, selected, hovered)
         love.graphics.setColor(1, 0.5, 0)
         love.graphics.print("Cost: " .. game_data.unlock_cost .. " tokens", x + w - 150, y + 5)
     end
+    
     love.graphics.setColor(1, 1, 0)
     love.graphics.print(string.format("x%.1f", game_data.variant_multiplier), x + w - 50, y + h / 2 - 8, 0, 1.2, 1.2)
 end
@@ -143,10 +151,12 @@ function LauncherView.drawGameDetailPanel(x, y, w, h, game_data, launcher_state)
     love.graphics.rectangle('fill', x, y, w, h)
     love.graphics.setColor(0.5, 0.5, 0.5)
     love.graphics.rectangle('line', x, y, w, h)
+    
     local line_y, line_height = y + 10, 20
     love.graphics.setColor(1, 1, 1)
     love.graphics.print(game_data.display_name, x + 10, line_y, 0, 1.2, 1.2)
     line_y = line_y + line_height * 1.5
+    
     local difficulty = game_data.difficulty_level or 1
     local diff_text, diff_color = "Easy", {0, 1, 0}
     if difficulty > 6 then diff_text, diff_color = "HARD", {1, 0, 0}
@@ -156,15 +166,18 @@ function LauncherView.drawGameDetailPanel(x, y, w, h, game_data, launcher_state)
     love.graphics.setColor(diff_color)
     love.graphics.print(diff_text .. " (" .. difficulty .. ")", x + 90, line_y)
     line_y = line_y + line_height
+    
     love.graphics.setColor(0.8, 0.8, 0.8)
     love.graphics.print("Tier: " .. game_data.tier, x + 10, line_y)
     line_y = line_y + line_height
-    local is_unlocked = game.player_data:isGameUnlocked(game_data.id)
+    
+    local is_unlocked = launcher_state.context.player_data:isGameUnlocked(game_data.id)
     if not is_unlocked then
         love.graphics.setColor(1, 0.5, 0)
         love.graphics.print("Unlock Cost: " .. game_data.unlock_cost .. " tokens", x + 10, line_y)
         line_y = line_y + line_height
     end
+    
     line_y = line_y + 10
     love.graphics.setColor(1, 1, 0)
     love.graphics.print("POWER FORMULA:", x + 10, line_y, 0, 1.1, 1.1)
@@ -172,7 +185,8 @@ function LauncherView.drawGameDetailPanel(x, y, w, h, game_data, launcher_state)
     love.graphics.setColor(1, 1, 1)
     love.graphics.print(game_data.formula_string, x + 10, line_y, 0, 0.9, 0.9)
     line_y = line_y + line_height * 1.5
-    local perf = game.player_data:getGamePerformance(game_data.id)
+    
+    local perf = launcher_state.context.player_data:getGamePerformance(game_data.id)
     if perf then
         love.graphics.setColor(0, 1, 0)
         love.graphics.print("Your Best Performance:", x + 10, line_y)
@@ -200,6 +214,7 @@ function LauncherView.drawGameDetailPanel(x, y, w, h, game_data, launcher_state)
         love.graphics.print("Not yet played", x + 10, line_y)
         line_y = line_y + line_height
     end
+    
     line_y = line_y + 10
     love.graphics.setColor(0.8, 0.8, 1)
     love.graphics.print("Auto-Play Estimate:", x + 10, line_y)
@@ -210,11 +225,13 @@ function LauncherView.drawGameDetailPanel(x, y, w, h, game_data, launcher_state)
     line_y = line_y + line_height
     love.graphics.print("Token Rate: ~" .. math.floor(auto_power) .. "/min", x + 10, line_y, 0, 0.9, 0.9)
     line_y = line_y + line_height
+    
     if difficulty > 8 then
         line_y = line_y + 10
         love.graphics.setColor(1, 0, 0)
         love.graphics.print("WARNING: HIGH RISK!", x + 10, line_y, 0, 0.9, 0.9)
     end
+    
     local button_y = y + h - 45
     local button_text = is_unlocked and "PLAY GAME" or "UNLOCK & PLAY"
     love.graphics.setColor(0, 0.5, 0)

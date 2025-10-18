@@ -1,7 +1,8 @@
 local Object = require('class')
 local MinigameState = Object:extend('MinigameState')
 
-function MinigameState:init()
+function MinigameState:init(context)
+    self.context = context
     self.current_game = nil
     self.game_data = nil
     self.completion_screen_visible = false
@@ -23,7 +24,7 @@ function MinigameState:enter(game_data)
     self.current_game = GameClass:new(game_data)
     
     -- Get previous best performance
-    local perf = game.player_data:getGamePerformance(game_data.id)
+    local perf = self.context.player_data:getGamePerformance(game_data.id)
     self.previous_best = perf and perf.best_score or 0
     
     -- Reset completion screen
@@ -142,71 +143,29 @@ function MinigameState:onGameComplete()
     
     -- Award tokens based on performance
     local tokens_earned = math.floor(self.current_performance)
-    game.player_data:addTokens(tokens_earned)
+    self.context.player_data:addTokens(tokens_earned)
     print("Awarded " .. tokens_earned .. " tokens for completing " .. self.game_data.display_name)
     
     -- Update player performance
-    local is_new_best = game.player_data:updateGamePerformance(
+    local is_new_best = self.context.player_data:updateGamePerformance(
         self.game_data.id,
         self.current_game:getMetrics(),
         self.current_performance
     )
     
-    -- Check for auto-completion trigger
+    -- Check for auto-completion trigger using progression manager
     if is_new_best then
-        self:checkAutoCompletion()
+        local ProgressionManager = require('models.progression_manager')
+        local progression = ProgressionManager:new()
+        
+        -- Pass game_data as part of context
+        local context = {game_data = self.context.game_data}
+        self.auto_completed_games, self.auto_complete_power = 
+            progression:checkAutoCompletion(self.game_data.id, self.game_data, self.context.player_data)
     end
     
     -- Save game
-    game.save_manager.save(game.player_data)
-end
-
-function MinigameState:checkAutoCompletion()
-    -- Only trigger if this is a variant (not base game)
-    if not self.game_data.variant_of then return end
-    
-    -- Get the variant number from the ID
-    local variant_num = tonumber(self.game_data.id:match("_(%d+)$"))
-    if not variant_num or variant_num <= 1 then return end
-    
-    self.auto_completed_games = {}
-    self.auto_complete_power = 0
-    
-    -- Auto-complete all easier variants of the same base game
-    local base_id = self.game_data.variant_of
-    
-    for i = 1, variant_num - 1 do
-        local variant_id = base_id:gsub("_1$", "_" .. i)
-        if variant_id == base_id and i > 1 then
-            -- Handle base game pattern
-            variant_id = base_id:gsub("_1$", "") .. "_" .. i
-        end
-        
-        local variant = game.game_data:getGame(variant_id)
-        if variant then
-            -- Check if not already completed manually
-            local existing_perf = game.player_data:getGamePerformance(variant_id)
-            if not existing_perf then
-                -- Calculate baseline performance (70% of auto-play baseline)
-                local auto_metrics = variant.auto_play_performance
-                local auto_power = variant.formula_function(auto_metrics)
-                
-                -- Store as completed with auto-completion flag
-                game.player_data:updateGamePerformance(
-                    variant_id,
-                    auto_metrics,
-                    auto_power
-                )
-                
-                self.auto_complete_power = self.auto_complete_power + auto_power
-                table.insert(self.auto_completed_games, {
-                    id = variant_id,
-                    name = variant.display_name,
-                    power = auto_power
-                })
-            end
-        end
-    end
+    self.context.save_manager.save(self.context.player_data)
 end
 
 function MinigameState:keypressed(key)
@@ -215,13 +174,13 @@ function MinigameState:keypressed(key)
             -- Replay the game
             self:enter(self.game_data)
         elseif key == 'escape' then
-            -- Return to launcher
-            game.state_machine:switch('launcher')
+            -- Return to desktop
+            self.context.state_machine:switch('desktop')
         end
     else
         if key == 'escape' then
-            -- Return to launcher (with confirmation would be better)
-            game.state_machine:switch('launcher')
+            -- Return to desktop
+            self.context.state_machine:switch('desktop')
         else
             -- Forward to game
             if self.current_game and self.current_game.keypressed then

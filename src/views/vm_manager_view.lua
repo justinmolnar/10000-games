@@ -15,7 +15,7 @@ function VMManagerView.drawTokensPerMinute(x, y, rate)
     love.graphics.print(string.format("%.1f tokens/minute", rate), x + 200, y, 0, 1.2, 1.2)
 end
 
-function VMManagerView.drawVMSlot(x, y, w, h, slot, selected, hovered)
+function VMManagerView.drawVMSlot(x, y, w, h, slot, selected, hovered, context)
     -- Background
     if selected then
         love.graphics.setColor(0.3, 0.3, 0.7)
@@ -35,7 +35,7 @@ function VMManagerView.drawVMSlot(x, y, w, h, slot, selected, hovered)
     love.graphics.print("VM " .. slot.slot_index, x + 5, y + 5, 0, 0.8, 0.8)
     
     if slot.active and slot.assigned_game_id then
-        local game_data = game.game_data:getGame(slot.assigned_game_id)
+        local game_data = context.game_data:getGame(slot.assigned_game_id)
         
         if game_data then
             -- Game name
@@ -76,7 +76,7 @@ function VMManagerView.drawVMSlot(x, y, w, h, slot, selected, hovered)
     end
 end
 
-function VMManagerView.drawGameSelectionModal(games, scroll_offset, state)
+function VMManagerView.drawGameSelectionModal(games, scroll_offset, state, context)
     -- Modal background
     love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
@@ -107,7 +107,7 @@ function VMManagerView.drawGameSelectionModal(games, scroll_offset, state)
         local item_y = modal_y + 50 + (i - start_index) * item_height
         
         -- Check if already assigned
-        local is_assigned = game.vm_manager:isGameAssigned(game_data.id)
+        local is_assigned = context.vm_manager:isGameAssigned(game_data.id)
         
         -- Background
         if is_assigned then
@@ -125,7 +125,7 @@ function VMManagerView.drawGameSelectionModal(games, scroll_offset, state)
         end
         love.graphics.print(game_data.display_name, modal_x + 15, item_y + 5)
         
-        local perf = game.player_data:getGamePerformance(game_data.id)
+        local perf = context.player_data:getGamePerformance(game_data.id)
         if perf then
             if is_assigned then
                 love.graphics.setColor(0.4, 0.4, 0.4)
@@ -139,7 +139,6 @@ function VMManagerView.drawGameSelectionModal(games, scroll_offset, state)
                 love.graphics.setColor(1, 0, 0)
                 love.graphics.print("[IN USE]", modal_x + modal_w - 80, item_y + 20, 0, 0.8, 0.8)
             else
-                -- Show tokens per minute (best_score per 60 second cycle)
                 love.graphics.setColor(0.7, 0.7, 0.7)
                 love.graphics.print(math.floor(perf.best_score) .. "/min", modal_x + modal_w - 80, item_y + 20, 0, 0.8, 0.8)
             end

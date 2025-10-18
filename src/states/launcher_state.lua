@@ -1,7 +1,8 @@
 local Object = require('class')
 local LauncherState = Object:extend('LauncherState')
 
-function LauncherState:init()
+function LauncherState:init(context)
+    self.context = context
     self.all_games = {}
     self.filtered_games = {}
     self.selected_category = "all"
@@ -23,8 +24,11 @@ function LauncherState:init()
 end
 
 function LauncherState:enter()
+    -- Initialize filtered_games immediately to prevent nil errors
+    self.filtered_games = {}
+    
     -- Load games from GameData
-    self.all_games = game.game_data:getAllGames()
+    self.all_games = self.context.game_data:getAllGames()
     
     -- Sort by ID for consistent ordering
     table.sort(self.all_games, function(a, b)
@@ -54,11 +58,11 @@ function LauncherState:updateFilter(category)
         elseif category == "action" or category == "puzzle" or category == "arcade" then
             include = (game_data.category == category)
         elseif category == "locked" then
-            include = not game.player_data:isGameUnlocked(game_data.id)
+            include = not self.context.player_data:isGameUnlocked(game_data.id)
         elseif category == "unlocked" then
-            include = game.player_data:isGameUnlocked(game_data.id)
+            include = self.context.player_data:isGameUnlocked(game_data.id)
         elseif category == "completed" then
-            include = game.player_data:getGamePerformance(game_data.id) ~= nil
+            include = self.context.player_data:getGamePerformance(game_data.id) ~= nil
         elseif category == "easy" then
             include = (game_data.difficulty_level or 1) <= 3
         elseif category == "medium" then
@@ -100,7 +104,7 @@ function LauncherState:draw()
     LauncherView.drawCategoryButtons(10, 50, self.selected_category, self)
     
     -- Draw token counter
-    LauncherView.drawTokenCounter(love.graphics.getWidth() - 200, 10, game.player_data.tokens)
+    LauncherView.drawTokenCounter(love.graphics.getWidth() - 200, 10, self.context.player_data.tokens)
     
     -- Draw game list
     local list_width = self.detail_panel_open and (love.graphics.getWidth() - self.detail_panel_width - 20) or (love.graphics.getWidth() - 20)
@@ -137,7 +141,7 @@ function LauncherState:keypressed(key)
         if self.detail_panel_open then
             self.detail_panel_open = false
         else
-            love.event.quit()
+            self.context.state_machine:switch('desktop')
         end
     elseif key >= '1' and key <= '9' or key == '0' then
         -- Quick filter shortcuts (1-0 for 10 categories)
@@ -146,12 +150,6 @@ function LauncherState:keypressed(key)
         if filters[index] then
             self:updateFilter(filters[index])
         end
-    elseif key == 'f1' then
-        -- Quick launch Space Defender
-        self:launchSpaceDefender()
-    elseif key == 'f2' then
-        -- Quick launch VM Manager
-        game.state_machine:switch('vm_manager')
     end
 end
 
@@ -165,23 +163,23 @@ function LauncherState:selectGame()
 end
 
 function LauncherState:launchGame(game_id)
-    local game_data = game.game_data:getGame(game_id)
+    local game_data = self.context.game_data:getGame(game_id)
     if not game_data then return end
     
-    local is_unlocked = game.player_data:isGameUnlocked(game_id)
+    local is_unlocked = self.context.player_data:isGameUnlocked(game_id)
     
     if not is_unlocked then
         -- Show unlock prompt
         self:showUnlockPrompt(game_data)
     else
         -- Launch game
-        game.state_machine:switch('minigame', game_data)
+        self.context.state_machine:switch('minigame', game_data)
     end
 end
 
 function LauncherState:showUnlockPrompt(game_data)
     local cost = game_data.unlock_cost
-    local has_tokens = game.player_data:hasTokens(cost)
+    local has_tokens = self.context.player_data:hasTokens(cost)
     local difficulty = game_data.difficulty_level or 1
     
     -- Build prompt message
@@ -201,7 +199,7 @@ function LauncherState:showUnlockPrompt(game_data)
         "Unlock %s?\n\nCost: %d tokens (You have: %d)\nDifficulty: %s\nMultiplier: %.1fx%s",
         game_data.display_name,
         cost,
-        game.player_data.tokens,
+        self.context.player_data.tokens,
         difficulty_text,
         game_data.variant_multiplier,
         warning
@@ -219,32 +217,32 @@ function LauncherState:showUnlockPrompt(game_data)
     
     if pressed == 1 then
         -- User confirmed
-        if game.player_data:spendTokens(cost) then
-            game.player_data:unlockGame(game_data.id)
-            game.save_manager.save(game.player_data)
+        if self.context.player_data:spendTokens(cost) then
+            self.context.player_data:unlockGame(game_data.id)
+            self.context.save_manager.save(self.context.player_data)
             print("Unlocked: " .. game_data.display_name)
             
             -- Launch immediately
-            game.state_machine:switch('minigame', game_data)
+            self.context.state_machine:switch('minigame', game_data)
         end
     end
 end
 
 function LauncherState:showGameDetails(game_id)
-    self.selected_game = game.game_data:getGame(game_id)
+    self.selected_game = self.context.game_data:getGame(game_id)
     self.detail_panel_open = true
 end
 
 function LauncherState:getGameAtPosition(x, y)
+    -- Safety check for filtered_games
+    if not self.filtered_games or #self.filtered_games == 0 then
+        return nil
+    end
+    
     -- Check if mouse is over any game in the list
     local list_width = self.detail_panel_open and (love.graphics.getWidth() - self.detail_panel_width - 20) or (love.graphics.getWidth() - 20)
     
     if x < 10 or x > 10 + list_width or y < 90 then
-        return nil
-    end
-    
-    -- Safety check for filtered_games
-    if not self.filtered_games or #self.filtered_games == 0 then
         return nil
     end
     
@@ -326,8 +324,7 @@ end
 
 function LauncherState:launchSpaceDefender()
     -- Launch Space Defender level 1 by default
-    -- Later we can add level selection
-    game.state_machine:switch('space_defender', 1)
+    self.context.state_machine:switch('space_defender', 1)
 end
 
 function LauncherState:wheelmoved(x, y)

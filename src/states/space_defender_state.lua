@@ -3,7 +3,8 @@
 local Object = require('class')
 local SpaceDefenderState = Object:extend('SpaceDefenderState')
 
-function SpaceDefenderState:init()
+function SpaceDefenderState:init(context)
+    self.context = context
     self.current_level = 1
     self.player_ship = nil
     self.enemies = {}
@@ -48,7 +49,7 @@ function SpaceDefenderState:enter(level_number)
     self.bullet_system:setGlobalMultipliers(fire_rate_mult, damage_mult)
     
     -- Load bullets from completed games
-    self.bullet_system:loadBulletTypes(game.player_data, game.game_data)
+    self.bullet_system:loadBulletTypes(self.context.player_data, self.context.game_data)
     
     -- Initialize waves
     self:createWaves()
@@ -221,7 +222,7 @@ function SpaceDefenderState:bossAttack()
             self.boss.x + math.cos(angle) * 50,
             self.boss.y,
             "straight",
-            self.boss.hp / 10,  -- Minion HP based on boss HP
+            self.boss.hp / 10,
             150
         )
     end
@@ -273,7 +274,7 @@ function SpaceDefenderState:spawnEnemy(x, y, pattern, hp, speed)
         max_hp = hp,
         speed = speed,
         pattern = pattern,
-        damaged = false  -- Track if enemy has been hit
+        damaged = false
     })
 end
 
@@ -307,144 +308,61 @@ function SpaceDefenderState:useBomb()
         self.bullet_system:clear()
         self.enemies = {}
         if self.boss then
-            self.boss.hp = self.boss.hp - (self.boss.max_hp * 0.1)  -- 10% damage to boss
+            self.boss.hp = self.boss.hp - (self.boss.max_hp * 0.1)
         end
         print("BOMB! Remaining: " .. self.player_ship.bombs)
     end
 end
 
 function SpaceDefenderState:draw()
+    local SpaceDefenderView = require('views.space_defender_view')
+    
     -- Draw player ship
-    love.graphics.setColor(0, 1, 0)
-    love.graphics.rectangle('fill', 
-        self.player_ship.x - self.player_ship.width/2,
-        self.player_ship.y - self.player_ship.height/2,
-        self.player_ship.width, self.player_ship.height)
+    SpaceDefenderView.drawPlayerShip(self.player_ship)
     
     -- Draw enemies
-    for _, enemy in ipairs(self.enemies) do
-        love.graphics.setColor(1, 0, 0)
-        love.graphics.rectangle('fill', enemy.x - enemy.width/2, enemy.y - enemy.height/2,
-            enemy.width, enemy.height)
-        
-        -- Draw HP bar above enemy if damaged
-        if enemy.damaged then
-            local bar_width = enemy.width
-            local bar_height = 4
-            local bar_x = enemy.x - bar_width/2
-            local bar_y = enemy.y - enemy.height/2 - bar_height - 2
-            
-            -- Background (red)
-            love.graphics.setColor(0.3, 0, 0)
-            love.graphics.rectangle('fill', bar_x, bar_y, bar_width, bar_height)
-            
-            -- HP (green)
-            love.graphics.setColor(0, 1, 0)
-            local hp_percent = enemy.hp / enemy.max_hp
-            love.graphics.rectangle('fill', bar_x, bar_y, bar_width * hp_percent, bar_height)
-        end
-    end
+    SpaceDefenderView.drawEnemies(self.enemies)
     
     -- Draw boss
     if self.boss_active and self.boss then
-        love.graphics.setColor(0.5, 0, 0.5)
-        love.graphics.rectangle('fill',
-            self.boss.x - self.boss.width/2, self.boss.y - self.boss.height/2,
-            self.boss.width, self.boss.height)
-        
-        -- Boss HP bar at top of screen
-        love.graphics.setColor(1, 0, 0)
-        love.graphics.rectangle('fill', 50, 50, 700, 20)
-        love.graphics.setColor(0, 1, 0)
-        local hp_percent = self.boss.hp / self.boss.max_hp
-        love.graphics.rectangle('fill', 50, 50, 700 * hp_percent, 20)
+        SpaceDefenderView.drawBoss(self.boss)
     end
     
     -- Draw bullets
     self.bullet_system:draw()
     
     -- Draw HUD
-    self:drawHUD()
+    SpaceDefenderView.drawHUD(
+        self.player_ship,
+        self.current_wave,
+        #self.waves,
+        self.boss_active,
+        self.bullet_system:getBulletCount(),
+        self.current_level
+    )
     
     -- Draw overlays
     if self.level_complete then
-        self:drawVictoryScreen()
+        SpaceDefenderView.drawVictoryScreen(self.tokens_earned)
     elseif self.game_over then
-        self:drawGameOverScreen()
+        SpaceDefenderView.drawGameOverScreen()
     elseif self.paused then
-        self:drawPauseScreen()
+        SpaceDefenderView.drawPauseScreen()
     end
-end
-
-function SpaceDefenderState:drawHUD()
-    love.graphics.setColor(1, 1, 1)
-    
-    -- HP
-    love.graphics.print("HP: " .. self.player_ship.hp .. "/" .. self.player_ship.max_hp, 10, 10)
-    
-    -- Bombs
-    love.graphics.print("Bombs: " .. self.player_ship.bombs, 10, 30)
-    
-    -- Wave/Boss
-    if self.boss_active then
-        love.graphics.print("BOSS FIGHT", love.graphics.getWidth()/2 - 40, 10)
-    else
-        love.graphics.print("Wave: " .. self.current_wave .. "/" .. #self.waves, 
-            love.graphics.getWidth()/2 - 40, 10)
-    end
-    
-    -- Bullets active
-    love.graphics.print("Bullets: " .. self.bullet_system:getBulletCount(), 
-        love.graphics.getWidth() - 150, 10)
-    
-    -- Level
-    love.graphics.print("Level: " .. self.current_level, love.graphics.getWidth() - 150, 30)
-end
-
-function SpaceDefenderState:drawVictoryScreen()
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    
-    love.graphics.setColor(0, 1, 0)
-    love.graphics.print("LEVEL COMPLETE!", love.graphics.getWidth()/2 - 80, love.graphics.getHeight()/2 - 60, 0, 2, 2)
-    
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Tokens Earned: " .. self.tokens_earned, love.graphics.getWidth()/2 - 80, love.graphics.getHeight()/2)
-    love.graphics.print("Press ENTER to continue", love.graphics.getWidth()/2 - 100, love.graphics.getHeight()/2 + 40)
-end
-
-function SpaceDefenderState:drawGameOverScreen()
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    
-    love.graphics.setColor(1, 0, 0)
-    love.graphics.print("GAME OVER", love.graphics.getWidth()/2 - 60, love.graphics.getHeight()/2 - 60, 0, 2, 2)
-    
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Press ENTER to return to launcher", love.graphics.getWidth()/2 - 140, love.graphics.getHeight()/2 + 40)
-end
-
-function SpaceDefenderState:drawPauseScreen()
-    love.graphics.setColor(0, 0, 0, 0.6)
-    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("PAUSED", love.graphics.getWidth()/2 - 40, love.graphics.getHeight()/2, 0, 2, 2)
-    love.graphics.print("Press P to resume", love.graphics.getWidth()/2 - 80, love.graphics.getHeight()/2 + 40)
 end
 
 function SpaceDefenderState:keypressed(key)
     if key == 'escape' then
-        game.state_machine:switch('launcher')
+        self.context.state_machine:switch('desktop')
     elseif key == 'p' then
         self.paused = not self.paused
     elseif key == 'x' or key == 'space' then
         self:useBomb()
     elseif key == 'return' then
         if self.level_complete then
-            game.state_machine:switch('launcher')
+            self.context.state_machine:switch('desktop')
         elseif self.game_over then
-            game.state_machine:switch('launcher')
+            self.context.state_machine:switch('desktop')
         end
     end
 end
@@ -458,13 +376,13 @@ function SpaceDefenderState:onLevelComplete()
     self.tokens_earned = base_reward * level_multiplier
     
     -- Award tokens
-    game.player_data:addTokens(self.tokens_earned)
+    self.context.player_data:addTokens(self.tokens_earned)
     
     -- Unlock next level
-    game.player_data:unlockLevel(self.current_level + 1)
+    self.context.player_data:unlockLevel(self.current_level + 1)
     
     -- Save
-    game.save_manager.save(game.player_data)
+    self.context.save_manager.save(self.context.player_data)
     
     print("Level " .. self.current_level .. " complete! Earned " .. self.tokens_earned .. " tokens")
 end
