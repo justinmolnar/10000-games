@@ -1,0 +1,24 @@
+# This file tells Git which files and folders to ignore.
+
+# Ignore the final packaged LÖVE game file.
+*.love
+
+# Ignore OS-specific temporary or metadata files.
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Ignore folders used for build output and releases.
+/build/
+/releases/
+/dist/
+
+# Ignore configuration files from various code editors.
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
