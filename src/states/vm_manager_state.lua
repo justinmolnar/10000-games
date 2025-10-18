@@ -27,6 +27,59 @@ function VMManagerState:enter()
     self:updateGameList()
 end
 
+function VMManagerState:purchaseUpgrade(upgrade_type)
+    local Config = require('src.config')
+    local base_costs = Config.upgrade_costs
+    
+    if not base_costs[upgrade_type] then
+        print("Error: Unknown upgrade type '" .. upgrade_type .. "'")
+        return false
+    end
+    
+    local current_level = self.player_data.upgrades[upgrade_type] or 0
+    local cost = base_costs[upgrade_type] * (current_level + 1)
+    
+    if self.player_data:spendTokens(cost) then
+        self.player_data.upgrades[upgrade_type] = current_level + 1
+        print("Purchased upgrade: " .. upgrade_type .. " level " .. self.player_data.upgrades[upgrade_type] .. " for " .. cost .. " tokens")
+        
+        -- Recalculate VM values without resetting timers
+        local cpu_bonus = 1 + (self.player_data.upgrades.cpu_speed * Config.vm_cpu_speed_bonus_per_level)
+        local overclock_bonus = 1 + (self.player_data.upgrades.overclock * Config.vm_overclock_bonus_per_level)
+        
+        for _, slot in ipairs(self.vm_manager.vm_slots) do
+            if slot.active and slot.assigned_game_id then
+                local perf = self.player_data:getGamePerformance(slot.assigned_game_id)
+                if perf then
+                    -- Recalculate power with new overclock bonus
+                    slot.auto_play_power = perf.best_score * overclock_bonus
+                    slot.tokens_per_cycle = slot.auto_play_power
+                    
+                    -- Recalculate cycle time with new CPU bonus
+                    local new_cycle_time = Config.vm_base_cycle_time / cpu_bonus
+                    
+                    -- Adjust remaining time proportionally to maintain progress
+                    if slot.cycle_time > 0 then
+                        local progress_ratio = (slot.cycle_time - slot.time_remaining) / slot.cycle_time
+                        slot.time_remaining = new_cycle_time * (1 - progress_ratio)
+                    else
+                        slot.time_remaining = new_cycle_time
+                    end
+                    
+                    slot.cycle_time = new_cycle_time
+                end
+            end
+        end
+        
+        self.vm_manager:calculateTokensPerMinute()
+        self.save_manager.save(self.player_data)
+        return true
+    end
+    
+    print("Failed to purchase upgrade: " .. upgrade_type .. ". Needed " .. cost .. ", had " .. self.player_data.tokens)
+    return false
+end
+
 function VMManagerState:updateGameList()
     self.filtered_games = {}
     
@@ -63,27 +116,38 @@ end
 function VMManagerState:keypressed(key)
     if key == 'escape' then
         if self.view.game_selection_open then
+            -- Close modal first
             self.view.game_selection_open = false
             self.view.selected_slot = nil
+            return true
         else
+            -- Return to desktop
             self.state_machine:switch('desktop')
+            return true
         end
     end
+    return false
 end
 
 function VMManagerState:mousepressed(x, y, button)
-    -- Delegate input handling to the view
+    -- Delegate input handling to the view, ALWAYS pass filtered_games
     local event = self.view:mousepressed(x, y, button, self.filtered_games)
-
+    
     if not event then return end
-
+    
     -- Handle events returned by the view
     if event.name == "assign_game" then
         self:assignGameToSlot(event.game_id, event.slot_index)
+    
     elseif event.name == "remove_game" then
         self:removeGameFromSlot(event.slot_index)
+    
     elseif event.name == "purchase_vm" then
         self:purchaseNewVM()
+    
+    elseif event.name == "purchase_upgrade" then
+        self:purchaseUpgrade(event.upgrade_type)
+    
     elseif event.name == "modal_opened" then
         -- Optional: Logic when modal opens (e.g., pause something)
         print("Game selection opened for slot " .. event.slot_index)

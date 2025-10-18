@@ -9,7 +9,8 @@ local defaults = {
     master_volume = 0.8,
     music_volume = 0.6,
     sfx_volume = 0.7,
-    tutorial_shown = false
+    tutorial_shown = false,
+    fullscreen = true
 }
 
 local current_settings = {}
@@ -29,6 +30,7 @@ function SettingsManager.load()
             end
             print("Settings loaded successfully from " .. SETTINGS_FILE)
             SettingsManager.applyAudioSettings() -- Apply volume on load
+            SettingsManager.applyFullscreen() -- Apply fullscreen on load
             return true
         else
             print("Error decoding settings file: " .. tostring(data) .. ". Using defaults.")
@@ -43,7 +45,31 @@ function SettingsManager.load()
         current_settings[key] = value
     end
     SettingsManager.applyAudioSettings() -- Apply default volume
+    SettingsManager.applyFullscreen() -- Apply default fullscreen
     return false
+end
+
+-- Apply fullscreen setting
+function SettingsManager.applyFullscreen()
+    local fullscreen = current_settings.fullscreen
+    if fullscreen == nil then fullscreen = defaults.fullscreen end
+    
+    if fullscreen then
+        -- Fullscreen mode - use desktop resolution
+        love.window.setMode(1920, 1080, {
+            fullscreen = true,
+            fullscreentype = "desktop",
+            resizable = false
+        })
+        print("Applied fullscreen: true (1920x1080)")
+    else
+        -- Windowed mode - use smaller window size
+        love.window.setMode(1280, 720, {
+            fullscreen = false,
+            resizable = false
+        })
+        print("Applied fullscreen: false (1280x720 windowed)")
+    end
 end
 
 -- Save current settings to file
@@ -72,9 +98,11 @@ end
 function SettingsManager.set(key, value)
     if current_settings[key] ~= value then
         current_settings[key] = value
-        -- Apply immediately if it's an audio setting
+        -- Apply immediately if it's an audio or fullscreen setting
         if key == "master_volume" or key == "music_volume" or key == "sfx_volume" then
             SettingsManager.applyAudioSettings()
+        elseif key == "fullscreen" then
+            SettingsManager.applyFullscreen()
         end
         SettingsManager.save() -- Auto-save on change
     end

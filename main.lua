@@ -250,6 +250,12 @@ function love.mousepressed(x, y, button, istouch, presses)
     end
 end
 
+function love.textinput(text)
+    if state_machine and state_machine.current_state and state_machine.current_state.textinput then
+        state_machine.current_state:textinput(text)
+    end
+end
+
 function love.mousereleased(x, y, button, istouch, presses)
     if state_machine and state_machine.current_state and state_machine.current_state.mousereleased then
         state_machine.current_state:mousereleased(x, y, button)

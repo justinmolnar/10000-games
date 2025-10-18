@@ -335,7 +335,25 @@ end
 function SpaceDefenderState:keypressed(key)
     local handled = true
     local FINAL_MVP_LEVEL = 5
-    if (self.level_complete and self.current_level ~= FINAL_MVP_LEVEL) or self.game_over then
+    
+    -- Handle level complete (but not final level)
+    if self.level_complete and self.current_level ~= FINAL_MVP_LEVEL then
+        if key == 'return' then
+            -- Progress to next level
+            local next_level = self.current_level + 1
+            print("Progressing to level " .. next_level)
+            self.state_machine:switch('space_defender', next_level)
+        elseif key == 'escape' then
+            -- Allow returning to desktop
+            self.state_machine:switch('desktop')
+        else
+            handled = false
+        end
+        return handled
+    end
+    
+    -- Handle game over
+    if self.game_over then
         if key == 'return' then
             self.state_machine:switch('desktop')
         else
@@ -343,14 +361,23 @@ function SpaceDefenderState:keypressed(key)
         end
         return handled
     end
+    
+    -- Final level completion is handled by automatic switch to completion state
     if self.level_complete and self.current_level == FINAL_MVP_LEVEL then
         return false
     end
 
-    if key == 'escape' then self.state_machine:switch('desktop')
-    elseif key == 'p' then self.paused = not self.paused
-    elseif key == 'x' or key == 'space' then self:useBomb()
-    else handled = false end
+    -- Normal gameplay controls
+    if key == 'escape' then 
+        self.state_machine:switch('desktop')
+    elseif key == 'p' then 
+        self.paused = not self.paused
+    elseif key == 'x' or key == 'space' then 
+        self:useBomb()
+    else 
+        handled = false 
+    end
+    
     return handled
 end
 
@@ -369,12 +396,15 @@ function SpaceDefenderState:onLevelComplete()
     if self.statistics then self.statistics:save() end
 
     print("Level " .. self.current_level .. " complete! Earned " .. self.tokens_earned .. " tokens")
+    print("Unlocked level: " .. self.player_data.space_defender_level)
 
     local FINAL_MVP_LEVEL = 5
     if self.current_level == FINAL_MVP_LEVEL then
+        print("Final level complete! Switching to completion state.")
         self.state_machine:switch('completion')
     else
         print("Standard victory screen will be shown.")
+        -- Victory screen is shown by draw(), player presses ENTER to continue
     end
 end
 

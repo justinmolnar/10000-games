@@ -36,8 +36,24 @@ end
 
 function CheatEngineState:updateGameList()
     self.all_games = self.game_data:getAllGames()
-    -- Sort by id
-    table.sort(self.all_games, function(a, b) return a.id < b.id end)
+    -- Sort by id with natural number sorting
+    table.sort(self.all_games, function(a, b)
+        -- Extract base name and number from id
+        local a_base, a_num = a.id:match("^(.-)_(%d+)$")
+        local b_base, b_num = b.id:match("^(.-)_(%d+)$")
+        
+        -- If both have numbers, compare base first, then number
+        if a_base and b_base and a_num and b_num then
+            if a_base == b_base then
+                return tonumber(a_num) < tonumber(b_num)
+            else
+                return a_base < b_base
+            end
+        end
+        
+        -- Fallback to regular string comparison
+        return a.id < b.id
+    end)
 end
 
 function CheatEngineState:resetSelection()

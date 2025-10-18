@@ -11,9 +11,9 @@ function SettingsView:init(controller)
         { id = "master_volume", label = "Master Volume", type = "slider", x = 50, y = 100, w = 300, h = 20 },
         { id = "music_volume", label = "Music Volume (Not Implemented)", type = "slider", x = 50, y = 150, w = 300, h = 20 },
         { id = "sfx_volume", label = "SFX Volume (Not Implemented)", type = "slider", x = 50, y = 200, w = 300, h = 20 },
-        -- Reverted Label:
         { id = "tutorial_shown", label = "Show Tutorial on Next Launch", type = "toggle", x = 50, y = 250, w = 30, h = 30 },
-        { id = "back", label = "Back to Desktop", type = "button", x = 50, y = 350, w = 200, h = 40 }
+        { id = "fullscreen", label = "Fullscreen", type = "toggle", x = 50, y = 300, w = 30, h = 30 },
+        { id = "back", label = "Back to Desktop", type = "button", x = 50, y = 400, w = 200, h = 40 }
     }
     self.dragging_slider = nil
     self.hovered_button_id = nil
@@ -61,12 +61,22 @@ function SettingsView:draw(current_settings)
                 love.graphics.setColor(0.7, 0.7, 0.7); love.graphics.print("(Global setting only for MVP)", opt.x + 150, opt.y - 20, 0, 0.8, 0.8)
             end
         elseif opt.type == "toggle" then
-             -- Corrected Logic: Checked means 'show next time' (tutorial_shown = false)
-             local should_show_next_time = current_settings[opt.id] == false
+             -- Draw checkbox
              love.graphics.setColor(0.8, 0.8, 0.8)
              love.graphics.rectangle('line', opt.x, opt.y, opt.w, opt.h)
-             -- Draw checkmark if we *should* show it next time
-             if should_show_next_time then
+             
+             -- Determine checked state based on the setting
+             local is_checked = false
+             if opt.id == "tutorial_shown" then
+                 -- Tutorial: Checked means 'show next time' (tutorial_shown = false)
+                 is_checked = current_settings[opt.id] == false
+             elseif opt.id == "fullscreen" then
+                 -- Fullscreen: Checked means fullscreen is on
+                 is_checked = current_settings[opt.id] == true
+             end
+             
+             -- Draw checkmark if checked
+             if is_checked then
                  love.graphics.setColor(0, 1, 0)
                  love.graphics.setLineWidth(3)
                  love.graphics.line(opt.x + 5, opt.y + opt.h/2, opt.x + opt.w/2, opt.y + opt.h - 5, opt.x + opt.w - 5, opt.y + 5)
@@ -91,10 +101,16 @@ function SettingsView:mousepressed(x, y, button)
             end
         elseif opt.type == "toggle" then
              if x >= opt.x and x <= opt.x + opt.w and y >= opt.y and y <= opt.y + opt.h then
-                 -- Corrected Logic: Clicking toggles the 'tutorial_shown' value
                  local current_value = self.controller:getSetting(opt.id)
-                 -- The new value is the opposite of the current one
-                 return { name = "set_setting", id = opt.id, value = not current_value }
+                 
+                 -- Handle different toggle logic
+                 if opt.id == "tutorial_shown" then
+                     -- Tutorial: toggle means opposite of what's shown
+                     return { name = "set_setting", id = opt.id, value = not current_value }
+                 elseif opt.id == "fullscreen" then
+                     -- Fullscreen: toggle normally
+                     return { name = "set_setting", id = opt.id, value = not current_value }
+                 end
              end
         elseif opt.type == "button" then
             if x >= opt.x and x <= opt.x + opt.w and y >= opt.y and y <= opt.y + opt.h then

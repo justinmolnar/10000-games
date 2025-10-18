@@ -4,10 +4,11 @@ function love.conf(t)
     t.console = true
     
     t.window.title = "10,000 Games"
-    t.window.width = 800
-    t.window.height = 600
+    t.window.width = 1920
+    t.window.height = 1080
     t.window.resizable = false
-    t.window.display = 2 
+    t.window.fullscreen = true
+    t.window.fullscreentype = "desktop"
     
     t.modules.physics = false
     t.modules.joystick = false

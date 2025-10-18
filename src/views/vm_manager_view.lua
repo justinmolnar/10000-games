@@ -13,6 +13,7 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data)
     self.game_selection_open = false
     self.scroll_offset = 0
     self.hovered_slot = nil
+    self.hovered_upgrade = nil -- Add this
     
     -- Layout constants (can be adjusted)
     self.slot_width = 180
@@ -23,6 +24,14 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data)
     self.purchase_button_y = love.graphics.getHeight() - 60
     self.purchase_button_w = 200
     self.purchase_button_h = 40
+    
+    -- Upgrade button positions
+    self.upgrade_x = 230
+    self.upgrade_y = love.graphics.getHeight() - 60
+    self.upgrade_w = 180
+    self.upgrade_h = 40
+    self.upgrade_spacing = 10
+    
     self.modal_x = love.graphics.getWidth() / 2 - 200
     self.modal_y = 100
     self.modal_w = 400
@@ -34,6 +43,43 @@ function VMManagerView:update(dt)
     -- Update hovered slot based on mouse position
     local mx, my = love.mouse.getPosition()
     self.hovered_slot = self:getSlotAtPosition(mx, my)
+    
+    -- Update hovered upgrade
+    self.hovered_upgrade = nil
+    local upgrades = {"cpu_speed", "overclock"}
+    for i, upgrade_type in ipairs(upgrades) do
+        local bx = self.upgrade_x + (i - 1) * (self.upgrade_w + self.upgrade_spacing)
+        local by = self.upgrade_y
+        if mx >= bx and mx <= bx + self.upgrade_w and my >= by and my <= by + self.upgrade_h then
+            self.hovered_upgrade = upgrade_type
+            break
+        end
+    end
+end
+
+function VMManagerView:drawUpgradeButton(x, y, w, h, label, desc, level, cost, can_afford, hovered)
+    -- Background
+    if not can_afford then
+        love.graphics.setColor(0.3, 0.3, 0.3)
+    elseif hovered then
+        love.graphics.setColor(0.35, 0.6, 0.35)
+    else
+        love.graphics.setColor(0, 0.5, 0)
+    end
+    love.graphics.rectangle('fill', x, y, w, h)
+    
+    -- Border
+    love.graphics.setColor(0.5, 0.5, 0.5)
+    love.graphics.rectangle('line', x, y, w, h)
+    
+    -- Text
+    love.graphics.setColor(can_afford and {1, 1, 1} or {0.5, 0.5, 0.5})
+    love.graphics.print(label .. " Lv." .. level, x + 5, y + 5, 0, 0.9, 0.9)
+    love.graphics.print(desc, x + 5, y + 20, 0, 0.75, 0.75)
+    
+    -- Cost
+    love.graphics.setColor(can_afford and {1, 1, 0} or {0.5, 0.5, 0})
+    love.graphics.print(cost .. " tokens", x + w - 80, y + h - 18, 0, 0.8, 0.8)
 end
 
 function VMManagerView:draw(filtered_games)
@@ -79,6 +125,25 @@ function VMManagerView:draw(filtered_games)
         self:drawPurchaseVMButton(self.purchase_button_x, self.purchase_button_y, cost, can_afford)
     end
     
+    -- Upgrade buttons
+    local Config = require('src.config')
+    local upgrades = {
+        {type = "cpu_speed", label = "CPU Speed", desc = "Faster cycles"},
+        {type = "overclock", label = "Overclock", desc = "More power"}
+    }
+    
+    for i, upgrade in ipairs(upgrades) do
+        local bx = self.upgrade_x + (i - 1) * (self.upgrade_w + self.upgrade_spacing)
+        local by = self.upgrade_y
+        local current_level = self.player_data.upgrades[upgrade.type] or 0
+        local cost = Config.upgrade_costs[upgrade.type] * (current_level + 1)
+        local can_afford = self.player_data:hasTokens(cost)
+        local is_hovered = (self.hovered_upgrade == upgrade.type)
+        
+        self:drawUpgradeButton(bx, by, self.upgrade_w, self.upgrade_h, 
+            upgrade.label, upgrade.desc, current_level, cost, can_afford, is_hovered)
+    end
+    
     -- Game selection modal
     if self.game_selection_open then
         -- Create context for view function (unchanged)
@@ -101,27 +166,31 @@ function VMManagerView:mousepressed(x, y, button, filtered_games)
     
     -- Check game selection modal first
     if self.game_selection_open then
-        local clicked_game = self:getGameAtPosition(x, y, filtered_games)
-        if clicked_game then
-            -- Check if game is already assigned (using vm_manager directly)
-            if self.vm_manager:isGameAssigned(clicked_game.id) then
-                print("Game already in use by another VM!")
-                return nil -- Or maybe return an event like {name="error", message="Game in use"}
+        -- Only check for game clicks if filtered_games exists
+        if filtered_games and #filtered_games > 0 then
+            local clicked_game = self:getGameAtPosition(x, y, filtered_games)
+            if clicked_game then
+                -- Check if game is already assigned (using vm_manager directly)
+                if self.vm_manager:isGameAssigned(clicked_game.id) then
+                    print("Game already in use by another VM!")
+                    return nil
+                end
+                
+                -- Close modal and return event
+                self.game_selection_open = false
+                local slot_to_assign = self.selected_slot
+                self.selected_slot = nil
+                return {name = "assign_game", slot_index = slot_to_assign, game_id = clicked_game.id}
             end
-            
-            -- Close modal and return event
-            self.game_selection_open = false
-            local slot_to_assign = self.selected_slot
-            self.selected_slot = nil
-            return {name = "assign_game", slot_index = slot_to_assign, game_id = clicked_game.id}
-        else
-            -- Check if click was outside the modal content area to close it
-             if not (x >= self.modal_x and x <= self.modal_x + self.modal_w and y >= self.modal_y and y <= self.modal_y + self.modal_h) then
-                 self.game_selection_open = false
-                 self.selected_slot = nil
-                 return {name="modal_closed"}
-             end
         end
+        
+        -- Check if click was outside the modal content area to close it
+        if not (x >= self.modal_x and x <= self.modal_x + self.modal_w and y >= self.modal_y and y <= self.modal_y + self.modal_h) then
+            self.game_selection_open = false
+            self.selected_slot = nil
+            return {name="modal_closed"}
+        end
+        
         return nil -- Clicked inside modal but not on a game
     end
     
@@ -137,6 +206,21 @@ function VMManagerView:mousepressed(x, y, button, filtered_games)
             self.selected_slot = clicked_slot_index
             self.game_selection_open = true
             return {name = "modal_opened", slot_index = clicked_slot_index}
+        end
+    end
+    
+    -- Check upgrade buttons
+    local Config = require('src.config')
+    local upgrades = {"cpu_speed", "overclock"}
+    for i, upgrade_type in ipairs(upgrades) do
+        local bx = self.upgrade_x + (i - 1) * (self.upgrade_w + self.upgrade_spacing)
+        local by = self.upgrade_y
+        if x >= bx and x <= bx + self.upgrade_w and y >= by and y <= by + self.upgrade_h then
+            local current_level = self.player_data.upgrades[upgrade_type] or 0
+            local cost = Config.upgrade_costs[upgrade_type] * (current_level + 1)
+            if self.player_data:hasTokens(cost) then
+                return {name = "purchase_upgrade", upgrade_type = upgrade_type}
+            end
         end
     end
     

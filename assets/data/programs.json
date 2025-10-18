@@ -1,0 +1,95 @@
+[
+  {
+    "id": "launcher",
+    "name": "Game Collection",
+    "executable": "gamecollection.exe",
+    "icon_color": [1.0, 0.8, 0.0],
+    "on_desktop": true,
+    "in_start_menu": true
+  },
+  {
+    "id": "vm_manager",
+    "name": "VM Manager",
+    "executable": "vmmanager.exe",
+    "icon_color": [0.5, 0.5, 1.0],
+    "on_desktop": true,
+    "in_start_menu": true
+  },
+  {
+    "id": "space_defender",
+    "name": "Space Defender",
+    "executable": "spacedefender.exe",
+    "icon_color": [1.0, 0.0, 0.0],
+    "on_desktop": true,
+    "in_start_menu": true
+  },
+  {
+    "id": "cheat_engine",
+    "name": "CheatEngine",
+    "executable": "cheatengine.exe",
+    "icon_color": [0.1, 0.8, 0.1],
+    "on_desktop": true,
+    "in_start_menu": true
+  },
+  {
+    "id": "settings",
+    "name": "Settings",
+    "executable": "settings.exe",
+    "icon_color": [0.8, 0.8, 0.8],
+    "on_desktop": true,
+    "in_start_menu": true
+  },
+  {
+    "id": "statistics",
+    "name": "Statistics",
+    "executable": "statistics.exe",
+    "icon_color": [1.0, 1.0, 0.5],
+    "on_desktop": true,
+    "in_start_menu": true
+  },
+  {
+    "id": "recycle_bin",
+    "name": "Recycle Bin",
+    "executable": "recyclebin.exe",
+    "icon_color": [0.6, 0.6, 0.6],
+    "on_desktop": true,
+    "in_start_menu": false,
+    "disabled": true
+  },
+  {
+    "id": "my_computer",
+    "name": "My Computer",
+    "executable": "mycomputer.exe",
+    "icon_color": [0.7, 0.7, 0.9],
+    "on_desktop": false,
+    "in_start_menu": true,
+    "disabled": true
+  },
+  {
+    "id": "notepad",
+    "name": "Notepad",
+    "executable": "notepad.exe",
+    "icon_color": [0.9, 0.9, 1.0],
+    "on_desktop": false,
+    "in_start_menu": true,
+    "disabled": true
+  },
+  {
+    "id": "paint",
+    "name": "Paint",
+    "executable": "mspaint.exe",
+    "icon_color": [1.0, 0.8, 0.8],
+    "on_desktop": false,
+    "in_start_menu": true,
+    "disabled": true
+  },
+  {
+    "id": "config",
+    "name": "config.txt",
+    "executable": "config.txt",
+    "icon_color": [1.0, 1.0, 1.0],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": true
+  }
+]
