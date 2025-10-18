@@ -22,58 +22,86 @@ function WindowManager:init()
 end
 
 -- Create a new window
-function WindowManager:createWindow(program_type, title, content_state, default_x, default_y, default_w, default_h)
+function WindowManager:createWindow(program, title, content_state, default_w, default_h)
+    -- *** CHANGE: Accept 'program' definition instead of 'program_type' ***
+    if not program or not program.id then
+        print("ERROR: createWindow called without valid program definition.")
+        return nil
+    end
+    local program_type = program.id -- Use program.id as the type identifier
+    local defaults = program.window_defaults or {}
+    local is_resizable = defaults.resizable ~= false -- Default to true if not specified
+    -- *** END CHANGE ***
+
     local window_id = self.next_window_id
     self.next_window_id = self.next_window_id + 1
 
     local x, y, w, h
     local remembered = self.window_positions[program_type]
 
-    if remembered and remembered.w and remembered.h and remembered.x and remembered.y then -- Added nil check for x,y
+    -- *** CHANGE: Check resizable flag before using remembered size ***
+    if not is_resizable then
+        print("Program", program_type, "is not resizable. Forcing default size.")
+        w = default_w or 600 -- Use passed defaults
+        h = default_h or 400
+        -- Use remembered position if available, otherwise calculate cascade/center
+        if remembered and remembered.x and remembered.y then
+             x, y = remembered.x, remembered.y
+             print("Using remembered position but default size:", x, y, w, h)
+        else
+            -- Calculate initial position (Cascade/Center logic remains the same)
+             local screen_w, screen_h = love.graphics.getDimensions()
+             local taskbar_h = 40
+             local center_x = math.floor((screen_w - w) / 2)
+             local center_y = math.floor((screen_h - taskbar_h - h) / 2)
+             if self.last_base_pos.x >= 0 then
+                 x = self.last_base_pos.x + self.cascade_offset_x
+                 y = self.last_base_pos.y + self.cascade_offset_y
+                 if (x + w / 2 > screen_w - 50) or (y + h / 2 > screen_h - taskbar_h - 50) then
+                     x, y = 50, 50; self.last_base_pos = { x = x, y = y }
+                 else self.last_base_pos = { x = x, y = y } end
+             else
+                 x, y = center_x, center_y; self.last_base_pos = { x = x, y = y }
+             end
+             print("Calculated initial position and default size:", x, y, w, h)
+        end
+    -- If RESIZABLE, use original logic (prioritize remembered dimensions)
+    elseif remembered and remembered.w and remembered.h and remembered.x and remembered.y then
         x, y, w, h = remembered.x, remembered.y, remembered.w, remembered.h
-        print("Using remembered position for", program_type, ":", x, y, w, h)
-        -- Don't reset cascade base if using remembered pos
+        print("Using remembered position and size for", program_type, ":", x, y, w, h)
     else
+        -- Resizable but no remembered data, use defaults and calculate position
         w = default_w or 600
         h = default_h or 400
-
-        -- Calculate initial position: Center or Cascade
         local screen_w, screen_h = love.graphics.getDimensions()
         local taskbar_h = 40
         local center_x = math.floor((screen_w - w) / 2)
         local center_y = math.floor((screen_h - taskbar_h - h) / 2)
-
-        -- Use cascade logic
         if self.last_base_pos.x >= 0 then
             x = self.last_base_pos.x + self.cascade_offset_x
             y = self.last_base_pos.y + self.cascade_offset_y
-
-            -- Wrap cascade if it goes too far off-screen
-            -- Check if *center* goes off-screen to decide when to wrap
             if (x + w / 2 > screen_w - 50) or (y + h / 2 > screen_h - taskbar_h - 50) then
-                x = 50 -- Reset near top-left
-                y = 50
-                self.last_base_pos = { x = x, y = y } -- Reset base for next cascade
-            else
-                -- Update base position only if we didn't wrap
-                self.last_base_pos = { x = x, y = y }
-            end
+                x, y = 50, 50; self.last_base_pos = { x = x, y = y }
+            else self.last_base_pos = { x = x, y = y } end
         else
-            -- First window since load/reset, position near center and set base
-            x = center_x
-            y = center_y
-            self.last_base_pos = { x = x, y = y }
+            x, y = center_x, center_y; self.last_base_pos = { x = x, y = y }
         end
-
-        print("Calculated initial position for", program_type, ":", x, y, w, h)
+        print("Calculated initial position for resizable", program_type, ":", x, y, w, h)
     end
+    -- *** END CHANGE ***
 
-    -- Clamp initial position robustly
+    -- Clamp initial position robustly (logic remains the same)
     local screen_w, screen_h = love.graphics.getDimensions()
     local taskbar_h = 40
-    x = math.max(0, math.min(x or 0, screen_w - w)) -- Ensure fully within horizontal bounds
-    y = math.max(0, math.min(y or 0, screen_h - taskbar_h - h)) -- Ensure fully within vertical bounds (above taskbar)
-    x = tonumber(x) or 0; y = tonumber(y) or 0 -- Sanitize
+    -- Ensure w and h are valid numbers before clamping
+    w = tonumber(w) or default_w or 600
+    h = tonumber(h) or default_h or 400
+    w = math.max(self.min_window_width or 200, w) -- Apply min width
+    h = math.max(self.min_window_height or 150, h) -- Apply min height
+
+    x = math.max(0, math.min(x or 0, screen_w - w))
+    y = math.max(0, math.min(y or 0, screen_h - taskbar_h - h))
+    x = tonumber(x) or 0; y = tonumber(y) or 0
 
     local window = {
         id = window_id, program_type = program_type, title = title, content_state = content_state,
@@ -83,8 +111,6 @@ function WindowManager:createWindow(program_type, title, content_state, default_
 
     table.insert(self.windows, window)
     self:focusWindow(window_id)
-
-    -- Don't update last_window_pos here, done during calculation now
 
     return window_id
 end

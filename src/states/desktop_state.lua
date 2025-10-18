@@ -940,91 +940,73 @@ function DesktopState:launchProgram(program_id, ...)
     local instance_ok, new_state = pcall(StateClass.new, StateClass, unpack(state_args))
     if not instance_ok or not new_state then print("ERROR instantiating state: " .. tostring(new_state)); return end
 
-    -- Determine Initial Window Bounds (using Window Manager's memory)
+    -- Determine Initial Window Bounds
     local screen_w, screen_h = love.graphics.getDimensions()
-    local taskbar_h = 40
-    local default_w = defaults.w or 800 -- Adjusted default width if needed
-    local default_h = defaults.h or 600 -- Adjusted default height if needed
+    local default_w = defaults.w or 800
+    local default_h = defaults.h or 600
 
-    -- Special handling for Minigame Runner title
+    -- Handle Title
     local initial_title = program.name
     local game_data_arg = nil
     if program_id == "minigame_runner" then
-        game_data_arg = launch_args[1] -- The game_data table passed in
-        if game_data_arg and game_data_arg.display_name then
-            initial_title = game_data_arg.display_name
-        else
-            initial_title = "Minigame" -- Fallback title
-        end
+        game_data_arg = launch_args[1]
+        if game_data_arg and game_data_arg.display_name then initial_title = game_data_arg.display_name else initial_title = "Minigame" end
     end
 
-    -- Let WindowManager handle position logic using defaults as fallback
-    local window_id = self.window_manager:createWindow(
-        program_id, initial_title, new_state,
-        nil, nil, -- Let createWindow use remembered or calculate default pos
-        default_w, default_h
-    )
+    -- Create Window
+    local window_id = self.window_manager:createWindow( program, initial_title, new_state, default_w, default_h )
+    if not window_id then print("ERROR: WindowManager failed to create window for " .. program_id); return end
 
-    -- Store state instance and context
+    -- Store State and Context
     self.window_states[window_id] = { state = new_state }
     if new_state.setWindowContext then new_state:setWindowContext(window_id, self.window_manager) end
 
-    -- Call setViewport ONCE after window is created
-    local created_window = self.window_manager:getWindowById(window_id) -- Get the newly created window data
+    -- Call setViewport with initial content bounds (x, y, width, height)
+    local created_window = self.window_manager:getWindowById(window_id)
     if created_window and new_state.setViewport then
         local initial_content_bounds = self.window_chrome:getContentBounds(created_window)
+        -- *** CHANGE: Pass all four values ***
         pcall(new_state.setViewport, new_state,
               initial_content_bounds.x, initial_content_bounds.y,
               initial_content_bounds.width, initial_content_bounds.height)
+        -- *** END CHANGE ***
     end
 
-
-    -- Handle Enter Args (Modified for Minigame Runner)
+    -- Handle Enter Args
     local enter_args = {}
     local enter_args_config = program.enter_args
-
     if program_id == "minigame_runner" then
-        -- Pass the game_data as the first argument to minigame_state:enter
-        if game_data_arg then
-            enter_args = { game_data_arg }
-        end
+        if game_data_arg then enter_args = { game_data_arg } end
     elseif enter_args_config then
         if enter_args_config.type == "first_launch_arg" then enter_args = {launch_args[1] or enter_args_config.default}
         elseif enter_args_config.type == "static" then enter_args = {enter_args_config.value} end
-        -- Update title for special static args like file explorer paths
-        if enter_args_config.type == "static" and (program_id == "my_computer" or program_id == "recycle_bin") then
-             local new_title = enter_args_config.value:match(".*/(.*)") or program.name
-             self.window_manager:updateWindowTitle(window_id, new_title)
-        end
     end
 
     -- Call State's Enter Method
     if new_state.enter then
         local enter_ok, enter_err = pcall(new_state.enter, new_state, unpack(enter_args))
-        if not enter_ok then
-            print("ERROR calling enter on state for " .. program_id .. ": " .. tostring(enter_err))
-            self.window_manager:closeWindow(window_id) -- Clean up failed window
-            self.window_states[window_id] = nil
-            return
+        if type(enter_err) == 'table' and enter_err.type == "close_window" then
+            print("State signaled close during enter for " .. program_id); self.window_manager:closeWindow(window_id); self.window_states[window_id] = nil; return
+        elseif not enter_ok then
+            print("ERROR calling enter on state for " .. program_id .. ": " .. tostring(enter_err)); self.window_manager:closeWindow(window_id); self.window_states[window_id] = nil; return
         end
     end
 
     -- Apply preferred maximized state
-    if defaults.prefer_maximized then
-        -- Maximize *after* enter has run, ensuring state is initialized
+    if defaults.prefer_maximized and defaults.resizable ~= false then
         self.window_manager:maximizeWindow(window_id, screen_w, screen_h)
-         -- Call setViewport again after maximizing
          local maximized_window = self.window_manager:getWindowById(window_id)
          if maximized_window and new_state.setViewport then
              local maximized_content_bounds = self.window_chrome:getContentBounds(maximized_window)
+             -- *** CHANGE: Pass all four values ***
              pcall(new_state.setViewport, new_state,
                    maximized_content_bounds.x, maximized_content_bounds.y,
                    maximized_content_bounds.width, maximized_content_bounds.height)
+             -- *** END CHANGE ***
          end
     end
 
     print("Opened window for " .. initial_title .. " ID: " .. window_id)
-    -- Focus is handled by createWindow/maximizeWindow
 end
 
 

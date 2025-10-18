@@ -369,7 +369,15 @@ function LauncherView:drawGameIcon(x, y, w, h, game_data, selected, hovered, pla
 end
 
 function LauncherView:drawWindowed(filtered_games, tokens, viewport_width, viewport_height)
-    -- Use viewport dimensions instead of love.graphics.getWidth/Height for layout
+    -- *** ADDED SAFETY CHECK ***
+    -- Ensure viewport dimensions are valid numbers before proceeding
+    if type(viewport_width) ~= "number" or type(viewport_height) ~= "number" or viewport_width <= 0 or viewport_height <= 0 then
+        love.graphics.setColor(1, 0, 0)
+        love.graphics.printf("Launcher Error: Invalid viewport dimensions received.", 5, 5, (self.controller.viewport and self.controller.viewport.width or 200) - 10, "left")
+        print("ERROR in LauncherView:drawWindowed - Invalid viewport dimensions:", viewport_width, viewport_height)
+        return -- Stop drawing if dimensions are bad
+    end
+    -- *** END SAFETY CHECK ***
 
     -- Draw background for the content area (optional, chrome already draws)
     love.graphics.setColor(0.15, 0.15, 0.15)
@@ -383,7 +391,19 @@ function LauncherView:drawWindowed(filtered_games, tokens, viewport_width, viewp
 
     -- Define list and detail panel areas based on viewport_width
     local list_y = 50 -- Below category buttons
-    local list_h = viewport_height - list_y - 10 -- Available height for list/panel
+    -- Calculate list_h using the now validated viewport_height
+    local list_h = viewport_height - list_y - 10
+
+    -- *** ADDED CHECK FOR list_h ***
+    -- Ensure list_h is a valid positive number before using it further
+    if type(list_h) ~= "number" or list_h <= 0 then
+        love.graphics.setColor(1, 0, 0)
+        love.graphics.printf("Launcher Error: Calculated list height is invalid.", 5, list_y, viewport_width - 10, "left")
+        print("ERROR in LauncherView:drawWindowed - Invalid calculated list_h:", list_h, " (viewport_height:", viewport_height, ")")
+        return -- Stop drawing if calculation is bad
+    end
+     -- *** END CHECK FOR list_h ***
+
 
     local list_x = 10
     local list_width
@@ -394,13 +414,14 @@ function LauncherView:drawWindowed(filtered_games, tokens, viewport_width, viewp
         local effective_detail_width = math.min(self.detail_panel_width, viewport_width * 0.5)
         list_width = viewport_width - effective_detail_width - 20
         detail_panel_x = list_x + list_width + 10
+        -- Pass the validated list_h to drawGameDetailPanel
         self:drawGameDetailPanel(detail_panel_x, list_y, effective_detail_width,
             list_h, self.selected_game)
     else
         list_width = viewport_width - 20
     end
 
-    -- Draw game list
+    -- Draw game list, passing the validated list_h
     self:drawGameList(list_x, list_y, list_width, list_h,
         filtered_games, self.selected_index, self.hovered_game_id)
 end

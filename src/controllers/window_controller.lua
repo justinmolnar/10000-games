@@ -201,95 +201,55 @@ function WindowController:handleResize(mouse_x, mouse_y)
 
     local edge = self.resize_edge
 
-    -- Handle horizontal resize first, potentially adjusting x and w
+    -- Horizontal resize logic (adjust x, w)
     if edge:find("left") then
         local potential_w = bounds.width - dx
-        if potential_w >= self.min_window_width then
-            new_w = potential_w
-            new_x = bounds.x + dx
-        else
-            new_w = self.min_window_width
-            new_x = bounds.x + bounds.width - self.min_window_width
-        end
-    elseif edge:find("right") then
-        local potential_w = bounds.width + dx
-        new_w = math.max(self.min_window_width, potential_w)
-    end
+        if potential_w >= self.min_window_width then new_w = potential_w; new_x = bounds.x + dx
+        else new_w = self.min_window_width; new_x = bounds.x + bounds.width - self.min_window_width end
+    elseif edge:find("right") then new_w = math.max(self.min_window_width, bounds.width + dx) end
 
-    -- Handle vertical resize second, potentially adjusting y and h
+    -- Vertical resize logic (adjust y, h)
     if edge:find("top") then
         local potential_h = bounds.height - dy
-        if potential_h >= self.min_window_height then
-            new_h = potential_h
-            new_y = bounds.y + dy
-        else
-            new_h = self.min_window_height
-            new_y = bounds.y + bounds.height - self.min_window_height
-        end
-    elseif edge:find("bottom") then
-        local potential_h = bounds.height + dy
-        new_h = math.max(self.min_window_height, potential_h)
-    end
+        if potential_h >= self.min_window_height then new_h = potential_h; new_y = bounds.y + dy
+        else new_h = self.min_window_height; new_y = bounds.y + bounds.height - self.min_window_height end
+    elseif edge:find("bottom") then new_h = math.max(self.min_window_height, bounds.height + dy) end
 
-    -- Enforce maximum size (screen bounds, consider taskbar)
-    local screen_w = love.graphics.getWidth()
-    local screen_h = love.graphics.getHeight()
-    local taskbar_h = 40 -- Assume taskbar height
-
-    -- Clamp position first
+    -- Screen bounds clamping logic
+    local screen_w, screen_h = love.graphics.getWidth(), love.graphics.getHeight()
+    local taskbar_h = 40
     new_x = math.max(0, math.min(new_x, screen_w - new_w))
     new_y = math.max(0, math.min(new_y, screen_h - taskbar_h - new_h))
-
-    -- Clamp size based on clamped position
     new_w = math.min(new_w, screen_w - new_x)
     new_h = math.min(new_h, screen_h - taskbar_h - new_y)
+    new_w = math.max(self.min_window_width, new_w); new_h = math.max(self.min_window_height, new_h)
+    if edge:find("left") and new_w == self.min_window_width then new_x = math.max(0, math.min(new_x, screen_w - self.min_window_width)) end
+    if edge:find("top") and new_h == self.min_window_height then new_y = math.max(0, math.min(new_y, screen_h - taskbar_h - self.min_window_height)) end
 
-    -- Final re-check of minimums after all clamping
-    new_w = math.max(self.min_window_width, new_w)
-    new_h = math.max(self.min_window_height, new_h)
-
-    -- Adjust position again if minimum clamping changed size significantly when resizing left/top
-    if edge:find("left") and new_w == self.min_window_width then
-        new_x = math.min(new_x, screen_w - self.min_window_width) -- Ensure x doesn't go negative if clamped width pushes it left
-        new_x = math.max(0, new_x) -- Re-clamp x >= 0
-    end
-     if edge:find("top") and new_h == self.min_window_height then
-        new_y = math.min(new_y, screen_h - taskbar_h - self.min_window_height) -- Ensure y doesn't go below taskbar if clamped height pushes it up
-        new_y = math.max(0, new_y) -- Re-clamp y >= 0
-    end
-
-    -- Update the window model
+    -- Update window model
     self.window_manager:updateWindowBounds(self.resizing_window_id, new_x, new_y, new_w, new_h)
 
-    -- *** Notify the state about the new viewport ***
-    local window_data = self.window_states[self.resizing_window_id] -- Use the injected map
+    -- Notify state about new viewport bounds (x, y, width, height)
+    local window_data = self.window_states[self.resizing_window_id]
     local window_state = window_data and window_data.state
-
     if window_state and window_state.setViewport then
-        -- Use pcall for safety, ensure chrome is available
         local chrome_ok, chrome = pcall(require, 'src.views.window_chrome')
         if chrome_ok and chrome then
             local chrome_instance = chrome:new()
-            -- Get the updated window object *after* updateWindowBounds
             local updated_window = self.window_manager:getWindowById(self.resizing_window_id)
             if updated_window then
                 local new_content_bounds = chrome_instance:getContentBounds(updated_window)
-                print(string.format("Resizing Window %d: Notifying state with viewport x:%.1f, y:%.1f, w:%.1f, h:%.1f",
+                print(string.format("Resizing Window %d: Notifying state with ABSOLUTE x:%.1f, y:%.1f, w:%.1f, h:%.1f",
                       self.resizing_window_id, new_content_bounds.x, new_content_bounds.y, new_content_bounds.width, new_content_bounds.height))
-                -- Call setViewport with absolute screen coordinates + dimensions
+                -- *** CHANGE: Pass all four values ***
                 local success, err = pcall(window_state.setViewport, window_state,
                       new_content_bounds.x, new_content_bounds.y,
                       new_content_bounds.width, new_content_bounds.height)
-                if not success then
-                     print("Error calling setViewport during resize for window " .. self.resizing_window_id .. ": " .. tostring(err))
-                end
+                -- *** END CHANGE ***
+                if not success then print("Error calling setViewport during resize: " .. tostring(err)) end
             end
-        else
-            print("Error: Could not require window_chrome during resize.")
-        end
-    else
-        print(string.format("Resizing Window %d: State not found or no setViewport method.", self.resizing_window_id))
-    end
+        else print("Error: Could not require window_chrome during resize.") end
+    else print(string.format("Resizing Window %d: State not found or no setViewport method.", self.resizing_window_id)) end
 end
 
 -- Handle mouse release

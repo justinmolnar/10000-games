@@ -45,7 +45,9 @@ end
 function LauncherState:setViewport(x, y, width, height)
     self.viewport = {x = x, y = y, width = width, height = height}
     -- Recalculate view layout if necessary based on new viewport size
-    self.view.detail_panel_width = math.min(350, width * 0.4) -- Example adjustment
+    if self.view and self.view.updateLayout then
+         self.view:updateLayout(width, height) -- Pass dimensions to view
+    end
 end
 
 function LauncherState:updateFilter(category)
