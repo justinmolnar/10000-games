@@ -1,21 +1,17 @@
 -- state_machine.lua: Simple state machine implementation
 
 local function StateMachineBuilder(Object)
-    -- Define the StateMachine class by extending the base Object.
     local StateMachine = Object:extend('StateMachine')
     
-    -- Initialize function for new instances
     function StateMachine:init()
-        self.states = {}        -- A table to hold all registered states.
-        self.current_state = nil -- A reference to the currently active state object.
+        self.states = {}
+        self.current_state = nil
     end
 
-    -- Register a new state
     function StateMachine:register(state_name, state_object)
         self.states[state_name] = state_object
     end
 
-    -- Switch to a different state
     function StateMachine:switch(state_name, ...)
         if self.states[state_name] then
             self.current_state = self.states[state_name]
@@ -25,7 +21,6 @@ local function StateMachineBuilder(Object)
         end
     end
 
-    -- Main loop hooks
     function StateMachine:update(dt)
         if self.current_state and self.current_state.update then
             self.current_state:update(dt)

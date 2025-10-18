@@ -8,7 +8,7 @@ function PlayerData:init()
     self.completed_games = {}
     self.game_performance = {}
     self.space_defender_level = 1
-    self.vm_slots = 1  -- Start with 1 VM slot
+    self.vm_slots = 1
     self.active_vms = {}
     self.upgrades = {
         cpu_speed = 0,
@@ -51,7 +51,8 @@ function PlayerData:updateGamePerformance(game_id, metrics, formula_result)
     if not self.game_performance[game_id] then
         self.game_performance[game_id] = {
             metrics = {},
-            best_score = 0
+            best_score = 0,
+            auto_completed = false
         }
     end
 
@@ -62,6 +63,8 @@ function PlayerData:updateGamePerformance(game_id, metrics, formula_result)
     if is_new_best then
         record.metrics = metrics
         record.best_score = formula_result
+        -- Mark as manually completed (not auto-completed)
+        record.auto_completed = false
         self.completed_games[game_id] = true
     end
 
@@ -88,7 +91,7 @@ end
 function PlayerData:purchaseVM()
     local base_cost = 1000
     local current_slots = self.vm_slots
-    local cost = base_cost * (current_slots * 2)  -- Each slot costs double the previous
+    local cost = base_cost * (current_slots * 2)
     
     if self:spendTokens(cost) then
         self.vm_slots = self.vm_slots + 1

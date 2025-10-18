@@ -22,6 +22,9 @@ function BaseGame:init(game_data)
         complexity = 1,
         time_limit = 1
     }
+    
+    -- Store difficulty level
+    self.difficulty_level = self.data.difficulty_level or 1
 end
 
 function BaseGame:update(dt)

@@ -24,15 +24,18 @@ function SpaceShooter:init(game_data)
     self.player_bullets = {}
     self.enemy_bullets = {}
     
-    -- Metrics
-    self.kills = 0
-    self.deaths = 0
+    -- Metrics (use proper names from game_data)
+    self.metrics.kills = 0
+    self.metrics.deaths = 0
     
     -- Apply difficulty scaling
     self.enemy_speed = ENEMY_BASE_SPEED * self.difficulty_modifiers.speed
     self.spawn_rate = SPAWN_BASE_RATE / self.difficulty_modifiers.count
     self.spawn_timer = 0
     self.can_shoot_back = self.difficulty_modifiers.complexity > 2
+    
+    -- Target kills scales with difficulty
+    self.target_kills = math.floor(20 * self.difficulty_modifiers.complexity)
 end
 
 function SpaceShooter:update(dt)
@@ -54,10 +57,6 @@ function SpaceShooter:update(dt)
     
     -- Update bullets
     self:updateBullets(dt)
-    
-    -- Update metrics
-    self.metrics.kills = self.kills
-    self.metrics.deaths = self.deaths
 end
 
 function SpaceShooter:updatePlayer(dt)
@@ -121,7 +120,7 @@ function SpaceShooter:updateBullets(dt)
             if self:checkCollision(bullet, enemy) then
                 table.remove(self.player_bullets, i)
                 table.remove(self.enemies, j)
-                self.kills = self.kills + 1
+                self.metrics.kills = self.metrics.kills + 1
                 break
             end
         end
@@ -140,9 +139,9 @@ function SpaceShooter:updateBullets(dt)
         -- Check player collision
         if self:checkCollision(bullet, self.player) then
             table.remove(self.enemy_bullets, i)
-            self.deaths = self.deaths + 1
+            self.metrics.deaths = self.metrics.deaths + 1
             -- Game over if too many deaths
-            if self.deaths >= 5 then
+            if self.metrics.deaths >= 5 then
                 self:onComplete()
             end
         end
@@ -179,8 +178,9 @@ function SpaceShooter:draw()
     
     -- Draw HUD
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Kills: " .. self.kills, 10, 10)
-    love.graphics.print("Deaths: " .. self.deaths, 10, 30)
+    love.graphics.print("Kills: " .. self.metrics.kills .. "/" .. self.target_kills, 10, 10)
+    love.graphics.print("Deaths: " .. self.metrics.deaths .. "/5", 10, 30)
+    love.graphics.print("Difficulty: " .. self.difficulty_level, 10, 50)
 end
 
 function SpaceShooter:playerShoot()
@@ -216,7 +216,7 @@ function SpaceShooter:spawnEnemy()
         height = 30,
         movement_pattern = movement,
         shoot_timer = math.random(1, 3),
-        shoot_rate = 3 - math.min(2, self.difficulty_modifiers.complexity)
+        shoot_rate = math.max(1, 3 - self.difficulty_modifiers.complexity * 0.5)
     }
     
     table.insert(self.enemies, enemy)
@@ -231,7 +231,7 @@ end
 
 function SpaceShooter:checkComplete()
     -- Complete if player died too many times or got enough kills
-    return self.deaths >= 5 or self.kills >= 20 * self.difficulty_modifiers.complexity
+    return self.metrics.deaths >= 5 or self.metrics.kills >= self.target_kills
 end
 
 return SpaceShooter
