@@ -162,7 +162,7 @@ function GameData:registerGame(game_data)
     self.games[game_data.id] = game_data
 end
 
-function GameData:generateClones(base_game, count, multipliers)
+function GameData:generateClones(base_game, count)
     -- Available palettes for variants (cycling through them)
     local available_palettes = {
         "default", "neon_blue", "neon_pink", "neon_green",
@@ -181,10 +181,11 @@ function GameData:generateClones(base_game, count, multipliers)
     
     for i = 1, count do
         local variant_num = i + 1
-        local multiplier = multipliers[math.min(#multipliers, i)] or multipliers[#multipliers]
+        local multiplier = i -- Use the clone index as the base for the multiplier
         local difficulty_level = math.max(1, math.floor(i / Config.clone_difficulty_step) + 1)
 
-        local cost = math.floor(base_game.unlock_cost * math.pow(multiplier, Config.clone_cost_exponent))
+        local cost_exponent = base_game.cost_exponent or Config.clone_cost_exponent
+        local cost = math.floor(base_game.unlock_cost * math.pow(multiplier, cost_exponent))
 
         local clone = {}
         for k, v in pairs(base_game) do clone[k] = v end

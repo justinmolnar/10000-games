@@ -96,11 +96,17 @@ function DebugState:handleAction(action_id)
         else
             print("Could not delete save file: " .. tostring(err))
         end
-        -- Need to trigger a reload/reset. Easiest way is often to quit and restart.
-        -- For a soft reset, we'd need to re-initialize player_data, vm_manager etc.
-        -- Let's just quit for now.
-        love.event.quit('restart') -- LÖVE specific restart if enabled, otherwise just quits.
-        -- Or force a state reload: love.load() -- Careful with this one
+
+        -- Re-initialize player data to its default state
+        if self.player_data and self.player_data.init then
+            -- We need to preserve the statistics instance
+            local stats_instance = self.player_data.statistics
+            self.player_data:init(stats_instance)
+            print("Player data has been reset in memory.")
+        end
+
+        -- For a full reset, we restart the game.
+        love.event.quit('restart')
         
     elseif action_id == "close" then
         self:closeMenu()

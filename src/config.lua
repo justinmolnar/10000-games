@@ -19,10 +19,9 @@ local Config = {
     vm_overclock_bonus_per_level = 0.05, -- 5% more power per level
 
     -- Game Data
-    clone_multipliers = {1.2, 1.5, 2, 3, 5, 7, 10, 15, 20, 30}, -- Multipliers for variants 2 through 11
-    -- Subsequent clones will use the last multiplier in the list
-    clone_cost_exponent = 0.8, -- Cost scales as base_cost * (multiplier ^ cost_exponent)
-    clone_difficulty_step = 5, -- Difficulty level increases every X variants
+    -- Game Cloning
+    clone_cost_exponent = 0.8,            -- Cost scales as base_cost * (multiplier ^ cost_exponent)
+    clone_difficulty_step = 5, -- Every 5 clones, the difficulty level increases by 1
     
     -- Auto-Play Performance Scaling (relative to base auto-play performance)
     auto_play_scaling = {
