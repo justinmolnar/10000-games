@@ -316,8 +316,6 @@ function DesktopView:getRecycleBinPosition()
     return { x = pos.x, y = pos.y, w = w, h = h }
 end
 
-
-
 function DesktopView:drawTaskbar(tokens)
     local y = love.graphics.getHeight() - self.taskbar_height
     local screen_width = love.graphics.getWidth()
@@ -331,7 +329,7 @@ function DesktopView:drawTaskbar(tokens)
     local button_area_start_x = self.taskbar_button_start_x
     local button_area_end_x = screen_width - self.taskbar_sys_tray_width
     local button_area_width = button_area_end_x - button_area_start_x
-    local windows = self.window_manager:getAllWindows()
+    local windows = self.window_manager:getWindowsInCreationOrder()
     local num_windows = #windows
     if num_windows == 0 then return end
 
@@ -342,6 +340,8 @@ function DesktopView:drawTaskbar(tokens)
 
     local focused_window_id = self.window_manager:getFocusedWindowId()
     local font = love.graphics.getFont()
+    local SpriteLoader = require('src.utils.sprite_loader')
+    local sprite_loader = SpriteLoader.getInstance()
 
     for i, window in ipairs(windows) do
         local button_x = button_area_start_x + (i - 1) * (button_width + self.taskbar_button_padding)
@@ -349,27 +349,39 @@ function DesktopView:drawTaskbar(tokens)
         local button_h = self.taskbar_height - 6
         local is_focused = (window.id == focused_window_id)
         local is_minimized = window.is_minimized
-        local is_hovered = (window.id == self.hovered_taskbar_button_id) -- Check hover state
+        local is_hovered = (window.id == self.hovered_taskbar_button_id)
 
-        -- Button Appearance (Raised/Pressed/Hover)
         local top_left_color, bottom_right_color, bg_color
         if is_focused and not is_minimized then
-             bg_color = {0.6, 0.6, 0.6}; top_left_color = {0.2, 0.2, 0.2}; bottom_right_color = {1, 1, 1} -- Pressed
+             bg_color = {0.6, 0.6, 0.6}; top_left_color = {0.2, 0.2, 0.2}; bottom_right_color = {1, 1, 1}
         elseif is_hovered then
-             bg_color = {0.85, 0.85, 0.85}; top_left_color = {1, 1, 1}; bottom_right_color = {0.2, 0.2, 0.2} -- Hover
+             bg_color = {0.85, 0.85, 0.85}; top_left_color = {1, 1, 1}; bottom_right_color = {0.2, 0.2, 0.2}
         else
-             bg_color = {0.75, 0.75, 0.75}; top_left_color = {1, 1, 1}; bottom_right_color = {0.2, 0.2, 0.2} -- Raised
+             bg_color = {0.75, 0.75, 0.75}; top_left_color = {1, 1, 1}; bottom_right_color = {0.2, 0.2, 0.2}
         end
 
-        love.graphics.setColor(bg_color); love.graphics.rectangle('fill', button_x, button_y, button_width, button_h)
-        love.graphics.setColor(top_left_color); love.graphics.line(button_x, button_y, button_x + button_width, button_y); love.graphics.line(button_x, button_y, button_x, button_y + button_h)
-        love.graphics.setColor(bottom_right_color); love.graphics.line(button_x + button_width, button_y, button_x + button_width, button_y + button_h); love.graphics.line(button_x, button_y + button_h, button_x + button_width, button_y + button_h)
+        love.graphics.setColor(bg_color)
+        love.graphics.rectangle('fill', button_x, button_y, button_width, button_h)
+        love.graphics.setColor(top_left_color)
+        love.graphics.line(button_x, button_y, button_x + button_width, button_y)
+        love.graphics.line(button_x, button_y, button_x, button_y + button_h)
+        love.graphics.setColor(bottom_right_color)
+        love.graphics.line(button_x + button_width, button_y, button_x + button_width, button_y + button_h)
+        love.graphics.line(button_x, button_y + button_h, button_x + button_width, button_y + button_h)
 
+        local icon_size = 16
+        local icon_x = button_x + 3
+        local icon_y = button_y + (button_h - icon_size) / 2
+        
+        if window.icon_sprite then
+            sprite_loader:drawSprite(window.icon_sprite, icon_x, icon_y, icon_size, icon_size, {1, 1, 1})
+        end
 
-        -- Title Text (Truncated)
         love.graphics.setColor(0, 0, 0)
-        local max_text_width = button_width - 10
+        local text_start_x = window.icon_sprite and (icon_x + icon_size + 3) or (button_x + 5)
+        local max_text_width = button_width - (text_start_x - button_x) - 5
         local truncated_title = window.title or "Untitled"
+        
         if font:getWidth(truncated_title) > max_text_width then
             local ellipsis_width = font:getWidth("...")
             while font:getWidth(truncated_title) + ellipsis_width > max_text_width and #truncated_title > 0 do
@@ -377,13 +389,16 @@ function DesktopView:drawTaskbar(tokens)
             end
             truncated_title = truncated_title .. "..."
         end
+        
         local text_y = button_y + (button_h - font:getHeight()) / 2
-        love.graphics.print(truncated_title, button_x + 5, text_y)
+        love.graphics.print(truncated_title, text_start_x, text_y)
 
-        if is_minimized then love.graphics.setColor(0.4, 0.4, 0.4, 0.5); love.graphics.rectangle('fill', button_x, button_y, button_width, button_h) end
+        if is_minimized then
+            love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
+            love.graphics.rectangle('fill', button_x, button_y, button_width, button_h)
+        end
     end
 end
-
 
 function DesktopView:getTaskbarButtonAtPosition(x, y)
     local taskbar_y = love.graphics.getHeight() - self.taskbar_height
@@ -437,26 +452,67 @@ function DesktopView:drawSystemTray(x, y, w, h, tokens)
 end
 
 function DesktopView:drawStartMenu()
-    love.graphics.setColor(0.75, 0.75, 0.75); love.graphics.rectangle('fill', self.start_menu_x, self.start_menu_y, self.start_menu_w, self.start_menu_h)
-    love.graphics.setColor(1, 1, 1); love.graphics.line(self.start_menu_x, self.start_menu_y, self.start_menu_x + self.start_menu_w, self.start_menu_y); love.graphics.line(self.start_menu_x, self.start_menu_y, self.start_menu_x, self.start_menu_y + self.start_menu_h)
-    love.graphics.setColor(0.2, 0.2, 0.2); love.graphics.line(self.start_menu_x + self.start_menu_w, self.start_menu_y, self.start_menu_x + self.start_menu_w, self.start_menu_y + self.start_menu_h); love.graphics.line(self.start_menu_x, self.start_menu_y + self.start_menu_h, self.start_menu_x + self.start_menu_w, self.start_menu_y + self.start_menu_h)
+    local SpriteLoader = require('src.utils.sprite_loader')
+    local sprite_loader = SpriteLoader.getInstance()
+    
+    love.graphics.setColor(0.75, 0.75, 0.75)
+    love.graphics.rectangle('fill', self.start_menu_x, self.start_menu_y, self.start_menu_w, self.start_menu_h)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.line(self.start_menu_x, self.start_menu_y, self.start_menu_x + self.start_menu_w, self.start_menu_y)
+    love.graphics.line(self.start_menu_x, self.start_menu_y, self.start_menu_x, self.start_menu_y + self.start_menu_h)
+    love.graphics.setColor(0.2, 0.2, 0.2)
+    love.graphics.line(self.start_menu_x + self.start_menu_w, self.start_menu_y, self.start_menu_x + self.start_menu_w, self.start_menu_y + self.start_menu_h)
+    love.graphics.line(self.start_menu_x, self.start_menu_y + self.start_menu_h, self.start_menu_x + self.start_menu_w, self.start_menu_y + self.start_menu_h)
 
     local start_programs = self.program_registry:getStartMenuPrograms()
     local item_y = self.start_menu_y + 10
     local item_h = 25
+    local icon_size = 20
+    
     for _, program in ipairs(start_programs) do
         local is_hovered = self.hovered_start_program_id == program.id
-        if is_hovered then love.graphics.setColor(0, 0, 0.5); love.graphics.rectangle('fill', self.start_menu_x + 2, item_y, self.start_menu_w - 4, item_h) end
+        
+        -- Highlight
+        if is_hovered then
+            love.graphics.setColor(0, 0, 0.5)
+            love.graphics.rectangle('fill', self.start_menu_x + 2, item_y, self.start_menu_w - 4, item_h)
+        end
+        
+        -- Icon
+        local icon_x = self.start_menu_x + 5
+        local icon_y_centered = item_y + (item_h - icon_size) / 2
+        
+        local sprite_name = program.icon_sprite or "executable-0"
+        local tint = program.disabled and {0.5, 0.5, 0.5} or (is_hovered and {1.2, 1.2, 1.2} or {1, 1, 1})
+        sprite_loader:drawSprite(sprite_name, icon_x, icon_y_centered, icon_size, icon_size, tint)
+        
+        -- Text
         love.graphics.setColor(program.disabled and {0.5, 0.5, 0.5} or (is_hovered and {1,1,1} or {0, 0, 0}))
-        love.graphics.print(program.name, self.start_menu_x + 10, item_y + 5)
+        love.graphics.print(program.name, self.start_menu_x + icon_size + 10, item_y + 5)
+        
         item_y = item_y + item_h
     end
 
-    item_y = item_y + 5; love.graphics.setColor(0.5, 0.5, 0.5); love.graphics.line(self.start_menu_x + 5, item_y, self.start_menu_x + self.start_menu_w - 5, item_y); item_y = item_y + 5
+    -- Separator
+    item_y = item_y + 5
+    love.graphics.setColor(0.5, 0.5, 0.5)
+    love.graphics.line(self.start_menu_x + 5, item_y, self.start_menu_x + self.start_menu_w - 5, item_y)
+    item_y = item_y + 5
+    
+    -- Run option with icon
     local run_hovered = self.hovered_start_program_id == "run"
-    if run_hovered then love.graphics.setColor(0, 0, 0.5); love.graphics.rectangle('fill', self.start_menu_x + 2, item_y, self.start_menu_w - 4, item_h) end
+    if run_hovered then
+        love.graphics.setColor(0, 0, 0.5)
+        love.graphics.rectangle('fill', self.start_menu_x + 2, item_y, self.start_menu_w - 4, item_h)
+    end
+    
+    -- Run icon
+    local icon_x = self.start_menu_x + 5
+    local icon_y_centered = item_y + (item_h - icon_size) / 2
+    sprite_loader:drawSprite("console_prompt-0", icon_x, icon_y_centered, icon_size, icon_size, run_hovered and {1.2, 1.2, 1.2} or {1, 1, 1})
+    
     love.graphics.setColor(run_hovered and {1,1,1} or {0, 0, 0})
-    love.graphics.print("Run...", self.start_menu_x + 10, item_y + 5)
+    love.graphics.print("Run...", self.start_menu_x + icon_size + 10, item_y + 5)
     love.graphics.setColor(0.4, 0.4, 0.4)
     love.graphics.print("Ctrl+R", self.start_menu_x + self.start_menu_w - 60, item_y + 5, 0, 0.8, 0.8)
 end

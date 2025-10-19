@@ -23,15 +23,13 @@ end
 
 -- Create a new window
 function WindowManager:createWindow(program, title, content_state, default_w, default_h)
-    -- *** CHANGE: Accept 'program' definition instead of 'program_type' ***
     if not program or not program.id then
         print("ERROR: createWindow called without valid program definition.")
         return nil
     end
-    local program_type = program.id -- Use program.id as the type identifier
+    local program_type = program.id
     local defaults = program.window_defaults or {}
-    local is_resizable = defaults.resizable ~= false -- Default to true if not specified
-    -- *** END CHANGE ***
+    local is_resizable = defaults.resizable ~= false
 
     local window_id = self.next_window_id
     self.next_window_id = self.next_window_id + 1
@@ -39,17 +37,14 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
     local x, y, w, h
     local remembered = self.window_positions[program_type]
 
-    -- *** CHANGE: Check resizable flag before using remembered size ***
     if not is_resizable then
         print("Program", program_type, "is not resizable. Forcing default size.")
-        w = default_w or 600 -- Use passed defaults
+        w = default_w or 600
         h = default_h or 400
-        -- Use remembered position if available, otherwise calculate cascade/center
         if remembered and remembered.x and remembered.y then
              x, y = remembered.x, remembered.y
              print("Using remembered position but default size:", x, y, w, h)
         else
-            -- Calculate initial position (Cascade/Center logic remains the same)
              local screen_w, screen_h = love.graphics.getDimensions()
              local taskbar_h = 40
              local center_x = math.floor((screen_w - w) / 2)
@@ -65,12 +60,10 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
              end
              print("Calculated initial position and default size:", x, y, w, h)
         end
-    -- If RESIZABLE, use original logic (prioritize remembered dimensions)
     elseif remembered and remembered.w and remembered.h and remembered.x and remembered.y then
         x, y, w, h = remembered.x, remembered.y, remembered.w, remembered.h
         print("Using remembered position and size for", program_type, ":", x, y, w, h)
     else
-        -- Resizable but no remembered data, use defaults and calculate position
         w = default_w or 600
         h = default_h or 400
         local screen_w, screen_h = love.graphics.getDimensions()
@@ -88,25 +81,29 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
         end
         print("Calculated initial position for resizable", program_type, ":", x, y, w, h)
     end
-    -- *** END CHANGE ***
 
-    -- Clamp initial position robustly (logic remains the same)
     local screen_w, screen_h = love.graphics.getDimensions()
     local taskbar_h = 40
-    -- Ensure w and h are valid numbers before clamping
     w = tonumber(w) or default_w or 600
     h = tonumber(h) or default_h or 400
-    w = math.max(self.min_window_width or 200, w) -- Apply min width
-    h = math.max(self.min_window_height or 150, h) -- Apply min height
+    w = math.max(self.min_window_width or 200, w)
+    h = math.max(self.min_window_height or 150, h)
 
     x = math.max(0, math.min(x or 0, screen_w - w))
     y = math.max(0, math.min(y or 0, screen_h - taskbar_h - h))
     x = tonumber(x) or 0; y = tonumber(y) or 0
 
     local window = {
-        id = window_id, program_type = program_type, title = title, content_state = content_state,
+        id = window_id,
+        program_type = program_type,
+        title = title,
+        icon_sprite = program.icon_sprite,
+        content_state = content_state,
         x = x, y = y, width = w, height = h,
-        is_maximized = false, pre_maximize_bounds = nil, is_minimized = false
+        is_maximized = false,
+        pre_maximize_bounds = nil,
+        is_minimized = false,
+        creation_order = window_id
     }
 
     table.insert(self.windows, window)
@@ -317,6 +314,18 @@ end
 -- Get all windows (for taskbar display - returns in z-order, bottom to top)
 function WindowManager:getAllWindows()
     return self.windows
+end
+
+-- Get all windows sorted by creation order (for taskbar)
+function WindowManager:getWindowsInCreationOrder()
+    local sorted = {}
+    for _, window in ipairs(self.windows) do
+        table.insert(sorted, window)
+    end
+    table.sort(sorted, function(a, b)
+        return a.creation_order < b.creation_order
+    end)
+    return sorted
 end
 
 -- Get focused window ID

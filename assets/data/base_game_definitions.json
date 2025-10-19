@@ -10,6 +10,20 @@
     "metrics_tracked": ["kills", "deaths"],
     "icon_sprite": "game_mine_1-0",
     
+    "visual_identity": {
+      "sprite_set_id": "space_set_1",
+      "palette_id": "default",
+      "metric_sprite_mappings": {
+        "kills": "game_mine_1-0",
+        "deaths": "msg_error-0"
+      },
+      "formula_icon_mapping": {
+        "kills": "game_mine_1-0",
+        "deaths": "msg_error-0",
+        "result": "check-0"
+      }
+    },
+    
     "cheat_engine_base_cost": 1000,
     "cheat_cost_exponent": 1.2,
     "available_cheats": [
@@ -54,7 +68,21 @@
     "unlock_cost": 150,
     "base_formula_string": "(metrics.snake_length * (metrics.survival_time / 10))",
     "metrics_tracked": ["snake_length", "survival_time"],
-    "icon_sprite": "game_solitaire-0",
+    "icon_sprite": "game_spider-0",
+    
+    "visual_identity": {
+      "sprite_set_id": "snake_set_1",
+      "palette_id": "neon_green",
+      "metric_sprite_mappings": {
+        "snake_length": "game_spider-0",
+        "survival_time": "clock-0"
+      },
+      "formula_icon_mapping": {
+        "snake_length": "game_spider-0",
+        "survival_time": "clock-0",
+        "result": "check-0"
+      }
+    },
 
     "cheat_engine_base_cost": 800,
     "cheat_cost_exponent": 1.15,
@@ -95,6 +123,22 @@
     "base_formula_string": "(metrics.matches * 10 - metrics.time + metrics.perfect * 5)",
     "metrics_tracked": ["matches", "time", "perfect"],
     "icon_sprite": "game_freecell-0",
+    
+    "visual_identity": {
+      "sprite_set_id": "memory_set_1",
+      "palette_id": "pastel_blue",
+      "metric_sprite_mappings": {
+        "matches": "game_freecell-0",
+        "time": "clock-0",
+        "perfect": "check-0"
+      },
+      "formula_icon_mapping": {
+        "matches": "game_freecell-0",
+        "time": "clock-0",
+        "perfect": "check-0",
+        "result": "certificate-0"
+      }
+    },
 
     "cheat_engine_base_cost": 500,
     "cheat_cost_exponent": 1.1,
@@ -128,7 +172,23 @@
     "unlock_cost": 175,
     "base_formula_string": "((metrics.objects_dodged * metrics.objects_dodged) / (metrics.collisions + 1))",
     "metrics_tracked": ["objects_dodged", "collisions", "perfect_dodges"],
-    "icon_sprite": "game_spider-0",
+    "icon_sprite": "game_solitaire-0",
+    
+    "visual_identity": {
+      "sprite_set_id": "dodge_set_1",
+      "palette_id": "fire",
+      "metric_sprite_mappings": {
+        "objects_dodged": "game_solitaire-0",
+        "collisions": "msg_error-0",
+        "perfect_dodges": "check-0"
+      },
+      "formula_icon_mapping": {
+        "objects_dodged": "game_solitaire-0",
+        "collisions": "msg_error-0",
+        "perfect_dodges": "check-0",
+        "result": "certificate-0"
+      }
+    },
     
     "cheat_engine_base_cost": 1200,
     "cheat_cost_exponent": 1.2,
@@ -175,6 +235,20 @@
     "base_formula_string": "(metrics.objects_found * metrics.time_bonus)",
     "metrics_tracked": ["objects_found", "time_bonus"],
     "icon_sprite": "magnifying_glass-0",
+    
+    "visual_identity": {
+      "sprite_set_id": "hidden_set_1",
+      "palette_id": "retro_amber",
+      "metric_sprite_mappings": {
+        "objects_found": "magnifying_glass-0",
+        "time_bonus": "clock-0"
+      },
+      "formula_icon_mapping": {
+        "objects_found": "magnifying_glass-0",
+        "time_bonus": "clock-0",
+        "result": "certificate-0"
+      }
+    },
     
     "cheat_engine_base_cost": 400,
     "cheat_cost_exponent": 1.1,

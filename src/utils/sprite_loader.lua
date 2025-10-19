@@ -67,7 +67,7 @@ function SpriteLoader:hasSprite(sprite_name)
     return self.sprites[sprite_name] ~= nil
 end
 
-function SpriteLoader:drawSprite(sprite_name, x, y, width, height, tint)
+function SpriteLoader:drawSprite(sprite_name, x, y, width, height, tint, palette_id)
     local sprite = self:getSprite(sprite_name)
     
     if not sprite then
@@ -79,20 +79,25 @@ function SpriteLoader:drawSprite(sprite_name, x, y, width, height, tint)
         return false
     end
     
-    -- Apply tint if provided, otherwise white
+    -- If palette requested, use PaletteManager
+    if palette_id and palette_id ~= "default" then
+        local PaletteManager = require('src.utils.palette_manager')
+        local palette_mgr = PaletteManager.getInstance()
+        return palette_mgr:drawSpriteWithPalette(sprite, x, y, width, height, palette_id, tint)
+    end
+    
+    -- No palette, draw normally
     if tint then
         love.graphics.setColor(tint)
     else
         love.graphics.setColor(1, 1, 1)
     end
     
-    -- Calculate scale to fit the sprite into the target dimensions
     local sprite_w = sprite:getWidth()
     local sprite_h = sprite:getHeight()
     local scale_x = width / sprite_w
     local scale_y = height / sprite_h
     
-    -- Draw the sprite scaled to fit
     love.graphics.draw(sprite, x, y, 0, scale_x, scale_y)
     
     return true

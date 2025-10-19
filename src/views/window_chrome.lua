@@ -39,6 +39,9 @@ end
 
 -- Draw title bar
 function WindowChrome:drawTitleBar(window, is_focused)
+    local SpriteLoader = require('src.utils.sprite_loader')
+    local sprite_loader = SpriteLoader.getInstance()
+    
     local bar_height = self.TITLE_BAR_HEIGHT
 
     -- Title bar background (gradient effect)
@@ -51,10 +54,20 @@ function WindowChrome:drawTitleBar(window, is_focused)
         window.x + 2, window.y + 2,
         window.width - 4, bar_height)
 
-    -- Title text (Uses window.title)
+    -- Draw icon if available
+    local icon_size = 16
+    local icon_x = window.x + 5
+    local icon_y = window.y + 5
+    
+    if window.icon_sprite then
+        sprite_loader:drawSprite(window.icon_sprite, icon_x, icon_y, icon_size, icon_size, {1, 1, 1})
+    end
+    
+    -- Title text (shifted right to make room for icon)
     love.graphics.setColor(1, 1, 1)
+    local text_x = window.icon_sprite and (icon_x + icon_size + 5) or (window.x + 5)
     love.graphics.print(window.title,
-        window.x + 5, window.y + 6,
+        text_x, window.y + 6,
         0, 0.9, 0.9)
 end
 
