@@ -988,12 +988,25 @@ function DesktopState:launchProgram(program_id, ...)
 
     local initial_title = program.name
     local game_data_arg = nil
+    local program_for_window = program
+    
     if program_id == "minigame_runner" then
         game_data_arg = launch_args[1]
-        if game_data_arg and game_data_arg.display_name then initial_title = game_data_arg.display_name else initial_title = "Minigame" end
+        if game_data_arg and game_data_arg.display_name then 
+            initial_title = game_data_arg.display_name 
+            -- Create a modified program definition with the game's icon
+            program_for_window = {
+                id = program.id,
+                name = game_data_arg.display_name,
+                icon_sprite = game_data_arg.icon_sprite,
+                window_defaults = program.window_defaults
+            }
+        else 
+            initial_title = "Minigame" 
+        end
     end
 
-    local window_id = self.window_manager:createWindow( program, initial_title, new_state, default_w, default_h )
+    local window_id = self.window_manager:createWindow( program_for_window, initial_title, new_state, default_w, default_h )    
     if not window_id then print("ERROR: WindowManager failed to create window for " .. program_id); return end
 
     self.window_states[window_id] = { state = new_state }

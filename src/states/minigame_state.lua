@@ -175,14 +175,13 @@ function MinigameState:drawCompletionScreen()
     y = y + line_height
 
     if self.game_data and self.game_data.metrics_tracked then
-        for _, metric_name in ipairs(self.game_data.metrics_tracked) do
-            local value = metrics[metric_name]
-            if value ~= nil then
-                if type(value) == "number" then value = string.format("%.1f", value) end
-                love.graphics.print("  " .. metric_name .. ": " .. value, x + 20, y, 0, text_scale * 0.9, text_scale * 0.9)
-                y = y + line_height
-            end
-        end
+        local MetricLegend = require('src.views.metric_legend')
+        local metric_legend = MetricLegend:new()
+        
+        love.graphics.push()
+        love.graphics.origin()
+        y = metric_legend:draw(self.game_data, metrics, x + 20, y, vpWidth - x - 40, true)
+        love.graphics.pop()
     else
         love.graphics.print("  (Metrics unavailable)", x + 20, y, 0, text_scale * 0.9, text_scale * 0.9)
         y = y + line_height
@@ -191,9 +190,17 @@ function MinigameState:drawCompletionScreen()
     y = y + line_height * 0.5
     love.graphics.print("Formula Calculation:", x, y, 0, text_scale, text_scale)
     y = y + line_height
-    if self.game_data and self.game_data.formula_string then
-        love.graphics.printf(self.game_data.formula_string, x + 20, y, vpWidth * 0.7, "left", 0, text_scale * 0.8, text_scale * 0.8)
-        y = y + line_height
+    
+    if self.game_data and self.game_data.base_formula_string then
+        local FormulaRenderer = require('src.views.formula_renderer')
+        local formula_renderer = FormulaRenderer:new()
+        
+        love.graphics.push()
+        love.graphics.origin()
+        local formula_end_y = formula_renderer:draw(self.game_data, x + 20, y, vpWidth * 0.7, 20)
+        love.graphics.pop()
+        
+        y = formula_end_y + line_height * 0.5
     end
 
     if performance_mult ~= 1.0 then
