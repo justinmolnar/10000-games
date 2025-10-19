@@ -14,7 +14,8 @@ end
 
 -- Load filesystem structure from JSON
 function FileSystem:loadFilesystem()
-    local file_path = "assets/data/filesystem.json"
+    local Paths = require('src.paths')
+    local file_path = Paths.assets.data .. "filesystem.json"
     local read_ok, contents = pcall(love.filesystem.read, file_path)
     
     if not read_ok or not contents then

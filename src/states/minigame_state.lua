@@ -1,4 +1,5 @@
 local Object = require('class')
+local Strings = require('src.utils.strings')
 local ProgressionManager = require('models.progression_manager')
 local MinigameState = Object:extend('MinigameState')
 local DEFAULT_COMPLETION_THRESHOLD = 0.75 -- fallback if not provided in JSON
@@ -63,7 +64,7 @@ function MinigameState:enter(game_data)
     if not require_ok or not GameClass then
         print("[MinigameState] ERROR: Failed to load game class '".. require_path .."': " .. tostring(GameClass))
         self.current_game = nil
-        love.window.showMessageBox("Error", "Failed to load game logic for: " .. (game_data.display_name or class_name), "error")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Failed to load game logic for: " .. (game_data.display_name or class_name), "error")
         return { type = "close_window" }
     end
 
@@ -71,7 +72,7 @@ function MinigameState:enter(game_data)
     if not instance_ok or not game_instance then
         print("[MinigameState] ERROR: Failed to instantiate game class '".. class_name .."': " .. tostring(game_instance))
         self.current_game = nil
-        love.window.showMessageBox("Error", "Failed to initialize game: " .. (game_data.display_name or class_name), "error")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Failed to initialize game: " .. (game_data.display_name or class_name), "error")
         return { type = "close_window" }
     end
     self.current_game = game_instance

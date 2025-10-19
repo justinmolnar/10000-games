@@ -2,12 +2,14 @@ local Object = require('class')
 local json = require('json')
 
 -- Simple 3D model screensaver view: loads a JSON mesh and spins it
+local Config = require('src.config')
 local ModelView = Object:extend('ScreensaverModelView')
 
 function ModelView:init(opts)
     opts = opts or {}
     self:setViewport(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    self.fov = opts.fov or 350
+    local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.model) or {}
+    self.fov = opts.fov or d.fov or 350
     self.scale = opts.scale or 1.0
     self.mode = opts.mode or 'cube_sphere' -- 'mesh', 'square_circle', or 'cube_sphere'
     self.two_sided = opts.two_sided or false -- if true, skip backface culling
@@ -46,11 +48,11 @@ function ModelView:init(opts)
             table.insert(self.shape_faces, { self.top_center, self.N + i, self.N + j })
         end
     else -- cube_sphere
-    self.grid_lat = opts.grid_lat or 24 -- latitude segments
-    self.grid_lon = opts.grid_lon or 48 -- longitude segments
+    self.grid_lat = opts.grid_lat or d.grid_lat or 24 -- latitude segments
+    self.grid_lon = opts.grid_lon or d.grid_lon or 48 -- longitude segments
     self.morph_t = 0
-    self.morph_speed = opts.morph_speed or 0.3
-    self.two_sided = opts.two_sided or false
+    self.morph_speed = opts.morph_speed or d.morph_speed or 0.3
+    self.two_sided = opts.two_sided or d.two_sided or false
         -- Precompute faces for a (grid_lat+1) x grid_lon vertex grid
         -- Vertex index: idx(i,j) with i in [0..grid_lat], j in [0..grid_lon-1]
         local function vid(i, j)
@@ -166,8 +168,9 @@ function ModelView:draw()
     local verts = {}
     local faces_src
     local function pushForwardClamp(p)
-        p[3] = p[3] + 6
-        if p[3] < 0.1 then p[3] = 0.1 end
+        local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_model_draw) or {}
+        p[3] = p[3] + (DV.z_push or 6)
+        if p[3] < (DV.near_min or 0.1) then p[3] = (DV.near_min or 0.1) end
         return p
     end
     if self.mode == 'mesh' then
@@ -253,7 +256,9 @@ function ModelView:draw()
     table.sort(faces, function(u,v) return u.depth > v.depth end) -- far to near
 
     -- Draw
-    love.graphics.clear(0,0,0)
+    local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_model_draw) or {}
+    local bg = DV.bg_color or {0,0,0}
+    love.graphics.clear(bg[1], bg[2], bg[3])
     for _,face in ipairs(faces) do
         local pts = {}
         for _, idx in ipairs(face.idx) do
@@ -264,9 +269,12 @@ function ModelView:draw()
             table.insert(pts, x)
             table.insert(pts, y)
         end
-        love.graphics.setColor(face.shade, face.shade, face.shade)
+        local amb = (DV.ambient or { min = 0.3, max = 1.0 })
+        local shade = math.max(amb.min or 0.3, math.min(amb.max or 1.0, face.shade))
+        love.graphics.setColor(shade, shade, shade)
         love.graphics.polygon('fill', pts)
-        love.graphics.setColor(0,0,0)
+        local edge = DV.edge_color or {0,0,0}
+        love.graphics.setColor(edge)
         love.graphics.polygon('line', pts)
     end
 end

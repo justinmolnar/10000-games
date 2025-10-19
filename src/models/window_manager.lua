@@ -3,6 +3,7 @@
 
 local Object = require('class')
 local json = require('json')
+local Config = require('src.config')
 local WindowManager = Object:extend('WindowManager')
 
 local SAVE_FILE = "window_positions.json"
@@ -14,8 +15,10 @@ function WindowManager:init()
     self.next_window_id = 1
     self.minimized_windows = {} -- {window_id = true} - Tracks minimized state separately for taskbar
     self.window_positions = {} -- {program_type = {x, y, w, h}} - Stores last known non-maximized position/size
-    self.cascade_offset_x = 25 -- Added for cascading new windows
-    self.cascade_offset_y = 25 -- Added for cascading new windows
+    local cascade = (Config and Config.window and Config.window.cascade) or { offset_x = 25, offset_y = 25, reset_anchor = { x = 50, y = 50 } }
+    self.cascade_offset_x = cascade.offset_x or 25
+    self.cascade_offset_y = cascade.offset_y or 25
+    self.cascade_reset_anchor = cascade.reset_anchor or { x = 50, y = 50 }
     self.last_base_pos = { x = -1, y = -1 } -- Track base position for cascading
 
     self:loadWindowPositions()
@@ -29,7 +32,14 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
     end
     local program_type = program.id
     local defaults = program.window_defaults or {}
-    local is_resizable = defaults.resizable ~= false
+    local wd = (Config and Config.window and Config.window.defaults) or {}
+    local fallback_resizable = (wd.resizable ~= nil) and wd.resizable or true
+    local is_resizable = (defaults.resizable ~= nil) and defaults.resizable or fallback_resizable
+
+    -- Centralized default size fallback from Config
+    local wd = (Config and Config.window and Config.window.defaults) or {}
+    local conf_default_w = wd.width or 600
+    local conf_default_h = wd.height or 400
 
     local window_id = self.next_window_id
     self.next_window_id = self.next_window_id + 1
@@ -39,21 +49,22 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
 
     if not is_resizable then
         print("Program", program_type, "is not resizable. Forcing default size.")
-        w = default_w or 600
-        h = default_h or 400
+    w = default_w or conf_default_w
+    h = default_h or conf_default_h
         if remembered and remembered.x and remembered.y then
              x, y = remembered.x, remembered.y
              print("Using remembered position but default size:", x, y, w, h)
         else
              local screen_w, screen_h = love.graphics.getDimensions()
-             local taskbar_h = 40
+             local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
              local center_x = math.floor((screen_w - w) / 2)
              local center_y = math.floor((screen_h - taskbar_h - h) / 2)
              if self.last_base_pos.x >= 0 then
                  x = self.last_base_pos.x + self.cascade_offset_x
                  y = self.last_base_pos.y + self.cascade_offset_y
-                 if (x + w / 2 > screen_w - 50) or (y + h / 2 > screen_h - taskbar_h - 50) then
-                     x, y = 50, 50; self.last_base_pos = { x = x, y = y }
+             local screen_margin = (Config and Config.window and Config.window.cascade and Config.window.cascade.screen_edge_margin) or 50
+             if (x + w / 2 > screen_w - screen_margin) or (y + h / 2 > screen_h - taskbar_h - screen_margin) then
+                 x, y = self.cascade_reset_anchor.x or screen_margin, self.cascade_reset_anchor.y or screen_margin; self.last_base_pos = { x = x, y = y }
                  else self.last_base_pos = { x = x, y = y } end
              else
                  x, y = center_x, center_y; self.last_base_pos = { x = x, y = y }
@@ -62,22 +73,23 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
         end
     elseif remembered and remembered.w and remembered.h and remembered.x and remembered.y then
         -- If defaults increased, prefer the larger of remembered vs default for debugging/UX
-        w = math.max(remembered.w or 0, default_w or 0)
-        h = math.max(remembered.h or 0, default_h or 0)
+    w = math.max(remembered.w or 0, default_w or conf_default_w or 0)
+    h = math.max(remembered.h or 0, default_h or conf_default_h or 0)
         x, y = remembered.x, remembered.y
         print("Using remembered position with adjusted size for", program_type, ":", x, y, w, h)
     else
-        w = default_w or 600
-        h = default_h or 400
-        local screen_w, screen_h = love.graphics.getDimensions()
-        local taskbar_h = 40
+    w = default_w or conf_default_w
+    h = default_h or conf_default_h
+    local screen_w, screen_h = love.graphics.getDimensions()
+    local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
         local center_x = math.floor((screen_w - w) / 2)
         local center_y = math.floor((screen_h - taskbar_h - h) / 2)
         if self.last_base_pos.x >= 0 then
             x = self.last_base_pos.x + self.cascade_offset_x
             y = self.last_base_pos.y + self.cascade_offset_y
-            if (x + w / 2 > screen_w - 50) or (y + h / 2 > screen_h - taskbar_h - 50) then
-                x, y = 50, 50; self.last_base_pos = { x = x, y = y }
+            local screen_margin = (Config and Config.window and Config.window.cascade and Config.window.cascade.screen_edge_margin) or 50
+            if (x + w / 2 > screen_w - screen_margin) or (y + h / 2 > screen_h - taskbar_h - screen_margin) then
+                x, y = self.cascade_reset_anchor.x or screen_margin, self.cascade_reset_anchor.y or screen_margin; self.last_base_pos = { x = x, y = y }
             else self.last_base_pos = { x = x, y = y } end
         else
             x, y = center_x, center_y; self.last_base_pos = { x = x, y = y }
@@ -86,11 +98,12 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
     end
 
     local screen_w, screen_h = love.graphics.getDimensions()
-    local taskbar_h = 40
-    w = tonumber(w) or default_w or 600
-    h = tonumber(h) or default_h or 400
-    w = math.max(self.min_window_width or 200, w)
-    h = math.max(self.min_window_height or 150, h)
+    local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
+    w = tonumber(w) or default_w or conf_default_w
+    h = tonumber(h) or default_h or conf_default_h
+    local min_size = (Config and Config.window and Config.window.min_size) or { w = 200, h = 150 }
+    w = math.max(self.min_window_width or min_size.w or 200, w)
+    h = math.max(self.min_window_height or min_size.h or 150, h)
 
     x = math.max(0, math.min(x or 0, screen_w - w))
     y = math.max(0, math.min(y or 0, screen_h - taskbar_h - h))
@@ -103,6 +116,7 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
         icon_sprite = program.icon_sprite,
         content_state = content_state,
         x = x, y = y, width = w, height = h,
+        is_resizable = is_resizable,
         is_maximized = false,
         pre_maximize_bounds = nil,
         is_minimized = false,
@@ -215,7 +229,8 @@ function WindowManager:maximizeWindow(window_id, screen_width, screen_height)
     window.x = 0
     window.y = 0
     window.width = screen_width
-    window.height = screen_height - 40 -- Reserve space for taskbar
+    local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
+    window.height = screen_height - taskbar_h -- Reserve space for taskbar
     window.is_maximized = true
 
     -- Ensure it's not marked as minimized and gets focus

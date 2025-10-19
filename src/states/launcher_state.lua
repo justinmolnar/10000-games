@@ -1,4 +1,5 @@
 local Object = require('class')
+local Strings = require('src.utils.strings')
 local LauncherView = require('src.views.launcher_view')
 local LauncherState = Object:extend('LauncherState')
 
@@ -212,12 +213,12 @@ function LauncherState:showUnlockPrompt(game_data)
 
     if not has_tokens then
         message = "Not enough tokens!\n\n" .. message
-        love.window.showMessageBox("Cannot Unlock", message, "error")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), message, "error")
         return nil -- Indicate failure or no action needed
     end
 
     local buttons = {"Unlock", "Cancel"}
-    local pressed = love.window.showMessageBox("Unlock Game", message, buttons, "info")
+    local pressed = love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), message, buttons, "info")
 
     if pressed == 1 then
         if self.player_data:spendTokens(cost) then

@@ -2,6 +2,7 @@
 package.path = "./src/?.lua;" .. "./lib/?.lua;" .. package.path
 
 local Object = require('class')
+local Constants = require('src.constants')
 local json = require('json')
 
 -- Global systems needed by DesktopState launch logic and love callbacks
@@ -155,16 +156,16 @@ function love.load()
     desktop.cursors = system_cursors
 
     -- Register states (Minigame state is removed)
-    state_machine:register('completion', completion_state) -- Launched from Space Defender window signal
-    state_machine:register('debug', debug_state) -- Launched via F5
-    state_machine:register('desktop', desktop) -- Initial state
-    state_machine:register('screensaver', screensaver_state)
+    state_machine:register(Constants.state.COMPLETION, completion_state) -- Launched from Space Defender window signal
+    state_machine:register(Constants.state.DEBUG, debug_state) -- Launched via F5
+    state_machine:register(Constants.state.DESKTOP, desktop) -- Initial state
+    state_machine:register(Constants.state.SCREENSAVER, screensaver_state)
 
     -- States launched as windows (Launcher, VMManager, SpaceDefender, CheatEngine, Settings, Statistics, FileExplorer, MinigameRunner)
     -- are instantiated *by* DesktopState, not registered globally here.
 
     print("Starting game - switching to desktop")
-    current_state_name = 'desktop'
+    current_state_name = Constants.state.DESKTOP
     state_machine:switch(current_state_name)
 
     print("=== love.load() completed ===")
@@ -245,17 +246,17 @@ function love.keypressed(key, scancode, isrepeat)
 
     -- Debug toggle key (F5) - Always available unless state handled it
     if key == 'f5' then
-        if current_state_name == 'debug' then
+        if current_state_name == Constants.state.DEBUG then
              -- Let Debug state handle closing itself via its keypressed (already tried above)
              print("Debug state should handle F5 close")
-        elseif current_state_name == 'desktop' then -- Only allow opening from desktop
-            switchState('debug', current_state_name)
+        elseif current_state_name == Constants.state.DESKTOP then -- Only allow opening from desktop
+            switchState(Constants.state.DEBUG, current_state_name)
         end
         return -- Consume F5
     end
 
     -- Global debug keys (only if not in debug state already)
-    if current_state_name ~= 'debug' then
+    if current_state_name ~= Constants.state.DEBUG then
         if key == '-' then
             if player_data:spendTokens(5000) then print("Debug: Removed 5000 tokens.") else print("Debug: Not enough tokens.") end
             return -- Consume key

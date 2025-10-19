@@ -1,5 +1,6 @@
 local Object = require('class')
 local json = require('json')
+local Paths = require('src.paths')
 local Config = require('src.config') -- Moved require to file scope
 local GameData = Object:extend('GameData')
 
@@ -23,7 +24,7 @@ function GameData:init()
 end
 
 function GameData:loadBaseGames()
-    local file_path = "assets/data/base_game_definitions.json"
+    local file_path = Paths.assets.data .. "base_game_definitions.json"
     local read_ok, contents = pcall(love.filesystem.read, file_path)
 
     if not read_ok or not contents then

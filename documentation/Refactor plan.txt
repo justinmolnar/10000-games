@@ -1,0 +1,232 @@
+# Refactor Action Plan
+
+## Phase 0: Preparation & Initial Analysis 🧐
+
+1.  **Version Control:** Ensure the project is reliably managed with Git. Create a dedicated `refactor` branch.
+    * Notes:
+    ***
+        *  Recommendation: create `refactor/phase-1` (or similar) branch for incremental PRs; keep master green after each sweep.
+
+2.  **Code Style & Linting:** Introduce a Lua linter (like Luacheck) and formatter (like StyLua) with agreed-upon settings to ensure consistency moving forward. Run it initially to get a baseline.
+    * Notes:
+    ***
+        *  Plan: add `.luacheckrc` and `.stylua.toml` with minimal rules first; run non-fixing lint to gather baseline before enabling CI.
+
+3.  **Identify Globals:** Systematically list all variables used globally (implicitly or explicitly). Pay close attention to:
+    * Manager instances created in `main.lua` (e.g., `stateMachine`, `windowManager`, `progressionManager`, `saveManager`, `spriteManager`, `paletteManager`, `settingsManager`, `gameContext`, `playerData`).
+    * Potentially global access within `src/states/*.lua`, `src/views/*.lua`, `src/games/*.lua`, `src/models/*.lua`, and `src/utils/*.lua`.
+    * Notes:
+    ***
+        *  main.lua defines many globals (player_data, game_data, vm_manager, state_machine, SaveManager, SettingsManager, statistics, program_registry, window_manager, desktop_icons, file_system, recycle_bin, system_cursors, current_state_name). Target: encapsulate behind a simple DI container in later phases.
+        *  Ensure a single require path for SettingsManager (`src.utils.settings_manager`) is used everywhere to avoid duplicate instances (done in main.lua previously).
+        *  States should avoid leaking globals (noted in `desktop_state.lua`); views should not require managers directly.
+
+4.  **Identify Hardcoding:** Search for literal strings and numbers representing configuration, UI elements, game IDs, state names, or logic parameters. Key areas:
+    * State names in `StateMachine:change` calls (e.g., "desktop", "minigame").
+    * Game IDs used for loading/logic (e.g., "snake\_game", "space\_shooter").
+    * UI text, coordinates, dimensions within View files (`src/views/*.lua`, `src/games/views/*.lua`, `src/views/ui_components.lua`).
+    * File paths in `love.graphics.newImage`, `love.filesystem.load`, etc. (`main.lua`, `sprite_manager.lua`, `save_manager.lua`).
+    * Configuration values in `src/config.lua` (check if they *should* be externalized).
+    * Notes:
+    ***
+        *  State names centralized via `src/constants.lua` and used in `main.lua` + `src/states/desktop_state.lua` (replacing raw strings).
+        *  UI strings now being externalized to `assets/data/strings/ui.json` and consumed via `src/utils/strings.lua` across views (Desktop, VM Manager, File Explorer, Control Panel tabs, shared buttons).
+        *  Paths centralized via `src/paths.lua` (assets, data, sprites, fonts, shaders, sounds, control_panels, models, programs) for later wiring.
+        *  Candidates for numbers to extract: desktop layout metrics, window defaults in ProgramRegistry, SettingsManager window sizes (addressed via Config wiring below).
+
+5.  **Identify Large Components:** Flag files/functions with high line counts or complexity ("God" components). Potential candidates:
+    * `main.lua` (setup, global callbacks, potentially state logic).
+    * `src/states/desktop_state.lua` (handles icons, windows, input).
+    * `src/views/desktop_view.lua` (drawing logic for desktop).
+    * `src/states/minigame_state.lua` (loading and managing different games).
+    * `src/views/ui_components.lua` (might contain complex logic alongside drawing).
+    * Individual game files (`src/games/*.lua`) and their views (`src/games/views/*.lua`).
+    * Notes:
+    ***
+        *  Large/complex files to split later: `main.lua`, `src/states/desktop_state.lua`, `src/views/desktop_view.lua`, `src/states/minigame_state.lua`, `src/views/ui_components.lua`.
+        *  Likely extractions: DesktopIconController, TaskbarView/StartMenuView, tighter WindowController delegation.
+        *  Keep views pure draw/input; move logic to states/controllers during Phases 2–3.
+
+***
+## Phase 1: Configuration & Data Externalization 📝
+
+1.  **Centralize Configuration:** Ensure `src/config.lua` holds readily configurable constants (screen dimensions, default settings).
+    * Notes:
+    ***
+        *  Added `window.windowed` and `window.fullscreen` sections to `src/config.lua`.
+        *  `SettingsManager.applyFullscreen()` updated to read from `Config.window` with safe fallbacks (no behavior change).
+        *  `src/paths.lua` added to centralize base directories (wiring opportunistically in later passes).
+
+2.  **Externalize Strings:** Move UI text, file paths, state names, game IDs, icon names, etc., from Lua code into JSON files (like those already in `assets/data/`) or potentially a dedicated `strings.lua` configuration table.
+    * Refactor code in Views, States, `main.lua`, `ProgramRegistry`, `DesktopIcons`, `FileSystem` etc., to load and use these externalized strings instead of hardcoded literals.
+    * Notes:
+    ***
+        *  Added/extended `assets/data/strings/ui.json`: menu labels; Start + Run; dialog buttons; tokens/VM labels; File Explorer messages, item types, counts; Control Panel tab labels.
+        *  Created `src/utils/strings.lua` loader with `Strings.get(path, default)` and fallbacks.
+        *  Wired `Strings.get` into: `src/states/desktop_state.lua` (context menu, messages), `src/views/desktop_view.lua` (Start/Run/Run dialog), `src/views/ui_components.lua` (OK/Cancel/Apply, tokens label), `src/views/vm_manager_view.lua` (all labels), `src/views/control_panel_*_view.lua` (tab labels), `src/views/file_explorer_view.lua` (empty states, toolbar button text, type labels, status counts).
+        *  Introduced `src/constants.lua` for state names and replaced usages in `main.lua` and `desktop_state.lua`.
+    ***
+        * this is an example of another pass. every time you add notes create a seperator
+    ***
+        *  Replaced hardcoded message box titles with Strings: added and used messages.error_title and messages.info_title across Desktop, File Explorer, Cheat Engine, Minigame, and Launcher states.
+        *  Began wiring centralized Paths module: sprite loader dir and alias file; control panel schemas; base game and level data; palette JSON and shader; programs.json; strings ui.json; filesystem.json; default model path in SettingsManager. Kept debug messages path-aware.
+
+3.  **Externalize Magic Numbers:** Replace hardcoded coordinates, dimensions, game parameters (e.g., player speed, score values) with named constants loaded from `config.lua` or relevant data files. Focus on game logic (`src/games/*.lua`) and view rendering (`src/views/*.lua`, `src/games/views/*.lua`).
+    * Notes:
+    ***
+        *  Candidates identified (not yet changed): DesktopView layout metrics; various window default sizes; optional token thresholds/colors (could move to `config.lua`).
+
+    ***
+        *  Phase 1.3 audit of magic numbers (prioritized):
+            - Window system and chrome (high impact, low risk to externalize)
+                - `src/views/window_chrome.lua`:
+                    - Dimensions: `TITLE_BAR_HEIGHT=25`, `BORDER_WIDTH=2`, `BUTTON_WIDTH=16`, `BUTTON_HEIGHT=14`, `BUTTON_PADDING=2`, icon size `16`, right button margin `8`, button Y offset `4`.
+                    - Colors: focused bar `(0,0,0.5)`, unfocused bar `(0.5,0.5,0.5)`, borders `(1,1,1)` and `(0.8,0.8,0.8)/(0.5,0.5,0.5)`, button bg `(0.75,0.75,0.75)`, disabled bgs `(0.6,0.6,0.6)`/icons `(0.4,0.4,0.4)`.
+                - `src/controllers/window_controller.lua`:
+                    - Minimum window size: `min_window_width=200`, `min_window_height=150`.
+                    - Taskbar height clamps: `taskbar_h=40`.
+                    - Title bar height used directly in clamp: `title_bar_height=25` (should reference chrome/config).
+                - `src/models/window_manager.lua`:
+                    - Cascade: `cascade_offset_x=25`, `cascade_offset_y=25`, reset anchor `50,50`.
+                    - Taskbar height reserve: `40` in maximize and clamps.
+                - `src/views/window_chrome.lua` and controller:
+                    - Resize edge detection size: `edge_size=8`.
+                - `src/states/desktop_state.lua`:
+                    - Double-click threshold: `0.5` seconds (title bar double-click, icon/program launch). 
+            - Control Panels / Screensavers (defaults centralization)
+                - `src/views/control_panel_screensavers_view.lua` uses embedded defaults for UI fields:
+                    - Pipes: `radius=4.5`, `grid_step=24`, `max_segments=800`, `speed=60`, `spawn_min_z=200`, `spawn_max_z=600`, `camera_drift=40`.
+                    - Model3D: `fov=350`, `grid_lat=24`, `grid_lon=48`.
+                    - Starfield: `count=500`, `speed=120`.
+                - These should be defined once under Config.screensavers.defaults and referenced by both the control panel and renderers.
+            - Games (gameplay parameters)
+                - `src/games/dodge_game.lua`:
+                    - `PLAYER_SPEED=300`, `BASE_OBJECT_SPEED=200`, `BASE_SPAWN_RATE=1.0`, `MAX_COLLISIONS=10`, board size `game_width=400`, `game_height=400`, `MIN_SAFE_RADIUS_FRACTION=0.35`, `SAFE_ZONE_SHRINK_SEC=45`.
+                - `src/games/views/space_shooter_view.lua` and `src/views/space_defender_view.lua` (HUD + starfield bg):
+                    - Star speed min/max `20..100`, size divisor `50`, HUD right margin `150`, top margin `10`.
+                - `src/views/solitaire_view.lua`:
+                    - `PADDING=12`, initial viewport `{ width=800, height=600 }`, card/foundation spacing derived from padding; consider explicit card dims and fan offsets in config.
+            - VM Manager UI
+                - `src/views/vm_manager_view.lua`:
+                    - Layout: `slot_padding=10`, margins `20`, grid_start_y `50`, token counter top-right offsets.
+                    - Colors: various `(0.5,0.5,0.5)`, `(1,1,0)`, `(0,1,0)`, `(0.5,0.5,1)`; candidates for theme/palette.
+            - Miscellaneous
+                - `src/models/game_data.lua`: difficulty scaling constants like `0.08` and clamp `0.5` for time limits.
+                - Rounding aids using `+0.5` in UI formatting can remain inline (implementation detail), but thresholds (like percent displays) can be config-driven if needed.
+
+        *  Proposed config structure and keys:
+            - `Config.ui.window.chrome`:
+                - `title_bar_height`, `border_width`, `button = { width, height, padding, right_margin, y_offset }`, `resize_edge_size`.
+                - `colors = { titlebar_focused, titlebar_unfocused, border_focused, border_unfocused, button_bg, button_disabled_bg, button_icon, button_disabled_icon }`.
+            - `Config.ui.taskbar.height` = 40
+            - `Config.ui.double_click_time` = 0.5
+            - `Config.window.min_size = { w = 200, h = 150 }`
+            - `Config.window.cascade = { offset_x = 25, offset_y = 25, reset_anchor = { x = 50, y = 50 } }`
+            - `Config.screensavers.defaults`:
+                - `pipes = { radius, grid_step, max_segments, speed, spawn_min_z, spawn_max_z, camera_drift }`
+                - `model = { fov, grid_lat, grid_lon }`
+                - `starfield = { count, speed }`
+            - `Config.games.dodge`:
+                - `{ player_speed, base_object_speed, base_spawn_rate, max_collisions, board_w, board_h, min_safe_radius_fraction, safe_zone_shrink_sec }`
+            - `Config.games.space_defender.view`:
+                - `{ star_speed_min, star_speed_max, star_size_divisor, hud_right_margin, hud_top_margin }`
+            - `Config.games.solitaire.view`:
+                - `{ padding, viewport_w, viewport_h, card_w, card_h, fan_y_small, fan_y_large }` (use reasonable defaults; derive if unspecified).
+            - `Config.ui.colors` (optional theme bucket for shared grays/highlights used by VM Manager etc.).
+
+        *  Implementation order (safe batches):
+            1) Window system: chrome dims/colors, taskbar height, double-click time, min window size, cascade offsets; replace literals in WindowChrome, WindowController, WindowManager, DesktopState.
+            2) Control Panels defaults: move screensaver defaults to Config and reference from control panel and renderers.
+            3) Games batch A: Dodge game parameters to `Config.games.dodge` and wire both game logic and view.
+            4) Games batch B: Solitaire layout to `Config.games.solitaire.view`; Space Defender HUD/starfield to `Config.games.space_defender.view`.
+            5) VM Manager layout + optional theme colors to Config (or PaletteManager if preferred).
+
+        *  Acceptance: no behavior changes from default values; all new config entries have safe fallbacks to existing literals during migration.
+
+***
+## Phase 2: Global Variable Elimination & Dependency Injection 💉
+
+1.  **Define DI Strategy:** Choose a simple approach. Passing dependencies via constructors (`:new(dep1, dep2)`) or an `init(deps)` method is common. Avoid complex frameworks initially.
+    * Notes:
+
+2.  **Refactor `main.lua` Initialization:**
+    * Instantiate core managers/singletons here (`StateMachine`, `WindowManager`, `SaveManager`, `SpriteManager`, `PaletteManager`, `SettingsManager`, `ProgressionManager`, `GameContext`, `PlayerData`, etc.).
+    * Determine dependencies *between* these managers (e.g., `StateMachine` needs access to various State classes, `WindowManager` might need `GameContext`).
+    * Pass dependencies during instantiation (e.g., `local stateMachine = StateMachine:new({ GameContext = gameContext, PlayerData = playerData })`).
+    * Notes:
+
+3.  **Refactor States (`src/states/*.lua`):**
+    * Modify constructors (`:new`) or add `init` methods to accept necessary dependencies (e.g., `GameContext`, `ProgressionManager`, `WindowManager`, specific Views, `StateMachine` reference for transitions).
+    * Update `StateMachine` to pass these dependencies when creating state instances.
+    * Replace global access within states with access via `self.dependencyName`.
+    * Notes:
+
+4.  **Refactor Views (`src/views/*.lua`, `src/games/views/*.lua`):**
+    * Modify constructors/`init` methods to accept dependencies needed for drawing (e.g., relevant Models, `SpriteManager`, `PaletteManager`, `GameContext`, `SettingsManager`).
+    * Update the corresponding States or controllers to instantiate Views with these dependencies.
+    * Replace global access with `self.dependencyName`.
+    * Notes:
+
+5.  **Refactor Models (`src/models/*.lua`):**
+    * Apply the same pattern: Identify dependencies (e.g., `FileSystem` might need `SaveManager`, `GameData` might need `PlayerData`), pass them via constructor/`init`.
+    * Update instantiations in `main.lua` or wherever models are created.
+    * Remove global access.
+    * Notes:
+
+6.  **Refactor Game Logic (`src/games/*.lua`):**
+    * Pass dependencies like `GameContext`, `PlayerData`, potentially `SpriteManager`, etc., when games are created (likely within `MinigameState`).
+    * Remove global access.
+    * Notes:
+
+7.  **Refactor Utilities (`src/utils/*.lua`):**
+    * Assess if utils truly need state or external dependencies. If they are pure functions, they might not need changes. If they rely on managers (e.g., `SpriteLoader` needing `SpriteManager`), inject the dependency.
+    * Notes:
+
+***
+## Phase 3: Decoupling Logic & Breaking Down Components ✂️
+
+1.  **Refactor `main.lua` Callbacks:** Move logic currently inside `love.update`, `love.draw`, `love.keypressed`, `love.mousepressed`, etc., primarily into the active `StateMachine` state's corresponding methods. `main.lua` should mostly delegate to the current state.
+    * Notes:
+
+2.  **Strengthen MVP in States/Views:**
+    * **Views:** Ensure `update` methods only handle view-specific animations/transitions. Input methods (`keypressed`, `mousepressed`) should capture raw input and call methods on their corresponding State/Controller, passing relevant data (e.g., `self.state:handleIconClick(iconId)`), rather than containing the *logic* of what that click *does*. `draw` should read data from injected models/context, not modify them.
+        * Notes:
+    * **States:** `update` methods should contain game/application logic, update Models, and manage state transitions. Input handling methods (`handleIconClick`, etc.) should receive input events from the View and enact logic/model updates. `draw` should generally just call the corresponding View's `draw` method.
+        * Notes:
+    * **Models:** Remove any remaining `love.graphics`, `love.mouse`, `love.keyboard` usage. Models represent data and rules, not presentation or direct input.
+        * Notes:
+
+3.  **Break Down God Files/Functions:**
+    * **`desktop_state.lua` / `desktop_view.lua`:** Extract logic for icon management (arranging, clicking) into a separate `DesktopIconController` or similar. Window dragging/resizing logic might belong more purely in `WindowManager` or `WindowController`, with the state just delegating.
+        * Notes:
+    * **`minigame_state.lua`:** Ensure this state focuses *only* on loading/unloading the correct `BaseGame` subclass and delegating updates/draws/input to it. Avoid putting specific game logic here.
+        * Notes:
+    * **`ui_components.lua`:** If components have complex internal logic beyond drawing, consider splitting them into their own files or structuring them more like mini-MVP triads if necessary (though likely overkill).
+        * Notes:
+    * **Large Functions:** Identify functions longer than ~50-100 lines or with many nested loops/conditionals. Break them into smaller, well-named helper functions within the same file or move related helpers into new utility modules.
+        * Notes:
+
+4.  **Refactor Conditional Logic:** Replace long `if/elseif` chains based on state names or game IDs:
+    * Use Lua tables as maps (e.g., `stateConstructors[stateName]()` instead of `if stateName == 'desktop' then DesktopState:new() ...`).
+    * Apply Strategy Pattern where appropriate (e.g., different behaviors based on game type could be encapsulated in strategy objects). This is particularly relevant in `MinigameState`.
+    * Notes:
+
+***
+## Phase 4: Refinement & Testing ✨
+
+1.  **Code Style Pass:** Run the auto-formatter across the entire codebase.
+    * Notes:
+
+2.  **Linter Pass:** Fix all warnings reported by the linter.
+    * Notes:
+
+3.  **Review & Documentation:** Add comments explaining complex sections, architectural choices, or non-obvious dependencies. Remove dead code.
+    * Notes:
+
+4.  **Testing (If Applicable):** If a testing framework is feasible (e.g., Busted), write unit tests for critical models, utility functions, and potentially state transitions. Add integration tests for key workflows.
+    * Notes:
+
+5.  **Manual Testing:** Thoroughly test all aspects of the application: state transitions, all mini-games, UI interactions, saving/loading, settings changes.
+    * Notes:
+
+***

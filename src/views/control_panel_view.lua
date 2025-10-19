@@ -1,6 +1,8 @@
 -- src/views/control_panel_view.lua
 local Object = require('class')
 local SettingsManager = require('src.utils.settings_manager')
+local Strings = require('src.utils.strings')
+local Config = require('src.config')
 
 local ControlPanelView = Object:extend('ControlPanelView')
 
@@ -23,46 +25,53 @@ end
 -- General applet: just a placeholder for now
 local function draw_general(self, viewport_width, viewport_height)
     local s = SettingsManager.getAll()
-    local y = 10
+    local V = (Config.ui and Config.ui.views and Config.ui.views.control_panel_legacy) or {}
+    local pad = V.padding or {x=10,y=10}
+    local y = pad.y or 10
     love.graphics.setColor(0,0,0)
-    love.graphics.print("General", 0, y)
-    y = y + 26
+    love.graphics.print(Strings.get('control_panel_legacy.general','General'), pad.x or 0, y)
+    y = y + (V.row_gap or 26)
 
     -- Master Volume slider
     love.graphics.setColor(0,0,0)
-    love.graphics.print("Master Volume", 0, y)
+    love.graphics.print(Strings.get('control_panel_legacy.master_volume','Master Volume'), pad.x or 0, y)
     y = y + 16
-    local sl1_x, sl1_y, sl1_w, sl1_h = 0, y, 280, 14
+    local S = V.slider or {w=280, h=14, handle_w=12, value_gap=12}
+    local sl1_x, sl1_y, sl1_w, sl1_h = pad.x or 0, y, S.w, S.h
     local v = s.master_volume or 0
     love.graphics.setColor(0.85,0.85,0.85); love.graphics.rectangle('fill', sl1_x, sl1_y, sl1_w, sl1_h)
     love.graphics.setColor(0.1,0.7,0.1); love.graphics.rectangle('fill', sl1_x, sl1_y, sl1_w * v, sl1_h)
-    love.graphics.setColor(0.9,0.9,0.9); love.graphics.rectangle('fill', sl1_x + sl1_w * v - 6, sl1_y - 2, 12, sl1_h + 4)
-    love.graphics.setColor(0,0,0); love.graphics.print(string.format("%d%%", math.floor(v * 100 + 0.5)), sl1_x + sl1_w + 12, sl1_y - 2)
+    love.graphics.setColor(0.9,0.9,0.9); love.graphics.rectangle('fill', sl1_x + sl1_w * v - (S.handle_w*0.5 or 6), sl1_y - 2, (S.handle_w or 12), sl1_h + 4)
+    love.graphics.setColor(0,0,0); love.graphics.print(string.format("%d%%", math.floor(v * 100 + 0.5)), sl1_x + sl1_w + (S.value_gap or 12), sl1_y - 2)
     y = y + 36
 
     -- Fullscreen toggle
-    local cb_x, cb_y, cb_w, cb_h = 0, y, 20, 20
+    local CB = V.checkbox or {w=20,h=20,check_line_width=3,label_gap=10}
+    local cb_x, cb_y, cb_w, cb_h = pad.x or 0, y, CB.w, CB.h
     love.graphics.setColor(1,1,1); love.graphics.rectangle('fill', cb_x, cb_y, cb_w, cb_h)
     love.graphics.setColor(0,0,0); love.graphics.rectangle('line', cb_x, cb_y, cb_w, cb_h)
     if s.fullscreen then
         love.graphics.setColor(0, 0.7, 0)
-        love.graphics.setLineWidth(3)
+        love.graphics.setLineWidth(CB.check_line_width or 3)
         love.graphics.line(cb_x + 3, cb_y + cb_h/2, cb_x + cb_w/2, cb_y + cb_h - 4, cb_x + cb_w - 3, cb_y + 3)
         love.graphics.setLineWidth(1)
     end
-    love.graphics.setColor(0,0,0); love.graphics.print("Fullscreen", cb_x + cb_w + 10, cb_y - 2)
+    love.graphics.setColor(0,0,0); love.graphics.print(Strings.get('control_panel_legacy.fullscreen','Fullscreen'), cb_x + cb_w + (CB.label_gap or 10), cb_y - 2)
 end
 
 -- Screensavers applet: shows enable toggle and timeout slider
 local function draw_screensavers(self, viewport_width, viewport_height)
     local s = SettingsManager.getAll()
+    local V = (Config.ui and Config.ui.views and Config.ui.views.control_panel_legacy) or {}
+    local SS = V.screensavers or {}
     local y = 20
     love.graphics.setColor(0,0,0)
-    love.graphics.print("Screensaver", 10, y)
-    y = y + 30
+    love.graphics.print(Strings.get('control_panel_legacy.screensaver','Screensaver'), (SS.label_x or 10), y)
+    y = y + (SS.section_gap or 30)
 
     -- Enable checkbox
-    local cb_x, cb_y, cb_w, cb_h = 20, y, 22, 22
+    local c = SS.checkbox or {x=20,y=0,w=22,h=22}
+    local cb_x, cb_y, cb_w, cb_h = c.x, y, c.w, c.h
     love.graphics.setColor(1,1,1)
     love.graphics.rectangle('fill', cb_x, cb_y, cb_w, cb_h)
     love.graphics.setColor(0,0,0)
@@ -74,14 +83,15 @@ local function draw_screensavers(self, viewport_width, viewport_height)
         love.graphics.setLineWidth(1)
     end
     love.graphics.setColor(0,0,0)
-    love.graphics.print("Enable screensaver", cb_x + cb_w + 10, cb_y + 2)
+    love.graphics.print(Strings.get('control_panel_legacy.enable_screensaver','Enable screensaver'), cb_x + cb_w + 10, cb_y + 2)
 
     -- Timeout slider
     y = y + 50
     love.graphics.setColor(0,0,0)
-    love.graphics.print("Timeout (seconds)", 20, y)
+    love.graphics.print(Strings.get('control_panel_legacy.timeout_seconds','Timeout (seconds)'), c.x, y)
     y = y + 20
-    local sl_x, sl_y, sl_w, sl_h = 20, y, 300, 14
+    local s = SS.slider or {x=20,w=300,h=14}
+    local sl_x, sl_y, sl_w, sl_h = s.x, y, s.w, s.h
     local seconds = s.screensaver_timeout or 10
     local t = (seconds - 5) / (600 - 5)
     t = math.max(0, math.min(1, t))
@@ -109,8 +119,8 @@ function ControlPanelView:draw(applet, viewport_width, viewport_height)
     elseif applet == 'control_panel_screensavers' then
         draw_screensavers(self, viewport_width, viewport_height)
     else
-        love.graphics.setColor(0,0,0)
-        love.graphics.print("Unknown applet", 10, 10)
+    love.graphics.setColor(0,0,0)
+    love.graphics.print(Strings.get('control_panel_legacy.unknown_applet','Unknown applet'), 10, 10)
     end
 end
 
@@ -119,13 +129,17 @@ function ControlPanelView:mousepressed(x, y, button, applet, viewport_width, vie
 
     if applet == 'control_panel_screensavers' then
         -- Checkbox bounds
-        local cb_x, cb_y, cb_w, cb_h = 20, 50, 22, 22
+    local V = (Config.ui and Config.ui.views and Config.ui.views.control_panel_legacy) or {}
+    local SS = V.screensavers or {}
+    local c = SS.checkbox or {x=20,y=0,w=22,h=22}
+    local cb_x, cb_y, cb_w, cb_h = c.x, 50, c.w, c.h
         if x >= cb_x and x <= cb_x + cb_w and y >= cb_y and y <= cb_y + cb_h then
             local new_value = not SettingsManager.get('screensaver_enabled')
             return { name = 'set_setting', id = 'screensaver_enabled', value = new_value }
         end
         -- Slider bounds
-        local sl_x, sl_y, sl_w, sl_h = 20, 100, 300, 14
+    local s = SS.slider or {x=20,w=300,h=14}
+    local sl_x, sl_y, sl_w, sl_h = s.x, 100, s.w, s.h
         if x >= sl_x and x <= sl_x + sl_w and y >= sl_y and y <= sl_y + sl_h then
             local t = math.max(0, math.min(1, (x - sl_x) / sl_w))
             local seconds = math.floor(5 + t * (600 - 5) + 0.5)
@@ -134,14 +148,17 @@ function ControlPanelView:mousepressed(x, y, button, applet, viewport_width, vie
         end
     elseif applet == 'control_panel_general' then
         -- Master volume slider
-        local sl1_x, sl1_y, sl1_w, sl1_h = 0, 26 + 16, 280, 14
+    local V = (Config.ui and Config.ui.views and Config.ui.views.control_panel_legacy) or {}
+    local S = V.slider or {w=280, h=14}
+    local sl1_x, sl1_y, sl1_w, sl1_h = (V.padding and V.padding.x or 0), 26 + 16, S.w, S.h
         if x >= sl1_x and x <= sl1_x + sl1_w and y >= sl1_y and y <= sl1_y + sl1_h then
             local t = math.max(0, math.min(1, (x - sl1_x) / sl1_w))
             self.dragging_slider = 'master_volume'
             return { name = 'set_setting', id = 'master_volume', value = t }
         end
         -- Fullscreen checkbox
-        local cb_x, cb_y, cb_w, cb_h = 0, 26 + 16 + 14 + 36, 20, 20
+    local CB = V.checkbox or {w=20,h=20}
+    local cb_x, cb_y, cb_w, cb_h = (V.padding and V.padding.x or 0), 26 + 16 + (S.h or 14) + 36, CB.w, CB.h
         if x >= cb_x and x <= cb_x + cb_w and y >= cb_y and y <= cb_y + cb_h then
             local new_value = not SettingsManager.get('fullscreen')
             return { name = 'set_setting', id = 'fullscreen', value = new_value }

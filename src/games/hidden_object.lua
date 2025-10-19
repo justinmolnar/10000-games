@@ -1,19 +1,22 @@
 local BaseGame = require('src.games.base_game')
+local Config = require('src.config')
 local Collision = require('src.utils.collision') 
 local HiddenObjectView = require('src.games.views.hidden_object_view')
 local HiddenObject = BaseGame:extend('HiddenObject')
 
-local TIME_LIMIT_BASE = 60          
-local OBJECTS_BASE = 5              
-local BONUS_TIME_MULTIPLIER = 5     
-local OBJECT_BASE_SIZE = 20         
-local BACKGROUND_GRID_BASE = 10     
-local POSITION_HASH_X1 = 17
-local POSITION_HASH_X2 = 47
-local POSITION_HASH_Y1 = 23
-local POSITION_HASH_Y2 = 53
-local BACKGROUND_HASH_1 = 17
-local BACKGROUND_HASH_2 = 3
+-- Config-driven defaults with safe fallbacks
+local HOCfg = (Config and Config.games and Config.games.hidden_object) or {}
+local TIME_LIMIT_BASE = (HOCfg.time and HOCfg.time.base_limit) or 60
+local OBJECTS_BASE = (HOCfg.objects and HOCfg.objects.base_count) or 5
+local BONUS_TIME_MULTIPLIER = (HOCfg.time and HOCfg.time.bonus_multiplier) or 5
+local OBJECT_BASE_SIZE = (HOCfg.objects and HOCfg.objects.base_size) or 20
+local BACKGROUND_GRID_BASE = (HOCfg.background and HOCfg.background.grid_base) or 10
+local POSITION_HASH_X1 = (HOCfg.background and HOCfg.background.position_hash and HOCfg.background.position_hash.x1) or 17
+local POSITION_HASH_X2 = (HOCfg.background and HOCfg.background.position_hash and HOCfg.background.position_hash.x2) or 47
+local POSITION_HASH_Y1 = (HOCfg.background and HOCfg.background.position_hash and HOCfg.background.position_hash.y1) or 23
+local POSITION_HASH_Y2 = (HOCfg.background and HOCfg.background.position_hash and HOCfg.background.position_hash.y2) or 53
+local BACKGROUND_HASH_1 = (HOCfg.background and HOCfg.background.background_hash and HOCfg.background.background_hash.h1) or 17
+local BACKGROUND_HASH_2 = (HOCfg.background and HOCfg.background.background_hash and HOCfg.background.background_hash.h2) or 3
 
 function HiddenObject:init(game_data, cheats)
     HiddenObject.super.init(self, game_data, cheats)
@@ -25,8 +28,8 @@ function HiddenObject:init(game_data, cheats)
     self.BACKGROUND_HASH_1 = BACKGROUND_HASH_1
     self.BACKGROUND_HASH_2 = BACKGROUND_HASH_2
 
-    self.game_width = 800
-    self.game_height = 600
+    self.game_width = (HOCfg.arena and HOCfg.arena.width) or 800
+    self.game_height = (HOCfg.arena and HOCfg.arena.height) or 600
 
     self.time_limit = (TIME_LIMIT_BASE / self.difficulty_modifiers.speed) * time_bonus_multiplier
     self.total_objects = math.floor(OBJECTS_BASE * self.difficulty_modifiers.count) 
@@ -74,7 +77,7 @@ function HiddenObject:generateObjects()
             id = i, x = pos.x, y = pos.y,
             size = OBJECT_BASE_SIZE, radius = OBJECT_BASE_SIZE / 2, 
             found = false,
-            sprite_variant = math.floor((i - 1) / math.max(1, 5 - self.difficulty_modifiers.complexity)) + 1 
+            sprite_variant = math.floor((i - 1) / math.max(1, ((HOCfg.objects and HOCfg.objects.sprite_variant_divisor_base) or 5) - self.difficulty_modifiers.complexity)) + 1 
         }
     end
     return objects

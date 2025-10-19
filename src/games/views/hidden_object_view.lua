@@ -1,4 +1,5 @@
 local Object = require('class')
+local Config = require('src.config')
 local HiddenObjectView = Object:extend('HiddenObjectView')
 
 function HiddenObjectView:init(game_state)
@@ -6,6 +7,9 @@ function HiddenObjectView:init(game_state)
     self.BACKGROUND_GRID_BASE = game_state.BACKGROUND_GRID_BASE or 10
     self.BACKGROUND_HASH_1 = game_state.BACKGROUND_HASH_1 or 17
     self.BACKGROUND_HASH_2 = game_state.BACKGROUND_HASH_2 or 3
+    local cfg = (Config and Config.games and Config.games.hidden_object and Config.games.hidden_object.view) or {}
+    self.bg_color = cfg.bg_color or {0.12, 0.1, 0.08}
+    self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50, 70} }
     self.sprite_loader = nil
     self.sprite_manager = nil
 end
@@ -54,28 +58,31 @@ function HiddenObjectView:draw()
         end
     end
 
-    local hud_icon_size = 16
+    local hud_icon_size = self.hud.icon_size or 16
+    local s = self.hud.text_scale or 0.85
+    local lx, ix, tx = self.hud.label_x or 10, self.hud.icon_x or 60, self.hud.text_x or 80
+    local ry = self.hud.row_y or {10, 30, 50, 70}
     love.graphics.setColor(1, 1, 1)
     
     local found_sprite = self.sprite_manager:getMetricSprite(game.data, "objects_found") or object_sprite
-    love.graphics.print("Found: ", 10, 10, 0, 0.85, 0.85)
-    self.sprite_loader:drawSprite(found_sprite, 60, 10, hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    love.graphics.print(game.objects_found .. "/" .. game.total_objects, 80, 10, 0, 0.85, 0.85)
+    love.graphics.print("Found: ", lx, ry[1], 0, s, s)
+    self.sprite_loader:drawSprite(found_sprite, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+    love.graphics.print(game.objects_found .. "/" .. game.total_objects, tx, ry[1], 0, s, s)
     
     local time_sprite = self.sprite_manager:getMetricSprite(game.data, "time_bonus") or "clock-0"
-    love.graphics.print("Time: ", 10, 30, 0, 0.85, 0.85)
-    self.sprite_loader:drawSprite(time_sprite, 60, 30, hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    love.graphics.print(string.format("%.1f", game.time_remaining), 80, 30, 0, 0.85, 0.85)
+    love.graphics.print("Time: ", lx, ry[2], 0, s, s)
+    self.sprite_loader:drawSprite(time_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+    love.graphics.print(string.format("%.1f", game.time_remaining), tx, ry[2], 0, s, s)
     
-    love.graphics.print("Difficulty: " .. game.difficulty_level, 10, 50)
+    love.graphics.print("Difficulty: " .. game.difficulty_level, lx, ry[3])
     if game.completed and game.metrics.time_bonus > 0 then
-        love.graphics.print("Time Bonus: " .. game.metrics.time_bonus, 10, 70)
+        love.graphics.print("Time Bonus: " .. game.metrics.time_bonus, lx, ry[4])
     end
 end
 
 function HiddenObjectView:drawBackground()
     local game = self.game
-    love.graphics.setColor(0.12, 0.1, 0.08)
+    love.graphics.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
     love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
 
     local complexity = game.difficulty_modifiers.complexity

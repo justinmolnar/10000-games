@@ -5,31 +5,35 @@
 
 local Object = require('class')
 
+local Config = require('src.config')
 local PipesView = Object:extend('PipesView')
 
 function PipesView:init(opts)
     opts = opts or {}
     self:setViewport(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    self.fov = opts.fov or 420 -- focal length for projection
+    local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.pipes) or {}
+    self.fov = opts.fov or d.fov or 420 -- focal length for projection
     self.camera_z = 0   -- camera at z=0, world is in +Z
-    self.near = opts.near or 80
-    self.pipe_radius = opts.radius or 4.5
-    self.grid_step = opts.grid_step or 24
-    self.max_segments = opts.max_segments or 800
-    self.turn_chance = opts.turn_chance or 0.45
-    self.speed = opts.speed or 60 -- growth speed
-    self.spawn_min_z = opts.spawn_min_z or 200
-    self.spawn_max_z = opts.spawn_max_z or 600
-    self.avoid_cells = opts.avoid_cells ~= false
-    self.show_grid = opts.show_grid or false
-    self.camera_drift = opts.camera_drift or 40
-    self.camera_roll_amount = opts.camera_roll or 0.05
-    self.max_pipes = math.max(1, math.floor((opts.pipe_count or 5)))
-    self.show_hud = opts.show_hud ~= false
+    self.near = opts.near or d.near or 80
+    self.pipe_radius = opts.radius or d.radius or 4.5
+    self.grid_step = opts.grid_step or d.grid_step or 24
+    self.max_segments = opts.max_segments or d.max_segments or 800
+    self.turn_chance = opts.turn_chance or d.turn_chance or 0.45
+    self.speed = opts.speed or d.speed or 60 -- growth speed
+    self.spawn_min_z = opts.spawn_min_z or d.spawn_min_z or 200
+    self.spawn_max_z = opts.spawn_max_z or d.spawn_max_z or 600
+    self.avoid_cells = (opts.avoid_cells ~= nil) and opts.avoid_cells or (d.avoid_cells ~= false)
+    self.show_grid = (opts.show_grid ~= nil) and opts.show_grid or (d.show_grid == true)
+    self.camera_drift = opts.camera_drift or d.camera_drift or 40
+    self.camera_roll_amount = opts.camera_roll or d.camera_roll or 0.05
+    self.max_pipes = math.max(1, math.floor((opts.pipe_count or d.pipe_count or 5)))
+    self.show_hud = (opts.show_hud ~= nil) and opts.show_hud or (d.show_hud ~= false)
 
-    self.colors = {
+    local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+    local PC = (DV.pipes and DV.pipes.colors) or {
         {0.9,0.2,0.2}, {0.2,0.9,0.2}, {0.2,0.6,1.0}, {0.9,0.8,0.2}, {0.9,0.4,0.8}
     }
+    self.colors = PC
 
     self.pipes = {}
     self.occupancy = {} -- grid cell -> true
@@ -173,18 +177,20 @@ function PipesView:drawSegment(a, b, radius, color)
     local rw = math.max(1, radius * depth_scale)
 
     -- underlay (shadow)
+    local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+    local P = DV.pipes or { shadow_factor = 0.35, shadow_alpha = 0.6, main_factor = 0.85, highlight_scale = 1.2, highlight_alpha = 0.85 }
     love.graphics.setLineWidth(rw + 1.5)
-    love.graphics.setColor(shade_color(color, 0.35, 0.6))
+    love.graphics.setColor(shade_color(color, P.shadow_factor or 0.35, P.shadow_alpha or 0.6))
     love.graphics.line(ax, ay, bx, by)
 
     -- main body
     love.graphics.setLineWidth(rw)
-    love.graphics.setColor(shade_color(color, 0.85, 1))
+    love.graphics.setColor(shade_color(color, P.main_factor or 0.85, 1))
     love.graphics.line(ax, ay, bx, by)
 
     -- highlight core
     love.graphics.setLineWidth(rw * 0.55)
-    love.graphics.setColor( clamp01(color[1]*1.2), clamp01(color[2]*1.2), clamp01(color[3]*1.2), 0.85)
+    love.graphics.setColor( clamp01(color[1]*(P.highlight_scale or 1.2)), clamp01(color[2]*(P.highlight_scale or 1.2)), clamp01(color[3]*(P.highlight_scale or 1.2)), P.highlight_alpha or 0.85)
     love.graphics.line(ax, ay, bx, by)
 
     -- rounded-ish elbow: draw a small arc at joints later in pass
@@ -195,21 +201,24 @@ function PipesView:drawSegment(a, b, radius, color)
 end
 
 function PipesView:draw()
-    love.graphics.clear(0, 0.15, 0.2)
+    local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+    local bg = DV.bg_color or {0,0.15,0.2}
+    love.graphics.clear(bg[1], bg[2], bg[3])
     -- Optional retro grid
     if self.show_grid then
-        love.graphics.setColor(0.0, 0.3, 0.35, 0.35)
+        local grid = (DV.grid or { color = {0.0,0.3,0.35,0.35}, x_extents={-10,10}, y_extents={-8,8}, z1=600,z2=900, step_mul=6 })
+        love.graphics.setColor(grid.color)
         local w, h = self.viewport.width, self.viewport.height
-        for gx=-10,10 do
-            local a = {gx*self.grid_step*6, -h*0.4, 600}
-            local b = {gx*self.grid_step*6,  h*0.4, 900}
+        for gx=(grid.x_extents and grid.x_extents[1] or -10),(grid.x_extents and grid.x_extents[2] or 10) do
+            local a = {gx*self.grid_step*(grid.step_mul or 6), -h*0.4, grid.z1 or 600}
+            local b = {gx*self.grid_step*(grid.step_mul or 6),  h*0.4, grid.z2 or 900}
             local ax, ay = self:project(a)
             local bx, by = self:project(b)
             if ax and bx then love.graphics.line(ax, ay, bx, by) end
         end
-        for gy=-8,8 do
-            local a = {-w*0.4, gy*self.grid_step*6, 600}
-            local b = { w*0.4, gy*self.grid_step*6, 900}
+        for gy=(grid.y_extents and grid.y_extents[1] or -8),(grid.y_extents and grid.y_extents[2] or 8) do
+            local a = {-w*0.4, gy*self.grid_step*(grid.step_mul or 6), grid.z1 or 600}
+            local b = { w*0.4, gy*self.grid_step*(grid.step_mul or 6), grid.z2 or 900}
             local ax, ay = self:project(a)
             local bx, by = self:project(b)
             if ax and bx then love.graphics.line(ax, ay, bx, by) end
@@ -251,7 +260,9 @@ function PipesView:draw()
     for _, j in ipairs(joints) do
         local x, y, k = self:project(j.p)
         if x then
-            local r = self.pipe_radius * k * 0.12
+            local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+            local joint_scale = (DV.pipes and DV.pipes.joint_radius_scale) or 0.12
+            local r = self.pipe_radius * k * joint_scale
             love.graphics.setColor(shade_color(j.color, 0.85, 1))
             love.graphics.circle('fill', x, y, r)
             love.graphics.setColor(shade_color(j.color, 0.2, 0.7))
@@ -262,8 +273,10 @@ function PipesView:draw()
 
     -- Optional HUD
     if self.show_hud then
-        love.graphics.setColor(0.7, 0.9, 1, 0.5)
-        love.graphics.print("3D Pipes", 12, 10, 0, 1.2, 1.2)
+        local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+        local hud = DV.hud or { label = "3D Pipes", color = {0.7,0.9,1,0.5} }
+        love.graphics.setColor(hud.color)
+        love.graphics.print(hud.label or "3D Pipes", 12, 10, 0, 1.2, 1.2)
     end
 end
 

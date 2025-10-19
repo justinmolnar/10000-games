@@ -1,6 +1,9 @@
 local Object = require('class')
 local UI = require('src.views.ui_components')
 local json = require('json')
+local Strings = require('src.utils.strings')
+local Paths = require('src.paths')
+local Config = require('src.config')
 
 local View = Object:extend('ControlPanelScreensaversView')
 
@@ -8,7 +11,7 @@ function View:init(controller)
     self.controller = controller
     self.dragging = nil
     self.preview = { canvas = nil, saver = nil, last_key = nil }
-    self.schema = self:_loadSchema('assets/data/control_panels/screensavers.json')
+    self.schema = self:_loadSchema(Paths.data.control_panels .. 'screensavers.json')
     self.layout_cache = {} -- id -> {rect, el}
 end
 
@@ -102,40 +105,43 @@ function View:_ensurePreview(prev_w, prev_h, settings, pending)
         -- Build saver by type
         local t = getVal(pending, settings, 'screensaver_type', 'starfield')
         if t == 'pipes' then
+            local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.pipes) or {}
             local PipesView = require('src.views.screensaver_pipes_view')
             self.preview.saver = PipesView:new({
-                fov = getVal(pending, settings, 'screensaver_pipes_fov', 420),
-                near = getVal(pending, settings, 'screensaver_pipes_near', 80),
-                radius = getVal(pending, settings, 'screensaver_pipes_radius', 4.5),
-                grid_step = getVal(pending, settings, 'screensaver_pipes_grid_step', 24),
-                max_segments = getVal(pending, settings, 'screensaver_pipes_max_segments', 800),
-                turn_chance = getVal(pending, settings, 'screensaver_pipes_turn_chance', 0.45),
-                speed = getVal(pending, settings, 'screensaver_pipes_speed', 60),
-                spawn_min_z = getVal(pending, settings, 'screensaver_pipes_spawn_min_z', 200),
-                spawn_max_z = getVal(pending, settings, 'screensaver_pipes_spawn_max_z', 600),
-                avoid_cells = getVal(pending, settings, 'screensaver_pipes_avoid_cells', true),
-                show_grid = getVal(pending, settings, 'screensaver_pipes_show_grid', false),
-                camera_drift = getVal(pending, settings, 'screensaver_pipes_camera_drift', 40),
-                camera_roll = getVal(pending, settings, 'screensaver_pipes_camera_roll', 0.05),
-                pipe_count = getVal(pending, settings, 'screensaver_pipes_pipe_count', 5),
-                show_hud = getVal(pending, settings, 'screensaver_pipes_show_hud', true),
+                fov = getVal(pending, settings, 'screensaver_pipes_fov', d.fov),
+                near = getVal(pending, settings, 'screensaver_pipes_near', d.near),
+                radius = getVal(pending, settings, 'screensaver_pipes_radius', d.radius),
+                grid_step = getVal(pending, settings, 'screensaver_pipes_grid_step', d.grid_step),
+                max_segments = getVal(pending, settings, 'screensaver_pipes_max_segments', d.max_segments),
+                turn_chance = getVal(pending, settings, 'screensaver_pipes_turn_chance', d.turn_chance),
+                speed = getVal(pending, settings, 'screensaver_pipes_speed', d.speed),
+                spawn_min_z = getVal(pending, settings, 'screensaver_pipes_spawn_min_z', d.spawn_min_z),
+                spawn_max_z = getVal(pending, settings, 'screensaver_pipes_spawn_max_z', d.spawn_max_z),
+                avoid_cells = getVal(pending, settings, 'screensaver_pipes_avoid_cells', d.avoid_cells),
+                show_grid = getVal(pending, settings, 'screensaver_pipes_show_grid', d.show_grid),
+                camera_drift = getVal(pending, settings, 'screensaver_pipes_camera_drift', d.camera_drift),
+                camera_roll = getVal(pending, settings, 'screensaver_pipes_camera_roll', d.camera_roll),
+                pipe_count = getVal(pending, settings, 'screensaver_pipes_pipe_count', d.pipe_count),
+                show_hud = getVal(pending, settings, 'screensaver_pipes_show_hud', d.show_hud),
             })
         elseif t == 'model3d' then
+            local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.model) or {}
             local ModelView = require('src.views.screensaver_model_view')
             self.preview.saver = ModelView:new({
-                fov = getVal(pending, settings, 'screensaver_model_fov', 350),
-                grid_lat = getVal(pending, settings, 'screensaver_model_grid_lat', 24),
-                grid_lon = getVal(pending, settings, 'screensaver_model_grid_lon', 48),
-                morph_speed = getVal(pending, settings, 'screensaver_model_morph_speed', 0.3),
-                two_sided = getVal(pending, settings, 'screensaver_model_two_sided', false),
+                fov = getVal(pending, settings, 'screensaver_model_fov', d.fov),
+                grid_lat = getVal(pending, settings, 'screensaver_model_grid_lat', d.grid_lat),
+                grid_lon = getVal(pending, settings, 'screensaver_model_grid_lon', d.grid_lon),
+                morph_speed = getVal(pending, settings, 'screensaver_model_morph_speed', d.morph_speed),
+                two_sided = getVal(pending, settings, 'screensaver_model_two_sided', d.two_sided),
             })
         else
+            local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.starfield) or {}
             local StarView = require('src.views.screensaver_view')
             self.preview.saver = StarView:new({
-                count = getVal(pending, settings, 'screensaver_starfield_count', 500),
-                speed = getVal(pending, settings, 'screensaver_starfield_speed', 120),
-                fov = getVal(pending, settings, 'screensaver_starfield_fov', 300),
-                tail = getVal(pending, settings, 'screensaver_starfield_tail', 12),
+                count = getVal(pending, settings, 'screensaver_starfield_count', d.count),
+                speed = getVal(pending, settings, 'screensaver_starfield_speed', d.speed),
+                fov = getVal(pending, settings, 'screensaver_starfield_fov', d.fov),
+                tail = getVal(pending, settings, 'screensaver_starfield_tail', d.tail),
             })
         end
     end
@@ -174,55 +180,57 @@ end
 
 -- Main draw
 function View:drawWindowed(w, h, settings, pending)
-    -- Background
-    love.graphics.setColor(0.9, 0.9, 0.9)
+    -- Background and border
+    local V = (Config.ui and Config.ui.views and Config.ui.views.control_panel_screensavers) or {}
+    local C = V.colors or {}
+    love.graphics.setColor(C.panel_bg or {0.9, 0.9, 0.9})
     love.graphics.rectangle('fill', 0, 0, w, h)
-    love.graphics.setColor(0.6, 0.6, 0.6)
+    love.graphics.setColor(C.panel_border or {0.6, 0.6, 0.6})
     love.graphics.rectangle('line', 0, 0, w, h)
-    love.graphics.setColor(0,0,0)
-
-    -- Tab strip
-    love.graphics.setColor(0.9,0.9,0.95)
-    love.graphics.rectangle('fill', 8, 28, 110, 18)
-    love.graphics.setColor(0.2,0.2,0.2)
-    love.graphics.rectangle('line', 8, 28, 110, 18)
-    love.graphics.print('Screen Saver', 16, 31)
-
-    -- Reset interaction cache
-    self.layout_cache = {}
-    self._type_rect, self._enable_rect = nil, nil
-
-    local px, py = 16, 60
-    local current_type = pending.screensaver_type or settings.screensaver_type or 'starfield'
-
-    -- Preview (from schema)
-    local prev_w = (self.schema.preview and self.schema.preview.width) or 320
-    local prev_h = (self.schema.preview and self.schema.preview.height) or 200
-    local dropdown_w, dropdown_h = 160, 22
-    local frame_x, frame_y = px + 110 + dropdown_w + 24, py - 10
-    love.graphics.setColor(0.9,0.9,0.95); love.graphics.rectangle('fill', frame_x-4, frame_y-4, prev_w+8, prev_h+8)
-    love.graphics.setColor(0.2,0.2,0.2); love.graphics.rectangle('line', frame_x-4, frame_y-4, prev_w+8, prev_h+8)
-    self:drawPreview(frame_x, frame_y, prev_w, prev_h)
 
     -- Layout metrics
+    local tab = V.tab or {x=8, y=28, w=110, h=18}
+    local pad = V.padding or {x=16, y=60}
+    local px, py = pad.x, pad.y
+    local dropdown_w, dropdown_h = (V.dropdown and V.dropdown.w) or 160, (V.dropdown and V.dropdown.h) or 22
+    local prev_w = (self.schema.preview and self.schema.preview.width) or (V.preview and V.preview.w) or 320
+    local prev_h = (self.schema.preview and self.schema.preview.height) or (V.preview and V.preview.h) or 200
+    local frame_pad = (V.preview and V.preview.frame_pad) or 4
+    local label_col_w = V.label_col_w or 110
+
+    -- Tab strip
+    love.graphics.setColor(C.tab_bg or {0,0,0})
+    love.graphics.rectangle('fill', tab.x, tab.y, tab.w, tab.h)
+    love.graphics.setColor(C.panel_border or {0.2,0.2,0.2})
+    love.graphics.rectangle('line', tab.x, tab.y, tab.w, tab.h)
+    love.graphics.setColor(C.text or {0,0,0})
+    love.graphics.print(Strings.get('control_panel.tabs.screensaver', 'Screen Saver'), tab.x + 8, tab.y + 3)
+
+    -- Preview frame to the right of dropdown area
+    local frame_x = px + label_col_w + dropdown_w + 24
+    local frame_y = py - 10
+    love.graphics.setColor(C.frame_fill or {0.9,0.9,0.95})
+    love.graphics.rectangle('fill', frame_x - frame_pad, frame_y - frame_pad, prev_w + 2*frame_pad, prev_h + 2*frame_pad)
+    love.graphics.setColor(C.frame_line or {0.2,0.2,0.2})
+    love.graphics.rectangle('line', frame_x - frame_pad, frame_y - frame_pad, prev_w + 2*frame_pad, prev_h + 2*frame_pad)
+
+    -- Compute form columns
     local right_edge = frame_x - 16
-    local value_col_w = 60
-    local function printValueRightAligned(text, slider_x, slider_w, y)
-        local x = slider_x + slider_w + 8
-        love.graphics.setColor(0,0,0)
-        love.graphics.print(text, x, y)
-    end
-
-    local row_space = 22
+    local row_space = (V.row_gap or 22)
     local label_x = px
-    local slider_x = px + 110
-    local get_slider_w = function() return math.max(120, right_edge - slider_x - value_col_w - 8) end
-
+    local slider_x = px + label_col_w
+    local value_col_w = 60
+    local function get_slider_w()
+        return math.max(120, right_edge - slider_x - value_col_w - 8)
+    end
     local function printLabel(text, x, y)
         love.graphics.setColor(0,0,0)
         love.graphics.print(text, x, y)
     end
-
+    local function printValueRightAligned(text, x, w, y)
+        love.graphics.setColor(0,0,0)
+        love.graphics.printf(text, x, y, w, 'right')
+    end
     local function passesWhen(cond)
         if not cond then return true end
         for k,v in pairs(cond) do
@@ -233,25 +241,29 @@ function View:drawWindowed(w, h, settings, pending)
         return true
     end
 
+    -- Draw preview
+    self:drawPreview(frame_x, frame_y, prev_w, prev_h)
+
+    local current_type = pending.screensaver_type or settings.screensaver_type or 'starfield'
     local cy = py
     local dropdown_to_draw = nil
-    for _,el in ipairs(self.schema.elements or {}) do
+    for _, el in ipairs(self.schema.elements or {}) do
         if passesWhen(el.when) then
             if el.type == 'dropdown' then
                 printLabel(el.label .. ':', label_x, cy)
-                local tp_x, tp_y = slider_x, cy-4
+                local tp_x, tp_y = slider_x, cy - 4
                 -- Compute display label from schema choices
                 local display = current_type
                 if el.choices and type(el.choices[1]) == 'table' then
-                    for _,c in ipairs(el.choices) do if c.value == current_type then display = c.label break end end
+                    for _, c in ipairs(el.choices) do if c.value == current_type then display = c.label break end end
                 end
                 UI.drawDropdown(tp_x, tp_y, dropdown_w, dropdown_h, display, true, false)
-                -- If open, schedule list to draw on top after all content
+                -- If open, schedule list
                 if self.dropdown_open_id == el.id then
                     local item_h = dropdown_h
                     local labels = {}
                     if el.choices and type(el.choices[1]) == 'table' then
-                        for _,c in ipairs(el.choices) do table.insert(labels, c.label) end
+                        for _, c in ipairs(el.choices) do table.insert(labels, c.label) end
                     else
                         labels = el.choices or {}
                     end
@@ -268,13 +280,14 @@ function View:drawWindowed(w, h, settings, pending)
                 self._type_rect = {x=tp_x, y=tp_y, w=dropdown_w, h=dropdown_h}
                 cy = cy + 34
             elseif el.type == 'checkbox' then
-                local cb_x, cb_y, cb_w, cb_h = label_x, cy, 18, 18
-                love.graphics.setColor(1,1,1); love.graphics.rectangle('fill', cb_x, cb_y, cb_w, cb_h)
-                love.graphics.setColor(0,0,0); love.graphics.rectangle('line', cb_x, cb_y, cb_w, cb_h)
+                local cb_cfg = V.checkbox or {w=18, h=18}
+                local cb_x, cb_y, cb_w, cb_h = label_x, cy, cb_cfg.w, cb_cfg.h
+                love.graphics.setColor((V.colors and V.colors.checkbox_fill) or {1,1,1}); love.graphics.rectangle('fill', cb_x, cb_y, cb_w, cb_h)
+                love.graphics.setColor((V.colors and V.colors.checkbox_border) or {0,0,0}); love.graphics.rectangle('line', cb_x, cb_y, cb_w, cb_h)
                 local checked = pending[el.id]
                 if checked == nil then checked = settings[el.id] end
                 if checked then
-                    love.graphics.setColor(0, 0.7, 0)
+                    love.graphics.setColor((V.colors and V.colors.checkbox_check) or {0,0.7,0})
                     love.graphics.setLineWidth(3)
                     love.graphics.line(cb_x + 3, cb_y + cb_h/2, cb_x + cb_w/2, cb_y + cb_h - 4, cb_x + cb_w - 3, cb_y + 3)
                     love.graphics.setLineWidth(1)
@@ -285,8 +298,8 @@ function View:drawWindowed(w, h, settings, pending)
                 cy = cy + 34
             elseif el.type == 'section' then
                 printLabel(el.label .. ':', label_x, cy)
-                love.graphics.setColor(0.8,0.8,0.8)
-                love.graphics.rectangle('fill', label_x, cy+14, right_edge - label_x, 2)
+                love.graphics.setColor((V.colors and V.colors.section_rule) or {0.8,0.8,0.8})
+                love.graphics.rectangle('fill', label_x, cy+14, right_edge - label_x, (V.section_rule_h or 2))
                 love.graphics.setColor(0,0,0)
                 cy = cy + 20
             elseif el.type == 'slider' then
@@ -295,21 +308,21 @@ function View:drawWindowed(w, h, settings, pending)
                 local v = pending[el.id]; if v == nil then v = settings[el.id] end
                 if v == nil then v = el.min end
                 local norm = (v - el.min) / (el.max - el.min)
-                self:drawSlider(slider_x, cy-2, sw, 12, math.max(0, math.min(1, norm)))
+                self:drawSlider(slider_x, cy-2, sw, (V.slider_h or 12), math.max(0, math.min(1, norm)))
                 local display_v = v
                 if el.display_as_percent then display_v = math.floor((v * 100) + 0.5) end
                 local fmt = el.format or (el.display_as_percent and "%d%%" or "%s")
                 printValueRightAligned(string.format(fmt, display_v), slider_x, sw, cy-4)
-                self.layout_cache[el.id] = {rect={x=slider_x, y=cy-2, w=sw, h=12}, el=el}
+                self.layout_cache[el.id] = {rect={x=slider_x, y=cy-2, w=sw, h=(V.slider_h or 12)}, el=el}
                 cy = cy + row_space
             end
         end
     end
 
-    -- Bottom buttons (deduped helper)
+    -- Bottom buttons
     self._ok_rect, self._cancel_rect, self._apply_rect = UI.drawDialogButtons(w, h, next(pending) ~= nil)
 
-    -- Draw dropdown list last so it appears on top of everything
+    -- Draw dropdown list last
     if dropdown_to_draw then
         UI.drawDropdownList(
             dropdown_to_draw.x,
@@ -319,7 +332,6 @@ function View:drawWindowed(w, h, settings, pending)
             dropdown_to_draw.labels,
             nil
         )
-        -- update hit area
         self._dropdown_list = {
             id = dropdown_to_draw.id,
             x = dropdown_to_draw.x,

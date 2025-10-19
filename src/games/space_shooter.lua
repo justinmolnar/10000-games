@@ -1,30 +1,33 @@
 local BaseGame = require('src.games.base_game')
+local Config = require('src.config')
 local Collision = require('src.utils.collision') 
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
-local PLAYER_WIDTH = 30
-local PLAYER_HEIGHT = 30
-local PLAYER_SPEED = 200
-local PLAYER_START_Y_OFFSET = 50
-local PLAYER_MAX_DEATHS_BASE = 5
+-- Config-driven defaults with safe fallbacks
+local SCfg = (Config and Config.games and Config.games.space_shooter) or {}
+local PLAYER_WIDTH = (SCfg.player and SCfg.player.width) or 30
+local PLAYER_HEIGHT = (SCfg.player and SCfg.player.height) or 30
+local PLAYER_SPEED = (SCfg.player and SCfg.player.speed) or 200
+local PLAYER_START_Y_OFFSET = (SCfg.player and SCfg.player.start_y_offset) or 50
+local PLAYER_MAX_DEATHS_BASE = (SCfg.player and SCfg.player.max_deaths_base) or 5
 
-local BULLET_WIDTH = 4
-local BULLET_HEIGHT = 8
-local BULLET_SPEED = 400
-local FIRE_COOLDOWN = 0.2 
+local BULLET_WIDTH = (SCfg.bullet and SCfg.bullet.width) or 4
+local BULLET_HEIGHT = (SCfg.bullet and SCfg.bullet.height) or 8
+local BULLET_SPEED = (SCfg.bullet and SCfg.bullet.speed) or 400
+local FIRE_COOLDOWN = (SCfg.player and SCfg.player.fire_cooldown) or 0.2
 
-local ENEMY_WIDTH = 30
-local ENEMY_HEIGHT = 30
-local ENEMY_BASE_SPEED = 100
-local ENEMY_START_Y_OFFSET = -30
-local ENEMY_BASE_SHOOT_RATE_MIN = 1.0
-local ENEMY_BASE_SHOOT_RATE_MAX = 3.0
-local ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR = 0.5 
+local ENEMY_WIDTH = (SCfg.enemy and SCfg.enemy.width) or 30
+local ENEMY_HEIGHT = (SCfg.enemy and SCfg.enemy.height) or 30
+local ENEMY_BASE_SPEED = (SCfg.enemy and SCfg.enemy.base_speed) or 100
+local ENEMY_START_Y_OFFSET = (SCfg.enemy and SCfg.enemy.start_y_offset) or -30
+local ENEMY_BASE_SHOOT_RATE_MIN = (SCfg.enemy and SCfg.enemy.base_shoot_rate_min) or 1.0
+local ENEMY_BASE_SHOOT_RATE_MAX = (SCfg.enemy and SCfg.enemy.base_shoot_rate_max) or 3.0
+local ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR = (SCfg.enemy and SCfg.enemy.shoot_rate_complexity_factor) or 0.5
 
-local SPAWN_BASE_RATE = 1.0 
-local BASE_TARGET_KILLS = 20 
-local ZIGZAG_FREQUENCY = 2 
+local SPAWN_BASE_RATE = (SCfg.spawn and SCfg.spawn.base_rate) or 1.0
+local BASE_TARGET_KILLS = (SCfg.goals and SCfg.goals.base_target_kills) or 20
+local ZIGZAG_FREQUENCY = (SCfg.movement and SCfg.movement.zigzag_frequency) or 2
 
 function SpaceShooter:init(game_data, cheats)
     SpaceShooter.super.init(self, game_data, cheats)
@@ -35,8 +38,8 @@ function SpaceShooter:init(game_data, cheats)
     
     self.PLAYER_MAX_DEATHS = PLAYER_MAX_DEATHS_BASE + extra_deaths 
 
-    self.game_width = 800
-    self.game_height = 600
+    self.game_width = (SCfg.arena and SCfg.arena.width) or 800
+    self.game_height = (SCfg.arena and SCfg.arena.height) or 600
 
     self.player = {
         x = self.game_width / 2,

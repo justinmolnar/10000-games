@@ -1,6 +1,7 @@
 -- src/models/bullet_system.lua
 local Object = require('class')
 local Collision = require('utils.collision')
+local Config = require('src.config')
 local BulletSystem = Object:extend('BulletSystem')
 
 -- Accept statistics instance
@@ -51,12 +52,10 @@ end
 function BulletSystem:resolveBulletSprite(game)
     local SpriteManager = require('src.utils.sprite_manager').getInstance()
     SpriteManager:ensureLoaded()
-
     local candidates = {}
     if game.bullet_sprite and game.bullet_sprite ~= '' then
         table.insert(candidates, game.bullet_sprite)
     end
-
     -- Category-themed suggestions
     if game.category == "action" then
         table.insert(candidates, "windows_slanted-1")
@@ -70,17 +69,15 @@ function BulletSystem:resolveBulletSprite(game)
     else
         table.insert(candidates, "world_star-1")
     end
-
     -- Final generic fallbacks
     table.insert(candidates, "world_star-0")
     table.insert(candidates, "joystick_alt-1")
-
     for _, name in ipairs(candidates) do
         if SpriteManager.sprite_loader:hasSprite(name) then
             return name
         end
     end
-    return nil -- Drawing code will fall back to rectangle
+    return nil
 end
 
 function BulletSystem:getBulletColorFromPalette(game)
@@ -126,7 +123,9 @@ function BulletSystem:update(dt, player_pos, enemies, boss)
         local bullet = self.active_bullets[i]
         bullet.y = bullet.y + bullet.vy * dt
 
-        if bullet.y < -bullet.height then
+        local B = (Config.systems and Config.systems.bullets) or {}
+        local despawn_margin = B.despawn_margin or 0
+        if bullet.y < -bullet.height - despawn_margin then
             table.insert(self.inactive_bullets, bullet)
             table.remove(self.active_bullets, i)
         else
@@ -206,11 +205,12 @@ function BulletSystem:spawnBullet(bullet_type, player_pos)
         bullet = {}
     end
 
+    local B = (Config.systems and Config.systems.bullets) or {}
     bullet.x = player_pos.x
-    bullet.y = player_pos.y - player_pos.height/2
-    bullet.width = 4
-    bullet.height = 8
-    bullet.vy = -400
+    bullet.y = player_pos.y - player_pos.height/2 - (B.spawn_offset_y or 0)
+    bullet.width = B.width or 4
+    bullet.height = B.height or 8
+    bullet.vy = B.speed_y or -400
     bullet.damage = bullet_type.damage
     bullet.color = bullet_type.color
     bullet.special = bullet_type.special
@@ -234,12 +234,14 @@ function BulletSystem:draw(game_data)
             local palette_id = "default"
             if game then palette_id = SpriteManager:getPaletteId(game) end
             
+            local B = (Config.systems and Config.systems.bullets) or {}
+            local s = B.sprite_scale or 2.0
             SpriteManager.sprite_loader:drawSprite(
                 bullet.sprite, 
                 bullet.x - bullet.width/2, 
                 bullet.y - bullet.height/2, 
-                bullet.width * 2, -- Make sprites a bit bigger
-                bullet.height * 2,
+                bullet.width * s,
+                bullet.height * s,
                 nil, 
                 palette_id
             )

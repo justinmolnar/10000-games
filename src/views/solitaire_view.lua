@@ -1,13 +1,16 @@
 local Object = require('class')
+local Config = require('src.config')
 
 local SolitaireView = Object:extend('SolitaireView')
 
 -- Win98-style Klondike Solitaire (fully playable)
-local CARD_W, CARD_H = 72, 96
-local PADDING = 12
-local TOP_MARGIN = 40
-local FACEUP_DY = 24
-local FACEDOWN_DY = 14
+local SOLCFG = Config.games.solitaire and Config.games.solitaire.view or {}
+local CARD_W = (SOLCFG.card and SOLCFG.card.width) or 72
+local CARD_H = (SOLCFG.card and SOLCFG.card.height) or 96
+local PADDING = (SOLCFG.layout and SOLCFG.layout.padding) or 12
+local TOP_MARGIN = (SOLCFG.layout and SOLCFG.layout.top_margin) or 40
+local FACEUP_DY = (SOLCFG.layout and SOLCFG.layout.faceup_dy) or 24
+local FACEDOWN_DY = (SOLCFG.layout and SOLCFG.layout.facedown_dy) or 14
 
 local RANK_STR = {"A","2","3","4","5","6","7","8","9","10","J","Q","K"}
 local SolitaireSave = require('src.utils.solitaire_save')
@@ -66,6 +69,10 @@ end
 
 function SolitaireView:setViewport(x, y, w, h)
     self.viewport = { x=x, y=y, width=w, height=h }
+    -- If in win mode, ensure the party canvas matches new viewport size
+    if self.mode == 'win' then
+        self:ensurePartyCanvas()
+    end
 end
 
 function SolitaireView:enter() end
@@ -193,17 +200,18 @@ function SolitaireView:drawCard(x, y, card)
     local g = love.graphics
     if card.faceup then
         g.setColor(1,1,1)
-        g.rectangle('fill', x, y, CARD_W, CARD_H, 6, 6)
+        g.rectangle('fill', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
         g.setColor(0,0,0)
-        g.rectangle('line', x, y, CARD_W, CARD_H, 6, 6)
+        g.rectangle('line', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
         local rank = RANK_STR[card.rank]
         if card.color == 'r' then g.setColor(0.8,0,0) else g.setColor(0,0,0) end
         g.print(rank, x + 6, y + 5)
     else
-        g.setColor(0.3,0.5,0.8)
-        g.rectangle('fill', x, y, CARD_W, CARD_H, 6, 6)
+        local back = (SOLCFG.card and SOLCFG.card.back_color) or {0.3,0.5,0.8}
+        g.setColor(back[1], back[2], back[3])
+        g.rectangle('fill', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
         g.setColor(1,1,1)
-        g.rectangle('line', x, y, CARD_W, CARD_H, 6, 6)
+        g.rectangle('line', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
     end
 end
 
@@ -211,24 +219,25 @@ function SolitaireView:drawBoard()
     local g = love.graphics
     local vp = self.viewport
     -- Background felt
-    g.setColor(0.05, 0.25, 0.05)
+    local bg = (SOLCFG.bg_color) or {0.05, 0.25, 0.05}
+    g.setColor(bg[1], bg[2], bg[3])
     g.rectangle('fill', 0, 0, vp.width, vp.height)
 
     local stockRect, wasteRect, foundationRects = self:getTopRowPositions()
 
     -- Stock
     if #self.stock > 0 then self:drawCard(stockRect.x, stockRect.y, {faceup=false})
-    else g.setColor(0.2,0.4,0.2); g.rectangle('line', stockRect.x, stockRect.y, CARD_W, CARD_H, 6, 6) end
+    else local ec=(SOLCFG.empty_slot_color or {0.2,0.4,0.2}); g.setColor(ec[1],ec[2],ec[3]); g.rectangle('line', stockRect.x, stockRect.y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6) end
 
     -- Waste (draw top only for simplicity)
     if #self.waste > 0 then self:drawCard(wasteRect.x, wasteRect.y, self.waste[#self.waste])
-    else g.setColor(0.2,0.4,0.2); g.rectangle('line', wasteRect.x, wasteRect.y, CARD_W, CARD_H, 6, 6) end
+    else local ec=(SOLCFG.empty_slot_color or {0.2,0.4,0.2}); g.setColor(ec[1],ec[2],ec[3]); g.rectangle('line', wasteRect.x, wasteRect.y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6) end
 
     -- Foundations
     for i=1,4 do
         local r = foundationRects[i]
-        if #self.foundations[i] > 0 then self:drawCard(r.x, r.y, self.foundations[i][#self.foundations[i]])
-        else g.setColor(0.2,0.4,0.2); g.rectangle('line', r.x, r.y, CARD_W, CARD_H, 6, 6) end
+    if #self.foundations[i] > 0 then self:drawCard(r.x, r.y, self.foundations[i][#self.foundations[i]])
+    else local ec=(SOLCFG.empty_slot_color or {0.2,0.4,0.2}); g.setColor(ec[1],ec[2],ec[3]); g.rectangle('line', r.x, r.y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6) end
     end
 
     -- Tableau
@@ -259,8 +268,9 @@ function SolitaireView:drawBoard()
     local hud = string.format("Draw:%d  Redeals:%s%s", self.options.draw_count,
         (self.options.redeal_limit and tostring(self.options.redeal_limit) or "∞"),
         (self.options.redeal_limit and string.format(" (%d used)", self.redeals_used) or ""))
-    love.graphics.print(hud, PADDING, 8)
-    love.graphics.print("N:New  D:Draw1/3  L:Redeal limit  Z:Undo", PADDING + 200, 8)
+    local hud_pos = SOLCFG.hud or { x1 = PADDING, x2 = PADDING + 200, y = 8 }
+    love.graphics.print(hud, hud_pos.x1 or PADDING, hud_pos.y or 8)
+    love.graphics.print("N:New  D:Draw1/3  L:Redeal limit  Z:Undo", hud_pos.x2 or (PADDING + 200), hud_pos.y or 8)
 end
 
 function SolitaireView:draw()
@@ -395,7 +405,8 @@ function SolitaireView:mousereleased(x, y, button)
     -- Detect quick second click by time (basic)
     local t = love.timer.getTime()
     self._last_click = self._last_click or { t=0, x=0, y=0 }
-    if t - self._last_click.t < 0.35 and math.abs(x - self._last_click.x) < 8 and math.abs(y - self._last_click.y) < 8 then
+    local dc = SOLCFG.double_click or { time = 0.35, jitter = 8 }
+    if t - self._last_click.t < (dc.time or 0.35) and math.abs(x - self._last_click.x) < (dc.jitter or 8) and math.abs(y - self._last_click.y) < (dc.jitter or 8) then
         -- Try waste first
         local moved = false
         local stockRect, wasteRect = self:getTopRowPositions()
@@ -596,35 +607,72 @@ function SolitaireView:startWinAnimation()
     love.graphics.pop()
     -- seed some bouncing cards
     self.partyCards = {}
-    for i=1,40 do
+    local win = SOLCFG.win or { party_count = 40 }
+    for i=1,(win.party_count or 40) do
         local x = math.random(0, vp.width - CARD_W)
         local y = math.random(0, vp.height/3)
-        local vx = 80 + math.random()*160
+        local vx = ((SOLCFG.win and SOLCFG.win.init_vx_min) or 80) + math.random()*(((SOLCFG.win and SOLCFG.win.init_vx_max) or 240) - ((SOLCFG.win and SOLCFG.win.init_vx_min) or 80))
         if math.random()<0.5 then vx = -vx end
-        local vy = - (120 + math.random()*180)
+        local vy = - (((SOLCFG.win and SOLCFG.win.init_vy_min) or 120) + math.random()*(((SOLCFG.win and SOLCFG.win.init_vy_max) or 300) - ((SOLCFG.win and SOLCFG.win.init_vy_min) or 120)))
         table.insert(self.partyCards, { x=x, y=y, vx=vx, vy=vy })
+    end
+end
+
+-- Ensure the win-mode canvas exists and matches viewport size
+function SolitaireView:ensurePartyCanvas()
+    local vp = self.viewport
+    local needs_new = (not self.partyCanvas)
+    if not needs_new then
+        local cw, ch = self.partyCanvas:getDimensions()
+        if cw ~= vp.width or ch ~= vp.height then
+            needs_new = true
+        end
+    end
+    if needs_new then
+        self.partyCanvas = love.graphics.newCanvas(vp.width, vp.height)
+        -- Prime the canvas with current board if possible
+        love.graphics.push()
+        love.graphics.setCanvas(self.partyCanvas)
+        self:drawBoard()
+        love.graphics.setCanvas()
+        love.graphics.pop()
+        -- If we just created a new canvas, also (re)seed some cards if none exist
+        if not self.partyCards or #self.partyCards == 0 then
+            self.partyCards = {}
+            local win = SOLCFG.win or { party_count = 40 }
+            for i=1,(win.party_count or 40) do
+                local x = math.random(0, math.max(0, vp.width - CARD_W))
+                local y = math.random(0, math.max(0, math.floor(vp.height/3)))
+                local vx = ((SOLCFG.win and SOLCFG.win.init_vx_min) or 80) + math.random()*(((SOLCFG.win and SOLCFG.win.init_vx_max) or 240) - ((SOLCFG.win and SOLCFG.win.init_vx_min) or 80))
+                if math.random()<0.5 then vx = -vx end
+                local vy = - (((SOLCFG.win and SOLCFG.win.init_vy_min) or 120) + math.random()*(((SOLCFG.win and SOLCFG.win.init_vy_max) or 300) - ((SOLCFG.win and SOLCFG.win.init_vy_min) or 120)))
+                table.insert(self.partyCards, { x=x, y=y, vx=vx, vy=vy })
+            end
+        end
     end
 end
 
 function SolitaireView:updateWin(dt)
     local vp = self.viewport
+    -- Make sure canvas exists
+    self:ensurePartyCanvas()
     love.graphics.push()
     love.graphics.setCanvas(self.partyCanvas)
     -- Do NOT clear canvas to preserve artifacts
     for _,c in ipairs(self.partyCards) do
         -- integrate
-        c.vy = c.vy + 420*dt
+    c.vy = c.vy + ((SOLCFG.win and SOLCFG.win.gravity) or 420)*dt
         c.x = c.x + c.vx * dt
         c.y = c.y + c.vy * dt
         -- bounce
-        if c.x < 0 then c.x=0; c.vx = -c.vx*0.98 end
-        if c.x + CARD_W > vp.width then c.x = vp.width - CARD_W; c.vx = -c.vx*0.98 end
-        if c.y + CARD_H > vp.height then c.y = vp.height - CARD_H; c.vy = -math.abs(c.vy)*0.92 end
+    if c.x < 0 then c.x=0; c.vx = -c.vx*((SOLCFG.win and SOLCFG.win.bounce_x_friction) or 0.98) end
+    if c.x + CARD_W > vp.width then c.x = vp.width - CARD_W; c.vx = -c.vx*((SOLCFG.win and SOLCFG.win.bounce_x_friction) or 0.98) end
+    if c.y + CARD_H > vp.height then c.y = vp.height - CARD_H; c.vy = -math.abs(c.vy)*((SOLCFG.win and SOLCFG.win.bounce_y_coeff) or 0.92) end
         -- draw card back at new pos (leaves trail)
         love.graphics.setColor(1,1,1)
-        love.graphics.rectangle('line', c.x, c.y, CARD_W, CARD_H)
+    love.graphics.rectangle('line', c.x, c.y, CARD_W, CARD_H)
         love.graphics.setColor(0.95,0.95,0.95)
-        love.graphics.rectangle('fill', c.x+1, c.y+1, CARD_W-2, CARD_H-2)
+    love.graphics.rectangle('fill', c.x+1, c.y+1, CARD_W-2, CARD_H-2)
     end
     love.graphics.setCanvas()
     love.graphics.pop()
@@ -632,7 +680,12 @@ end
 
 function SolitaireView:drawWin()
     love.graphics.setColor(1,1,1)
-    love.graphics.draw(self.partyCanvas, 0, 0)
+    if self.partyCanvas then
+        love.graphics.draw(self.partyCanvas, 0, 0)
+    else
+        -- Fallback safeguard: if canvas is missing, just draw the board until canvas is ready
+        self:drawBoard()
+    end
     love.graphics.setColor(0,0,0)
     love.graphics.print("You Win! Press ESC to close", 12, 12, 0, 1.2, 1.2)
 end

@@ -1,5 +1,6 @@
 -- src/states/cheat_engine_state.lua
 local Object = require('class')
+local Strings = require('src.utils.strings')
 local CheatEngineView = require('src.views.cheat_engine_view')
 local CheatEngineState = Object:extend('CheatEngineState')
 
@@ -273,7 +274,7 @@ function CheatEngineState:unlockCheatEngine()
         self:buildAvailableCheats() -- Refresh cheat list
     else
         print("Not enough tokens to unlock CE for " .. self.selected_game_id)
-        love.window.showMessageBox("Error", "Not enough tokens! Need " .. cost, "warning")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Not enough tokens! Need " .. cost, "warning")
     end
 end
 
@@ -307,18 +308,18 @@ function CheatEngineState:purchaseCheat(cheat_id)
         self:buildAvailableCheats() -- Refresh list to show new level and cost
     else
         print("Not enough tokens to buy cheat level")
-        love.window.showMessageBox("Error", "Not enough tokens! Need " .. cost, "warning")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Not enough tokens! Need " .. cost, "warning")
     end
 end
 
 function CheatEngineState:launchGame()
     if not self.selected_game_id then
-        love.window.showMessageBox("Error", "No game selected.", "warning")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "No game selected.", "warning")
         return nil -- Return nil on failure
     end
     if not self.player_data:isGameUnlocked(self.selected_game_id) then
         print("Cannot launch a locked game via Cheat Engine")
-        love.window.showMessageBox("Error", "Game is locked. Unlock it in the Game Collection first.", "warning")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Game is locked. Unlock it in the Game Collection first.", "warning")
         return nil -- Return nil on failure
     end
 
@@ -349,7 +350,7 @@ function CheatEngineState:launchGame()
     -- Get the game data for the selected game
     local game_data = self.game_data:getGame(self.selected_game_id)
     if not game_data then
-        love.window.showMessageBox("Error", "Could not find game data to launch.", "error")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Could not find game data to launch.", "error")
         return nil -- Return nil on failure
     end
 

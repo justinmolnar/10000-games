@@ -1,4 +1,5 @@
 local Object = require('class')
+local Config = require('src.config')
 local MemoryMatchView = Object:extend('MemoryMatchView')
 
 function MemoryMatchView:init(game_state)
@@ -6,6 +7,9 @@ function MemoryMatchView:init(game_state)
     self.CARD_WIDTH = game_state.CARD_WIDTH or 60
     self.CARD_HEIGHT = game_state.CARD_HEIGHT or 80
     self.CARD_SPACING = game_state.CARD_SPACING or 10
+    local cfg = (Config and Config.games and Config.games.memory_match and Config.games.memory_match.view) or {}
+    self.bg_color = cfg.bg_color or {0.05, 0.08, 0.12}
+    self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
     self.start_x = game_state.start_x
     self.start_y = game_state.start_y
     self.grid_size = game_state.grid_size
@@ -30,7 +34,7 @@ function MemoryMatchView:draw()
     
     local game = self.game
     
-    love.graphics.setColor(0.05, 0.08, 0.12)
+    love.graphics.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
     love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
     
     local palette_id = self.sprite_manager:getPaletteId(game.data)
@@ -51,7 +55,8 @@ function MemoryMatchView:draw()
             love.graphics.setColor(0.9, 0.9, 0.85)
             love.graphics.rectangle('fill', x, y, game.CARD_WIDTH, game.CARD_HEIGHT)
             
-            local icon_size = math.min(game.CARD_WIDTH, game.CARD_HEIGHT) - 10
+            local icon_padding = game.CARD_ICON_PADDING or 10
+            local icon_size = math.min(game.CARD_WIDTH, game.CARD_HEIGHT) - icon_padding
             local icon_x = x + (game.CARD_WIDTH - icon_size) / 2
             local icon_y = y + (game.CARD_HEIGHT - icon_size) / 2
             self.sprite_loader:drawSprite(
@@ -75,27 +80,30 @@ function MemoryMatchView:draw()
         end
     end
     
-    local hud_icon_size = 16
+    local hud_icon_size = self.hud.icon_size or 16
+    local s = self.hud.text_scale or 0.85
+    local lx, ix, tx = self.hud.label_x or 10, self.hud.icon_x or 70, self.hud.text_x or 90
+    local ry = self.hud.row_y or {10, 30, 50, 70}
     love.graphics.setColor(1, 1, 1)
     if game.memorize_phase then
-        love.graphics.print("Memorize! " .. string.format("%.1f", game.memorize_timer), 10, 10)
+        love.graphics.print("Memorize! " .. string.format("%.1f", game.memorize_timer), lx, ry[1])
     else
         local matches_sprite = self.sprite_manager:getMetricSprite(game.data, "matches") or card_sprite
-        love.graphics.print("Matches: ", 10, 10, 0, 0.85, 0.85)
-        self.sprite_loader:drawSprite(matches_sprite, 70, 10, hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        love.graphics.print(game.metrics.matches .. "/" .. game.total_pairs, 90, 10, 0, 0.85, 0.85)
+        love.graphics.print("Matches: ", lx, ry[1], 0, s, s)
+        self.sprite_loader:drawSprite(matches_sprite, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        love.graphics.print(game.metrics.matches .. "/" .. game.total_pairs, tx, ry[1], 0, s, s)
         
         local perfect_sprite = self.sprite_manager:getMetricSprite(game.data, "perfect") or "check-0"
-        love.graphics.print("Perfect: ", 10, 30, 0, 0.85, 0.85)
-        self.sprite_loader:drawSprite(perfect_sprite, 70, 30, hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        love.graphics.print(game.metrics.perfect, 90, 30, 0, 0.85, 0.85)
+        love.graphics.print("Perfect: ", lx, ry[2], 0, s, s)
+        self.sprite_loader:drawSprite(perfect_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        love.graphics.print(game.metrics.perfect, tx, ry[2], 0, s, s)
         
         local time_sprite = self.sprite_manager:getMetricSprite(game.data, "time") or "clock-0"
-        love.graphics.print("Time: ", 10, 50, 0, 0.85, 0.85)
-        self.sprite_loader:drawSprite(time_sprite, 70, 50, hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        love.graphics.print(string.format("%.1f", game.metrics.time), 90, 50, 0, 0.85, 0.85)
+        love.graphics.print("Time: ", lx, ry[3], 0, s, s)
+        self.sprite_loader:drawSprite(time_sprite, ix, ry[3], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        love.graphics.print(string.format("%.1f", game.metrics.time), tx, ry[3], 0, s, s)
     end
-    love.graphics.print("Difficulty: " .. game.difficulty_level, 10, 70)
+    love.graphics.print("Difficulty: " .. game.difficulty_level, lx, ry[4])
 end
 
 return MemoryMatchView

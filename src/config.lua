@@ -46,6 +46,685 @@ local Config = {
         performance = 2000,  -- Performance Boosters
         aim = 5000,        -- Aim Assist (Fake)
         god = 10000        -- God Mode (Fake)
+    },
+
+    -- Window/Display
+    window = {
+        windowed = {
+            width = 1280,
+            height = 720,
+            resizable = false
+        },
+        fullscreen = {
+            width = 1920,
+            height = 1080,
+            type = "desktop", -- 'desktop' uses native desktop resolution
+            resizable = false
+        },
+        -- Global default window size/title if a program does not specify window_defaults
+        defaults = {
+            width = 800,
+            height = 600,
+            resizable = true,
+            title_prefix = "" -- Optional prefix to apply to window titles
+        },
+        -- Minimum window size
+        min_size = { w = 200, h = 150 },
+        -- New window cascade behavior
+        cascade = {
+            offset_x = 25,
+            offset_y = 25,
+            reset_anchor = { x = 50, y = 50 }
+        }
+    },
+
+    -- UI settings
+    ui = {
+        -- Taskbar metrics
+        taskbar = {
+            height = 40,
+            start_button_width = 60,
+            sys_tray_width = 150,
+            button_max_width = 160,
+            button_min_width = 80,
+            button_padding = 4,
+            -- Gap between start button and first taskbar button area
+            button_area_gap = 10,
+            -- Horizontal margin from the left edge for start button
+            left_margin = 10,
+            -- Vertical padding inside taskbar (top/bottom)
+            vertical_padding = 5,
+            -- Vertical margin for taskbar buttons (top+bottom combined)
+            button_vertical_margin = 3
+        },
+        -- Double-click timing threshold (seconds)
+        double_click_time = 0.5,
+        -- Window chrome metrics and colors
+        window = {
+            chrome = {
+                title_bar_height = 25,
+                border_width = 2,
+                button = {
+                    width = 16,
+                    height = 14,
+                    padding = 2,
+                    right_margin = 4,
+                    y_offset = 4
+                },
+                icon_size = 16,
+                resize_edge_size = 8,
+                -- Extra space used when excluding buttons from titlebar dragging
+                buttons_area_extra = 8,
+                -- Padding inside title bar for icon/text placement and title text scale
+                content_padding = 5,
+                title_text_scale = 0.9,
+                colors = {
+                    titlebar_focused   = {0, 0, 0.5},
+                    titlebar_unfocused = {0.5, 0.5, 0.5},
+                    border_outer       = {1, 1, 1},
+                    border_inner_focused   = {0.8, 0.8, 0.8},
+                    border_inner_unfocused = {0.5, 0.5, 0.5},
+                    button_bg          = {0.75, 0.75, 0.75},
+                    button_border_light= {1, 1, 1},
+                    button_border_dark = {0.3, 0.3, 0.3},
+                    button_icon        = {0, 0, 0},
+                    button_disabled_bg   = {0.6, 0.6, 0.6},
+                    button_disabled_icon = {0.4, 0.4, 0.4}
+                }
+            },
+            interaction = {
+                drag_deadzone = 4,
+                snap = {
+                    enabled = false,
+                    padding = 10,
+                    to_edges = true,
+                    top_maximize = false
+                }
+            },
+            error = {
+                text_color = {1, 0, 0},
+                text_pad = { x = 5, y = 5 },
+                width_pad = 10
+            }
+        },
+        -- Theme colors for desktop UI elements
+        colors = {
+            desktop = {
+                wallpaper = {0, 0.5, 0.5}
+            },
+            taskbar = {
+                bg = {0.75, 0.75, 0.75},
+                top_line = {1, 1, 1}
+            },
+            start_button = {
+                bg = {0.75, 0.75, 0.75},
+                bg_hover = {0.85, 0.85, 0.85},
+                border_light = {1, 1, 1},
+                border_dark = {0.2, 0.2, 0.2},
+                text = {0, 0, 0}
+            },
+            system_tray = {
+                bg = {0.6, 0.6, 0.6},
+                border_light = {1, 1, 1},
+                border_dark = {0.2, 0.2, 0.2},
+                text = {0, 0, 0}
+            },
+            start_menu = {
+                bg = {0.75, 0.75, 0.75},
+                border_light = {1, 1, 1},
+                border_dark = {0.2, 0.2, 0.2},
+                highlight = {0, 0, 0.5},
+                text = {0, 0, 0},
+                text_disabled = {0.5, 0.5, 0.5},
+                text_hover = {1, 1, 1},
+                separator = {0.5, 0.5, 0.5},
+                shortcut = {0.4, 0.4, 0.4}
+            },
+            run_dialog = {
+                bg = {0.75, 0.75, 0.75},
+                title_bg = {0, 0, 0.5},
+                title_text = {1, 1, 1},
+                label_text = {0, 0, 0},
+                input_bg = {1, 1, 1},
+                input_border = {0, 0, 0},
+                input_text = {0, 0, 0}
+            }
+        },
+        -- Desktop-specific layout metrics
+        desktop = {
+            grid = {
+                icon_padding = 20,
+                start_x = 20,
+                start_y = 20
+            },
+            icons = {
+                sprite_size = 48,
+                sprite_offset_y = 10,
+                label_margin_top = 5,
+                label_padding_x = 2,
+                label_padding_y = 1,
+                hover_tint = 1.2,
+                disabled_overlay_alpha = 0.5,
+                recycle_indicator = { radius = 4, offset_x = 5, offset_y = 5 }
+            },
+            start_menu = {
+                width = 200,
+                height = 300,
+                padding = 10,
+                item_height = 25,
+                icon_size = 20,
+                separator_space = 10,
+                highlight_inset = 2,
+                -- Distance from right edge where the shortcut text (e.g., Ctrl+R) starts
+                run_shortcut_offset = 60
+            },
+            run_dialog = {
+                width = 400,
+                height = 150,
+                title_bar_height = 25,
+                padding = 10,
+                input_y = 65,
+                input_h = 25,
+                buttons = {
+                    ok_offset_x = 180, ok_w = 80, ok_h = 30,
+                    cancel_offset_x = 90, cancel_w = 80, cancel_h = 30,
+                    bottom_margin = 40
+                }
+            },
+            system_tray = {
+                clock_right_offset = 50,
+                clock_text_scale = 1.2,
+                token_offset = { x = 5, y = 3 }
+            },
+            screensaver = { default_timeout = 10 }
+        },
+        -- Taskbar start button text metrics
+        taskbar_text = {
+            start_text_offset = { x = 5, y = 5 },
+            start_text_scale = 0.9
+        },
+        -- Per-view layout/theming constants to eliminate magic numbers from views
+        views = {
+            file_explorer = {
+                toolbar_height = 35,
+                address_bar_height = 25,
+                status_bar_height = 20,
+                item_height = 25,
+                scrollbar_width = 15,
+                colors = {
+                    bg = {1,1,1},
+                    toolbar_bg = {0.9, 0.9, 0.9},
+                    toolbar_sep = {0.7, 0.7, 0.7},
+                    status_bg = {0.9, 0.9, 0.9},
+                    status_sep = {0.7, 0.7, 0.7},
+                    item_selected = {0.6, 0.6, 0.9},
+                    item_hover = {0.9, 0.9, 0.95},
+                    item_bg = {1,1,1},
+                    text = {0,0,0},
+                    text_muted = {0.5,0.5,0.5},
+                    type_file = {0.5,0.5,0.5},
+                    type_exec = {0, 0.5, 0},
+                    type_deleted = {0.7, 0.0, 0.0},
+                    scrollbar_track = {0.9,0.9,0.9},
+                    scrollbar_thumb = {0.6,0.6,0.6}
+                },
+                toolbar = {
+                    margin = 5,
+                    button_w = 25,
+                    button_h = 25,
+                    spacing = 5,
+                    gap_after_nav = 10,
+                    empty_bin_w = 120
+                },
+                address_bar = {
+                    inset_x = 5,
+                    inset_y = 2,
+                    border = {0.5,0.5,0.5},
+                    text_scale = 0.9,
+                    text_pad_x = 10
+                },
+                item = {
+                    icon_pad_x = 5,
+                    icon_pad_y = 2,
+                    name_pad_x = 5,
+                    name_pad_y = 5,
+                    name_scale = 0.9,
+                    type_scale = 0.8
+                },
+                deleted_overlay = { color = {1,0,0,0.7}, line_width = 2 }
+            },
+            control_panel_legacy = {
+                padding = { x = 10, y = 10 },
+                row_gap = 26,
+                slider = { w = 280, h = 14, handle_w = 12, value_gap = 12 },
+                checkbox = { w = 20, h = 20, check_line_width = 3, label_gap = 10 },
+                screensavers = {
+                    label_x = 10,
+                    section_gap = 30,
+                    checkbox = { x = 20, y = 0, w = 22, h = 22 },
+                    slider = { x = 20, w = 300, h = 14 }
+                }
+            },
+            control_panel_general = {
+                form = { label_x = 16, slider_x = 126, value_col_w = 60, start_y = 60 }
+            },
+            control_panel_screensavers = {
+                tab = { x = 8, y = 28, w = 110, h = 18 },
+                padding = { x = 16, y = 60 },
+                label_col_w = 110,
+                dropdown = { w = 160, h = 22 },
+                preview = { frame_pad = 4, w = 320, h = 200 },
+                row_gap = 34,
+                slider_h = 12,
+                checkbox = { w = 18, h = 18 },
+                section_rule_h = 2,
+                colors = {
+                    panel_bg = {0.9, 0.9, 0.9},
+                    panel_border = {0.6, 0.6, 0.6},
+                    text = {0, 0, 0},
+                    tab_bg = {0, 0, 0},
+                    frame_fill = {0.9, 0.9, 0.95},
+                    frame_line = {0.2, 0.2, 0.2},
+                    label = {0, 0, 0},
+                    slider_track = {0.85, 0.85, 0.85},
+                    slider_fill = {0.1, 0.7, 0.1},
+                    slider_handle = {0.9, 0.9, 0.9},
+                    checkbox_fill = {1,1,1},
+                    checkbox_border = {0,0,0},
+                    checkbox_check = {0, 0.7, 0},
+                    section_rule = {0.8, 0.8, 0.8}
+                }
+            },
+            vm_manager = {
+                colors = {
+                    bg = {0.15, 0.15, 0.15},
+                    upgrade_button = {
+                        disabled_bg = {0.3, 0.3, 0.3},
+                        hover_bg = {0.35, 0.6, 0.35},
+                        enabled_bg = {0, 0.5, 0},
+                        border = {0.5, 0.5, 0.5},
+                        text_enabled = {1, 1, 1},
+                        text_disabled = {0.5, 0.5, 0.5},
+                        cost_enabled = {1, 1, 0},
+                        cost_disabled = {0.5, 0.5, 0}
+                    },
+                    slot = {
+                        selected_bg = {0.3, 0.3, 0.7},
+                        hovered_bg = {0.35, 0.35, 0.35},
+                        normal_bg = {0.25, 0.25, 0.25},
+                        border = {0.5, 0.5, 0.5},
+                        header_text = {0.7, 0.7, 0.7},
+                        name_text = {1,1,1},
+                        power_label = {0, 1, 1},
+                        progress_bg = {0.3, 0.3, 0.3},
+                        time_text = {1,1,1},
+                        auto_badge = {0.5, 0.5, 1},
+                        error_text = {1, 0, 0},
+                        empty_text = {0.5, 0.5, 0.5},
+                        empty_subtext = {0.5, 0.5, 0.5}
+                    },
+                    modal = {
+                        panel_bg = {0.2, 0.2, 0.2},
+                        overlay_alpha = 0.7, -- fallback if not provided in modal block
+                        item_bg = {0.25, 0.25, 0.25},
+                        item_bg_assigned = {0.15, 0.15, 0.15},
+                        item_text = {1,1,1},
+                        item_text_assigned = {0.5, 0.5, 0.5},
+                        power_label = {0, 1, 1},
+                        status_text = {0.7, 0.7, 0.7},
+                        status_in_use = {1, 0, 0},
+                        scrollbar = {0.5, 0.5, 0.5}
+                    }
+                },
+                grid = { slot_w = 180, slot_h = 120, padding = 10, start_y = 50, left_margin = 10, bottom_reserved = 70 },
+                purchase_button = { x = 10, w = 200, h = 40, bottom_margin = 60 },
+                upgrade = { x = 230, w = 180, h = 40, spacing = 10, bottom_margin = 60 },
+                modal = { min_w = 400, max_h = 500, side_margin = 20, top_y = 60, item_h = 40, overlay_alpha = 0.7, scrollbar_w = 8 },
+                tokens = { right_offset = 200 },
+                instructions = { bottom_offset = 25 }
+            },
+            settings = {
+                base_x = 50,
+                title_y = 40,
+                slider = { w = 300, h = 20, handle_w = 10 },
+                toggle = { w = 30, h = 30 },
+                row_gap = 50,
+                section_gap = 60,
+                int_slider = { min_seconds = 5, max_seconds = 600 }
+            },
+            cheat_engine = {
+                list = { x = 10, y = 50, max_w = 300, min_w = 150, item_h = 30, scrollbar_w = 6 },
+                detail = { x_gap = 10 },
+                spacing = { panel_gap = 10, header_h = 70, footer_h = 50, cheat_item_extra_h = 20 },
+                buttons = { wide_h = 40, small_w = 110, small_h = 30 }
+            },
+            screensaver_starfield = {
+                overlay = { color = {0.8, 0.8, 1, 0.5}, x = 12, y = 10, scale = 1.5 },
+                bg_color = {0,0,0}
+            },
+            screensaver_pipes_draw = {
+                bg_color = {0, 0.15, 0.2},
+                grid = {
+                    color = {0.0, 0.3, 0.35, 0.35},
+                    x_extents = { -10, 10 },
+                    y_extents = { -8, 8 },
+                    z1 = 600, z2 = 900,
+                    step_mul = 6
+                },
+                pipes = {
+                    colors = {
+                        {0.9,0.2,0.2}, {0.2,0.9,0.2}, {0.2,0.6,1.0}, {0.9,0.8,0.2}, {0.9,0.4,0.8}
+                    },
+                    shadow_factor = 0.35,
+                    shadow_alpha = 0.6,
+                    main_factor = 0.85,
+                    highlight_scale = 1.2,
+                    highlight_alpha = 0.85,
+                    joint_radius_scale = 0.12
+                },
+                hud = { label = "3D Pipes", color = {0.7, 0.9, 1, 0.5} }
+            },
+            screensaver_model_draw = {
+                bg_color = {0,0,0},
+                ambient = { min = 0.3, max = 1.0 },
+                z_push = 6,
+                near_min = 0.1,
+                edge_color = {0,0,0}
+            }
+        }
+    },
+
+    -- Systems configuration (shared mechanics)
+    systems = {
+        bullets = {
+            width = 4,
+            height = 8,
+            speed_y = -400,
+            despawn_margin = 0,      -- extra px above screen before despawn
+            spawn_offset_y = 0,      -- extra px above player's top edge
+            sprite_scale = 2.0       -- scale factor for sprite rendering
+        }
+    },
+
+    -- UI: Token counter thresholds/colors
+    tokens = {
+        thresholds = {
+            low = 100,
+            medium = 500
+        },
+        colors = {
+            low = {1, 0, 0},      -- red
+            medium = {1, 1, 0},   -- yellow
+            high = {0, 1, 0}      -- green
+        }
+    },
+
+    -- Screensavers defaults
+    screensavers = {
+        defaults = {
+            starfield = {
+                count = 500,
+                speed = 120,
+                fov = 300,
+                tail = 12
+            },
+            pipes = {
+                fov = 420,
+                near = 80,
+                radius = 4.5,
+                grid_step = 24,
+                max_segments = 800,
+                turn_chance = 0.45,
+                speed = 60,
+                spawn_min_z = 200,
+                spawn_max_z = 600,
+                avoid_cells = true,
+                show_grid = false,
+                camera_drift = 40,
+                camera_roll = 0.05,
+                pipe_count = 5,
+                show_hud = true
+            },
+            model = {
+                fov = 350,
+                grid_lat = 24,
+                grid_lon = 48,
+                morph_speed = 0.3,
+                two_sided = false
+            }
+        }
+    },
+
+    -- Games configuration
+    games = {
+        dodge = {
+            base_target = 30,
+            player = {
+                size = 20,
+                speed = 300
+            },
+            objects = {
+                size = 15,
+                base_speed = 200,
+                base_spawn_rate = 1.0,
+                warning_time = 0.5,
+                -- Per-type speed multipliers relative to base object speed
+                type_speed_multipliers = {
+                    seeker = 0.9,
+                    splitter = 0.8,
+                    zigzag = 1.1,
+                    sine   = 1.0,
+                    linear = 1.0
+                },
+                -- Zigzag/Sine wobble parameters
+                zigzag = {
+                    wave_speed_min = 6,
+                    wave_speed_range = 4,
+                    wave_amp = 30,
+                    wave_velocity_factor = 2.0
+                },
+                -- Object type spawn weighting: base + time_elapsed * growth
+                weights = {
+                    linear  = { base = 50, growth = 0.0 },
+                    zigzag  = { base = 22, growth = 0.30 },
+                    sine    = { base = 18, growth = 0.22 },
+                    seeker  = { base = 4,  growth = 0.08 },
+                    splitter= { base = 7,  growth = 0.18 }
+                },
+                -- Splitter shard parameters
+                splitter = {
+                    shards_count = 3,
+                    shard_radius_min = 6,
+                    shard_radius_factor = 0.6,
+                    shard_speed_factor = 0.36,
+                    spread_deg = 35
+                }
+            },
+            collisions = { max = 10 },
+            arena = {
+                width = 400,
+                height = 400,
+                initial_safe_radius_fraction = 0.48,
+                min_safe_radius_fraction = 0.35,
+                safe_zone_shrink_sec = 45,
+                spawn_inset = 2,
+                target_ring = { min_scale = 1.2, max_scale = 1.5 }
+            },
+            spawn = {
+                warning_chance = 0.7,
+                accel = { max = 2.0, time = 60 } -- spawn rate speeds up to 2x over 60s
+            },
+            seeker = {
+                base_turn_deg = 6,
+                difficulty = { max = 2.0, time = 90 } -- up to 2x turn rate over 90s
+            },
+            drift = {
+                base_speed = 45,
+                level_scale_add_per_level = 0.15, -- 15% more drift speed per difficulty level after 1
+                accel = { max = 1.0, time = 90 } -- drift velocity scales up to 2x (1+1) over 90s
+            },
+            warnings = { complexity_threshold = 2 },
+            view = {
+                bg_color = {0.08, 0.05, 0.1},
+                starfield = { count = 180, speed_min = 20, speed_max = 100, size_divisor = 60 },
+                hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
+            }
+        },
+    hidden_object = {
+            arena = { width = 800, height = 600 },
+            time = {
+                base_limit = 60,
+                bonus_multiplier = 5
+            },
+            objects = {
+                base_count = 5,
+                base_size = 20,
+                sprite_variant_divisor_base = 5
+            },
+            background = {
+                grid_base = 10,
+                position_hash = { x1 = 17, x2 = 47, y1 = 23, y2 = 53 },
+                background_hash = { h1 = 17, h2 = 3 }
+            },
+            view = {
+                bg_color = {0.12, 0.1, 0.08},
+                hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50, 70} }
+            }
+        },
+    memory_match = {
+            arena = { width = 800, height = 600 },
+            cards = { width = 60, height = 80, spacing = 10, icon_padding = 10 },
+            timings = { memorize_time_base = 5, match_view_time = 1 },
+            pairs = { per_complexity = 6 },
+            view = {
+                bg_color = {0.05, 0.08, 0.12},
+                hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
+            }
+        },
+    snake = {
+            arena = { width = 800, height = 600 },
+            grid_size = 20,
+            base_speed = 8,
+            base_target_length = 20,
+            base_obstacle_count = 5,
+            view = {
+                bg_color = {0.05, 0.1, 0.05},
+                hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
+            }
+        },
+        space_shooter = {
+            arena = { width = 800, height = 600 },
+            player = {
+                width = 30,
+                height = 30,
+                speed = 200,
+                start_y_offset = 50,
+                max_deaths_base = 5,
+                fire_cooldown = 0.2
+            },
+            bullet = { width = 4, height = 8, speed = 400 },
+            enemy = {
+                width = 30,
+                height = 30,
+                base_speed = 100,
+                start_y_offset = -30,
+                base_shoot_rate_min = 1.0,
+                base_shoot_rate_max = 3.0,
+                shoot_rate_complexity_factor = 0.5
+            },
+            spawn = { base_rate = 1.0 },
+            goals = { base_target_kills = 20 },
+            movement = { zigzag_frequency = 2 },
+            view = { 
+                bg_color = {0.05, 0.05, 0.15},
+                hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
+            }
+        },
+        solitaire = {
+            view = {
+                bg_color = {0.05, 0.25, 0.05},
+                card = {
+                    width = 72,
+                    height = 96,
+                    corner_radius = 6,
+                    back_color = {0.3, 0.5, 0.8}
+                },
+                layout = {
+                    padding = 12,
+                    top_margin = 40,
+                    faceup_dy = 24,
+                    facedown_dy = 14
+                },
+                hud = { x1 = 12, x2 = 212, y = 8 },
+                empty_slot_color = {0.2, 0.4, 0.2},
+                double_click = { time = 0.35, jitter = 8 },
+                win = {
+                    party_count = 40,
+                    gravity = 420,
+                    bounce_x_friction = 0.98,
+                    bounce_y_coeff = 0.92,
+                    init_vx_min = 80,
+                    init_vx_max = 240,
+                    init_vy_min = 120,
+                    init_vy_max = 300
+                }
+            }
+        },
+        space_defender = {
+            arena = { width = 1024, height = 768 },
+            player = {
+                width = 30,
+                height = 30,
+                speed = 250,
+                hp = 3,
+                bombs = 3,
+                start_y_offset = 80
+            },
+            enemy = {
+                width = 30,
+                height = 30,
+                zigzag = { den = 30, amp = 100 },
+                sine   = { den = 50, amp = 80 },
+                offscreen_padding = 20
+            },
+            spawn = { x_inset = 20, y_start = -20 },
+            boss = {
+                width = 80,
+                height = 80,
+                hp = 5000,
+                vx = 100,
+                attack_rate = 2.0,
+                orbit = {
+                    count = 3,
+                    radius_x = 70,
+                    radius_y = 30,
+                    rotate_per_level = 0.1,
+                    spawn_speed_base = 150,
+                    spawn_speed_per_level = 5
+                }
+            },
+            bomb = { enemy_frac = 0.5, enemy_bonus = 50, boss_frac = 0.1, boss_bonus = 500 },
+            rewards = { base = 500, per_level_multiplier = 0.5 },
+            final_level = 5,
+            level_bonuses = {
+                thresholds = {
+                    { level = 3, damage = 1.5 },
+                    { level = 5, damage = 2.0, fire_rate = 1.2 }
+                }
+            },
+            view = {
+                bg_color = {0, 0, 0.1},
+                starfield = {
+                    count = 200,
+                    speed_min = 20,
+                    speed_max = 100,
+                    base_size = { w = 1024, h = 768 }
+                },
+                hud = { left_x = 10, right_margin_offset = 150, row_y = {10, 30} },
+                overlays = { complete_alpha = 0.7, game_over_alpha = 0.7, paused_alpha = 0.5 },
+                boss_bar = { width = 200, height = 15, offset_y = 20 }
+            }
+        }
     }
 }
 

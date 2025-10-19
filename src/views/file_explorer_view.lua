@@ -3,6 +3,8 @@
 
 local Object = require('class')
 local UIComponents = require('src.views.ui_components')
+local Strings = require('src.utils.strings')
+local Config = require('src.config')
 
 local FileExplorerView = Object:extend('FileExplorerView')
 
@@ -10,10 +12,12 @@ function FileExplorerView:init(controller)
     self.controller = controller
 
     -- Layout constants
-    self.toolbar_height = 35
-    self.address_bar_height = 25
-    self.status_bar_height = 20
-    self.item_height = 25
+    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    self.toolbar_height = V.toolbar_height or 35
+    self.address_bar_height = V.address_bar_height or 25
+    self.status_bar_height = V.status_bar_height or 20
+    self.item_height = V.item_height or 25
+    self.scrollbar_width = (V.scrollbar_width or 15)
     self.scroll_offset = 0
 
     -- Hover state
@@ -66,7 +70,9 @@ end
 
 function FileExplorerView:drawWindowed(current_path, contents, selected_item, view_mode, sort_by, sort_order, can_go_back, can_go_forward, is_recycle_bin, viewport_width, viewport_height)
     -- Background
-    love.graphics.setColor(1, 1, 1)
+    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local C = V.colors or {}
+    love.graphics.setColor(C.bg or {1,1,1})
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
 
     -- Toolbar (pass is_recycle_bin)
@@ -83,14 +89,14 @@ function FileExplorerView:drawWindowed(current_path, contents, selected_item, vi
     if contents and type(contents) == "table" and #contents > 0 then
         self:drawItemList(0, content_y, viewport_width, content_h, contents, selected_item, view_mode)
     elseif is_recycle_bin and (not contents or #contents == 0) then
-        love.graphics.setColor(0.5, 0.5, 0.5)
-        love.graphics.printf("The Recycle Bin is empty", 10, content_y + 10, viewport_width - 20, "center")
+        love.graphics.setColor(C.text_muted or {0.5,0.5,0.5})
+        love.graphics.printf(Strings.get('file_explorer.empty_recycle_bin_message','The Recycle Bin is empty'), 10, content_y + 10, viewport_width - 20, "center")
     elseif contents and contents.type == "special" then
-        love.graphics.setColor(0.5, 0.5, 0.5)
-        love.graphics.printf("Special folder view", 10, content_y + 10, viewport_width - 20, "center")
+    love.graphics.setColor(C.text_muted or {0.5,0.5,0.5})
+        love.graphics.printf(Strings.get('file_explorer.special_folder_message','Special folder view'), 10, content_y + 10, viewport_width - 20, "center")
     else
-        love.graphics.setColor(0.5, 0.5, 0.5)
-        love.graphics.printf("This folder is empty", 10, content_y + 10, viewport_width - 20, "center")
+    love.graphics.setColor(C.text_muted or {0.5,0.5,0.5})
+        love.graphics.printf(Strings.get('file_explorer.empty_folder_message','This folder is empty'), 10, content_y + 10, viewport_width - 20, "center")
     end
 
     -- Status bar
@@ -100,17 +106,20 @@ end
 
 function FileExplorerView:drawToolbar(x, y, width, can_go_back, can_go_forward, is_recycle_bin)
     -- Toolbar background
-    love.graphics.setColor(0.9, 0.9, 0.9)
+    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local C = V.colors or {}
+    love.graphics.setColor(C.toolbar_bg or {0.9,0.9,0.9})
     love.graphics.rectangle('fill', x, y, width, self.toolbar_height)
 
-    love.graphics.setColor(0.7, 0.7, 0.7)
+    love.graphics.setColor(C.toolbar_sep or {0.7,0.7,0.7})
     love.graphics.line(x, y + self.toolbar_height, x + width, y + self.toolbar_height)
 
-    local btn_x = x + 5
-    local btn_y = y + 5
-    local btn_w = 25
-    local btn_h = 25
-    local btn_spacing = 5
+    local T = V.toolbar or {}
+    local btn_x = x + (T.margin or 5)
+    local btn_y = y + (T.margin or 5)
+    local btn_w = T.button_w or 25
+    local btn_h = T.button_h or 25
+    local btn_spacing = T.spacing or 5
 
     -- Back button
     local back_enabled = can_go_back
@@ -128,7 +137,7 @@ function FileExplorerView:drawToolbar(x, y, width, can_go_back, can_go_forward, 
     local up_enabled = self.controller.current_path ~= "/" -- Disable at root
     local up_hovered = (self.hovered_button == "up")
     self:drawToolbarButton(btn_x, btn_y, btn_w, btn_h, "^", up_enabled, up_hovered)
-    btn_x = btn_x + btn_w + btn_spacing + 10
+    btn_x = btn_x + btn_w + btn_spacing + (T.gap_after_nav or 10)
 
     -- Refresh button
     local refresh_hovered = (self.hovered_button == "refresh")
@@ -137,14 +146,16 @@ function FileExplorerView:drawToolbar(x, y, width, can_go_back, can_go_forward, 
 
     -- Empty Recycle Bin button (only if in recycle bin)
     if is_recycle_bin then
-        local empty_w = 120
+        local empty_w = T.empty_bin_w or 120
         local empty_hovered = (self.hovered_button == "empty_recycle_bin")
-        self:drawToolbarButton(btn_x, btn_y, empty_w, btn_h, "Empty Recycle Bin", true, empty_hovered)
+    self:drawToolbarButton(btn_x, btn_y, empty_w, btn_h, Strings.get('file_explorer.empty_recycle_bin_button','Empty Recycle Bin'), true, empty_hovered)
     end
 end
 
 function FileExplorerView:drawToolbarButton(x, y, w, h, text, enabled, hovered)
     -- Background
+    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local C = V.colors or {}
     if not enabled then
         love.graphics.setColor(0.7, 0.7, 0.7)
     elseif hovered then
@@ -160,9 +171,9 @@ function FileExplorerView:drawToolbarButton(x, y, w, h, text, enabled, hovered)
 
     -- Text
     if enabled then
-        love.graphics.setColor(0, 0, 0)
+        love.graphics.setColor(C.text or {0,0,0})
     else
-        love.graphics.setColor(0.5, 0.5, 0.5)
+        love.graphics.setColor(C.text_muted or {0.5,0.5,0.5})
     end
 
     local font = love.graphics.getFont()
@@ -173,18 +184,21 @@ end
 
 function FileExplorerView:drawAddressBar(x, y, width, current_path)
     -- Address bar background
+    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local A = V.address_bar or {}
     love.graphics.setColor(1, 1, 1)
-    love.graphics.rectangle('fill', x + 5, y + 2, width - 10, self.address_bar_height - 4)
+    love.graphics.rectangle('fill', x + (A.inset_x or 5), y + (A.inset_y or 2), width - 2*(A.inset_x or 5), self.address_bar_height - 2*(A.inset_y or 2))
 
-    love.graphics.setColor(0.5, 0.5, 0.5)
-    love.graphics.rectangle('line', x + 5, y + 2, width - 10, self.address_bar_height - 4)
+    love.graphics.setColor((A.border or {0.5,0.5,0.5}))
+    love.graphics.rectangle('line', x + (A.inset_x or 5), y + (A.inset_y or 2), width - 2*(A.inset_x or 5), self.address_bar_height - 2*(A.inset_y or 2))
 
     -- Path text
     love.graphics.setColor(0, 0, 0)
     -- Clip text rendering to address bar bounds
     love.graphics.push()
-    love.graphics.setScissor(x + 10, y + 2, width - 20, self.address_bar_height - 4)
-    love.graphics.print(current_path, x + 10, y + 6, 0, 0.9, 0.9)
+    love.graphics.setScissor(x + (A.text_pad_x or 10), y + (A.inset_y or 2), width - 2*(A.text_pad_x or 10), self.address_bar_height - 2*(A.inset_y or 2))
+    local ts = A.text_scale or 0.9
+    love.graphics.print(current_path, x + (A.text_pad_x or 10), y + ((A.inset_y or 2) + 4), 0, ts, ts)
     love.graphics.setScissor()
     love.graphics.pop()
 end
@@ -207,46 +221,53 @@ function FileExplorerView:drawItemList(x, y, width, height, contents, selected_i
 
     -- Draw scrollbar if needed
     if #contents > visible_items then
-        self:drawScrollbar(x + width - 15, y, 15, height, #contents, visible_items)
+        local sbw = self.scrollbar_width or 15
+        self:drawScrollbar(x + width - sbw, y, sbw, height, #contents, visible_items)
     end
 end
 
 function FileExplorerView:drawItem(x, y, width, height, item, is_selected, is_hovered)
     -- Background
+    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local C = V.colors or {}
     if is_selected then
-        love.graphics.setColor(0.6, 0.6, 0.9)
+        love.graphics.setColor(C.item_selected or {0.6,0.6,0.9})
     elseif is_hovered then
-        love.graphics.setColor(0.9, 0.9, 0.95)
+        love.graphics.setColor(C.item_hover or {0.9,0.9,0.95})
     else
-        love.graphics.setColor(1, 1, 1)
+        love.graphics.setColor(C.item_bg or {1,1,1})
     end
-    love.graphics.rectangle('fill', x, y, width - 15, height) -- Exclude scrollbar area
+    local sbw = (self.scrollbar_width or 15)
+    love.graphics.rectangle('fill', x, y, width - sbw, height) -- Exclude scrollbar area
 
     -- Icon
-    local icon_x = x + 5
-    local icon_y = y + 2
+    local I = (V.item or {})
+    local icon_x = x + (I.icon_pad_x or 5)
+    local icon_y = y + (I.icon_pad_y or 2)
     local icon_size = height - 4
 
     self:drawItemIcon(icon_x, icon_y, icon_size, item)
 
     -- Name
-    love.graphics.setColor(item.type == "deleted" and {0.4, 0.4, 0.4} or {0, 0, 0})
-    love.graphics.print(item.name, icon_x + icon_size + 5, y + 5, 0, 0.9, 0.9)
+    love.graphics.setColor(item.type == "deleted" and (C.text_muted or {0.4,0.4,0.4}) or (C.text or {0,0,0}))
+    local ns = I.name_scale or 0.9
+    love.graphics.print(item.name, icon_x + icon_size + (I.name_pad_x or 5), y + (I.name_pad_y or 5), 0, ns, ns)
 
     -- Type indicator (align right)
     local type_text = ""
-    local type_color = {0.5, 0.5, 0.5}
-    if item.type == "folder" then type_text = "Folder"
-    elseif item.type == "executable" then type_text = "Program"; type_color = {0, 0.5, 0}
-    elseif item.type == "file" then type_text = "File"
-    elseif item.type == "deleted" then type_text = "Deleted Item"; type_color = {0.7, 0.0, 0.0}
+    local type_color = C.type_file or {0.5,0.5,0.5}
+    if item.type == "folder" then type_text = Strings.get('file_explorer.types.folder','Folder')
+    elseif item.type == "executable" then type_text = Strings.get('file_explorer.types.program','Program'); type_color = C.type_exec or {0, 0.5, 0}
+    elseif item.type == "file" then type_text = Strings.get('file_explorer.types.file','File')
+    elseif item.type == "deleted" then type_text = Strings.get('file_explorer.types.deleted','Deleted Item'); type_color = C.type_deleted or {0.7, 0.0, 0.0}
     end
 
     if type_text ~= "" then
         love.graphics.setColor(type_color)
         local font = love.graphics.getFont()
-        local text_width = font:getWidth(type_text) * 0.8
-        love.graphics.print(type_text, x + width - 15 - text_width - 10, y + 5, 0, 0.8, 0.8)
+        local ts = (I.type_scale or 0.8)
+        local text_width = font:getWidth(type_text) * ts
+        love.graphics.print(type_text, x + width - (self.scrollbar_width or 15) - text_width - 10, y + 5, 0, ts, ts)
     end
 end
 
@@ -281,8 +302,10 @@ function FileExplorerView:drawItemIcon(x, y, size, item)
 
     -- Special overlay for deleted
     if item.type == "deleted" then
-        love.graphics.setColor(1, 0, 0, 0.7)
-        love.graphics.setLineWidth(2)
+        local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+        local del = V.deleted_overlay or { color = {1,0,0,0.7}, line_width = 2 }
+        love.graphics.setColor(del.color or {1,0,0,0.7})
+        love.graphics.setLineWidth(del.line_width or 2)
         love.graphics.line(x + 2, y + 2, x + size - 2, y + size - 2)
         love.graphics.line(x + size - 2, y + 2, x + 2, y + size - 2)
         love.graphics.setLineWidth(1)
@@ -292,7 +315,9 @@ end
 
 function FileExplorerView:drawScrollbar(x, y, width, height, total_items, visible_items)
     -- Track
-    love.graphics.setColor(0.9, 0.9, 0.9)
+    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local C = V.colors or {}
+    love.graphics.setColor(C.scrollbar_track or {0.9,0.9,0.9})
     love.graphics.rectangle('fill', x, y, width, height)
 
     -- Thumb
@@ -303,24 +328,30 @@ function FileExplorerView:drawScrollbar(x, y, width, height, total_items, visibl
          -- Clamp thumb position
          thumb_y = math.max(y, math.min(thumb_y, y + height - thumb_height))
 
-         love.graphics.setColor(0.6, 0.6, 0.6)
+         love.graphics.setColor(C.scrollbar_thumb or {0.6,0.6,0.6})
          love.graphics.rectangle('fill', x, thumb_y, width, thumb_height)
     end
 end
 
 function FileExplorerView:drawStatusBar(x, y, width, contents)
     -- Status bar background
-    love.graphics.setColor(0.9, 0.9, 0.9)
+    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local C = V.colors or {}
+    love.graphics.setColor(C.status_bg or {0.9,0.9,0.9})
     love.graphics.rectangle('fill', x, y, width, self.status_bar_height)
 
-    love.graphics.setColor(0.7, 0.7, 0.7)
+    love.graphics.setColor(C.status_sep or {0.7,0.7,0.7})
     love.graphics.line(x, y, x + width, y)
 
     -- Item count
-    love.graphics.setColor(0, 0, 0)
-    local count_text = "0 items"
+    love.graphics.setColor(C.text or {0,0,0})
+    local count_text = Strings.get('file_explorer.status.items_zero','0 items')
     if contents and type(contents) == "table" then
-        count_text = #contents .. " item" .. (#contents == 1 and "" or "s")
+        if #contents == 1 then
+            count_text = string.format(Strings.get('file_explorer.status.item_singular','%d item'), #contents)
+        else
+            count_text = string.format(Strings.get('file_explorer.status.items_plural','%d items'), #contents)
+        end
     elseif contents and contents.type == "special" then
         -- Could add logic for special folder counts if needed later
          count_text = ""
@@ -417,16 +448,18 @@ function FileExplorerView:mousemoved(x, y, dx, dy, viewport_width, viewport_heig
 end
 
 function FileExplorerView:getButtonAtPosition(x, y, is_recycle_bin)
-    local btn_y = 5
-    local btn_h = 25
-    local btn_spacing = 5
+    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local T = V.toolbar or {}
+    local btn_y = (T.margin or 5)
+    local btn_h = T.button_h or 25
+    local btn_spacing = T.spacing or 5
 
     if y < btn_y or y > btn_y + btn_h then
         return nil
     end
 
-    local btn_x = 5
-    local btn_w = 25 -- Standard button width
+    local btn_x = (T.margin or 5)
+    local btn_w = T.button_w or 25 -- Standard button width
 
     -- Back button
     if x >= btn_x and x <= btn_x + btn_w then return "back" end
@@ -438,7 +471,7 @@ function FileExplorerView:getButtonAtPosition(x, y, is_recycle_bin)
 
     -- Up button
     if x >= btn_x and x <= btn_x + btn_w then return "up" end
-    btn_x = btn_x + btn_w + btn_spacing + 10
+    btn_x = btn_x + btn_w + btn_spacing + (T.gap_after_nav or 10)
 
     -- Refresh button
     if x >= btn_x and x <= btn_x + btn_w then return "refresh" end
@@ -446,7 +479,7 @@ function FileExplorerView:getButtonAtPosition(x, y, is_recycle_bin)
 
     -- Empty Recycle Bin button
     if is_recycle_bin then
-        local empty_w = 120
+        local empty_w = T.empty_bin_w or 120
         if x >= btn_x and x <= btn_x + empty_w then return "empty_recycle_bin" end
     end
 

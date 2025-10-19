@@ -1,22 +1,26 @@
 local BaseGame = require('src.games.base_game')
+local Config = require('src.config')
 local Collision = require('src.utils.collision')
 local DodgeView = require('src.games.views.dodge_view')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
-local PLAYER_SIZE = 20
+-- Config-driven tunables with safe fallbacks (preserve previous behavior)
+local DodgeCfg = (Config and Config.games and Config.games.dodge) or {}
+local PLAYER_SIZE = (DodgeCfg.player and DodgeCfg.player.size) or 20
 local PLAYER_RADIUS = PLAYER_SIZE
-local PLAYER_SPEED = 300
-local OBJECT_SIZE = 15
+local PLAYER_SPEED = (DodgeCfg.player and DodgeCfg.player.speed) or 300
+local OBJECT_SIZE = (DodgeCfg.objects and DodgeCfg.objects.size) or 15
 local OBJECT_RADIUS = OBJECT_SIZE
-local BASE_SPAWN_RATE = 1.0
-local BASE_OBJECT_SPEED = 200
-local WARNING_TIME = 0.5
-local MAX_COLLISIONS = 10
-local BASE_DODGE_TARGET = 30
-local MIN_SAFE_RADIUS_FRACTION = 0.35 -- of min(width,height)
-local SAFE_ZONE_SHRINK_SEC = 45 -- time to reach min radius at base difficulty
-local TARGET_RING_MIN_SCALE = 1.2
-local TARGET_RING_MAX_SCALE = 1.5
+local BASE_SPAWN_RATE = (DodgeCfg.objects and DodgeCfg.objects.base_spawn_rate) or 1.0
+local BASE_OBJECT_SPEED = (DodgeCfg.objects and DodgeCfg.objects.base_speed) or 200
+local WARNING_TIME = (DodgeCfg.objects and DodgeCfg.objects.warning_time) or 0.5
+local MAX_COLLISIONS = (DodgeCfg.collisions and DodgeCfg.collisions.max) or 10
+local BASE_DODGE_TARGET = DodgeCfg.base_target or 30
+local MIN_SAFE_RADIUS_FRACTION = (DodgeCfg.arena and DodgeCfg.arena.min_safe_radius_fraction) or 0.35 -- of min(width,height)
+local SAFE_ZONE_SHRINK_SEC = (DodgeCfg.arena and DodgeCfg.arena.safe_zone_shrink_sec) or 45 -- time to reach min radius at base difficulty
+local INITIAL_SAFE_RADIUS_FRACTION = (DodgeCfg.arena and DodgeCfg.arena.initial_safe_radius_fraction) or 0.48
+local TARGET_RING_MIN_SCALE = (DodgeCfg.arena and DodgeCfg.arena.target_ring and DodgeCfg.arena.target_ring.min_scale) or 1.2
+local TARGET_RING_MAX_SCALE = (DodgeCfg.arena and DodgeCfg.arena.target_ring and DodgeCfg.arena.target_ring.max_scale) or 1.5
 
 function DodgeGame:init(game_data, cheats)
     DodgeGame.super.init(self, game_data, cheats)
@@ -28,8 +32,8 @@ function DodgeGame:init(game_data, cheats)
     self.OBJECT_SIZE = OBJECT_SIZE
     self.MAX_COLLISIONS = MAX_COLLISIONS + extra_collisions
 
-    self.game_width = 400
-    self.game_height = 400
+    self.game_width = (DodgeCfg.arena and DodgeCfg.arena.width) or 400
+    self.game_height = (DodgeCfg.arena and DodgeCfg.arena.height) or 400
 
     self.player = {
         x = self.game_width / 2,
@@ -44,7 +48,7 @@ function DodgeGame:init(game_data, cheats)
 
     self.spawn_rate = BASE_SPAWN_RATE / self.difficulty_modifiers.count
     self.object_speed = (BASE_OBJECT_SPEED * self.difficulty_modifiers.speed) * speed_modifier
-    self.warning_enabled = self.difficulty_modifiers.complexity <= 2
+    self.warning_enabled = self.difficulty_modifiers.complexity <= ((DodgeCfg.warnings and DodgeCfg.warnings.complexity_threshold) or 2)
     self.dodge_target = math.floor(BASE_DODGE_TARGET * self.difficulty_modifiers.complexity)
 
     self.spawn_timer = 0
@@ -58,17 +62,17 @@ function DodgeGame:init(game_data, cheats)
 
     -- Safe zone (Undertale-like arena)
     local min_dim = math.min(self.game_width, self.game_height)
-    local level_scale = 1 + 0.15 * math.max(0, (self.difficulty_level or 1) - 1) -- faster with clone iteration
-    local drift_speed = 45 * level_scale -- px/sec base
+    local level_scale = 1 + ((DodgeCfg.drift and DodgeCfg.drift.level_scale_add_per_level) or 0.15) * math.max(0, (self.difficulty_level or 1) - 1) -- faster with clone iteration
+    local drift_speed = ((DodgeCfg.drift and DodgeCfg.drift.base_speed) or 45) * level_scale -- px/sec base
     local drift_angle = math.random() * math.pi * 2
     local drift_vx = math.cos(drift_angle) * drift_speed
     local drift_vy = math.sin(drift_angle) * drift_speed
     self.safe_zone = {
         x = self.game_width / 2,
         y = self.game_height / 2,
-        radius = min_dim * 0.48,
+    radius = min_dim * ((DodgeCfg.arena and DodgeCfg.arena.initial_safe_radius_fraction) or 0.48),
         min_radius = min_dim * MIN_SAFE_RADIUS_FRACTION,
-        shrink_speed = (min_dim * (0.48 - MIN_SAFE_RADIUS_FRACTION)) / (SAFE_ZONE_SHRINK_SEC / self.difficulty_modifiers.complexity),
+    shrink_speed = (min_dim * (((DodgeCfg.arena and DodgeCfg.arena.initial_safe_radius_fraction) or 0.48) - MIN_SAFE_RADIUS_FRACTION)) / (SAFE_ZONE_SHRINK_SEC / self.difficulty_modifiers.complexity),
         vx = drift_vx,
         vy = drift_vy
     }
@@ -167,9 +171,9 @@ function DodgeGame:updateObjects(dt)
                 return d
             end
             local diff = angdiff(desired, obj.angle)
-            local base_turn = math.rad(6) -- degrees/sec at baseline
+            local base_turn = math.rad(((DodgeCfg.seeker and DodgeCfg.seeker.base_turn_deg) or 6)) -- degrees/sec at baseline
             local te = self.time_elapsed or 0
-            local difficulty_scaler = 1 + math.min(2.0, te / 90)
+            local difficulty_scaler = 1 + math.min(((DodgeCfg.seeker and DodgeCfg.seeker.difficulty and DodgeCfg.seeker.difficulty.max) or 2.0), te / ((DodgeCfg.seeker and DodgeCfg.seeker.difficulty and DodgeCfg.seeker.difficulty.time) or 90))
             local max_turn = base_turn * difficulty_scaler * dt
             if diff > max_turn then diff = max_turn elseif diff < -max_turn then diff = -max_turn end
             obj.angle = obj.angle + diff
@@ -182,7 +186,7 @@ function DodgeGame:updateObjects(dt)
             local t = love.timer.getTime() * obj.wave_speed
             local wobble = math.sin(t + obj.wave_phase) * obj.wave_amp
             -- wobble is positional; convert to velocity by differentiating approx -> reduce magnitude
-            local wobble_v = wobble * 2.0
+            local wobble_v = wobble * (((DodgeCfg.objects and DodgeCfg.objects.zigzag and DodgeCfg.objects.zigzag.wave_velocity_factor) or 2.0))
             local vx = obj.vx + perp_x * wobble_v
             local vy = obj.vy + perp_y * wobble_v
             obj.x = obj.x + vx * dt
@@ -212,7 +216,8 @@ function DodgeGame:updateObjects(dt)
             local dys = obj.y - self.safe_zone.y
             local inside = (dxs*dxs + dys*dys) <= (self.safe_zone.radius + obj.radius)^2
             if inside and not obj.was_inside then
-                self:spawnShards(obj, 3)
+                local shards = (DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shards_count) or 3
+                self:spawnShards(obj, shards)
                 obj.did_split = true
                 table.remove(self.objects, i)
                 goto continue_obj_loop
@@ -251,10 +256,10 @@ end
 
 function DodgeGame:spawnObjectOrWarning()
     -- Dynamic spawn rate scaling
-    local accel = 1 + math.min(2.0, self.time_elapsed / 60)
+    local accel = 1 + math.min(((DodgeCfg.spawn and DodgeCfg.spawn.accel and DodgeCfg.spawn.accel.max) or 2.0), self.time_elapsed / ((DodgeCfg.spawn and DodgeCfg.spawn.accel and DodgeCfg.spawn.accel.time) or 60))
     self.spawn_rate = (BASE_SPAWN_RATE / self.difficulty_modifiers.count) / accel
 
-    if self.warning_enabled and math.random() < 0.7 then
+    if self.warning_enabled and math.random() < ((DodgeCfg.spawn and DodgeCfg.spawn.warning_chance) or 0.7) then
         table.insert(self.warnings, self:createWarning())
     else
         -- createRandomObject already inserts into self.objects
@@ -265,7 +270,7 @@ end
 -- Choose a spawn point just outside the play bounds on a random edge
 function DodgeGame:pickSpawnPoint()
     -- Spawn just inside the offscreen threshold so first update doesn't cull them
-    local inset = 2
+    local inset = ((DodgeCfg.arena and DodgeCfg.arena.spawn_inset) or 2)
     local r = OBJECT_RADIUS
     local edge = math.random(4) -- 1=left,2=right,3=top,4=bottom
     if edge == 1 then return -r + inset, math.random(0, self.game_height)
@@ -318,19 +323,25 @@ function DodgeGame:createRandomObject(warned_status)
     local tx, ty = self:pickTargetPointOnRing()
     local angle = math.atan2(ty - sy, tx - sx)
     angle = self:ensureInboundAngle(sx, sy, angle)
-    -- Choose type by weighted randomness scaling with time
+    -- Choose type by weighted randomness scaling with time (Config-driven)
     local t = self.time_elapsed
-    local weights = {
-        linear = 50,
-        zigzag = 22 + t * 0.30,
-        sine = 18 + t * 0.22,
-        seeker = 4 + t * 0.08,   -- much rarer and scales gently over time
-        splitter = 7 + t * 0.18
+    local weights = (DodgeCfg.objects and DodgeCfg.objects.weights) or {
+        linear  = { base = 50, growth = 0.0 },
+        zigzag  = { base = 22, growth = 0.30 },
+        sine    = { base = 18, growth = 0.22 },
+        seeker  = { base = 4,  growth = 0.08 },
+        splitter= { base = 7,  growth = 0.18 }
     }
-    local function pick(w)
-        local sum = 0; for _,v in pairs(w) do sum = sum + v end
+    local function pick(weights_cfg)
+        local sum = 0
+        for _, cfg in pairs(weights_cfg) do
+            sum = sum + ((cfg.base or 0) + t * (cfg.growth or 0))
+        end
         local r = math.random() * sum
-        for k,v in pairs(w) do r = r - v; if r <= 0 then return k end end
+        for k, cfg in pairs(weights_cfg) do
+            r = r - ((cfg.base or 0) + t * (cfg.growth or 0))
+            if r <= 0 then return k end
+        end
         return 'linear'
     end
     local kind = pick(weights)
@@ -342,7 +353,7 @@ function DodgeGame:createObject(spawn_x, spawn_y, angle, was_warned, kind)
         warned = was_warned,
         radius = OBJECT_RADIUS,
         type = kind or 'linear',
-        speed = self.object_speed * (kind == 'seeker' and 0.9 or kind == 'splitter' and 0.8 or kind == 'zigzag' and 1.1 or kind == 'sine' and 1.0 or 1.0)
+        speed = self.object_speed * (((DodgeCfg.objects and DodgeCfg.objects.type_speed_multipliers and DodgeCfg.objects.type_speed_multipliers[kind or 'linear']) or (kind == 'seeker' and 0.9 or kind == 'splitter' and 0.8 or kind == 'zigzag' and 1.1 or kind == 'sine' and 1.0 or 1.0)))
     }
     obj.x = spawn_x
     obj.y = spawn_y
@@ -352,8 +363,9 @@ function DodgeGame:createObject(spawn_x, spawn_y, angle, was_warned, kind)
     obj.vy = math.sin(obj.angle) * obj.speed
 
     if obj.type == 'zigzag' or obj.type == 'sine' then
-        obj.wave_speed = 6 + math.random()*4
-        obj.wave_amp = 30
+        local zig = (DodgeCfg.objects and DodgeCfg.objects.zigzag) or { wave_speed_min = 6, wave_speed_range = 4, wave_amp = 30 }
+        obj.wave_speed = (zig.wave_speed_min or 6) + math.random() * (zig.wave_speed_range or 4)
+        obj.wave_amp = zig.wave_amp or 30
         obj.wave_phase = math.random()*math.pi*2
     end
     table.insert(self.objects, obj)
@@ -361,18 +373,18 @@ function DodgeGame:createObject(spawn_x, spawn_y, angle, was_warned, kind)
 end
 
 function DodgeGame:spawnShards(parent, count)
-    local n = count or 2
+    local n = count or (((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shards_count) or 2))
     for i=1,n do
         -- Emit shards around parent's current heading with some spread
-        local spread = math.rad(35)
+        local spread = math.rad(((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.spread_deg) or 35))
         local a = parent.angle + (math.random()*2 - 1) * spread
         local shard = {
             x = parent.x,
             y = parent.y,
-            radius = math.max(6, math.floor(parent.radius * 0.6)),
+            radius = math.max(((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shard_radius_min) or 6), math.floor(parent.radius * (((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shard_radius_factor) or 0.6)))) ,
             type = 'linear',
             -- about 70% slower than previous 1.2x => ~0.36x base speed
-            speed = self.object_speed * 0.36,
+            speed = self.object_speed * (((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shard_speed_factor) or 0.36)),
             warned = false
         }
         shard.angle = a
@@ -396,7 +408,7 @@ function DodgeGame:updateSafeZone(dt)
         sz.radius = math.max(sz.min_radius, sz.radius - sz.shrink_speed * dt)
     end
     -- Drift and bounce (slight acceleration over time)
-    local accel = 1 + math.min(1.0, (self.time_elapsed or 0) / 90)
+    local accel = 1 + math.min(((DodgeCfg.drift and DodgeCfg.drift.accel and DodgeCfg.drift.accel.max) or 1.0), (self.time_elapsed or 0) / ((DodgeCfg.drift and DodgeCfg.drift.accel and DodgeCfg.drift.accel.time) or 90))
     sz.x = sz.x + sz.vx * accel * dt
     sz.y = sz.y + sz.vy * accel * dt
     local margin = sz.radius

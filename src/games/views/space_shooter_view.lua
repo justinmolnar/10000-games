@@ -1,4 +1,5 @@
 local Object = require('class')
+local Config = require('src.config')
 local SpaceShooterView = Object:extend('SpaceShooterView')
 
 function SpaceShooterView:init(game_state)
@@ -28,7 +29,10 @@ function SpaceShooterView:draw()
     local game_width = game.game_width
     local game_height = game.game_height
 
-    g.setColor(0.05, 0.05, 0.15)
+    local viewcfg = (Config and Config.games and Config.games.space_shooter and Config.games.space_shooter.view) or {}
+    local bg = viewcfg.bg_color or {0.05, 0.05, 0.15}
+    local hud = viewcfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
+    g.setColor(bg[1], bg[2], bg[3])
     g.rectangle('fill', 0, 0, game_width, game_height)
 
     local palette_id = self.sprite_manager:getPaletteId(game.data)
@@ -85,18 +89,21 @@ function SpaceShooterView:draw()
         )
     end
 
-    local hud_icon_size = 16
+    local hud_icon_size = hud.icon_size or 16
+    local s = hud.text_scale or 0.85
+    local lx, ix, tx = hud.label_x or 10, hud.icon_x or 60, hud.text_x or 80
+    local ry = hud.row_y or {10, 30, 50}
     g.setColor(1, 1, 1)
-    g.print("Kills: ", 10, 10, 0, 0.85, 0.85)
-    self.sprite_loader:drawSprite(enemy_sprite, 60, 10, hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    g.print(game.metrics.kills .. "/" .. game.target_kills, 80, 10, 0, 0.85, 0.85)
+    g.print("Kills: ", lx, ry[1], 0, s, s)
+    self.sprite_loader:drawSprite(enemy_sprite, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+    g.print(game.metrics.kills .. "/" .. game.target_kills, tx, ry[1], 0, s, s)
     
     local death_sprite = self.sprite_manager:getMetricSprite(game.data, "deaths") or "msg_error-0"
-    g.print("Deaths: ", 10, 30, 0, 0.85, 0.85)
-    self.sprite_loader:drawSprite(death_sprite, 60, 30, hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    g.print(game.metrics.deaths .. "/" .. game.PLAYER_MAX_DEATHS, 80, 30, 0, 0.85, 0.85)
+    g.print("Deaths: ", lx, ry[2], 0, s, s)
+    self.sprite_loader:drawSprite(death_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+    g.print(game.metrics.deaths .. "/" .. game.PLAYER_MAX_DEATHS, tx, ry[2], 0, s, s)
     
-    g.print("Difficulty: " .. game.difficulty_level, 10, 50)
+    g.print("Difficulty: " .. game.difficulty_level, lx, ry[3])
 end
 
 return SpaceShooterView

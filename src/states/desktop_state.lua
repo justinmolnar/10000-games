@@ -1,6 +1,8 @@
 -- src/states/desktop_state.lua
 local Object = require('class')
 local DesktopView = require('views.desktop_view')
+local Constants = require('src.constants')
+local Strings = require('src.utils.strings')
 local SettingsManager = require('src.utils.settings_manager')
 local TutorialView = require('src.views.tutorial_view')
 local WindowChrome = require('src.views.window_chrome')
@@ -64,7 +66,9 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
     self.tutorial_view = TutorialView:new(self)
     self.context_menu_view = ContextMenuView:new()
 
-    self.wallpaper_color = {0, 0.5, 0.5}
+    local Config = require('src.config')
+    local colors = (Config.ui and Config.ui.colors) or {}
+    self.wallpaper_color = (colors.desktop and colors.desktop.wallpaper) or {0, 0.5, 0.5}
     self.show_tutorial = show_tutorial_on_startup or false
 
     self.start_menu_open = false
@@ -104,7 +108,8 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
     -- Screensaver idle timer
     self.idle_timer = 0
     local SettingsManager = require('src.utils.settings_manager')
-    self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or 10
+    local desktopCfg = (Config.ui and Config.ui.desktop) or {}
+    self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or (desktopCfg.screensaver and desktopCfg.screensaver.default_timeout) or 10
     self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
 
     print("[DesktopState:init] Initialization finished.") -- Debug End
@@ -170,9 +175,9 @@ function DesktopState:update(dt)
     -- Screensaver idle tracking
     if self.screensaver_enabled then
         self.idle_timer = self.idle_timer + dt
-        if self.idle_timer >= (self.screensaver_timeout or 10) then
-            if self.state_machine and self.state_machine.states['screensaver'] then
-                self.state_machine:switch('screensaver')
+    if self.idle_timer >= (self.screensaver_timeout or ((desktopCfg.screensaver and desktopCfg.screensaver.default_timeout) or 10)) then
+            if self.state_machine and self.state_machine.states[Constants.state.SCREENSAVER] then
+                self.state_machine:switch(Constants.state.SCREENSAVER)
                 self.idle_timer = 0
                 return
             end
@@ -262,10 +267,14 @@ function DesktopState:drawWindow(window)
         if not draw_ok then
             print("Error during window state draw for ID " .. window.id .. ": " .. tostring(err))
             -- Draw error message (this part seems okay, uses push/pop locally)
+            local Config = require('src.config')
+            local E = (Config.ui and Config.ui.window and Config.ui.window.error) or {}
             love.graphics.push()
             love.graphics.setScissor(content_bounds.x, content_bounds.y, content_bounds.width, content_bounds.height)
-            love.graphics.setColor(1,0,0)
-            love.graphics.printf("Error drawing window content:\n" .. tostring(err), content_bounds.x + 5, content_bounds.y + 5, content_bounds.width - 10)
+            love.graphics.setColor((E.text_color or {1,0,0}))
+            local pad = E.text_pad or {x=5,y=5}
+            local wpad = E.width_pad or 10
+            love.graphics.printf("Error drawing window content:\n" .. tostring(err), content_bounds.x + pad.x, content_bounds.y + pad.y, content_bounds.width - wpad)
             love.graphics.setScissor()
             love.graphics.pop()
         end
@@ -359,7 +368,7 @@ function DesktopState:mousepressed(x, y, button)
                 if start_menu_event.name == "launch_program" then
                     local program = self.program_registry:getProgram(start_menu_event.program_id)
                     if program and not program.disabled then self:launchProgram(start_menu_event.program_id)
-                    else love.window.showMessageBox("Not Available", (program and program.name or "Program") .. " is not available yet.", "info") end
+                    else love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), (program and program.name or "Program") .. " is not available yet.", "info") end
                     self.start_menu_open = false
                 elseif start_menu_event.name == "open_run" then self.run_dialog_open = true; self.start_menu_open = false
                 elseif start_menu_event.name == "close_start_menu" then self.start_menu_open = false end
@@ -379,10 +388,11 @@ function DesktopState:mousepressed(x, y, button)
                 clicked_specific_desktop_ui = true
                 local program = self.program_registry:getProgram(icon_program_id)
                 if program and not program.disabled then
-                    local is_double_click = (self.last_icon_click_id == icon_program_id and love.timer.getTime() - self.last_icon_click_time < 0.5)
+                    local dbl = (Config and Config.ui and Config.ui.double_click_time) or 0.5
+                    local is_double_click = (self.last_icon_click_id == icon_program_id and love.timer.getTime() - self.last_icon_click_time < dbl)
                     if is_double_click then self:launchProgram(icon_program_id); self.last_icon_click_id = nil; self.last_icon_click_time = 0; self.dragging_icon_id = nil
                     else self.last_icon_click_id = icon_program_id; self.last_icon_click_time = love.timer.getTime(); self.dragging_icon_id = icon_program_id; local icon_pos = self.desktop_icons:getPosition(icon_program_id) or self.view:getDefaultIconPosition(icon_program_id); self.drag_offset_x = x - icon_pos.x; self.drag_offset_y = y - icon_pos.y end
-                elseif program and program.disabled then love.window.showMessageBox("Not Available", program.name .. " is planned.", "info"); self.last_icon_click_id = nil; self.last_icon_click_time = 0 end
+                elseif program and program.disabled then love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is planned.", "info"); self.last_icon_click_id = nil; self.last_icon_click_time = 0 end
             end
             -- Check taskbar buttons if icon wasn't clicked
             if not icon_program_id then
@@ -466,10 +476,17 @@ function DesktopState:_handleWindowClick(window, x, y, button)
 
         elseif window_event.type == "window_drag_start" then
             local current_time = love.timer.getTime()
-            if window.id == self.last_title_bar_click_id and current_time - self.last_title_bar_click_time < 0.5 then
+            local Config = require('src.config')
+            local dbl = (Config and Config.ui and Config.ui.double_click_time) or 0.5
+            if window.id == self.last_title_bar_click_id and current_time - self.last_title_bar_click_time < dbl then
+                -- Respect resizable flag for double-click maximize/restore
                 local program = self.program_registry:getProgram(window.program_type)
                 local defaults = program and program.window_defaults or {}
-                local is_resizable = (defaults.resizable ~= false)
+                local Config = require('src.config')
+                local wd = (Config and Config.window and Config.window.defaults) or {}
+                local fallback_resizable = (wd.resizable ~= nil) and wd.resizable or true
+                local computed_resizable = (defaults.resizable ~= nil) and defaults.resizable or fallback_resizable
+                local is_resizable = (window.is_resizable ~= nil) and window.is_resizable or computed_resizable
                 if is_resizable then
                     if window.is_maximized then
                         self.window_manager:restoreWindow(window.id)
@@ -734,7 +751,9 @@ function DesktopState:handleWindowEvent(event, x, y, button)
 
     elseif event.type == "window_drag_start" then
          local current_time = love.timer.getTime()
-         if event.window_id == self.last_title_bar_click_id and current_time - self.last_title_bar_click_time < 0.5 then
+         local Config = require('src.config')
+         local dbl = (Config and Config.ui and Config.ui.double_click_time) or 0.5
+         if event.window_id == self.last_title_bar_click_id and current_time - self.last_title_bar_click_time < dbl then
              local window = self.window_manager:getWindowById(event.window_id)
              if window then
                  local program = self.program_registry:getProgram(window.program_type)
@@ -885,10 +904,10 @@ function DesktopState:keypressed(key)
 
     -- Debug menu toggle (F5)
     if key == 'f5' and self.state_machine then
-        if self.state_machine.states['debug'] then
-            local current_fullscreen_state_name = 'desktop'
-            if self.state_machine.current_state == self.state_machine.states['debug'] then self.state_machine:switch(current_fullscreen_state_name)
-            else self.state_machine:switch('debug', current_fullscreen_state_name) end
+        if self.state_machine.states[Constants.state.DEBUG] then
+            local current_fullscreen_state_name = Constants.state.DESKTOP
+            if self.state_machine.current_state == self.state_machine.states[Constants.state.DEBUG] then self.state_machine:switch(current_fullscreen_state_name)
+            else self.state_machine:switch(Constants.state.DEBUG, current_fullscreen_state_name) end
              return true
         end
     end
@@ -968,7 +987,7 @@ function DesktopState:handleStateEvent(window_id, event)
      elseif event.name == "show_completion" then
          self:closeWindowById(window_id)
          -- Completion state is still fullscreen for now
-         self.state_machine:switch('completion')
+         self.state_machine:switch(Constants.state.COMPLETION)
      elseif event.name == "launch_program" then
          self:launchProgram(event.program_id)
      elseif event.name == "launch_minigame" then -- *** NEW CASE ***
@@ -997,10 +1016,10 @@ function DesktopState:executeRunCommand(command)
         if not program.disabled then
             self:launchProgram(program.id)
         else
-            love.window.showMessageBox("Error", "Cannot find '" .. command .. "'.", "error")
+            love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), string.format(Strings.get('messages.cannot_find_fmt', "Cannot find '%s'."), command), "error")
         end
     else
-        love.window.showMessageBox("Error", "Cannot find '" .. command .. "'.", "error")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), string.format(Strings.get('messages.cannot_find_fmt', "Cannot find '%s'."), command), "error")
     end
 end
 
@@ -1014,9 +1033,10 @@ function DesktopState:launchProgram(program_id, ...)
 
     local program = self.program_registry:getProgram(program_id)
     if not program then print("Program definition not found: " .. program_id); return end
-    if program.disabled then print("Program disabled: " .. program_id); love.window.showMessageBox("Not Available", program.name .. " is not available yet.", "info"); return end
+    if program.disabled then print("Program disabled: " .. program_id); love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is not available yet.", "info"); return end
     if not program.state_class_path then print("Program missing state_class_path: " .. program_id); return end
 
+    local Config = require('src.config')
     local defaults = program.window_defaults or {}
     if defaults.single_instance then
         local existing_id = self.window_manager:isProgramOpen(program_id)
@@ -1061,23 +1081,25 @@ function DesktopState:launchProgram(program_id, ...)
         if dependency then table.insert(state_args, dependency)
         else print("ERROR: Missing dependency '" .. dep_name .. "'"); table.insert(missing_deps, dep_name) end
     end
-    if #missing_deps > 0 then love.window.showMessageBox("Error", "Missing dependencies: " .. table.concat(missing_deps, ", "), "error"); return end
+    if #missing_deps > 0 then love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Missing dependencies: " .. table.concat(missing_deps, ", "), "error"); return end
 
     local instance_ok, new_state = pcall(StateClass.new, StateClass, unpack(state_args))
     if not instance_ok or not new_state then print("ERROR instantiating state: " .. tostring(new_state)); return end
 
     local screen_w, screen_h = love.graphics.getDimensions()
-    local default_w = defaults.w or 800
-    local default_h = defaults.h or 600
+    local wd = (Config and Config.window and Config.window.defaults) or {}
+    local default_w = defaults.w or wd.width or 800
+    local default_h = defaults.h or wd.height or 600
 
-    local initial_title = program.name
+    local title_prefix = wd.title_prefix or ""
+    local initial_title = (title_prefix ~= "" and (title_prefix .. program.name)) or program.name
     local game_data_arg = nil
     local program_for_window = program
     
     if program_id == "minigame_runner" then
         game_data_arg = launch_args[1]
         if game_data_arg and game_data_arg.display_name then 
-            initial_title = game_data_arg.display_name 
+            initial_title = (title_prefix ~= "" and (title_prefix .. game_data_arg.display_name)) or game_data_arg.display_name 
             -- Create a modified program definition with the game's icon
             program_for_window = {
                 id = program.id,
@@ -1086,7 +1108,7 @@ function DesktopState:launchProgram(program_id, ...)
                 window_defaults = program.window_defaults
             }
         else 
-            initial_title = "Minigame" 
+            initial_title = (title_prefix ~= "" and (title_prefix .. "Minigame")) or "Minigame" 
         end
     end
 
@@ -1157,52 +1179,52 @@ function DesktopState:generateContextMenuOptions(context_type, context_data)
         local program_id = context_data.program_id
         local program = self.program_registry:getProgram(program_id)
         if program then
-            table.insert(options, { id = "open", label = "Open", enabled = not program.disabled })
-            table.insert(options, { id = "separator" })
+          table.insert(options, { id = "open", label = Strings.get('menu.open', 'Open'), enabled = not program.disabled })
+          table.insert(options, { id = "separator" })
             if program_id ~= "recycle_bin" and program_id ~= "my_computer" then
-                 table.insert(options, { id = "delete", label = "Delete", enabled = true })
+              table.insert(options, { id = "delete", label = Strings.get('menu.delete', 'Delete'), enabled = true })
             end
-            table.insert(options, { id = "separator" })
-            table.insert(options, { id = "properties", label = "Properties (NYI)", enabled = false })
+          table.insert(options, { id = "separator" })
+          table.insert(options, { id = "properties", label = Strings.get('menu.properties', 'Properties') .. " (NYI)", enabled = false })
         end
 
     elseif context_type == "taskbar" then
         local window_id = context_data.window_id
         local window = self.window_manager:getWindowById(window_id)
         if window then
-            table.insert(options, { id = "restore", label = "Restore", enabled = window.is_minimized })
-            table.insert(options, { id = "minimize", label = "Minimize", enabled = not window.is_minimized })
+            table.insert(options, { id = "restore", label = Strings.get('menu.restore', 'Restore'), enabled = window.is_minimized })
+            table.insert(options, { id = "minimize", label = Strings.get('menu.minimize', 'Minimize'), enabled = not window.is_minimized })
             local can_maximize = true -- Add check for program.window_defaults.resizable later
             if window.is_maximized then
-                table.insert(options, { id = "restore_size", label = "Restore Size", enabled = can_maximize })
+                table.insert(options, { id = "restore_size", label = Strings.get('menu.restore_size', 'Restore Size'), enabled = can_maximize })
             else
-                table.insert(options, { id = "maximize", label = "Maximize", enabled = can_maximize and not window.is_minimized })
+                table.insert(options, { id = "maximize", label = Strings.get('menu.maximize', 'Maximize'), enabled = can_maximize and not window.is_minimized })
             end
             table.insert(options, { id = "separator" })
-            table.insert(options, { id = "close_window", label = "Close", enabled = true })
+            table.insert(options, { id = "close_window", label = Strings.get('menu.close', 'Close'), enabled = true })
         end
 
     elseif context_type == "desktop" then
-        table.insert(options, { id = "arrange_icons", label = "Arrange Icons (NYI)", enabled = false })
-        table.insert(options, { id = "separator" })
-        table.insert(options, { id = "refresh", label = "Refresh", enabled = true })
-        table.insert(options, { id = "separator" })
-        table.insert(options, { id = "properties", label = "Properties (NYI)", enabled = false })
+    table.insert(options, { id = "arrange_icons", label = Strings.get('menu.arrange_icons', 'Arrange Icons') .. " (NYI)", enabled = false })
+    table.insert(options, { id = "separator" })
+    table.insert(options, { id = "refresh", label = Strings.get('menu.refresh', 'Refresh'), enabled = true })
+    table.insert(options, { id = "separator" })
+    table.insert(options, { id = "properties", label = Strings.get('menu.properties', 'Properties') .. " (NYI)", enabled = false })
 
     elseif context_type == "start_menu_item" then
         local program_id = context_data.program_id
         local program = self.program_registry:getProgram(program_id)
         if program then
-            table.insert(options, { id = "open", label = "Open", enabled = not program.disabled })
+            table.insert(options, { id = "open", label = Strings.get('menu.open', 'Open'), enabled = not program.disabled })
             table.insert(options, { id = "separator" })
             local is_visible = self.desktop_icons:isIconVisible(program_id)
             table.insert(options, {
                 id = "create_shortcut_desktop",
-                label = "Create Shortcut (Desktop)",
+                label = Strings.get('menu.create_shortcut_desktop', 'Create Shortcut (Desktop)'),
                 enabled = not is_visible and not program.disabled
             })
             table.insert(options, { id = "separator" })
-            table.insert(options, { id = "properties", label = "Properties (NYI)", enabled = false })
+            table.insert(options, { id = "properties", label = Strings.get('menu.properties', 'Properties') .. " (NYI)", enabled = false })
         end
 
     elseif context_type == "file_explorer_item" or context_type == "file_explorer_empty" then

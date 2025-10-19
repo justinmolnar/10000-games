@@ -3,6 +3,7 @@
 
 local Object = require('class')
 local json = require('json')
+local Paths = require('src.paths')
 local PaletteManager = Object:extend('PaletteManager')
 
 function PaletteManager:init()
@@ -16,7 +17,7 @@ function PaletteManager:init()
 end
 
 function PaletteManager:loadPalettes()
-    local file_path = "assets/data/sprite_palettes.json"
+    local file_path = Paths.assets.data .. "sprite_palettes.json"
     local read_ok, contents = pcall(love.filesystem.read, file_path)
     
     if not read_ok or not contents then
@@ -43,7 +44,7 @@ function PaletteManager:countPalettes()
 end
 
 function PaletteManager:loadShader()
-    local shader_path = "assets/shaders/palette_swap.glsl"
+    local shader_path = Paths.assets.shaders .. "palette_swap.glsl"
     local success, result = pcall(love.graphics.newShader, shader_path)
     
     if success then

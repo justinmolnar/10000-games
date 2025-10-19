@@ -2,6 +2,7 @@
 -- Manages window input, dragging, resizing, and focus
 
 local Object = require('class')
+local Config = require('src.config')
 local WindowController = Object:extend('WindowController')
 
 function WindowController:init(window_manager, program_registry, window_states_map)
@@ -21,9 +22,15 @@ function WindowController:init(window_manager, program_registry, window_states_m
     self.resize_start_y = 0
     self.resize_start_bounds = nil
 
-    -- Minimum window size
-    self.min_window_width = 200
-    self.min_window_height = 150
+    -- Minimum window size from config
+    local min_size = (Config and Config.window and Config.window.min_size) or { w = 200, h = 150 }
+    self.min_window_width = min_size.w or 200
+    self.min_window_height = min_size.h or 150
+
+    -- Interaction thresholds
+    local inter = (Config and Config.ui and Config.ui.window and Config.ui.window.interaction) or {}
+    self.drag_deadzone = (inter.drag_deadzone ~= nil) and inter.drag_deadzone or 4
+    self.drag_pending = nil -- { window_id, start_x, start_y, offset_x, offset_y }
 end
 
 -- Handle mouse press
@@ -73,7 +80,8 @@ function WindowController:checkWindowClick(window, x, y, window_chrome)
 
     -- Check if in title bar (start drag) THIRD
     if window_chrome:isInTitleBar(window, x, y) then
-        self:startDrag(window.id, x, y)
+        -- Begin pending drag (apply deadzone before moving window)
+        self:startDragPending(window.id, x, y)
         return {type = "window_drag_start", window_id = window.id}
     end
 
@@ -109,7 +117,10 @@ function WindowController:checkButtonClick(window, x, y, window_chrome)
     -- Check if program allows resizing before enabling maximize/restore button action
     local program = self.program_registry:getProgram(window.program_type)
     local defaults = program and program.window_defaults or {}
-    local is_resizable = defaults.resizable ~= false
+    local Config = require('src.config')
+    local wd = (Config and Config.window and Config.window.defaults) or {}
+    local fallback_resizable = (wd.resizable ~= nil) and wd.resizable or true
+    local is_resizable = (defaults.resizable ~= nil) and defaults.resizable or fallback_resizable
 
     if is_resizable then
         bx, by, bw, bh = window_chrome:getButtonBounds(window, max_type)
@@ -131,6 +142,19 @@ function WindowController:checkButtonClick(window, x, y, window_chrome)
     return nil
 end
 
+-- Begin a pending drag (deadzone)
+function WindowController:startDragPending(window_id, mouse_x, mouse_y)
+    local window = self.window_manager:getWindowById(window_id)
+    if not window or window.is_maximized then return end
+    self.drag_pending = {
+        window_id = window_id,
+        start_x = mouse_x,
+        start_y = mouse_y,
+        offset_x = mouse_x - window.x,
+        offset_y = mouse_y - window.y
+    }
+end
+
 -- Start dragging a window
 function WindowController:startDrag(window_id, mouse_x, mouse_y)
     local window = self.window_manager:getWindowById(window_id)
@@ -147,7 +171,10 @@ function WindowController:startResize(window_id, edge, mouse_x, mouse_y)
     -- Double check resizable and not maximized here too
     local program = self.program_registry:getProgram(window.program_type)
     local defaults = program and program.window_defaults or {}
-    local is_resizable = defaults.resizable ~= false
+    local Config = require('src.config')
+    local wd = (Config and Config.window and Config.window.defaults) or {}
+    local fallback_resizable = (wd.resizable ~= nil) and wd.resizable or true
+    local is_resizable = (defaults.resizable ~= nil) and defaults.resizable or fallback_resizable
     if not window or window.is_maximized or not is_resizable then return end
 
     self.resizing_window_id = window_id
@@ -165,6 +192,19 @@ end
 
 -- Handle mouse movement
 function WindowController:mousemoved(x, y, dx, dy, window_chrome) -- Added window_chrome param
+    -- Promote pending drag if moved beyond deadzone
+    if self.drag_pending and not self.dragging_window_id then
+        local dpx = math.abs(x - self.drag_pending.start_x)
+        local dpy = math.abs(y - self.drag_pending.start_y)
+        if dpx >= self.drag_deadzone or dpy >= self.drag_deadzone then
+            -- Start real drag
+            self.dragging_window_id = self.drag_pending.window_id
+            self.drag_offset_x = self.drag_pending.offset_x
+            self.drag_offset_y = self.drag_pending.offset_y
+            self.drag_pending = nil
+        end
+    end
+
     -- Handle dragging (WITHOUT CLAMPING)
     if self.dragging_window_id then
         local new_x = x - self.drag_offset_x
@@ -217,7 +257,7 @@ function WindowController:handleResize(mouse_x, mouse_y)
 
     -- Screen bounds clamping logic
     local screen_w, screen_h = love.graphics.getWidth(), love.graphics.getHeight()
-    local taskbar_h = 40
+    local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
     new_x = math.max(0, math.min(new_x, screen_w - new_w))
     new_y = math.max(0, math.min(new_y, screen_h - taskbar_h - new_h))
     new_w = math.min(new_w, screen_w - new_x)
@@ -271,8 +311,8 @@ function WindowController:mousereleased(x, y, button)
             -- Validate and clamp the final position
             local screen_w = love.graphics.getWidth()
             local screen_h = love.graphics.getHeight()
-            local taskbar_h = 40 -- Assume taskbar height
-            local title_bar_height = 25 -- Assume default title bar height
+            local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
+            local title_bar_height = ((Config and Config.ui and Config.ui.window and Config.ui.window.chrome and Config.ui.window.chrome.title_bar_height) or 25)
 
             -- Clamp X: Ensure left edge is >= 0 and right edge is <= screen_w
             final_x = math.max(0, math.min(final_x, screen_w - window.width))
@@ -286,7 +326,35 @@ function WindowController:mousereleased(x, y, button)
             final_x = tonumber(final_x) or 0
             final_y = tonumber(final_y) or 0
 
-            -- Update the window bounds to the final clamped position
+            -- Optional snapping to edges
+            local inter = (Config and Config.ui and Config.ui.window and Config.ui.window.interaction) or {}
+            local snap = inter.snap or {}
+            if snap.enabled then
+                local pad = snap.padding or 10
+                if snap.to_edges ~= false then
+                    if final_x <= pad then final_x = 0 end
+                    if final_x + window.width >= screen_w - pad then final_x = screen_w - window.width end
+                    if final_y <= pad then
+                        if snap.top_maximize then
+                            -- Maximize instead of snapping to top
+                            self.window_manager:maximizeWindow(window_id, screen_w, screen_h)
+                            -- Clear drag state and pending; skip normal update
+                            self.dragging_window_id = nil
+                            self.drag_offset_x = 0
+                            self.drag_offset_y = 0
+                            self.drag_pending = nil
+                            return true
+                        else
+                            final_y = 0
+                        end
+                    end
+                    if final_y + window.height >= (screen_h - taskbar_h - pad) then
+                        final_y = (screen_h - taskbar_h - window.height)
+                    end
+                end
+            end
+
+            -- Update the window bounds to the final clamped/snapped position
             self.window_manager:updateWindowBounds(window_id, final_x, final_y, nil, nil)
             print("Dropped window", window_id, "at validated position", final_x, final_y)
         end
@@ -302,6 +370,11 @@ function WindowController:mousereleased(x, y, button)
         self.resizing_window_id = nil
         self.resize_edge = nil
         self.resize_start_bounds = nil -- Clear start bounds
+    end
+
+    -- Clear pending drag if click released without exceeding deadzone
+    if self.drag_pending and button == 1 then
+        self.drag_pending = nil
     end
 
     return was_dragging or was_resizing

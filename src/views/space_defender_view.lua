@@ -1,24 +1,31 @@
 local Object = require('class')
+local Config = require('src.config')
 local SpaceDefenderView = Object:extend('SpaceDefenderView')
 
 function SpaceDefenderView:init(controller)
     self.controller = controller
+    self._cfg = Config.games.space_defender and Config.games.space_defender.view or {}
     self.stars = {}
-    for i = 1, 200 do
+    local star_count = (self._cfg.starfield and self._cfg.starfield.count) or 200
+    local base_size = (self._cfg.starfield and self._cfg.starfield.base_size) or { w = 1024, h = 768 }
+    local smin = (self._cfg.starfield and self._cfg.starfield.speed_min) or 20
+    local smax = (self._cfg.starfield and self._cfg.starfield.speed_max) or 100
+    for i = 1, star_count do
         table.insert(self.stars, {
-            x = math.random(0, 1024),
-            y = math.random(0, 768),
-            speed = math.random(20, 100)
+            x = math.random(0, base_size.w),
+            y = math.random(0, base_size.h),
+            speed = math.random(smin, smax)
         })
     end
 end
 
 function SpaceDefenderView:update(dt)
+    local base_size = (self._cfg.starfield and self._cfg.starfield.base_size) or { w = 1024, h = 768 }
     for _, star in ipairs(self.stars) do
         star.y = star.y + star.speed * dt
-        if star.y > 768 then
+        if star.y > base_size.h then
             star.y = 0
-            star.x = math.random(0, 1024)
+            star.x = math.random(0, base_size.w)
         end
     end
 end
@@ -48,9 +55,10 @@ end
 
 function SpaceDefenderView:drawBackground(width, height)
     love.graphics.setColor(1, 1, 1)
+    local base_size = (self._cfg.starfield and self._cfg.starfield.base_size) or { w = 1024, h = 768 }
     for _, star in ipairs(self.stars) do
-        local scaled_x = star.x / 1024 * width
-        local scaled_y = star.y / 768 * height
+        local scaled_x = star.x / base_size.w * width
+        local scaled_y = star.y / base_size.h * height
         local size = star.speed / 50
         love.graphics.rectangle('fill', scaled_x, scaled_y, size, size)
     end
@@ -113,10 +121,11 @@ function SpaceDefenderView:drawBoss(boss)
     SpriteManager.sprite_loader:drawSprite(self._boss_sprite_name, boss.x - boss.width/2, boss.y - boss.height/2, boss.width, boss.height)
     
     -- Health bar
-    local bar_w = 200
-    local bar_h = 15
+    local bb = (self._cfg.boss_bar) or { width = 200, height = 15, offset_y = 20 }
+    local bar_w = bb.width
+    local bar_h = bb.height
     local bar_x = boss.x - bar_w/2
-    local bar_y = boss.y - boss.height/2 - 20
+    local bar_y = boss.y - boss.height/2 - (bb.offset_y or 20)
     love.graphics.setColor(0.3, 0, 0)
     love.graphics.rectangle('fill', bar_x, bar_y, bar_w, bar_h)
     love.graphics.setColor(1, 0, 0)
@@ -129,14 +138,16 @@ function SpaceDefenderView:drawHUD(args)
     if not player or not width then return end
 
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("HP: " .. player.hp, 10, 10)
-    love.graphics.print("Bombs: " .. player.bombs, 10, 30)
-    love.graphics.print("Wave: " .. args.current_wave .. "/" .. args.total_waves, width - 150, 10)
-    love.graphics.print("Level: " .. args.current_level, width - 150, 30)
+    local hud = self._cfg.hud or { left_x = 10, right_margin_offset = 150, row_y = {10, 30} }
+    love.graphics.print("HP: " .. player.hp, hud.left_x or 10, (hud.row_y and hud.row_y[1]) or 10)
+    love.graphics.print("Bombs: " .. player.bombs, hud.left_x or 10, (hud.row_y and hud.row_y[2]) or 30)
+    love.graphics.print("Wave: " .. args.current_wave .. "/" .. args.total_waves, width - ((hud.right_margin_offset or 150)), (hud.row_y and hud.row_y[1]) or 10)
+    love.graphics.print("Level: " .. args.current_level, width - ((hud.right_margin_offset or 150)), (hud.row_y and hud.row_y[2]) or 30)
 end
 
 function SpaceDefenderView:drawLevelComplete(tokens_earned, viewport_width, viewport_height)
-    love.graphics.setColor(0, 0, 0, 0.7)
+    local ov = self._cfg.overlays or { complete_alpha = 0.7 }
+    love.graphics.setColor(0, 0, 0, ov.complete_alpha or 0.7)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
     love.graphics.setColor(1, 1, 0)
     love.graphics.printf("LEVEL COMPLETE", 0, viewport_height/2 - 50, viewport_width, "center")
@@ -146,7 +157,8 @@ function SpaceDefenderView:drawLevelComplete(tokens_earned, viewport_width, view
 end
 
 function SpaceDefenderView:drawGameOver(viewport_width, viewport_height)
-    love.graphics.setColor(0, 0, 0, 0.7)
+    local ov = self._cfg.overlays or { game_over_alpha = 0.7 }
+    love.graphics.setColor(0, 0, 0, ov.game_over_alpha or 0.7)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
     love.graphics.setColor(1, 0, 0)
     love.graphics.printf("GAME OVER", 0, viewport_height/2 - 20, viewport_width, "center")
@@ -154,7 +166,8 @@ function SpaceDefenderView:drawGameOver(viewport_width, viewport_height)
 end
 
 function SpaceDefenderView:drawPaused(viewport_width, viewport_height)
-    love.graphics.setColor(0, 0, 0, 0.5)
+    local ov = self._cfg.overlays or { paused_alpha = 0.5 }
+    love.graphics.setColor(0, 0, 0, ov.paused_alpha or 0.5)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
     love.graphics.setColor(1, 1, 1)
     love.graphics.printf("PAUSED", 0, viewport_height/2 - 10, viewport_width, "center")

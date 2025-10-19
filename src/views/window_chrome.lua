@@ -2,14 +2,25 @@
 -- Reusable component for rendering window chrome (title bar, borders, buttons)
 
 local Object = require('class')
+local Config = require('src.config')
 local WindowChrome = Object:extend('WindowChrome')
 
--- Window chrome dimensions
-WindowChrome.TITLE_BAR_HEIGHT = 25
-WindowChrome.BORDER_WIDTH = 2
-WindowChrome.BUTTON_WIDTH = 16
-WindowChrome.BUTTON_HEIGHT = 14
-WindowChrome.BUTTON_PADDING = 2
+-- Window chrome dimensions (from config with fallbacks)
+local chrome = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome) or {}
+local button = chrome.button or {}
+local colors = chrome.colors or {}
+WindowChrome.TITLE_BAR_HEIGHT = chrome.title_bar_height or 25
+WindowChrome.BORDER_WIDTH = chrome.border_width or 2
+WindowChrome.BUTTON_WIDTH = button.width or 16
+WindowChrome.BUTTON_HEIGHT = button.height or 14
+WindowChrome.BUTTON_PADDING = button.padding or 2
+WindowChrome.BUTTON_RIGHT_MARGIN = button.right_margin or 4
+WindowChrome.BUTTON_Y_OFFSET = button.y_offset or 4
+WindowChrome.ICON_SIZE = chrome.icon_size or 16
+WindowChrome.RESIZE_EDGE_SIZE = chrome.resize_edge_size or 8
+WindowChrome.BUTTONS_AREA_EXTRA = chrome.buttons_area_extra or 8
+WindowChrome.CONTENT_PADDING = chrome.content_padding or 5
+WindowChrome.TITLE_TEXT_SCALE = chrome.title_text_scale or 0.9
 
 function WindowChrome:init()
     -- No state needed, pure rendering component
@@ -24,10 +35,10 @@ end
 
 -- Draw window border
 function WindowChrome:drawBorder(window, is_focused)
-    local color = is_focused and {0.8, 0.8, 0.8} or {0.5, 0.5, 0.5}
+    local color = is_focused and (colors.border_inner_focused or {0.8, 0.8, 0.8}) or (colors.border_inner_unfocused or {0.5, 0.5, 0.5})
     
     -- Outer border (raised effect)
-    love.graphics.setColor(1, 1, 1)
+    love.graphics.setColor((colors.border_outer or {1, 1, 1}))
     love.graphics.rectangle('line', window.x, window.y, window.width, window.height)
     
     -- Inner border
@@ -46,18 +57,19 @@ function WindowChrome:drawTitleBar(window, is_focused)
 
     -- Title bar background (gradient effect)
     if is_focused then
-        love.graphics.setColor(0, 0, 0.5)
+        love.graphics.setColor(colors.titlebar_focused or {0, 0, 0.5})
     else
-        love.graphics.setColor(0.5, 0.5, 0.5)
+        love.graphics.setColor(colors.titlebar_unfocused or {0.5, 0.5, 0.5})
     end
     love.graphics.rectangle('fill',
         window.x + 2, window.y + 2,
         window.width - 4, bar_height)
 
     -- Draw icon if available
-    local icon_size = 16
-    local icon_x = window.x + 5
-    local icon_y = window.y + 5
+    local icon_size = self.ICON_SIZE
+    local pad = self.CONTENT_PADDING or 5
+    local icon_x = window.x + pad
+    local icon_y = window.y + pad
     
     if window.icon_sprite then
         sprite_loader:drawSprite(window.icon_sprite, icon_x, icon_y, icon_size, icon_size, {1, 1, 1})
@@ -67,8 +79,8 @@ function WindowChrome:drawTitleBar(window, is_focused)
     love.graphics.setColor(1, 1, 1)
     local text_x = window.icon_sprite and (icon_x + icon_size + 5) or (window.x + 5)
     love.graphics.print(window.title,
-        text_x, window.y + 6,
-        0, 0.9, 0.9)
+        text_x, window.y + 1 + pad,
+        0, self.TITLE_TEXT_SCALE or 0.9, self.TITLE_TEXT_SCALE or 0.9)
 end
 
 -- Draw window control buttons
@@ -79,38 +91,48 @@ function WindowChrome:drawButtons(window, is_focused)
     local btn_padding = self.BUTTON_PADDING
     
     -- Calculate button positions (right-aligned)
-    local close_x = window.x + window.width - btn_w - 4
+    local close_x = window.x + window.width - btn_w - (self.BUTTON_RIGHT_MARGIN or 4)
     local max_x = close_x - btn_w - btn_padding
     local min_x = max_x - btn_w - btn_padding
-    local btn_y = window.y + 4
+    local btn_y = window.y + (self.BUTTON_Y_OFFSET or 4)
     
     -- Minimize button
-    self:drawButton(min_x, btn_y, btn_w, btn_h, "minimize", is_focused)
+    self:drawButton(min_x, btn_y, btn_w, btn_h, "minimize", is_focused, false)
     
     -- Maximize/Restore button
     local max_type = window.is_maximized and "restore" or "maximize"
-    self:drawButton(max_x, btn_y, btn_w, btn_h, max_type, is_focused)
+    local disabled = (window.is_resizable == false)
+    self:drawButton(max_x, btn_y, btn_w, btn_h, max_type, is_focused, disabled)
     
     -- Close button
-    self:drawButton(close_x, btn_y, btn_w, btn_h, "close", is_focused)
+    self:drawButton(close_x, btn_y, btn_w, btn_h, "close", is_focused, false)
 end
 
 -- Draw individual button
-function WindowChrome:drawButton(x, y, w, h, button_type, is_focused)
+function WindowChrome:drawButton(x, y, w, h, button_type, is_focused, disabled)
+    disabled = disabled or false
     -- Button background
-    love.graphics.setColor(0.75, 0.75, 0.75)
+    if disabled then
+        love.graphics.setColor(colors.button_disabled_bg or {0.6, 0.6, 0.6})
+    else
+        love.graphics.setColor(colors.button_bg or {0.75, 0.75, 0.75})
+    end
     love.graphics.rectangle('fill', x, y, w, h)
     
     -- Button border (raised effect)
-    love.graphics.setColor(1, 1, 1)
+    love.graphics.setColor(colors.button_border_light or {1, 1, 1})
     love.graphics.line(x, y, x + w, y)
     love.graphics.line(x, y, x, y + h)
-    love.graphics.setColor(0.3, 0.3, 0.3)
+    love.graphics.setColor(colors.button_border_dark or {0.3, 0.3, 0.3})
     love.graphics.line(x + w, y, x + w, y + h)
     love.graphics.line(x, y + h, x + w, y + h)
     
     -- Button icon
-    love.graphics.setColor(0, 0, 0)
+    if disabled then
+        love.graphics.setColor(colors.button_disabled_icon or {0.4, 0.4, 0.4})
+    else
+        love.graphics.setColor(colors.button_icon or {0, 0, 0})
+    end
     local center_x = x + w / 2
     local center_y = y + h / 2
     
@@ -137,10 +159,10 @@ function WindowChrome:getButtonBounds(window, button_type)
     local btn_h = self.BUTTON_HEIGHT
     local btn_padding = self.BUTTON_PADDING
     
-    local close_x = window.x + window.width - btn_w - 4
+    local close_x = window.x + window.width - btn_w - (self.BUTTON_RIGHT_MARGIN or 4)
     local max_x = close_x - btn_w - btn_padding
     local min_x = max_x - btn_w - btn_padding
-    local btn_y = window.y + 4
+    local btn_y = window.y + (self.BUTTON_Y_OFFSET or 4)
     
     if button_type == "minimize" then
         return min_x, btn_y, btn_w, btn_h
@@ -168,7 +190,7 @@ function WindowChrome:isInTitleBar(window, x, y)
     -- Exclude button area
     local btn_w = self.BUTTON_WIDTH
     local btn_padding = self.BUTTON_PADDING
-    local buttons_width = (btn_w * 3) + (btn_padding * 2) + 8
+    local buttons_width = (btn_w * 3) + (btn_padding * 2) + (self.BUTTONS_AREA_EXTRA or 8)
     
     if x > window.x + window.width - buttons_width then
         return false
@@ -182,13 +204,15 @@ function WindowChrome:getResizeEdge(window, x, y, program_registry, program_id)
     -- Check if window is resizable using program registry
     local program = program_registry and program_registry:getProgram(program_id)
     local defaults = program and program.window_defaults or {}
-    local is_resizable = defaults.resizable ~= false -- Default to true if not specified
+    local wd = (Config and Config.window and Config.window.defaults) or {}
+    local fallback_resizable = (wd.resizable ~= nil) and wd.resizable or true
+    local is_resizable = (defaults.resizable ~= nil) and defaults.resizable or fallback_resizable
 
     if not is_resizable or window.is_maximized then -- Cannot resize if not resizable or maximized
         return nil
     end
 
-    local edge_size = 8
+    local edge_size = self.RESIZE_EDGE_SIZE or 8
     local on_left = x >= window.x and x <= window.x + edge_size
     local on_right = x >= window.x + window.width - edge_size and x <= window.x + window.width
     local on_top = y >= window.y and y <= window.y + edge_size

@@ -3,10 +3,11 @@
 
 local Object = require('class')
 local SpriteLoader = Object:extend('SpriteLoader')
+local Paths = require('src.paths')
 
 function SpriteLoader:init()
     self.sprites = {}
-    self.sprite_dir = "assets/sprites/win98/"
+    self.sprite_dir = Paths.assets.sprites .. "win98/"
     self.loaded = false
     self.aliases = nil
 end
@@ -44,7 +45,7 @@ function SpriteLoader:loadAll()
 end
 
 function SpriteLoader:loadAliases()
-    local alias_path = "assets/data/sprite_aliases.json"
+    local alias_path = Paths.assets.data .. "sprite_aliases.json"
     local ok, contents = pcall(love.filesystem.read, alias_path)
     if not ok or not contents then
         return -- Optional
@@ -99,7 +100,7 @@ function SpriteLoader:drawSprite(sprite_name, x, y, width, height, tint, palette
         -- One-time warn about missing sprite key to help debug white boxes
         if not self._warned_missing then self._warned_missing = {} end
         if not self._warned_missing[sprite_name] then
-            print(string.format('[SpriteLoader] MISSING sprite "%s". Check assets/sprites/win98/win98.txt and callers.', tostring(sprite_name)))
+            print(string.format('[SpriteLoader] MISSING sprite "%s". Check %swin98.txt and callers.', tostring(sprite_name), self.sprite_dir))
             self._warned_missing[sprite_name] = true
         end
         -- Fallback: draw white rectangle with border

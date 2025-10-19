@@ -1,12 +1,16 @@
 local BaseGame = require('src.games.base_game')
+local Config = require('src.config')
 local MemoryMatchView = require('src.games.views.memory_match_view')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
-local CARD_WIDTH = 60
-local CARD_HEIGHT = 80
-local CARD_SPACING = 10
-local MEMORIZE_TIME_BASE = 5 
-local MATCH_VIEW_TIME = 1    
+-- Config-driven defaults with safe fallbacks
+local MMCfg = (Config and Config.games and Config.games.memory_match) or {}
+local CARD_WIDTH = (MMCfg.cards and MMCfg.cards.width) or 60
+local CARD_HEIGHT = (MMCfg.cards and MMCfg.cards.height) or 80
+local CARD_SPACING = (MMCfg.cards and MMCfg.cards.spacing) or 10
+local CARD_ICON_PADDING = (MMCfg.cards and MMCfg.cards.icon_padding) or 10
+local MEMORIZE_TIME_BASE = (MMCfg.timings and MMCfg.timings.memorize_time_base) or 5
+local MATCH_VIEW_TIME = (MMCfg.timings and MMCfg.timings.match_view_time) or 1
 
 function MemoryMatch:init(game_data, cheats)
     MemoryMatch.super.init(self, game_data, cheats)
@@ -17,11 +21,13 @@ function MemoryMatch:init(game_data, cheats)
     self.CARD_WIDTH = CARD_WIDTH
     self.CARD_HEIGHT = CARD_HEIGHT
     self.CARD_SPACING = CARD_SPACING
+    self.CARD_ICON_PADDING = CARD_ICON_PADDING
     
-    self.game_width = 800
-    self.game_height = 600
+    self.game_width = (MMCfg.arena and MMCfg.arena.width) or 800
+    self.game_height = (MMCfg.arena and MMCfg.arena.height) or 600
     
-    local pairs_count = math.floor(6 * self.difficulty_modifiers.complexity) 
+    local per_complexity = (MMCfg.pairs and MMCfg.pairs.per_complexity) or 6
+    local pairs_count = math.floor(per_complexity * self.difficulty_modifiers.complexity) 
     self.grid_size = math.ceil(math.sqrt(pairs_count * 2)) 
     local total_cards = self.grid_size * self.grid_size
     if total_cards % 2 ~= 0 then total_cards = total_cards -1 end

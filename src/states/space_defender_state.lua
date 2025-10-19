@@ -1,8 +1,10 @@
 local Object = require('class')
+local Config = require('src.config')
 local BulletSystem = require('models.bullet_system')
 local Collision = require('src.utils.collision')
 local SpaceDefenderView = require('src.views.space_defender_view')
 local json = require('json')
+local Paths = require('src.paths')
 local SpaceDefenderState = Object:extend('SpaceDefenderState')
 
 function SpaceDefenderState:init(player_data, game_data, state_machine, save_manager, statistics)
@@ -14,8 +16,10 @@ function SpaceDefenderState:init(player_data, game_data, state_machine, save_man
     self.view = SpaceDefenderView:new(self)
     
     -- Game dimensions (default)
-    self.game_width = 1024
-    self.game_height = 768
+    local SDCFG = Config.games.space_defender
+    self._cfg = SDCFG
+    self.game_width = (SDCFG and SDCFG.arena and SDCFG.arena.width) or 1024
+    self.game_height = (SDCFG and SDCFG.arena and SDCFG.arena.height) or 768
     
     self.all_level_data = nil
     self.current_level_data = nil
@@ -47,7 +51,8 @@ function SpaceDefenderState:setViewport(x, y, width, height)
     -- Reposition player if exists
     if self.player_ship then
         self.player_ship.x = math.max(self.player_ship.width/2, math.min(self.game_width - self.player_ship.width/2, self.player_ship.x))
-        self.player_ship.y = self.game_height - 80
+    local y_off = (self._cfg and self._cfg.player and self._cfg.player.start_y_offset) or 80
+    self.player_ship.y = self.game_height - y_off
     end
     
     print("[SpaceDefender] Play area updated to:", width, height)
@@ -61,7 +66,7 @@ end
 function SpaceDefenderState:loadLevelData()
     if self.all_level_data then return true end
 
-    local file_path = "assets/data/space_defender_levels.json"
+    local file_path = Paths.assets.data .. "space_defender_levels.json"
     local read_ok, contents = pcall(love.filesystem.read, file_path)
     if not read_ok or not contents then
         print("ERROR: Could not read level data: " .. file_path .. " - " .. tostring(contents))
@@ -115,16 +120,17 @@ function SpaceDefenderState:enter(level_number)
     self.tokens_earned = 0
     self.paused = false
 
+    local pcfg = self._cfg and self._cfg.player or {}
     self.player_ship = {
         x = self.game_width / 2,
-        y = self.game_height - 80,
-        width = 30,
-        height = 30,
-        speed = 250,
-        hp = 3,
-        max_hp = 3,
-        bombs = 3,
-        max_bombs = 3
+        y = self.game_height - (pcfg.start_y_offset or 80),
+        width = pcfg.width or 30,
+        height = pcfg.height or 30,
+        speed = pcfg.speed or 250,
+        hp = pcfg.hp or 3,
+        max_hp = pcfg.hp or 3,
+        bombs = pcfg.bombs or 3,
+        max_bombs = pcfg.bombs or 3
     }
 
     self.bullet_system = BulletSystem:new(self.statistics)
@@ -146,8 +152,13 @@ end
 function SpaceDefenderState:getLevelBonuses()
     local fire_rate = 1.0
     local damage = 1.0
-    if self.current_level >= 3 then damage = 1.5 end
-    if self.current_level >= 5 then damage = 2.0; fire_rate = 1.2 end
+    local bonuses = self._cfg and self._cfg.level_bonuses and self._cfg.level_bonuses.thresholds or {}
+    for _, t in ipairs(bonuses) do
+        if self.current_level >= (t.level or 0) then
+            if t.damage then damage = t.damage end
+            if t.fire_rate then fire_rate = t.fire_rate end
+        end
+    end
     return fire_rate, damage
 end
 
@@ -186,8 +197,14 @@ function SpaceDefenderState:updateEnemies(dt)
         if not enemy then goto continue_enemy_loop end
 
         enemy.y = enemy.y + enemy.speed * dt
-        if enemy.pattern == "zigzag" then enemy.x = enemy.x + math.sin(enemy.y / 30) * 100 * dt
-        elseif enemy.pattern == "sine" then enemy.x = enemy.x + math.cos(enemy.y / 50) * 80 * dt end
+        local ecfg = self._cfg and self._cfg.enemy or {}
+        if enemy.pattern == "zigzag" then
+            local z = ecfg.zigzag or { den = 30, amp = 100 }
+            enemy.x = enemy.x + math.sin(enemy.y / (z.den or 30)) * (z.amp or 100) * dt
+        elseif enemy.pattern == "sine" then
+            local s = ecfg.sine or { den = 50, amp = 80 }
+            enemy.x = enemy.x + math.cos(enemy.y / (s.den or 50)) * (s.amp or 80) * dt
+        end
 
         if self.player_ship then
             local p_x1 = self.player_ship.x - self.player_ship.width/2
@@ -202,7 +219,8 @@ function SpaceDefenderState:updateEnemies(dt)
             end
         end
 
-        if enemy.y > self.game_height + 20 then
+        local offp = (self._cfg and self._cfg.enemy and self._cfg.enemy.offscreen_padding) or 20
+        if enemy.y > self.game_height + offp then
             table.remove(self.enemies, i)
         end
         ::continue_enemy_loop::
@@ -232,13 +250,21 @@ end
 
 function SpaceDefenderState:bossAttack()
 if not self.boss or not self.current_level_data or not self.current_level_data.boss then return end
-    local enemy_hp = self.current_level_data.boss.attack_power or 50
-    
-    for i = 1, 3 do
-        local angle = (i / 3) * math.pi * 2 + (self.current_level * 0.1)
+    local orbit = (self._cfg and self._cfg.boss and self._cfg.boss.orbit) or {}
+    local count = orbit.count or 3
+    local radius_x = orbit.radius_x or 70
+    local radius_y = orbit.radius_y or 30
+    local rotate_per_level = orbit.rotate_per_level or 0.1
+    local speed_base = orbit.spawn_speed_base or 150
+    local speed_per_lvl = orbit.spawn_speed_per_level or 5
+    local enemy_hp = (self.current_level_data.boss and self.current_level_data.boss.attack_power) or 50
+
+    for i = 1, count do
+        local angle = (i / count) * math.pi * 2 + (self.current_level * rotate_per_level)
         self:spawnEnemy(
-            self.boss.x + math.cos(angle) * 70, self.boss.y + math.sin(angle) * 30,
-            "straight", enemy_hp, 150 + self.current_level * 5
+            self.boss.x + math.cos(angle) * radius_x,
+            self.boss.y + math.sin(angle) * radius_y,
+            "straight", enemy_hp, speed_base + self.current_level * speed_per_lvl
         )
     end
 end
@@ -260,7 +286,7 @@ function SpaceDefenderState:updateWaveSpawning(dt)
         if self.wave_spawn_timer <= 0 then
             local pattern = wave.patterns[math.random(#wave.patterns)] or "straight"
             self:spawnEnemy(
-                math.random(20, self.game_width - 20), -20,
+                math.random((self._cfg and self._cfg.spawn and self._cfg.spawn.x_inset) or 20, self.game_width - ((self._cfg and self._cfg.spawn and self._cfg.spawn.x_inset) or 20)), (self._cfg and self._cfg.spawn and self._cfg.spawn.y_start) or -20,
                 pattern, wave.enemy_hp, wave.enemy_speed
             )
             self.wave_enemies_spawned = self.wave_enemies_spawned + 1
@@ -278,9 +304,10 @@ function SpaceDefenderState:updateWaveSpawning(dt)
 end
 
 function SpaceDefenderState:spawnEnemy(x, y, pattern, hp, speed)
+    local ecfg = self._cfg and self._cfg.enemy or {}
     table.insert(self.enemies, {
         x = x, y = y,
-        width = 30, height = 30,
+        width = ecfg.width or 30, height = ecfg.height or 30,
         hp = hp, max_hp = hp,
         speed = speed,
         pattern = pattern,
@@ -299,15 +326,16 @@ function SpaceDefenderState:spawnBoss()
     self.boss_active = true
     local boss_data = self.current_level_data.boss
 
+    local bcfg = self._cfg and self._cfg.boss or {}
     self.boss = {
         x = self.game_width / 2, y = 100,
-        width = boss_data.width or 80,
-        height = boss_data.height or 80,
-        hp = boss_data.hp or 5000,
-        max_hp = boss_data.hp or 5000,
-        vx = boss_data.vx or 100,
-        attack_timer = boss_data.attack_rate or 2.0,
-        attack_rate = boss_data.attack_rate or 2.0
+        width = boss_data.width or bcfg.width or 80,
+        height = boss_data.height or bcfg.height or 80,
+        hp = boss_data.hp or bcfg.hp or 5000,
+        max_hp = boss_data.hp or bcfg.hp or 5000,
+        vx = boss_data.vx or bcfg.vx or 100,
+        attack_timer = boss_data.attack_rate or bcfg.attack_rate or 2.0,
+        attack_rate = boss_data.attack_rate or bcfg.attack_rate or 2.0
     }
 end
 
@@ -326,14 +354,16 @@ function SpaceDefenderState:useBomb()
         for i = #self.enemies, 1, -1 do
             local enemy = self.enemies[i]
             if enemy then
-                local damage = (enemy.max_hp * 0.5) + 50
+                local bcfg = self._cfg and self._cfg.bomb or { enemy_frac = 0.5, enemy_bonus = 50 }
+                local damage = (enemy.max_hp * (bcfg.enemy_frac or 0.5)) + (bcfg.enemy_bonus or 50)
                 enemy.hp = enemy.hp - damage
                 if enemy.hp <= 0 then table.remove(self.enemies, i) end
             end
         end
         
         if self.boss then
-             local boss_damage = (self.boss.max_hp * 0.1) + 500
+             local bcfg = self._cfg and self._cfg.bomb or { boss_frac = 0.1, boss_bonus = 500 }
+             local boss_damage = (self.boss.max_hp * (bcfg.boss_frac or 0.1)) + (bcfg.boss_bonus or 500)
              self.boss.hp = self.boss.hp - boss_damage
         end
 
@@ -344,11 +374,12 @@ end
 function SpaceDefenderState:draw()
     if not self.viewport then return end
     
-    love.graphics.setColor(0, 0, 0.1)
+    local bg = (self._cfg and self._cfg.view and self._cfg.view.bg_color) or {0,0,0.1}
+    love.graphics.setColor(bg[1], bg[2], bg[3])
     love.graphics.rectangle('fill', 0, 0, self.viewport.width, self.viewport.height)
 
     if self.bullet_system then
-        local FINAL_MVP_LEVEL = 5
+    local FINAL_MVP_LEVEL = (self._cfg and self._cfg.final_level) or 5
         local draw_args = {
             player = self.player_ship,
             enemies = self.enemies,
@@ -374,7 +405,7 @@ function SpaceDefenderState:draw()
 end
 
 function SpaceDefenderState:keypressed(key)
-    local FINAL_MVP_LEVEL = 5
+    local FINAL_MVP_LEVEL = (self._cfg and self._cfg.final_level) or 5
 
     if self.level_complete and self.current_level ~= FINAL_MVP_LEVEL then
         if key == 'return' then
@@ -414,8 +445,9 @@ function SpaceDefenderState:onLevelComplete()
     self.level_complete = true
     self.paused = true
 
-    local base_reward = 500
-    local level_multiplier = 1 + (self.current_level * 0.5)
+    local rewards = (self._cfg and self._cfg.rewards) or { base = 500, per_level_multiplier = 0.5 }
+    local base_reward = rewards.base or 500
+    local level_multiplier = 1 + (self.current_level * (rewards.per_level_multiplier or 0.5))
     self.tokens_earned = math.floor(base_reward * level_multiplier)
 
     self.player_data:addTokens(self.tokens_earned)

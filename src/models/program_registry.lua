@@ -1,5 +1,6 @@
 local Object = require('class')
 local json = require('json')
+local Paths = require('src.paths')
 local ProgramRegistry = Object:extend('ProgramRegistry')
 
 function ProgramRegistry:init()
@@ -8,7 +9,7 @@ function ProgramRegistry:init()
 end
 
 function ProgramRegistry:loadPrograms()
-    local file_path = "assets/data/programs.json"
+    local file_path = Paths.data.programs
     local read_ok, contents = pcall(love.filesystem.read, file_path)
     
     if not read_ok or not contents then

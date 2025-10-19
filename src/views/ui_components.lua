@@ -1,6 +1,8 @@
 -- ui_components.lua: Reusable UI drawing components
 
 local UIComponents = {}
+local Config = require('src.config')
+local Strings = require('src.utils.strings')
 
 function UIComponents.drawButton(x, y, w, h, text, enabled, hovered)
     -- Background
@@ -79,19 +81,25 @@ end
 
 function UIComponents.drawTokenCounter(x, y, tokens)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Tokens: ", x, y, 0, 1.5, 1.5)
+    local tokens_label = Strings.get('tokens.label', 'Tokens: ')
+    love.graphics.print(tokens_label, x, y, 0, 1.5, 1.5)
     
-    local token_color = {0, 1, 0} -- Default Green
-    if tokens < 100 then
-        token_color = {1, 0, 0} -- Red
-    elseif tokens < 500 then
-        token_color = {1, 1, 0} -- Yellow
+    local tok_cfg = (Config and Config.tokens) or {}
+    local th = tok_cfg.thresholds or { low = 100, medium = 500 }
+    local colors = tok_cfg.colors or { low = {1,0,0}, medium = {1,1,0}, high = {0,1,0} }
+    local token_color = colors.high or {0,1,0}
+    if type(tokens) == 'number' then
+        if tokens < (th.low or 100) then
+            token_color = colors.low or {1,0,0}
+        elseif tokens < (th.medium or 500) then
+            token_color = colors.medium or {1,1,0}
+        end
     end
     
     love.graphics.setColor(token_color)
     -- Calculate width of "Tokens: " to position the number correctly
     local font = love.graphics.getFont()
-    local text_width = font:getWidth("Tokens: ") * 1.5 -- Match scale
+    local text_width = font:getWidth(tokens_label) * 1.5 -- Match scale
     love.graphics.print(tokens, x + text_width, y, 0, 1.5, 1.5)
 end
 
@@ -122,9 +130,9 @@ function UIComponents.drawDialogButtons(w, h, applyEnabled)
     local cancel_x = ok_x + bw + spacing
     local apply_x = cancel_x + bw + spacing
     local by = h - bottom_margin - bh
-    UIComponents.drawButton(ok_x, by, bw, bh, 'OK', true, false)
-    UIComponents.drawButton(cancel_x, by, bw, bh, 'Cancel', true, false)
-    UIComponents.drawButton(apply_x, by, bw, bh, 'Apply', applyEnabled ~= false, false)
+    UIComponents.drawButton(ok_x, by, bw, bh, Strings.get('buttons.ok','OK'), true, false)
+    UIComponents.drawButton(cancel_x, by, bw, bh, Strings.get('buttons.cancel','Cancel'), true, false)
+    UIComponents.drawButton(apply_x, by, bw, bh, Strings.get('buttons.apply','Apply'), applyEnabled ~= false, false)
     return {x=ok_x,y=by,w=bw,h=bh}, {x=cancel_x,y=by,w=bw,h=bh}, {x=apply_x,y=by,w=bw,h=bh}
 end
 

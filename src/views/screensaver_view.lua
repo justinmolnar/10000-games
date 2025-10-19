@@ -1,15 +1,17 @@
 local Object = require('class')
 
+local Config = require('src.config')
 local ScreensaverView = Object:extend('ScreensaverView')
 
 function ScreensaverView:init(opts)
     opts = opts or {}
     self.stars = {}
     self:setViewport(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    self.fov = opts.fov or 300 -- focal length for projection
-    self.speed = opts.speed or 120 -- forward speed through starfield
-    self.max_count = opts.count or 500
-    self.tail = opts.tail or 12
+    local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.starfield) or {}
+    self.fov = opts.fov or d.fov or 300 -- focal length for projection
+    self.speed = opts.speed or d.speed or 120 -- forward speed through starfield
+    self.max_count = opts.count or d.count or 500
+    self.tail = opts.tail or d.tail or 12
     self:seedStars()
 end
 
@@ -47,7 +49,9 @@ end
 function ScreensaverView:draw()
     local w, h = self.viewport.width, self.viewport.height
     local cx, cy = w/2, h/2
-    love.graphics.clear(0, 0, 0)
+    local V = (Config.ui and Config.ui.views and Config.ui.views.screensaver_starfield) or {}
+    local bg = (V.bg_color or {0,0,0})
+    love.graphics.clear(bg[1], bg[2], bg[3])
     -- Draw as projected points with speed streaks
     for _, s in ipairs(self.stars) do
         local z = s.z
@@ -65,9 +69,10 @@ function ScreensaverView:draw()
         end
     end
     -- minimal clock overlay
-    love.graphics.setColor(0.8, 0.8, 1, 0.5)
+    local O = (V.overlay or { color = {0.8,0.8,1,0.5}, x=12, y=10, scale=1.5 })
+    love.graphics.setColor(O.color)
     local t = os.date("%H:%M:%S")
-    love.graphics.print(t, 12, 10, 0, 1.5, 1.5)
+    love.graphics.print(t, O.x or 12, O.y or 10, 0, (O.scale or 1.5), (O.scale or 1.5))
 end
 
 return ScreensaverView

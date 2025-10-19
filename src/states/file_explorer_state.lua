@@ -3,6 +3,7 @@
 
 local Object = require('class')
 local FileExplorerView = require('src.views.file_explorer_view')
+local Strings = require('src.utils.strings')
 
 local FileExplorerState = Object:extend('FileExplorerState')
 
@@ -406,7 +407,7 @@ function FileExplorerState:handleItemDoubleClick(item)
         end
     elseif action and action.type == "error" then
         print("Error opening item: " .. action.message)
-        love.window.showMessageBox("Error", "Cannot open item: " .. action.message, "error")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Cannot open item: " .. action.message, "error")
     end
     return action and { type = "content_interaction" } or nil
 end
@@ -419,10 +420,10 @@ function FileExplorerState:createShortcutOnDesktop(item)
         return { type = "event", name = "ensure_icon_visible", program_id = item.program_id }
     elseif item.type == "folder" then
         -- TODO: Implement folder shortcut logic (needs new icon type/data)
-        love.window.showMessageBox("Not Implemented", "Creating shortcuts for folders is not yet implemented.", "info")
+    love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Creating shortcuts for folders is not yet implemented.", "info")
     elseif item.type == "file" then
         -- TODO: Implement file shortcut logic (needs new icon type/data)
-        love.window.showMessageBox("Not Implemented", "Creating shortcuts for files is not yet implemented.", "info")
+    love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Creating shortcuts for files is not yet implemented.", "info")
     end
     return nil -- No action bubbled up yet
 end
@@ -491,7 +492,7 @@ function FileExplorerState:emptyRecycleBin()
      -- Confirmation dialog
     local buttons = {"Yes, Empty", "Cancel"}
     local pressed = love.window.showMessageBox(
-        "Confirm Empty Recycle Bin",
+        Strings.get('messages.info_title', 'Information'),
         "Are you sure you want to permanently delete all items in the Recycle Bin?",
         buttons, "warning"
     )
@@ -509,8 +510,8 @@ function FileExplorerState:permanentlyDeleteFromRecycleBin(program_id)
      local name = program and program.name or program_id
 
      local buttons = {"Yes, Delete", "Cancel"}
-     local pressed = love.window.showMessageBox(
-        "Confirm Delete",
+      local pressed = love.window.showMessageBox(
+          Strings.get('messages.info_title', 'Information'),
         "Are you sure you want to permanently delete '".. name .."'?",
         buttons, "warning"
      )
@@ -569,7 +570,7 @@ function FileExplorerState:restoreFromRecycleBin(program_id)
         self:refresh() -- Refresh the current view
     else
         print("Failed to restore " .. program_id)
-        love.window.showMessageBox("Error", "Failed to restore " .. program_id, "error")
+    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Failed to restore " .. program_id, "error")
     end
 end
 
@@ -579,8 +580,8 @@ function FileExplorerState:permanentlyDeleteFromRecycleBin(program_id)
      local name = program and program.name or program_id
 
      local buttons = {"Yes, Delete", "Cancel"}
-     local pressed = love.window.showMessageBox(
-        "Confirm Delete",
+      local pressed = love.window.showMessageBox(
+          Strings.get('messages.info_title', 'Information'),
         "Are you sure you want to permanently delete '".. name .."'?",
         buttons, "warning"
      )
@@ -591,7 +592,7 @@ function FileExplorerState:permanentlyDeleteFromRecycleBin(program_id)
              self:refresh()
          else
              print("Failed to permanently delete " .. program_id)
-             love.window.showMessageBox("Error", "Failed to delete " .. program_id, "error")
+             love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Failed to delete " .. program_id, "error")
          end
      end
 end

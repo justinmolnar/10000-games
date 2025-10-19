@@ -1,0 +1,93 @@
+{
+  "menu": {
+    "open": "Open",
+    "delete": "Delete",
+    "restore": "Restore",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore_size": "Restore Size",
+    "close": "Close",
+    "refresh": "Refresh",
+    "arrange_icons": "Arrange Icons",
+    "properties": "Properties",
+    "create_shortcut_desktop": "Create Shortcut (Desktop)"
+  },
+  "start": {
+    "title": "Start",
+    "run": "Run...",
+    "type_prompt": "Type the name of a program:"
+  },
+  "buttons": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "apply": "Apply"
+  },
+  "tokens": {
+    "label": "Tokens: ",
+    "unit": "tokens",
+    "per_minute_suffix": "/min"
+  },
+  "vm": {
+    "total_rate_label": "Total Generation Rate:",
+    "rate_units": "tokens/minute",
+    "vm_prefix": "VM",
+    "power_label": "Power:",
+    "auto_badge": "[AUTO]",
+    "error_missing_game_data": "Error: Missing game data!",
+    "empty_slot": "Empty",
+    "click_to_assign": "Click to assign",
+    "modal_title": "Select Game to Assign",
+    "in_use_badge": "[IN USE]",
+    "modal_footer": "Click game to assign | Click outside or ESC to cancel",
+    "purchase_button": "Purchase VM (%d)",
+    "level_prefix": "Lv.",
+    "instructions": "Click empty slot to assign | Click assigned to remove | ESC in modal to cancel",
+    "upgrades": {
+      "cpu_speed": {
+        "label": "CPU Speed",
+        "desc": "Faster cycles"
+      },
+      "overclock": {
+        "label": "Overclock",
+        "desc": "More power"
+      }
+    }
+  },
+  "control_panel": {
+    "tabs": {
+      "general": "General",
+      "screensaver": "Screen Saver"
+    }
+  },
+  "file_explorer": {
+    "empty_recycle_bin_button": "Empty Recycle Bin",
+    "empty_recycle_bin_message": "The Recycle Bin is empty",
+    "special_folder_message": "Special folder view",
+    "empty_folder_message": "This folder is empty",
+    "types": {
+      "folder": "Folder",
+      "program": "Program",
+      "file": "File",
+      "deleted": "Deleted Item"
+    },
+    "status": {
+      "items_zero": "0 items",
+      "item_singular": "%d item",
+      "items_plural": "%d items"
+    }
+  }
+  ,
+  "control_panel_legacy": {
+    "general": "General",
+    "master_volume": "Master Volume",
+    "fullscreen": "Fullscreen",
+    "screensaver": "Screensaver",
+    "enable_screensaver": "Enable screensaver",
+    "timeout_seconds": "Timeout (seconds)",
+    "unknown_applet": "Unknown applet"
+  },
+  "messages": {
+    "error_title": "Error",
+    "info_title": "Information"
+  }
+}

@@ -1,10 +1,12 @@
 -- src/utils/settings_manager.lua
 local json = require('json')
+local Config = require('src.config')
 
 local SettingsManager = {}
 local SETTINGS_FILE = "settings.json"
 
 -- Default settings
+local Paths = require('src.paths')
 local defaults = {
     master_volume = 0.8,
     music_volume = 0.6,
@@ -33,7 +35,7 @@ local defaults = {
     screensaver_pipes_max_segments = 800,
     screensaver_pipes_show_hud = true,
     -- Model screensaver options
-    screensaver_model_path = "assets/data/models/cube.json",
+    screensaver_model_path = (require('src.paths').data.models .. "cube.json"),
     screensaver_model_scale = 1.0,
     screensaver_model_fov = 350,
     screensaver_model_rot_speed_x = 0.4,
@@ -92,20 +94,29 @@ function SettingsManager.applyFullscreen()
     if fullscreen == nil then fullscreen = defaults.fullscreen end
     
     if fullscreen then
-        -- Fullscreen mode - use desktop resolution
-        love.window.setMode(1920, 1080, {
+        -- Fullscreen mode - use Config.window.fullscreen if available
+        local wf = (Config and Config.window and Config.window.fullscreen) or {}
+        local width = wf.width or 1920
+        local height = wf.height or 1080
+        local fullscreentype = wf.type or "desktop"
+        local resizable = (wf.resizable ~= nil) and wf.resizable or false
+        love.window.setMode(width, height, {
             fullscreen = true,
-            fullscreentype = "desktop",
-            resizable = false
+            fullscreentype = fullscreentype,
+            resizable = resizable
         })
-        print("Applied fullscreen: true (1920x1080)")
+        print(string.format("Applied fullscreen: true (%dx%d)", width, height))
     else
-        -- Windowed mode - use smaller window size
-        love.window.setMode(1280, 720, {
+        -- Windowed mode - use Config.window.windowed if available
+        local ww = (Config and Config.window and Config.window.windowed) or {}
+        local width = ww.width or 1280
+        local height = ww.height or 720
+        local resizable = (ww.resizable ~= nil) and ww.resizable or false
+        love.window.setMode(width, height, {
             fullscreen = false,
-            resizable = false
+            resizable = resizable
         })
-        print("Applied fullscreen: false (1280x720 windowed)")
+        print(string.format("Applied fullscreen: false (%dx%d windowed)", width, height))
     end
 end
 

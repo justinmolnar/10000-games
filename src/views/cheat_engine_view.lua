@@ -3,19 +3,22 @@ local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local FormulaRenderer = require('src.views.formula_renderer')
 local SpriteManager = require('src.utils.sprite_manager').getInstance()
+local Config = require('src.config')
 local CheatEngineView = Object:extend('CheatEngineView')
 
 function CheatEngineView:init(controller)
     self.controller = controller -- This is the cheat_engine_state
 
     -- Base Layout (will be adjusted by updateLayout)
-    self.list_x = 10
+    local V = (Config.ui and Config.ui.views and Config.ui.views.cheat_engine) or {}
+    local L = V.list or { x = 10, y = 50, max_w = 300, min_w = 150, item_h = 30 }
+    self.list_x = L.x or 10
     self.list_y = 80
-    self.list_w = 300
+    self.list_w = L.max_w or 300
     self.list_h = 400
-    self.item_h = 30
+    self.item_h = L.item_h or 30
 
-    self.detail_x = 320
+    self.detail_x = self.list_x + self.list_w + ((V.spacing and V.spacing.panel_gap) or 10)
     self.detail_y = 80
     self.detail_w = 300
     self.detail_h = 400
@@ -28,16 +31,19 @@ function CheatEngineView:init(controller)
 end
 
 function CheatEngineView:updateLayout(viewport_width, viewport_height)
-    self.list_x = 10
-    self.list_y = 50 -- Below header
+    local V = (Config.ui and Config.ui.views and Config.ui.views.cheat_engine) or {}
+    local L = V.list or { x = 10, y = 50, max_w = 300, min_w = 150 }
+    self.list_x = L.x or 10
+    self.list_y = L.y or 50 -- Below header
     self.list_h = viewport_height - 70 -- Adjust for header/footer
 
     -- Make list width proportional but capped
-    self.list_w = math.min(300, math.max(150, viewport_width * 0.4))
+    self.list_w = math.min(L.max_w or 300, math.max(L.min_w or 150, viewport_width * 0.4))
 
-    self.detail_x = self.list_x + self.list_w + 10
+    local gap = (V.spacing and V.spacing.panel_gap) or 10
+    self.detail_x = self.list_x + self.list_w + gap
     self.detail_y = self.list_y
-    self.detail_w = viewport_width - self.detail_x - 10
+    self.detail_w = viewport_width - self.detail_x - gap
     self.detail_h = self.list_h
 end
 
@@ -175,6 +181,8 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
         end
     end
      -- Draw List Scrollbar
+    local V = (Config.ui and Config.ui.views and Config.ui.views.cheat_engine) or {}
+    local L = V.list or { scrollbar_w = 6 }
     if #games > visible_games then
         love.graphics.setColor(0.3, 1, 0.3)
         local scroll_track_height = self.list_h
@@ -182,7 +190,7 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
         local scroll_pos_ratio = (start_index - 1) / math.max(1, #games - visible_games)
         local scroll_y = self.list_y + scroll_pos_ratio * (scroll_track_height - scroll_height)
         scroll_y = math.max(self.list_y, math.min(scroll_y, self.list_y + scroll_track_height - scroll_height))
-        love.graphics.rectangle('fill', self.list_x + self.list_w - 8, scroll_y, 6, scroll_height)
+        love.graphics.rectangle('fill', self.list_x + self.list_w - (L.scrollbar_w + 2), scroll_y, (L.scrollbar_w or 6), scroll_height)
     end
 
     -- Draw Detail Panel (using layout vars)
@@ -223,8 +231,9 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
             love.graphics.print("Available Cheats:", self.detail_x + 10, self.detail_y + 70)
 
             local cheat_y = self.detail_y + 100
-            local available_height_for_cheats = self.detail_h - 160 -- Header, title, launch button
-            local cheat_item_total_height = self.item_h + 20
+            local S = V.spacing or { header_h = 70, footer_h = 50, cheat_item_extra_h = 20 }
+            local available_height_for_cheats = self.detail_h - ((S.header_h or 70) + (S.footer_h or 50) + 40) -- include margins
+            local cheat_item_total_height = self.item_h + (S.cheat_item_extra_h or 20)
             local visible_cheats = math.floor(available_height_for_cheats / cheat_item_total_height)
             visible_cheats = math.max(1, visible_cheats) -- Ensure at least 1
 
@@ -256,8 +265,9 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
                     local btn_text = at_max_level and "[MAX]" or ("Buy (" .. cheat.cost_for_next .. ")")
                     local btn_enabled = (not at_max_level) and can_afford
 
+                    local B = (V.buttons or { small_w = 110, small_h = 30 })
                     UIComponents.drawButton(
-                        self.detail_x + self.detail_w - 120, display_y, 110, 30,
+                        self.detail_x + self.detail_w - ((B.small_w or 110) + 10), display_y, (B.small_w or 110), (B.small_h or 30),
                         btn_text,
                         btn_enabled,
                         is_hovered_cheat and (self.hovered_button_id == "purchase_cheat") -- Check button ID too
@@ -265,20 +275,22 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
                  end
             end
              -- Draw Cheat Scrollbar
-            if num_cheats > visible_cheats then
+          if num_cheats > visible_cheats then
                  love.graphics.setColor(0.3, 1, 0.3)
                  local scroll_track_height = available_height_for_cheats
                  local scroll_height = math.max(15, (visible_cheats / num_cheats) * scroll_track_height)
                  local scroll_pos_ratio = cheat_scroll_offset / math.max(1, num_cheats - visible_cheats)
                  local scroll_y = self.detail_y + 100 + scroll_pos_ratio * (scroll_track_height - scroll_height)
                  scroll_y = math.max(self.detail_y + 100, math.min(scroll_y, self.detail_y + 100 + scroll_track_height - scroll_height))
-                 love.graphics.rectangle('fill', self.detail_x + self.detail_w - 8, scroll_y, 6, scroll_height)
+              local L = V.list or { scrollbar_w = 6 }
+              love.graphics.rectangle('fill', self.detail_x + self.detail_w - ((L.scrollbar_w or 6) + 2), scroll_y, (L.scrollbar_w or 6), scroll_height)
             end
 
             -- Launch Button (at bottom)
             local is_hovered_launch = (self.hovered_button_id == "launch")
+            local B = (V.buttons or { wide_h = 40 })
             UIComponents.drawButton(
-                self.detail_x + 10, self.detail_y + self.detail_h - 50, self.detail_w - 20, 40,
+                self.detail_x + 10, self.detail_y + self.detail_h - ((B.wide_h or 40) + 10), self.detail_w - 20, (B.wide_h or 40),
                 "Launch with Cheats",
                 true, -- Always enabled if CE is unlocked
                 is_hovered_launch

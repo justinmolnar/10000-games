@@ -2,6 +2,9 @@
 local Object = require('class')
 local UI = require('src.views.ui_components')
 local Form = require('src.views.ui_dynamic_form')
+local Strings = require('src.utils.strings')
+local Paths = require('src.paths')
+local Config = require('src.config')
 
 local View = Object:extend('ControlPanelGeneralView')
 
@@ -9,8 +12,10 @@ function View:init(controller)
     self.controller = controller
     self.dragging = nil
     -- set up dynamic form
+    local V = (Config.ui and Config.ui.views and Config.ui.views.control_panel_general) or {}
+    local F = (V.form or { label_x = 16, slider_x = 126, value_col_w = 60, start_y = 60 })
     self.form = Form:new({
-        schema_path = 'assets/data/control_panels/general.json',
+        schema_path = Paths.data.control_panels .. 'general.json',
         on_event = function(ev) if self.controller and self.controller.handle_event then self.controller:handle_event(ev) end end,
         get = function(id)
             local p = self.controller.pending or {}
@@ -19,10 +24,10 @@ function View:init(controller)
             if v == nil then v = s[id] end
             return v
         end,
-        label_x = 16,
-        slider_x = 126,
-        value_col_w = 60,
-        y = 60,
+        label_x = F.label_x,
+        slider_x = F.slider_x,
+        value_col_w = F.value_col_w,
+        y = F.start_y,
     })
 end
 
@@ -51,7 +56,7 @@ function View:drawWindowed(w, h, settings, pending)
     love.graphics.rectangle('fill', 8, 28, 90, 18)
     love.graphics.setColor(0.2,0.2,0.2)
     love.graphics.rectangle('line', 8, 28, 90, 18)
-    love.graphics.print('General', 16, 31)
+    love.graphics.print(Strings.get('control_panel.tabs.general', 'General'), 16, 31)
 
     -- Dynamic form area
     self.form.right_edge = w - 24

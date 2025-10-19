@@ -1,0 +1,4 @@
+* Run needs to use the same window system as the rest of the application
+
+* Restore defaults for control panel views
+* There should be a popup modal confirm window to restore (Ok, Cancel)
