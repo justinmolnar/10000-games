@@ -3,36 +3,99 @@ local SpaceShooterView = Object:extend('SpaceShooterView')
 
 function SpaceShooterView:init(game_state)
     self.game = game_state
+    self.sprite_loader = nil
+    self.sprite_manager = nil
+end
+
+function SpaceShooterView:ensureLoaded()
+    if not self.sprite_loader then
+        local SpriteLoader = require('src.utils.sprite_loader')
+        self.sprite_loader = SpriteLoader.getInstance()
+    end
+    
+    if not self.sprite_manager then
+        local SpriteManager = require('src.utils.sprite_manager')
+        self.sprite_manager = SpriteManager.getInstance()
+    end
 end
 
 function SpaceShooterView:draw()
+    self:ensureLoaded()
+    
     local game = self.game
     local g = love.graphics
 
-    g.setColor(0.1, 0.1, 0.1)
-    g.rectangle('fill', 0, 0, game.game_width, game.game_height)
+    local game_width = game.game_width
+    local game_height = game.game_height
 
-    g.setColor(0, 1, 0)
-    g.rectangle('fill', game.player.x, game.player.y, game.player.width, game.player.height)
+    g.setColor(0.05, 0.05, 0.15)
+    g.rectangle('fill', 0, 0, game_width, game_height)
 
-    g.setColor(1, 0, 0)
+    local palette_id = self.sprite_manager:getPaletteId(game.data)
+    local player_sprite = game.data.icon_sprite or "game_mine_1-0"
+    
+    if game.player then
+        self.sprite_loader:drawSprite(
+            player_sprite,
+            game.player.x - game.player.width/2,
+            game.player.y - game.player.height/2,
+            game.player.width,
+            game.player.height,
+            {1, 1, 1},
+            palette_id
+        )
+    end
+
+    local enemy_sprite = self.sprite_manager:getMetricSprite(game.data, "kills") or "game_mine_2-0"
     for _, enemy in ipairs(game.enemies) do
-        g.rectangle('fill', enemy.x, enemy.y, enemy.width, enemy.height)
+        self.sprite_loader:drawSprite(
+            enemy_sprite,
+            enemy.x - enemy.width/2,
+            enemy.y - enemy.height/2,
+            enemy.width,
+            enemy.height,
+            {1, 1, 1},
+            palette_id
+        )
     end
 
-    g.setColor(0, 1, 1)
+    local bullet_sprite = "msg_information-0"
     for _, bullet in ipairs(game.player_bullets) do
-        g.rectangle('fill', bullet.x, bullet.y, bullet.width, bullet.height)
+        self.sprite_loader:drawSprite(
+            bullet_sprite,
+            bullet.x - bullet.width/2,
+            bullet.y - bullet.height/2,
+            bullet.width,
+            bullet.height,
+            {1, 1, 1},
+            palette_id
+        )
     end
 
-    g.setColor(1, 1, 0)
+    local enemy_bullet_sprite = "msg_error-0"
     for _, bullet in ipairs(game.enemy_bullets) do
-        g.rectangle('fill', bullet.x, bullet.y, bullet.width, bullet.height)
+        self.sprite_loader:drawSprite(
+            enemy_bullet_sprite,
+            bullet.x - bullet.width/2,
+            bullet.y - bullet.height/2,
+            bullet.width,
+            bullet.height,
+            {1, 1, 1},
+            palette_id
+        )
     end
 
+    local hud_icon_size = 16
     g.setColor(1, 1, 1)
-    g.print("Kills: " .. game.metrics.kills .. "/" .. game.target_kills, 10, 10)
-    g.print("Deaths: " .. game.metrics.deaths .. "/" .. game.PLAYER_MAX_DEATHS, 10, 30)
+    g.print("Kills: ", 10, 10, 0, 0.85, 0.85)
+    self.sprite_loader:drawSprite(enemy_sprite, 60, 10, hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+    g.print(game.metrics.kills .. "/" .. game.target_kills, 80, 10, 0, 0.85, 0.85)
+    
+    local death_sprite = self.sprite_manager:getMetricSprite(game.data, "deaths") or "msg_error-0"
+    g.print("Deaths: ", 10, 30, 0, 0.85, 0.85)
+    self.sprite_loader:drawSprite(death_sprite, 60, 30, hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+    g.print(game.metrics.deaths .. "/" .. game.PLAYER_MAX_DEATHS, 80, 30, 0, 0.85, 0.85)
+    
     g.print("Difficulty: " .. game.difficulty_level, 10, 50)
 end
 

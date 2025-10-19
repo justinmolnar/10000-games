@@ -291,7 +291,6 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     local perf = player_data:getGamePerformance(game_data.id)
     local is_completed = perf ~= nil
     
-    -- Background
     if selected then
         love.graphics.setColor(0.3, 0.3, 0.7)
     elseif hovered then
@@ -303,7 +302,6 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     love.graphics.setColor(0.5, 0.5, 0.5)
     love.graphics.rectangle('line', x, y, w, h)
     
-    -- Large game icon
     local icon_size = 64
     local icon_x = x + 8
     local icon_y = y + (h - icon_size) / 2
@@ -313,7 +311,6 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     local tint = is_unlocked and {1, 1, 1} or {0.5, 0.5, 0.5}
     sprite_loader:drawSprite(sprite_name, icon_x, icon_y, icon_size, icon_size, tint, palette_id)
     
-    -- Status badges
     local badge_x = icon_x + icon_size - 16
     local badge_y = icon_y
     if perf and perf.auto_completed then
@@ -324,15 +321,12 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
          UIComponents.drawBadge(badge_x, badge_y, 16, "🔒", {1, 0, 0})
     end
     
-    -- Game info column
     local text_x = icon_x + icon_size + 12
     local text_w = w - (text_x - x) - 120
     
-    -- Title
     love.graphics.setColor(1, 1, 1)
     love.graphics.print(game_data.display_name, text_x, y + 8, 0, 1.1, 1.1)
     
-    -- Difficulty stars
     local star_y = y + 28
     local difficulty = game_data.difficulty_level or 1
     local stars = math.min(5, math.ceil(difficulty / 2))
@@ -345,7 +339,6 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
         love.graphics.print("★", text_x + (i - 1) * 14, star_y, 0, 0.9, 0.9)
     end
     
-    -- Visual formula (compact)
     local formula_y = y + 48
     love.graphics.push()
     love.graphics.origin()
@@ -353,7 +346,6 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     formula_renderer:draw(game_data, 0, 0, text_w, 16)
     love.graphics.pop()
     
-    -- Right column - Stats
     local stats_x = x + w - 110
     
     if is_completed and perf then
@@ -366,7 +358,6 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
         love.graphics.print(game_data.unlock_cost, stats_x, y + 24, 0, 1.0, 1.0)
     end
     
-    -- Multiplier badge
     love.graphics.setColor(1, 1, 0)
     love.graphics.print(string.format("×%.1f", game_data.variant_multiplier), stats_x, y + h - 22, 0, 1.1, 1.1)
 end
@@ -425,7 +416,6 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
 
     local line_y, line_height = y + 10, 20
     
-    -- Large preview sprite
     local preview_size = 80
     local preview_x = x + (w - preview_size) / 2
     love.graphics.setColor(0.15, 0.15, 0.15)
@@ -436,13 +426,11 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
     sprite_loader:drawSprite(sprite_name, preview_x, line_y, preview_size, preview_size, {1, 1, 1}, palette_id)
     line_y = line_y + preview_size + 15
     
-    -- Title
     love.graphics.setColor(1, 1, 1)
     local title_width = love.graphics.getFont():getWidth(game_data.display_name) * 1.2
     love.graphics.print(game_data.display_name, x + (w - title_width) / 2, line_y, 0, 1.2, 1.2)
     line_y = line_y + line_height * 1.5
 
-    -- Difficulty with stars
     local difficulty = game_data.difficulty_level or 1
     local diff_text, diff_color = "Easy", {0, 1, 0}
     if difficulty > 6 then diff_text, diff_color = "HARD", {1, 0, 0}
