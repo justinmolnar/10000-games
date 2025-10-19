@@ -398,19 +398,15 @@ end
 function DesktopState:_handleWindowClick(window, x, y, button)
     local handled = false
 
-    -- Bring window to front if not already focused
     if self.window_manager:getFocusedWindowId() ~= window.id then
         self.window_manager:focusWindow(window.id)
-        -- Focusing counts as handling the click at this level, but we might still pass to content
         handled = true
     end
 
-    -- Check window chrome interactions (buttons, title bar drag, resize edges)
-    local window_event = self.window_controller:checkWindowClick(window, x, y, self.window_chrome) -- Use checkWindowClick directly
+    local window_event = self.window_controller:checkWindowClick(window, x, y, self.window_chrome)
 
     if window_event then
         if window_event.type == "window_content_click" then
-            -- Click is inside the content area, forward to the state
             local window_data = self.window_states[window.id]
             local window_state = window_data and window_data.state
             if window_state and window_state.mousepressed then
@@ -420,47 +416,60 @@ function DesktopState:_handleWindowClick(window, x, y, button)
 
                  if success then
                      if type(state_result) == 'table' then
-                         -- Handle events bubbled up from the state (close, show_context_menu, etc.)
                          if state_result.type == "close_window" then
                              self:closeWindowById(window.id)
-                             handled = true -- Window closed
+                             handled = true
                          elseif state_result.type == "event" then
                              self:handleStateEvent(window.id, state_result)
-                             handled = true -- State generated an event
+                             handled = true
                          elseif state_result.type == "content_interaction" then
-                             handled = true -- State explicitly handled it
+                             handled = true
                          else
-                             -- Unknown table result, maybe just pass through? For now, consider handled.
                              handled = true
                          end
                      elseif state_result == true then
-                         handled = true -- State explicitly handled it
+                         handled = true
                      end
                  else
                       print("Error calling mousepressed on state for window " .. window.id .. ": " .. tostring(state_result))
-                      handled = true -- Treat error as handled to prevent fall-through
+                      handled = true
                  end
             end
-            -- Regardless of state handling, clicking content focuses and counts as handled at desktop level
             handled = true
-            self.last_title_bar_click_id = nil; self.last_title_bar_click_time = 0 -- Reset title double-click
+            self.last_title_bar_click_id = nil; self.last_title_bar_click_time = 0
 
         elseif window_event.type == "window_drag_start" then
-            -- Handle title bar double click for maximize/restore
             local current_time = love.timer.getTime()
             if window.id == self.last_title_bar_click_id and current_time - self.last_title_bar_click_time < 0.5 then
                 local program = self.program_registry:getProgram(window.program_type)
                 local defaults = program and program.window_defaults or {}
                 local is_resizable = (defaults.resizable ~= false)
                 if is_resizable then
-                    if window.is_maximized then self.window_manager:restoreWindow(window.id) else self.window_manager:maximizeWindow(window.id, love.graphics.getWidth(), love.graphics.getHeight()) end
+                    if window.is_maximized then
+                        self.window_manager:restoreWindow(window.id)
+                    else
+                        self.window_manager:maximizeWindow(window.id, love.graphics.getWidth(), love.graphics.getHeight())
+                    end
+                    
+                    -- ADD: Call setViewport after double-click maximize/restore
+                    local updated_window = self.window_manager:getWindowById(window.id)
+                    if updated_window then
+                        local window_data = self.window_states[window.id]
+                        local window_state = window_data and window_data.state
+                        if window_state and window_state.setViewport then
+                            local content_bounds = self.window_chrome:getContentBounds(updated_window)
+                            pcall(window_state.setViewport, window_state,
+                                  content_bounds.x, content_bounds.y,
+                                  content_bounds.width, content_bounds.height)
+                        end
+                    end
                 end
                 self.last_title_bar_click_id = nil; self.last_title_bar_click_time = 0
-                self.window_controller.dragging_window_id = nil -- Stop drag
+                self.window_controller.dragging_window_id = nil
             else
                 self.last_title_bar_click_id = window.id; self.last_title_bar_click_time = current_time
             end
-            handled = true -- Drag start handles the click
+            handled = true
 
         elseif window_event.type == "window_resize_start" or
                window_event.type == "window_close" or
@@ -468,10 +477,9 @@ function DesktopState:_handleWindowClick(window, x, y, button)
                window_event.type == "window_maximize" or
                window_event.type == "window_restore" or
                window_event.type == "window_chrome_click" then
-            -- Any other interaction with window chrome (buttons, resize, non-content click)
-            local action_result = self:handleWindowEvent(window_event, x, y, button) -- Process the action
-            handled = true -- Chrome interaction handles the click
-            self.last_title_bar_click_id = nil; self.last_title_bar_click_time = 0 -- Reset title double-click
+            local action_result = self:handleWindowEvent(window_event, x, y, button)
+            handled = true
+            self.last_title_bar_click_id = nil; self.last_title_bar_click_time = 0
         end
     end
 
@@ -633,33 +641,73 @@ function DesktopState:handleWindowEvent(event, x, y, button)
 
     elseif event.type == "window_maximize" then
         self.window_manager:maximizeWindow(event.window_id, love.graphics.getWidth(), love.graphics.getHeight())
+        
+        -- Call setViewport on the state after maximizing
+        local window = self.window_manager:getWindowById(event.window_id)
+        if window then
+            local window_data = self.window_states[event.window_id]
+            local window_state = window_data and window_data.state
+            if window_state and window_state.setViewport then
+                local content_bounds = self.window_chrome:getContentBounds(window)
+                pcall(window_state.setViewport, window_state,
+                      content_bounds.x, content_bounds.y,
+                      content_bounds.width, content_bounds.height)
+            end
+        end
+        
         final_result = { type = "window_action" }
 
     elseif event.type == "window_restore" then
         self.window_manager:restoreWindow(event.window_id)
+        
+        -- Call setViewport on the state after restoring
+        local window = self.window_manager:getWindowById(event.window_id)
+        if window then
+            local window_data = self.window_states[event.window_id]
+            local window_state = window_data and window_data.state
+            if window_state and window_state.setViewport then
+                local content_bounds = self.window_chrome:getContentBounds(window)
+                pcall(window_state.setViewport, window_state,
+                      content_bounds.x, content_bounds.y,
+                      content_bounds.width, content_bounds.height)
+            end
+        end
+        
         final_result = { type = "window_action" }
 
     elseif event.type == "window_drag_start" then
          local current_time = love.timer.getTime()
-         -- Double click title bar to maximize/restore
          if event.window_id == self.last_title_bar_click_id and current_time - self.last_title_bar_click_time < 0.5 then
              local window = self.window_manager:getWindowById(event.window_id)
              if window then
                  local program = self.program_registry:getProgram(window.program_type)
                  local defaults = program and program.window_defaults or {}
-                 local is_resizable = (defaults.resizable ~= false) -- Check if resizable
+                 local is_resizable = (defaults.resizable ~= false)
 
-                 if is_resizable then -- Only toggle if resizable
+                 if is_resizable then
                      if window.is_maximized then
                          self.window_manager:restoreWindow(event.window_id)
                      else
                          self.window_manager:maximizeWindow(event.window_id, love.graphics.getWidth(), love.graphics.getHeight())
                      end
+                     
+                     -- Call setViewport after toggle
+                     local updated_window = self.window_manager:getWindowById(event.window_id)
+                     if updated_window then
+                         local window_data = self.window_states[event.window_id]
+                         local window_state = window_data and window_data.state
+                         if window_state and window_state.setViewport then
+                             local content_bounds = self.window_chrome:getContentBounds(updated_window)
+                             pcall(window_state.setViewport, window_state,
+                                   content_bounds.x, content_bounds.y,
+                                   content_bounds.width, content_bounds.height)
+                         end
+                     end
                  end
              end
              self.last_title_bar_click_id = nil
              self.last_title_bar_click_time = 0
-             self.window_controller.dragging_window_id = nil -- Stop drag immediately
+             self.window_controller.dragging_window_id = nil
          else
              self.last_title_bar_click_id = event.window_id
              self.last_title_bar_click_time = current_time
@@ -673,7 +721,6 @@ function DesktopState:handleWindowEvent(event, x, y, button)
              local result = nil
              local local_x = event.content_x
              local local_y = event.content_y
-             -- Use pcall for safety when calling into arbitrary states
              local success, state_result = pcall(window_state.mousepressed, window_state, local_x, local_y, button)
 
              if success then
@@ -696,7 +743,7 @@ function DesktopState:handleWindowEvent(event, x, y, button)
                      elseif result.type == "content_interaction" then
                          final_result = { type = "content_interaction" }
                      else
-                         final_result = result -- Pass through unknown results
+                         final_result = result
                      end
                  elseif result == true then
                      final_result = { type = "content_interaction" }
@@ -708,7 +755,6 @@ function DesktopState:handleWindowEvent(event, x, y, button)
         self.last_title_bar_click_id = nil
         self.last_title_bar_click_time = 0
     elseif event.type == "window_chrome_click" then
-        -- Click on border or title bar (not buttons/content) - just focus
         final_result = { type = "window_action" }
         self.last_title_bar_click_id = nil
         self.last_title_bar_click_time = 0
@@ -912,21 +958,18 @@ function DesktopState:launchProgram(program_id, ...)
     if not program.state_class_path then print("Program missing state_class_path: " .. program_id); return end
 
     local defaults = program.window_defaults or {}
-    -- Check for single instance BEFORE creating new state
     if defaults.single_instance then
         local existing_id = self.window_manager:isProgramOpen(program_id)
         if existing_id then
             print(program.name .. " already running.")
-            self.window_manager:focusWindow(existing_id) -- Focus existing
-            return -- Stop launch
+            self.window_manager:focusWindow(existing_id)
+            return
         end
     end
 
-    -- Load State Class
     local require_ok, StateClass = pcall(require, program.state_class_path:gsub("%.", "/"))
     if not require_ok or not StateClass then print("ERROR loading state class '" .. program.state_class_path .. "': " .. tostring(StateClass)); return end
 
-    -- Prepare Dependencies
     local state_args = {}
     local missing_deps = {}
     for _, dep_name in ipairs(program.dependencies or {}) do
@@ -936,16 +979,13 @@ function DesktopState:launchProgram(program_id, ...)
     end
     if #missing_deps > 0 then love.window.showMessageBox("Error", "Missing dependencies: " .. table.concat(missing_deps, ", "), "error"); return end
 
-    -- Instantiate State
     local instance_ok, new_state = pcall(StateClass.new, StateClass, unpack(state_args))
     if not instance_ok or not new_state then print("ERROR instantiating state: " .. tostring(new_state)); return end
 
-    -- Determine Initial Window Bounds
     local screen_w, screen_h = love.graphics.getDimensions()
     local default_w = defaults.w or 800
     local default_h = defaults.h or 600
 
-    -- Handle Title
     local initial_title = program.name
     local game_data_arg = nil
     if program_id == "minigame_runner" then
@@ -953,26 +993,14 @@ function DesktopState:launchProgram(program_id, ...)
         if game_data_arg and game_data_arg.display_name then initial_title = game_data_arg.display_name else initial_title = "Minigame" end
     end
 
-    -- Create Window
     local window_id = self.window_manager:createWindow( program, initial_title, new_state, default_w, default_h )
     if not window_id then print("ERROR: WindowManager failed to create window for " .. program_id); return end
 
-    -- Store State and Context
     self.window_states[window_id] = { state = new_state }
     if new_state.setWindowContext then new_state:setWindowContext(window_id, self.window_manager) end
 
-    -- Call setViewport with initial content bounds (x, y, width, height)
-    local created_window = self.window_manager:getWindowById(window_id)
-    if created_window and new_state.setViewport then
-        local initial_content_bounds = self.window_chrome:getContentBounds(created_window)
-        -- *** CHANGE: Pass all four values ***
-        pcall(new_state.setViewport, new_state,
-              initial_content_bounds.x, initial_content_bounds.y,
-              initial_content_bounds.width, initial_content_bounds.height)
-        -- *** END CHANGE ***
-    end
+    -- REMOVED: Early setViewport call before enter()
 
-    -- Handle Enter Args
     local enter_args = {}
     local enter_args_config = program.enter_args
     if program_id == "minigame_runner" then
@@ -982,7 +1010,6 @@ function DesktopState:launchProgram(program_id, ...)
         elseif enter_args_config.type == "static" then enter_args = {enter_args_config.value} end
     end
 
-    -- Call State's Enter Method
     if new_state.enter then
         local enter_ok, enter_err = pcall(new_state.enter, new_state, unpack(enter_args))
         if type(enter_err) == 'table' and enter_err.type == "close_window" then
@@ -992,23 +1019,31 @@ function DesktopState:launchProgram(program_id, ...)
         end
     end
 
-    -- Apply preferred maximized state
+    -- MOVED: Call setViewport AFTER enter() completes successfully
+    local created_window = self.window_manager:getWindowById(window_id)
+    if created_window and new_state.setViewport then
+        local initial_content_bounds = self.window_chrome:getContentBounds(created_window)
+        local viewport_ok, viewport_err = pcall(new_state.setViewport, new_state,
+              initial_content_bounds.x, initial_content_bounds.y,
+              initial_content_bounds.width, initial_content_bounds.height)
+        if not viewport_ok then
+            print("ERROR calling setViewport after enter for " .. program_id .. ": " .. tostring(viewport_err))
+        end
+    end
+
     if defaults.prefer_maximized and defaults.resizable ~= false then
         self.window_manager:maximizeWindow(window_id, screen_w, screen_h)
          local maximized_window = self.window_manager:getWindowById(window_id)
          if maximized_window and new_state.setViewport then
              local maximized_content_bounds = self.window_chrome:getContentBounds(maximized_window)
-             -- *** CHANGE: Pass all four values ***
              pcall(new_state.setViewport, new_state,
                    maximized_content_bounds.x, maximized_content_bounds.y,
                    maximized_content_bounds.width, maximized_content_bounds.height)
-             -- *** END CHANGE ***
          end
     end
 
     print("Opened window for " .. initial_title .. " ID: " .. window_id)
 end
-
 
 function DesktopState:dismissTutorial()
     self.show_tutorial = false

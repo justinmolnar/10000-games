@@ -1,9 +1,8 @@
 local BaseGame = require('src.games.base_game')
 local Collision = require('src.utils.collision') 
-local HiddenObjectView = require('src.games.views.hidden_object_view') -- Added view require
+local HiddenObjectView = require('src.games.views.hidden_object_view')
 local HiddenObject = BaseGame:extend('HiddenObject')
 
--- Constants
 local TIME_LIMIT_BASE = 60          
 local OBJECTS_BASE = 5              
 local BONUS_TIME_MULTIPLIER = 5     
@@ -17,18 +16,18 @@ local BACKGROUND_HASH_1 = 17
 local BACKGROUND_HASH_2 = 3
 
 function HiddenObject:init(game_data, cheats)
-    HiddenObject.super.init(self, game_data, cheats) -- Pass cheats to base
+    HiddenObject.super.init(self, game_data, cheats)
     
-    -- Apply Cheats
     local speed_modifier_value = self.cheats.speed_modifier or 1.0
     local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
 
-    -- Make constants accessible to view
     self.BACKGROUND_GRID_BASE = BACKGROUND_GRID_BASE
     self.BACKGROUND_HASH_1 = BACKGROUND_HASH_1
     self.BACKGROUND_HASH_2 = BACKGROUND_HASH_2
 
-    -- Apply cheat:
+    self.game_width = 800
+    self.game_height = 600
+
     self.time_limit = (TIME_LIMIT_BASE / self.difficulty_modifiers.speed) * time_bonus_multiplier
     self.total_objects = math.floor(OBJECTS_BASE * self.difficulty_modifiers.count) 
     
@@ -39,8 +38,31 @@ function HiddenObject:init(game_data, cheats)
     self.metrics.objects_found = 0
     self.metrics.time_bonus = 0
     
-    -- Create the view instance
     self.view = HiddenObjectView:new(self)
+    print("[HiddenObject:init] Initialized with default game dimensions:", self.game_width, self.game_height)
+end
+
+function HiddenObject:setPlayArea(width, height)
+    self.game_width = width
+    self.game_height = height
+    
+    -- Only regenerate if objects exist
+    if self.objects and #self.objects > 0 then
+        self:regenerateObjects()
+        print("[HiddenObject] Play area updated to:", width, height)
+    else
+        print("[HiddenObject] setPlayArea called before init completed")
+    end
+end
+
+function HiddenObject:regenerateObjects()
+    local positions = self:getDeterministicPositions()
+    for i = 1, math.min(self.total_objects, #positions) do
+        if self.objects[i] then
+            self.objects[i].x = positions[i].x
+            self.objects[i].y = positions[i].y
+        end
+    end
 end
 
 function HiddenObject:generateObjects()
@@ -60,30 +82,29 @@ end
 
 function HiddenObject:getDeterministicPositions()
     local positions = {}
-    local screen_w = love.graphics.getWidth(); local screen_h = love.graphics.getHeight()
     local padding = OBJECT_BASE_SIZE 
     for i = 1, self.total_objects do
         local hash_x = (i * POSITION_HASH_X1) % POSITION_HASH_X2
         local hash_y = (i * POSITION_HASH_Y1) % POSITION_HASH_Y2
-        local x = padding + (hash_x / POSITION_HASH_X2) * (screen_w - 2 * padding)
-        local y = padding + (hash_y / POSITION_HASH_Y2) * (screen_h - 2 * padding)
+        local x = padding + (hash_x / POSITION_HASH_X2) * (self.game_width - 2 * padding)
+        local y = padding + (hash_y / POSITION_HASH_Y2) * (self.game_height - 2 * padding)
         positions[i] = {x = x, y = y}
     end
     return positions
 end
 
 function HiddenObject:updateGameLogic(dt)
-    -- Base class handles time_elapsed and time_remaining update
-    -- No additional game logic needed in update for this game type
+    -- Calculate time bonus when all objects found (before completion triggers)
+    if self.objects_found >= self.total_objects and self.metrics.time_bonus == 0 then
+        self.metrics.time_bonus = math.floor(math.max(0, self.time_remaining) * BONUS_TIME_MULTIPLIER)
+    end
 end
 
--- Draw method now delegates to the view
 function HiddenObject:draw()
     if self.view then
         self.view:draw()
     end
 end
-
 
 function HiddenObject:mousepressed(x, y, button)
     if self.completed or button ~= 1 then return end 
@@ -93,12 +114,7 @@ function HiddenObject:mousepressed(x, y, button)
         if not obj.found and self:checkObjectClick(obj, x, y) then
             obj.found = true
             self.objects_found = self.objects_found + 1
-            
-            if self.objects_found >= self.total_objects then
-                self.metrics.time_bonus = math.floor(math.max(0, self.time_remaining) * BONUS_TIME_MULTIPLIER)
-                self:onComplete() 
-            end
-            return -- Found one, stop checking
+            return
         end
     end
 end
@@ -107,11 +123,16 @@ function HiddenObject:checkObjectClick(obj, x, y)
     return Collision.checkCircles(obj.x, obj.y, obj.radius, x, y, 0)
 end
 
-
 function HiddenObject:onComplete()
     if self.completed then return end
     self.metrics.objects_found = self.objects_found
-    if self.objects_found < self.total_objects then self.metrics.time_bonus = 0 end
+    -- Only set time bonus to 0 if not all objects found
+    if self.objects_found < self.total_objects then
+        self.metrics.time_bonus = 0
+    elseif self.metrics.time_bonus == 0 then
+        -- If all objects found and time_bonus not set, calculate it
+        self.metrics.time_bonus = math.floor(math.max(0, self.time_remaining) * BONUS_TIME_MULTIPLIER)
+    end
     HiddenObject.super.onComplete(self)
 end
 

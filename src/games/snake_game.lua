@@ -1,30 +1,30 @@
 local BaseGame = require('src.games.base_game')
-local SnakeView = require('src.games.views.snake_view') -- Added view require
+local SnakeView = require('src.games.views.snake_view')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
--- Constants
 local GRID_SIZE = 20          
 local BASE_SPEED = 8          
 local BASE_TARGET_LENGTH = 20 
 local BASE_OBSTACLE_COUNT = 5 
 
 function SnakeGame:init(game_data, cheats)
-    SnakeGame.super.init(self, game_data, cheats) -- Pass cheats to base
-    self.GRID_SIZE = GRID_SIZE -- Make accessible to view via self
+    SnakeGame.super.init(self, game_data, cheats)
+    self.GRID_SIZE = GRID_SIZE
     
-    -- Apply Cheats
     local speed_modifier = self.cheats.speed_modifier or 1.0
-    -- Note: advantage_modifier (extra life) is not applicable here.
     
-    self.grid_width = math.floor(love.graphics.getWidth() / GRID_SIZE)
-    self.grid_height = math.floor(love.graphics.getHeight() / GRID_SIZE)
+    self.game_width = 800
+    self.game_height = 600
+    
+    self.grid_width = math.floor(self.game_width / GRID_SIZE)
+    self.grid_height = math.floor(self.game_height / GRID_SIZE)
     
     self.snake = { {x = math.floor(self.grid_width/2), y = math.floor(self.grid_height/2)} }
     self.direction = {x = 1, y = 0} 
-    self.next_direction = {x = 1, y = 0} 
+    self.next_direction = {x = 1, y = 0}
     
     self.move_timer = 0
-    self.speed = (BASE_SPEED * self.difficulty_modifiers.speed) * speed_modifier -- Apply cheat
+    self.speed = (BASE_SPEED * self.difficulty_modifiers.speed) * speed_modifier
     self.target_length = math.floor(BASE_TARGET_LENGTH * self.difficulty_modifiers.complexity)
     
     self.obstacles = self:createObstacles()
@@ -33,12 +33,39 @@ function SnakeGame:init(game_data, cheats)
     self.metrics.snake_length = 1
     self.metrics.survival_time = 0
     
-    -- Create the view instance
+    self.died = false -- Track death state
+    
     self.view = SnakeView:new(self)
 end
 
+function SnakeGame:setPlayArea(width, height)
+    self.game_width = width
+    self.game_height = height
+    
+    -- Only recalculate grid if GRID_SIZE is set
+    if self.GRID_SIZE then
+        self.grid_width = math.floor(self.game_width / self.GRID_SIZE)
+        self.grid_height = math.floor(self.game_height / self.GRID_SIZE)
+        
+        -- Clamp existing positions
+        for _, segment in ipairs(self.snake or {}) do
+            segment.x = math.max(0, math.min(self.grid_width - 1, segment.x))
+            segment.y = math.max(0, math.min(self.grid_height - 1, segment.y))
+        end
+        
+        if self.food then
+            self.food.x = math.max(0, math.min(self.grid_width - 1, self.food.x))
+            self.food.y = math.max(0, math.min(self.grid_height - 1, self.food.y))
+        end
+        
+        print("[SnakeGame] Play area updated to:", width, height, "Grid:", self.grid_width, self.grid_height)
+    else
+        print("[SnakeGame] setPlayArea called before init completed")
+    end
+end
+
 function SnakeGame:updateGameLogic(dt)
-    self.metrics.survival_time = self.time_elapsed -- Keep updating metric
+    self.metrics.survival_time = self.time_elapsed
 
     self.move_timer = self.move_timer + dt
     local move_interval = 1 / self.speed
@@ -53,8 +80,9 @@ function SnakeGame:updateGameLogic(dt)
             y = (head.y + self.direction.y + self.grid_height) % self.grid_height
         }
         
+        -- Check collision and trigger game over
         if self:checkCollision(new_head, true) then 
-            self:onComplete() 
+            self:onComplete() -- Mark game as completed
             return
         end
         
@@ -69,13 +97,23 @@ function SnakeGame:updateGameLogic(dt)
     end
 end
 
--- Draw method now delegates to the view
+function SnakeGame:checkComplete()
+    -- Win condition: reached target length
+    if self.metrics.snake_length >= self.target_length then
+        return true
+    end
+    -- Lose condition: game marked completed (collision)
+    if self.completed then
+        return true
+    end
+    return false
+end
+
 function SnakeGame:draw()
    if self.view then
        self.view:draw()
    end
 end
-
 
 function SnakeGame:keypressed(key)
     local handled = false
@@ -124,7 +162,7 @@ function SnakeGame:createObstacles()
 end
 
 function SnakeGame:checkCollision(pos, check_snake_body)
-    if not pos then return false end -- Safety check
+    if not pos then return false end
     for _, obstacle in ipairs(self.obstacles or {}) do if pos.x == obstacle.x and pos.y == obstacle.y then return true end end
     if check_snake_body then
         local start_index = (pos == self.snake[1]) and 2 or 1
@@ -134,8 +172,18 @@ function SnakeGame:checkCollision(pos, check_snake_body)
 end
 
 function SnakeGame:checkComplete()
-    -- Base class handles self.completed flag
-    return self.metrics.snake_length >= self.target_length
+    -- Win condition: reached target length
+    if self.metrics.snake_length >= self.target_length then
+        return true
+    end
+    
+    -- Lose condition: snake hit itself or obstacle
+    local head = self.snake[1]
+    if head and self:checkCollision(head, false) then
+        return true
+    end
+    
+    return false
 end
 
 return SnakeGame

@@ -1,8 +1,7 @@
 local BaseGame = require('src.games.base_game')
-local MemoryMatchView = require('src.games.views.memory_match_view') -- Added view require
+local MemoryMatchView = require('src.games.views.memory_match_view')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
--- Constants remain for logic/balance
 local CARD_WIDTH = 60
 local CARD_HEIGHT = 80
 local CARD_SPACING = 10
@@ -10,18 +9,17 @@ local MEMORIZE_TIME_BASE = 5
 local MATCH_VIEW_TIME = 1    
 
 function MemoryMatch:init(game_data, cheats)
-    MemoryMatch.super.init(self, game_data, cheats) -- Pass cheats to base
+    MemoryMatch.super.init(self, game_data, cheats)
     
-    -- Apply Cheats
-    -- speed_modifier will be < 1.0, e.g., 0.8. We want to *increase* time.
-    -- The value is (1.0 - 0.2) = 0.8. We want (1.0 + 0.2) = 1.2
     local speed_modifier_value = self.cheats.speed_modifier or 1.0
     local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
     
-    -- Make constants accessible to view
     self.CARD_WIDTH = CARD_WIDTH
     self.CARD_HEIGHT = CARD_HEIGHT
     self.CARD_SPACING = CARD_SPACING
+    
+    self.game_width = 800
+    self.game_height = 600
     
     local pairs_count = math.floor(6 * self.difficulty_modifiers.complexity) 
     self.grid_size = math.ceil(math.sqrt(pairs_count * 2)) 
@@ -36,7 +34,6 @@ function MemoryMatch:init(game_data, cheats)
     self.selected_indices = {} 
     self.matched_pairs = {}    
     self.memorize_phase = true
-    -- Apply cheat: 
     self.memorize_timer = (MEMORIZE_TIME_BASE / self.difficulty_modifiers.time_limit) * time_bonus_multiplier
     self.match_check_timer = 0 
     
@@ -44,13 +41,31 @@ function MemoryMatch:init(game_data, cheats)
     self.metrics.perfect = 0 
     self.metrics.time = 0    
     
-    local total_grid_width = (CARD_WIDTH + CARD_SPACING) * self.grid_size - CARD_SPACING
-    local total_grid_height = (CARD_HEIGHT + CARD_SPACING) * self.grid_size - CARD_SPACING
-    self.start_x = (love.graphics.getWidth() - total_grid_width) / 2
-    self.start_y = (love.graphics.getHeight() - total_grid_height) / 2
+    -- Calculate initial grid position now that all constants are set
+    self:calculateGridPosition()
     
-    -- Create the view instance
     self.view = MemoryMatchView:new(self)
+    print("[MemoryMatch:init] Initialized with default game dimensions:", self.game_width, self.game_height)
+end
+
+function MemoryMatch:setPlayArea(width, height)
+    self.game_width = width
+    self.game_height = height
+    
+    -- Only recalculate if we have the required constants
+    if self.CARD_WIDTH and self.CARD_HEIGHT and self.CARD_SPACING and self.grid_size then
+        self:calculateGridPosition()
+        print("[MemoryMatch] Play area updated to:", width, height)
+    else
+        print("[MemoryMatch] setPlayArea called before init completed, dimensions stored for later")
+    end
+end
+
+function MemoryMatch:calculateGridPosition()
+    local total_grid_width = (self.CARD_WIDTH + self.CARD_SPACING) * self.grid_size - self.CARD_SPACING
+    local total_grid_height = (self.CARD_HEIGHT + self.CARD_SPACING) * self.grid_size - self.CARD_SPACING
+    self.start_x = (self.game_width - total_grid_width) / 2
+    self.start_y = (self.game_height - total_grid_height) / 2
 end
 
 function MemoryMatch:updateGameLogic(dt)
@@ -84,13 +99,11 @@ function MemoryMatch:updateGameLogic(dt)
     end
 end
 
--- Draw method now delegates to the view
 function MemoryMatch:draw()
     if self.view then
         self.view:draw()
     end
 end
-
 
 function MemoryMatch:mousepressed(x, y, button)
     if self.memorize_phase or self.match_check_timer > 0 or #self.selected_indices >= 2 then return end
@@ -98,10 +111,10 @@ function MemoryMatch:mousepressed(x, y, button)
     for i, card in ipairs(self.cards) do
         local row = math.floor((i-1) / self.grid_size)
         local col = (i-1) % self.grid_size
-        local card_x = self.start_x + col * (CARD_WIDTH + CARD_SPACING)
-        local card_y = self.start_y + row * (CARD_HEIGHT + CARD_SPACING)
+        local card_x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING)
+        local card_y = self.start_y + row * (self.CARD_HEIGHT + self.CARD_SPACING)
         
-        if x >= card_x and x <= card_x + CARD_WIDTH and y >= card_y and y <= card_y + CARD_HEIGHT then
+        if x >= card_x and x <= card_x + self.CARD_WIDTH and y >= card_y and y <= card_y + self.CARD_HEIGHT then
             if not self.matched_pairs[card.value] and not self:isSelected(i) then
                 table.insert(card.attempts, self.time_elapsed) 
                 table.insert(self.selected_indices, i)

@@ -1,10 +1,8 @@
--- src/games/views/memory_match_view.lua
 local Object = require('class')
 local MemoryMatchView = Object:extend('MemoryMatchView')
 
 function MemoryMatchView:init(game_state)
     self.game = game_state
-    -- Store layout constants from game state
     self.CARD_WIDTH = game_state.CARD_WIDTH or 60
     self.CARD_HEIGHT = game_state.CARD_HEIGHT or 80
     self.CARD_SPACING = game_state.CARD_SPACING or 10
@@ -16,32 +14,35 @@ end
 function MemoryMatchView:draw()
     local game = self.game
     
+    love.graphics.setColor(0.1, 0.1, 0.1)
+    love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
+    
     for i, card in ipairs(game.cards) do
-        local row = math.floor((i-1) / self.grid_size)
-        local col = (i-1) % self.grid_size
+        local row = math.floor((i-1) / game.grid_size)
+        local col = (i-1) % game.grid_size
         
-        local x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING)
-        local y = self.start_y + row * (self.CARD_HEIGHT + self.CARD_SPACING)
+        -- Read directly from game state, not cached values
+        local x = game.start_x + col * (game.CARD_WIDTH + game.CARD_SPACING)
+        local y = game.start_y + row * (game.CARD_HEIGHT + game.CARD_SPACING)
         
         local face_up = game.memorize_phase or             
                        game.matched_pairs[card.value] or   
-                       game:isSelected(i) -- Call method on game state                  
+                       game:isSelected(i)                  
         
         if face_up then
             love.graphics.setColor(1, 1, 1) 
-            love.graphics.rectangle('fill', x, y, self.CARD_WIDTH, self.CARD_HEIGHT)
+            love.graphics.rectangle('fill', x, y, game.CARD_WIDTH, game.CARD_HEIGHT)
             love.graphics.setColor(0, 0, 0) 
-            local text_width = love.graphics.getFont():getWidth(card.value)
-            love.graphics.print(card.value, x + (self.CARD_WIDTH - text_width)/2, y + (self.CARD_HEIGHT - love.graphics.getFont():getHeight())/2)
+            local text_width = love.graphics.getFont():getWidth(tostring(card.value))
+            love.graphics.print(tostring(card.value), x + (game.CARD_WIDTH - text_width)/2, y + (game.CARD_HEIGHT - love.graphics.getFont():getHeight())/2)
         else
             love.graphics.setColor(0.5, 0.5, 1) 
-            love.graphics.rectangle('fill', x, y, self.CARD_WIDTH, self.CARD_HEIGHT)
+            love.graphics.rectangle('fill', x, y, game.CARD_WIDTH, game.CARD_HEIGHT)
             love.graphics.setColor(0.3, 0.3, 0.8) 
-            love.graphics.rectangle('line', x, y, self.CARD_WIDTH, self.CARD_HEIGHT)
+            love.graphics.rectangle('line', x, y, game.CARD_WIDTH, game.CARD_HEIGHT)
         end
     end
     
-    -- Draw HUD
     love.graphics.setColor(1, 1, 1)
     if game.memorize_phase then
         love.graphics.print("Memorize! " .. string.format("%.1f", game.memorize_timer), 10, 10)

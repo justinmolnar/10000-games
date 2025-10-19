@@ -95,34 +95,27 @@ function MinigameState:update(dt)
     if not self.current_game then return end
 
     if not self.completion_screen_visible then
-        local was_completed = self.current_game.completed
-        local needs_completion_check = true
-
+        -- Call updateBase which handles time and checks for completion
         local update_base_ok, base_err = pcall(self.current_game.updateBase, self.current_game, dt)
         if not update_base_ok then
             print("Error during game updateBase:", base_err)
             return
         end
 
+        -- Only update game logic if not completed
         if not self.current_game.completed then
             local update_logic_ok, logic_err = pcall(self.current_game.updateGameLogic, self.current_game, dt)
             if not update_logic_ok then
                 print("Error during game updateGameLogic:", logic_err)
                 return
             end
-        else
-            needs_completion_check = false
         end
-
-        if needs_completion_check then
-            local check_ok, should_complete = pcall(self.current_game.checkComplete, self.current_game)
-            if check_ok and should_complete and not was_completed then
-                local complete_ok, complete_err = pcall(self.onGameComplete, self)
-                if not complete_ok then
-                    print("Error during onGameComplete:", complete_err)
-                end
-            elseif not check_ok then
-                 print("Error during game checkComplete:", should_complete)
+        
+        -- Check if game just completed and trigger our completion handler
+        if self.current_game.completed and not self.completion_screen_visible then
+            local complete_ok, complete_err = pcall(self.onGameComplete, self)
+            if not complete_ok then
+                print("Error during onGameComplete:", complete_err)
             end
         end
     end
@@ -169,7 +162,8 @@ function MinigameState:drawCompletionScreen()
     love.graphics.printf("GAME COMPLETE!", x, y, vpWidth * 0.8, "center", 0, title_scale, title_scale)
     y = y + line_height * 2.5
 
-    local tokens_earned = math.floor(self.current_performance)
+    -- Fix: Show actual tokens earned (minimum 1)
+    local tokens_earned = math.max(1, math.floor(self.current_performance))
     local performance_mult = (self.active_cheats and self.active_cheats.performance_modifier) or 1.0
 
     love.graphics.setColor(1, 1, 0)
@@ -302,7 +296,12 @@ function MinigameState:onGameComplete()
         self.auto_complete_power = 0
     end
 
-    pcall(self.save_manager.save, self.save_manager, self.player_data)
+    -- Fix: SaveManager.save is a static function, call it correctly
+    local save_ok, save_err = pcall(self.save_manager.save, self.player_data)
+    if not save_ok then
+        print("Error saving game data:", save_err)
+    end
+    
     print("[MinigameState] Game complete processing finished. New best:", is_new_best, "Auto-completed:", #self.auto_completed_games)
 end
 

@@ -56,10 +56,14 @@ function DodgeGame:setPlayArea(width, height)
     self.game_width = width
     self.game_height = height
     
-    self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
-    self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
-    
-    print("[DodgeGame] Play area updated to:", width, height)
+    -- Only clamp player if player exists
+    if self.player then
+        self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
+        self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
+        print("[DodgeGame] Play area updated to:", width, height)
+    else
+        print("[DodgeGame] setPlayArea called before init completed")
+    end
 end
 
 function DodgeGame:updateGameLogic(dt)

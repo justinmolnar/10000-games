@@ -1,10 +1,8 @@
--- src/games/views/hidden_object_view.lua
 local Object = require('class')
 local HiddenObjectView = Object:extend('HiddenObjectView')
 
 function HiddenObjectView:init(game_state)
     self.game = game_state
-    -- Store constants needed for drawing
     self.BACKGROUND_GRID_BASE = game_state.BACKGROUND_GRID_BASE or 10
     self.BACKGROUND_HASH_1 = game_state.BACKGROUND_HASH_1 or 17
     self.BACKGROUND_HASH_2 = game_state.BACKGROUND_HASH_2 or 3
@@ -15,14 +13,12 @@ function HiddenObjectView:draw()
 
     self:drawBackground()
 
-    -- Draw objects that haven't been found
     for _, obj in ipairs(game.objects) do
         if not obj.found then
             self:drawObject(obj)
         end
     end
 
-    -- Draw HUD
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("Objects Found: " .. game.objects_found .. "/" .. game.total_objects, 10, 10)
     love.graphics.print("Time Remaining: " .. string.format("%.1f", game.time_remaining), 10, 30)
@@ -33,20 +29,23 @@ function HiddenObjectView:draw()
 end
 
 function HiddenObjectView:drawBackground()
-    local game = self.game -- Need game state for complexity modifier
-    love.graphics.setColor(0.2, 0.2, 0.2) 
+    local game = self.game
+    -- Draw main background first
+    love.graphics.setColor(0.12, 0.16, 0.22) -- Soft blue-gray background
+    love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
 
+    -- Draw grid overlay (squares)
     local complexity = game.difficulty_modifiers.complexity
-    local grid_density = math.floor(self.BACKGROUND_GRID_BASE * complexity) 
-    local cell_w = love.graphics.getWidth() / grid_density
-    local cell_h = love.graphics.getHeight() / grid_density
-    
+    local grid_density = math.floor(self.BACKGROUND_GRID_BASE * complexity)
+    local cell_w = game.game_width / grid_density
+    local cell_h = game.game_height / grid_density
+
     local complexity_mod = math.max(1, self.BACKGROUND_HASH_2 + complexity)
-    
+
     for i = 0, grid_density do
         for j = 0, grid_density do
             if ((i + j) * self.BACKGROUND_HASH_1) % complexity_mod == 0 then
-                love.graphics.setColor(0.3, 0.3, 0.3) 
+                love.graphics.setColor(0.3, 0.3, 0.3)
                 love.graphics.rectangle('fill', i * cell_w, j * cell_h, cell_w, cell_h)
             end
         end
@@ -73,6 +72,5 @@ function HiddenObjectView:drawObject(obj)
     
     love.graphics.pop()
 end
-
 
 return HiddenObjectView
