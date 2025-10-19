@@ -10,7 +10,44 @@ local defaults = {
     music_volume = 0.6,
     sfx_volume = 0.7,
     tutorial_shown = false,
-    fullscreen = true
+    fullscreen = true,
+    -- Screensaver
+    screensaver_enabled = true,
+    screensaver_timeout = 10,   -- seconds
+    screensaver_type = "starfield",
+    -- Pipes screensaver options
+    screensaver_pipes_spawn_min_z = 200,
+    screensaver_pipes_spawn_max_z = 600,
+    screensaver_pipes_radius = 4.5,
+    screensaver_pipes_speed = 60,
+    screensaver_pipes_turn_chance = 0.45,
+    screensaver_pipes_avoid_cells = true,
+    screensaver_pipes_show_grid = false,
+    screensaver_pipes_camera_roll = 0.05,
+    screensaver_pipes_camera_drift = 40,
+    screensaver_pipes_pipe_count = 5,
+    screensaver_pipes_near = 80,
+    -- Additional Pipes options
+    screensaver_pipes_fov = 420,
+    screensaver_pipes_grid_step = 24,
+    screensaver_pipes_max_segments = 800,
+    screensaver_pipes_show_hud = true,
+    -- Model screensaver options
+    screensaver_model_path = "assets/data/models/cube.json",
+    screensaver_model_scale = 1.0,
+    screensaver_model_fov = 350,
+    screensaver_model_rot_speed_x = 0.4,
+    screensaver_model_rot_speed_y = 0.6,
+    screensaver_model_rot_speed_z = 0.0,
+    screensaver_model_grid_lat = 24,
+    screensaver_model_grid_lon = 48,
+    screensaver_model_morph_speed = 0.3,
+    screensaver_model_two_sided = false,
+    -- Starfield screensaver options
+    screensaver_starfield_count = 500,
+    screensaver_starfield_speed = 120,
+    screensaver_starfield_fov = 300,
+    screensaver_starfield_tail = 12
 }
 
 local current_settings = {}

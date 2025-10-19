@@ -10,6 +10,7 @@
     "base_formula_string": "(metrics.kills - metrics.deaths)",
     "metrics_tracked": ["kills", "deaths"],
     "icon_sprite": "game_mine_1-0",
+  "token_threshold": 0.75,
     
     "visual_identity": {
       "sprite_set_id": "space_set_1",
@@ -54,8 +55,8 @@
       }
     ],
 
-    "bullet_fire_rate": 1,
-    "bullet_sprite": "bullet_basic",
+  "bullet_fire_rate": 1,
+  "bullet_sprite": "world_star-0",
     "variant_multiplier": 1,
     "difficulty_level": 1,
     "auto_play_performance": {"kills": 20, "deaths": 2}
@@ -71,6 +72,7 @@
     "base_formula_string": "(metrics.snake_length * (metrics.survival_time / 10))",
     "metrics_tracked": ["snake_length", "survival_time"],
     "icon_sprite": "game_spider-0",
+  "token_threshold": 0.75,
     
     "visual_identity": {
       "sprite_set_id": "snake_set_1",
@@ -109,8 +111,8 @@
       }
     ],
 
-    "bullet_fire_rate": 0.8,
-    "bullet_sprite": "bullet_snake",
+  "bullet_fire_rate": 0.8,
+  "bullet_sprite": "joystick_alt-1",
     "variant_multiplier": 1,
     "difficulty_level": 1,
     "auto_play_performance": {"snake_length": 10, "survival_time": 30}
@@ -126,6 +128,7 @@
     "base_formula_string": "(metrics.matches * 10 - metrics.time + metrics.perfect * 5)",
     "metrics_tracked": ["matches", "time", "perfect"],
     "icon_sprite": "game_freecell-0",
+  "token_threshold": 0.75,
     
     "visual_identity": {
       "sprite_set_id": "memory_set_1",
@@ -160,8 +163,8 @@
       }
     ],
 
-    "bullet_fire_rate": 1.2,
-    "bullet_sprite": "bullet_card",
+  "bullet_fire_rate": 1.2,
+  "bullet_sprite": "xml_gear-0",
     "variant_multiplier": 1,
     "difficulty_level": 1,
     "auto_play_performance": {"matches": 8, "time": 40, "perfect": 2}
@@ -177,6 +180,7 @@
     "base_formula_string": "((metrics.objects_dodged * metrics.objects_dodged) / (metrics.collisions + 1))",
     "metrics_tracked": ["objects_dodged", "collisions", "perfect_dodges"],
     "icon_sprite": "game_solitaire-0",
+  "token_threshold": 0.75,
     
     "visual_identity": {
       "sprite_set_id": "dodge_set_1",
@@ -223,8 +227,8 @@
       }
     ],
 
-    "bullet_fire_rate": 0.9,
-    "bullet_sprite": "bullet_dodge",
+  "bullet_fire_rate": 0.9,
+  "bullet_sprite": "windows_slanted-1",
     "variant_multiplier": 1,
     "difficulty_level": 1,
     "auto_play_performance": {"objects_dodged": 15, "collisions": 3, "perfect_dodges": 5}
@@ -240,6 +244,7 @@
     "base_formula_string": "(metrics.objects_found * metrics.time_bonus)",
     "metrics_tracked": ["objects_found", "time_bonus"],
     "icon_sprite": "magnifying_glass-0",
+  "token_threshold": 0.75,
     
     "visual_identity": {
       "sprite_set_id": "hidden_set_1",
@@ -272,8 +277,8 @@
       }
     ],
 
-    "bullet_fire_rate": 1.1,
-    "bullet_sprite": "bullet_hidden",
+  "bullet_fire_rate": 1.1,
+  "bullet_sprite": "wm_file-0",
     "variant_multiplier": 1,
     "difficulty_level": 1,
     "auto_play_performance": {"objects_found": 8, "time_bonus": 3}

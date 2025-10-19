@@ -3,130 +3,161 @@ local SpaceDefenderView = Object:extend('SpaceDefenderView')
 
 function SpaceDefenderView:init(controller)
     self.controller = controller
-end
-
-function SpaceDefenderView:draw(player_ship, enemies, boss, boss_active, bullet_system, current_wave, total_waves, current_level, tokens_earned, level_complete, game_over, paused, viewport_width, viewport_height)
-    self:drawPlayerShip(player_ship)
-    self:drawEnemies(enemies)
-    
-    if boss_active and boss then
-        self:drawBoss(boss, viewport_width)
-    end
-
-    bullet_system:draw()
-
-    self:drawHUD(
-        player_ship, current_wave, total_waves, boss_active,
-        bullet_system:getBulletCount(), current_level, viewport_width, viewport_height
-    )
-
-    if level_complete then
-        self:drawVictoryScreen(tokens_earned, viewport_width, viewport_height)
-    elseif game_over then
-        self:drawGameOverScreen(viewport_width, viewport_height)
-    elseif paused then
-        self:drawPauseScreen(viewport_width, viewport_height)
+    self.stars = {}
+    for i = 1, 200 do
+        table.insert(self.stars, {
+            x = math.random(0, 1024),
+            y = math.random(0, 768),
+            speed = math.random(20, 100)
+        })
     end
 end
 
-function SpaceDefenderView:drawPlayerShip(ship)
-    if not ship then return end
-    love.graphics.setColor(0, 1, 0)
-    love.graphics.rectangle('fill',
-        ship.x - ship.width/2,
-        ship.y - ship.height/2,
-        ship.width, ship.height)
-end
-
-function SpaceDefenderView:drawEnemies(enemies)
-    for _, enemy in ipairs(enemies) do
-        love.graphics.setColor(1, 0, 0)
-        love.graphics.rectangle('fill', enemy.x - enemy.width/2, enemy.y - enemy.height/2,
-            enemy.width, enemy.height)
-
-        if enemy.damaged and enemy.hp < enemy.max_hp then
-            local bar_width = enemy.width
-            local bar_height = 4
-            local bar_x = enemy.x - bar_width/2
-            local bar_y = enemy.y - enemy.height/2 - bar_height - 2
-
-            love.graphics.setColor(0.3, 0, 0)
-            love.graphics.rectangle('fill', bar_x, bar_y, bar_width, bar_height)
-            love.graphics.setColor(1, 0, 0)
-            local hp_percent = math.max(0, enemy.hp / enemy.max_hp)
-            love.graphics.setColor(0, 1, 0)
-            love.graphics.rectangle('fill', bar_x, bar_y, bar_width * hp_percent, bar_height)
+function SpaceDefenderView:update(dt)
+    for _, star in ipairs(self.stars) do
+        star.y = star.y + star.speed * dt
+        if star.y > 768 then
+            star.y = 0
+            star.x = math.random(0, 1024)
         end
     end
 end
 
-function SpaceDefenderView:drawBoss(boss, viewport_width)
-    if not boss then return end
+function SpaceDefenderView:draw(args)
+    -- Draw background elements (stars, etc.)
+    self:drawBackground(args.width, args.height)
 
-    love.graphics.setColor(0.5, 0, 0.5)
-    love.graphics.rectangle('fill',
-        boss.x - boss.width/2, boss.y - boss.height/2,
-        boss.width, boss.height)
+    -- Draw game entities
+    if args.bullet_system then args.bullet_system:draw(args.game_data) end
+    self:drawEnemies(args.enemies)
+    if args.boss_active and args.boss then self:drawBoss(args.boss) end
+    if args.player then self:drawPlayer(args.player) end
 
-    local bar_margin = 50
-    local bar_width = math.max(100, viewport_width - (bar_margin * 2))
-    local bar_height = 20
-    local bar_x = (viewport_width - bar_width) / 2
-    local bar_y = 10
+    -- Draw HUD
+    self:drawHUD(args)
 
-    love.graphics.setColor(1, 0, 0)
-    love.graphics.rectangle('fill', bar_x, bar_y, bar_width, bar_height)
-    love.graphics.setColor(0, 1, 0)
-    local hp_percent = math.max(0, boss.hp / boss.max_hp)
-    love.graphics.rectangle('fill', bar_x, bar_y, bar_width * hp_percent, bar_height)
+    -- Draw overlays
+    if args.level_complete then
+        self:drawLevelComplete(args.tokens_earned, args.width, args.height)
+    elseif args.game_over then
+        self:drawGameOver(args.width, args.height)
+    elseif args.paused then
+        self:drawPaused(args.width, args.height)
+    end
 end
 
-function SpaceDefenderView:drawHUD(player_ship, current_wave, total_waves, boss_active, bullet_count, current_level, viewport_width, viewport_height)
-    if not player_ship then return end
+function SpaceDefenderView:drawBackground(width, height)
     love.graphics.setColor(1, 1, 1)
-    
-    local hud_y = boss_active and 40 or 10
-    love.graphics.print("HP: " .. player_ship.hp .. "/" .. player_ship.max_hp, 10, hud_y)
-    love.graphics.print("Bombs: " .. player_ship.bombs, 10, hud_y + 20)
+    for _, star in ipairs(self.stars) do
+        local scaled_x = star.x / 1024 * width
+        local scaled_y = star.y / 768 * height
+        local size = star.speed / 50
+        love.graphics.rectangle('fill', scaled_x, scaled_y, size, size)
+    end
+end
 
-    if not boss_active then
-        love.graphics.printf("Wave: " .. current_wave .. "/" .. total_waves, 0, hud_y, viewport_width, "center")
+function SpaceDefenderView:drawPlayer(player)
+    if not player then return end
+    local SpriteManager = require('src.utils.sprite_manager').getInstance()
+    SpriteManager:ensureLoaded()
+    SpriteManager.sprite_loader:drawSprite("joystick_alt-0", player.x - player.width/2, player.y - player.height/2, player.width, player.height)
+end
+
+function SpaceDefenderView:drawEnemies(enemies)
+    if not enemies then return end
+    local SpriteManager = require('src.utils.sprite_manager').getInstance()
+    SpriteManager:ensureLoaded()
+
+    for _, enemy in ipairs(enemies) do
+        local sprite_name = "computer_explorer-0" -- Default
+        if enemy.pattern == "zigzag" then
+            sprite_name = "computer_explorer-1"
+        elseif enemy.pattern == "sine" then
+            sprite_name = "computer_explorer-2"
+        end
+
+        if enemy.damaged then
+            love.graphics.setColor(1, 1, 1, 0.5) -- Tint white and slightly transparent
+            enemy.damaged = false
+        else
+            love.graphics.setColor(1, 1, 1)
+        end
+        SpriteManager.sprite_loader:drawSprite(sprite_name, enemy.x - enemy.width/2, enemy.y - enemy.height/2, enemy.width, enemy.height)
+    end
+end
+
+function SpaceDefenderView:drawBoss(boss)
+    if not boss then return end
+    local SpriteManager = require('src.utils.sprite_manager').getInstance()
+    SpriteManager:ensureLoaded()
+
+    -- Resolve a valid boss sprite once and cache it
+    if not self._boss_sprite_name then
+        local candidates = {
+            "taskman-0", -- preferred if present
+            "computer_explorer-5", -- bold variant
+            "world_star-0",
+            "windows_update_large-0",
+            "windows_movie-0"
+        }
+        for _, name in ipairs(candidates) do
+            if SpriteManager.sprite_loader:hasSprite(name) then
+                self._boss_sprite_name = name
+                break
+            end
+        end
+        self._boss_sprite_name = self._boss_sprite_name or candidates[#candidates]
     end
 
-    local right_x = math.max(viewport_width - 150, viewport_width / 2 + 50)
-    love.graphics.print("Bullets: " .. bullet_count, right_x, hud_y)
-    love.graphics.print("Level: " .. current_level, right_x, hud_y + 20)
-end
-
-function SpaceDefenderView:drawVictoryScreen(tokens_earned, viewport_width, viewport_height)
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
-    love.graphics.setColor(0, 1, 0)
-    love.graphics.printf("LEVEL COMPLETE!", 0, viewport_height/2 - 60, viewport_width, "center", 0, 1.5, 1.5)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("Tokens Earned: " .. (tokens_earned or 0), 0, viewport_height/2, viewport_width, "center")
-    love.graphics.printf("Press ENTER for Next Level", 0, viewport_height/2 + 40, viewport_width, "center")
-    love.graphics.printf("Press ESC to Close", 0, viewport_height/2 + 60, viewport_width, "center")
+    SpriteManager.sprite_loader:drawSprite(self._boss_sprite_name, boss.x - boss.width/2, boss.y - boss.height/2, boss.width, boss.height)
+    
+    -- Health bar
+    local bar_w = 200
+    local bar_h = 15
+    local bar_x = boss.x - bar_w/2
+    local bar_y = boss.y - boss.height/2 - 20
+    love.graphics.setColor(0.3, 0, 0)
+    love.graphics.rectangle('fill', bar_x, bar_y, bar_w, bar_h)
+    love.graphics.setColor(1, 0, 0)
+    love.graphics.rectangle('fill', bar_x, bar_y, bar_w * (boss.hp / boss.max_hp), bar_h)
 end
 
-function SpaceDefenderView:drawGameOverScreen(viewport_width, viewport_height)
-    love.graphics.setColor(0, 0, 0, 0.8)
+function SpaceDefenderView:drawHUD(args)
+    local player = args.player
+    local width = args.width
+    if not player or not width then return end
+
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print("HP: " .. player.hp, 10, 10)
+    love.graphics.print("Bombs: " .. player.bombs, 10, 30)
+    love.graphics.print("Wave: " .. args.current_wave .. "/" .. args.total_waves, width - 150, 10)
+    love.graphics.print("Level: " .. args.current_level, width - 150, 30)
+end
+
+function SpaceDefenderView:drawLevelComplete(tokens_earned, viewport_width, viewport_height)
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
+    love.graphics.setColor(1, 1, 0)
+    love.graphics.printf("LEVEL COMPLETE", 0, viewport_height/2 - 50, viewport_width, "center")
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf("Earned " .. tokens_earned .. " tokens", 0, viewport_height/2 - 20, viewport_width, "center")
+    love.graphics.printf("Press ENTER for next level or ESC to exit", 0, viewport_height/2 + 20, viewport_width, "center")
+end
+
+function SpaceDefenderView:drawGameOver(viewport_width, viewport_height)
+    love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
     love.graphics.setColor(1, 0, 0)
-    love.graphics.printf("GAME OVER", 0, viewport_height/2 - 60, viewport_width, "center", 0, 1.5, 1.5)
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("Press ENTER to Close", 0, viewport_height/2 + 40, viewport_width, "center")
+    love.graphics.printf("GAME OVER", 0, viewport_height/2 - 20, viewport_width, "center")
+    love.graphics.printf("Press ENTER or ESC to exit", 0, viewport_height/2 + 10, viewport_width, "center")
 end
 
-function SpaceDefenderView:drawPauseScreen(viewport_width, viewport_height)
-    love.graphics.setColor(0, 0, 0, 0.6)
+function SpaceDefenderView:drawPaused(viewport_width, viewport_height)
+    love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("PAUSED", 0, viewport_height/2, viewport_width, "center", 0, 1.5, 1.5)
-    love.graphics.printf("Press P to resume", 0, viewport_height/2 + 40, viewport_width, "center")
-end
-
-function SpaceDefenderView:update(dt)
+    love.graphics.printf("PAUSED", 0, viewport_height/2 - 10, viewport_width, "center")
 end
 
 return SpaceDefenderView

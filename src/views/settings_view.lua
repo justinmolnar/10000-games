@@ -13,6 +13,10 @@ function SettingsView:init(controller)
         { id = "sfx_volume", label = "SFX Volume (Not Implemented)", type = "slider", x = 50, y = 200, w = 300, h = 20 },
         { id = "tutorial_shown", label = "Show Tutorial on Next Launch", type = "toggle", x = 50, y = 250, w = 30, h = 30 },
         { id = "fullscreen", label = "Fullscreen", type = "toggle", x = 50, y = 300, w = 30, h = 30 },
+        -- Screensaver section
+        { id = "_sep_ss", label = "Screensaver", type = "label", x = 50, y = 360 },
+        { id = "screensaver_enabled", label = "Enable Screensaver", type = "toggle", x = 50, y = 390, w = 30, h = 30 },
+        { id = "screensaver_timeout", label = "Timeout (seconds)", type = "slider_int", x = 50, y = 440, w = 300, h = 20 },
         { id = "back", label = "Back to Desktop", type = "button", x = 50, y = 400, w = 200, h = 40 }
     }
     self.dragging_slider = nil
@@ -29,8 +33,15 @@ function SettingsView:update(dt, current_settings)
             if opt.id == self.dragging_slider then slider = opt; break end
         end
         if slider then
-            local value = math.max(0, math.min(1, (mx - slider.x) / slider.w))
-            self.controller:setSetting(self.dragging_slider, value)
+            if slider.type == 'slider_int' then
+                -- Map 0..1 to a reasonable timeout range (5..600s)
+                local t = math.max(0, math.min(1, (mx - slider.x) / slider.w))
+                local seconds = math.floor(5 + t * (600 - 5) + 0.5)
+                self.controller:setSetting(self.dragging_slider, seconds)
+            else
+                local value = math.max(0, math.min(1, (mx - slider.x) / slider.w))
+                self.controller:setSetting(self.dragging_slider, value)
+            end
         end
     else
          for _, opt in ipairs(self.options) do
@@ -48,10 +59,12 @@ function SettingsView:draw(current_settings)
     UIComponents.drawWindow(0, 0, love.graphics.getWidth(), love.graphics.getHeight(), self.title)
 
     for _, opt in ipairs(self.options) do
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.print(opt.label, opt.x, opt.y - 20)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(opt.label, opt.x, opt.y - 20)
 
-        if opt.type == "slider" then
+        if opt.type == "label" then
+            -- Section heading already drawn
+        elseif opt.type == "slider" then
             local value = current_settings[opt.id] or 0
             love.graphics.setColor(0.3, 0.3, 0.3); love.graphics.rectangle('fill', opt.x, opt.y, opt.w, opt.h)
             love.graphics.setColor(0, 0.8, 0); love.graphics.rectangle('fill', opt.x, opt.y, opt.w * value, opt.h)
@@ -60,6 +73,14 @@ function SettingsView:draw(current_settings)
             if opt.id == "music_volume" or opt.id == "sfx_volume" then
                 love.graphics.setColor(0.7, 0.7, 0.7); love.graphics.print("(Global setting only for MVP)", opt.x + 150, opt.y - 20, 0, 0.8, 0.8)
             end
+        elseif opt.type == "slider_int" then
+            local seconds = current_settings[opt.id] or 10
+            local t = (seconds - 5) / (600 - 5)
+            t = math.max(0, math.min(1, t))
+            love.graphics.setColor(0.3, 0.3, 0.3); love.graphics.rectangle('fill', opt.x, opt.y, opt.w, opt.h)
+            love.graphics.setColor(0, 0.8, 0); love.graphics.rectangle('fill', opt.x, opt.y, opt.w * t, opt.h)
+            love.graphics.setColor(0.8, 0.8, 0.8); love.graphics.rectangle('fill', opt.x + opt.w * t - 5, opt.y - 2, 10, opt.h + 4)
+            love.graphics.setColor(1, 1, 1); love.graphics.print(string.format("%ds", seconds), opt.x + opt.w + 15, opt.y + 2)
         elseif opt.type == "toggle" then
              -- Draw checkbox
              love.graphics.setColor(0.8, 0.8, 0.8)
@@ -101,12 +122,18 @@ function SettingsView:mousepressed(x, y, button)
         local opt_w = opt.w
         local opt_h = opt.h
 
-        if opt.type == "slider" then
+        if opt.type == "slider" or opt.type == "slider_int" then
             -- Check using LOCAL x, y against relative opt_x, opt_y
             if x >= opt_x and x <= opt_x + opt_w and y >= opt_y and y <= opt_y + opt_h then
                 self.dragging_slider = opt.id
-                local value = math.max(0, math.min(1, (x - opt_x) / opt_w))
-                return { name = "set_setting", id = opt.id, value = value }
+                if opt.type == 'slider_int' then
+                    local t = math.max(0, math.min(1, (x - opt_x) / opt_w))
+                    local seconds = math.floor(5 + t * (600 - 5) + 0.5)
+                    return { name = "set_setting", id = opt.id, value = seconds }
+                else
+                    local value = math.max(0, math.min(1, (x - opt_x) / opt_w))
+                    return { name = "set_setting", id = opt.id, value = value }
+                end
             end
         elseif opt.type == "toggle" then
              -- Check using LOCAL x, y against relative opt_x, opt_y

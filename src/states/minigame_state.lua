@@ -1,6 +1,7 @@
 local Object = require('class')
 local ProgressionManager = require('models.progression_manager')
 local MinigameState = Object:extend('MinigameState')
+local DEFAULT_COMPLETION_THRESHOLD = 0.75 -- fallback if not provided in JSON
 
 function MinigameState:init(player_data, game_data_model, state_machine, save_manager, cheat_system)
     print("[MinigameState] init() called")
@@ -19,6 +20,7 @@ function MinigameState:init(player_data, game_data_model, state_machine, save_ma
     self.auto_completed_games = {}
     self.auto_complete_power = 0
     self.active_cheats = {}
+    self.fail_gate_triggered = false
 
     self.viewport = nil
     self.window_id = nil
@@ -88,6 +90,7 @@ function MinigameState:enter(game_data)
     self.base_performance = 0
     self.auto_completed_games = {}
     self.auto_complete_power = 0
+    self.fail_gate_triggered = false
     print("[MinigameState] enter() completed successfully for", game_data.id)
 end
 
@@ -162,13 +165,20 @@ function MinigameState:drawCompletionScreen()
     love.graphics.printf("GAME COMPLETE!", x, y, vpWidth * 0.8, "center", 0, title_scale, title_scale)
     y = y + line_height * 2.5
 
-    -- Fix: Show actual tokens earned (minimum 1)
-    local tokens_earned = math.max(1, math.floor(self.current_performance))
+    -- Show actual tokens earned (allow 0 on fail gate)
+    local tokens_earned = math.floor(self.current_performance)
     local performance_mult = (self.active_cheats and self.active_cheats.performance_modifier) or 1.0
 
     love.graphics.setColor(1, 1, 0)
     love.graphics.printf("Tokens Earned: +" .. tokens_earned, x, y, vpWidth * 0.8, "center", 0, text_scale * 1.2, text_scale * 1.2)
     y = y + line_height * 1.5
+
+    if self.fail_gate_triggered then
+        love.graphics.setColor(1, 0.4, 0.4)
+        love.graphics.printf("Below 75% goal — no tokens awarded", x, y, vpWidth * 0.8, "center", 0, text_scale, text_scale)
+        y = y + line_height * 1.2
+        love.graphics.setColor(1, 1, 1)
+    end
 
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("Your Performance:", x, y, 0, text_scale, text_scale)
@@ -265,7 +275,17 @@ function MinigameState:onGameComplete()
     end
 
     local performance_mult = (self.active_cheats and self.active_cheats.performance_modifier) or 1.0
+
+    -- Apply 75% completion gate: ask game for completion ratio (0..1)
+    local ratio_ok, ratio = pcall(self.current_game.getCompletionRatio, self.current_game)
+    if not ratio_ok then ratio = 1.0 end
+    local threshold = (self.game_data and self.game_data.token_threshold) or DEFAULT_COMPLETION_THRESHOLD
+    self.fail_gate_triggered = (ratio < threshold)
+
     self.current_performance = self.base_performance * performance_mult
+    if self.fail_gate_triggered then
+        self.current_performance = 0
+    end
     local tokens_earned = math.floor(self.current_performance)
 
     pcall(self.player_data.addTokens, self.player_data, tokens_earned)
@@ -283,7 +303,7 @@ function MinigameState:onGameComplete()
         print("Error updating player performance:", update_result)
     end
 
-    if is_new_best then
+    if is_new_best and not self.fail_gate_triggered then
         local progression = ProgressionManager:new()
         local check_ok, ac_result = pcall(progression.checkAutoCompletion, progression,
                                             self.game_data.id,

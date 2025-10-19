@@ -2,6 +2,8 @@
 
 local Object = require('class')
 local UIComponents = require('src.views.ui_components')
+local FormulaRenderer = require('src.views.formula_renderer')
+local SpriteManager = require('src.utils.sprite_manager').getInstance()
 local VMManagerView = Object:extend('VMManagerView')
 
 function VMManagerView:init(controller, vm_manager, player_data, game_data)
@@ -38,6 +40,8 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data)
     self.modal_w = 400 -- Placeholder
     self.modal_h = 400 -- Placeholder
     self.modal_item_height = 40
+
+    self.formula_renderer = FormulaRenderer:new()
 end
 
 function VMManagerView:updateLayout(viewport_width, viewport_height)
@@ -337,6 +341,7 @@ function VMManagerView:drawTokensPerMinute(x, y, rate)
 end
 
 function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
+    SpriteManager:ensureLoaded()
     if selected then love.graphics.setColor(0.3, 0.3, 0.7)
     elseif hovered then love.graphics.setColor(0.35, 0.35, 0.35)
     else love.graphics.setColor(0.25, 0.25, 0.25) end
@@ -348,14 +353,23 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
     love.graphics.print("VM " .. slot.slot_index, x + 5, y + 5, 0, 0.8, 0.8)
 
     if slot.active and slot.assigned_game_id then
-        local game_data = context.game_data:getGame(slot.assigned_game_id)
-        if game_data then
+        local game = context.game_data:getGame(slot.assigned_game_id)
+        if game then
+            -- Phase 7.1: Show game's sprite thumbnail
+            local palette_id = SpriteManager:getPaletteId(game)
+            local icon_sprite = SpriteManager:getMetricSprite(game, game.metrics_tracked[1] or "default")
+            if icon_sprite then
+                SpriteManager.sprite_loader:drawSprite(icon_sprite, x + 8, y + 35, 48, 48, nil, palette_id)
+            end
+
             love.graphics.setColor(1, 1, 1)
-            love.graphics.print(game_data.display_name, x + 5, y + 25, 0, 0.85, 0.85)
+            love.graphics.printf(game.display_name, x + 5, y + 20, w - 10, "center", 0, 0.8, 0.8)
+
+            -- Phase 7.1: Display formula with icons for tokens/minute
             love.graphics.setColor(0, 1, 1)
-            love.graphics.print("Power: " .. math.floor(slot.auto_play_power or 0), x + 5, y + 45, 0, 0.8, 0.8)
-            love.graphics.setColor(1, 1, 0)
-            love.graphics.print("+" .. math.floor(slot.tokens_per_cycle or 0) .. " tokens", x + 5, y + 60, 0, 0.8, 0.8)
+            love.graphics.print("Power:", x + 65, y + 45, 0, 0.7, 0.7)
+            self.formula_renderer:draw(game, x + 65, y + 60, w - 70, 14)
+
 
             local progress = 0
             if slot.cycle_time and slot.cycle_time > 0 then
@@ -363,8 +377,13 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
             end
             love.graphics.setColor(0.3, 0.3, 0.3)
             love.graphics.rectangle('fill', x + 5, y + h - 25, w - 10, 15)
-            love.graphics.setColor(0, 1, 0)
+            
+            -- Phase 7.1: Use game's palette for progress bar
+            local palette = SpriteManager.palette_manager:getPalette(palette_id)
+            local progress_color = (palette and palette.colors and palette.colors.primary) or {0, 1, 0}
+            love.graphics.setColor(progress_color)
             love.graphics.rectangle('fill', x + 5, y + h - 25, (w - 10) * progress, 15)
+
             love.graphics.setColor(1, 1, 1)
             local time_text = string.format("%.1fs", math.max(0, slot.time_remaining or 0))
             love.graphics.printf(time_text, x+5, y + h - 23, w - 10, "center", 0, 0.8, 0.8)

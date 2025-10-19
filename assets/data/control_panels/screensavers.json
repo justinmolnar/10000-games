@@ -1,0 +1,41 @@
+{
+  "preview": { "type": "screensaver_preview", "width": 320, "height": 200 },
+  "elements": [
+    { "type": "dropdown", "id": "screensaver_type", "label": "Screen saver", "choices": [
+      { "label": "Starfield", "value": "starfield" },
+      { "label": "3D Pipes", "value": "pipes" },
+      { "label": "3D Model", "value": "model3d" }
+    ] },
+    { "type": "checkbox", "id": "screensaver_enabled", "label": "Enable screensaver" },
+
+    { "type": "slider", "id": "screensaver_timeout", "label": "Timeout (seconds)", "min": 5, "max": 600, "step": 1, "format": "%ds" },
+
+    { "type": "section", "label": "Starfield options", "when": { "screensaver_type": "starfield" } },
+    { "type": "slider", "id": "screensaver_starfield_count", "label": "Count", "min": 1, "max": 1500, "step": 1, "when": { "screensaver_type": "starfield" } },
+    { "type": "slider", "id": "screensaver_starfield_speed", "label": "Speed", "min": 1, "max": 400, "step": 1, "when": { "screensaver_type": "starfield" } },
+    { "type": "slider", "id": "screensaver_starfield_fov", "label": "FOV", "min": 1, "max": 800, "step": 1, "when": { "screensaver_type": "starfield" } },
+    { "type": "slider", "id": "screensaver_starfield_tail", "label": "Tail", "min": 1, "max": 40, "step": 1, "when": { "screensaver_type": "starfield" } },
+
+    { "type": "section", "label": "Pipes options", "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_spawn_min_z", "label": "Min Z", "min": 50, "max": 1000, "step": 1, "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_spawn_max_z", "label": "Max Z", "min": 50, "max": 1000, "step": 1, "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_radius", "label": "Radius", "min": 1.5, "max": 12, "step": 0.1, "format": "%.1f", "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_speed", "label": "Speed", "min": 1, "max": 200, "step": 1, "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_turn_chance", "label": "Turn Chance", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "pipes" } },
+    { "type": "checkbox", "id": "screensaver_pipes_avoid_cells", "label": "Avoid cells", "when": { "screensaver_type": "pipes" } },
+    { "type": "checkbox", "id": "screensaver_pipes_show_grid", "label": "Show grid", "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_camera_roll", "label": "Roll", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_camera_drift", "label": "Drift", "min": 1, "max": 200, "step": 1, "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_pipe_count", "label": "Pipes", "min": 1, "max": 13, "step": 1, "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_grid_step", "label": "Grid Step", "min": 8, "max": 64, "step": 1, "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_fov", "label": "FOV", "min": 1, "max": 800, "step": 1, "when": { "screensaver_type": "pipes" } },
+    { "type": "slider", "id": "screensaver_pipes_max_segments", "label": "Max Segments", "min": 10, "max": 2000, "step": 1, "when": { "screensaver_type": "pipes" } },
+    { "type": "checkbox", "id": "screensaver_pipes_show_hud", "label": "Show HUD", "when": { "screensaver_type": "pipes" } },
+
+    { "type": "section", "label": "Model options", "when": { "screensaver_type": "model3d" } },
+    { "type": "slider", "id": "screensaver_model_grid_lat", "label": "Latitude", "min": 8, "max": 96, "step": 1, "when": { "screensaver_type": "model3d" } },
+    { "type": "slider", "id": "screensaver_model_grid_lon", "label": "Longitude", "min": 8, "max": 192, "step": 1, "when": { "screensaver_type": "model3d" } },
+    { "type": "slider", "id": "screensaver_model_morph_speed", "label": "Morph Speed", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "model3d" } },
+    { "type": "checkbox", "id": "screensaver_model_two_sided", "label": "Two-sided", "when": { "screensaver_type": "model3d" } }
+  ]
+}

@@ -28,9 +28,10 @@ function BulletSystem:loadBulletTypes(player_data, game_data)
                 name = game.display_name,
                 damage = perf_data.best_score * self.global_damage_multiplier,
                 fire_rate = (game.bullet_fire_rate or 1) * self.global_fire_rate_multiplier,
-                sprite = game.bullet_sprite or "bullet_basic",
+                sprite = self:resolveBulletSprite(game),
                 special = game.bullet_special,
-                color = self:getColorForGame(game)
+                -- Phase 7.3: Use game's actual palette color
+                color = self:getBulletColorFromPalette(game)
             }
 
             if bullet_type.fire_rate > 0 then
@@ -45,6 +46,58 @@ function BulletSystem:loadBulletTypes(player_data, game_data)
 
     print(string.format("Loaded %d bullet types", #self.bullet_types))
 end
+
+-- Pick a valid sprite for bullets, with graceful fallbacks
+function BulletSystem:resolveBulletSprite(game)
+    local SpriteManager = require('src.utils.sprite_manager').getInstance()
+    SpriteManager:ensureLoaded()
+
+    local candidates = {}
+    if game.bullet_sprite and game.bullet_sprite ~= '' then
+        table.insert(candidates, game.bullet_sprite)
+    end
+
+    -- Category-themed suggestions
+    if game.category == "action" then
+        table.insert(candidates, "windows_slanted-1")
+        table.insert(candidates, "computer_explorer-3")
+    elseif game.category == "arcade" then
+        table.insert(candidates, "world_star-0")
+        table.insert(candidates, "wm-3")
+    elseif game.category == "puzzle" then
+        table.insert(candidates, "wm_file-0")
+        table.insert(candidates, "xml_gear-0")
+    else
+        table.insert(candidates, "world_star-1")
+    end
+
+    -- Final generic fallbacks
+    table.insert(candidates, "world_star-0")
+    table.insert(candidates, "joystick_alt-1")
+
+    for _, name in ipairs(candidates) do
+        if SpriteManager.sprite_loader:hasSprite(name) then
+            return name
+        end
+    end
+    return nil -- Drawing code will fall back to rectangle
+end
+
+function BulletSystem:getBulletColorFromPalette(game)
+    local SpriteManager = require('src.utils.sprite_manager').getInstance()
+    SpriteManager:ensureLoaded()
+    local palette_id = SpriteManager:getPaletteId(game)
+    local palette = SpriteManager.palette_manager:getPalette(palette_id)
+    
+    if palette and palette.colors then
+        -- Use accent color if available, otherwise primary
+        return palette.colors.accent or palette.colors.primary or {1, 1, 1}
+    end
+
+    -- Fallback to category color
+    return self:getColorForGame(game)
+end
+
 
 function BulletSystem:getColorForGame(game)
     if game.category == "action" then return {1, 0, 0}
@@ -161,17 +214,41 @@ function BulletSystem:spawnBullet(bullet_type, player_pos)
     bullet.damage = bullet_type.damage
     bullet.color = bullet_type.color
     bullet.special = bullet_type.special
+    -- Phase 7.3: Assign sprite to bullet
+    bullet.sprite = bullet_type.sprite
+    bullet.id = bullet_type.id -- Pass game_id to bullet for lookup
 
     table.insert(self.active_bullets, bullet)
     self.bullets_fired_this_frame = self.bullets_fired_this_frame + 1 -- Increment counter
 end
 
 
-function BulletSystem:draw()
+function BulletSystem:draw(game_data)
+    local SpriteManager = require('src.utils.sprite_manager').getInstance()
+    SpriteManager:ensureLoaded()
+
     for _, bullet in ipairs(self.active_bullets) do
-        love.graphics.setColor(bullet.color)
-        love.graphics.rectangle('fill', bullet.x - bullet.width/2, bullet.y - bullet.height/2,
-            bullet.width, bullet.height)
+        -- Phase 7.3: Draw bullet sprite instead of rectangle
+        if bullet.sprite and bullet.sprite ~= "bullet_basic" then
+            local game = game_data:getGame(bullet.id)
+            local palette_id = "default"
+            if game then palette_id = SpriteManager:getPaletteId(game) end
+            
+            SpriteManager.sprite_loader:drawSprite(
+                bullet.sprite, 
+                bullet.x - bullet.width/2, 
+                bullet.y - bullet.height/2, 
+                bullet.width * 2, -- Make sprites a bit bigger
+                bullet.height * 2,
+                nil, 
+                palette_id
+            )
+        else
+            -- Fallback to colored rectangle
+            love.graphics.setColor(bullet.color)
+            love.graphics.rectangle('fill', bullet.x - bullet.width/2, bullet.y - bullet.height/2,
+                bullet.width, bullet.height)
+        end
     end
 end
 

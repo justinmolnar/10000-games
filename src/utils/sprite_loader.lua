@@ -8,6 +8,7 @@ function SpriteLoader:init()
     self.sprites = {}
     self.sprite_dir = "assets/sprites/win98/"
     self.loaded = false
+    self.aliases = nil
 end
 
 function SpriteLoader:loadAll()
@@ -35,8 +36,24 @@ function SpriteLoader:loadAll()
         end
     end
     
-    print("[SpriteLoader] Loaded " .. sprite_count .. " sprites")
+    -- Load aliases JSON (optional)
+    self:loadAliases()
+
+    print("[SpriteLoader] Loaded " .. sprite_count .. " sprites" .. (self.aliases and ", with aliases" or ""))
     self.loaded = true
+end
+
+function SpriteLoader:loadAliases()
+    local alias_path = "assets/data/sprite_aliases.json"
+    local ok, contents = pcall(love.filesystem.read, alias_path)
+    if not ok or not contents then
+        return -- Optional
+    end
+    local ok2, data = pcall(require('json').decode, contents)
+    if ok2 and data and data.aliases then
+        self.aliases = data.aliases
+        print("[SpriteLoader] Sprite aliases loaded: " .. tostring((function(t)local c=0 for _ in pairs(t) do c=c+1 end return c end)(self.aliases)))
+    end
 end
 
 function SpriteLoader:loadSprite(sprite_name)
@@ -57,20 +74,34 @@ function SpriteLoader:getSprite(sprite_name)
     if not self.loaded then
         self:loadAll()
     end
-    return self.sprites[sprite_name]
+    local key = sprite_name
+    if self.aliases and self.aliases[key] then
+        key = self.aliases[key]
+    end
+    return self.sprites[key]
 end
 
 function SpriteLoader:hasSprite(sprite_name)
     if not self.loaded then
         self:loadAll()
     end
-    return self.sprites[sprite_name] ~= nil
+    local key = sprite_name
+    if self.aliases and self.aliases[key] then
+        key = self.aliases[key]
+    end
+    return self.sprites[key] ~= nil
 end
 
 function SpriteLoader:drawSprite(sprite_name, x, y, width, height, tint, palette_id)
     local sprite = self:getSprite(sprite_name)
     
     if not sprite then
+        -- One-time warn about missing sprite key to help debug white boxes
+        if not self._warned_missing then self._warned_missing = {} end
+        if not self._warned_missing[sprite_name] then
+            print(string.format('[SpriteLoader] MISSING sprite "%s". Check assets/sprites/win98/win98.txt and callers.', tostring(sprite_name)))
+            self._warned_missing[sprite_name] = true
+        end
         -- Fallback: draw white rectangle with border
         love.graphics.setColor(tint or {1, 1, 1})
         love.graphics.rectangle('fill', x, y, width, height)

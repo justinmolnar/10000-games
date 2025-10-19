@@ -57,7 +57,7 @@ function love.load()
     local StateMachineBuilder = require('controllers.state_machine')
     local CheatSystem = require('models.cheat_system')
     local Config = require('src.config')
-    SettingsManager = require('utils.settings_manager') -- Assign to global
+    SettingsManager = require('src.utils.settings_manager') -- Assign to global
     local Statistics = require('models.statistics')
     local WindowManager = require('models.window_manager')
     local DesktopIcons = require('models.desktop_icons')
@@ -139,10 +139,12 @@ function love.load()
     local CompletionState = require('states.completion_state')
     local DebugState = require('states.debug_state') -- Overlay state
     local DesktopState = require('states.desktop_state')
+    local ScreensaverState = require('states.screensaver_state')
 
     -- Instantiate states that are switched to globally
     local completion_state = CompletionState:new(state_machine, statistics) -- Fullscreen for now
     local debug_state = DebugState:new(player_data, game_data, state_machine, SaveManager) -- Overlay state
+    local screensaver_state = ScreensaverState:new(state_machine)
 
     -- Desktop state now needs more dependencies
     local desktop = DesktopState:new(state_machine, player_data, show_tutorial_on_startup, statistics,
@@ -156,6 +158,7 @@ function love.load()
     state_machine:register('completion', completion_state) -- Launched from Space Defender window signal
     state_machine:register('debug', debug_state) -- Launched via F5
     state_machine:register('desktop', desktop) -- Initial state
+    state_machine:register('screensaver', screensaver_state)
 
     -- States launched as windows (Launcher, VMManager, SpaceDefender, CheatEngine, Settings, Statistics, FileExplorer, MinigameRunner)
     -- are instantiated *by* DesktopState, not registered globally here.

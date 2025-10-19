@@ -13,6 +13,10 @@ local BASE_OBJECT_SPEED = 200
 local WARNING_TIME = 0.5
 local MAX_COLLISIONS = 10
 local BASE_DODGE_TARGET = 30
+local MIN_SAFE_RADIUS_FRACTION = 0.35 -- of min(width,height)
+local SAFE_ZONE_SHRINK_SEC = 45 -- time to reach min radius at base difficulty
+local TARGET_RING_MIN_SCALE = 1.2
+local TARGET_RING_MAX_SCALE = 1.5
 
 function DodgeGame:init(game_data, cheats)
     DodgeGame.super.init(self, game_data, cheats)
@@ -36,6 +40,7 @@ function DodgeGame:init(game_data, cheats)
 
     self.objects = {}
     self.warnings = {}
+    self.time_elapsed = 0
 
     self.spawn_rate = BASE_SPAWN_RATE / self.difficulty_modifiers.count
     self.object_speed = (BASE_OBJECT_SPEED * self.difficulty_modifiers.speed) * speed_modifier
@@ -50,6 +55,23 @@ function DodgeGame:init(game_data, cheats)
 
     self.view = DodgeView:new(self)
     print("[DodgeGame:init] Initialized with default game dimensions:", self.game_width, self.game_height)
+
+    -- Safe zone (Undertale-like arena)
+    local min_dim = math.min(self.game_width, self.game_height)
+    local level_scale = 1 + 0.15 * math.max(0, (self.difficulty_level or 1) - 1) -- faster with clone iteration
+    local drift_speed = 45 * level_scale -- px/sec base
+    local drift_angle = math.random() * math.pi * 2
+    local drift_vx = math.cos(drift_angle) * drift_speed
+    local drift_vy = math.sin(drift_angle) * drift_speed
+    self.safe_zone = {
+        x = self.game_width / 2,
+        y = self.game_height / 2,
+        radius = min_dim * 0.48,
+        min_radius = min_dim * MIN_SAFE_RADIUS_FRACTION,
+        shrink_speed = (min_dim * (0.48 - MIN_SAFE_RADIUS_FRACTION)) / (SAFE_ZONE_SHRINK_SEC / self.difficulty_modifiers.complexity),
+        vx = drift_vx,
+        vy = drift_vy
+    }
 end
 
 function DodgeGame:setPlayArea(width, height)
@@ -67,6 +89,8 @@ function DodgeGame:setPlayArea(width, height)
 end
 
 function DodgeGame:updateGameLogic(dt)
+    self.time_elapsed = self.time_elapsed + dt
+    self:updateSafeZone(dt)
     self:updatePlayer(dt)
 
     self.spawn_timer = self.spawn_timer - dt
@@ -105,8 +129,23 @@ function DodgeGame:updatePlayer(dt)
     self.player.x = self.player.x + dx * PLAYER_SPEED * dt
     self.player.y = self.player.y + dy * PLAYER_SPEED * dt
 
+    -- Clamp to rectangular bounds first
     self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
     self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
+
+    -- Clamp to circular safe zone
+    local sz = self.safe_zone
+    if sz then
+        local dxp = self.player.x - sz.x
+        local dyp = self.player.y - sz.y
+        local dist = math.sqrt(dxp*dxp + dyp*dyp)
+        local max_dist = math.max(0, sz.radius - self.player.radius)
+        if dist > max_dist and dist > 0 then
+            local scale = max_dist / dist
+            self.player.x = sz.x + dxp * scale
+            self.player.y = sz.y + dyp * scale
+        end
+    end
 end
 
 function DodgeGame:updateObjects(dt)
@@ -114,19 +153,83 @@ function DodgeGame:updateObjects(dt)
         local obj = self.objects[i]
         if not obj then goto continue_obj_loop end
 
-        if obj.direction == 'right' then obj.x = obj.x + self.object_speed * dt
-        elseif obj.direction == 'left' then obj.x = obj.x - self.object_speed * dt
-        elseif obj.direction == 'down' then obj.y = obj.y + self.object_speed * dt
-        elseif obj.direction == 'up' then obj.y = obj.y - self.object_speed * dt
+        -- Behavior by type (all use persistent heading/velocity)
+        obj.angle = obj.angle or 0
+        obj.vx = obj.vx or math.cos(obj.angle) * obj.speed
+        obj.vy = obj.vy or math.sin(obj.angle) * obj.speed
+
+        if obj.type == 'seeker' then
+            -- Subtle steering toward player: small max turn rate so they still fly past
+            local tx, ty = self.player.x, self.player.y
+            local desired = math.atan2(ty - obj.y, tx - obj.x)
+            local function angdiff(a,b)
+                local d = (a - b + math.pi) % (2*math.pi) - math.pi
+                return d
+            end
+            local diff = angdiff(desired, obj.angle)
+            local base_turn = math.rad(6) -- degrees/sec at baseline
+            local te = self.time_elapsed or 0
+            local difficulty_scaler = 1 + math.min(2.0, te / 90)
+            local max_turn = base_turn * difficulty_scaler * dt
+            if diff > max_turn then diff = max_turn elseif diff < -max_turn then diff = -max_turn end
+            obj.angle = obj.angle + diff
+            obj.vx = math.cos(obj.angle) * obj.speed
+            obj.vy = math.sin(obj.angle) * obj.speed
+        elseif obj.type == 'zigzag' or obj.type == 'sine' then
+            -- Base velocity along heading with a perpendicular wobble
+            local perp_x = -math.sin(obj.angle)
+            local perp_y =  math.cos(obj.angle)
+            local t = love.timer.getTime() * obj.wave_speed
+            local wobble = math.sin(t + obj.wave_phase) * obj.wave_amp
+            -- wobble is positional; convert to velocity by differentiating approx -> reduce magnitude
+            local wobble_v = wobble * 2.0
+            local vx = obj.vx + perp_x * wobble_v
+            local vy = obj.vy + perp_y * wobble_v
+            obj.x = obj.x + vx * dt
+            obj.y = obj.y + vy * dt
+            goto post_move
+        else
+            obj.x = obj.x + obj.vx * dt
+            obj.y = obj.y + obj.vy * dt
+            goto post_move
+        end
+
+        -- Common position update for seeker after velocity update
+        obj.x = obj.x + obj.vx * dt
+        obj.y = obj.y + obj.vy * dt
+        ::post_move::
+
+        -- Mark when an object has actually entered the playable rectangle
+        if not obj.entered_play then
+            if obj.x > 0 and obj.x < self.game_width and obj.y > 0 and obj.y < self.game_height then
+                obj.entered_play = true
+            end
+        end
+
+        -- Splitter: split when entering safe zone circle (not only on hit)
+        if obj.type == 'splitter' and self.safe_zone then
+            local dxs = obj.x - self.safe_zone.x
+            local dys = obj.y - self.safe_zone.y
+            local inside = (dxs*dxs + dys*dys) <= (self.safe_zone.radius + obj.radius)^2
+            if inside and not obj.was_inside then
+                self:spawnShards(obj, 3)
+                obj.did_split = true
+                table.remove(self.objects, i)
+                goto continue_obj_loop
+            end
+            obj.was_inside = inside
         end
 
         if Collision.checkCircles(self.player.x, self.player.y, self.player.radius, obj.x, obj.y, obj.radius) then
+            -- Count hit, remove (splitter no longer splits here)
             table.remove(self.objects, i)
             self.metrics.collisions = self.metrics.collisions + 1
             if self.metrics.collisions >= self.MAX_COLLISIONS then self:onComplete(); return end
         elseif self:isObjectOffscreen(obj) then
             table.remove(self.objects, i)
-            self.metrics.objects_dodged = self.metrics.objects_dodged + 1
+            if obj.entered_play then
+                self.metrics.objects_dodged = self.metrics.objects_dodged + 1
+            end
             if obj.warned then self.metrics.perfect_dodges = self.metrics.perfect_dodges + 1 end
         end
         ::continue_obj_loop::
@@ -147,56 +250,136 @@ function DodgeGame:updateWarnings(dt)
 end
 
 function DodgeGame:spawnObjectOrWarning()
-    if self.warning_enabled then table.insert(self.warnings, self:createWarning())
-    else table.insert(self.objects, self:createRandomObject(false)) end
+    -- Dynamic spawn rate scaling
+    local accel = 1 + math.min(2.0, self.time_elapsed / 60)
+    self.spawn_rate = (BASE_SPAWN_RATE / self.difficulty_modifiers.count) / accel
+
+    if self.warning_enabled and math.random() < 0.7 then
+        table.insert(self.warnings, self:createWarning())
+    else
+        -- createRandomObject already inserts into self.objects
+        self:createRandomObject(false)
+    end
+end
+
+-- Choose a spawn point just outside the play bounds on a random edge
+function DodgeGame:pickSpawnPoint()
+    -- Spawn just inside the offscreen threshold so first update doesn't cull them
+    local inset = 2
+    local r = OBJECT_RADIUS
+    local edge = math.random(4) -- 1=left,2=right,3=top,4=bottom
+    if edge == 1 then return -r + inset, math.random(0, self.game_height)
+    elseif edge == 2 then return self.game_width + r - inset, math.random(0, self.game_height)
+    elseif edge == 3 then return math.random(0, self.game_width), -r + inset
+    else return math.random(0, self.game_width), self.game_height + r - inset end
+end
+
+-- Pick a point on a larger target ring around the safe zone
+function DodgeGame:pickTargetPointOnRing()
+    local sz = self.safe_zone
+    local scale = TARGET_RING_MIN_SCALE + math.random() * (TARGET_RING_MAX_SCALE - TARGET_RING_MIN_SCALE)
+    local r = (sz and sz.radius or math.min(self.game_width, self.game_height) * 0.4) * scale
+    local a = math.random() * math.pi * 2
+    local cx = sz and sz.x or self.game_width/2
+    local cy = sz and sz.y or self.game_height/2
+    return cx + math.cos(a) * r, cy + math.sin(a) * r
+end
+
+-- Ensure the initial heading points into the play area from the chosen edge
+function DodgeGame:ensureInboundAngle(sx, sy, angle)
+    local vx, vy = math.cos(angle), math.sin(angle)
+    if sx <= 0 then -- left edge
+        if vx <= 0 then angle = math.atan2(vy, math.abs(vx)) end
+    elseif sx >= self.game_width then -- right edge
+        if vx >= 0 then angle = math.atan2(vy, -math.abs(vx)) end
+    elseif sy <= 0 then -- top edge
+        if vy <= 0 then angle = math.atan2(math.abs(vy), vx) end
+    elseif sy >= self.game_height then -- bottom edge
+        if vy >= 0 then angle = math.atan2(-math.abs(vy), vx) end
+    end
+    return angle
 end
 
 function DodgeGame:createWarning()
-    local is_horizontal = math.random() > 0.5
-    local pos, direction
-    local current_object_radius = OBJECT_RADIUS
-    if is_horizontal then
-        pos = math.random(current_object_radius, self.game_height - current_object_radius)
-        direction = math.random() > 0.5 and 'right' or 'left'
-    else
-        pos = math.random(current_object_radius, self.game_width - current_object_radius)
-        direction = math.random() > 0.5 and 'down' or 'up'
-    end
+    local sx, sy = self:pickSpawnPoint()
+    local tx, ty = self:pickTargetPointOnRing()
+    local angle = math.atan2(ty - sy, tx - sx)
+    angle = self:ensureInboundAngle(sx, sy, angle)
     local warning_duration = WARNING_TIME / self.difficulty_modifiers.speed
-    return { type = is_horizontal and 'horizontal' or 'vertical', pos = pos, direction = direction, time = warning_duration }
+    return { type = 'radial', sx = sx, sy = sy, angle = angle, time = warning_duration }
 end
 
 function DodgeGame:createObjectFromWarning(warning)
-    self:createObject(warning.pos, warning.direction, warning.type == 'horizontal', true)
+    self:createObject(warning.sx, warning.sy, warning.angle, true)
 end
 
 function DodgeGame:createRandomObject(warned_status)
-    local is_horizontal = math.random() > 0.5
-    local direction = is_horizontal and (math.random() > 0.5 and 'right' or 'left') or (math.random() > 0.5 and 'down' or 'up')
-    local pos
-    local current_object_radius = OBJECT_RADIUS
-    if is_horizontal then
-        pos = math.random(current_object_radius, self.game_height - current_object_radius)
-    else
-        pos = math.random(current_object_radius, self.game_width - current_object_radius)
+    local sx, sy = self:pickSpawnPoint()
+    local tx, ty = self:pickTargetPointOnRing()
+    local angle = math.atan2(ty - sy, tx - sx)
+    angle = self:ensureInboundAngle(sx, sy, angle)
+    -- Choose type by weighted randomness scaling with time
+    local t = self.time_elapsed
+    local weights = {
+        linear = 50,
+        zigzag = 22 + t * 0.30,
+        sine = 18 + t * 0.22,
+        seeker = 4 + t * 0.08,   -- much rarer and scales gently over time
+        splitter = 7 + t * 0.18
+    }
+    local function pick(w)
+        local sum = 0; for _,v in pairs(w) do sum = sum + v end
+        local r = math.random() * sum
+        for k,v in pairs(w) do r = r - v; if r <= 0 then return k end end
+        return 'linear'
     end
-    self:createObject(pos, direction, is_horizontal, warned_status)
+    local kind = pick(weights)
+    self:createObject(sx, sy, angle, warned_status, kind)
 end
 
-function DodgeGame:createObject(position, direction, is_horizontal, was_warned)
+function DodgeGame:createObject(spawn_x, spawn_y, angle, was_warned, kind)
     local obj = {
-        direction = direction,
         warned = was_warned,
-        radius = OBJECT_RADIUS
+        radius = OBJECT_RADIUS,
+        type = kind or 'linear',
+        speed = self.object_speed * (kind == 'seeker' and 0.9 or kind == 'splitter' and 0.8 or kind == 'zigzag' and 1.1 or kind == 'sine' and 1.0 or 1.0)
     }
-    if is_horizontal then
-        obj.y = position
-        obj.x = (direction == 'right') and -obj.radius or (self.game_width + obj.radius)
-    else
-        obj.x = position
-        obj.y = (direction == 'down') and -obj.radius or (self.game_height + obj.radius)
+    obj.x = spawn_x
+    obj.y = spawn_y
+    -- Heading toward chosen target angle
+    obj.angle = angle or 0
+    obj.vx = math.cos(obj.angle) * obj.speed
+    obj.vy = math.sin(obj.angle) * obj.speed
+
+    if obj.type == 'zigzag' or obj.type == 'sine' then
+        obj.wave_speed = 6 + math.random()*4
+        obj.wave_amp = 30
+        obj.wave_phase = math.random()*math.pi*2
     end
     table.insert(self.objects, obj)
+    return obj
+end
+
+function DodgeGame:spawnShards(parent, count)
+    local n = count or 2
+    for i=1,n do
+        -- Emit shards around parent's current heading with some spread
+        local spread = math.rad(35)
+        local a = parent.angle + (math.random()*2 - 1) * spread
+        local shard = {
+            x = parent.x,
+            y = parent.y,
+            radius = math.max(6, math.floor(parent.radius * 0.6)),
+            type = 'linear',
+            -- about 70% slower than previous 1.2x => ~0.36x base speed
+            speed = self.object_speed * 0.36,
+            warned = false
+        }
+        shard.angle = a
+        shard.vx = math.cos(shard.angle) * shard.speed
+        shard.vy = math.sin(shard.angle) * shard.speed
+        table.insert(self.objects, shard)
+    end
 end
 
 function DodgeGame:isObjectOffscreen(obj)
@@ -205,8 +388,32 @@ function DodgeGame:isObjectOffscreen(obj)
            obj.y < -obj.radius or obj.y > self.game_height + obj.radius
 end
 
+function DodgeGame:updateSafeZone(dt)
+    local sz = self.safe_zone
+    if not sz then return end
+    -- Shrink toward min radius
+    if sz.radius > sz.min_radius then
+        sz.radius = math.max(sz.min_radius, sz.radius - sz.shrink_speed * dt)
+    end
+    -- Drift and bounce (slight acceleration over time)
+    local accel = 1 + math.min(1.0, (self.time_elapsed or 0) / 90)
+    sz.x = sz.x + sz.vx * accel * dt
+    sz.y = sz.y + sz.vy * accel * dt
+    local margin = sz.radius
+    if sz.x - sz.radius < 0 or sz.x + sz.radius > self.game_width then sz.vx = -sz.vx; sz.x = math.max(sz.radius, math.min(self.game_width - sz.radius, sz.x)) end
+    if sz.y - sz.radius < 0 or sz.y + sz.radius > self.game_height then sz.vy = -sz.vy; sz.y = math.max(sz.radius, math.min(self.game_height - sz.radius, sz.y)) end
+end
+
 function DodgeGame:checkComplete()
     return self.metrics.collisions >= self.MAX_COLLISIONS or self.metrics.objects_dodged >= self.dodge_target
+end
+
+-- Report progress toward goal for token gating (0..1)
+function DodgeGame:getCompletionRatio()
+    if self.dodge_target and self.dodge_target > 0 then
+        return math.min(1.0, (self.metrics.objects_dodged or 0) / self.dodge_target)
+    end
+    return 1.0
 end
 
 function DodgeGame:keypressed(key)

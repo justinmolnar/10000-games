@@ -23,6 +23,8 @@ function FileExplorerView:init(controller)
     -- Click tracking for double-click
     self.last_click_item = nil
     self.last_click_time = 0
+
+    -- No modal rendering here; Control Panel applets launch as separate windows
 end
 
 function FileExplorerView:updateLayout(width, height)
@@ -49,7 +51,8 @@ function FileExplorerView:update(dt, viewport_width, viewport_height)
         return
     end
 
-    -- Check toolbar buttons (pass is_recycle_bin context)
+    -- Check toolbar buttons (pass is_recycle_bin context). If modal open, toolbar is disabled.
+    if self.controller.modal_applet then return end
     local is_recycle_bin = (self.controller.current_path == "/Recycle Bin")
     self.hovered_button = self:getButtonAtPosition(local_mx, local_my, is_recycle_bin)
 
@@ -92,6 +95,7 @@ function FileExplorerView:drawWindowed(current_path, contents, selected_item, vi
 
     -- Status bar
     self:drawStatusBar(0, viewport_height - self.status_bar_height, viewport_width, contents)
+
 end
 
 function FileExplorerView:drawToolbar(x, y, width, can_go_back, can_go_forward, is_recycle_bin)
@@ -256,6 +260,15 @@ function FileExplorerView:drawItemIcon(x, y, size, item)
     elseif item.type == "executable" then color = item.icon or {0, 0.5, 0}
     elseif item.type == "file" then color = {1, 1, 1}
     elseif item.type == "deleted" then color = item.icon or {0.7, 0.7, 0.7}
+    elseif item.type == "special" then
+        -- Distinguish control panel applets by color
+        if item.special_type == 'control_panel_general' then
+            color = {0.6, 0.8, 1.0}
+        elseif item.special_type == 'control_panel_screensavers' then
+            color = {1.0, 0.8, 0.4}
+        else
+            color = {0.85, 0.85, 0.85}
+        end
     end
 
     -- Draw icon color square
@@ -315,7 +328,7 @@ function FileExplorerView:drawStatusBar(x, y, width, contents)
     love.graphics.print(count_text, x + 10, y + 2, 0, 0.85, 0.85)
 end
 
-function FileExplorerView:mousepressed(x, y, button, contents, viewport_width, viewport_height)
+function FileExplorerView:mousepressed(x, y, button, contents, viewport_width, viewport_height, is_modal)
     -- x, y are LOCAL coords relative to content area (0,0)
 
     -- Check toolbar buttons first (using local coords)
@@ -330,6 +343,22 @@ function FileExplorerView:mousepressed(x, y, button, contents, viewport_width, v
         if toolbar_button == "empty_recycle_bin" then return { name = "empty_recycle_bin" } end
         -- If button check returned an ID but it's disabled, consume the click
         return nil
+    end
+
+    -- Special handling for Control Panel applets input
+    local current_item = self.controller.file_system:getItem(self.controller.current_path)
+    if current_item and current_item.type == 'special' and (current_item.special_type == 'control_panel_general' or current_item.special_type == 'control_panel_screensavers') then
+        local content_y = self.toolbar_height + self.address_bar_height
+        local content_h = viewport_height - content_y - self.status_bar_height
+        if y >= content_y and y <= content_y + content_h then
+            local local_y = y - content_y
+            local ev = self.control_panel_view:mousepressed(x, local_y, button, current_item.special_type, viewport_width, content_h)
+            if ev then
+                return ev
+            else
+                return { name = 'noop' } -- consume click in applet area
+            end
+        end
     end
 
     -- Check item list (using local coords)
@@ -381,6 +410,10 @@ function FileExplorerView:wheelmoved(x, y, viewport_width, viewport_height)
     elseif y < 0 then -- Scroll down
         self.scroll_offset = math.min(max_scroll, self.scroll_offset + 1)
     end
+end
+
+function FileExplorerView:mousemoved(x, y, dx, dy, viewport_width, viewport_height, is_modal)
+    -- No modal-specific handling
 end
 
 function FileExplorerView:getButtonAtPosition(x, y, is_recycle_bin)

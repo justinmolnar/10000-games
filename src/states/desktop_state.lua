@@ -101,6 +101,12 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
     -- Store cursors (created in main.lua)
     self.cursors = {} -- This will be populated by main.lua
 
+    -- Screensaver idle timer
+    self.idle_timer = 0
+    local SettingsManager = require('src.utils.settings_manager')
+    self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or 10
+    self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
+
     print("[DesktopState:init] Initialization finished.") -- Debug End
 end
 
@@ -155,6 +161,25 @@ function DesktopState:update(dt)
     local cursor_type = self.window_controller:getCursorType(mx, my, self.window_chrome)
     local cursor_obj = self.cursors[cursor_type] or self.cursors["arrow"]
     if cursor_obj then love.mouse.setCursor(cursor_obj) end
+
+    -- Refresh screensaver settings live (in-memory from SettingsManager)
+    local SettingsManager = require('src.utils.settings_manager')
+    self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
+    self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or 10
+
+    -- Screensaver idle tracking
+    if self.screensaver_enabled then
+        self.idle_timer = self.idle_timer + dt
+        if self.idle_timer >= (self.screensaver_timeout or 10) then
+            if self.state_machine and self.state_machine.states['screensaver'] then
+                self.state_machine:switch('screensaver')
+                self.idle_timer = 0
+                return
+            end
+        end
+    else
+        self.idle_timer = 0
+    end
 end
 
 function DesktopState:updateClock()
@@ -248,6 +273,7 @@ function DesktopState:drawWindow(window)
 end
 
 function DesktopState:mousepressed(x, y, button)
+    self.idle_timer = 0
     -- If tutorial is showing, it consumes all input
     if self.show_tutorial then
         local event = self.tutorial_view:mousepressed(x, y, button)
@@ -487,15 +513,32 @@ function DesktopState:_handleWindowClick(window, x, y, button)
 end
 
 function DesktopState:mousemoved(x, y, dx, dy)
+    self.idle_timer = 0
     -- Forward to window controller first (handles window drag/resize)
     -- Pass self.window_chrome instance
     self.window_controller:mousemoved(x, y, dx, dy, self.window_chrome)
 
     -- If an icon drag is active, update visual position (drawing handles this)
     -- No model update needed here, only on release
+
+    -- Forward mouse move to focused window's state with content-relative coords (for in-window drags)
+    local focused_id = self.window_manager:getFocusedWindowId()
+    if focused_id then
+        local window = self.window_manager:getWindowById(focused_id)
+        local window_data = self.window_states[focused_id]
+        local window_state = window_data and window_data.state
+        if window and window_state and window_state.mousemoved then
+            local content_bounds = self.window_chrome:getContentBounds(window)
+            local local_x = x - content_bounds.x
+            local local_y = y - content_bounds.y
+            -- Call without guarding for bounds so drags outside still get updates
+            pcall(window_state.mousemoved, window_state, local_x, local_y, dx, dy)
+        end
+    end
 end
 
 function DesktopState:mousereleased(x, y, button)
+    self.idle_timer = 0
     -- Forward to window controller first
     self.window_controller:mousereleased(x, y, button)
 
@@ -622,6 +665,20 @@ function DesktopState:mousereleased(x, y, button)
         self.desktop_icons:setPosition(dropped_icon_id, final_x, final_y, screen_w, screen_h)
         self.desktop_icons:save()
         print("Dropped icon", dropped_icon_id, "at final position", final_x, final_y)
+    end
+
+    -- Forward mouse release to focused window's state (content-relative)
+    local focused_id = self.window_manager:getFocusedWindowId()
+    if focused_id then
+        local window = self.window_manager:getWindowById(focused_id)
+        local window_data = self.window_states[focused_id]
+        local window_state = window_data and window_data.state
+        if window and window_state and window_state.mousereleased then
+            local content_bounds = self.window_chrome:getContentBounds(window)
+            local local_x = x - content_bounds.x
+            local local_y = y - content_bounds.y
+            pcall(window_state.mousereleased, window_state, local_x, local_y, button)
+        end
     end
 end
 
@@ -764,6 +821,7 @@ function DesktopState:handleWindowEvent(event, x, y, button)
 end
 
 function DesktopState:keypressed(key)
+    self.idle_timer = 0
     if self.show_tutorial then
         local event = self.tutorial_view:keypressed(key)
         if event and event.name == "dismiss_tutorial" then self:dismissTutorial() end
@@ -852,6 +910,7 @@ function DesktopState:keypressed(key)
 end
 
 function DesktopState:textinput(text)
+    self.idle_timer = 0
      local focused_id = self.window_manager:getFocusedWindowId()
     if focused_id then
         local window_data = self.window_states[focused_id]
@@ -873,6 +932,7 @@ function DesktopState:textinput(text)
 end
 
 function DesktopState:wheelmoved(x, y)
+    self.idle_timer = 0
     -- Send to focused window first
     local focused_id = self.window_manager:getFocusedWindowId()
     if focused_id then
@@ -967,8 +1027,32 @@ function DesktopState:launchProgram(program_id, ...)
         end
     end
 
-    local require_ok, StateClass = pcall(require, program.state_class_path:gsub("%.", "/"))
-    if not require_ok or not StateClass then print("ERROR loading state class '" .. program.state_class_path .. "': " .. tostring(StateClass)); return end
+    local module_name_slash = program.state_class_path:gsub("%.", "/")
+    local require_ok, StateClass = pcall(require, module_name_slash)
+    if not require_ok or not StateClass then
+        local err = tostring(StateClass)
+        print("ERROR loading state class '" .. program.state_class_path .. "': " .. err)
+        -- If we hit Lua's 'loop or previous error' cache, clear and retry once to surface the real cause
+        if err:find("previous error loading module", 1, true) or err:find("loop or previous error", 1, true) then
+            -- Try to extract the exact failing module from the error text and purge it as well
+            local offending = err:match("module '([^']+)'%s-") or err:match("no field package%.preload%['([^']+)'%]")
+            if offending then
+                package.loaded[offending] = nil
+                package.loaded[offending:gsub('%.','/')] = nil
+            end
+            package.loaded[program.state_class_path] = nil
+            package.loaded[module_name_slash] = nil
+            local retry_ok, RetryClass = pcall(require, module_name_slash)
+            if not retry_ok or not RetryClass then
+                print("Retry require failed for '" .. program.state_class_path .. "': " .. tostring(RetryClass))
+                return
+            else
+                StateClass = RetryClass
+            end
+        else
+            return
+        end
+    end
 
     local state_args = {}
     local missing_deps = {}

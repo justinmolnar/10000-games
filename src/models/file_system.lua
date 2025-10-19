@@ -39,7 +39,7 @@ function FileSystem:createDefaultFilesystem()
     self.filesystem = {
         ["/"] = {
             type = "folder",
-            children = {"My Computer", "Recycle Bin"}
+            children = {"My Computer", "Control Panel", "Recycle Bin"}
         },
         ["/My Computer"] = {
             type = "folder",
@@ -92,6 +92,19 @@ function FileSystem:createDefaultFilesystem()
         ["/Recycle Bin"] = {
             type = "special",
             special_type = "recycle_bin"
+        },
+        -- Control Panel structure
+        ["/Control Panel"] = {
+            type = "folder",
+            children = {"General", "Screensavers"}
+        },
+        ["/Control Panel/General"] = {
+            type = "executable",
+            program_id = "control_panel_general"
+        },
+        ["/Control Panel/Screensavers"] = {
+            type = "executable",
+            program_id = "control_panel_screensavers"
         }
     }
 end

@@ -82,4 +82,9 @@ function BaseGame:calculatePerformance()
     return self.data.formula_function(self.metrics)
 end
 
+-- Completion ratio: override in games to report progress toward their core goal (0..1)
+function BaseGame:getCompletionRatio()
+    return 1.0
+end
+
 return BaseGame

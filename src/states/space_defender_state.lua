@@ -349,15 +349,24 @@ function SpaceDefenderState:draw()
 
     if self.bullet_system then
         local FINAL_MVP_LEVEL = 5
-        self.view:draw(
-            self.player_ship, self.enemies, self.boss, self.boss_active,
-            self.bullet_system, self.current_wave,
-            (self.current_level_data and #self.current_level_data.waves or 0),
-            self.current_level, self.tokens_earned,
-            self.level_complete and self.current_level ~= FINAL_MVP_LEVEL,
-            self.game_over, self.paused,
-            self.viewport.width, self.viewport.height
-        )
+        local draw_args = {
+            player = self.player_ship,
+            enemies = self.enemies,
+            boss = self.boss,
+            boss_active = self.boss_active,
+            bullet_system = self.bullet_system,
+            current_wave = self.current_wave,
+            total_waves = (self.current_level_data and #self.current_level_data.waves or 0),
+            current_level = self.current_level,
+            tokens_earned = self.tokens_earned,
+            level_complete = self.level_complete and self.current_level ~= FINAL_MVP_LEVEL,
+            game_over = self.game_over,
+            paused = self.paused,
+            width = self.viewport.width,
+            height = self.viewport.height,
+            game_data = self.game_data
+        }
+        self.view:draw(draw_args)
     else
         love.graphics.setColor(1, 0, 0)
         love.graphics.print("Error: BulletSystem not loaded!", 10, 10)

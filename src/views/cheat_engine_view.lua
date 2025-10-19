@@ -1,6 +1,8 @@
 -- src/views/cheat_engine_view.lua
 local Object = require('class')
 local UIComponents = require('src.views.ui_components')
+local FormulaRenderer = require('src.views.formula_renderer')
+local SpriteManager = require('src.utils.sprite_manager').getInstance()
 local CheatEngineView = Object:extend('CheatEngineView')
 
 function CheatEngineView:init(controller)
@@ -21,6 +23,8 @@ function CheatEngineView:init(controller)
     self.hovered_game_id = nil
     self.hovered_cheat_id = nil
     self.hovered_button_id = nil -- Includes unlock_ce, purchase_cheat, launch
+
+    self.formula_renderer = FormulaRenderer:new()
 end
 
 function CheatEngineView:updateLayout(viewport_width, viewport_height)
@@ -302,9 +306,20 @@ function CheatEngineView:drawPanel(x, y, w, h, title)
     love.graphics.setColor(0, 1, 0)
     love.graphics.print(title, x + 5, y + 4)
 
-     -- Inner background for content area
-     love.graphics.setColor(0.05, 0.05, 0.05)
-     love.graphics.rectangle('fill', x+1, y+21, w-2, h-22)
+    -- Inner background for content area
+    love.graphics.setColor(0.05, 0.05, 0.05)
+    love.graphics.rectangle('fill', x+1, y+21, w-2, h-22)
+
+    -- Phase 7.2: Show game's sprite set when game selected
+    if title == "Memory Editor" and self.controller and self.controller.selected_game then
+        SpriteManager:ensureLoaded()
+        local game = self.controller.selected_game
+        local palette_id = SpriteManager:getPaletteId(game)
+        local icon_sprite = SpriteManager:getMetricSprite(game, game.metrics_tracked[1] or "default")
+        if icon_sprite then
+            SpriteManager.sprite_loader:drawSprite(icon_sprite, x + w - 50, y + 25, 48, 48, {1,1,1,0.1}, palette_id)
+        end
+    end
 end
 
 function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, available_cheats, viewport_width, viewport_height)

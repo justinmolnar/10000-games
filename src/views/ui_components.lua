@@ -30,6 +30,53 @@ function UIComponents.drawButton(x, y, w, h, text, enabled, hovered)
     love.graphics.print(text, x + (w - text_width) / 2, y + (h - text_height) / 2)
 end
 
+-- Draw a dropdown (collapsed) with a caret indicator
+function UIComponents.drawDropdown(x, y, w, h, text, enabled, hovered)
+    -- Background similar to button but neutral
+    if not enabled then
+        love.graphics.setColor(0.85, 0.85, 0.85)
+    elseif hovered then
+        love.graphics.setColor(0.92, 0.92, 0.98)
+    else
+        love.graphics.setColor(0.95, 0.95, 0.98)
+    end
+    love.graphics.rectangle('fill', x, y, w, h)
+    love.graphics.setColor(0.5, 0.5, 0.5)
+    love.graphics.rectangle('line', x, y, w, h)
+    -- Text
+    love.graphics.setColor(0, 0, 0)
+    local font = love.graphics.getFont()
+    local text_width = font:getWidth(text)
+    local text_height = font:getHeight()
+    love.graphics.print(text, x + 8, y + (h - text_height) / 2)
+    -- Caret (triangle) on the right
+    local cx = x + w - 12
+    local cy = y + h / 2
+    love.graphics.polygon('fill', cx-5, cy-2, cx+5, cy-2, cx, cy+4)
+end
+
+-- Draw the expanded dropdown list; items is an array of strings.
+-- Returns nothing; caller manages hit rects.
+function UIComponents.drawDropdownList(x, y, w, item_h, items, selected_index)
+    local count = #items
+    local h = count * item_h
+    -- Panel
+    love.graphics.setColor(0.97, 0.97, 1.0)
+    love.graphics.rectangle('fill', x, y, w, h)
+    love.graphics.setColor(0.5, 0.5, 0.5)
+    love.graphics.rectangle('line', x, y, w, h)
+    -- Items
+    for i, label in ipairs(items) do
+        local iy = y + (i-1) * item_h
+        if selected_index == i then
+            love.graphics.setColor(0.85, 0.9, 1.0)
+            love.graphics.rectangle('fill', x+1, iy+1, w-2, item_h-2)
+        end
+        love.graphics.setColor(0, 0, 0)
+        love.graphics.print(tostring(label), x + 8, iy + 3)
+    end
+end
+
 function UIComponents.drawTokenCounter(x, y, tokens)
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("Tokens: ", x, y, 0, 1.5, 1.5)
@@ -64,6 +111,21 @@ function UIComponents.drawWindow(x, y, w, h, title)
     -- Border
     love.graphics.setColor(0.5, 0.5, 0.5)
     love.graphics.rectangle('line', x, y, w, h)
+end
+
+-- Draw standard dialog buttons aligned to the right; returns rects for hit testing
+function UIComponents.drawDialogButtons(w, h, applyEnabled)
+    local bw, bh = 70, 24
+    local spacing = 10
+    local right_margin, bottom_margin = 16, 16
+    local ok_x = w - right_margin - (bw*3 + spacing*2)
+    local cancel_x = ok_x + bw + spacing
+    local apply_x = cancel_x + bw + spacing
+    local by = h - bottom_margin - bh
+    UIComponents.drawButton(ok_x, by, bw, bh, 'OK', true, false)
+    UIComponents.drawButton(cancel_x, by, bw, bh, 'Cancel', true, false)
+    UIComponents.drawButton(apply_x, by, bw, bh, 'Apply', applyEnabled ~= false, false)
+    return {x=ok_x,y=by,w=bw,h=bh}, {x=cancel_x,y=by,w=bw,h=bh}, {x=apply_x,y=by,w=bw,h=bh}
 end
 
 function UIComponents.drawProgressBar(x, y, w, h, progress, bg_color, fill_color)
