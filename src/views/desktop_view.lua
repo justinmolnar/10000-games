@@ -138,6 +138,63 @@ function DesktopView:draw(wallpaper_color, tokens, start_menu_open, run_dialog_o
     end
 end
 
+function DesktopView:drawIcon(program, hovered, position_override, is_dragging)
+    local SpriteLoader = require('src.utils.sprite_loader')
+    local sprite_loader = SpriteLoader.getInstance()
+    
+    local pos = position_override or self.desktop_icons:getPosition(program.id) or self:getDefaultIconPosition(program.id)
+    local px = pos.x
+    local py = pos.y
+    local pw, ph = self.desktop_icons:getIconDimensions()
+
+    local base_alpha = is_dragging and 0.6 or 1.0
+
+    -- Icon area
+    local icon_size = 48
+    local icon_x = px + (pw - icon_size) / 2
+    local icon_y = py + 10
+    
+    -- Draw icon sprite or fallback
+    local sprite_name = program.icon_sprite
+    local tint = {1, 1, 1, base_alpha}
+    
+    if hovered then
+        tint = {1.2, 1.2, 1.2, base_alpha}
+    end
+    
+    -- Special handling for Recycle Bin state
+    if program.id == "recycle_bin" then
+        local isEmpty = self.recycle_bin:isEmpty()
+        sprite_name = isEmpty and "recycle_bin_empty-0" or "recycle_bin_full-0"
+    end
+    
+    sprite_loader:drawSprite(sprite_name, icon_x, icon_y, icon_size, icon_size, tint)
+    
+    -- Recycle bin fullness indicator
+    if program.id == "recycle_bin" and not self.recycle_bin:isEmpty() then
+        love.graphics.setColor(1, 1, 0, base_alpha)
+        love.graphics.circle('fill', icon_x + icon_size - 5, icon_y + 5, 4)
+    end
+
+    -- Label background and text
+    love.graphics.setColor(1, 1, 1, base_alpha)
+    local label_y = icon_y + icon_size + 5
+    local font = love.graphics.getFont()
+    local text_width = font:getWidth(program.name)
+    local label_x = px + (pw - text_width) / 2
+
+    love.graphics.setColor(0, 0, 0, 0.5 * base_alpha)
+    love.graphics.rectangle('fill', label_x - 2, label_y - 1, text_width + 4, font:getHeight() + 2)
+    love.graphics.setColor(1, 1, 1, base_alpha)
+    love.graphics.print(program.name, label_x, label_y)
+
+    -- Disabled overlay
+    if program.disabled then
+        love.graphics.setColor(0, 0, 0, 0.5 * base_alpha)
+        love.graphics.rectangle('fill', px, py, pw, ph)
+    end
+end
+
 function DesktopView:mousepressed(x, y, button)
      -- Only needed for initial click detection before state takes over
      if button ~= 1 then return nil end
@@ -259,58 +316,7 @@ function DesktopView:getRecycleBinPosition()
     return { x = pos.x, y = pos.y, w = w, h = h }
 end
 
--- Drawing methods
-function DesktopView:drawIcon(program, hovered, position_override, is_dragging)
-    local pos = position_override or self.desktop_icons:getPosition(program.id) or self:getDefaultIconPosition(program.id)
-    local px = pos.x
-    local py = pos.y
-    local pw, ph = self.desktop_icons:getIconDimensions()
 
-    local base_alpha = is_dragging and 0.6 or 1.0 -- Make dragged icon semi-transparent
-
-    -- Special handling for Recycle Bin state
-    local icon_color = program.icon_color
-    if program.id == "recycle_bin" then
-         local isEmpty = self.recycle_bin:isEmpty()
-         -- Use different colors/visuals based on isEmpty, e.g.:
-         -- icon_color = isEmpty and {0.6, 0.6, 0.6} or {0.9, 0.9, 0.9} -- Simple color change
-         -- Or load different sprites later
-         -- For now, just add a small indicator
-    end
-
-    if hovered then love.graphics.setColor(icon_color[1] * 1.2, icon_color[2] * 1.2, icon_color[3] * 1.2, base_alpha)
-    else love.graphics.setColor(icon_color[1], icon_color[2], icon_color[3], base_alpha) end
-
-    local icon_size = 48
-    local icon_x = px + (pw - icon_size) / 2
-    local icon_y = py + 10
-    love.graphics.rectangle('fill', icon_x, icon_y, icon_size, icon_size)
-
-    -- Recycle bin fullness indicator (simple example)
-    if program.id == "recycle_bin" and not self.recycle_bin:isEmpty() then
-         love.graphics.setColor(1,1,0, base_alpha) -- Yellow dot when full
-         love.graphics.circle('fill', icon_x + icon_size - 5, icon_y + 5, 4)
-    end
-
-    love.graphics.setColor(0, 0, 0, base_alpha)
-    love.graphics.rectangle('line', icon_x, icon_y, icon_size, icon_size)
-
-    love.graphics.setColor(1, 1, 1, base_alpha)
-    local label_y = icon_y + icon_size + 5
-    local font = love.graphics.getFont()
-    local text_width = font:getWidth(program.name)
-    local label_x = px + (pw - text_width) / 2
-
-    love.graphics.setColor(0, 0, 0, 0.5 * base_alpha)
-    love.graphics.rectangle('fill', label_x - 2, label_y - 1, text_width + 4, font:getHeight() + 2)
-    love.graphics.setColor(1, 1, 1, base_alpha)
-    love.graphics.print(program.name, label_x, label_y)
-
-    if program.disabled then
-        love.graphics.setColor(0, 0, 0, 0.5 * base_alpha)
-        love.graphics.rectangle('fill', px, py, pw, ph)
-    end
-end
 
 function DesktopView:drawTaskbar(tokens)
     local y = love.graphics.getHeight() - self.taskbar_height

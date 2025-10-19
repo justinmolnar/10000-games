@@ -1,51 +1,261 @@
-# AI Development Guidelines for "10,000 Games Collection" - **REVISED AND SIMPLIFIED**
+UI/UX Upgrade Action Plan: Visual Sprite-Based Game Identity System
+Phase 1: Asset Collection & Organization
+Step 1.1: Define Sprite Categories
 
-This document outlines the **STRICT** rules and coding standards to follow when using an AI assistant (like Gemini) to generate or modify code for this project. **FAILURE TO FOLLOW THESE RULES, ESPECIALLY REGARDING CODE BLOCKS, WILL RESULT IN IMMEDIATE CORRECTION.**
+Identify all visual elements needed per game type:
 
-## 1. Code Presentation - **MANDATORY RULES**
+Space Shooter: Player ship, enemy types, bullets, lives icon, kill icon
+Snake: Snake head, snake body, food items, obstacle types
+Memory: Card back designs, card face symbols
+Dodge: Player sprite, obstacle types, collision icon
+Hidden Object: Background patterns, object types, cursor/finder icon
 
-**1.1. CODE BLOCK FORMATTING - THE CARDINAL RULE:**
 
-* **ONE ITEM PER BLOCK:** Each code block MUST contain EXACTLY ONE complete item:
-    * Either ONE **entire, non-truncated file**.
-    * Or ONE **complete, non-truncated function**.
-* **NO INSTRUCTIONS INSIDE BLOCKS:** Code blocks contain ONLY CODE. Absolutely NO comments, explanations, instructions (like `-- Add this function` or `// Replace below`), or any non-code text are permitted inside the ``` ``` delimiters, unless it's actual code comments intrinsic to the function/file itself.
-* **NO TRUNCATION:** Files and functions provided MUST be complete. Do NOT use "..." or omit sections.
-* **VIOLATION:** Including instructions, comments about changes, or multiple files/functions within a single code block is a direct violation of this rule and will be rejected.
 
-**1.2. INSTRUCTIONS OUTSIDE CODE BLOCKS:**
+Step 1.2: Collect Base Sprite Sets
 
-* **MINIMAL TEXT:** Keep explanatory text concise.
-* **REQUIRED INFO:** For each code block provided, state ONLY:
-    * The **full, exact file path** the code belongs to.
-    * The **action** (e.g., "Replace entire file", "Replace function `functionName`", "Add function `functionName`", "Create new file").
-* **NO LONG EXPLANATIONS:** Do NOT provide lengthy descriptions of what the code does or the changes made unless specifically requested. Assume the user understands the code's purpose from the context and the code itself.
+Gather 8-12 base sprite sets per game type
+Ensure sprites are simple, distinct, and recognizable at small sizes (16x16 to 32x32)
+Prioritize public domain or easily licensed assets
+Document source and license for each sprite set
 
-**1.3. TESTING GUIDANCE:**
+Step 1.3: Create Sprite Metadata Structure
 
-* **CONSOLIDATED AT END:** ALL testing guidance MUST be grouped together in a single section at the VERY END of the entire response, *after* all code blocks and their minimal instructions.
-* **BE SPECIFIC:** Provide clear, numbered steps on *how* to test the changes to verify correctness.
-* **EXPECTED OUTCOME:** Briefly state the expected result of the changes.
+Design JSON structure to map sprites to games:
 
-## 2. Architectural Principles
+game_id → sprite_set_id → individual sprite paths
+Include metadata: base color palette, theme name
+Link sprites to formula components (e.g., "enemy_sprite" for kills metric)
 
-* **Dependency Injection:** Inject only **specific dependencies** (`player_data`, `state_machine`, etc.) via constructors (`init`). NO god objects. NO global variables for state sharing.
-* **MVC / State Pattern:**
-    * **Models:** Data and logic only. No rendering. Unaware of views/states.
-    * **Views:** Handle ALL drawing. Stateful UI classes. Input methods return simple events/data. Receive data from Controller/State.
-    * **Controllers / States:** Mediate. Handle flow, update models, pass data to views. Game logic belongs in `src/games/` instances.
-* **State Machine:** Use the central state machine for major section transitions.
 
-## 3. Code Quality & Refactoring Practices
 
-* **`require` at Top:** All `require` calls at file scope (top of file), outside functions, unless dynamically loading game classes.
-* **Externalize Data:** Game definitions, level data, etc., MUST be in JSON files (`assets/data/`). Use `pcall` safely if loading functions from data strings.
-* **NO Magic Numbers:** Use named constants (top of file or `config.lua`).
-* **Central Config:** Tuning parameters (costs, multipliers, speeds, timers) belong in `config.lua`.
-* **Use Utilities:** Use `collision.lua`, `ui_components.lua`, etc., consistently.
-* **Safe Update Flow:** Use patterns like `updateBase()` + `updateGameLogic()` for inherited classes to avoid mandatory `super` calls in subclasses.
-* **Object Pooling:** Use for frequently created/destroyed objects (e.g., bullets).
-* **Input Handling:** Active state/view handles input first. Return `true` if handled. Global shortcuts only if unhandled.
-* **Error Handling:** Use `pcall` for file I/O, JSON parsing, `loadstring`, etc.
 
-**Adherence to Rule 1.1 is PARAMOUNT.** Follow these guidelines precisely to ensure code quality and maintainability.
+Phase 2: Palette Swap System Implementation
+Step 2.1: Design Color Palette System
+
+Define palette structure: base colors, accent colors, UI colors
+Create 8-12 distinct palette variations per base sprite set
+Document palette themes (e.g., "Neon", "Retro", "Pastel", "Military")
+
+Step 2.2: Implement Shader-Based Palette Swapping
+
+Research LÖVE2D shader capabilities for color replacement
+Design shader that can remap source colors to target palette
+Create utility function to apply palette swap to sprites at load time
+Test performance impact of real-time vs pre-processed swaps
+
+Step 2.3: Generate Variant Mappings
+
+Create combinatorial system: Base Sprite Set × Palette = Unique Visual Identity
+Map each of 40+ game variants to a unique sprite_set + palette combo
+Ensure visual distinctiveness between similar games (e.g., Space Shooter 3 vs 4)
+Document the mapping in JSON alongside game definitions
+
+
+Phase 3: Sprite Integration into Game Definitions
+Step 3.1: Extend Game Definition JSON
+
+Add visual_identity section to base_game_definitions.json:
+
+sprite_set_id
+palette_id
+metric_sprite_mappings (which sprite represents which metric)
+formula_icon_mapping (which sprites appear in formula display)
+
+
+
+Step 3.2: Update Clone Generation Logic
+
+Modify GameData:generateClones() to assign visual variants
+Ensure sequential variants get visually distinct identities
+Balance between palette swaps (cheap variety) and sprite set changes (major variety)
+
+Step 3.3: Create Sprite Loading System
+
+Build SpriteManager or similar module to:
+
+Load base sprite sets
+Apply palette swaps
+Cache processed sprites
+Provide lookup by game_id and sprite_name
+
+
+
+
+Phase 4: Visual Formula System
+Step 4.1: Design Formula Icon Layout
+
+Create visual grammar for formula display:
+
+Metric icons (e.g., enemy sprite = kills)
+Operator symbols (+, -, ×, ÷)
+Result icon (token sprite)
+Parentheses/grouping indicators
+
+
+
+Step 4.2: Build Formula Icon Renderer
+
+Create component to parse formula strings
+Map formula components to sprite icons
+Handle layout: horizontal vs wrapped, sizing, spacing
+Add tooltip/hover text for clarity
+
+Step 4.3: Design Metric Legend System
+
+Create compact visual key showing metric → icon mappings
+Display in game detail panels and completion screens
+Include numerical values alongside icons for clarity
+
+
+Phase 5: Launcher UI Overhaul
+Step 5.1: Redesign Game List Items
+
+Replace text-heavy game cards with sprite-prominent design
+Show game's key sprite (ship, snake head, etc.) as thumbnail
+Display formula using icon system instead of text
+Keep difficulty/tier indicators but make them visual (stars, badges)
+
+Step 5.2: Update Detail Panel
+
+Feature larger sprite preview of selected game
+Show all relevant sprites (player, enemies, objectives)
+Visual formula display with icon legend
+Preview of palette/theme
+
+Step 5.3: Add Visual Filters
+
+Allow filtering by visual theme/palette (not just category)
+Show sprite thumbnails in category buttons where appropriate
+
+
+Phase 6: In-Game Visual Identity
+Step 6.1: Update Game View Classes
+
+Modify each game's view (SpaceShooterView, SnakeView, etc.) to:
+
+Load sprites from SpriteManager based on game_id
+Use game-specific palette for UI elements
+Render entities with assigned sprites instead of placeholder rectangles
+
+
+
+Step 6.2: Update HUD/UI Elements
+
+Replace text indicators with sprite icons:
+
+Lives display uses player sprite
+Kill counter uses enemy sprite
+Score uses relevant metric sprite
+
+
+Maintain text fallback for clarity
+
+Step 6.3: Completion Screen Visual Identity
+
+Show game's sprite set in completion screen
+Display formula with icons
+Visual representation of metrics earned (icon + number)
+
+
+Phase 7: VM Manager & Supporting Systems
+Step 7.1: VM Manager Visual Update
+
+Show assigned game's sprite thumbnail in VM slot
+Display formula with icons for tokens/minute
+Use game's palette for progress bar colors
+
+Step 7.2: Cheat Engine Visual Update
+
+Show game's sprite set when game selected
+Icon-based preview of how cheats affect formula
+
+Step 7.3: Space Defender Bullet Visualization
+
+Each bullet type uses its source game's sprite
+Visual variety in bullet storm reflects game collection diversity
+
+
+Phase 8: Polish & Accessibility
+Step 8.1: Add Toggle for Icon vs Text Mode
+
+Settings option to switch between icon-based and text-based formulas
+Accessibility consideration for users who prefer text
+Default to icons, but make text easily accessible
+
+Step 8.2: Tooltip System
+
+Hover tooltips on all icons showing:
+
+What metric the icon represents
+Current value
+Text description
+
+
+Ensure mobile-friendly alternative (tap to show)
+
+Step 8.3: Visual Consistency Pass
+
+Ensure all icons are same size/resolution
+Consistent spacing and alignment across all UIs
+Color accessibility check (colorblind-friendly palettes)
+
+
+Phase 9: Documentation & Testing
+Step 9.1: Create Sprite Asset Guidelines
+
+Document process for adding new sprite sets
+Palette creation guidelines
+Naming conventions and file structure
+
+Step 9.2: Testing Plan
+
+Test visual distinctiveness of all 200+ game variants
+Ensure formula icons are readable at all UI scales
+Performance testing with full sprite loading
+User testing for icon clarity
+
+Step 9.3: Fallback Systems
+
+Ensure graceful degradation if sprites fail to load
+Text fallbacks for all icon displays
+Error handling for missing sprite sets
+
+
+Phase 10: Future-Proofing
+Step 10.1: Sprite Modding Support
+
+Design system for user-added sprite packs
+Document sprite format requirements
+Palette definition format for community palettes
+
+Step 10.2: Dynamic Theme System
+
+Allow games to use seasonal/event palettes
+Runtime palette switching for variety
+Unlockable alternate visual themes
+
+Step 10.3: Analytics & Iteration
+
+Track which visual themes players prefer
+Gather feedback on icon clarity
+Iterate on formula display based on usage data
+
+
+Key Dependencies Between Phases
+
+Phase 3 depends on Phase 1 & 2: Need sprites and palettes before integrating into definitions
+Phase 4 depends on Phase 3: Formula system needs sprite mappings from game definitions
+Phase 5-7 depend on Phase 4: All UI updates need formula icon system working
+Phase 8 can happen in parallel with Phases 5-7 for polish
+Phase 9-10 are post-implementation cleanup and future work
+
+
+Estimated Complexity per Phase
+
+Phase 1: Medium (asset hunting/organization)
+Phase 2: High (shader implementation)
+Phase 3: Medium (JSON structure updates)
+Phase 4: High (new visual system)
+Phase 5-7: Medium each (UI updates using new system)
+Phase 8-10: Low to Medium (polish and extras)

@@ -64,6 +64,8 @@ function love.load()
     local FileSystem = require('models.file_system')
     local RecycleBin = require('models.recycle_bin')
     local ProgramRegistry = require('models.program_registry')
+    local SpriteLoader = require('src.utils.sprite_loader')
+
 
 
     -- Load settings FIRST (applies fullscreen/windowed mode)
@@ -123,6 +125,8 @@ function love.load()
     file_system = FileSystem:new() -- Assign to global
     recycle_bin = RecycleBin:new(desktop_icons) -- Assign to global, inject dependency
     program_registry = ProgramRegistry:new() -- Assign to global
+    local sprite_loader = SpriteLoader.getInstance()
+    sprite_loader:loadAll()
 
     print("Initialized windowing system models")
 

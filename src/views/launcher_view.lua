@@ -318,6 +318,9 @@ function LauncherView:drawGameList(x, y, w, h, games, selected_index, hovered_ga
 end
 
 function LauncherView:drawGameIcon(x, y, w, h, game_data, selected, hovered, player_data, game_data_obj)
+    local SpriteLoader = require('src.utils.sprite_loader')
+    local sprite_loader = SpriteLoader.getInstance()
+    
     local is_unlocked = player_data:isGameUnlocked(game_data.id)
     local perf = player_data:getGamePerformance(game_data.id)
     local is_completed = perf ~= nil
@@ -334,27 +337,40 @@ function LauncherView:drawGameIcon(x, y, w, h, game_data, selected, hovered, pla
     love.graphics.setColor(0.5, 0.5, 0.5)
     love.graphics.rectangle('line', x, y, w, h)
     
-    local badge_x, badge_y = x + 5, y + 5
+    -- Icon sprite
+    local icon_size = 48
+    local icon_x = x + 5
+    local icon_y = y + (h - icon_size) / 2
+    
+    local sprite_name = game_data.icon_sprite or "game_freecell-0"
+    local tint = is_unlocked and {1, 1, 1} or {0.5, 0.5, 0.5}
+    sprite_loader:drawSprite(sprite_name, icon_x, icon_y, icon_size, icon_size, tint)
+    
+    -- Status badge
+    local badge_x = icon_x + icon_size - 10
+    local badge_y = icon_y
     if is_auto_completed then
-        UIComponents.drawBadge(badge_x, badge_y, 15, "A", {0.5, 0.5, 1}) -- Use Badge
+        UIComponents.drawBadge(badge_x, badge_y, 15, "A", {0.5, 0.5, 1})
     elseif is_completed then
-         UIComponents.drawBadge(badge_x, badge_y, 15, "C", {0, 1, 0}) -- Use Badge
+         UIComponents.drawBadge(badge_x, badge_y, 15, "C", {0, 1, 0})
     elseif not is_unlocked then
-         UIComponents.drawBadge(badge_x, badge_y, 15, "L", {1, 0, 0}) -- Use Badge
+         UIComponents.drawBadge(badge_x, badge_y, 15, "L", {1, 0, 0})
     end
     
+    -- Text info
+    local text_x = x + icon_size + 15
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(game_data.display_name, x + 25, y + 5, 0, 1.0, 1.0)
+    love.graphics.print(game_data.display_name, text_x, y + 5, 0, 1.0, 1.0)
     
     local difficulty = game_data.difficulty_level or 1
     local diff_text, diff_color = "Easy", {0, 1, 0}
     if difficulty > 6 then diff_text, diff_color = "Hard", {1, 0, 0}
     elseif difficulty > 3 then diff_text, diff_color = "Medium", {1, 1, 0} end
     love.graphics.setColor(diff_color)
-    love.graphics.print("Difficulty: " .. diff_text .. " (" .. difficulty .. ")", x + 25, y + 25, 0, 0.8, 0.8)
+    love.graphics.print("Difficulty: " .. diff_text .. " (" .. difficulty .. ")", text_x, y + 25, 0, 0.8, 0.8)
     
     love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.print(game_data.formula_string, x + 25, y + 40, 0, 0.7, 0.7)
+    love.graphics.print(game_data.formula_string, text_x, y + 40, 0, 0.7, 0.7)
     
     if is_completed and perf then
         love.graphics.setColor(0, 1, 0)

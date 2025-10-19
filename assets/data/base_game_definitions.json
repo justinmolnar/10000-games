@@ -8,6 +8,7 @@
     "unlock_cost": 100,
     "base_formula_string": "(metrics.kills - metrics.deaths)",
     "metrics_tracked": ["kills", "deaths"],
+    "icon_sprite": "game_mine_1-0",
     
     "cheat_engine_base_cost": 1000,
     "cheat_cost_exponent": 1.2,
@@ -53,6 +54,7 @@
     "unlock_cost": 150,
     "base_formula_string": "(metrics.snake_length * (metrics.survival_time / 10))",
     "metrics_tracked": ["snake_length", "survival_time"],
+    "icon_sprite": "game_solitaire-0",
 
     "cheat_engine_base_cost": 800,
     "cheat_cost_exponent": 1.15,
@@ -92,6 +94,7 @@
     "unlock_cost": 200,
     "base_formula_string": "(metrics.matches * 10 - metrics.time + metrics.perfect * 5)",
     "metrics_tracked": ["matches", "time", "perfect"],
+    "icon_sprite": "game_freecell-0",
 
     "cheat_engine_base_cost": 500,
     "cheat_cost_exponent": 1.1,
@@ -125,6 +128,7 @@
     "unlock_cost": 175,
     "base_formula_string": "((metrics.objects_dodged * metrics.objects_dodged) / (metrics.collisions + 1))",
     "metrics_tracked": ["objects_dodged", "collisions", "perfect_dodges"],
+    "icon_sprite": "game_spider-0",
     
     "cheat_engine_base_cost": 1200,
     "cheat_cost_exponent": 1.2,
@@ -170,6 +174,7 @@
     "unlock_cost": 125,
     "base_formula_string": "(metrics.objects_found * metrics.time_bonus)",
     "metrics_tracked": ["objects_found", "time_bonus"],
+    "icon_sprite": "magnifying_glass-0",
     
     "cheat_engine_base_cost": 400,
     "cheat_cost_exponent": 1.1,
