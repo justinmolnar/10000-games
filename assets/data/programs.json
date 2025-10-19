@@ -42,7 +42,7 @@
     "icon_color": [1.0, 0.0, 0.0],
     "on_desktop": true,
     "in_start_menu": true,
-    "window_defaults": { "w": 1024, "h": 768, "resizable": true, "single_instance": true, "prefer_maximized": true }
+    "window_defaults": { "w": 1024, "h": 768, "resizable": true, "single_instance": true }
   },
   {
     "id": "cheat_engine",
