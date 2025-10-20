@@ -3,14 +3,16 @@ local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local FormulaRenderer = require('src.views.formula_renderer')
 local SpriteManager = require('src.utils.sprite_manager').getInstance()
-local Config = require('src.config')
 local CheatEngineView = Object:extend('CheatEngineView')
 
-function CheatEngineView:init(controller)
+function CheatEngineView:init(controller, di)
     self.controller = controller -- This is the cheat_engine_state
+    self.di = di
+    if di and UIComponents and UIComponents.inject then UIComponents.inject(di) end
 
     -- Base Layout (will be adjusted by updateLayout)
-    local V = (Config.ui and Config.ui.views and Config.ui.views.cheat_engine) or {}
+    local C = (self.di and self.di.config) or {}
+    local V = (C.ui and C.ui.views and C.ui.views.cheat_engine) or {}
     local L = V.list or { x = 10, y = 50, max_w = 300, min_w = 150, item_h = 30 }
     self.list_x = L.x or 10
     self.list_y = 80
@@ -31,7 +33,8 @@ function CheatEngineView:init(controller)
 end
 
 function CheatEngineView:updateLayout(viewport_width, viewport_height)
-    local V = (Config.ui and Config.ui.views and Config.ui.views.cheat_engine) or {}
+    local C = (self.di and self.di.config) or {}
+    local V = (C.ui and C.ui.views and C.ui.views.cheat_engine) or {}
     local L = V.list or { x = 10, y = 50, max_w = 300, min_w = 150 }
     self.list_x = L.x or 10
     self.list_y = L.y or 50 -- Below header
@@ -93,9 +96,7 @@ function CheatEngineView:update(dt, games, selected_game_id, available_cheats, v
         elseif not ce_is_unlocked then
             -- Check unlock button hover
             local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + 100, self.detail_w - 20, 40
-            local cost = self.controller:getScaledCost(game.cheat_engine_base_cost or 99999)
-            local can_afford = self.controller.player_data:hasTokens(cost)
-            if local_mx >= btn_x and local_mx <= btn_x + btn_w and local_my >= btn_y and local_my <= btn_y + btn_h and can_afford then
+            if local_mx >= btn_x and local_mx <= btn_x + btn_w and local_my >= btn_y and local_my <= btn_y + btn_h then
                 self.hovered_button_id = "unlock_ce"
             end
         else
@@ -112,14 +113,9 @@ function CheatEngineView:update(dt, games, selected_game_id, available_cheats, v
                     local display_y = self.detail_y + 100 + (cheat_index - 1 - cheat_scroll_offset) * cheat_item_total_height
                     local btn_x, btn_y, btn_w, btn_h = self.detail_x + self.detail_w - 120, display_y, 110, 30
 
-                    local at_max_level = (cheat.current_level >= cheat.max_level)
-                    local can_afford = self.controller.player_data:hasTokens(cheat.cost_for_next)
-
                     if local_mx >= btn_x and local_mx <= btn_x + btn_w and local_my >= btn_y and local_my <= btn_y + btn_h then
-                        if not at_max_level and can_afford then
-                           self.hovered_cheat_id = cheat.id
-                           self.hovered_button_id = "purchase_cheat"
-                        end
+                        self.hovered_cheat_id = cheat.id
+                        self.hovered_button_id = "purchase_cheat"
                         break
                     end
                  end
@@ -181,7 +177,8 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
         end
     end
      -- Draw List Scrollbar
-    local V = (Config.ui and Config.ui.views and Config.ui.views.cheat_engine) or {}
+    local C = (self.di and self.di.config) or {}
+    local V = (C.ui and C.ui.views and C.ui.views.cheat_engine) or {}
     local L = V.list or { scrollbar_w = 6 }
     if #games > visible_games then
         love.graphics.setColor(0.3, 1, 0.3)
@@ -367,10 +364,8 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, ava
         elseif not ce_is_unlocked then
             -- Check unlock button (using local coords)
             local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + 100, self.detail_w - 20, 40 -- Relative positions
-            local cost = self.controller:getScaledCost(game.cheat_engine_base_cost or 99999)
-            local can_afford = self.controller.player_data:hasTokens(cost)
-            -- Check using LOCAL x, y
-            if x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h and can_afford then
+            -- Check using LOCAL x, y; state validates affordability
+            if x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h then
                 return { name = "unlock_cheat_engine" }
             end
         else
@@ -388,16 +383,9 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, ava
                      local display_y = self.detail_y + 100 + (cheat_index - 1 - cheat_scroll_offset) * cheat_item_total_height -- Relative y
                      local btn_x, btn_y, btn_w, btn_h = self.detail_x + self.detail_w - 120, display_y, 110, 30 -- Relative positions
 
-                     local at_max_level = (cheat.current_level >= cheat.max_level)
-                     local can_afford = self.controller.player_data:hasTokens(cheat.cost_for_next)
-
-                     -- Check using LOCAL x, y
+                     -- Check using LOCAL x, y; state validates constraints
                      if x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h then
-                         if not at_max_level and can_afford then
-                             return { name = "purchase_cheat", id = cheat.id }
-                         else
-                             return nil -- Clicked disabled button
-                         end
+                         return { name = "purchase_cheat", id = cheat.id }
                      end
                  end
             end

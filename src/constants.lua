@@ -7,6 +7,7 @@ Constants.state = {
     DEBUG = 'debug',
     COMPLETION = 'completion',
     SCREENSAVER = 'screensaver',
+    STATISTICS = 'statistics',
 }
 
 return Constants

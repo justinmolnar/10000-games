@@ -1,5 +1,5 @@
 local BaseGame = require('src.games.base_game')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local Collision = require('src.utils.collision') 
 local HiddenObjectView = require('src.games.views.hidden_object_view')
 local HiddenObject = BaseGame:extend('HiddenObject')
@@ -18,18 +18,20 @@ local POSITION_HASH_Y2 = (HOCfg.background and HOCfg.background.position_hash an
 local BACKGROUND_HASH_1 = (HOCfg.background and HOCfg.background.background_hash and HOCfg.background.background_hash.h1) or 17
 local BACKGROUND_HASH_2 = (HOCfg.background and HOCfg.background.background_hash and HOCfg.background.background_hash.h2) or 3
 
-function HiddenObject:init(game_data, cheats)
+function HiddenObject:init(game_data, cheats, di)
     HiddenObject.super.init(self, game_data, cheats)
+    self.di = di
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.hidden_object) or HOCfg
     
     local speed_modifier_value = self.cheats.speed_modifier or 1.0
     local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
 
-    self.BACKGROUND_GRID_BASE = BACKGROUND_GRID_BASE
-    self.BACKGROUND_HASH_1 = BACKGROUND_HASH_1
-    self.BACKGROUND_HASH_2 = BACKGROUND_HASH_2
+    self.BACKGROUND_GRID_BASE = (runtimeCfg and runtimeCfg.background and runtimeCfg.background.grid_base) or BACKGROUND_GRID_BASE
+    self.BACKGROUND_HASH_1 = (runtimeCfg and runtimeCfg.background and runtimeCfg.background.background_hash and runtimeCfg.background.background_hash.h1) or BACKGROUND_HASH_1
+    self.BACKGROUND_HASH_2 = (runtimeCfg and runtimeCfg.background and runtimeCfg.background.background_hash and runtimeCfg.background.background_hash.h2) or BACKGROUND_HASH_2
 
-    self.game_width = (HOCfg.arena and HOCfg.arena.width) or 800
-    self.game_height = (HOCfg.arena and HOCfg.arena.height) or 600
+    self.game_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (HOCfg.arena and HOCfg.arena.width) or 800
+    self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (HOCfg.arena and HOCfg.arena.height) or 600
 
     self.time_limit = (TIME_LIMIT_BASE / self.difficulty_modifiers.speed) * time_bonus_multiplier
     self.total_objects = math.floor(OBJECTS_BASE * self.difficulty_modifiers.count) 

@@ -3,12 +3,14 @@ local UI = require('src.views.ui_components')
 local json = require('json')
 local Strings = require('src.utils.strings')
 local Paths = require('src.paths')
-local Config = require('src.config')
+-- Config is accessed via self.di.config when available
 
 local View = Object:extend('ControlPanelScreensaversView')
 
-function View:init(controller)
+function View:init(controller, di)
     self.controller = controller
+    self.di = di
+    if di then UI.inject(di) end
     self.dragging = nil
     self.preview = { canvas = nil, saver = nil, last_key = nil }
     self.schema = self:_loadSchema(Paths.data.control_panels .. 'screensavers.json')
@@ -75,6 +77,57 @@ function View:destroyPreview()
     end
 end
 
+-- View-level helpers to simplify drawWindowed
+function View:_getViewConfig()
+    local C = (self.di and self.di.config) or {}
+    local V = (C.ui and C.ui.views and C.ui.views.control_panel_screensavers) or {}
+    local colors = V.colors or {}
+    return V, colors
+end
+
+function View:_drawBackgroundAndBorder(w, h, colors)
+    love.graphics.setColor(colors.panel_bg or {0.9, 0.9, 0.9})
+    love.graphics.rectangle('fill', 0, 0, w, h)
+    love.graphics.setColor(colors.panel_border or {0.6, 0.6, 0.6})
+    love.graphics.rectangle('line', 0, 0, w, h)
+end
+
+function View:_drawTab(tab, colors)
+    love.graphics.setColor(colors.tab_bg or {0,0,0})
+    love.graphics.rectangle('fill', tab.x, tab.y, tab.w, tab.h)
+    love.graphics.setColor(colors.panel_border or {0.2,0.2,0.2})
+    love.graphics.rectangle('line', tab.x, tab.y, tab.w, tab.h)
+    love.graphics.setColor(colors.text or {0,0,0})
+    love.graphics.print(Strings.get('control_panel.tabs.screensaver', 'Screen Saver'), tab.x + 8, tab.y + 3)
+end
+
+function View:_drawPreviewFrame(frame_x, frame_y, prev_w, prev_h, frame_pad, colors)
+    love.graphics.setColor(colors.frame_fill or {0.9,0.9,0.95})
+    love.graphics.rectangle('fill', frame_x - frame_pad, frame_y - frame_pad, prev_w + 2*frame_pad, prev_h + 2*frame_pad)
+    love.graphics.setColor(colors.frame_line or {0.2,0.2,0.2})
+    love.graphics.rectangle('line', frame_x - frame_pad, frame_y - frame_pad, prev_w + 2*frame_pad, prev_h + 2*frame_pad)
+end
+
+function View:_drawDropdownList(dropdown_to_draw)
+    UI.drawDropdownList(
+        dropdown_to_draw.x,
+        dropdown_to_draw.y,
+        dropdown_to_draw.w,
+        dropdown_to_draw.item_h,
+        dropdown_to_draw.labels,
+        nil
+    )
+    self._dropdown_list = {
+        id = dropdown_to_draw.id,
+        x = dropdown_to_draw.x,
+        y = dropdown_to_draw.y,
+        w = dropdown_to_draw.w,
+        h = #dropdown_to_draw.labels * dropdown_to_draw.item_h,
+        item_h = dropdown_to_draw.item_h,
+        items = dropdown_to_draw.items
+    }
+end
+
 -- Simple slider renderer: t in [0,1]
 function View:drawSlider(x, y, w, h, t)
     t = math.max(0, math.min(1, t or 0))
@@ -105,7 +158,8 @@ function View:_ensurePreview(prev_w, prev_h, settings, pending)
         -- Build saver by type
         local t = getVal(pending, settings, 'screensaver_type', 'starfield')
         if t == 'pipes' then
-            local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.pipes) or {}
+            local C = (self.di and self.di.config) or {}
+            local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.pipes) or {}
             local PipesView = require('src.views.screensaver_pipes_view')
             self.preview.saver = PipesView:new({
                 fov = getVal(pending, settings, 'screensaver_pipes_fov', d.fov),
@@ -125,7 +179,8 @@ function View:_ensurePreview(prev_w, prev_h, settings, pending)
                 show_hud = getVal(pending, settings, 'screensaver_pipes_show_hud', d.show_hud),
             })
         elseif t == 'model3d' then
-            local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.model) or {}
+            local C = (self.di and self.di.config) or {}
+            local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.model) or {}
             local ModelView = require('src.views.screensaver_model_view')
             self.preview.saver = ModelView:new({
                 fov = getVal(pending, settings, 'screensaver_model_fov', d.fov),
@@ -135,7 +190,8 @@ function View:_ensurePreview(prev_w, prev_h, settings, pending)
                 two_sided = getVal(pending, settings, 'screensaver_model_two_sided', d.two_sided),
             })
         else
-            local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.starfield) or {}
+            local C = (self.di and self.di.config) or {}
+            local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.starfield) or {}
             local StarView = require('src.views.screensaver_view')
             self.preview.saver = StarView:new({
                 count = getVal(pending, settings, 'screensaver_starfield_count', d.count),
@@ -180,13 +236,11 @@ end
 
 -- Main draw
 function View:drawWindowed(w, h, settings, pending)
+    -- reset per-frame layout cache so hit-tests match what's drawn
+    self.layout_cache = {}
     -- Background and border
-    local V = (Config.ui and Config.ui.views and Config.ui.views.control_panel_screensavers) or {}
-    local C = V.colors or {}
-    love.graphics.setColor(C.panel_bg or {0.9, 0.9, 0.9})
-    love.graphics.rectangle('fill', 0, 0, w, h)
-    love.graphics.setColor(C.panel_border or {0.6, 0.6, 0.6})
-    love.graphics.rectangle('line', 0, 0, w, h)
+    local V, Colors = self:_getViewConfig()
+    self:_drawBackgroundAndBorder(w, h, Colors)
 
     -- Layout metrics
     local tab = V.tab or {x=8, y=28, w=110, h=18}
@@ -199,20 +253,12 @@ function View:drawWindowed(w, h, settings, pending)
     local label_col_w = V.label_col_w or 110
 
     -- Tab strip
-    love.graphics.setColor(C.tab_bg or {0,0,0})
-    love.graphics.rectangle('fill', tab.x, tab.y, tab.w, tab.h)
-    love.graphics.setColor(C.panel_border or {0.2,0.2,0.2})
-    love.graphics.rectangle('line', tab.x, tab.y, tab.w, tab.h)
-    love.graphics.setColor(C.text or {0,0,0})
-    love.graphics.print(Strings.get('control_panel.tabs.screensaver', 'Screen Saver'), tab.x + 8, tab.y + 3)
+    self:_drawTab(tab, Colors)
 
     -- Preview frame to the right of dropdown area
     local frame_x = px + label_col_w + dropdown_w + 24
     local frame_y = py - 10
-    love.graphics.setColor(C.frame_fill or {0.9,0.9,0.95})
-    love.graphics.rectangle('fill', frame_x - frame_pad, frame_y - frame_pad, prev_w + 2*frame_pad, prev_h + 2*frame_pad)
-    love.graphics.setColor(C.frame_line or {0.2,0.2,0.2})
-    love.graphics.rectangle('line', frame_x - frame_pad, frame_y - frame_pad, prev_w + 2*frame_pad, prev_h + 2*frame_pad)
+    self:_drawPreviewFrame(frame_x, frame_y, prev_w, prev_h, frame_pad, Colors)
 
     -- Compute form columns
     local right_edge = frame_x - 16
@@ -233,7 +279,8 @@ function View:drawWindowed(w, h, settings, pending)
     end
     local function passesWhen(cond)
         if not cond then return true end
-        for k,v in pairs(cond) do
+        for k, v in pairs(cond) do
+            -- Prefer pending override, then fall back to current settings
             local cur = pending[k]
             if cur == nil then cur = settings[k] end
             if cur ~= v then return false end
@@ -288,7 +335,8 @@ function View:drawWindowed(w, h, settings, pending)
                 if checked == nil then checked = settings[el.id] end
                 if checked then
                     love.graphics.setColor((V.colors and V.colors.checkbox_check) or {0,0.7,0})
-                    love.graphics.setLineWidth(3)
+                    local C = (self.di and self.di.config) or {}
+                    local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.pipes) or {}
                     love.graphics.line(cb_x + 3, cb_y + cb_h/2, cb_x + cb_w/2, cb_y + cb_h - 4, cb_x + cb_w - 3, cb_y + 3)
                     love.graphics.setLineWidth(1)
                 end
@@ -308,7 +356,8 @@ function View:drawWindowed(w, h, settings, pending)
                 local v = pending[el.id]; if v == nil then v = settings[el.id] end
                 if v == nil then v = el.min end
                 local norm = (v - el.min) / (el.max - el.min)
-                self:drawSlider(slider_x, cy-2, sw, (V.slider_h or 12), math.max(0, math.min(1, norm)))
+                -- Draw the slider track and handle so it's visible
+                self:drawSlider(slider_x, cy - 2, sw, (V.slider_h or 12), norm)
                 local display_v = v
                 if el.display_as_percent then display_v = math.floor((v * 100) + 0.5) end
                 local fmt = el.format or (el.display_as_percent and "%d%%" or "%s")
@@ -318,29 +367,12 @@ function View:drawWindowed(w, h, settings, pending)
             end
         end
     end
-
     -- Bottom buttons
     self._ok_rect, self._cancel_rect, self._apply_rect = UI.drawDialogButtons(w, h, next(pending) ~= nil)
 
     -- Draw dropdown list last
     if dropdown_to_draw then
-        UI.drawDropdownList(
-            dropdown_to_draw.x,
-            dropdown_to_draw.y,
-            dropdown_to_draw.w,
-            dropdown_to_draw.item_h,
-            dropdown_to_draw.labels,
-            nil
-        )
-        self._dropdown_list = {
-            id = dropdown_to_draw.id,
-            x = dropdown_to_draw.x,
-            y = dropdown_to_draw.y,
-            w = dropdown_to_draw.w,
-            h = #dropdown_to_draw.labels * dropdown_to_draw.item_h,
-            item_h = dropdown_to_draw.item_h,
-            items = dropdown_to_draw.items
-        }
+        self:_drawDropdownList(dropdown_to_draw)
     else
         self._dropdown_list = nil
     end

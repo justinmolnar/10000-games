@@ -1,5 +1,5 @@
 local Object = require('class')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local HiddenObjectView = Object:extend('HiddenObjectView')
 
 function HiddenObjectView:init(game_state)
@@ -7,7 +7,9 @@ function HiddenObjectView:init(game_state)
     self.BACKGROUND_GRID_BASE = game_state.BACKGROUND_GRID_BASE or 10
     self.BACKGROUND_HASH_1 = game_state.BACKGROUND_HASH_1 or 17
     self.BACKGROUND_HASH_2 = game_state.BACKGROUND_HASH_2 or 3
-    local cfg = (Config and Config.games and Config.games.hidden_object and Config.games.hidden_object.view) or {}
+    self.di = game_state and game_state.di
+    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.hidden_object and self.di.config.games.hidden_object.view) or
+                 (Config and Config.games and Config.games.hidden_object and Config.games.hidden_object.view) or {})
     self.bg_color = cfg.bg_color or {0.12, 0.1, 0.08}
     self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50, 70} }
     self.sprite_loader = nil

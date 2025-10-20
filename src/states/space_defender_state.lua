@@ -1,5 +1,4 @@
 local Object = require('class')
-local Config = require('src.config')
 local BulletSystem = require('models.bullet_system')
 local Collision = require('src.utils.collision')
 local SpaceDefenderView = require('src.views.space_defender_view')
@@ -7,16 +6,17 @@ local json = require('json')
 local Paths = require('src.paths')
 local SpaceDefenderState = Object:extend('SpaceDefenderState')
 
-function SpaceDefenderState:init(player_data, game_data, state_machine, save_manager, statistics)
+function SpaceDefenderState:init(player_data, game_data, state_machine, save_manager, statistics, di)
     self.player_data = player_data
     self.game_data = game_data
     self.state_machine = state_machine
     self.save_manager = save_manager
     self.statistics = statistics
+    self.di = di
     self.view = SpaceDefenderView:new(self)
     
     -- Game dimensions (default)
-    local SDCFG = Config.games.space_defender
+    local SDCFG = (self.di and self.di.config and self.di.config.games and self.di.config.games.space_defender) or {}
     self._cfg = SDCFG
     self.game_width = (SDCFG and SDCFG.arena and SDCFG.arena.width) or 1024
     self.game_height = (SDCFG and SDCFG.arena and SDCFG.arena.height) or 768
@@ -134,6 +134,9 @@ function SpaceDefenderState:enter(level_number)
     }
 
     self.bullet_system = BulletSystem:new(self.statistics)
+    if self.di and self.di.config and self.bullet_system.injectConfig then
+        self.bullet_system:injectConfig(self.di.config)
+    end
     local fire_rate_mult, damage_mult = self:getLevelBonuses()
     self.bullet_system:setGlobalMultipliers(fire_rate_mult, damage_mult)
     self.bullet_system:loadBulletTypes(self.player_data, self.game_data)

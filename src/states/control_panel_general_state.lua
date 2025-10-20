@@ -6,9 +6,10 @@ local GeneralView = require('src.views.control_panel_general_view')
 
 local ControlPanelGeneralState = Object:extend('ControlPanelGeneralState')
 
-function ControlPanelGeneralState:init(window_controller)
+function ControlPanelGeneralState:init(window_controller, di)
     self.window_controller = window_controller
-    self.view = GeneralView:new(self)
+    self.di = di
+    self.view = GeneralView:new(self, di)
     self.viewport = nil
     self.settings = {}
     self.pending = {}

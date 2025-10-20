@@ -4,6 +4,8 @@ local SettingsManager = require('src.utils.settings_manager')
 
 local ScreensaverState = Object:extend('ScreensaverState')
 
+local Constants = require('src.constants')
+
 function ScreensaverState:init(state_machine)
     self.state_machine = state_machine
     self.view = nil
@@ -80,8 +82,8 @@ end
 local function exitToDesktop(self)
     -- Restore cursor
     love.mouse.setVisible(true)
-    if self.state_machine and self.state_machine.states['desktop'] then
-        self.state_machine:switch('desktop')
+    if self.state_machine and self.state_machine.states[Constants.state.DESKTOP] then
+        self.state_machine:switch(Constants.state.DESKTOP)
     end
 end
 

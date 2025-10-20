@@ -1,10 +1,17 @@
 local json = require('json')
 local SaveManager = {}
 
-local SAVE_VERSION = "1.0"
+-- Prefer injected Config; fallback to global DI_CONFIG
+local ConfigRef = rawget(_G, 'DI_CONFIG') or {}
+local DEFAULT_SAVE_VERSION = '1.0'
+
+function SaveManager.inject(di)
+    if di and di.config then
+        ConfigRef = di.config
+    end
+end
 
 function SaveManager.save(player_data)
-    local Config = require('src.config') -- Require config at the top of the file
     
     -- Check if player_data is valid before proceeding
     if not player_data or type(player_data.serialize) ~= 'function' then
@@ -20,7 +27,7 @@ function SaveManager.save(player_data)
     end
     
     local save_data = {
-        version = Config.save_version, -- Use config value
+        version = (ConfigRef and ConfigRef.save_version) or DEFAULT_SAVE_VERSION, -- Use config value or fallback
         timestamp = os.time(),
         player = player_save_data 
     }
@@ -33,7 +40,7 @@ function SaveManager.save(player_data)
     end
     
     -- Use pcall for file writing
-    local write_ok, message = pcall(love.filesystem.write, Config.save_file_name, json_str)
+    local write_ok, message = pcall(love.filesystem.write, (ConfigRef and ConfigRef.save_file_name) or 'save.json', json_str)
     if write_ok then
         -- print("Game saved successfully") -- Keep console clean
     else
@@ -44,8 +51,7 @@ function SaveManager.save(player_data)
 end
 
 function SaveManager.load()
-    local Config = require('src.config') -- Require config at the top of the file
-    local save_file = Config.save_file_name
+    local save_file = (ConfigRef and ConfigRef.save_file_name) or 'save.json'
     
     -- Use pcall to check file info safely
     local info_ok, info = pcall(love.filesystem.getInfo, save_file)
@@ -79,8 +85,8 @@ function SaveManager.load()
     end
 
     -- Version check
-    if save_data.version ~= Config.save_version then
-        print("Incompatible save version:", save_data.version, " Expected:", Config.save_version)
+    if save_data.version ~= ((ConfigRef and ConfigRef.save_version) or DEFAULT_SAVE_VERSION) then
+    print("Incompatible save version:", save_data.version, " Expected:", ((ConfigRef and ConfigRef.save_version) or DEFAULT_SAVE_VERSION))
         -- Add migration logic here in the future if needed
         return nil, "Incompatible save version"
     end

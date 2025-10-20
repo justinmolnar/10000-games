@@ -4,14 +4,15 @@ local Strings = require('src.utils.strings')
 local CheatEngineView = require('src.views.cheat_engine_view')
 local CheatEngineState = Object:extend('CheatEngineState')
 
-function CheatEngineState:init(player_data, game_data, state_machine, save_manager, cheat_system)
+function CheatEngineState:init(player_data, game_data, state_machine, save_manager, cheat_system, di)
     self.player_data = player_data
     self.game_data = game_data
     self.state_machine = state_machine -- Keep for launching minigame state
     self.save_manager = save_manager
     self.cheat_system = cheat_system -- Injected dependency
+    self.di = di
 
-    self.view = CheatEngineView:new(self)
+    self.view = CheatEngineView:new(self, di)
 
     self.all_games = {} -- Will hold all games, including locked
     self.scroll_offset = 1

@@ -2,23 +2,44 @@ local Object = require('class')
 local json = require('json')
 
 -- Simple 3D model screensaver view: loads a JSON mesh and spins it
-local Config = require('src.config')
 local ModelView = Object:extend('ScreensaverModelView')
 
 function ModelView:init(opts)
     opts = opts or {}
+    self.di = opts.di
     self:setViewport(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.model) or {}
+    local C = (self.di and self.di.config) or {}
+    local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.model3d) or {}
     self.fov = opts.fov or d.fov or 350
     self.scale = opts.scale or 1.0
-    self.mode = opts.mode or 'cube_sphere' -- 'mesh', 'square_circle', or 'cube_sphere'
-    self.two_sided = opts.two_sided or false -- if true, skip backface culling
+    self.mode = opts.mode -- optional explicit mode
+    -- global tint color for fill (multiplied by shade)
+    self.tint = opts.tint or {1,1,1}
+    -- default mode selection: if shapes are provided, use new shape_morph
+    local C = (self.di and self.di.config) or {}
+    local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.model3d) or {}
+    self.mode = self.mode or ((opts.shapes or (d and d.shapes)) and 'shape_morph' or 'cube_sphere') -- 'mesh', 'square_circle', 'cube_sphere', 'shape_morph'
+    self.two_sided = opts.two_sided or d.two_sided or false -- if true, skip backface culling
     self.rot_speed = {
         x = opts.rot_speed_x or 0.4,
         y = opts.rot_speed_y or 0.6,
         z = opts.rot_speed_z or 0.0,
     }
     self.angle = {x=0, y=0, z=0}
+    -- shape list for shape_morph (1..3 entries recommended)
+    self.shapes = opts.shapes or d.shapes or { 'cube', 'sphere' }
+    if #self.shapes < 1 then self.shapes = { 'cube' } end
+    if #self.shapes > 3 then
+        -- keep first three to honor requirement
+        local kept = {}
+        for i=1,3 do kept[i] = self.shapes[i] end
+        self.shapes = kept
+    end
+    self.shape_index = 1
+    self.next_index = (#self.shapes >= 2) and 2 or 1
+    self.hold_time = opts.hold_time or d.hold_time or 0.0 -- pause at each target
+    self.hold_timer = 0
+
     if self.mode == 'mesh' then
         self.model = self:_loadModel(opts.path)
     elseif self.mode == 'square_circle' then
@@ -47,12 +68,12 @@ function ModelView:init(opts)
             table.insert(self.shape_faces, { self.bottom_center, j, i })
             table.insert(self.shape_faces, { self.top_center, self.N + i, self.N + j })
         end
-    else -- cube_sphere
-    self.grid_lat = opts.grid_lat or d.grid_lat or 24 -- latitude segments
-    self.grid_lon = opts.grid_lon or d.grid_lon or 48 -- longitude segments
-    self.morph_t = 0
-    self.morph_speed = opts.morph_speed or d.morph_speed or 0.3
-    self.two_sided = opts.two_sided or d.two_sided or false
+    elseif self.mode == 'cube_sphere' or self.mode == 'shape_morph' then
+        self.grid_lat = opts.grid_lat or d.grid_lat or 24 -- latitude segments
+        self.grid_lon = opts.grid_lon or d.grid_lon or 48 -- longitude segments
+        self.morph_t = 0
+        self.morph_speed = opts.morph_speed or d.morph_speed or 0.3
+        self.two_sided = opts.two_sided or d.two_sided or false
         -- Precompute faces for a (grid_lat+1) x grid_lon vertex grid
         -- Vertex index: idx(i,j) with i in [0..grid_lat], j in [0..grid_lon-1]
         local function vid(i, j)
@@ -72,6 +93,10 @@ function ModelView:init(opts)
                 table.insert(self.grid_faces, {a, c, d})
             end
         end
+    else
+        -- default back to cube_sphere grid if unknown mode
+        self.mode = 'cube_sphere'
+        return self:init(opts)
     end
 end
 
@@ -152,7 +177,21 @@ function ModelView:update(dt)
     self.angle.y = self.angle.y + self.rot_speed.y * dt
     self.angle.z = self.angle.z + self.rot_speed.z * dt
     if self.mode ~= 'mesh' then
-        self.morph_t = (self.morph_t + self.morph_speed * dt) % 1.0
+        if self.mode == 'shape_morph' then
+            if self.hold_timer > 0 then
+                self.hold_timer = math.max(0, self.hold_timer - dt)
+            else
+                self.morph_t = self.morph_t + self.morph_speed * dt
+                if self.morph_t >= 1.0 then
+                    self.morph_t = 0.0
+                    self.shape_index = self.next_index
+                    self.next_index = (self.shape_index % #self.shapes) + 1
+                    self.hold_timer = self.hold_time
+                end
+            end
+        else
+            self.morph_t = (self.morph_t + self.morph_speed * dt) % 1.0
+        end
     end
 end
 
@@ -168,7 +207,7 @@ function ModelView:draw()
     local verts = {}
     local faces_src
     local function pushForwardClamp(p)
-        local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_model_draw) or {}
+    local DV = ((self.di and self.di.config and self.di.config.ui and self.di.config.ui.views and self.di.config.ui.views.screensaver_model_draw) or {})
         p[3] = p[3] + (DV.z_push or 6)
         if p[3] < (DV.near_min or 0.1) then p[3] = (DV.near_min or 0.1) end
         return p
@@ -207,30 +246,131 @@ function ModelView:draw()
         verts[self.bottom_center] = cbot
         verts[self.top_center] = ctop
         faces_src = self.shape_faces
-    else -- cube_sphere
+    else -- cube_sphere or shape_morph using grid
+        -- helpers
         local function sgn(a) return a < 0 and -1 or 1 end
         local function supercos(t, e) return sgn(math.cos(t)) * (math.abs(math.cos(t))^(2/e)) end
         local function supersin(t, e) return sgn(math.sin(t)) * (math.abs(math.sin(t))^(2/e)) end
-        local e_cube, e_sphere = 16, 2
-        local t = 0.5 - 0.5 * math.cos(2*math.pi * self.morph_t)
-        local e = e_cube + (e_sphere - e_cube) * t
         local r = 1.0 * scale
-        -- Generate (grid_lat+1) x grid_lon vertices
-        local idx = 1
-        for i=0, self.grid_lat do
-            local u = -math.pi/2 + (math.pi * i / self.grid_lat) -- latitude
-            local cu = supercos(u, e)
-            local su = supersin(u, e)
-            for j=0, self.grid_lon - 1 do
-                local v = -math.pi + (2*math.pi * j / self.grid_lon) -- longitude
-                local cv = supercos(v, e)
-                local sv = supersin(v, e)
-                local vx = r * cu * cv
-                local vy = r * cu * sv
-                local vz = r * su
-                local p = matMulVec(R, {vx, vy, vz})
-                verts[idx] = pushForwardClamp(p)
-                idx = idx + 1
+
+        local function sample_shape(shape, i, j)
+            local u = (i / self.grid_lat) -- 0..1
+            local v = (j / self.grid_lon) -- 0..1 (wrap)
+            local theta = -math.pi + (2*math.pi * v)
+            local phi = -math.pi/2 + (math.pi * u)
+            if shape == 'sphere' then
+                local e = 2
+                local cu = supercos(phi, e)
+                local su = supersin(phi, e)
+                local cv = supercos(theta, e)
+                local sv = supersin(theta, e)
+                return r * cu * cv, r * cu * sv, r * su
+            elseif shape == 'cube' then
+                local e = 16
+                local cu = supercos(phi, e)
+                local su = supersin(phi, e)
+                local cv = supercos(theta, e)
+                local sv = supersin(theta, e)
+                return r * cu * cv, r * cu * sv, r * su
+            elseif shape == 'cylinder' then
+                local h = (u * 2) - 1 -- -1..1
+                local x = math.cos(theta) * r
+                local y = math.sin(theta) * r
+                local z = h * r * 0.7
+                return x, y, z
+            elseif shape == 'plane' then
+                local x = (v * 2 - 1) * r
+                local y = (u * 2 - 1) * r
+                local z = 0
+                return x, y, z
+            elseif shape == 'egg' then
+                local e = 2
+                local cu = supercos(phi, e)
+                local su = supersin(phi, e)
+                local cv = supercos(theta, e)
+                local sv = supersin(theta, e)
+                local k = (su > 0) and 1.2 or 0.8 -- stretch top, squash bottom
+                return r * cu * cv, r * cu * sv, r * su * k
+            elseif shape == 'hat' then
+                -- sombrero-like: plane with radial bump
+                local x = (v * 2 - 1)
+                local y = (u * 2 - 1)
+                local rr = math.sqrt(x*x + y*y)
+                local bump = math.exp(- (rr*2)^2) * 0.6 -- central bump
+                local brim = (rr > 0.7) and 0.02 or 0.0
+                return r * x, r * y, r * (bump + brim - 0.2)
+            elseif shape == 'torus' or shape == 'donut' then
+                -- approximate torus mapped on our grid; poles will degenerate on our capped topology (acceptable)
+                local U = 2*math.pi * u
+                local V = 2*math.pi * v
+                local Rmaj = r * 1.0
+                local Rmin = r * 0.35
+                local cx = (Rmaj + Rmin * math.cos(U)) * math.cos(V)
+                local cy = (Rmaj + Rmin * math.cos(U)) * math.sin(V)
+                local cz = Rmin * math.sin(U)
+                -- normalize scale back into similar bounds
+                return cx * 0.6, cy * 0.6, cz * 0.6
+            else
+                -- default to sphere
+                local e = 2
+                local cu = supercos(phi, e)
+                local su = supersin(phi, e)
+                local cv = supercos(theta, e)
+                local sv = supersin(theta, e)
+                return r * cu * cv, r * cu * sv, r * su
+            end
+        end
+
+        local function build_vertices_for(shape)
+            local out = {}
+            local idx = 1
+            for i=0, self.grid_lat do
+                for j=0, self.grid_lon - 1 do
+                    local x,y,z = sample_shape(shape, i, j)
+                    local p = matMulVec(R, {x, y, z})
+                    out[idx] = pushForwardClamp(p)
+                    idx = idx + 1
+                end
+            end
+            return out
+        end
+
+        if self.mode == 'cube_sphere' then
+            -- backwards compatible morph using superquadric exponent blending
+            local e_cube, e_sphere = 16, 2
+            local t = 0.5 - 0.5 * math.cos(2*math.pi * self.morph_t)
+            local e = e_cube + (e_sphere - e_cube) * t
+            local idx = 1
+            for i=0, self.grid_lat do
+                local u = -math.pi/2 + (math.pi * i / self.grid_lat)
+                local cu = supercos(u, e)
+                local su = supersin(u, e)
+                for j=0, self.grid_lon - 1 do
+                    local v = -math.pi + (2*math.pi * j / self.grid_lon)
+                    local cv = supercos(v, e)
+                    local sv = supersin(v, e)
+                    local vx = r * cu * cv
+                    local vy = r * cu * sv
+                    local vz = r * su
+                    local p = matMulVec(R, {vx, vy, vz})
+                    verts[idx] = pushForwardClamp(p)
+                    idx = idx + 1
+                end
+            end
+        else -- shape_morph
+            local a = self.shapes[self.shape_index]
+            local b = self.shapes[self.next_index]
+            local VA = build_vertices_for(a)
+            local VB = build_vertices_for(b)
+            local t = self.morph_t
+            -- ease in/out for pleasant morph
+            local te = 0.5 - 0.5 * math.cos(math.pi * t)
+            for i=1, self.grid_vertex_count do
+                local pa, pb = VA[i], VB[i]
+                local x = pa[1] + (pb[1] - pa[1]) * te
+                local y = pa[2] + (pb[2] - pa[2]) * te
+                local z = pa[3] + (pb[3] - pa[3]) * te
+                verts[i] = {x,y,z}
             end
         end
         faces_src = self.grid_faces
@@ -256,7 +396,7 @@ function ModelView:draw()
     table.sort(faces, function(u,v) return u.depth > v.depth end) -- far to near
 
     -- Draw
-    local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_model_draw) or {}
+    local DV = ((self.di and self.di.config and self.di.config.ui and self.di.config.ui.views and self.di.config.ui.views.screensaver_model_draw) or {})
     local bg = DV.bg_color or {0,0,0}
     love.graphics.clear(bg[1], bg[2], bg[3])
     for _,face in ipairs(faces) do
@@ -271,7 +411,7 @@ function ModelView:draw()
         end
         local amb = (DV.ambient or { min = 0.3, max = 1.0 })
         local shade = math.max(amb.min or 0.3, math.min(amb.max or 1.0, face.shade))
-        love.graphics.setColor(shade, shade, shade)
+        love.graphics.setColor(shade * self.tint[1], shade * self.tint[2], shade * self.tint[3])
         love.graphics.polygon('fill', pts)
         local edge = DV.edge_color or {0,0,0}
         love.graphics.setColor(edge)

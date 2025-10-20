@@ -1,14 +1,16 @@
 -- src/views/settings_view.lua
 local Object = require('class')
-local UIComponents = require('src/views.ui_components')
-local Config = require('src.config')
+local UIComponents = require('src.views.ui_components')
 local SettingsView = Object:extend('SettingsView')
 
-function SettingsView:init(controller)
+function SettingsView:init(controller, di)
     self.controller = controller
+    self.di = di
+    if di and UIComponents and UIComponents.inject then UIComponents.inject(di) end
 
     self.title = "Settings"
-    local V = (Config.ui and Config.ui.views and Config.ui.views.settings) or {}
+    local C = (self.di and self.di.config) or {}
+    local V = (C.ui and C.ui.views and C.ui.views.settings) or {}
     local base_x = V.base_x or 50
     local sx, sh = (V.slider and V.slider.w) or 300, (V.slider and V.slider.h) or 20
     local tx, ty = (V.toggle and V.toggle.w) or 30, (V.toggle and V.toggle.h) or 30
@@ -34,7 +36,7 @@ function SettingsView:update(dt, current_settings)
     local mx, my = love.mouse.getPosition()
     self.hovered_button_id = nil
 
-    if self.dragging_slider then
+        if self.dragging_slider then
         local slider = nil
         for _, opt in ipairs(self.options) do
             if opt.id == self.dragging_slider then slider = opt; break end
@@ -42,7 +44,8 @@ function SettingsView:update(dt, current_settings)
         if slider then
             if slider.type == 'slider_int' then
                 -- Map 0..1 to a reasonable timeout range (5..600s)
-                local R = (Config.ui and Config.ui.views and Config.ui.views.settings and Config.ui.views.settings.int_slider) or { min_seconds = 5, max_seconds = 600 }
+                local C = (self.di and self.di.config) or {}
+                local R = (C.ui and C.ui.views and C.ui.views.settings and C.ui.views.settings.int_slider) or { min_seconds = 5, max_seconds = 600 }
                 local t = math.max(0, math.min(1, (mx - slider.x) / slider.w))
                 local seconds = math.floor((R.min_seconds or 5) + t * ((R.max_seconds or 600) - (R.min_seconds or 5)) + 0.5)
                 self.controller:setSetting(self.dragging_slider, seconds)
@@ -82,7 +85,8 @@ function SettingsView:draw(current_settings)
                 love.graphics.setColor(0.7, 0.7, 0.7); love.graphics.print("(Global setting only for MVP)", opt.x + 150, opt.y - 20, 0, 0.8, 0.8)
             end
         elseif opt.type == "slider_int" then
-            local R = (Config.ui and Config.ui.views and Config.ui.views.settings and Config.ui.views.settings.int_slider) or { min_seconds = 5, max_seconds = 600 }
+            local C = (self.di and self.di.config) or {}
+            local R = (C.ui and C.ui.views and C.ui.views.settings and C.ui.views.settings.int_slider) or { min_seconds = 5, max_seconds = 600 }
             local seconds = current_settings[opt.id] or 10
             local t = (seconds - (R.min_seconds or 5)) / ((R.max_seconds or 600) - (R.min_seconds or 5))
             t = math.max(0, math.min(1, t))
@@ -136,7 +140,8 @@ function SettingsView:mousepressed(x, y, button)
             if x >= opt_x and x <= opt_x + opt_w and y >= opt_y and y <= opt_y + opt_h then
                 self.dragging_slider = opt.id
                 if opt.type == 'slider_int' then
-                    local R = (Config.ui and Config.ui.views and Config.ui.views.settings and Config.ui.views.settings.int_slider) or { min_seconds = 5, max_seconds = 600 }
+                    local C = (self.di and self.di.config) or {}
+                    local R = (C.ui and C.ui.views and C.ui.views.settings and C.ui.views.settings.int_slider) or { min_seconds = 5, max_seconds = 600 }
                     local t = math.max(0, math.min(1, (x - opt_x) / opt_w))
                     local seconds = math.floor((R.min_seconds or 5) + t * ((R.max_seconds or 600) - (R.min_seconds or 5)) + 0.5)
                     return { name = "set_setting", id = opt.id, value = seconds }

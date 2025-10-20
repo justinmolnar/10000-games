@@ -2,17 +2,21 @@
 local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local Strings = require('src.utils.strings')
-local Config = require('src.config')
 local DesktopView = Object:extend('DesktopView')
 
-function DesktopView:init(program_registry, player_data, window_manager, desktop_icons, recycle_bin)
+function DesktopView:init(program_registry, player_data, window_manager, desktop_icons, recycle_bin, di)
+    -- Optional DI for views: forward to UIComponents and allow DI Config/Strings
+    self.di = di
+    if di then UIComponents.inject(di) end
+    self.config = (di and di.config) or {}
+    local Strings_ = (di and di.strings) or Strings
     self.program_registry = program_registry
     self.player_data = player_data
     self.window_manager = window_manager
     self.desktop_icons = desktop_icons -- Injected
     self.recycle_bin = recycle_bin -- Injected
 
-    local taskbar_cfg = (Config and Config.ui and Config.ui.taskbar) or {}
+    local taskbar_cfg = (self.config and self.config.ui and self.config.ui.taskbar) or {}
     self.taskbar_height = taskbar_cfg.height or 40
     self.clock_update_timer = 0
     self.current_time = ""
@@ -25,7 +29,7 @@ function DesktopView:init(program_registry, player_data, window_manager, desktop
 
     -- Icon layout defaults (dimensions from model now)
     self.icon_width, self.icon_height = self.desktop_icons:getIconDimensions()
-    local desktop_cfg = (Config and Config.ui and Config.ui.desktop) or {}
+    local desktop_cfg = (self.config and self.config.ui and self.config.ui.desktop) or {}
     local grid_cfg = desktop_cfg.grid or {}
     self.icon_padding = grid_cfg.icon_padding or 20
     self.icon_start_x = grid_cfg.start_x or 20
@@ -154,7 +158,7 @@ function DesktopView:drawIcon(program, hovered, position_override, is_dragging)
     local py = pos.y
     local pw, ph = self.desktop_icons:getIconDimensions()
 
-    local desktop_cfg = (Config and Config.ui and Config.ui.desktop) or {}
+    local desktop_cfg = (self.config and self.config.ui and self.config.ui.desktop) or {}
     local icons_cfg = desktop_cfg.icons or {}
     local base_alpha = is_dragging and 0.6 or 1.0
 
@@ -245,7 +249,7 @@ end
 function DesktopView:mousepressedRunDialog(x, y, button)
     if button ~= 1 then return nil end
 
-    local run_cfg = ((Config and Config.ui and Config.ui.desktop) or {}).run_dialog or {}
+    local run_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).run_dialog) or {}
     local buttons = run_cfg.buttons or {}
     local ok_x = self.run_dialog_x + self.run_dialog_w - (buttons.ok_offset_x or 180)
     local ok_y = self.run_dialog_y + self.run_dialog_h - (buttons.bottom_margin or 40)
@@ -260,9 +264,9 @@ end
 
 -- Get program at position using model data
 function DesktopView:getProgramAtPosition(x, y)
+    -- Retained for compatibility; the state now uses DesktopIconController for logic
     local desktop_programs = self.program_registry:getDesktopPrograms()
     local icon_w, icon_h = self.desktop_icons:getIconDimensions()
-
     for _, program in ipairs(desktop_programs) do
         if not self.desktop_icons:isDeleted(program.id) then
             local pos = self.desktop_icons:getPosition(program.id) or self:getDefaultIconPosition(program.id)
@@ -277,7 +281,7 @@ end
 
 function DesktopView:getStartMenuProgramAtPosition(x, y)
     local start_programs = self.program_registry:getStartMenuPrograms()
-    local start_cfg = (((Config and Config.ui and Config.ui.desktop) or {}).start_menu) or {}
+    local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_y = self.start_menu_y + (start_cfg.padding or 10)
     local item_h = start_cfg.item_height or 25
 
@@ -316,7 +320,7 @@ end
 
 function DesktopView:isStartButtonHovered(x, y)
     local taskbar_y = love.graphics.getHeight() - self.taskbar_height
-    local taskbar_cfg = (Config and Config.ui and Config.ui.taskbar) or {}
+    local taskbar_cfg = (self.config and self.config.ui and self.config.ui.taskbar) or {}
     local left_margin = taskbar_cfg.left_margin or 10
     local vpad = taskbar_cfg.vertical_padding or 5
     return x >= left_margin and x <= left_margin + self.taskbar_start_button_width and y >= taskbar_y + vpad and y <= taskbar_y + self.taskbar_height - vpad
@@ -324,9 +328,9 @@ end
 
 -- Get Recycle Bin icon position (needed for drop detection)
 function DesktopView:getRecycleBinPosition()
+    -- Kept for compatibility; state uses DesktopIconController
     local program = self.program_registry:getProgram("recycle_bin")
     if not program or self.desktop_icons:isDeleted("recycle_bin") then return nil end
-
     local pos = self.desktop_icons:getPosition("recycle_bin") or self:getDefaultIconPosition("recycle_bin")
     local w, h = self.desktop_icons:getIconDimensions()
     return { x = pos.x, y = pos.y, w = w, h = h }
@@ -336,12 +340,12 @@ function DesktopView:drawTaskbar(tokens)
     local y = love.graphics.getHeight() - self.taskbar_height
     local screen_width = love.graphics.getWidth()
 
-    local colors = (((Config and Config.ui and Config.ui.colors) or {}))
+    local colors = (((self.config and self.config.ui and self.config.ui.colors) or {}))
     local taskbar_colors = colors.taskbar or {}
     love.graphics.setColor(taskbar_colors.bg or {0.75, 0.75, 0.75}); love.graphics.rectangle('fill', 0, y, screen_width, self.taskbar_height)
     love.graphics.setColor(taskbar_colors.top_line or {1, 1, 1}); love.graphics.line(0, y, screen_width, y)
 
-    local taskbar_cfg = (Config and Config.ui and Config.ui.taskbar) or {}
+    local taskbar_cfg = (self.config and self.config.ui and self.config.ui.taskbar) or {}
     local left_margin = taskbar_cfg.left_margin or 10
     local vpad = taskbar_cfg.vertical_padding or 5
     self:drawStartButton(left_margin, y + vpad, self.taskbar_height - 2 * vpad)
@@ -454,13 +458,13 @@ function DesktopView:drawStartButton(x, y, size)
     local w = self.taskbar_start_button_width
     local h = size
     local hovered = self.start_button_hovered
-    local colors = (Config and Config.ui and Config.ui.colors and Config.ui.colors.start_button) or {}
+    local colors = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_button) or {}
     love.graphics.setColor(hovered and (colors.bg_hover or {0.85, 0.85, 0.85}) or (colors.bg or {0.75, 0.75, 0.75}))
     love.graphics.rectangle('fill', x, y, w, h)
     love.graphics.setColor((colors.border_light or {1, 1, 1})); love.graphics.line(x, y, x + w, y); love.graphics.line(x, y, x, y + h)
     love.graphics.setColor((colors.border_dark or {0.2, 0.2, 0.2})); love.graphics.line(x + w, y, x + w, y + h); love.graphics.line(x, y + h, x + w, y + h)
     love.graphics.setColor(colors.text or {0, 0, 0})
-    local tb_text = (Config and Config.ui and Config.ui.taskbar_text) or {}
+    local tb_text = (self.config and self.config.ui and self.config.ui.taskbar_text) or {}
     local start_off = tb_text.start_text_offset or { x = 5, y = 5 }
     local start_scale = tb_text.start_text_scale or 0.9
     love.graphics.print(Strings.get('start.title','Start'), x + start_off.x, y + start_off.y, 0, start_scale, start_scale)
@@ -468,12 +472,12 @@ end
 
 
 function DesktopView:drawSystemTray(x, y, w, h, tokens)
-    local colors = (Config and Config.ui and Config.ui.colors and Config.ui.colors.system_tray) or {}
+    local colors = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.system_tray) or {}
     love.graphics.setColor(colors.bg or {0.6, 0.6, 0.6}); love.graphics.rectangle('fill', x, y, w, h)
     love.graphics.setColor(colors.border_dark or {0.2, 0.2, 0.2}); love.graphics.line(x, y, x + w, y); love.graphics.line(x, y, x, y + h)
     love.graphics.setColor(colors.border_light or {1, 1, 1}); love.graphics.line(x + w, y, x + w, y + h); love.graphics.line(x, y + h, x + w, y + h)
     love.graphics.setColor(colors.text or {0, 0, 0})
-    local tray_cfg = (((Config and Config.ui and Config.ui.desktop) or {}).system_tray) or {}
+    local tray_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).system_tray) or {}
     local clock_off = tray_cfg.clock_right_offset or 50
     local clock_scale = tray_cfg.clock_text_scale or 1.2
     love.graphics.print(self.current_time, x + w - clock_off, y + 5, 0, clock_scale, clock_scale)
@@ -484,7 +488,7 @@ end
 function DesktopView:drawStartMenu()
     local SpriteLoader = require('src.utils.sprite_loader')
     local sprite_loader = SpriteLoader.getInstance()
-    local theme = (Config and Config.ui and Config.ui.colors and Config.ui.colors.start_menu) or {}
+    local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
     love.graphics.setColor(theme.bg or {0.75, 0.75, 0.75})
     love.graphics.rectangle('fill', self.start_menu_x, self.start_menu_y, self.start_menu_w, self.start_menu_h)
     love.graphics.setColor(theme.border_light or {1, 1, 1})
@@ -495,7 +499,7 @@ function DesktopView:drawStartMenu()
     love.graphics.line(self.start_menu_x, self.start_menu_y + self.start_menu_h, self.start_menu_x + self.start_menu_w, self.start_menu_y + self.start_menu_h)
 
     local start_programs = self.program_registry:getStartMenuPrograms()
-    local start_cfg = (((Config and Config.ui and Config.ui.desktop) or {}).start_menu) or {}
+    local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_y = self.start_menu_y + (start_cfg.padding or 10)
     local item_h = start_cfg.item_height or 25
     local icon_size = start_cfg.icon_size or 20
@@ -505,7 +509,7 @@ function DesktopView:drawStartMenu()
         
         -- Highlight
         if is_hovered then
-            local start_cfg = (((Config and Config.ui and Config.ui.desktop) or {}).start_menu) or {}
+            local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
             local inset = start_cfg.highlight_inset or 2
             love.graphics.setColor(theme.highlight or {0, 0, 0.5})
             love.graphics.rectangle('fill', self.start_menu_x + inset, item_y, self.start_menu_w - 2 * inset, item_h)
@@ -535,7 +539,7 @@ function DesktopView:drawStartMenu()
     -- Run option with icon
     local run_hovered = self.hovered_start_program_id == "run"
     if run_hovered then
-        local start_cfg = (((Config and Config.ui and Config.ui.desktop) or {}).start_menu) or {}
+    local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
         local inset = start_cfg.highlight_inset or 2
         love.graphics.setColor(theme.highlight or {0, 0, 0.5})
         love.graphics.rectangle('fill', self.start_menu_x + inset, item_y, self.start_menu_w - 2 * inset, item_h)
@@ -553,14 +557,14 @@ function DesktopView:drawStartMenu()
 end
 
 function DesktopView:drawRunDialog(run_text)
-    local desktop_cfg = (Config and Config.ui and Config.ui.desktop) or {}
+    local desktop_cfg = (self.config and self.config.ui and self.config.ui.desktop) or {}
     local run_cfg = desktop_cfg.run_dialog or {}
     local title_bar_h = run_cfg.title_bar_height or 25
     local pad = run_cfg.padding or 10
     local input_y = run_cfg.input_y or 65
     local input_h = run_cfg.input_h or 25
     local btns = run_cfg.buttons or {}
-    local colors = (Config and Config.ui and Config.ui.colors and Config.ui.colors.run_dialog) or {}
+    local colors = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.run_dialog) or {}
 
     love.graphics.setColor(colors.bg or {0.75, 0.75, 0.75}); love.graphics.rectangle('fill', self.run_dialog_x, self.run_dialog_y, self.run_dialog_w, self.run_dialog_h)
     love.graphics.setColor(colors.title_bg or {0, 0, 0.5}); love.graphics.rectangle('fill', self.run_dialog_x, self.run_dialog_y, self.run_dialog_w, title_bar_h)

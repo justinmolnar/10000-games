@@ -3,13 +3,15 @@
 
 local Object = require('class')
 local json = require('json')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local WindowManager = Object:extend('WindowManager')
 
 local SAVE_FILE = "window_positions.json"
 local SAVE_VERSION = "1.0" -- Increment if structure changes significantly
 
-function WindowManager:init()
+function WindowManager:init(di)
+    -- Optional DI for config
+    if di and di.config then Config = di.config end
     self.windows = {} -- Array for z-order (index 1 = bottom, last = top)
     self.focused_window_id = nil
     self.next_window_id = 1
@@ -22,6 +24,19 @@ function WindowManager:init()
     self.last_base_pos = { x = -1, y = -1 } -- Track base position for cascading
 
     self:loadWindowPositions()
+    -- Cache screen size if DI provides it; states should update via setScreenSize on resize
+    if di and di.screen then
+        self.screen_w = di.screen.width
+        self.screen_h = di.screen.height
+    else
+        self.screen_w = nil
+        self.screen_h = nil
+    end
+end
+
+function WindowManager:setScreenSize(w, h)
+    self.screen_w = w
+    self.screen_h = h
 end
 
 -- Create a new window
@@ -55,7 +70,8 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
              x, y = remembered.x, remembered.y
              print("Using remembered position but default size:", x, y, w, h)
         else
-             local screen_w, screen_h = love.graphics.getDimensions()
+             local screen_w = self.screen_w or (Config.ui and Config.ui.screen and Config.ui.screen.width) or 1024
+             local screen_h = self.screen_h or (Config.ui and Config.ui.screen and Config.ui.screen.height) or 768
              local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
              local center_x = math.floor((screen_w - w) / 2)
              local center_y = math.floor((screen_h - taskbar_h - h) / 2)
@@ -80,7 +96,8 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
     else
     w = default_w or conf_default_w
     h = default_h or conf_default_h
-    local screen_w, screen_h = love.graphics.getDimensions()
+    local screen_w = self.screen_w or (Config.ui and Config.ui.screen and Config.ui.screen.width) or 1024
+    local screen_h = self.screen_h or (Config.ui and Config.ui.screen and Config.ui.screen.height) or 768
     local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
         local center_x = math.floor((screen_w - w) / 2)
         local center_y = math.floor((screen_h - taskbar_h - h) / 2)
@@ -97,7 +114,8 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
         print("Calculated initial position for resizable", program_type, ":", x, y, w, h)
     end
 
-    local screen_w, screen_h = love.graphics.getDimensions()
+    local screen_w = self.screen_w or (Config.ui and Config.ui.screen and Config.ui.screen.width) or 1024
+    local screen_h = self.screen_h or (Config.ui and Config.ui.screen and Config.ui.screen.height) or 768
     local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
     w = tonumber(w) or default_w or conf_default_w
     h = tonumber(h) or default_h or conf_default_h

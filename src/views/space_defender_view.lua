@@ -1,10 +1,11 @@
 local Object = require('class')
-local Config = require('src.config')
 local SpaceDefenderView = Object:extend('SpaceDefenderView')
 
 function SpaceDefenderView:init(controller)
     self.controller = controller
-    self._cfg = Config.games.space_defender and Config.games.space_defender.view or {}
+    local di = controller and controller.di
+    local cfg_root = (di and di.config and di.config.games and di.config.games.space_defender) or {}
+    self._cfg = (cfg_root and cfg_root.view) or {}
     self.stars = {}
     local star_count = (self._cfg.starfield and self._cfg.starfield.count) or 200
     local base_size = (self._cfg.starfield and self._cfg.starfield.base_size) or { w = 1024, h = 768 }
@@ -35,7 +36,7 @@ function SpaceDefenderView:draw(args)
     self:drawBackground(args.width, args.height)
 
     -- Draw game entities
-    if args.bullet_system then args.bullet_system:draw(args.game_data) end
+    if args.bullet_system then self:drawBullets(args.bullet_system, args.game_data) end
     self:drawEnemies(args.enemies)
     if args.boss_active and args.boss then self:drawBoss(args.boss) end
     if args.player then self:drawPlayer(args.player) end
@@ -91,6 +92,35 @@ function SpaceDefenderView:drawEnemies(enemies)
             love.graphics.setColor(1, 1, 1)
         end
         SpriteManager.sprite_loader:drawSprite(sprite_name, enemy.x - enemy.width/2, enemy.y - enemy.height/2, enemy.width, enemy.height)
+    end
+end
+
+function SpaceDefenderView:drawBullets(bullet_system, game_data)
+    if not bullet_system then return end
+    local bullets = bullet_system.getActiveBullets and bullet_system:getActiveBullets() or {}
+    local SpriteManager = require('src.utils.sprite_manager').getInstance()
+    SpriteManager:ensureLoaded()
+
+    for _, bullet in ipairs(bullets) do
+        if bullet.sprite and bullet.sprite ~= "bullet_basic" then
+            local game = game_data and game_data.getGame and game_data:getGame(bullet.id)
+            local palette_id = "default"
+            if game then palette_id = SpriteManager:getPaletteId(game) end
+            local cfg = (self._cfg and self._cfg.bullets) or {}
+            local s = (cfg.sprite_scale) or (((self._cfg and self._cfg.systems and self._cfg.systems.bullets) and self._cfg.systems.bullets.sprite_scale) or 2.0)
+            SpriteManager.sprite_loader:drawSprite(
+                bullet.sprite,
+                bullet.x - bullet.width/2,
+                bullet.y - bullet.height/2,
+                bullet.width * s,
+                bullet.height * s,
+                nil,
+                palette_id
+            )
+        else
+            love.graphics.setColor(bullet.color or {1,1,1})
+            love.graphics.rectangle('fill', bullet.x - bullet.width/2, bullet.y - bullet.height/2, bullet.width, bullet.height)
+        end
     end
 end
 

@@ -36,7 +36,7 @@ function RecycleBin:addItem(program_id, original_position)
 end
 
 -- Restore item from recycle bin
-function RecycleBin:restoreItem(program_id)
+function RecycleBin:restoreItem(program_id, screen_w, screen_h)
     for i = #self.items, 1, -1 do
         if self.items[i].program_id == program_id then
             local item = table.remove(self.items, i)
@@ -46,8 +46,7 @@ function RecycleBin:restoreItem(program_id)
 
             -- Restore to original position if available and valid
             if item.original_position then
-                -- Pass screen dimensions for validation
-                local screen_w, screen_h = love.graphics.getDimensions()
+                -- Use provided screen dimensions for validation
                 self.desktop_icons:setPosition(program_id, item.original_position.x, item.original_position.y, screen_w, screen_h)
             end
             -- If no original position, it will appear in default grid on next view calc

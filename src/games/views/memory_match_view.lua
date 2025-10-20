@@ -1,5 +1,5 @@
 local Object = require('class')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local MemoryMatchView = Object:extend('MemoryMatchView')
 
 function MemoryMatchView:init(game_state)
@@ -7,7 +7,9 @@ function MemoryMatchView:init(game_state)
     self.CARD_WIDTH = game_state.CARD_WIDTH or 60
     self.CARD_HEIGHT = game_state.CARD_HEIGHT or 80
     self.CARD_SPACING = game_state.CARD_SPACING or 10
-    local cfg = (Config and Config.games and Config.games.memory_match and Config.games.memory_match.view) or {}
+    self.di = game_state and game_state.di
+    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match and self.di.config.games.memory_match.view) or
+                 (Config and Config.games and Config.games.memory_match and Config.games.memory_match.view) or {})
     self.bg_color = cfg.bg_color or {0.05, 0.08, 0.12}
     self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
     self.start_x = game_state.start_x

@@ -341,7 +341,7 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     
     local formula_y = y + 48
     love.graphics.push()
-    love.graphics.origin()
+    -- Translate relative to current window/content transform without resetting to screen origin
     love.graphics.translate(text_x, formula_y)
     formula_renderer:draw(game_data, 0, 0, text_w, 16)
     love.graphics.pop()
@@ -411,111 +411,126 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
     local sprite_manager = SpriteManager.getInstance()
     local formula_renderer = FormulaRenderer:new()
     local metric_legend = MetricLegend:new()
-    
-    UIComponents.drawPanel(x, y, w, h, {0.2, 0.2, 0.2})
 
-    local line_y, line_height = y + 10, 20
-    
-    local preview_size = 80
-    local preview_x = x + (w - preview_size) / 2
-    love.graphics.setColor(0.15, 0.15, 0.15)
-    love.graphics.rectangle('fill', preview_x - 5, line_y - 5, preview_size + 10, preview_size + 10)
-    
-    local sprite_name = game_data.icon_sprite or "game_freecell-0"
-    local palette_id = sprite_manager:getPaletteId(game_data)
-    sprite_loader:drawSprite(sprite_name, preview_x, line_y, preview_size, preview_size, {1, 1, 1}, palette_id)
-    line_y = line_y + preview_size + 15
-    
-    love.graphics.setColor(1, 1, 1)
-    local title_width = love.graphics.getFont():getWidth(game_data.display_name) * 1.2
-    love.graphics.print(game_data.display_name, x + (w - title_width) / 2, line_y, 0, 1.2, 1.2)
-    line_y = line_y + line_height * 1.5
+    local function drawHeaderPanel()
+        UIComponents.drawPanel(x, y, w, h, {0.2, 0.2, 0.2})
+        return y + 10, 20 -- line_y, line_height
+    end
 
-    local difficulty = game_data.difficulty_level or 1
-    local diff_text, diff_color = "Easy", {0, 1, 0}
-    if difficulty > 6 then diff_text, diff_color = "HARD", {1, 0, 0}
-    elseif difficulty > 3 then diff_text, diff_color = "Medium", {1, 1, 0} end
-    
-    love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.print("Difficulty: ", x + 10, line_y)
-    love.graphics.setColor(diff_color)
-    love.graphics.print(diff_text, x + 90, line_y)
-    
-    local stars = math.min(5, math.ceil(difficulty / 2))
-    for i = 1, 5 do
-        if i <= stars then
-            love.graphics.setColor(1, 1, 0)
+    local function drawPreview(line_y)
+        local preview_size = 80
+        local preview_x = x + (w - preview_size) / 2
+        love.graphics.setColor(0.15, 0.15, 0.15)
+        love.graphics.rectangle('fill', preview_x - 5, line_y - 5, preview_size + 10, preview_size + 10)
+        local sprite_name = game_data.icon_sprite or "game_freecell-0"
+        local palette_id = sprite_manager:getPaletteId(game_data)
+        sprite_loader:drawSprite(sprite_name, preview_x, line_y, preview_size, preview_size, {1, 1, 1}, palette_id)
+        return line_y + preview_size + 15
+    end
+
+    local function drawTitleAndDifficulty(line_y)
+        love.graphics.setColor(1, 1, 1)
+        local title_width = love.graphics.getFont():getWidth(game_data.display_name) * 1.2
+        love.graphics.print(game_data.display_name, x + (w - title_width) / 2, line_y, 0, 1.2, 1.2)
+        line_y = line_y + 20 * 1.5
+
+        local difficulty = game_data.difficulty_level or 1
+        local diff_text, diff_color = "Easy", {0, 1, 0}
+        if difficulty > 6 then diff_text, diff_color = "HARD", {1, 0, 0}
+        elseif difficulty > 3 then diff_text, diff_color = "Medium", {1, 1, 0} end
+
+        love.graphics.setColor(0.8, 0.8, 0.8)
+        love.graphics.print("Difficulty: ", x + 10, line_y)
+        love.graphics.setColor(diff_color)
+        love.graphics.print(diff_text, x + 90, line_y)
+        local stars = math.min(5, math.ceil(difficulty / 2))
+        for i = 1, 5 do
+            if i <= stars then love.graphics.setColor(1, 1, 0) else love.graphics.setColor(0.3, 0.3, 0.3) end
+            love.graphics.print("★", x + 160 + (i - 1) * 16, line_y, 0, 1.0, 1.0)
+        end
+        return line_y + 20
+    end
+
+    local function drawTierAndCost(line_y)
+        love.graphics.setColor(0.8, 0.8, 0.8)
+        love.graphics.print("Tier: " .. game_data.tier, x + 10, line_y)
+        line_y = line_y + 20
+        local is_unlocked = self.player_data:isGameUnlocked(game_data.id)
+        if not is_unlocked then
+            love.graphics.setColor(1, 0.5, 0)
+            love.graphics.print("Unlock Cost: " .. game_data.unlock_cost .. " tokens", x + 10, line_y)
+            line_y = line_y + 20
+        end
+        return line_y, is_unlocked
+    end
+
+    local function drawFormula(line_y)
+        love.graphics.setColor(1, 1, 0)
+        love.graphics.print("POWER FORMULA:", x + 10, line_y, 0, 1.1, 1.1)
+        line_y = line_y + 20 + 5
+        line_y = formula_renderer:draw(game_data, x + 10, line_y, w - 20, 18)
+        return line_y + 10
+    end
+
+    local function drawPerformance(line_y)
+        local perf = self.player_data:getGamePerformance(game_data.id)
+        if perf then
+            love.graphics.setColor(0, 1, 0)
+            love.graphics.print("Your Best Performance:", x + 10, line_y)
+            line_y = line_y + 20
+            line_y = metric_legend:draw(game_data, perf.metrics, x + 10, line_y, w - 20, true)
+            line_y = line_y + 5
+            love.graphics.setColor(0, 1, 1)
+            love.graphics.print("Power: " .. math.floor(perf.best_score), x + 10, line_y, 0, 1.2, 1.2)
+            line_y = line_y + 20
+            if perf.auto_completed then
+                UIComponents.drawBadge(x + 10, line_y, 15, "AUTO", {0.5, 0.5, 1})
+                love.graphics.setColor(0.8, 0.8, 1)
+                love.graphics.print("[Auto-Completed]", x + 30, line_y, 0, 0.9, 0.9)
+                line_y = line_y + 20
+            end
         else
-            love.graphics.setColor(0.3, 0.3, 0.3)
+            love.graphics.setColor(0.7, 0.7, 0.7)
+            love.graphics.print("Not yet played", x + 10, line_y)
+            line_y = line_y + 20
         end
-        love.graphics.print("★", x + 160 + (i - 1) * 16, line_y, 0, 1.0, 1.0)
-    end
-    line_y = line_y + line_height
-
-    love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.print("Tier: " .. game_data.tier, x + 10, line_y)
-    line_y = line_y + line_height
-
-    local is_unlocked = self.player_data:isGameUnlocked(game_data.id)
-    if not is_unlocked then
-        love.graphics.setColor(1, 0.5, 0)
-        love.graphics.print("Unlock Cost: " .. game_data.unlock_cost .. " tokens", x + 10, line_y)
-        line_y = line_y + line_height
+        return line_y
     end
 
-    line_y = line_y + 10
-    love.graphics.setColor(1, 1, 0)
-    love.graphics.print("POWER FORMULA:", x + 10, line_y, 0, 1.1, 1.1)
-    line_y = line_y + line_height + 5
-    
-    line_y = formula_renderer:draw(game_data, x + 10, line_y, w - 20, 18)
-    line_y = line_y + 10
-    
-    local perf = self.player_data:getGamePerformance(game_data.id)
-    if perf then
-        love.graphics.setColor(0, 1, 0)
-        love.graphics.print("Your Best Performance:", x + 10, line_y)
-        line_y = line_y + line_height
-        
-        line_y = metric_legend:draw(game_data, perf.metrics, x + 10, line_y, w - 20, true)
-        
-        line_y = line_y + 5
-        love.graphics.setColor(0, 1, 1)
-        love.graphics.print("Power: " .. math.floor(perf.best_score), x + 10, line_y, 0, 1.2, 1.2)
-        line_y = line_y + line_height
-        
-        if perf.auto_completed then
-            UIComponents.drawBadge(x + 10, line_y, 15, "AUTO", {0.5, 0.5, 1})
-            love.graphics.setColor(0.8, 0.8, 1)
-            love.graphics.print("[Auto-Completed]", x + 30, line_y, 0, 0.9, 0.9)
-            line_y = line_y + line_height
-        end
-    else
+    local function drawAutoplay(line_y)
+        love.graphics.setColor(0.8, 0.8, 1)
+        love.graphics.print("Auto-Play Estimate:", x + 10, line_y)
+        line_y = line_y + 20
+        local auto_power = game_data.formula_function(game_data.auto_play_performance)
         love.graphics.setColor(0.7, 0.7, 0.7)
-        love.graphics.print("Not yet played", x + 10, line_y)
-        line_y = line_y + line_height
+        love.graphics.print("Power: ~" .. math.floor(auto_power), x + 10, line_y, 0, 0.9, 0.9)
+        line_y = line_y + 20
+        if (game_data.difficulty_level or 1) > 8 then
+            line_y = line_y + 10
+            love.graphics.setColor(1, 0, 0)
+            love.graphics.print("WARNING: HIGH RISK!", x + 10, line_y, 0, 0.9, 0.9)
+        end
+        return line_y
     end
 
-    line_y = line_y + 10
-    love.graphics.setColor(0.8, 0.8, 1)
-    love.graphics.print("Auto-Play Estimate:", x + 10, line_y)
-    line_y = line_y + line_height
-    
-    local auto_power = game_data.formula_function(game_data.auto_play_performance)
-    love.graphics.setColor(0.7, 0.7, 0.7)
-    love.graphics.print("Power: ~" .. math.floor(auto_power), x + 10, line_y, 0, 0.9, 0.9)
-    line_y = line_y + line_height
-
-    if difficulty > 8 then
-        line_y = line_y + 10
-        love.graphics.setColor(1, 0, 0)
-        love.graphics.print("WARNING: HIGH RISK!", x + 10, line_y, 0, 0.9, 0.9)
+    local function drawActionButton()
+        local button_y = y + h - 45
+        local is_unlocked = self.player_data:isGameUnlocked(game_data.id)
+        local button_text = is_unlocked and "PLAY GAME" or "UNLOCK & PLAY"
+        local is_launch_hovered = self.hovered_button_id == "launch_" .. game_data.id
+        UIComponents.drawButton(x + 10, button_y, w - 20, 35, button_text, true, is_launch_hovered)
     end
 
-    local button_y = y + h - 45
-    local button_text = is_unlocked and "PLAY GAME" or "UNLOCK & PLAY"
-    local is_launch_hovered = self.hovered_button_id == "launch_" .. game_data.id
-    UIComponents.drawButton(x + 10, button_y, w - 20, 35, button_text, true, is_launch_hovered)
+    -- Orchestrate section draws
+    local line_y = select(1, drawHeaderPanel())
+    line_y = drawPreview(line_y)
+    line_y = drawTitleAndDifficulty(line_y)
+    local is_unlocked
+    line_y, is_unlocked = drawTierAndCost(line_y)
+    line_y = drawFormula(line_y)
+    line_y = drawPerformance(line_y)
+    line_y = drawAutoplay(line_y)
+    drawActionButton()
 end
 
 return LauncherView

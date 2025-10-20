@@ -3,11 +3,12 @@ local Strings = require('src.utils.strings')
 local LauncherView = require('src.views.launcher_view')
 local LauncherState = Object:extend('LauncherState')
 
-function LauncherState:init(player_data, game_data, state_machine, save_manager)
+function LauncherState:init(player_data, game_data, state_machine, save_manager, di)
     self.player_data = player_data
     self.game_data = game_data
     self.state_machine = state_machine
     self.save_manager = save_manager
+    self.di = di
 
     -- Create the view instance, passing a reference to this state (as controller)
     self.view = LauncherView:new(self, player_data, game_data)
@@ -55,31 +56,22 @@ function LauncherState:updateFilter(category)
     self.view.selected_category = category -- Update view's state
     self.filtered_games = {}
     
-    for _, game_data in ipairs(self.all_games) do
-        local include = false
-        
-        if category == "all" then
-            include = true
-        elseif category == "action" or category == "puzzle" or category == "arcade" then
-            include = (game_data.category == category)
-        elseif category == "locked" then
-            include = not self.player_data:isGameUnlocked(game_data.id)
-        elseif category == "unlocked" then
-            include = self.player_data:isGameUnlocked(game_data.id)
-        elseif category == "completed" then
-            include = self.player_data:getGamePerformance(game_data.id) ~= nil
-        elseif category == "easy" then
-            include = (game_data.difficulty_level or 1) <= 3
-        elseif category == "medium" then
-            local diff = game_data.difficulty_level or 1
-            include = (diff > 3 and diff <= 6)
-        elseif category == "hard" then
-            include = (game_data.difficulty_level or 1) > 6
-        end
-        
-        if include then
-            table.insert(self.filtered_games, game_data)
-        end
+    local filters = {
+        all = function(_) return true end,
+        action = function(g) return g.category == 'action' end,
+        puzzle = function(g) return g.category == 'puzzle' end,
+        arcade = function(g) return g.category == 'arcade' end,
+        locked = function(g) return not self.player_data:isGameUnlocked(g.id) end,
+        unlocked = function(g) return self.player_data:isGameUnlocked(g.id) end,
+        completed = function(g) return self.player_data:getGamePerformance(g.id) ~= nil end,
+        easy = function(g) return (g.difficulty_level or 1) <= 3 end,
+        medium = function(g) local d = g.difficulty_level or 1; return d > 3 and d <= 6 end,
+        hard = function(g) return (g.difficulty_level or 1) > 6 end,
+    }
+
+    local predicate = filters[category] or filters.all
+    for _, g in ipairs(self.all_games) do
+        if predicate(g) then table.insert(self.filtered_games, g) end
     end
     
     -- Reset selection in view

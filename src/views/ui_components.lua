@@ -1,8 +1,26 @@
 -- ui_components.lua: Reusable UI drawing components
+--
+-- Scope and design notes (Phase 3.3):
+-- - This module provides draw-only primitives (buttons, dropdowns, panels, badges, etc.).
+-- - It is DI-aware via UIComponents.inject(di) for config and strings; it should not own business logic.
+-- - Input/hit-testing is owned by calling views; complex behaviors should be implemented in the state/controller.
+-- - If any component starts to accumulate business rules or multi-step flows, promote it into its own mini MVP triad
+--   (ComponentController + ComponentView and optional model), keeping this module as light draw helpers.
+-- - Current review: components remain presentational; no split required.
 
 local UIComponents = {}
-local Config = require('src.config')
+-- Config provided via UIComponents.inject; avoid direct require
 local Strings = require('src.utils.strings')
+
+-- Optional DI injection for config/strings
+UIComponents._config = nil
+UIComponents._strings = nil
+function UIComponents.inject(di)
+    if di then
+        UIComponents._config = di.config or UIComponents._config
+        UIComponents._strings = di.strings or UIComponents._strings
+    end
+end
 
 function UIComponents.drawButton(x, y, w, h, text, enabled, hovered)
     -- Background
@@ -80,11 +98,13 @@ function UIComponents.drawDropdownList(x, y, w, item_h, items, selected_index)
 end
 
 function UIComponents.drawTokenCounter(x, y, tokens)
+    local Strings_ = UIComponents._strings or Strings
+    local Config_ = UIComponents._config or {}
     love.graphics.setColor(1, 1, 1)
-    local tokens_label = Strings.get('tokens.label', 'Tokens: ')
+    local tokens_label = Strings_.get('tokens.label', 'Tokens: ')
     love.graphics.print(tokens_label, x, y, 0, 1.5, 1.5)
     
-    local tok_cfg = (Config and Config.tokens) or {}
+    local tok_cfg = (Config_ and Config_.tokens) or {}
     local th = tok_cfg.thresholds or { low = 100, medium = 500 }
     local colors = tok_cfg.colors or { low = {1,0,0}, medium = {1,1,0}, high = {0,1,0} }
     local token_color = colors.high or {0,1,0}
@@ -130,9 +150,10 @@ function UIComponents.drawDialogButtons(w, h, applyEnabled)
     local cancel_x = ok_x + bw + spacing
     local apply_x = cancel_x + bw + spacing
     local by = h - bottom_margin - bh
-    UIComponents.drawButton(ok_x, by, bw, bh, Strings.get('buttons.ok','OK'), true, false)
-    UIComponents.drawButton(cancel_x, by, bw, bh, Strings.get('buttons.cancel','Cancel'), true, false)
-    UIComponents.drawButton(apply_x, by, bw, bh, Strings.get('buttons.apply','Apply'), applyEnabled ~= false, false)
+    local Strings_ = UIComponents._strings or Strings
+    UIComponents.drawButton(ok_x, by, bw, bh, Strings_.get('buttons.ok','OK'), true, false)
+    UIComponents.drawButton(cancel_x, by, bw, bh, Strings_.get('buttons.cancel','Cancel'), true, false)
+    UIComponents.drawButton(apply_x, by, bw, bh, Strings_.get('buttons.apply','Apply'), applyEnabled ~= false, false)
     return {x=ok_x,y=by,w=bw,h=bh}, {x=cancel_x,y=by,w=bw,h=bh}, {x=apply_x,y=by,w=bw,h=bh}
 end
 

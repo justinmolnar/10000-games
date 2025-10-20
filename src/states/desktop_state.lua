@@ -1,9 +1,9 @@
 -- src/states/desktop_state.lua
 local Object = require('class')
 local DesktopView = require('views.desktop_view')
+local DesktopIconController = require('src.controllers.desktop_icon_controller')
 local Constants = require('src.constants')
 local Strings = require('src.utils.strings')
-local SettingsManager = require('src.utils.settings_manager')
 local TutorialView = require('src.views.tutorial_view')
 local WindowChrome = require('src.views.window_chrome')
 local WindowController = require('src.controllers.window_controller')
@@ -17,24 +17,26 @@ if not WindowController then
 end
 print("[DesktopState] WindowController class loaded:", WindowController)
 
-function DesktopState:init(state_machine, player_data, show_tutorial_on_startup, statistics,
-                           window_manager, desktop_icons, file_system, recycle_bin, program_registry,
-                           vm_manager_dep, cheat_system_dep, save_manager_dep, game_data_dep)
+function DesktopState:init(di)
 
     print("[DesktopState:init] Starting initialization...") -- Debug Start
 
-    self.state_machine = state_machine
-    self.player_data = player_data
-    self.statistics = statistics
-    self.window_manager = window_manager
-    self.desktop_icons = desktop_icons -- Injected
-    self.file_system = file_system
-    self.recycle_bin = recycle_bin -- Injected
-    self.program_registry = program_registry
-    self.vm_manager = vm_manager_dep
-    self.cheat_system = cheat_system_dep
-    self.save_manager = save_manager_dep
-    self.game_data = game_data_dep
+    -- Dependency Injection container (required in new API)
+    self.di = di or {}
+
+    -- Core references from DI
+    self.state_machine = self.di.stateMachine
+    self.player_data = self.di.playerData
+    self.statistics = self.di.statistics
+    self.window_manager = self.di.windowManager
+    self.desktop_icons = self.di.desktopIcons -- Injected
+    self.file_system = self.di.fileSystem
+    self.recycle_bin = self.di.recycleBin -- Injected
+    self.program_registry = self.di.programRegistry
+    self.vm_manager = self.di.vmManager
+    self.cheat_system = self.di.cheatSystem
+    self.save_manager = self.di.saveManager
+    self.game_data = self.di.gameData
 
     -- Initialize basic properties first
     self.window_chrome = WindowChrome:new()
@@ -43,13 +45,13 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
     -- *** Crucial: Instantiate WindowController AFTER its dependencies are ready ***
     if WindowController then -- Check if require succeeded
         -- Ensure dependencies are valid before passing
-        if not window_manager then print("CRITICAL ERROR: window_manager is nil during DesktopState:init!") end
-        if not program_registry then print("CRITICAL ERROR: program_registry is nil during DesktopState:init!") end
+       if not self.window_manager then print("CRITICAL ERROR: window_manager is nil during DesktopState:init!") end
+       if not self.program_registry then print("CRITICAL ERROR: program_registry is nil during DesktopState:init!") end
         if not self.window_states then print("CRITICAL ERROR: self.window_states is nil during DesktopState:init!") end
 
         -- Only instantiate if dependencies seem okay
-        if window_manager and program_registry and self.window_states then
-             self.window_controller = WindowController:new(window_manager, program_registry, self.window_states)
+       if self.window_manager and self.program_registry and self.window_states then
+           self.window_controller = WindowController:new(self.window_manager, self.program_registry, self.window_states)
              print("[DesktopState:init] WindowController instantiated successfully.") -- Debug Success
              if not self.window_controller then print("CRITICAL ERROR: WindowController:new() returned nil!") end -- Check instantiation result
         else
@@ -62,14 +64,21 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
     end
 
     -- Initialize Views and other properties AFTER window_controller
-    self.view = DesktopView:new(self.program_registry, self.player_data, self.window_manager, self.desktop_icons, self.recycle_bin)
+    self.view = DesktopView:new(self.program_registry, self.player_data, self.window_manager, self.desktop_icons, self.recycle_bin, self.di)
+    self.icon_controller = DesktopIconController:new(self.program_registry, self.desktop_icons, self.recycle_bin, self.di)
     self.tutorial_view = TutorialView:new(self)
     self.context_menu_view = ContextMenuView:new()
 
-    local Config = require('src.config')
-    local colors = (Config.ui and Config.ui.colors) or {}
+    local C = (self.di and self.di.config) or {}
+    local colors = (C.ui and C.ui.colors) or {}
     self.wallpaper_color = (colors.desktop and colors.desktop.wallpaper) or {0, 0.5, 0.5}
-    self.show_tutorial = show_tutorial_on_startup or false
+    local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
+    -- Prefer explicit flag from DI; otherwise compute from settings (not shown means tutorial)
+    if self.di and self.di.showTutorialOnStartup ~= nil then
+        self.show_tutorial = self.di.showTutorialOnStartup
+    else
+        self.show_tutorial = not SettingsManager.get("tutorial_shown") or false
+    end
 
     self.start_menu_open = false
     self.run_dialog_open = false
@@ -99,16 +108,18 @@ function DesktopState:init(state_machine, player_data, show_tutorial_on_startup,
         save_manager = self.save_manager, statistics = self.statistics, window_manager = self.window_manager,
         desktop_icons = self.desktop_icons, file_system = self.file_system, recycle_bin = self.recycle_bin,
         program_registry = self.program_registry, vm_manager = self.vm_manager, cheat_system = self.cheat_system,
+        di = self.di,
         window_controller = self.window_controller -- Pass controller itself if needed by states (e.g. Settings)
     }
 
     -- Store cursors (created in main.lua)
-    self.cursors = {} -- This will be populated by main.lua
+    self.cursors = (self.di and self.di.systemCursors) or {} -- Populated via DI when available; main.lua may also set
 
     -- Screensaver idle timer
     self.idle_timer = 0
-    local SettingsManager = require('src.utils.settings_manager')
-    local desktopCfg = (Config.ui and Config.ui.desktop) or {}
+    local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
+    local C = (self.di and self.di.config) or {}
+    local desktopCfg = (C.ui and C.ui.desktop) or {}
     self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or (desktopCfg.screensaver and desktopCfg.screensaver.default_timeout) or 10
     self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
 
@@ -158,7 +169,9 @@ function DesktopState:update(dt)
     if self.show_tutorial then
         self.tutorial_view:update(dt)
     else
-        self.view:update(dt, self.start_menu_open, self.dragging_icon_id)
+    local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
+    if self.icon_controller then self.icon_controller:ensureDefaultPositions(sw, sh) end
+    self.view:update(dt, self.start_menu_open, self.dragging_icon_id)
     end
 
     -- Update system cursor based on context
@@ -168,14 +181,16 @@ function DesktopState:update(dt)
     if cursor_obj then love.mouse.setCursor(cursor_obj) end
 
     -- Refresh screensaver settings live (in-memory from SettingsManager)
-    local SettingsManager = require('src.utils.settings_manager')
+    local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
     self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
     self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or 10
 
     -- Screensaver idle tracking
     if self.screensaver_enabled then
         self.idle_timer = self.idle_timer + dt
-    if self.idle_timer >= (self.screensaver_timeout or ((desktopCfg.screensaver and desktopCfg.screensaver.default_timeout) or 10)) then
+        local C = (self.di and self.di.config) or {}
+        local default_timeout = (C.ui and C.ui.desktop and C.ui.desktop.screensaver and C.ui.desktop.screensaver.default_timeout) or 10
+        if self.idle_timer >= (self.screensaver_timeout or default_timeout) then
             if self.state_machine and self.state_machine.states[Constants.state.SCREENSAVER] then
                 self.state_machine:switch(Constants.state.SCREENSAVER)
                 self.idle_timer = 0
@@ -267,8 +282,8 @@ function DesktopState:drawWindow(window)
         if not draw_ok then
             print("Error during window state draw for ID " .. window.id .. ": " .. tostring(err))
             -- Draw error message (this part seems okay, uses push/pop locally)
-            local Config = require('src.config')
-            local E = (Config.ui and Config.ui.window and Config.ui.window.error) or {}
+            local C = (self.di and self.di.config) or {}
+            local E = (C.ui and C.ui.window and C.ui.window.error) or {}
             love.graphics.push()
             love.graphics.setScissor(content_bounds.x, content_bounds.y, content_bounds.width, content_bounds.height)
             love.graphics.setColor((E.text_color or {1,0,0}))
@@ -388,10 +403,11 @@ function DesktopState:mousepressed(x, y, button)
                 clicked_specific_desktop_ui = true
                 local program = self.program_registry:getProgram(icon_program_id)
                 if program and not program.disabled then
-                    local dbl = (Config and Config.ui and Config.ui.double_click_time) or 0.5
+                    local C = (self.di and self.di.config) or {}
+                    local dbl = (C and C.ui and C.ui.double_click_time) or 0.5
                     local is_double_click = (self.last_icon_click_id == icon_program_id and love.timer.getTime() - self.last_icon_click_time < dbl)
                     if is_double_click then self:launchProgram(icon_program_id); self.last_icon_click_id = nil; self.last_icon_click_time = 0; self.dragging_icon_id = nil
-                    else self.last_icon_click_id = icon_program_id; self.last_icon_click_time = love.timer.getTime(); self.dragging_icon_id = icon_program_id; local icon_pos = self.desktop_icons:getPosition(icon_program_id) or self.view:getDefaultIconPosition(icon_program_id); self.drag_offset_x = x - icon_pos.x; self.drag_offset_y = y - icon_pos.y end
+                    else self.last_icon_click_id = icon_program_id; self.last_icon_click_time = love.timer.getTime(); self.dragging_icon_id = icon_program_id; local icon_pos = self.desktop_icons:getPosition(icon_program_id) or self.icon_controller:getDefaultIconPosition(icon_program_id); self.drag_offset_x = x - icon_pos.x; self.drag_offset_y = y - icon_pos.y end
                 elseif program and program.disabled then love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is planned.", "info"); self.last_icon_click_id = nil; self.last_icon_click_time = 0 end
             end
             -- Check taskbar buttons if icon wasn't clicked
@@ -476,14 +492,14 @@ function DesktopState:_handleWindowClick(window, x, y, button)
 
         elseif window_event.type == "window_drag_start" then
             local current_time = love.timer.getTime()
-            local Config = require('src.config')
-            local dbl = (Config and Config.ui and Config.ui.double_click_time) or 0.5
+            local C = (self.di and self.di.config) or {}
+            local dbl = (C and C.ui and C.ui.double_click_time) or 0.5
             if window.id == self.last_title_bar_click_id and current_time - self.last_title_bar_click_time < dbl then
                 -- Respect resizable flag for double-click maximize/restore
                 local program = self.program_registry:getProgram(window.program_type)
                 local defaults = program and program.window_defaults or {}
-                local Config = require('src.config')
-                local wd = (Config and Config.window and Config.window.defaults) or {}
+                local C = (self.di and self.di.config) or {}
+                local wd = (C and C.window and C.window.defaults) or {}
                 local fallback_resizable = (wd.resizable ~= nil) and wd.resizable or true
                 local computed_resizable = (defaults.resizable ~= nil) and defaults.resizable or fallback_resizable
                 local is_resizable = (window.is_resizable ~= nil) and window.is_resizable or computed_resizable
@@ -571,7 +587,7 @@ function DesktopState:mousereleased(x, y, button)
         local padding = 5 -- Buffer
 
         -- 1. Check Recycle Bin drop first
-        local recycle_bin_pos = self.view:getRecycleBinPosition()
+    local recycle_bin_pos = self.icon_controller:getRecycleBinPosition()
         if recycle_bin_pos and dropped_icon_id ~= "recycle_bin" then
             local drop_center_x = initial_drop_x + icon_w / 2
             local drop_center_y = initial_drop_y + icon_h / 2
@@ -604,7 +620,7 @@ function DesktopState:mousereleased(x, y, button)
             -- B. Check overlap at the validated position
             for _, program in ipairs(desktop_programs) do
                 if program.id ~= dropped_icon_id and not self.desktop_icons:isDeleted(program.id) then
-                    local other_pos = self.desktop_icons:getPosition(program.id) or self.view:getDefaultIconPosition(program.id)
+                    local other_pos = self.desktop_icons:getPosition(program.id) or self.icon_controller:getDefaultIconPosition(program.id)
                     if Collision.checkAABB(final_x, final_y, icon_w, icon_h, other_pos.x, other_pos.y, icon_w, icon_h) then
                         overlapping_icon_data = { program_id = program.id, pos = other_pos }
                         overlap_resolved = false
@@ -641,7 +657,7 @@ function DesktopState:mousereleased(x, y, button)
                     local nudge_overlaps = false
                     for _, program_check in ipairs(desktop_programs) do
                         if program_check.id ~= dropped_icon_id and not self.desktop_icons:isDeleted(program_check.id) then
-                             local check_pos = self.desktop_icons:getPosition(program_check.id) or self.view:getDefaultIconPosition(program_check.id)
+                             local check_pos = self.desktop_icons:getPosition(program_check.id) or self.icon_controller:getDefaultIconPosition(program_check.id)
                              if Collision.checkAABB(valid_nudge_x, valid_nudge_y, icon_w, icon_h, check_pos.x, check_pos.y, icon_w, icon_h) then
                                   nudge_overlaps = true; break
                              end
@@ -750,9 +766,9 @@ function DesktopState:handleWindowEvent(event, x, y, button)
         final_result = { type = "window_action" }
 
     elseif event.type == "window_drag_start" then
-         local current_time = love.timer.getTime()
-         local Config = require('src.config')
-         local dbl = (Config and Config.ui and Config.ui.double_click_time) or 0.5
+        local current_time = love.timer.getTime()
+        local C = (self.di and self.di.config) or {}
+        local dbl = (C and C.ui and C.ui.double_click_time) or 0.5
          if event.window_id == self.last_title_bar_click_id and current_time - self.last_title_bar_click_time < dbl then
              local window = self.window_manager:getWindowById(event.window_id)
              if window then
@@ -979,31 +995,40 @@ function DesktopState:wheelmoved(x, y)
 end
 
 function DesktopState:handleStateEvent(window_id, event)
-     print("Received event from window " .. window_id .. ": " .. event.name)
-     if event.name == "next_level" then
-         self:closeWindowById(window_id)
-         -- Launch space defender as a program window now
-         self:launchProgram("space_defender", event.level)
-     elseif event.name == "show_completion" then
-         self:closeWindowById(window_id)
-         -- Completion state is still fullscreen for now
-         self.state_machine:switch(Constants.state.COMPLETION)
-     elseif event.name == "launch_program" then
-         self:launchProgram(event.program_id)
-     elseif event.name == "launch_minigame" then -- *** NEW CASE ***
-         if event.game_data then
-             self:launchProgram("minigame_runner", event.game_data)
-         else
-             print("ERROR: launch_minigame event missing game_data!")
-         end
-     elseif event.name == "show_text" then
-         self:showTextFileDialog(event.title, event.content)
-     elseif event.name == "show_context_menu" then
-         -- Open the context menu using data from the event
-         self:openContextMenu(event.menu_x, event.menu_y, event.options, event.context)
-     elseif event.name == "ensure_icon_visible" then -- New event handler
-          self:ensureIconIsVisible(event.program_id)
-     end
+    print("Received event from window " .. window_id .. ": " .. tostring(event.name))
+
+    local handlers = {
+        next_level = function()
+            self:closeWindowById(window_id)
+            self:launchProgram("space_defender", event.level)
+        end,
+        show_completion = function()
+            self:closeWindowById(window_id)
+            self.state_machine:switch(Constants.state.COMPLETION)
+        end,
+        launch_program = function()
+            self:launchProgram(event.program_id)
+        end,
+        launch_minigame = function()
+            if event.game_data then
+                self:launchProgram("minigame_runner", event.game_data)
+            else
+                print("ERROR: launch_minigame event missing game_data!")
+            end
+        end,
+        show_text = function()
+            self:showTextFileDialog(event.title, event.content)
+        end,
+        show_context_menu = function()
+            self:openContextMenu(event.menu_x, event.menu_y, event.options, event.context)
+        end,
+        ensure_icon_visible = function()
+            self:ensureIconIsVisible(event.program_id)
+        end,
+    }
+
+    local handler = handlers[event.name]
+    if handler then handler() end
 end
 
 function DesktopState:executeRunCommand(command)
@@ -1036,7 +1061,6 @@ function DesktopState:launchProgram(program_id, ...)
     if program.disabled then print("Program disabled: " .. program_id); love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is not available yet.", "info"); return end
     if not program.state_class_path then print("Program missing state_class_path: " .. program_id); return end
 
-    local Config = require('src.config')
     local defaults = program.window_defaults or {}
     if defaults.single_instance then
         local existing_id = self.window_manager:isProgramOpen(program_id)
@@ -1087,7 +1111,8 @@ function DesktopState:launchProgram(program_id, ...)
     if not instance_ok or not new_state then print("ERROR instantiating state: " .. tostring(new_state)); return end
 
     local screen_w, screen_h = love.graphics.getDimensions()
-    local wd = (Config and Config.window and Config.window.defaults) or {}
+    local C = (self.di and self.di.config) or {}
+    local wd = (C and C.window and C.window.defaults) or {}
     local default_w = defaults.w or wd.width or 800
     local default_h = defaults.h or wd.height or 600
 
@@ -1166,6 +1191,7 @@ end
 
 function DesktopState:dismissTutorial()
     self.show_tutorial = false
+    local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
     SettingsManager.set("tutorial_shown", true)
     print("Tutorial dismissed.")
 end
@@ -1412,7 +1438,7 @@ function DesktopState:findNextAvailableGridPosition(program_id_to_place)
     for _, program in ipairs(desktop_programs) do
         -- Consider a spot occupied if the icon is visible and is NOT the one we are currently placing
         if program.id ~= program_id_to_place and self.desktop_icons:isIconVisible(program.id) then
-             local pos = self.desktop_icons:getPosition(program.id) or self.view:getDefaultIconPosition(program.id)
+             local pos = self.desktop_icons:getPosition(program.id) or self.icon_controller:getDefaultIconPosition(program.id)
              -- Use a simple representation for occupied check (e.g., top-left corner)
              occupied_positions[string.format("%.0f,%.0f", pos.x, pos.y)] = true
         end
@@ -1443,7 +1469,7 @@ function DesktopState:findNextAvailableGridPosition(program_id_to_place)
              -- Add safety break if columns get too high?
              if col > 20 then
                   print("Warning: Could not find free grid slot easily, returning default.")
-                  return self.view:getDefaultIconPosition(program_id_to_place) or { x=20, y=20 }
+                  return self.icon_controller:getDefaultIconPosition(program_id_to_place) or { x=20, y=20 }
              end
          end
     end

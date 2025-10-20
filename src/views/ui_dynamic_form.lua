@@ -8,6 +8,7 @@ function Form:init(opts)
     self.schema_path = opts.schema_path
     self.on_event = opts.on_event -- function(event)
     self.get = opts.get           -- function(id) -> current/pending value
+    if opts.di then UI.inject(opts.di) end
     self.label_x = opts.label_x or 16
     self.slider_x = opts.slider_x or 126
     self.dropdown_w = opts.dropdown_w or 160

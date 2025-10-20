@@ -4,15 +4,20 @@
 local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local Strings = require('src.utils.strings')
-local Config = require('src.config')
+-- Fallback config for non-DI usage
+local Config = rawget(_G, 'DI_CONFIG') or {}
 
 local FileExplorerView = Object:extend('FileExplorerView')
 
-function FileExplorerView:init(controller)
+function FileExplorerView:init(controller, di)
     self.controller = controller
+    self.di = di
+    if di then UIComponents.inject(di) end
+    local Config_ = (di and di.config) or Config
+    local Strings_ = (di and di.strings) or Strings
 
     -- Layout constants
-    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.file_explorer) or {}
     self.toolbar_height = V.toolbar_height or 35
     self.address_bar_height = V.address_bar_height or 25
     self.status_bar_height = V.status_bar_height or 20
@@ -70,7 +75,8 @@ end
 
 function FileExplorerView:drawWindowed(current_path, contents, selected_item, view_mode, sort_by, sort_order, can_go_back, can_go_forward, is_recycle_bin, viewport_width, viewport_height)
     -- Background
-    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local Config_ = (self.di and self.di.config) or Config
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.file_explorer) or {}
     local C = V.colors or {}
     love.graphics.setColor(C.bg or {1,1,1})
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
@@ -106,7 +112,8 @@ end
 
 function FileExplorerView:drawToolbar(x, y, width, can_go_back, can_go_forward, is_recycle_bin)
     -- Toolbar background
-    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local Config_ = (self.di and self.di.config) or Config
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.file_explorer) or {}
     local C = V.colors or {}
     love.graphics.setColor(C.toolbar_bg or {0.9,0.9,0.9})
     love.graphics.rectangle('fill', x, y, width, self.toolbar_height)
@@ -154,7 +161,8 @@ end
 
 function FileExplorerView:drawToolbarButton(x, y, w, h, text, enabled, hovered)
     -- Background
-    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local Config_ = (self.di and self.di.config) or Config
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.file_explorer) or {}
     local C = V.colors or {}
     if not enabled then
         love.graphics.setColor(0.7, 0.7, 0.7)
@@ -184,7 +192,8 @@ end
 
 function FileExplorerView:drawAddressBar(x, y, width, current_path)
     -- Address bar background
-    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local Config_ = (self.di and self.di.config) or Config
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.file_explorer) or {}
     local A = V.address_bar or {}
     love.graphics.setColor(1, 1, 1)
     love.graphics.rectangle('fill', x + (A.inset_x or 5), y + (A.inset_y or 2), width - 2*(A.inset_x or 5), self.address_bar_height - 2*(A.inset_y or 2))
@@ -228,7 +237,8 @@ end
 
 function FileExplorerView:drawItem(x, y, width, height, item, is_selected, is_hovered)
     -- Background
-    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local Config_ = (self.di and self.di.config) or Config
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.file_explorer) or {}
     local C = V.colors or {}
     if is_selected then
         love.graphics.setColor(C.item_selected or {0.6,0.6,0.9})
@@ -302,7 +312,9 @@ function FileExplorerView:drawItemIcon(x, y, size, item)
 
     -- Special overlay for deleted
     if item.type == "deleted" then
-        local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local di = self.controller and self.controller.di
+    local C = di and di.config or {}
+    local V = (C.ui and C.ui.views and C.ui.views.file_explorer) or {}
         local del = V.deleted_overlay or { color = {1,0,0,0.7}, line_width = 2 }
         love.graphics.setColor(del.color or {1,0,0,0.7})
         love.graphics.setLineWidth(del.line_width or 2)
@@ -315,7 +327,9 @@ end
 
 function FileExplorerView:drawScrollbar(x, y, width, height, total_items, visible_items)
     -- Track
-    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local di = self.controller and self.controller.di
+    local C = di and di.config or {}
+    local V = (C.ui and C.ui.views and C.ui.views.file_explorer) or {}
     local C = V.colors or {}
     love.graphics.setColor(C.scrollbar_track or {0.9,0.9,0.9})
     love.graphics.rectangle('fill', x, y, width, height)
@@ -335,7 +349,9 @@ end
 
 function FileExplorerView:drawStatusBar(x, y, width, contents)
     -- Status bar background
-    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local di = self.controller and self.controller.di
+    local C = di and di.config or {}
+    local V = (C.ui and C.ui.views and C.ui.views.file_explorer) or {}
     local C = V.colors or {}
     love.graphics.setColor(C.status_bg or {0.9,0.9,0.9})
     love.graphics.rectangle('fill', x, y, width, self.status_bar_height)
@@ -448,7 +464,9 @@ function FileExplorerView:mousemoved(x, y, dx, dy, viewport_width, viewport_heig
 end
 
 function FileExplorerView:getButtonAtPosition(x, y, is_recycle_bin)
-    local V = (Config.ui and Config.ui.views and Config.ui.views.file_explorer) or {}
+    local di = self.controller and self.controller.di
+    local C = di and di.config or {}
+    local V = (C.ui and C.ui.views and C.ui.views.file_explorer) or {}
     local T = V.toolbar or {}
     local btn_y = (T.margin or 5)
     local btn_h = T.button_h or 25

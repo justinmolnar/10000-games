@@ -1,10 +1,10 @@
 local Object = require('class')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 
 local SolitaireView = Object:extend('SolitaireView')
 
 -- Win98-style Klondike Solitaire (fully playable)
-local SOLCFG = Config.games.solitaire and Config.games.solitaire.view or {}
+local SOLCFG = (Config and Config.games and Config.games.solitaire and Config.games.solitaire.view) or {}
 local CARD_W = (SOLCFG.card and SOLCFG.card.width) or 72
 local CARD_H = (SOLCFG.card and SOLCFG.card.height) or 96
 local PADDING = (SOLCFG.layout and SOLCFG.layout.padding) or 12

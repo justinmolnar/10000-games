@@ -3,9 +3,11 @@
 local function StateMachineBuilder(Object)
     local StateMachine = Object:extend('StateMachine')
 
-    function StateMachine:init()
+    function StateMachine:init(di)
         self.states = {}
         self.current_state = nil
+        -- Optional dependency container for DI roll-out (non-breaking if nil)
+        self.di = di
     end
 
     function StateMachine:register(state_name, state_object)

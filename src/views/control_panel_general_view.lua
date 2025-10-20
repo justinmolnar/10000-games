@@ -4,15 +4,17 @@ local UI = require('src.views.ui_components')
 local Form = require('src.views.ui_dynamic_form')
 local Strings = require('src.utils.strings')
 local Paths = require('src.paths')
-local Config = require('src.config')
 
 local View = Object:extend('ControlPanelGeneralView')
 
-function View:init(controller)
+function View:init(controller, di)
     self.controller = controller
+    self.di = di
+    if di then UI.inject(di) end
     self.dragging = nil
     -- set up dynamic form
-    local V = (Config.ui and Config.ui.views and Config.ui.views.control_panel_general) or {}
+    local C = (self.di and self.di.config) or {}
+    local V = (C.ui and C.ui.views and C.ui.views.control_panel_general) or {}
     local F = (V.form or { label_x = 16, slider_x = 126, value_col_w = 60, start_y = 60 })
     self.form = Form:new({
         schema_path = Paths.data.control_panels .. 'general.json',
@@ -24,6 +26,7 @@ function View:init(controller)
             if v == nil then v = s[id] end
             return v
         end,
+        di = di,
         label_x = F.label_x,
         slider_x = F.slider_x,
         value_col_w = F.value_col_w,

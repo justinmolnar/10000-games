@@ -1,5 +1,5 @@
 local BaseGame = require('src.games.base_game')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local SnakeView = require('src.games.views.snake_view')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
@@ -10,14 +10,16 @@ local BASE_SPEED = SCfg.base_speed or 8
 local BASE_TARGET_LENGTH = SCfg.base_target_length or 20
 local BASE_OBSTACLE_COUNT = SCfg.base_obstacle_count or 5
 
-function SnakeGame:init(game_data, cheats)
+function SnakeGame:init(game_data, cheats, di)
     SnakeGame.super.init(self, game_data, cheats)
-    self.GRID_SIZE = GRID_SIZE
+    self.di = di
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.snake) or SCfg
+    self.GRID_SIZE = (runtimeCfg and runtimeCfg.grid_size) or GRID_SIZE
     
     local speed_modifier = self.cheats.speed_modifier or 1.0
     
-    self.game_width = (SCfg.arena and SCfg.arena.width) or 800
-    self.game_height = (SCfg.arena and SCfg.arena.height) or 600
+    self.game_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (SCfg.arena and SCfg.arena.width) or 800
+    self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (SCfg.arena and SCfg.arena.height) or 600
     
     self.grid_width = math.floor(self.game_width / GRID_SIZE)
     self.grid_height = math.floor(self.game_height / GRID_SIZE)

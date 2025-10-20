@@ -6,9 +6,10 @@ local ScreensaverView = require('src.views.control_panel_screensavers_view')
 
 local ControlPanelScreensaversState = Object:extend('ControlPanelScreensaversState')
 
-function ControlPanelScreensaversState:init(window_controller)
+function ControlPanelScreensaversState:init(window_controller, di)
     self.window_controller = window_controller
-    self.view = ScreensaverView:new(self)
+    self.di = di
+    self.view = ScreensaverView:new(self, di)
     self.viewport = nil
     self.settings = {}
     self.pending = {}

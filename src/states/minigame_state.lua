@@ -1,27 +1,22 @@
 local Object = require('class')
 local Strings = require('src.utils.strings')
-local ProgressionManager = require('models.progression_manager')
+local MinigameController = require('src.controllers.minigame_controller')
+local MinigameView = require('src.views.minigame_view')
 local MinigameState = Object:extend('MinigameState')
-local DEFAULT_COMPLETION_THRESHOLD = 0.75 -- fallback if not provided in JSON
 
-function MinigameState:init(player_data, game_data_model, state_machine, save_manager, cheat_system)
+function MinigameState:init(player_data, game_data_model, state_machine, save_manager, cheat_system, di)
     print("[MinigameState] init() called")
     self.player_data = player_data
     self.game_data_model = game_data_model
     self.state_machine = state_machine
     self.save_manager = save_manager
     self.cheat_system = cheat_system
+    self.di = di -- optional dependency container
 
     self.current_game = nil
     self.game_data = nil
-    self.completion_screen_visible = false
-    self.previous_best = 0
-    self.current_performance = 0
-    self.base_performance = 0
-    self.auto_completed_games = {}
-    self.auto_complete_power = 0
-    self.active_cheats = {}
-    self.fail_gate_triggered = false
+    self.controller = MinigameController:new(player_data, game_data_model, save_manager, cheat_system, di)
+    self.view = MinigameView:new(di)
 
     self.viewport = nil
     self.window_id = nil
@@ -53,7 +48,6 @@ function MinigameState:enter(game_data)
     end
 
     self.game_data = game_data
-    self.active_cheats = self.cheat_system:getActiveCheats(game_data.id) or {}
     
     local class_name = game_data.game_class
     local logic_file_name = class_name:gsub("(%u)", function(c) return "_" .. c:lower() end):match("^_?(.*)")
@@ -64,15 +58,18 @@ function MinigameState:enter(game_data)
     if not require_ok or not GameClass then
         print("[MinigameState] ERROR: Failed to load game class '".. require_path .."': " .. tostring(GameClass))
         self.current_game = nil
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Failed to load game logic for: " .. (game_data.display_name or class_name), "error")
+        local S = (self.di and self.di.strings) or Strings
+        love.window.showMessageBox(S.get('messages.error_title', 'Error'), "Failed to load game logic for: " .. (game_data.display_name or class_name), "error")
         return { type = "close_window" }
     end
 
-    local instance_ok, game_instance = pcall(GameClass.new, GameClass, game_data, self.active_cheats)
+    -- Pass DI (if present) into the game constructor as an optional parameter
+    local instance_ok, game_instance = pcall(GameClass.new, GameClass, game_data, self.active_cheats, self.di)
     if not instance_ok or not game_instance then
         print("[MinigameState] ERROR: Failed to instantiate game class '".. class_name .."': " .. tostring(game_instance))
         self.current_game = nil
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Failed to initialize game: " .. (game_data.display_name or class_name), "error")
+        local S = (self.di and self.di.strings) or Strings
+        love.window.showMessageBox(S.get('messages.error_title', 'Error'), "Failed to initialize game: " .. (game_data.display_name or class_name), "error")
         return { type = "close_window" }
     end
     self.current_game = game_instance
@@ -82,47 +79,14 @@ function MinigameState:enter(game_data)
         self.current_game:setPlayArea(self.viewport.width, self.viewport.height)
     end
 
-    self.cheat_system:consumeCheats(game_data.id)
-
-    local perf = self.player_data:getGamePerformance(game_data.id)
-    self.previous_best = perf and perf.best_score or 0
-    self.completion_screen_visible = false
-    self.current_performance = 0
-    self.base_performance = 0
-    self.auto_completed_games = {}
-    self.auto_complete_power = 0
-    self.fail_gate_triggered = false
+    -- Begin a new session in the controller
+    self.controller:begin(self.current_game, game_data)
     print("[MinigameState] enter() completed successfully for", game_data.id)
 end
 
 function MinigameState:update(dt)
     if not self.current_game then return end
-
-    if not self.completion_screen_visible then
-        -- Call updateBase which handles time and checks for completion
-        local update_base_ok, base_err = pcall(self.current_game.updateBase, self.current_game, dt)
-        if not update_base_ok then
-            print("Error during game updateBase:", base_err)
-            return
-        end
-
-        -- Only update game logic if not completed
-        if not self.current_game.completed then
-            local update_logic_ok, logic_err = pcall(self.current_game.updateGameLogic, self.current_game, dt)
-            if not update_logic_ok then
-                print("Error during game updateGameLogic:", logic_err)
-                return
-            end
-        end
-        
-        -- Check if game just completed and trigger our completion handler
-        if self.current_game.completed and not self.completion_screen_visible then
-            local complete_ok, complete_err = pcall(self.onGameComplete, self)
-            if not complete_ok then
-                print("Error during onGameComplete:", complete_err)
-            end
-        end
-    end
+    self.controller:update(dt)
 end
 
 function MinigameState:draw()
@@ -139,206 +103,19 @@ function MinigameState:draw()
         love.graphics.printf("Error: Game instance not loaded", 0, self.viewport.height/2 - 10, self.viewport.width, "center")
     end
 
-    if self.completion_screen_visible then
-        self:drawCompletionScreen()
+    if self.controller:isOverlayVisible() then
+        self.view:drawOverlay(self.viewport, self.controller:getSnapshot())
     end
 end
 
-function MinigameState:drawCompletionScreen()
-    local vpWidth = self.viewport.width
-    local vpHeight = self.viewport.height
-
-    love.graphics.push()
-    love.graphics.origin()
-
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle('fill', 0, 0, vpWidth, vpHeight)
-
-    love.graphics.setColor(1, 1, 1)
-    local metrics = (self.current_game and pcall(self.current_game.getMetrics, self.current_game)) and self.current_game:getMetrics() or {}
-
-    local x = vpWidth * 0.1
-    local y = vpHeight * 0.1
-    local line_height = math.max(16, vpHeight * 0.04)
-    local title_scale = math.max(0.8, vpWidth / 700)
-    local text_scale = math.max(0.7, vpWidth / 800)
-
-    love.graphics.printf("GAME COMPLETE!", x, y, vpWidth * 0.8, "center", 0, title_scale, title_scale)
-    y = y + line_height * 2.5
-
-    -- Show actual tokens earned (allow 0 on fail gate)
-    local tokens_earned = math.floor(self.current_performance)
-    local performance_mult = (self.active_cheats and self.active_cheats.performance_modifier) or 1.0
-
-    love.graphics.setColor(1, 1, 0)
-    love.graphics.printf("Tokens Earned: +" .. tokens_earned, x, y, vpWidth * 0.8, "center", 0, text_scale * 1.2, text_scale * 1.2)
-    y = y + line_height * 1.5
-
-    if self.fail_gate_triggered then
-        love.graphics.setColor(1, 0.4, 0.4)
-        love.graphics.printf("Below 75% goal — no tokens awarded", x, y, vpWidth * 0.8, "center", 0, text_scale, text_scale)
-        y = y + line_height * 1.2
-        love.graphics.setColor(1, 1, 1)
-    end
-
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Your Performance:", x, y, 0, text_scale, text_scale)
-    y = y + line_height
-
-    if self.game_data and self.game_data.metrics_tracked then
-        local MetricLegend = require('src.views.metric_legend')
-        local metric_legend = MetricLegend:new()
-        
-        love.graphics.push()
-        love.graphics.origin()
-        y = metric_legend:draw(self.game_data, metrics, x + 20, y, vpWidth - x - 40, true)
-        love.graphics.pop()
-    else
-        love.graphics.print("  (Metrics unavailable)", x + 20, y, 0, text_scale * 0.9, text_scale * 0.9)
-        y = y + line_height
-    end
-
-    y = y + line_height * 0.5
-    love.graphics.print("Formula Calculation:", x, y, 0, text_scale, text_scale)
-    y = y + line_height
-    
-    if self.game_data and self.game_data.base_formula_string then
-        local FormulaRenderer = require('src.views.formula_renderer')
-        local formula_renderer = FormulaRenderer:new()
-        
-        love.graphics.push()
-        love.graphics.origin()
-        local formula_end_y = formula_renderer:draw(self.game_data, x + 20, y, vpWidth * 0.7, 20)
-        love.graphics.pop()
-        
-        y = formula_end_y + line_height * 0.5
-    end
-
-    if performance_mult ~= 1.0 then
-        love.graphics.print("Base Result: " .. math.floor(self.base_performance), x + 20, y, 0, text_scale, text_scale)
-        y = y + line_height
-        love.graphics.setColor(0, 1, 1)
-        love.graphics.print("Cheat Bonus: x" .. string.format("%.1f", performance_mult), x + 20, y, 0, text_scale, text_scale)
-        y = y + line_height
-    end
-
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Final Result: " .. math.floor(self.current_performance), x + 20, y, 0, text_scale * 1.2, text_scale * 1.2)
-    y = y + line_height * 1.5
-
-    if self.current_performance > self.previous_best then
-        love.graphics.setColor(0, 1, 0)
-        love.graphics.print("NEW RECORD!", x, y, 0, text_scale * 1.3, text_scale * 1.3)
-        y = y + line_height
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.print("Previous: " .. math.floor(self.previous_best), x, y, 0, text_scale, text_scale)
-        love.graphics.print("Improvement: +" .. math.floor(self.current_performance - self.previous_best), x, y + line_height, 0, text_scale, text_scale)
-        y = y + line_height
-
-        if #self.auto_completed_games > 0 then
-            y = y + line_height
-            love.graphics.setColor(1, 1, 0)
-            love.graphics.print("AUTO-COMPLETION TRIGGERED!", x, y, 0, text_scale * 1.1, text_scale * 1.1)
-            y = y + line_height
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.print("Completed " .. #self.auto_completed_games .. " easier variants!", x, y, 0, text_scale, text_scale)
-            y = y + line_height
-            love.graphics.print("Total power gained: +" .. math.floor(self.auto_complete_power), x, y, 0, text_scale, text_scale)
-        end
-    else
-        love.graphics.setColor(1, 1, 0)
-        love.graphics.print("Best: " .. math.floor(self.previous_best), x, y, 0, text_scale, text_scale)
-        y = y + line_height
-        love.graphics.setColor(0.8, 0.8, 0.8)
-        love.graphics.print("Try again to improve your score!", x, y, 0, text_scale, text_scale)
-    end
-
-    love.graphics.setColor(1, 1, 1)
-    local instruction_y = vpHeight - line_height * 2.5
-    love.graphics.printf("Press ENTER to play again", 0, instruction_y, vpWidth, "center", 0, text_scale, text_scale)
-    love.graphics.printf("Press ESC to close window", 0, instruction_y + line_height, vpWidth, "center", 0, text_scale, text_scale)
-
-    love.graphics.pop()
-end
-
-function MinigameState:onGameComplete()
-    if self.completion_screen_visible or not self.current_game then return end
-
-    print("[MinigameState] onGameComplete triggered for:", self.game_data and self.game_data.id)
-    self.completion_screen_visible = true
-
-    local base_perf_ok, base_perf_result = pcall(self.current_game.calculatePerformance, self.current_game)
-    if base_perf_ok then
-        self.base_performance = base_perf_result
-    else
-        print("Error calculating base performance:", base_perf_result)
-        self.base_performance = 0
-    end
-
-    local performance_mult = (self.active_cheats and self.active_cheats.performance_modifier) or 1.0
-
-    -- Apply 75% completion gate: ask game for completion ratio (0..1)
-    local ratio_ok, ratio = pcall(self.current_game.getCompletionRatio, self.current_game)
-    if not ratio_ok then ratio = 1.0 end
-    local threshold = (self.game_data and self.game_data.token_threshold) or DEFAULT_COMPLETION_THRESHOLD
-    self.fail_gate_triggered = (ratio < threshold)
-
-    self.current_performance = self.base_performance * performance_mult
-    if self.fail_gate_triggered then
-        self.current_performance = 0
-    end
-    local tokens_earned = math.floor(self.current_performance)
-
-    pcall(self.player_data.addTokens, self.player_data, tokens_earned)
-    local metrics_ok, metrics_data = pcall(self.current_game.getMetrics, self.current_game)
-    local metrics_to_save = metrics_ok and metrics_data or {}
-
-    local is_new_best = false
-    local update_ok, update_result = pcall(self.player_data.updateGamePerformance, self.player_data,
-                                            self.game_data.id,
-                                            metrics_to_save,
-                                            self.current_performance)
-    if update_ok then
-        is_new_best = update_result
-    else
-        print("Error updating player performance:", update_result)
-    end
-
-    if is_new_best and not self.fail_gate_triggered then
-        local progression = ProgressionManager:new()
-        local check_ok, ac_result = pcall(progression.checkAutoCompletion, progression,
-                                            self.game_data.id,
-                                            self.game_data,
-                                            self.game_data_model,
-                                            self.player_data)
-        if check_ok and type(ac_result) == 'table' then
-            self.auto_completed_games = ac_result[1] or {}
-            self.auto_complete_power = ac_result[2] or 0
-        elseif not check_ok then
-             print("Error checking auto-completion:", ac_result)
-             self.auto_completed_games = {}
-             self.auto_complete_power = 0
-        end
-    else
-        self.auto_completed_games = {}
-        self.auto_complete_power = 0
-    end
-
-    -- Fix: SaveManager.save is a static function, call it correctly
-    local save_ok, save_err = pcall(self.save_manager.save, self.player_data)
-    if not save_ok then
-        print("Error saving game data:", save_err)
-    end
-    
-    print("[MinigameState] Game complete processing finished. New best:", is_new_best, "Auto-completed:", #self.auto_completed_games)
-end
+-- onGameComplete removed; controller owns completion logic
 
 function MinigameState:keypressed(key)
     if not self.window_manager or self.window_id ~= self.window_manager:getFocusedWindowId() then
         return false
     end
 
-    if self.completion_screen_visible then
+    if self.controller:isOverlayVisible() then
         if key == 'return' then
             if self.game_data then
                 local restart_event = self:enter(self.game_data)
@@ -374,7 +151,7 @@ function MinigameState:mousepressed(x, y, button)
         return false
     end
 
-    if self.completion_screen_visible then
+    if self.controller:isOverlayVisible() then
         return false
     end
 

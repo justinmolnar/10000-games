@@ -4,15 +4,17 @@ local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local FormulaRenderer = require('src.views.formula_renderer')
 local SpriteManager = require('src.utils.sprite_manager').getInstance()
-local Config = require('src.config')
+-- Config is supplied via DI; avoid requiring src.config here
 local Strings = require('src.utils.strings')
 local VMManagerView = Object:extend('VMManagerView')
 
-function VMManagerView:init(controller, vm_manager, player_data, game_data)
+function VMManagerView:init(controller, vm_manager, player_data, game_data, di)
     self.controller = controller -- This is the vm_manager_state
     self.vm_manager = vm_manager
     self.player_data = player_data
     self.game_data = game_data
+    self.di = di
+    if di then UIComponents.inject(di) end
 
     self.selected_slot = nil
     self.game_selection_open = false
@@ -21,8 +23,10 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data)
     self.hovered_upgrade = nil
     self.hovered_purchase_vm = false
 
-    -- Layout constants (read from Config)
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+        -- Layout constants (read from Config or DI)
+        local Config_ = (di and di.config) or Config
+        local Strings_ = (di and di.strings) or Strings
+        local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local G = V.grid or {}
     self.slot_width = G.slot_w or 180
     self.slot_height = G.slot_h or 120
@@ -53,14 +57,15 @@ end
 
 function VMManagerView:updateLayout(viewport_width, viewport_height)
     -- Recalculate positions based on new viewport size
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+        local Config_ = (self.di and self.di.config) or Config
+        local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local PB = V.purchase_button or { bottom_margin = 60 }
     local UP = V.upgrade or { bottom_margin = 60 }
     self.purchase_button_y = viewport_height - (PB.bottom_margin or 60)
     self.upgrade_y = viewport_height - (UP.bottom_margin or 60)
 
     -- Adjust modal size/position
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+        local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local M = V.modal or { min_w = 400, max_h = 500, side_margin = 20, top_y = 60 }
     self.modal_w = math.min(M.min_w or 400, viewport_width - 2*(M.side_margin or 20))
     self.modal_h = math.min(M.max_h or 500, viewport_height - 120)
@@ -68,7 +73,7 @@ function VMManagerView:updateLayout(viewport_width, viewport_height)
     self.modal_y = M.top_y or 60
 
     -- Adjust slot columns based on width
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+        local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local G = V.grid or {}
     local available_width_for_slots = viewport_width - 2*(G.left_margin or 10) -- Margins
     self.slot_cols = math.max(1, math.floor(available_width_for_slots / (self.slot_width + self.slot_padding)))
@@ -108,7 +113,8 @@ end
 
 function VMManagerView:drawUpgradeButton(x, y, w, h, label, desc, level, cost, can_afford, hovered)
     -- Background
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+        local Config_ = (self.di and self.di.config) or Config
+        local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local C = (V.colors and V.colors.upgrade_button) or {}
     if not can_afford then love.graphics.setColor(C.disabled_bg or {0.3, 0.3, 0.3})
     elseif hovered then love.graphics.setColor(C.hover_bg or {0.35, 0.6, 0.35})
@@ -134,7 +140,8 @@ end
 
 function VMManagerView:drawWindowed(filtered_games, viewport_width, viewport_height)
     -- Draw background
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+    local Config_ = (self.di and self.di.config) or Config
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local C = (V.colors and V.colors.bg) or {0.15, 0.15, 0.15}
     love.graphics.setColor(C)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
@@ -142,14 +149,14 @@ function VMManagerView:drawWindowed(filtered_games, viewport_width, viewport_hei
     -- Use relative positions based on viewport_width, viewport_height
 
     -- Token counter (Top right)
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     UIComponents.drawTokenCounter(viewport_width - ((V.tokens and V.tokens.right_offset) or 200), 10, self.player_data.tokens)
 
     -- Tokens per minute display (Top left)
     self:drawTokensPerMinute(10, 10, self.vm_manager.total_tokens_per_minute)
 
     -- VM slots grid (Uses self.slot_cols calculated in updateLayout)
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local G = V.grid or { start_y = 50, left_margin = 10, bottom_reserved = 70 }
     local slots = self.vm_manager.vm_slots
     local grid_start_y = G.start_y or 50 -- Below header info
@@ -184,7 +191,8 @@ function VMManagerView:drawWindowed(filtered_games, viewport_width, viewport_hei
         -- Use button coords calculated in updateLayout
         local by = self.upgrade_y
     local current_level = (self.player_data.upgrades and self.player_data.upgrades[upgrade.type]) or 0
-        local cost = Config.upgrade_costs[upgrade.type] * (current_level + 1)
+    local Config_ = (self.di and self.di.config) or Config
+    local cost = Config_.upgrade_costs[upgrade.type] * (current_level + 1)
         local can_afford = self.player_data:hasTokens(cost)
         local is_hovered = (self.hovered_upgrade == upgrade.type)
 
@@ -214,11 +222,6 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
         if x >= self.modal_x and x <= self.modal_x + self.modal_w and y >= self.modal_y and y <= self.modal_y + self.modal_h then
             local clicked_game = self:getGameAtPosition(x, y, filtered_games, viewport_width, viewport_height) -- Pass local coords
             if clicked_game then
-                if self.vm_manager:isGameAssigned(clicked_game.id) then
-                    print("Game already in use by another VM!")
-                    return nil -- Clicked used game, do nothing else
-                end
-
                 self.game_selection_open = false
                 local slot_to_assign = self.selected_slot
                 self.selected_slot = nil
@@ -232,7 +235,7 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
             self.game_selection_open = false
             self.selected_slot = nil
             return {name="modal_closed"}
-        end
+    end
     end
 
     -- Check VM slots (using local coords)
@@ -240,6 +243,7 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
     if clicked_slot_index then
         local slot = self.vm_manager.vm_slots[clicked_slot_index]
         if slot.active then
+            -- Click on active slot removes the assigned game
             return {name = "remove_game", slot_index = clicked_slot_index}
         else
             self.selected_slot = clicked_slot_index
@@ -255,46 +259,32 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
         local by = self.upgrade_y -- Use layout-calculated y
         -- Check using LOCAL x, y
         if x >= bx and x <= bx + self.upgrade_w and y >= by and y <= by + self.upgrade_h then
-            local current_level = (self.player_data.upgrades and self.player_data.upgrades[upgrade_type]) or 0
-            local cost = Config.upgrade_costs[upgrade_type] * (current_level + 1)
-            if self.player_data:hasTokens(cost) then
-                return {name = "purchase_upgrade", upgrade_type = upgrade_type}
-            else
-                 print("Cannot afford upgrade: " .. upgrade_type) -- Feedback
-                 return nil -- Consume click even if cannot afford
-            end
+            -- Emit intent; controller/state validates affordability
+            return {name = "purchase_upgrade", upgrade_type = upgrade_type}
         end
     end
 
     -- Check purchase button (using local coords)
     if self:isPurchaseButtonClicked(x, y, viewport_width, viewport_height) then -- Pass local coords
-         local cost = self.vm_manager:getVMCost(#self.vm_manager.vm_slots)
-         if self.player_data:hasTokens(cost) then
-             return {name = "purchase_vm"}
-         else
-              print("Cannot afford VM slot") -- Feedback
-              return nil -- Consume click even if cannot afford
-         end
+        -- Emit intent; controller/state validates affordability and limits
+        return {name = "purchase_vm"}
     end
 
     return nil -- Clicked nothing interactive
 end
 
-
 function VMManagerView:wheelmoved(x, y, item_count, viewport_width, viewport_height)
-    if self.game_selection_open then
-        -- Calculate visible items based on modal height
-        local visible_items = math.floor((self.modal_h - 70) / self.modal_item_height) -- Approx header/footer space
-        visible_items = math.max(1, visible_items) -- Ensure at least 1
-        local max_scroll = math.max(0, item_count - visible_items)
+    if not self.game_selection_open then return 0 end
+    -- Calculate visible items based on modal height
+    local visible_items = math.floor((self.modal_h - 70) / self.modal_item_height) -- Approx header/footer space
+    visible_items = math.max(1, visible_items) -- Ensure at least 1
+    local max_scroll = math.max(0, (item_count or 0) - visible_items)
 
-        if y > 0 then -- Scroll up
-            self.scroll_offset = math.max(0, math.min(max_scroll, (self.scroll_offset or 0) - 1))
-        elseif y < 0 then -- Scroll down
-            self.scroll_offset = math.max(0, math.min(max_scroll, (self.scroll_offset or 0) + 1))
-        end
+    if y > 0 then -- Scroll up
+        self.scroll_offset = math.max(0, math.min(max_scroll, (self.scroll_offset or 0) - 1))
+    elseif y < 0 then -- Scroll down
+        self.scroll_offset = math.max(0, math.min(max_scroll, (self.scroll_offset or 0) + 1))
     end
-    -- Return the new offset so the state can store it if needed (though view manages it here)
     return self.scroll_offset
 end
 
@@ -363,7 +353,8 @@ end
 
 function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
     SpriteManager:ensureLoaded()
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+    local Config_ = (self.di and self.di.config) or {}
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local S = (V.colors and V.colors.slot) or {}
     if selected then love.graphics.setColor(S.selected_bg or {0.3, 0.3, 0.7})
     elseif hovered then love.graphics.setColor(S.hovered_bg or {0.35, 0.35, 0.35})
@@ -428,13 +419,14 @@ end
 
 function VMManagerView:drawGameSelectionModal(games, scroll_offset, context)
     -- Dark overlay
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+    local Config_ = (self.di and self.di.config) or {}
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local overlay_alpha = (V.modal and V.modal.overlay_alpha) or (V.colors and V.colors.modal and V.colors.modal.overlay_alpha) or 0.7
     love.graphics.setColor(0, 0, 0, overlay_alpha)
     love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight()) -- Cover whole screen relative to parent
 
     -- Modal panel using UIComponents
-    local V = (Config.ui and Config.ui.views and Config.ui.views.vm_manager) or {}
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local MC = (V.colors and V.colors.modal) or {}
     UIComponents.drawPanel(self.modal_x, self.modal_y, self.modal_w, self.modal_h, (MC.panel_bg or {0.2, 0.2, 0.2}))
 
@@ -478,10 +470,10 @@ function VMManagerView:drawGameSelectionModal(games, scroll_offset, context)
                 -- Calculate potential rate based on current upgrades
                 local overclock_lvl = (context.player_data.upgrades and context.player_data.upgrades.overclock) or 0
                 local cpu_lvl = (context.player_data.upgrades and context.player_data.upgrades.cpu_speed) or 0
-                local overclock_bonus = 1 + (overclock_lvl * (Config.vm_overclock_bonus_per_level or 0))
-                local cpu_bonus = 1 + (cpu_lvl * (Config.vm_cpu_speed_bonus_per_level or 0))
+                local overclock_bonus = 1 + (overclock_lvl * ((Config_ and Config_.vm_overclock_bonus_per_level) or 0))
+                local cpu_bonus = 1 + (cpu_lvl * ((Config_ and Config_.vm_cpu_speed_bonus_per_level) or 0))
                 local potential_power = (perf.best_score or 0) * overclock_bonus
-                local base_cycle = Config.vm_base_cycle_time or 60
+                local base_cycle = (Config_ and Config_.vm_base_cycle_time) or 60
                 local potential_cycle_time = base_cycle / math.max(0.0001, cpu_bonus)
                 local potential_rate = 0
                 if potential_cycle_time > 0 then

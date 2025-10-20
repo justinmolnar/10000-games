@@ -1,13 +1,15 @@
 local Object = require('class')
 
-local Config = require('src.config')
+-- Config is provided via opts.di when constructed
 local ScreensaverView = Object:extend('ScreensaverView')
 
 function ScreensaverView:init(opts)
     opts = opts or {}
+    self.di = opts.di
     self.stars = {}
     self:setViewport(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.starfield) or {}
+    local C = (self.di and self.di.config) or {}
+    local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.starfield) or {}
     self.fov = opts.fov or d.fov or 300 -- focal length for projection
     self.speed = opts.speed or d.speed or 120 -- forward speed through starfield
     self.max_count = opts.count or d.count or 500
@@ -49,7 +51,8 @@ end
 function ScreensaverView:draw()
     local w, h = self.viewport.width, self.viewport.height
     local cx, cy = w/2, h/2
-    local V = (Config.ui and Config.ui.views and Config.ui.views.screensaver_starfield) or {}
+    local C = (self.di and self.di.config) or {}
+    local V = (C.ui and C.ui.views and C.ui.views.screensaver_starfield) or {}
     local bg = (V.bg_color or {0,0,0})
     love.graphics.clear(bg[1], bg[2], bg[3])
     -- Draw as projected points with speed streaks

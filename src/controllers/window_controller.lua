@@ -2,7 +2,7 @@
 -- Manages window input, dragging, resizing, and focus
 
 local Object = require('class')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local WindowController = Object:extend('WindowController')
 
 function WindowController:init(window_manager, program_registry, window_states_map)
@@ -117,7 +117,7 @@ function WindowController:checkButtonClick(window, x, y, window_chrome)
     -- Check if program allows resizing before enabling maximize/restore button action
     local program = self.program_registry:getProgram(window.program_type)
     local defaults = program and program.window_defaults or {}
-    local Config = require('src.config')
+    local Config = rawget(_G, 'DI_CONFIG') or {}
     local wd = (Config and Config.window and Config.window.defaults) or {}
     local fallback_resizable = (wd.resizable ~= nil) and wd.resizable or true
     local is_resizable = (defaults.resizable ~= nil) and defaults.resizable or fallback_resizable
@@ -171,7 +171,7 @@ function WindowController:startResize(window_id, edge, mouse_x, mouse_y)
     -- Double check resizable and not maximized here too
     local program = self.program_registry:getProgram(window.program_type)
     local defaults = program and program.window_defaults or {}
-    local Config = require('src.config')
+    local Config = rawget(_G, 'DI_CONFIG') or {}
     local wd = (Config and Config.window and Config.window.defaults) or {}
     local fallback_resizable = (wd.resizable ~= nil) and wd.resizable or true
     local is_resizable = (defaults.resizable ~= nil) and defaults.resizable or fallback_resizable

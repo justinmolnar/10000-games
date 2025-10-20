@@ -1,5 +1,5 @@
 local BaseGame = require('src.games.base_game')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local Collision = require('src.utils.collision')
 local DodgeView = require('src.games.views.dodge_view')
 local DodgeGame = BaseGame:extend('DodgeGame')
@@ -22,18 +22,20 @@ local INITIAL_SAFE_RADIUS_FRACTION = (DodgeCfg.arena and DodgeCfg.arena.initial_
 local TARGET_RING_MIN_SCALE = (DodgeCfg.arena and DodgeCfg.arena.target_ring and DodgeCfg.arena.target_ring.min_scale) or 1.2
 local TARGET_RING_MAX_SCALE = (DodgeCfg.arena and DodgeCfg.arena.target_ring and DodgeCfg.arena.target_ring.max_scale) or 1.5
 
-function DodgeGame:init(game_data, cheats)
+function DodgeGame:init(game_data, cheats, di)
     DodgeGame.super.init(self, game_data, cheats)
+    self.di = di
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.dodge) or DodgeCfg
 
     local speed_modifier = self.cheats.speed_modifier or 1.0
     local advantage_modifier = self.cheats.advantage_modifier or {}
     local extra_collisions = advantage_modifier.collisions or 0
 
-    self.OBJECT_SIZE = OBJECT_SIZE
-    self.MAX_COLLISIONS = MAX_COLLISIONS + extra_collisions
+    self.OBJECT_SIZE = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.size) or OBJECT_SIZE
+    self.MAX_COLLISIONS = ((runtimeCfg and runtimeCfg.collisions and runtimeCfg.collisions.max) or MAX_COLLISIONS) + extra_collisions
 
-    self.game_width = (DodgeCfg.arena and DodgeCfg.arena.width) or 400
-    self.game_height = (DodgeCfg.arena and DodgeCfg.arena.height) or 400
+    self.game_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (DodgeCfg.arena and DodgeCfg.arena.width) or 400
+    self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (DodgeCfg.arena and DodgeCfg.arena.height) or 400
 
     self.player = {
         x = self.game_width / 2,

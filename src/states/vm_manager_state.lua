@@ -4,15 +4,16 @@ local Object = require('class')
 local VMManagerView = require('views.vm_manager_view')
 local VMManagerState = Object:extend('VMManagerState')
 
-function VMManagerState:init(vm_manager, player_data, game_data, state_machine, save_manager)
+function VMManagerState:init(vm_manager, player_data, game_data, state_machine, save_manager, di)
     self.vm_manager = vm_manager
     self.player_data = player_data
     self.game_data = game_data
     self.state_machine = state_machine
     self.save_manager = save_manager
+    self.di = di
 
     -- Create the view instance
-    self.view = VMManagerView:new(self, vm_manager, player_data, game_data)
+    self.view = VMManagerView:new(self, vm_manager, player_data, game_data, di)
 
     self.filtered_games = {}
     self.viewport = nil -- Initialize viewport
@@ -36,8 +37,8 @@ end
 
 
 function VMManagerState:purchaseUpgrade(upgrade_type)
-    local Config = require('src.config')
-    local base_costs = Config.upgrade_costs
+    local Config_ = (self.di and self.di.config) or {}
+    local base_costs = Config_.upgrade_costs
 
     if not base_costs[upgrade_type] then
         print("Error: Unknown upgrade type '" .. upgrade_type .. "'")
@@ -52,8 +53,8 @@ function VMManagerState:purchaseUpgrade(upgrade_type)
         print("Purchased upgrade: " .. upgrade_type .. " level " .. self.player_data.upgrades[upgrade_type] .. " for " .. cost .. " tokens")
 
         -- Recalculate VM values without resetting timers
-        local cpu_bonus = 1 + (self.player_data.upgrades.cpu_speed * Config.vm_cpu_speed_bonus_per_level)
-        local overclock_bonus = 1 + (self.player_data.upgrades.overclock * Config.vm_overclock_bonus_per_level)
+    local cpu_bonus = 1 + (self.player_data.upgrades.cpu_speed * Config_.vm_cpu_speed_bonus_per_level)
+    local overclock_bonus = 1 + (self.player_data.upgrades.overclock * Config_.vm_overclock_bonus_per_level)
 
         for _, slot in ipairs(self.vm_manager.vm_slots) do
             if slot.active and slot.assigned_game_id then
@@ -65,7 +66,7 @@ function VMManagerState:purchaseUpgrade(upgrade_type)
 
                     -- Recalculate cycle time with new CPU bonus
                     local old_cycle_time = slot.cycle_time -- Store old time for ratio calc
-                    local new_cycle_time = Config.vm_base_cycle_time / cpu_bonus
+                    local new_cycle_time = Config_.vm_base_cycle_time / cpu_bonus
 
                     -- Adjust remaining time proportionally to maintain progress
                     if old_cycle_time > 0 then

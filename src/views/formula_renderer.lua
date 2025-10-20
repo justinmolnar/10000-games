@@ -127,8 +127,15 @@ function FormulaRenderer:draw(game_data, x, y, max_width, icon_size)
                 text = text:gsub("^metrics%.", "")
             end
             
+            -- Avoid drawing outside max width in single-line mode
+            if max_width and (current_x + (love.graphics.getFont():getWidth(text) * 0.9) > x + max_width) then
+                -- Wrap
+                current_x = x
+                current_y = current_y + icon_size + spacing
+            end
             love.graphics.print(text, current_x, current_y + (icon_size / 4), 0, 0.9, 0.9)
-            item_width = love.graphics.getFont():getWidth(text) * 0.9
+            local fw = love.graphics.getFont() and love.graphics.getFont():getWidth(text) or 0
+            item_width = fw * 0.9
         end
         
         current_x = current_x + item_width + spacing

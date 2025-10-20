@@ -1,10 +1,12 @@
 -- vm_manager.lua: Manages virtual machines for automated game playing
 
 local Object = require('class')
-local Config = require('src.config') -- Moved require to file scope
+local Config = {} -- Will be set from DI in init
 local VMManager = Object:extend('VMManager')
 
-function VMManager:init()
+function VMManager:init(di)
+    -- Optional DI for config
+    if di and di.config then Config = di.config end
     self.vm_slots = {}
     self.total_tokens_per_minute = 0
     self.max_slots = Config.vm_max_slots

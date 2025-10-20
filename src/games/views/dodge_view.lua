@@ -1,11 +1,13 @@
 local Object = require('class')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local DodgeView = Object:extend('DodgeView')
 
 function DodgeView:init(game_state)
     self.game = game_state
     self.OBJECT_DRAW_SIZE = game_state.OBJECT_SIZE or 15
-    local cfg = (Config and Config.games and Config.games.dodge and Config.games.dodge.view) or {}
+    self.di = game_state and game_state.di
+    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.dodge and self.di.config.games.dodge.view) or
+                 (Config and Config.games and Config.games.dodge and Config.games.dodge.view) or {})
     self.bg_color = cfg.bg_color or {0.08, 0.05, 0.1}
     self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
     local sf = cfg.starfield or { count = 180, speed_min = 20, speed_max = 100, size_divisor = 60 }

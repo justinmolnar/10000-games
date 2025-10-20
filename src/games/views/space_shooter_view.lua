@@ -1,11 +1,13 @@
 local Object = require('class')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local SpaceShooterView = Object:extend('SpaceShooterView')
 
 function SpaceShooterView:init(game_state)
     self.game = game_state
     self.sprite_loader = nil
     self.sprite_manager = nil
+    -- capture DI if passed via game_state
+    self.di = game_state and game_state.di
 end
 
 function SpaceShooterView:ensureLoaded()
@@ -29,7 +31,8 @@ function SpaceShooterView:draw()
     local game_width = game.game_width
     local game_height = game.game_height
 
-    local viewcfg = (Config and Config.games and Config.games.space_shooter and Config.games.space_shooter.view) or {}
+    local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or
+                     (Config and Config.games and Config.games.space_shooter and Config.games.space_shooter.view) or {})
     local bg = viewcfg.bg_color or {0.05, 0.05, 0.15}
     local hud = viewcfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
     g.setColor(bg[1], bg[2], bg[3])

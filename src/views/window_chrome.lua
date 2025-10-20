@@ -2,11 +2,12 @@
 -- Reusable component for rendering window chrome (title bar, borders, buttons)
 
 local Object = require('class')
-local Config = require('src.config')
+-- Config is expected to be provided by higher-level DI; avoid requiring src.config here.
 local WindowChrome = Object:extend('WindowChrome')
 
 -- Window chrome dimensions (from config with fallbacks)
-local chrome = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome) or {}
+local Config_ = rawget(_G, 'DI_CONFIG') or {}
+local chrome = (Config_ and Config_.ui and Config_.ui.window and Config_.ui.window.chrome) or {}
 local button = chrome.button or {}
 local colors = chrome.colors or {}
 WindowChrome.TITLE_BAR_HEIGHT = chrome.title_bar_height or 25
@@ -204,7 +205,7 @@ function WindowChrome:getResizeEdge(window, x, y, program_registry, program_id)
     -- Check if window is resizable using program registry
     local program = program_registry and program_registry:getProgram(program_id)
     local defaults = program and program.window_defaults or {}
-    local wd = (Config and Config.window and Config.window.defaults) or {}
+    local wd = (Config_ and Config_.window and Config_.window.defaults) or {}
     local fallback_resizable = (wd.resizable ~= nil) and wd.resizable or true
     local is_resizable = (defaults.resizable ~= nil) and defaults.resizable or fallback_resizable
 

@@ -23,8 +23,7 @@ local recycle_bin = nil
 -- Global storage for cursors
 local system_cursors = {}
 
--- Keep track of current state name for debug toggle
-local current_state_name = nil
+-- Removed per-state-name tracking; state changes are handled by the StateMachine
 
 function love.load()
     print("=== Starting love.load() ===")
@@ -58,6 +57,7 @@ function love.load()
     local StateMachineBuilder = require('controllers.state_machine')
     local CheatSystem = require('models.cheat_system')
     local Config = require('src.config')
+    _G.DI_CONFIG = Config -- expose for modules that read global fallback
     SettingsManager = require('src.utils.settings_manager') -- Assign to global
     local Statistics = require('models.statistics')
     local WindowManager = require('models.window_manager')
@@ -70,6 +70,7 @@ function love.load()
 
 
     -- Load settings FIRST (applies fullscreen/windowed mode)
+    SettingsManager.inject({ config = Config })
     SettingsManager.load()
 
     -- Instantiate Statistics FIRST
@@ -77,9 +78,11 @@ function love.load()
     statistics:load()
 
     -- Instantiate other main systems, injecting statistics into PlayerData
-    player_data = PlayerData:new(statistics) -- Assign to global
-    game_data = GameData:new() -- Assign to global
-    vm_manager = VMManager:new() -- Assign to global
+    -- Prepare a partial di for model constructors that accept it
+    local di_models = { config = Config }
+    player_data = PlayerData:new(statistics, di_models) -- Assign to global
+    game_data = GameData:new(di_models) -- Assign to global
+    vm_manager = VMManager:new(di_models) -- Assign to global
     cheat_system = CheatSystem:new() -- Assign to global
 
     -- Check tutorial flag *once* at startup
@@ -121,7 +124,7 @@ function love.load()
     vm_manager:initialize(player_data)
 
     -- Initialize Windowing/Desktop system models AFTER SettingsManager.load()
-    window_manager = WindowManager:new() -- Assign to global (loads remembered positions)
+    window_manager = WindowManager:new(di_models) -- Assign to global (loads remembered positions)
     desktop_icons = DesktopIcons:new() -- Assign to global (loads layout)
     file_system = FileSystem:new() -- Assign to global
     recycle_bin = RecycleBin:new(desktop_icons) -- Assign to global, inject dependency
@@ -131,9 +134,32 @@ function love.load()
 
     print("Initialized windowing system models")
 
-    -- Create and set up state machine
+    -- Create a DI table (composition root) for gradual injection into states
+    local di = {
+        config = Config,
+        settingsManager = SettingsManager,
+        saveManager = SaveManager,
+        statistics = statistics,
+        playerData = player_data,
+        gameData = game_data,
+        vmManager = vm_manager,
+        cheatSystem = cheat_system,
+        windowManager = window_manager,
+        desktopIcons = desktop_icons,
+        fileSystem = file_system,
+        recycleBin = recycle_bin,
+        programRegistry = program_registry,
+        systemCursors = system_cursors,
+    }
+
+    -- Ensure utils that support injection receive DI early
+    if SaveManager and SaveManager.inject then SaveManager.inject(di) end
+
+    -- Create and set up state machine with DI (states can optionally use state_machine.di)
     local StateMachine = StateMachineBuilder(Object)
-    state_machine = StateMachine:new() -- Assign to global
+    state_machine = StateMachine:new(di) -- Assign to global
+    -- Attach back-reference for states that want it injected
+    di.stateMachine = state_machine
 
     -- Require state classes (just before instantiation)
     -- Remove MinigameState require here as it's no longer a global state
@@ -148,9 +174,7 @@ function love.load()
     local screensaver_state = ScreensaverState:new(state_machine)
 
     -- Desktop state now needs more dependencies
-    local desktop = DesktopState:new(state_machine, player_data, show_tutorial_on_startup, statistics,
-                                     window_manager, desktop_icons, file_system, recycle_bin, program_registry,
-                                     vm_manager, cheat_system, SaveManager, game_data) -- Pass globals
+    local desktop = DesktopState:new(di)
 
     -- Pass system cursors to DesktopState
     desktop.cursors = system_cursors
@@ -165,8 +189,7 @@ function love.load()
     -- are instantiated *by* DesktopState, not registered globally here.
 
     print("Starting game - switching to desktop")
-    current_state_name = Constants.state.DESKTOP
-    state_machine:switch(current_state_name)
+    state_machine:switch(Constants.state.DESKTOP)
 
     print("=== love.load() completed ===")
 end
@@ -221,94 +244,33 @@ function love.draw()
     end
 end
 
--- Helper for switching fullscreen states (Completion, Debug)
-local function switchState(new_state, ...)
-    if state_machine and state_machine.states[new_state] then
-        print("Switching state to: " .. new_state)
-        current_state_name = new_state
-        state_machine:switch(new_state, ...)
-    else
-        print("Error: Attempted to switch to unknown state: " .. tostring(new_state))
-    end
-end
+-- All state switching is now handled within states; no global helper required
 
 function love.keypressed(key, scancode, isrepeat)
-    if not state_machine or not player_data then return end
-
-    -- Give the current state machine state first dibs
-    if state_machine.current_state and state_machine.current_state.keypressed then
-       local handled = state_machine.current_state:keypressed(key)
-       -- If state returns true or an event table, it handled it. Stop processing.
-       if handled then return end
-    end
-
-    -- If not handled by active state, check global fallbacks
-
-    -- Debug toggle key (F5) - Always available unless state handled it
-    if key == 'f5' then
-        if current_state_name == Constants.state.DEBUG then
-             -- Let Debug state handle closing itself via its keypressed (already tried above)
-             print("Debug state should handle F5 close")
-        elseif current_state_name == Constants.state.DESKTOP then -- Only allow opening from desktop
-            switchState(Constants.state.DEBUG, current_state_name)
-        end
-        return -- Consume F5
-    end
-
-    -- Global debug keys (only if not in debug state already)
-    if current_state_name ~= Constants.state.DEBUG then
-        if key == '-' then
-            if player_data:spendTokens(5000) then print("Debug: Removed 5000 tokens.") else print("Debug: Not enough tokens.") end
-            return -- Consume key
-        elseif key == '=' then
-            player_data:addTokens(5000); print("Debug: Added 5000 tokens.")
-            return -- Consume key
-        end
-    end
-
-    -- Global Alt+F4 to quit if no window handled it (redundant with DesktopState handling, but safe fallback)
-    local alt_down = love.keyboard.isDown('lalt') or love.keyboard.isDown('ralt')
-    if key == 'f4' and alt_down then
-         print("Global Alt+F4 fallback triggered - Quitting game")
-         love.event.quit() -- Trigger clean quit
-         return
-    end
+    if not state_machine then return end
+    -- Delegate to the active state via the StateMachine
+    state_machine:keypressed(key)
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
-    -- Forward mouse press to the current state machine state
-    if state_machine and state_machine.current_state and state_machine.current_state.mousepressed then
-        state_machine.current_state:mousepressed(x, y, button)
-    end
+    if state_machine then state_machine:mousepressed(x, y, button) end
 end
 
 function love.mousemoved(x, y, dx, dy, istouch)
-    -- Forward mouse move to the current state machine state
-    if state_machine and state_machine.current_state and state_machine.current_state.mousemoved then
-        state_machine.current_state:mousemoved(x, y, dx, dy)
-    end
+    if state_machine then state_machine:mousemoved(x, y, dx, dy) end
     -- Cursor setting happens in DesktopState:update based on WindowController state
 end
 
 function love.textinput(text)
-    -- Forward text input to the current state machine state
-    if state_machine and state_machine.current_state and state_machine.current_state.textinput then
-        state_machine.current_state:textinput(text)
-    end
+    if state_machine then state_machine:textinput(text) end
 end
 
 function love.mousereleased(x, y, button, istouch, presses)
-     -- Forward mouse release to the current state machine state
-    if state_machine and state_machine.current_state and state_machine.current_state.mousereleased then
-        state_machine.current_state:mousereleased(x, y, button)
-    end
+    if state_machine then state_machine:mousereleased(x, y, button) end
 end
 
 function love.wheelmoved(x, y)
-     -- Forward wheel move to the current state machine state
-    if state_machine and state_machine.current_state and state_machine.current_state.wheelmoved then
-        state_machine.current_state:wheelmoved(x, y)
-    end
+    if state_machine then state_machine:wheelmoved(x, y) end
 end
 
 function love.quit()

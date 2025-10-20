@@ -78,8 +78,9 @@ function DesktopIcons:validatePosition(x, y, desktop_width, desktop_height)
     local icon_w, icon_h = self:getIconDimensions()
 
     -- Clamp to keep icon fully on screen, accounting for taskbar
-    x = math.max(0, math.min(x or 0, (desktop_width or love.graphics.getWidth()) - icon_w))
-    y = math.max(0, math.min(y or 0, (desktop_height or love.graphics.getHeight()) - icon_h - TASKBAR_HEIGHT))
+    -- Require desktop dimensions from caller to avoid coupling to graphics API
+    x = math.max(0, math.min(x or 0, (desktop_width or 0) - icon_w))
+    y = math.max(0, math.min(y or 0, (desktop_height or 0) - icon_h - TASKBAR_HEIGHT))
 
     return x, y
 end

@@ -1,7 +1,7 @@
 local Object = require('class')
 local json = require('json')
 local Paths = require('src.paths')
-local Config = require('src.config') -- Moved require to file scope
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local GameData = Object:extend('GameData')
 
 -- Constants for game categories and tiers
@@ -18,7 +18,9 @@ GameData.TIER = {
     PREMIUM = "premium"
 }
 
-function GameData:init()
+function GameData:init(di)
+    -- Optional DI for config
+    if di and di.config then Config = di.config end
     self.games = {}
     self:loadBaseGames()
 end

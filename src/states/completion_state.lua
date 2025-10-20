@@ -4,6 +4,8 @@ local CompletionView = require('src.views.completion_view')
 
 local CompletionState = Object:extend('CompletionState')
 
+local Constants = require('src.constants')
+
 function CompletionState:init(state_machine, statistics)
     self.state_machine = state_machine
     self.statistics = statistics -- Injected statistics model
@@ -37,10 +39,10 @@ function CompletionState:mousepressed(x, y, button)
     if event.name == "button_click" then
         if event.id == "stats" then
             -- Go to stats screen, make sure it knows to return here
-            self.state_machine:switch('statistics', 'completion') -- Pass 'completion' as previous_state
+            self.state_machine:switch(Constants.state.STATISTICS, 'completion') -- Pass 'completion' as previous_state
         elseif event.id == "continue" then
             -- Go back to desktop
-            self.state_machine:switch('desktop')
+            self.state_machine:switch(Constants.state.DESKTOP)
         elseif event.id == "quit" then
             love.event.quit()
         end

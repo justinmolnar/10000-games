@@ -1,5 +1,5 @@
 local BaseGame = require('src.games.base_game')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local MemoryMatchView = require('src.games.views.memory_match_view')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
@@ -12,19 +12,21 @@ local CARD_ICON_PADDING = (MMCfg.cards and MMCfg.cards.icon_padding) or 10
 local MEMORIZE_TIME_BASE = (MMCfg.timings and MMCfg.timings.memorize_time_base) or 5
 local MATCH_VIEW_TIME = (MMCfg.timings and MMCfg.timings.match_view_time) or 1
 
-function MemoryMatch:init(game_data, cheats)
+function MemoryMatch:init(game_data, cheats, di)
     MemoryMatch.super.init(self, game_data, cheats)
+    self.di = di
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match) or MMCfg
     
     local speed_modifier_value = self.cheats.speed_modifier or 1.0
     local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
     
-    self.CARD_WIDTH = CARD_WIDTH
-    self.CARD_HEIGHT = CARD_HEIGHT
-    self.CARD_SPACING = CARD_SPACING
-    self.CARD_ICON_PADDING = CARD_ICON_PADDING
+    self.CARD_WIDTH = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.width) or CARD_WIDTH
+    self.CARD_HEIGHT = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.height) or CARD_HEIGHT
+    self.CARD_SPACING = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.spacing) or CARD_SPACING
+    self.CARD_ICON_PADDING = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.icon_padding) or CARD_ICON_PADDING
     
-    self.game_width = (MMCfg.arena and MMCfg.arena.width) or 800
-    self.game_height = (MMCfg.arena and MMCfg.arena.height) or 600
+    self.game_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (MMCfg.arena and MMCfg.arena.width) or 800
+    self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (MMCfg.arena and MMCfg.arena.height) or 600
     
     local per_complexity = (MMCfg.pairs and MMCfg.pairs.per_complexity) or 6
     local pairs_count = math.floor(per_complexity * self.difficulty_modifiers.complexity) 

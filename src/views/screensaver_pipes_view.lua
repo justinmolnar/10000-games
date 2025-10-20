@@ -5,13 +5,14 @@
 
 local Object = require('class')
 
-local Config = require('src.config')
 local PipesView = Object:extend('PipesView')
 
 function PipesView:init(opts)
     opts = opts or {}
+    self.di = opts.di
     self:setViewport(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    local d = (Config and Config.screensavers and Config.screensavers.defaults and Config.screensavers.defaults.pipes) or {}
+    local C = (self.di and self.di.config) or {}
+    local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.pipes) or {}
     self.fov = opts.fov or d.fov or 420 -- focal length for projection
     self.camera_z = 0   -- camera at z=0, world is in +Z
     self.near = opts.near or d.near or 80
@@ -29,7 +30,7 @@ function PipesView:init(opts)
     self.max_pipes = math.max(1, math.floor((opts.pipe_count or d.pipe_count or 5)))
     self.show_hud = (opts.show_hud ~= nil) and opts.show_hud or (d.show_hud ~= false)
 
-    local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+    local DV = ((self.di and self.di.config and self.di.config.ui and self.di.config.ui.views and self.di.config.ui.views.screensaver_pipes_draw) or {})
     local PC = (DV.pipes and DV.pipes.colors) or {
         {0.9,0.2,0.2}, {0.2,0.9,0.2}, {0.2,0.6,1.0}, {0.9,0.8,0.2}, {0.9,0.4,0.8}
     }
@@ -177,7 +178,7 @@ function PipesView:drawSegment(a, b, radius, color)
     local rw = math.max(1, radius * depth_scale)
 
     -- underlay (shadow)
-    local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+    local DV = ((self.di and self.di.config and self.di.config.ui and self.di.config.ui.views and self.di.config.ui.views.screensaver_pipes_draw) or {})
     local P = DV.pipes or { shadow_factor = 0.35, shadow_alpha = 0.6, main_factor = 0.85, highlight_scale = 1.2, highlight_alpha = 0.85 }
     love.graphics.setLineWidth(rw + 1.5)
     love.graphics.setColor(shade_color(color, P.shadow_factor or 0.35, P.shadow_alpha or 0.6))
@@ -201,7 +202,7 @@ function PipesView:drawSegment(a, b, radius, color)
 end
 
 function PipesView:draw()
-    local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+    local DV = ((self.di and self.di.config and self.di.config.ui and self.di.config.ui.views and self.di.config.ui.views.screensaver_pipes_draw) or {})
     local bg = DV.bg_color or {0,0.15,0.2}
     love.graphics.clear(bg[1], bg[2], bg[3])
     -- Optional retro grid
@@ -260,7 +261,7 @@ function PipesView:draw()
     for _, j in ipairs(joints) do
         local x, y, k = self:project(j.p)
         if x then
-            local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+            local DV = ((self.di and self.di.config and self.di.config.ui and self.di.config.ui.views and self.di.config.ui.views.screensaver_pipes_draw) or {})
             local joint_scale = (DV.pipes and DV.pipes.joint_radius_scale) or 0.12
             local r = self.pipe_radius * k * joint_scale
             love.graphics.setColor(shade_color(j.color, 0.85, 1))
@@ -273,7 +274,7 @@ function PipesView:draw()
 
     -- Optional HUD
     if self.show_hud then
-        local DV = (Config.ui and Config.ui.views and Config.ui.views.screensaver_pipes_draw) or {}
+    local DV = ((self.di and self.di.config and self.di.config.ui and self.di.config.ui.views and self.di.config.ui.views.screensaver_pipes_draw) or {})
         local hud = DV.hud or { label = "3D Pipes", color = {0.7,0.9,1,0.5} }
         love.graphics.setColor(hud.color)
         love.graphics.print(hud.label or "3D Pipes", 12, 10, 0, 1.2, 1.2)

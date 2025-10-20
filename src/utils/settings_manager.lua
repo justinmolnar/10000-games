@@ -1,6 +1,7 @@
 -- src/utils/settings_manager.lua
 local json = require('json')
-local Config = require('src.config')
+-- Prefer injected config, fallback to global DI_CONFIG
+local ConfigRef = rawget(_G, 'DI_CONFIG') or {}
 
 local SettingsManager = {}
 local SETTINGS_FILE = "settings.json"
@@ -54,6 +55,13 @@ local defaults = {
 
 local current_settings = {}
 
+-- Optional DI injection (call early at startup)
+function SettingsManager.inject(di)
+    if di and di.config then
+        ConfigRef = di.config
+    end
+end
+
 -- Load settings from file or use defaults
 function SettingsManager.load()
     local read_ok, contents = pcall(love.filesystem.read, SETTINGS_FILE)
@@ -95,7 +103,7 @@ function SettingsManager.applyFullscreen()
     
     if fullscreen then
         -- Fullscreen mode - use Config.window.fullscreen if available
-        local wf = (Config and Config.window and Config.window.fullscreen) or {}
+        local wf = (ConfigRef and ConfigRef.window and ConfigRef.window.fullscreen) or {}
         local width = wf.width or 1920
         local height = wf.height or 1080
         local fullscreentype = wf.type or "desktop"
@@ -108,7 +116,7 @@ function SettingsManager.applyFullscreen()
         print(string.format("Applied fullscreen: true (%dx%d)", width, height))
     else
         -- Windowed mode - use Config.window.windowed if available
-        local ww = (Config and Config.window and Config.window.windowed) or {}
+        local ww = (ConfigRef and ConfigRef.window and ConfigRef.window.windowed) or {}
         local width = ww.width or 1280
         local height = ww.height or 720
         local resizable = (ww.resizable ~= nil) and ww.resizable or false

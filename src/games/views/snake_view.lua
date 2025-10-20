@@ -1,11 +1,13 @@
 local Object = require('class')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 local SnakeView = Object:extend('SnakeView')
 
 function SnakeView:init(game_state)
     self.game = game_state
     self.GRID_SIZE = game_state.GRID_SIZE or 20
-    local cfg = (Config and Config.games and Config.games.snake and Config.games.snake.view) or {}
+    self.di = game_state and game_state.di
+    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.snake and self.di.config.games.snake.view) or
+                 (Config and Config.games and Config.games.snake and Config.games.snake.view) or {})
     self.bg_color = cfg.bg_color or {0.05, 0.1, 0.05}
     self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
     self.sprite_loader = nil

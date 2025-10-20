@@ -5,7 +5,8 @@ local SolitaireSave = require('src.utils.solitaire_save')
 
 local SolitaireState = Object:extend('SolitaireState')
 
-function SolitaireState:init()
+function SolitaireState:init(di)
+    self.di = di
     self.view = SolitaireView:new(self)
     self.viewport = nil
 end

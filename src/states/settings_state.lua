@@ -5,9 +5,10 @@ local SettingsManager = require('src.utils.settings_manager')
 
 local SettingsState = Object:extend('SettingsState')
 
-function SettingsState:init(window_controller)
+function SettingsState:init(window_controller, di)
     self.window_controller = window_controller
-    self.view = SettingsView:new(self)
+    self.di = di
+    self.view = SettingsView:new(self, di)
     self.current_settings = {}
     self.viewport = nil
 end

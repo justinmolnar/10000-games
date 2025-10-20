@@ -4,11 +4,21 @@ local Object = require('class')
 local DebugView = require('src.views.debug_view')
 local DebugState = Object:extend('DebugState')
 
-function DebugState:init(player_data, game_data, state_machine, save_manager)
-    self.player_data = player_data
-    self.game_data = game_data
-    self.state_machine = state_machine
-    self.save_manager = save_manager
+function DebugState:init(di)
+    -- DI-first: prefer provided container; fall back to legacy globals if not provided
+    self.di = di
+    if di then
+        self.player_data = di.playerData
+        self.game_data = di.gameData
+        self.state_machine = di.stateMachine
+        self.save_manager = di.saveManager
+    else
+        -- Fallback legacy assumptions (not expected once DI rolled out everywhere)
+        self.player_data = rawget(_G, 'player_data')
+        self.game_data = rawget(_G, 'game_data')
+        self.state_machine = rawget(_G, 'state_machine')
+        self.save_manager = rawget(_G, 'SaveManager')
+    end
 
     self.view = DebugView:new(self)
     self.previous_state_name = 'desktop' -- Default return state
@@ -88,8 +98,8 @@ function DebugState:handleAction(action_id)
         print("Auto-completed " .. count .. " games. Total base power added: " .. math.floor(total_power))
 
     elseif action_id == "wipe_save" then
-        local Config = require('src.config')
-        local save_file = Config.save_file_name
+    local Config = rawget(_G, 'DI_CONFIG') or {}
+    local save_file = (Config and Config.save_file_name) or 'save.json'
         local removed, err = love.filesystem.remove(save_file)
         if removed then
             print("Save file deleted.")

@@ -1,12 +1,14 @@
 -- src/models/player_data.lua
 local Object = require('class')
-local Config = require('src.config')
+local Config = rawget(_G, 'DI_CONFIG') or {}
 -- Removed global assumption
 
 local PlayerData = Object:extend('PlayerData')
 
 -- Accept statistics instance
-function PlayerData:init(statistics_instance)
+function PlayerData:init(statistics_instance, di)
+    -- Optional DI for config (fallback to module require)
+    if di and di.config then Config = di.config end
     self.statistics = statistics_instance -- Store injected instance
 
     self.tokens = 0
@@ -125,7 +127,7 @@ function PlayerData:purchaseVM()
 end
 
 function PlayerData:purchaseUpgrade(type)
-    local base_costs = Config.upgrade_costs
+    local base_costs = (Config and Config.upgrade_costs) or {}
     if not base_costs[type] then
         print("Error: Unknown upgrade type '" .. type .. "'")
         return false

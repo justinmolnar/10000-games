@@ -1,12 +1,14 @@
 -- src/models/bullet_system.lua
 local Object = require('class')
 local Collision = require('utils.collision')
-local Config = require('src.config')
+-- Config is injected per-instance; avoid requiring module-level config
+-- self.config will be set via injectConfig(config)
 local BulletSystem = Object:extend('BulletSystem')
 
 -- Accept statistics instance
 function BulletSystem:init(statistics_instance)
     self.statistics = statistics_instance -- Store injected instance
+    self.config = nil
 
     self.bullet_types = {}
     self.active_bullets = {}
@@ -15,6 +17,10 @@ function BulletSystem:init(statistics_instance)
     self.global_fire_rate_multiplier = 1.0
     self.global_damage_multiplier = 1.0
     self.bullets_fired_this_frame = 0 -- Stat tracking
+end
+
+function BulletSystem:injectConfig(config)
+    self.config = config
 end
 
 function BulletSystem:loadBulletTypes(player_data, game_data)
@@ -123,7 +129,8 @@ function BulletSystem:update(dt, player_pos, enemies, boss)
         local bullet = self.active_bullets[i]
         bullet.y = bullet.y + bullet.vy * dt
 
-        local B = (Config.systems and Config.systems.bullets) or {}
+    local cfg = self.config or {}
+    local B = (cfg.systems and cfg.systems.bullets) or {}
         local despawn_margin = B.despawn_margin or 0
         if bullet.y < -bullet.height - despawn_margin then
             table.insert(self.inactive_bullets, bullet)
@@ -205,7 +212,8 @@ function BulletSystem:spawnBullet(bullet_type, player_pos)
         bullet = {}
     end
 
-    local B = (Config.systems and Config.systems.bullets) or {}
+    local cfg = self.config or {}
+    local B = (cfg.systems and cfg.systems.bullets) or {}
     bullet.x = player_pos.x
     bullet.y = player_pos.y - player_pos.height/2 - (B.spawn_offset_y or 0)
     bullet.width = B.width or 4
@@ -223,35 +231,9 @@ function BulletSystem:spawnBullet(bullet_type, player_pos)
 end
 
 
-function BulletSystem:draw(game_data)
-    local SpriteManager = require('src.utils.sprite_manager').getInstance()
-    SpriteManager:ensureLoaded()
-
-    for _, bullet in ipairs(self.active_bullets) do
-        -- Phase 7.3: Draw bullet sprite instead of rectangle
-        if bullet.sprite and bullet.sprite ~= "bullet_basic" then
-            local game = game_data:getGame(bullet.id)
-            local palette_id = "default"
-            if game then palette_id = SpriteManager:getPaletteId(game) end
-            
-            local B = (Config.systems and Config.systems.bullets) or {}
-            local s = B.sprite_scale or 2.0
-            SpriteManager.sprite_loader:drawSprite(
-                bullet.sprite, 
-                bullet.x - bullet.width/2, 
-                bullet.y - bullet.height/2, 
-                bullet.width * s,
-                bullet.height * s,
-                nil, 
-                palette_id
-            )
-        else
-            -- Fallback to colored rectangle
-            love.graphics.setColor(bullet.color)
-            love.graphics.rectangle('fill', bullet.x - bullet.width/2, bullet.y - bullet.height/2,
-                bullet.width, bullet.height)
-        end
-    end
+-- Models should not draw; expose data for views instead
+function BulletSystem:getActiveBullets()
+    return self.active_bullets
 end
 
 function BulletSystem:clear()
