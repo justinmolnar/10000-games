@@ -12,6 +12,19 @@
     "window_defaults": { "w": 200, "h": 200, "resizable": true, "single_instance": false }
   },
   {
+    "id": "control_panel_desktop",
+    "name": "Desktop Properties",
+    "executable": "control_desktop.cpl",
+    "state_class_path": "states.control_panel_desktop_state",
+    "dependencies": ["window_controller", "di"],
+    "icon_sprite": "settings_gear-0",
+    "icon_color": [0.8, 0.8, 0.8],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 460, "h": 340, "resizable": false, "single_instance": true }
+  },
+  {
     "id": "solitaire",
     "name": "Solitaire",
     "executable": "solitaire.exe",

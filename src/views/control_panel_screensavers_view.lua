@@ -15,6 +15,7 @@ function View:init(controller, di)
     self.preview = { canvas = nil, saver = nil, last_key = nil }
     self.schema = self:_loadSchema(Paths.data.control_panels .. 'screensavers.json')
     self.layout_cache = {} -- id -> {rect, el}
+    self.scroll = { offset = 0, dragging = false, drag_start_y = 0, drag_offset_start = 0, content_h = 0 }
 end
 
 function View:updateLayout(w, h)
@@ -53,7 +54,22 @@ function View:_previewKey(settings, pending)
     elseif t == 'model3d' then
         local fields = {
             'screensaver_model_fov','screensaver_model_grid_lat','screensaver_model_grid_lon',
-            'screensaver_model_morph_speed','screensaver_model_two_sided'
+            'screensaver_model_morph_speed','screensaver_model_two_sided',
+            'screensaver_model_shape1','screensaver_model_shape2','screensaver_model_shape3',
+            'screensaver_model_scale','screensaver_model_tint_r','screensaver_model_tint_g','screensaver_model_tint_b',
+            'screensaver_model_hold_time'
+        }
+        local parts = {t}
+        for _,k in ipairs(fields) do table.insert(parts, tostring(getVal(pending, settings, k, 'nil'))) end
+        return table.concat(parts, '|')
+    elseif t == 'text3d' then
+        local fields = {
+            'screensaver_text3d_text','screensaver_text3d_use_time','screensaver_text3d_font_size','screensaver_text3d_extrude_layers','screensaver_text3d_fov','screensaver_text3d_distance',
+            'screensaver_text3d_color_mode','screensaver_text3d_use_hsv','screensaver_text3d_color_r','screensaver_text3d_color_g','screensaver_text3d_color_b',
+            'screensaver_text3d_color_h','screensaver_text3d_color_s','screensaver_text3d_color_v',
+            'screensaver_text3d_spin_x','screensaver_text3d_spin_y','screensaver_text3d_spin_z',
+            'screensaver_text3d_move_enabled','screensaver_text3d_move_mode','screensaver_text3d_move_radius','screensaver_text3d_move_speed','screensaver_text3d_bounce_speed_x','screensaver_text3d_bounce_speed_y',
+            'screensaver_text3d_pulse_enabled','screensaver_text3d_pulse_amp','screensaver_text3d_pulse_speed','screensaver_text3d_wavy_baseline','screensaver_text3d_specular'
         }
         local parts = {t}
         for _,k in ipairs(fields) do table.insert(parts, tostring(getVal(pending, settings, k, 'nil'))) end
@@ -157,7 +173,7 @@ function View:_ensurePreview(prev_w, prev_h, settings, pending)
         self.preview.last_key = key
         -- Build saver by type
         local t = getVal(pending, settings, 'screensaver_type', 'starfield')
-        if t == 'pipes' then
+    if t == 'pipes' then
             local C = (self.di and self.di.config) or {}
             local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.pipes) or {}
             local PipesView = require('src.views.screensaver_pipes_view')
@@ -180,14 +196,68 @@ function View:_ensurePreview(prev_w, prev_h, settings, pending)
             })
         elseif t == 'model3d' then
             local C = (self.di and self.di.config) or {}
-            local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.model) or {}
+            local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.model3d) or {}
             local ModelView = require('src.views.screensaver_model_view')
+            -- build shapes array from up to three dropdowns, ignoring 'none'
+            local s1 = getVal(pending, settings, 'screensaver_model_shape1', nil)
+            local s2 = getVal(pending, settings, 'screensaver_model_shape2', nil)
+            local s3 = getVal(pending, settings, 'screensaver_model_shape3', nil)
+            local shapes = {}
+            local function addShape(v)
+                if v and v ~= '' and v ~= 'none' then table.insert(shapes, v) end
+            end
+            addShape(s1); addShape(s2); addShape(s3)
+            if #shapes == 0 then shapes = d.shapes or {'cube','sphere'} end
             self.preview.saver = ModelView:new({
                 fov = getVal(pending, settings, 'screensaver_model_fov', d.fov),
                 grid_lat = getVal(pending, settings, 'screensaver_model_grid_lat', d.grid_lat),
                 grid_lon = getVal(pending, settings, 'screensaver_model_grid_lon', d.grid_lon),
                 morph_speed = getVal(pending, settings, 'screensaver_model_morph_speed', d.morph_speed),
                 two_sided = getVal(pending, settings, 'screensaver_model_two_sided', d.two_sided),
+                shapes = shapes,
+                hold_time = getVal(pending, settings, 'screensaver_model_hold_time', d.hold_time),
+                scale = getVal(pending, settings, 'screensaver_model_scale', d.scale or 1.0),
+                tint = {
+                    getVal(pending, settings, 'screensaver_model_tint_r', (d.tint and d.tint[1]) or 1.0),
+                    getVal(pending, settings, 'screensaver_model_tint_g', (d.tint and d.tint[2]) or 1.0),
+                    getVal(pending, settings, 'screensaver_model_tint_b', (d.tint and d.tint[3]) or 1.0),
+                },
+            })
+        elseif t == 'text3d' then
+            local C = (self.di and self.di.config) or {}
+            local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.text3d) or {}
+            local Text3DView = require('src.views.screensaver_text3d_view')
+            self.preview.saver = Text3DView:new({
+                fov = getVal(pending, settings, 'screensaver_text3d_fov', d and d.fov),
+                distance = getVal(pending, settings, 'screensaver_text3d_distance', d and d.distance or 10),
+                color = {
+                    getVal(pending, settings, 'screensaver_text3d_color_r', d and d.color_r or 1.0),
+                    getVal(pending, settings, 'screensaver_text3d_color_g', d and d.color_g or 1.0),
+                    getVal(pending, settings, 'screensaver_text3d_color_b', d and d.color_b or 1.0),
+                },
+                color_mode = getVal(pending, settings, 'screensaver_text3d_color_mode', d and d.color_mode or 'solid'),
+                use_hsv = getVal(pending, settings, 'screensaver_text3d_use_hsv', d and d.use_hsv or false),
+                color_h = getVal(pending, settings, 'screensaver_text3d_color_h', d and d.color_h or 0.15),
+                color_s = getVal(pending, settings, 'screensaver_text3d_color_s', d and d.color_s or 1.0),
+                color_v = getVal(pending, settings, 'screensaver_text3d_color_v', d and d.color_v or 1.0),
+                font_size = getVal(pending, settings, 'screensaver_text3d_font_size', d and d.font_size or 96),
+                extrude_layers = getVal(pending, settings, 'screensaver_text3d_extrude_layers', d and d.extrude_layers or 12),
+                spin_x = getVal(pending, settings, 'screensaver_text3d_spin_x', d and d.spin_x or 0.0),
+                spin_y = getVal(pending, settings, 'screensaver_text3d_spin_y', d and d.spin_y or 0.8),
+                spin_z = getVal(pending, settings, 'screensaver_text3d_spin_z', d and d.spin_z or 0.1),
+                move_enabled = getVal(pending, settings, 'screensaver_text3d_move_enabled', d and d.move_enabled ~= false),
+                move_mode = getVal(pending, settings, 'screensaver_text3d_move_mode', d and d.move_mode or 'orbit'),
+                move_speed = getVal(pending, settings, 'screensaver_text3d_move_speed', d and d.move_speed or 0.25),
+                move_radius = getVal(pending, settings, 'screensaver_text3d_move_radius', d and d.move_radius or 120),
+                bounce_speed_x = getVal(pending, settings, 'screensaver_text3d_bounce_speed_x', d and d.bounce_speed_x or 100),
+                bounce_speed_y = getVal(pending, settings, 'screensaver_text3d_bounce_speed_y', d and d.bounce_speed_y or 80),
+                pulse_enabled = getVal(pending, settings, 'screensaver_text3d_pulse_enabled', d and d.pulse_enabled or false),
+                pulse_amp = getVal(pending, settings, 'screensaver_text3d_pulse_amp', d and d.pulse_amp or 0.25),
+                pulse_speed = getVal(pending, settings, 'screensaver_text3d_pulse_speed', d and d.pulse_speed or 0.8),
+                wavy_baseline = getVal(pending, settings, 'screensaver_text3d_wavy_baseline', d and d.wavy_baseline or false),
+                specular = getVal(pending, settings, 'screensaver_text3d_specular', d and d.specular or 0.0),
+                use_time = getVal(pending, settings, 'screensaver_text3d_use_time', d and d.use_time or false),
+                text = getVal(pending, settings, 'screensaver_text3d_text', d and d.text or 'good?'),
             })
         else
             local C = (self.di and self.di.config) or {}
@@ -292,19 +362,22 @@ function View:drawWindowed(w, h, settings, pending)
     self:drawPreview(frame_x, frame_y, prev_w, prev_h)
 
     local current_type = pending.screensaver_type or settings.screensaver_type or 'starfield'
-    local cy = py
+    local cy = py - (self.scroll.offset or 0)
     local dropdown_to_draw = nil
+    local content_bottom = cy
     for _, el in ipairs(self.schema.elements or {}) do
         if passesWhen(el.when) then
             if el.type == 'dropdown' then
                 printLabel(el.label .. ':', label_x, cy)
                 local tp_x, tp_y = slider_x, cy - 4
-                -- Compute display label from schema choices
-                local display = current_type
+                -- resolve current value (special-case screensaver_type default)
+                local cur = pending[el.id]; if cur == nil then cur = settings[el.id] end
+                if el.id == 'screensaver_type' and cur == nil then cur = 'starfield' end
+                local display = tostring(cur or '')
                 if el.choices and type(el.choices[1]) == 'table' then
-                    for _, c in ipairs(el.choices) do if c.value == current_type then display = c.label break end end
+                    for _, c in ipairs(el.choices) do if c.value == cur then display = c.label break end end
                 end
-                UI.drawDropdown(tp_x, tp_y, dropdown_w, dropdown_h, display, true, false)
+                UI.drawDropdown(tp_x, tp_y, dropdown_w, dropdown_h, display, true, (self.dropdown_open_id == el.id))
                 -- If open, schedule list
                 if self.dropdown_open_id == el.id then
                     local item_h = dropdown_h
@@ -324,7 +397,7 @@ function View:drawWindowed(w, h, settings, pending)
                         items = el.choices or labels
                     }
                 end
-                self._type_rect = {x=tp_x, y=tp_y, w=dropdown_w, h=dropdown_h}
+                self.layout_cache[el.id] = {rect={x=tp_x, y=tp_y, w=dropdown_w, h=dropdown_h}, el=el}
                 cy = cy + 34
             elseif el.type == 'checkbox' then
                 local cb_cfg = V.checkbox or {w=18, h=18}
@@ -364,10 +437,26 @@ function View:drawWindowed(w, h, settings, pending)
                 printValueRightAligned(string.format(fmt, display_v), slider_x, sw, cy-4)
                 self.layout_cache[el.id] = {rect={x=slider_x, y=cy-2, w=sw, h=(V.slider_h or 12)}, el=el}
                 cy = cy + row_space
+            elseif el.type == 'text' then
+                -- Simple one-line text input
+                printLabel(el.label .. ':', label_x, cy)
+                local box_x, box_y = slider_x, cy - 4
+                local box_w, box_h = right_edge - slider_x, dropdown_h
+                love.graphics.setColor(1,1,1)
+                love.graphics.rectangle('fill', box_x, box_y, box_w, box_h)
+                love.graphics.setColor(0,0,0)
+                love.graphics.rectangle('line', box_x, box_y, box_w, box_h)
+                local cur = pending[el.id]; if cur == nil then cur = settings[el.id] end
+                love.graphics.setColor(0,0,0)
+                local text = tostring(cur or '')
+                love.graphics.print(text, box_x + 6, box_y + 3)
+                self.layout_cache[el.id] = {rect={x=box_x, y=box_y, w=box_w, h=box_h}, el=el}
+                cy = cy + 34
             end
         end
+        content_bottom = cy
     end
-    -- Bottom buttons
+    -- Bottom buttons (stick to bottom of panel area)
     self._ok_rect, self._cancel_rect, self._apply_rect = UI.drawDialogButtons(w, h, next(pending) ~= nil)
 
     -- Draw dropdown list last
@@ -375,6 +464,35 @@ function View:drawWindowed(w, h, settings, pending)
         self:_drawDropdownList(dropdown_to_draw)
     else
         self._dropdown_list = nil
+    end
+
+    -- Update content height and clamp scroll
+    self.scroll.content_h = math.max(h, content_bottom + 16)
+    local max_offset = math.max(0, self.scroll.content_h - h)
+    if (self.scroll.offset or 0) > max_offset then self.scroll.offset = max_offset end
+    if self.scroll.offset < 0 then self.scroll.offset = 0 end
+
+    -- Draw scrollbar if needed
+    if max_offset > 0 then
+        local sb_w = 10
+        local sb_x = w - sb_w - 4
+        local sb_h = h - 40
+        local track_y = 20
+        local track_h = sb_h
+        love.graphics.setColor(0.9,0.9,0.95)
+        love.graphics.rectangle('fill', sb_x, track_y, sb_w, track_h)
+        love.graphics.setColor(0.6,0.6,0.7)
+        love.graphics.rectangle('line', sb_x, track_y, sb_w, track_h)
+        local ratio = h / self.scroll.content_h
+        local thumb_h = math.max(24, track_h * ratio)
+        local thumb_y = track_y + (track_h - thumb_h) * ((self.scroll.offset or 0) / max_offset)
+        love.graphics.setColor(0.5,0.5,0.7)
+        love.graphics.rectangle('fill', sb_x+1, thumb_y, sb_w-2, thumb_h)
+        love.graphics.setColor(0.2,0.2,0.4)
+        love.graphics.rectangle('line', sb_x+1, thumb_y, sb_w-2, thumb_h)
+        self._scrollbar = { x=sb_x, y=thumb_y, w=sb_w, h=thumb_h, track_y=track_y, track_h=track_h, max_offset=max_offset }
+    else
+        self._scrollbar = nil
     end
 end
 
@@ -402,10 +520,21 @@ function View:mousepressed(x, y, button, settings, pending)
             self.dropdown_open_id = nil
         end
     end
-    if hit(self._type_rect, x, y) then
-        -- toggle open/close
-        self.dropdown_open_id = (self.dropdown_open_id == 'screensaver_type') and nil or 'screensaver_type'
-        return nil
+    -- Toggle any dropdown hit
+    for id,entry in pairs(self.layout_cache) do
+        local rect = entry.rect
+        local el = entry.el
+        if el and el.type == 'dropdown' and hit(rect, x, y) then
+            self.dropdown_open_id = (self.dropdown_open_id == id) and nil or id
+            return nil
+        end
+    end
+    -- Scrollbar thumb drag
+    if self._scrollbar and x >= self._scrollbar.x and x <= self._scrollbar.x + self._scrollbar.w and y >= self._scrollbar.y and y <= self._scrollbar.y + self._scrollbar.h then
+        self.scroll.dragging = true
+        self.scroll.drag_start_y = y
+        self.scroll.drag_offset_start = self.scroll.offset or 0
+        return { name='content_interaction' }
     end
     -- Schema-driven sliders and checkboxes
     for id,entry in pairs(self.layout_cache) do
@@ -424,6 +553,10 @@ function View:mousepressed(x, y, button, settings, pending)
                 local cur = pending[id]
                 if cur == nil then cur = settings[id] end
                 return { name='set_pending', id=id, value=not cur }
+            elseif el.type == 'text' and hit(rect, x, y) then
+                -- Focus text input: mark focused id
+                self.focus_text_id = id
+                return nil
             end
         end
     end
@@ -444,10 +577,57 @@ function View:mousemoved(x, y, dx, dy, settings, pending)
         if el.step and el.step < 1 then val = tonumber(string.format('%.2f', val)) end
         return { name='set_pending', id=self.dragging, value=val }
     end
+    if self.scroll.dragging and self._scrollbar then
+        local sb = self._scrollbar
+        local track_span = sb.track_h - sb.h
+        if track_span < 1 then track_span = 1 end
+        local dy_pixels = (y - self.scroll.drag_start_y)
+        local ratio = dy_pixels / track_span
+        local new_offset = (self.scroll.drag_offset_start or 0) + (sb.max_offset * ratio)
+        if new_offset < 0 then new_offset = 0 end
+        if new_offset > sb.max_offset then new_offset = sb.max_offset end
+        self.scroll.offset = new_offset
+        return { name='content_interaction' }
+    end
 end
 
 function View:mousereleased(x, y, button, settings, pending)
-    if button == 1 then self.dragging = nil end
+    if button == 1 then self.dragging = nil; self.scroll.dragging = false end
+end
+
+function View:wheelmoved(x, y, settings, pending)
+    -- y>0 scrolls up (negative offset change)
+    local step = 40
+    self.scroll.offset = math.max(0, math.min((self.scroll.offset or 0) - y*step, math.max(0, (self.scroll.content_h or 0) - (self.h or 0))))
+    return { name='content_interaction' }
+end
+
+function View:keypressed(key, scancode, isrepeat, settings, pending)
+    if self.focus_text_id then
+        if key == 'backspace' then
+            local cur = pending[self.focus_text_id]
+            if cur == nil then cur = settings[self.focus_text_id] or '' end
+            cur = tostring(cur)
+            cur = string.sub(cur, 1, math.max(0, #cur - 1))
+            return { name='set_pending', id=self.focus_text_id, value=cur }
+        elseif key == 'return' or key == 'kpenter' then
+            self.focus_text_id = nil
+            return nil
+        end
+    end
+end
+
+function View:textinput(text, settings, pending)
+    if self.focus_text_id and text and text ~= '' then
+        local cur = pending[self.focus_text_id]
+        if cur == nil then cur = settings[self.focus_text_id] or '' end
+        cur = tostring(cur) .. text
+        -- Optional max length clamp from schema
+        local el = self.layout_cache[self.focus_text_id] and self.layout_cache[self.focus_text_id].el
+        local maxlen = el and el.max or nil
+        if maxlen and #cur > maxlen then cur = string.sub(cur, 1, maxlen) end
+        return { name='set_pending', id=self.focus_text_id, value=cur }
+    end
 end
 
 return View

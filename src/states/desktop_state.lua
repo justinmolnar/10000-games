@@ -71,8 +71,14 @@ function DesktopState:init(di)
 
     local C = (self.di and self.di.config) or {}
     local colors = (C.ui and C.ui.colors) or {}
-    self.wallpaper_color = (colors.desktop and colors.desktop.wallpaper) or {0, 0.5, 0.5}
     local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
+    -- Desktop wallpaper color from settings (fallback to config)
+    local r = SettingsManager.get('desktop_bg_r'); if r == nil then r = (colors.desktop and colors.desktop.wallpaper and colors.desktop.wallpaper[1]) or 0 end
+    local g = SettingsManager.get('desktop_bg_g'); if g == nil then g = (colors.desktop and colors.desktop.wallpaper and colors.desktop.wallpaper[2]) or 0.5 end
+    local b = SettingsManager.get('desktop_bg_b'); if b == nil then b = (colors.desktop and colors.desktop.wallpaper and colors.desktop.wallpaper[3]) or 0.5 end
+    self.wallpaper_color = { r, g, b }
+    -- Icon snap setting cached
+    self.icon_snap = SettingsManager.get('desktop_icon_snap') ~= false
     -- Prefer explicit flag from DI; otherwise compute from settings (not shown means tutorial)
     if self.di and self.di.showTutorialOnStartup ~= nil then
         self.show_tutorial = self.di.showTutorialOnStartup
@@ -180,10 +186,16 @@ function DesktopState:update(dt)
     local cursor_obj = self.cursors[cursor_type] or self.cursors["arrow"]
     if cursor_obj then love.mouse.setCursor(cursor_obj) end
 
-    -- Refresh screensaver settings live (in-memory from SettingsManager)
+    -- Refresh settings live (in-memory from SettingsManager)
     local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
     self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
     self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or 10
+    -- Live-update desktop color and snap
+    local nr = SettingsManager.get('desktop_bg_r') or 0
+    local ng = SettingsManager.get('desktop_bg_g') or 0.5
+    local nb = SettingsManager.get('desktop_bg_b') or 0.5
+    self.wallpaper_color[1], self.wallpaper_color[2], self.wallpaper_color[3] = nr, ng, nb
+    self.icon_snap = SettingsManager.get('desktop_icon_snap') ~= false
 
     -- Screensaver idle tracking
     if self.screensaver_enabled then
@@ -601,7 +613,7 @@ function DesktopState:mousereleased(x, y, button)
         end
 
         -- 2. Start overlap resolution with initial drop position
-        local final_x, final_y = initial_drop_x, initial_drop_y
+    local final_x, final_y = initial_drop_x, initial_drop_y
         local overlap_resolved = false
         local attempts = 0
         local max_attempts = 15
@@ -694,7 +706,13 @@ function DesktopState:mousereleased(x, y, button)
              print("Warning: Hit attempt limit trying to resolve icon overlap for", dropped_icon_id)
         end
 
-        -- 4. Update position in the model
+        -- 4. Snap to grid if enabled
+        if self.icon_snap and self.icon_controller and self.icon_controller.snapToGrid then
+            final_x, final_y = self.icon_controller:snapToGrid(final_x, final_y)
+            -- re-validate after snap
+            final_x, final_y = self.desktop_icons:validatePosition(final_x, final_y, screen_w, screen_h)
+        end
+        -- Update position in the model
         self.desktop_icons:setPosition(dropped_icon_id, final_x, final_y, screen_w, screen_h)
         self.desktop_icons:save()
         print("Dropped icon", dropped_icon_id, "at final position", final_x, final_y)

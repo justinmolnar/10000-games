@@ -1,0 +1,9 @@
+{
+  "elements": [
+    { "type": "section", "label": "Desktop Options" },
+    { "type": "slider", "id": "desktop_bg_r", "label": "Background Red", "min": 0, "max": 1, "step": 0.01 },
+    { "type": "slider", "id": "desktop_bg_g", "label": "Background Green", "min": 0, "max": 1, "step": 0.01 },
+    { "type": "slider", "id": "desktop_bg_b", "label": "Background Blue", "min": 0, "max": 1, "step": 0.01 },
+    { "type": "checkbox", "id": "desktop_icon_snap", "label": "Snap icons to grid" }
+  ]
+}

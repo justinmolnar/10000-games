@@ -119,6 +119,11 @@ function ControlPanelView:draw(applet, viewport_width, viewport_height)
     local drawers = {
         control_panel_general = draw_general,
         control_panel_screensavers = draw_screensavers,
+        control_panel_desktop = function(self2, vw, vh)
+            -- Minimal host text; full-fledged desktop settings are in new dynamic form applet state.
+            love.graphics.setColor(0,0,0)
+            love.graphics.print(Strings.get('control_panel_legacy.desktop','Desktop settings are available in the Desktop Properties applet.'), 10, 10)
+        end,
     }
     local drawer = drawers[applet]
     if drawer then

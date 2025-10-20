@@ -275,7 +275,7 @@ function FileExplorerState:mousemoved(x, y, dx, dy)
     -- delegate to view/app-specific if in Control Panel applet
     if not self.viewport then return end
     local item = self.file_system:getItem(self.current_path)
-    if item and item.type == 'special' and (item.special_type == 'control_panel_general' or item.special_type == 'control_panel_screensavers') then
+    if item and item.type == 'special' and (item.special_type == 'control_panel_general' or item.special_type == 'control_panel_desktop' or item.special_type == 'control_panel_screensavers') then
         local content_y = self.view.toolbar_height + self.view.address_bar_height
         local content_h = self.viewport.height - content_y - self.view.status_bar_height
         if y >= content_y and y <= content_y + content_h then

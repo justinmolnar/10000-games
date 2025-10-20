@@ -57,6 +57,21 @@ function DesktopIconController:getDefaultIconPosition(program_id)
     return self.default_icon_positions[program_id] or { x = start_x, y = start_y }
 end
 
+-- Quantize a raw x,y to the nearest grid slot according to configured start and padding
+function DesktopIconController:snapToGrid(x, y)
+    local icon_w, icon_h = self.desktop_icons:getIconDimensions()
+    local padding = self.grid_cfg.icon_padding or 20
+    local start_x = self.grid_cfg.start_x or 20
+    local start_y = self.grid_cfg.start_y or 20
+
+    -- Compute indices then map back to top-left of grid cell
+    local col = math.max(0, math.floor((x - start_x) / (icon_w + padding) + 0.5))
+    local row = math.max(0, math.floor((y - start_y) / (icon_h + padding) + 0.5))
+    local gx = start_x + col * (icon_w + padding)
+    local gy = start_y + row * (icon_h + padding)
+    return gx, gy
+end
+
 -- Returns program_id at screen coordinate x,y or nil
 function DesktopIconController:getProgramAtPosition(x, y)
     local icon_w, icon_h = self.desktop_icons:getIconDimensions()

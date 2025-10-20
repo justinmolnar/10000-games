@@ -46,11 +46,55 @@ local defaults = {
     screensaver_model_grid_lon = 48,
     screensaver_model_morph_speed = 0.3,
     screensaver_model_two_sided = false,
+    -- New model3d morph settings
+    screensaver_model_shape1 = "cube",
+    screensaver_model_shape2 = "sphere",
+    screensaver_model_shape3 = "none",
+    screensaver_model_hold_time = 0.0,
+    screensaver_model_tint_r = 1.0,
+    screensaver_model_tint_g = 1.0,
+    screensaver_model_tint_b = 1.0,
     -- Starfield screensaver options
     screensaver_starfield_count = 500,
     screensaver_starfield_speed = 120,
     screensaver_starfield_fov = 300,
     screensaver_starfield_tail = 12
+    ,
+    -- 3D Text screensaver options
+    screensaver_text3d_text = "good?",
+    screensaver_text3d_use_time = false,
+    screensaver_text3d_font_size = 96,
+    screensaver_text3d_extrude_layers = 12,
+    screensaver_text3d_fov = 350,
+    screensaver_text3d_distance = 18,
+    screensaver_text3d_color_mode = "solid",
+    screensaver_text3d_use_hsv = false,
+    screensaver_text3d_color_r = 1.0,
+    screensaver_text3d_color_g = 1.0,
+    screensaver_text3d_color_b = 0.2,
+    screensaver_text3d_color_h = 0.15,
+    screensaver_text3d_color_s = 1.0,
+    screensaver_text3d_color_v = 1.0,
+    screensaver_text3d_spin_x = 0.0,
+    screensaver_text3d_spin_y = 0.8,
+    screensaver_text3d_spin_z = 0.1,
+    screensaver_text3d_move_enabled = true,
+    screensaver_text3d_move_mode = "orbit",
+    screensaver_text3d_move_radius = 120,
+    screensaver_text3d_move_speed = 0.25,
+    screensaver_text3d_bounce_speed_x = 100,
+    screensaver_text3d_bounce_speed_y = 80,
+    screensaver_text3d_pulse_enabled = false,
+    screensaver_text3d_pulse_amp = 0.25,
+    screensaver_text3d_pulse_speed = 0.8,
+    screensaver_text3d_wavy_baseline = false,
+    screensaver_text3d_specular = 0.0
+    ,
+    -- Desktop options
+    desktop_bg_r = 0.0,
+    desktop_bg_g = 0.5,
+    desktop_bg_b = 0.5,
+    desktop_icon_snap = true
 }
 
 local current_settings = {}

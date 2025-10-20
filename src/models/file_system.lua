@@ -97,11 +97,15 @@ function FileSystem:createDefaultFilesystem()
         -- Control Panel structure
         ["/Control Panel"] = {
             type = "folder",
-            children = {"General", "Screensavers"}
+            children = {"General", "Desktop", "Screensavers"}
         },
         ["/Control Panel/General"] = {
             type = "executable",
             program_id = "control_panel_general"
+        },
+        ["/Control Panel/Desktop"] = {
+            type = "executable",
+            program_id = "control_panel_desktop"
         },
         ["/Control Panel/Screensavers"] = {
             type = "executable",

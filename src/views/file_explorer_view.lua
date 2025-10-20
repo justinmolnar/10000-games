@@ -295,6 +295,8 @@ function FileExplorerView:drawItemIcon(x, y, size, item)
         -- Distinguish control panel applets by color
         if item.special_type == 'control_panel_general' then
             color = {0.6, 0.8, 1.0}
+        elseif item.special_type == 'control_panel_desktop' then
+            color = {0.6, 1.0, 0.6}
         elseif item.special_type == 'control_panel_screensavers' then
             color = {1.0, 0.8, 0.4}
         else
@@ -394,7 +396,7 @@ function FileExplorerView:mousepressed(x, y, button, contents, viewport_width, v
 
     -- Special handling for Control Panel applets input
     local current_item = self.controller.file_system:getItem(self.controller.current_path)
-    if current_item and current_item.type == 'special' and (current_item.special_type == 'control_panel_general' or current_item.special_type == 'control_panel_screensavers') then
+    if current_item and current_item.type == 'special' and (current_item.special_type == 'control_panel_general' or current_item.special_type == 'control_panel_desktop' or current_item.special_type == 'control_panel_screensavers') then
         local content_y = self.toolbar_height + self.address_bar_height
         local content_h = viewport_height - content_y - self.status_bar_height
         if y >= content_y and y <= content_y + content_h then
