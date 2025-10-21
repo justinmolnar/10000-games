@@ -22,3 +22,8 @@ Thumbs.db
 .vscode/
 *.sublime-project
 *.sublime-workspace
+
+# Ignore img or other large assets
+
+/assets/sprites/
+/assets/wallpaper/
