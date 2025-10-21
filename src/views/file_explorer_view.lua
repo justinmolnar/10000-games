@@ -275,7 +275,7 @@ function FileExplorerView:drawItem(x, y, width, height, item, is_selected, is_ho
     self:drawItemIcon(icon_x, icon_y, icon_size, item)
 
     -- Name
-    love.graphics.setColor(item.type == "deleted" and (C.text_muted or {0.4,0.4,0.4}) or (C.text or {0,0,0}))
+    love.graphics.setColor((item.type == "deleted" or item.type == 'fs_deleted') and (C.text_muted or {0.4,0.4,0.4}) or (C.text or {0,0,0}))
     local ns = I.name_scale or 0.9
     love.graphics.print(item.name, icon_x + icon_size + (I.name_pad_x or 5), y + (I.name_pad_y or 5), 0, ns, ns)
 
@@ -285,7 +285,7 @@ function FileExplorerView:drawItem(x, y, width, height, item, is_selected, is_ho
     if item.type == "folder" then type_text = Strings.get('file_explorer.types.folder','Folder')
     elseif item.type == "executable" then type_text = Strings.get('file_explorer.types.program','Program'); type_color = C.type_exec or {0, 0.5, 0}
     elseif item.type == "file" then type_text = Strings.get('file_explorer.types.file','File')
-    elseif item.type == "deleted" then type_text = Strings.get('file_explorer.types.deleted','Deleted Item'); type_color = C.type_deleted or {0.7, 0.0, 0.0}
+    elseif item.type == "deleted" or item.type == 'fs_deleted' then type_text = Strings.get('file_explorer.types.deleted','Deleted Item'); type_color = C.type_deleted or {0.7, 0.0, 0.0}
     end
 
     if type_text ~= "" then
@@ -307,7 +307,7 @@ function FileExplorerView:drawItemIcon(x, y, size, item)
     sprite_loader:drawSprite(sprite_name, x, y, size, size, tint)
 
     -- Special overlay for deleted
-    if item.type == "deleted" then
+    if item.type == "deleted" or item.type == 'fs_deleted' then
         local di = self.controller and self.controller.di
         local C = di and di.config or {}
         local V = (C.ui and C.ui.views and C.ui.views.file_explorer) or {}
@@ -340,7 +340,7 @@ function FileExplorerView:resolveItemSprite(item)
         return 'settings_gear-0'
     end
 
-    if item.type == 'deleted' and item.icon_sprite then
+    if (item.type == 'deleted' or item.type == 'fs_deleted') and item.icon_sprite then
         return item.icon_sprite
     end
     if item.type == 'executable' then

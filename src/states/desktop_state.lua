@@ -420,6 +420,8 @@ function DesktopState:mousepressed(x, y, button)
                 end
                 -- Click was inside menu (item or padding), close it and consume click
                 self:closeContextMenu()
+                -- Prevent this click from triggering underlying Start Menu actions on release
+                self._suppress_next_mousereleased = true
                 return
             else
                 -- Click was outside the menu, close it and let click fall through
@@ -702,6 +704,11 @@ end
 
 function DesktopState:mousereleased(x, y, button)
     self.idle_timer = 0
+    -- If a context menu click was just handled, swallow this release to avoid click-through
+    if self._suppress_next_mousereleased then
+        self._suppress_next_mousereleased = nil
+        return
+    end
     -- Forward to window controller first
     self.window_controller:mousereleased(x, y, button)
     -- Handle Start Menu activation on release
@@ -1194,47 +1201,37 @@ function DesktopState:handleStateEvent(window_id, event)
             local name = (event.text or ''):gsub('^%s*(.-)%s*$', '%1')
             if name == '' then return end
             local ctx = event.context or {}
+            local fs = self.file_system
+            local pr = self.program_registry
+            local Constants = require('src.constants')
             if ctx.pane_kind == 'programs' then
-                -- Create a virtual Start Menu folder and insert below index
-                local fs = self.file_system
-                local pr = self.program_registry
-                -- Ensure Start Menu root exists
-                if fs and fs.filesystem then
-                    fs.filesystem['/Start Menu'] = fs.filesystem['/Start Menu'] or { type='folder', children = {} }
-                    local parent = fs.filesystem['/Start Menu']
-                    -- Make unique name under /Start Menu
-                    local base = name
-                    local final = base
-                    local function exists(child) for _, c in ipairs(parent.children) do if c == child then return true end end return false end
-                    local i = 2
-                    while exists(final) do final = base .. ' ('..i..')'; i=i+1 end
-                    name = final
-                    local new_path = '/Start Menu/' .. name
-                    if not fs.filesystem[new_path] then fs.filesystem[new_path] = { type='folder', children = {} } end
-                    table.insert(parent.children, name)
-                    -- Create a folder shortcut program that targets this path
-                    local program = pr:addFolderShortcut(name, new_path, { in_start_menu = true, shortcut_type='folder', icon_sprite='directory_open_file_mydocs_small-0' })
-                    if program and program.id then
-                        -- Place directly below the clicked item
-                        local after_idx = (ctx.after_index or 0) + 1
-                        pcall(pr.moveInStartMenuProgramsOrder, pr, program.id, after_idx)
-                        -- Refresh panes
-                        if self.start_menu and self.start_menu.view then
-                            for _, p in ipairs(self.start_menu.view.open_panes or {}) do
-                                if p.kind == 'programs' then p.items = self.start_menu.view:buildPaneItems('programs', nil)
-                                elseif p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
+                -- Create a real folder in Start Menu Programs root
+                if fs and fs.createFolder then
+                    local parent_path = Constants.paths.START_MENU_PROGRAMS
+                    local after_idx = (ctx.after_index or ctx.index or 0) + 1
+                    local new_path = fs:createFolder(parent_path, name, after_idx)
+                    if new_path then
+                        -- Optionally adjust order bookkeeping if used by PR
+                        if pr and pr.moveInStartMenuFolderOrder then
+                            local dst_keys = {}
+                            if self.start_menu and self.start_menu.view then
+                                for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                                    if p.kind == 'fs' and p.parent_path == parent_path then
+                                        for _, it in ipairs(p.items or {}) do table.insert(dst_keys, (it.path or it.name)) end
+                                        break
+                                    end
+                                end
                             end
+                            pcall(pr.moveInStartMenuFolderOrder, pr, parent_path, new_path, after_idx, dst_keys)
                         end
                     end
                 end
             elseif ctx.pane_kind == 'fs' and ctx.parent_path then
                 -- Create a real folder under the given parent path and insert below index
-                local fs = self.file_system
-                local pr = self.program_registry
                 if fs and fs.createFolder then
-                    local after_idx = (ctx.after_index or 0) + 1
+                    local after_idx = (ctx.after_index or ctx.index or 0) + 1
                     local new_path = fs:createFolder(ctx.parent_path, name, after_idx)
-                    if new_path then
+                    if new_path and pr and pr.moveInStartMenuFolderOrder then
                         -- Update ordering to reflect the requested position
                         local dst_keys = {}
                         if self.start_menu and self.start_menu.view then
@@ -1246,13 +1243,14 @@ function DesktopState:handleStateEvent(window_id, event)
                             end
                         end
                         pcall(pr.moveInStartMenuFolderOrder, pr, ctx.parent_path, new_path, after_idx, dst_keys)
-                        -- Refresh panes
-                        if self.start_menu and self.start_menu.view then
-                            for _, p in ipairs(self.start_menu.view.open_panes or {}) do
-                                if p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
-                            end
-                        end
                     end
+                end
+            end
+            -- Refresh panes
+            if self.start_menu and self.start_menu.view then
+                for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                    if p.kind == 'programs' then p.items = self.start_menu.view:buildPaneItems('programs', nil)
+                    elseif p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
                 end
             end
             -- Close the dialog window
@@ -1621,78 +1619,58 @@ function DesktopState:handleContextMenuAction(action_id, context)
     elseif context.type == "desktop" then
         if action_id == "desktop_properties" then
             self:launchProgram('control_panel_desktop')
-                -- If Start Menu is open and the click is inside it, show Start Menu context and consume
-                if self.start_menu and self.start_menu:isOpen() then
-                    local inside_any = self.start_menu:isPointInStartMenuOrSubmenu(x, y)
-                    if inside_any then
-                        local hit = self.start_menu.view and self.start_menu.view.hitTestStartMenuContext and self.start_menu.view:hitTestStartMenuContext(x, y)
-                        local options = {}
-                        local ctx = { type = 'start_menu' }
-                        if hit then
-                            if hit.area == 'pane' and hit.item then
-                                if hit.kind == 'programs' and hit.item.type == 'program' then
-                                    ctx = { type='start_menu_item', program_id=hit.item.program_id, index = hit.index }
-                                    -- Build options inline to include New Folder for Programs
-                                    options = {
-                                        { id='open', label=Strings.get('menu.open','Open'), enabled=true },
-                                        { id='separator' },
-                                        { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true },
-                                        { id='separator' },
-                                        { id='delete_from_menu', label=Strings.get('menu.delete','Delete from Start Menu'), enabled=true },
-                                    }
-                                elseif hit.kind == 'fs' then
-                                    -- Offer delete/hide for entries and a basic open option
-                                    ctx = { type='start_menu_fs', path = hit.item and (hit.item.path or hit.item.name), parent_path = hit.parent_path, index = hit.index, is_folder = (hit.item and hit.item.type == 'folder') }
-                                    options = {
-                                        { id='open', label=Strings.get('menu.open','Open'), enabled=true },
-                                        { id='separator' },
-                                        { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true },
-                                        { id='separator' },
-                                        { id='delete_from_menu', label=Strings.get('menu.delete','Delete from Start Menu'), enabled=true }
-                                    }
-                                end
-                            elseif hit.area == 'submenu' and hit.id and self.start_menu.view.submenu_open_id == 'programs' then
-                                ctx = { type='start_menu_item', program_id=hit.id }
-                                options = self:generateContextMenuOptions('start_menu_item', ctx)
-                            end
-                        end
-                        if #options > 0 then self:openContextMenu(x, y, options, ctx); return end
-                        return -- Consume right click in Start Menu even if no options
-                    end
-                end
         elseif action_id == "arrange_icons" then print("Action 'Arrange Icons' NYI")
         elseif action_id == "properties" then print("Action 'Properties' NYI")
         end
 
     elseif context.type == "start_menu_item" then
         if not program_id then print("ERROR: program_id missing for start_menu_item context!"); return end
-        if action_id == "open" then self:launchProgram(program_id)
-        elseif action_id == "create_shortcut_desktop" then self:ensureIconIsVisible(program_id)
+        if action_id == "open" then
+            self:launchProgram(program_id)
+        elseif action_id == "create_shortcut_desktop" then
+            self:ensureIconIsVisible(program_id)
+        elseif action_id == 'create_shortcut_start_menu' then
+            -- Mark program to appear in Start Menu via ProgramRegistry
+            local pr = self.program_registry
+            local program = pr and pr:getProgram(program_id)
+            if program then
+                program.in_start_menu = true
+                if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, true) end
+            end
         elseif action_id == 'new_folder' then
-            -- Open parametric input dialog for folder name in Programs root, place below this item
+            -- Open parametric input dialog to create a new folder under Start Menu Programs root
+            local Constants = require('src.constants')
             local params = {
-                title = Strings.get('menu.new_folder','New Folder'),
-                prompt = Strings.get('menu.enter_folder_name','Enter a name for the new folder:'),
-                ok_label = Strings.get('buttons.create','Create'),
-                cancel_label = Strings.get('buttons.cancel','Cancel'),
+                title = Strings.get('menu.new_folder', 'New Folder...'),
+                prompt = Strings.get('start.type_prompt', 'Type the name:'),
+                ok_label = Strings.get('buttons.create', 'Create'),
+                cancel_label = Strings.get('buttons.cancel', 'Cancel'),
                 submit_event = 'start_menu_create_folder',
-                context = { pane_kind='programs', parent_path=nil, after_index = (context.index or 0) }
+                context = {
+                    pane_kind = 'programs',
+                    parent_path = Constants.paths.START_MENU_PROGRAMS,
+                    after_index = context.index or 0,
+                }
             }
             self:launchProgram('run_dialog', params)
-        elseif action_id == "delete_from_menu" then
+        elseif action_id == 'delete_from_menu' then
+            -- Hide program from Start Menu
             local pr = self.program_registry
-            if pr and pr.relocateProgram then
-                pcall(pr.relocateProgram, pr, program_id, '__trash__')
-                -- Refresh visible panes (Programs and any open fs panes)
-                if self.start_menu and self.start_menu.view then
-                    for _, p in ipairs(self.start_menu.view.open_panes or {}) do
-                        if p.kind == 'programs' then p.items = self.start_menu.view:buildPaneItems('programs', nil)
-                        elseif p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
-                    end
-                end
-                self:closeContextMenu()
+            local program = pr and pr:getProgram(program_id)
+            if program then
+                program.in_start_menu = false
+                if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, false) end
+                if pr.removeFromStartMenuOrder then pcall(pr.removeFromStartMenuOrder, pr, program_id) end
             end
-        elseif action_id == "properties" then print("Action 'Properties' NYI")
+            -- Refresh any open panes/submenus
+            if self.start_menu and self.start_menu.view then
+                for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                    if p.kind == 'programs' then p.items = self.start_menu.view:buildPaneItems('programs', nil)
+                    elseif p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
+                end
+            end
+        elseif action_id == "properties" then
+            print("Action 'Properties' NYI")
         end
 
     elseif context.type == "start_menu_fs" then
@@ -1701,37 +1679,33 @@ function DesktopState:handleContextMenuAction(action_id, context)
         if action_id == 'open' then
             if self.start_menu and self.start_menu.openPath then self.start_menu:openPath(path) end
         elseif action_id == 'new_folder' then
+            -- Create a new real folder under the parent path of the pane
             local params = {
-                title = Strings.get('menu.new_folder','New Folder'),
-                prompt = Strings.get('menu.enter_folder_name','Enter a name for the new folder:'),
-                ok_label = Strings.get('buttons.create','Create'),
-                cancel_label = Strings.get('buttons.cancel','Cancel'),
+                title = Strings.get('menu.new_folder', 'New Folder...'),
+                prompt = Strings.get('start.type_prompt', 'Type the name:'),
+                ok_label = Strings.get('buttons.create', 'Create'),
+                cancel_label = Strings.get('buttons.cancel', 'Cancel'),
                 submit_event = 'start_menu_create_folder',
-                context = { pane_kind='fs', parent_path=context.parent_path or (path:match('(.+)/[^/]+$') or '/'), after_index = (context.index or 0) }
+                context = {
+                    pane_kind = 'fs',
+                    parent_path = context.parent_path or (path:match('(.+)/[^/]+$') or '/'),
+                    after_index = context.index or 0,
+                }
             }
             self:launchProgram('run_dialog', params)
         elseif action_id == 'delete_from_menu' then
-            local pr = self.program_registry
-            if pr and pr.relocateStartMenuEntry then
-                local tomb = '__trash__'
-                local parent = path:match('(.+)/[^/]+$') or '/'
-                -- Find a pane showing this parent to build src_keys
-                local src_keys = {}
-                local src_pane = nil
-                if self.start_menu and self.start_menu.view then
-                    for _, p in ipairs(self.start_menu.view.open_panes or {}) do
-                        if p.kind == 'fs' and p.parent_path == parent then src_pane = p; break end
-                    end
-                    if src_pane and src_pane.items then for _, it in ipairs(src_pane.items) do table.insert(src_keys, (it.path or it.name)) end end
+            local fs = self.file_system
+            if fs and fs.deleteEntry then
+                local ok, err = fs:deleteEntry(path)
+                if not ok then
+                    print('Delete failed for Start Menu FS item:', path, err)
                 end
-                pcall(pr.relocateStartMenuEntry, pr, path, parent, tomb, 1, {}, src_keys)
-                -- Refresh visible panes
+                -- Refresh panes
                 if self.start_menu and self.start_menu.view then
                     for _, p in ipairs(self.start_menu.view.open_panes or {}) do
                         if p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
                     end
                 end
-                self:closeContextMenu()
             end
         end
 
@@ -1745,8 +1719,18 @@ function DesktopState:handleContextMenuAction(action_id, context)
         if fe_state and fe_state.handleItemDoubleClick then
             local item = context.item -- Might be nil for empty space clicks
 
-            if action_id == "restore" and item then fe_state:restoreFromRecycleBin(item.program_id)
-            elseif action_id == "delete_permanently" and item then fe_state:permanentlyDeleteFromRecycleBin(item.program_id)
+            if action_id == "restore" and item then
+                if item.type == 'deleted' then
+                    fe_state:restoreFromRecycleBin(item.program_id)
+                elseif item.type == 'fs_deleted' then
+                    fe_state:restoreFsDeleted(item.recycle_id)
+                end
+            elseif action_id == "delete_permanently" and item then
+                if item.type == 'deleted' then
+                    fe_state:permanentlyDeleteFromRecycleBin(item.program_id)
+                elseif item.type == 'fs_deleted' then
+                    fe_state:permanentlyDeleteFsDeleted(item.recycle_id)
+                end
             elseif action_id == "open" and item then
                  local result = fe_state:handleItemDoubleClick(item)
                  -- If double click resulted in an event (like launch), handle it
@@ -1773,7 +1757,14 @@ function DesktopState:handleContextMenuAction(action_id, context)
                          self.desktop_icons:save()
                      end
                  end
-            elseif action_id == "delete" then print("Delete from file explorer NYI") -- Placeholder
+          elseif action_id == "copy" and item then
+              fe_state:copyItem(item)
+          elseif action_id == "cut" and item then
+              fe_state:cutItem(item)
+          elseif action_id == "paste" then
+              fe_state:pasteIntoCurrent()
+          elseif action_id == "delete" and item then
+                 fe_state:deleteItem(item)
             elseif action_id == "properties" then print("File properties NYI") -- Placeholder
             elseif action_id == "refresh" then fe_state:refresh() -- Handle refresh for empty space context
             else print("Warning: Unhandled file explorer action:", action_id)

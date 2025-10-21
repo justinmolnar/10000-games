@@ -1,6 +1,7 @@
 -- src/views/start_menu_view.lua
 local Object = require('class')
 local Strings = require('src.utils.strings')
+local Constants = require('src.constants')
 
 local StartMenuView = Object:extend('StartMenuView')
 
@@ -12,6 +13,10 @@ function StartMenuView:init(program_registry, file_system, di)
     -- Ensure any invalid persisted Start Menu state is cleaned immediately (e.g., moves into Documents)
     if self.program_registry and self.program_registry.sanitizeStartMenuState then
         pcall(self.program_registry.sanitizeStartMenuState, self.program_registry)
+    end
+    -- Ensure a unified Start Menu Programs folder exists and is seeded
+    if self.file_system and self.file_system.ensureStartMenuProgramsFolder then
+        pcall(self.file_system.ensureStartMenuProgramsFolder, self.file_system, self.program_registry)
     end
 
     local desktop_cfg = (self.config and self.config.ui and self.config.ui.desktop) or {}
@@ -118,7 +123,7 @@ function StartMenuView:update(dt, start_menu_open)
 
     -- Update hovered item in legacy submenu
     self.hovered_sub_id = self:getStartMenuSubItemAtPosition(mx, my)
-    -- Update cascading panes even while dragging so you can move across panes smoothly
+    -- Always update cascading panes
     self:updateCascade(mx, my, dt)
 
     -- Auto-size menu height for 6 rows
@@ -285,6 +290,11 @@ function StartMenuView:mousepressedStartMenu(x, y, button)
                         -- Program inside a folder: keep program_id; use name as entry key for same-folder reordering
                         self.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=it.program_id, entry_key=it.name, scope=hit_pane.parent_path }
                         self.dnd_start_x, self.dnd_start_y = x, y
+                    elseif it.type == 'executable' and it.program_id then
+                        -- Executable node with a program_id: treat similarly to a program entry
+                        local key = it.path or it.name
+                        self.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=it.program_id, entry_key=key, scope=hit_pane.parent_path }
+                        self.dnd_start_x, self.dnd_start_y = x, y
                     else
                         local key = it.path or it.name
                         if key then
@@ -316,10 +326,12 @@ function StartMenuView:mousereleasedStartMenu(x, y, button)
     end
     -- Finish drag reorder first if active, even if not exactly over a row
     if in_pane and pane_ref then
-        if self.dnd_active and self.program_registry then
+        if self.dnd_active then
             self._start_menu_pressed_id = nil
+            local fs = self.file_system
             local function isFsRootRestricted(path)
-                return path == '/My Computer/C:/Documents' or path == '/Control Panel'
+                -- Only allow operations inside dynamic roots
+                return not (fs and fs.isPathInDynamicRoot and fs:isPathInDynamicRoot(path))
             end
             -- Preferred branch: dropping directly INTO a hovered folder
             if self.dnd_drop_mode == 'into' and self.dnd_target_folder_path then
@@ -330,39 +342,14 @@ function StartMenuView:mousereleasedStartMenu(x, y, button)
                     self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil; self.dnd_drop_mode=nil; self.dnd_target_folder_path=nil
                     return { name = 'start_menu_pressed' }
                 end
-                local pr = self.program_registry
-                local dst_items = self:buildPaneItems('fs', dst_path)
-                local dst_keys = {}
-                for _, it in ipairs(dst_items or {}) do table.insert(dst_keys, (it.path or it.name)) end
-                local target_idx = (#dst_keys) + 1 -- append by default when dropping into a folder
-                if self.dnd_item_id then
-                    -- Program being dragged
-                    local prog = pr and pr.getProgram and pr:getProgram(self.dnd_item_id)
-                    local entry_key = (prog and prog.name) or tostring(self.dnd_item_id)
-                    pcall(pr.relocateProgram, pr, self.dnd_item_id, dst_path)
-                    pcall(pr.moveInStartMenuFolderOrder, pr, dst_path, entry_key, target_idx, dst_keys)
-                else
-                    -- FS entry being dragged
-                    local src_path = self.dnd_scope
-                    if src_path and not isFsRootRestricted(src_path) and not isFsRootRestricted(dst_path) then
-                        local src_items = self:buildPaneItems('fs', src_path)
-                        local src_keys = {}
-                        for _, it in ipairs(src_items or {}) do table.insert(src_keys, (it.path or it.name)) end
-                        -- First, relocate the FS entry within the Start Menu mapping so it disappears from the source pane
-                        pcall(pr.relocateStartMenuEntry, pr, self.dnd_entry_key, src_path, dst_path, target_idx, dst_keys, src_keys)
-                        -- If there is an existing folder shortcut program targeting this same path, move it as well so we don't leave a duplicate-looking entry behind
-                        if pr.findShortcutByPath then
-                            local shortcut = pr:findShortcutByPath(self.dnd_entry_key)
-                            if shortcut and shortcut.id then
-                                pcall(pr.relocateProgram, pr, shortcut.id, dst_path)
-                            end
-                        end
-                    end
+                -- FS entry being dragged into folder: move using FileSystem
+                local src_path = self.dnd_scope
+                if fs and src_path and self.dnd_entry_key and not isFsRootRestricted(src_path) and not isFsRootRestricted(dst_path) then
+                    pcall(fs.moveEntry, fs, self.dnd_entry_key, dst_path)
                 end
                 -- Refresh panes and clear drag state
                 for _, p in ipairs(self.open_panes or {}) do
-                    if p.kind == 'programs' then p.items = self:buildPaneItems('programs', nil)
-                    elseif p.kind == 'fs' and p.parent_path then p.items = self:buildPaneItems('fs', p.parent_path) end
+                    if p.kind == 'fs' and p.parent_path then p.items = self:buildPaneItems('fs', p.parent_path) end
                 end
                 if self.open_panes and #self.open_panes > 0 then self:reflowOpenPanesBounds() end
                 self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil; self.dnd_drop_mode=nil; self.dnd_target_folder_path=nil
@@ -378,78 +365,9 @@ function StartMenuView:mousereleasedStartMenu(x, y, button)
             elseif y > b.y + b.h then idx_calc = (#(pane_ref.items or {}) ) + 1
             else idx_calc = math.floor((y - (b.y + padding)) / item_h) + 1 end
             local target_idx = math.max(1, idx_calc or self.dnd_hover_index or 1)
-            -- Programs: reordering in Programs pane OR relocating into folder pane (insert-line behavior)
-            if self.dnd_scope == 'programs' and self.dnd_item_id then
-                if pane_ref.kind == 'programs' then
-                    pcall(self.program_registry.moveInStartMenuProgramsOrder, self.program_registry, self.dnd_item_id, target_idx)
-                elseif pane_ref.kind == 'fs' and pane_ref.parent_path then
-                    local dst_path = pane_ref.parent_path
-                    local prog = self.program_registry and self.program_registry.getProgram and self.program_registry:getProgram(self.dnd_item_id)
-                    local entry_key = prog and prog.name or tostring(self.dnd_item_id)
-                    -- Build destination keys for ordering context
-                    local dst_keys = {}
-                    for _, it in ipairs(pane_ref.items or {}) do table.insert(dst_keys, (it.path or it.name)) end
-                    pcall(self.program_registry.relocateProgram, self.program_registry, self.dnd_item_id, dst_path)
-                    -- Also set insertion order within the folder using the program's display name key
-                    pcall(self.program_registry.moveInStartMenuFolderOrder, self.program_registry, dst_path, entry_key, target_idx, dst_keys)
-                end
-                -- Refresh all panes
-                for _, p in ipairs(self.open_panes or {}) do
-                    if p.kind == 'programs' then p.items = self:buildPaneItems('programs', nil)
-                    elseif p.kind == 'fs' and p.parent_path then p.items = self:buildPaneItems('fs', p.parent_path) end
-                end
-                self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil
-                return { name = 'start_menu_pressed' }
-            end
-            -- FS entry dragged into Programs pane: create/start shortcut and place at index, hide original entry (insert-line behavior)
-            if pane_ref.kind == 'programs' and self.dnd_scope and self.dnd_entry_key and not self.dnd_item_id then
-                local pr = self.program_registry
-                local fs = self.file_system
-                local src_path = self.dnd_scope
-                local entry_path = self.dnd_entry_key
-                local entry = fs and fs.getItem and fs:getItem(entry_path) or nil
-                if pr and fs and entry and entry.type == 'folder' then
-                    -- Find or create a folder shortcut program
-                    local shortcut = pr.findShortcutByPath and pr:findShortcutByPath(entry_path) or nil
-                    if not shortcut and pr.addFolderShortcut then
-                        local name = entry.name or (entry_path:match('([^/]+)$') or entry_path)
-                        shortcut = pr:addFolderShortcut(name, entry_path, { in_start_menu = true })
-                    end
-                    if shortcut and shortcut.id then
-                        -- Ensure Start Menu visibility
-                        if pr.setStartMenuOverride then pcall(pr.setStartMenuOverride, pr, shortcut.id, true) end
-                        -- Relocate to Programs root and set order
-                        pcall(pr.relocateProgram, pr, shortcut.id, 'PROGRAMS_ROOT')
-                        pcall(pr.moveInStartMenuProgramsOrder, pr, shortcut.id, target_idx)
-                        -- Hide the original FS entry in Start Menu by relocating it to tomb
-                        local src_keys = {}
-                        local src_pane = (self.open_panes and self.open_panes[self.dnd_pane_index or 1]) or nil
-                        if src_pane and src_pane.items then for _, it in ipairs(src_pane.items) do table.insert(src_keys, (it.path or it.name)) end end
-                        if pr.relocateStartMenuEntry then pcall(pr.relocateStartMenuEntry, pr, entry_path, src_path, '__trash__', 1, {}, src_keys) end
-                        -- Refresh and reflow panes
-                        for _, p in ipairs(self.open_panes or {}) do
-                            if p.kind == 'programs' then p.items = self:buildPaneItems('programs', nil)
-                            elseif p.kind == 'fs' and p.parent_path then p.items = self:buildPaneItems('fs', p.parent_path) end
-                        end
-                        if self.open_panes and #self.open_panes > 0 then self:reflowOpenPanesBounds() end
-                        self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil
-                        return { name = 'start_menu_pressed' }
-                    end
-                end
-            end
-            -- Program dragged from a folder pane to Programs root (insert-line behavior)
-            if self.dnd_item_id and pane_ref.kind == 'programs' and self.dnd_scope and self.dnd_scope ~= 'programs' then
-                -- Move program back to Programs root and place at target index
-                pcall(self.program_registry.relocateProgram, self.program_registry, self.dnd_item_id, 'PROGRAMS_ROOT')
-                pcall(self.program_registry.moveInStartMenuProgramsOrder, self.program_registry, self.dnd_item_id, target_idx)
-                -- Refresh all panes
-                for _, p in ipairs(self.open_panes or {}) do
-                    if p.kind == 'programs' then p.items = self:buildPaneItems('programs', nil)
-                    elseif p.kind == 'fs' and p.parent_path then p.items = self:buildPaneItems('fs', p.parent_path) end
-                end
-                self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil
-                return { name = 'start_menu_pressed' }
-            end
+            -- Ignore program drag paths; Start is FS-only now
+            -- Ignore moving FS entries into 'programs' pane; FS-only editing occurs within FS panes
+            -- Ignore program drag cases
             -- Folder reorder or relocate (includes program entries living in folder panes) (insert-line behavior)
             if self.dnd_scope and pane_ref.kind == 'fs' and self.dnd_entry_key then
                 local dst_path = pane_ref.parent_path
@@ -461,36 +379,11 @@ function StartMenuView:mousereleasedStartMenu(x, y, button)
                         self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil
                         return { name = 'start_menu_pressed' }
                     end
-                    local dst_keys = {}; for _, it in ipairs(pane_ref.items or {}) do table.insert(dst_keys, (it.path or it.name)) end
-                    local src_pane = (self.open_panes and self.open_panes[self.dnd_pane_index or 1]) or nil
-                    local src_keys = {}
-                    if src_pane and src_pane.items then for _, it in ipairs(src_pane.items) do table.insert(src_keys, (it.path or it.name)) end end
-                    if self.dnd_item_id then
-                        -- Dragging a program that lives inside a folder pane
-                        if src_path == dst_path then
-                            -- Same-folder reorder by item name key
-                            pcall(self.program_registry.moveInStartMenuFolderOrder, self.program_registry, src_path, self.dnd_entry_key, target_idx, src_keys)
-                        else
-                            -- Cross-folder relocate: update program moves map
-                            local prog = self.program_registry and self.program_registry.getProgram and self.program_registry:getProgram(self.dnd_item_id)
-                            local entry_key = (prog and prog.name) or tostring(self.dnd_item_id)
-                            pcall(self.program_registry.relocateProgram, self.program_registry, self.dnd_item_id, dst_path)
-                            -- Set insertion order at the destination
-                            pcall(self.program_registry.moveInStartMenuFolderOrder, self.program_registry, dst_path, entry_key, target_idx, dst_keys)
-                        end
-                    else
-                        if src_path == dst_path then
-                            -- Same-folder reorder for regular FS entry
-                            pcall(self.program_registry.moveInStartMenuFolderOrder, self.program_registry, src_path, self.dnd_entry_key, target_idx, src_keys)
-                        else
-                            -- Cross-folder relocate for FS entry
-                            pcall(self.program_registry.relocateStartMenuEntry, self.program_registry, self.dnd_entry_key, src_path, dst_path, target_idx, dst_keys, src_keys)
-                        end
-                    end
+                    -- Cross-folder relocate for FS entry (append order)
+                    if fs and src_path ~= dst_path then pcall(fs.moveEntry, fs, self.dnd_entry_key, dst_path) end
                     -- Refresh all panes so updates are immediate
                     for _, p in ipairs(self.open_panes or {}) do
-                        if p.kind == 'programs' then p.items = self:buildPaneItems('programs', nil)
-                        elseif p.kind == 'fs' and p.parent_path then p.items = self:buildPaneItems('fs', p.parent_path) end
+                        if p.kind == 'fs' and p.parent_path then p.items = self:buildPaneItems('fs', p.parent_path) end
                     end
                     self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil
                     return { name = 'start_menu_pressed' }
@@ -688,7 +581,7 @@ function StartMenuView:getStartMenuSubItemAtPosition(x, y)
     local item_h = start_cfg.item_height or 25
     local padding = start_cfg.padding or 10
     local index = math.floor((y - (bounds.y + padding)) / item_h) + 1
-    if self.submenu_open_id == 'programs' then local items = self.program_registry:getStartMenuPrograms() or {}; local item = items[index]; return item and item.id or nil
+    if self.submenu_open_id == 'programs' then local fs=self.file_system; local items=fs and fs:getContents(Constants.paths.START_MENU_PROGRAMS) or {}; local e=items[index]; return e and e.path or nil
     elseif self.submenu_open_id == 'documents' then local fs=self.file_system; local docs=fs and fs:getContents('/My Computer/C:/Documents') or {}; local e=docs[index]; return e and e.path or nil
     elseif self.submenu_open_id == 'settings' then local fs=self.file_system; local items=fs and fs:getContents('/Control Panel') or {}; local e=items[index]; return e and e.path or nil end
     return nil
@@ -705,23 +598,29 @@ function StartMenuView:drawProgramsSubmenu()
     love.graphics.setScissor(bounds.x, bounds.y, bounds.w, bounds.h)
     love.graphics.setColor(theme.bg or {0.75, 0.75, 0.75}); love.graphics.rectangle('fill', bounds.x, bounds.y, bounds.w, bounds.h)
     love.graphics.setColor(theme.border_dark or {0.2, 0.2, 0.2}); love.graphics.rectangle('line', bounds.x, bounds.y, bounds.w, bounds.h)
-    local items = self.program_registry:getStartMenuPrograms() or {}
-    -- Ensure legacy submenu respects cross-folder moves: hide programs moved out of Programs root
-    local moves = self.program_registry and self.program_registry.getStartMenuMoves and self.program_registry:getStartMenuMoves() or {}
-    if items and #items > 0 and moves and next(moves) ~= nil then
-        local filtered = {}
-        for _, p in ipairs(items) do
-            local mv = moves['program:' .. p.id]
-            if not mv or mv == 'PROGRAMS_ROOT' then table.insert(filtered, p) end
+    -- Read from FS path for Programs to keep parity with cascading panes
+    local fs = self.file_system; local items = fs and fs:getContents(Constants.paths.START_MENU_PROGRAMS) or {}
+    -- Reuse FE icon resolver when available for consistent icons
+    local okFE, FileExplorerView = pcall(require, 'src.views.file_explorer_view')
+    local fe_resolve = nil
+    if okFE and FileExplorerView and FileExplorerView.resolveItemSprite then
+        fe_resolve = function(item)
+            local controller = { program_registry = self.program_registry, file_system = self.file_system }
+            local dummy = { controller = controller, resolveItemSprite = FileExplorerView.resolveItemSprite, getControlPanelIconSprite = function() return nil end }
+            return FileExplorerView.resolveItemSprite(dummy, item)
         end
-        items = filtered
     end
     local y = bounds.y + (start_cfg.padding or 10)
-    for _, p in ipairs(items) do
-        local is_hovered = self.hovered_sub_id == p.id
+    for _, entry in ipairs(items) do
+        local is_hovered = self.hovered_sub_id == entry.path
         if is_hovered then love.graphics.setColor(theme.highlight or {0,0,0.5}); love.graphics.rectangle('fill', bounds.x + 2, y, bounds.w - 4, item_h) end
-        love.graphics.setColor(1,1,1); sprite_loader:drawSprite(p.icon_sprite or 'executable-0', bounds.x + 5, y + (item_h - icon_size)/2, icon_size, icon_size, is_hovered and {1.2,1.2,1.2} or {1,1,1})
-        love.graphics.setColor(is_hovered and (theme.text_hover or {1,1,1}) or (theme.text or {0,0,0})); love.graphics.print(p.name, bounds.x + icon_size + 10, y + 5)
+        local sprite
+        if fe_resolve then sprite = fe_resolve(entry) else
+            local icon = (fs and fs.getItemIcon and fs:getItemIcon(entry)) or 'file'
+            sprite = (icon == 'folder' and 'directory_open_file_mydocs_small-0') or (icon == 'exe' and 'executable-0') or (entry.name and entry.name:match('%.txt$') and 'notepad_file-0') or 'document-0'
+        end
+        love.graphics.setColor(1,1,1); sprite_loader:drawSprite(sprite, bounds.x + 5, y + (item_h - icon_size)/2, icon_size, icon_size, is_hovered and {1.2,1.2,1.2} or {1,1,1})
+        love.graphics.setColor(is_hovered and (theme.text_hover or {1,1,1}) or (theme.text or {0,0,0})); love.graphics.print(entry.name, bounds.x + icon_size + 10, y + 5)
         y = y + item_h
     end
     love.graphics.setScissor(prev_sx, prev_sy, prev_sw, prev_sh)
@@ -822,7 +721,7 @@ function StartMenuView:updateCascade(mx, my, dt)
     local root_kind, root_path, base_row = nil, nil, nil
     if self.hovered_main_id == 'documents' then root_kind='fs'; root_path='/My Computer/C:/Documents'; base_row=1
     elseif self.hovered_main_id == 'settings' then root_kind='fs'; root_path='/Control Panel'; base_row=2
-    elseif self.hovered_main_id == 'programs' then root_kind='programs'; base_row=0 end
+    elseif self.hovered_main_id == 'programs' then root_kind='fs'; root_path=Constants.paths.START_MENU_PROGRAMS; base_row=0 end
 
     local inside_pane=false
     for _, p in ipairs(self.open_panes) do local b=p.bounds; if mx>=b.x and mx<=b.x+b.w and my>=b.y and my<=b.y+b.h then inside_pane=true; break end end
@@ -938,53 +837,7 @@ function StartMenuView:buildPaneItems(kind, path)
     elseif kind == 'fs' then
         local fs = self.file_system
         local entries = fs and fs:getContents(path) or {}
-        -- Apply relocation mapping: hide moved-out, and append moved-in items
-        local moves = self.program_registry and self.program_registry.getStartMenuMoves and self.program_registry:getStartMenuMoves() or {}
-        local by_key = {}
-        local filtered = {}
-        for _, e in ipairs(entries or {}) do
-            local key = e.path or e.name
-            by_key[key] = true
-            local dst = key and moves[key]
-            if not dst or dst == path then table.insert(filtered, e) end
-        end
-        -- Append items whose move destination is this path but aren't present in base entries
-        for key, dst in pairs(moves) do
-            if dst == path and not by_key[key] then
-                if key:match('^program:') then
-                    local prog_id = key:sub(9)
-                    local prog = self.program_registry and self.program_registry:getProgram(prog_id)
-                    if prog then
-                        if prog.shortcut_type == 'folder' and prog.shortcut_target then
-                            -- For FS panes, avoid duplicating an actual child folder with a shortcut to the same target.
-                            -- If the target is a direct child of this path and already present in base entries, skip adding the shortcut entry.
-                            local target_parent = prog.shortcut_target:match('(.+)/[^/]+$') or ''
-                            if by_key[prog.shortcut_target] and target_parent == path then
-                                -- Skip duplicate-looking shortcut for direct child
-                            else
-                                -- Represent folder shortcuts as folder entries so they can expand and use FE icons
-                                table.insert(filtered, { type = 'folder', name = prog.name or (prog.shortcut_target:match('([^/]+)$') or prog.shortcut_target), path = prog.shortcut_target, program_id = prog.id, icon_sprite = prog.icon_sprite })
-                            end
-                        else
-                            table.insert(filtered, { type = 'program', name = prog.name, program_id = prog.id, icon_sprite = prog.icon_sprite })
-                        end
-                    end
-                else
-                    local it = fs and fs:getItem(key)
-                    if it then
-                        local name = key:match("([^/]+)$") or key
-                        local ty = it.type
-                        if ty == 'directory' then ty = 'folder' end
-                        table.insert(filtered, { name = name, path = key, type = ty, program_id = it.program_id })
-                    end
-                end
-            end
-        end
-        entries = filtered
-        -- Apply saved order for this folder path if any
-        if self.program_registry and self.program_registry.orderFsEntries then
-            entries = self.program_registry:orderFsEntries(path, entries)
-        end
+        -- Pure FS view: no program registry overlays, no virtual injection, no custom ordering
         for _, e in ipairs(entries or {}) do
             local ty = e.type
             if ty == 'directory' then ty = 'folder' end

@@ -38,6 +38,8 @@ function FileExplorerState:init(file_system, program_registry, desktop_icons, re
     self.window_manager = nil
 
     -- No modal applet state; Control Panel applets are programs
+    -- Clipboard for copy/cut/paste
+    self.clipboard = nil -- { mode = 'copy'|'cut', src_path = '', name = '' }
 end
 
 -- Method to receive window context from DesktopState
@@ -106,9 +108,14 @@ function FileExplorerState:keypressed(key)
     elseif key == 'f5' then
         self:refresh()
         return { type = "content_interaction" }
+    -- Disable copy/cut/paste shortcuts for now
     elseif key == 'delete' and self.selected_item and self.current_path == "/Recycle Bin" then
-         -- Allow deleting from recycle bin view
-         self:permanentlyDeleteFromRecycleBin(self.selected_item.program_id)
+         -- Allow deleting from recycle bin view (desktop or FS items)
+         if self.selected_item.type == 'deleted' then
+             self:permanentlyDeleteFromRecycleBin(self.selected_item.program_id)
+         elseif self.selected_item.type == 'fs_deleted' then
+             self:permanentlyDeleteFsDeleted(self.selected_item.recycle_id)
+         end
          return { type = "content_interaction" }
     end
 
@@ -135,11 +142,10 @@ function FileExplorerState:mousepressed(x, y, button)
         if button == 1 then
             self.selected_item = nil -- Deselect on empty space left click
         elseif button == 2 then
-            -- Right-click on empty space: Generate folder context menu
-            local options = {
-                { id = "refresh", label = "Refresh", enabled = true },
-                { id = "properties", label = "Properties (NYI)", enabled = false }
-            }
+            -- Right-click on empty space: Generate folder context menu (no paste for now)
+            local options = {}
+            table.insert(options, { id = "refresh", label = "Refresh", enabled = true })
+            table.insert(options, { id = "properties", label = "Properties (NYI)", enabled = false })
             -- Calculate SCREEN coordinates for the context menu based on viewport and local click
             local screen_x = self.viewport.x + x
             local screen_y = self.viewport.y + y
@@ -204,7 +210,7 @@ function FileExplorerState:mousepressed(x, y, button)
         self.selected_item = view_event.item
         local options = {}
         local item = view_event.item
-        if self.current_path == "/Recycle Bin" and item.type == "deleted" then
+        if self.current_path == "/Recycle Bin" and (item.type == "deleted" or item.type == 'fs_deleted') then
             options = {
                 { id = "restore", label = "Restore", enabled = true },
                 { id = "separator" },
@@ -220,18 +226,15 @@ function FileExplorerState:mousepressed(x, y, button)
                 local is_visible = (item.type == "executable" and target_program_id) and self.desktop_icons:isIconVisible(target_program_id) or false
                 table.insert(options, { id = "create_shortcut_desktop", label = "Create Shortcut (Desktop)", enabled = (item.type ~= 'executable') or not is_visible })
                 -- Start Menu shortcut option
-                local start_enabled = true
-                if item.type == "executable" and target_program_id then
-                    local program = self.program_registry:getProgram(target_program_id)
-                    local overridden = self.program_registry.hasStartMenuOverride and self.program_registry:hasStartMenuOverride(target_program_id)
-                    start_enabled = not ((program and program.in_start_menu) or overridden)
-                end
-                table.insert(options, { id = "create_shortcut_start_menu", label = "Create Shortcut (Start Menu)", enabled = start_enabled })
+                -- Always allow creating a Start Menu shortcut (creates a real FS entry in Programs)
+                table.insert(options, { id = "create_shortcut_start_menu", label = "Create Shortcut (Start Menu)", enabled = true })
                 if item.type == 'executable' and item.program_id and item.program_id:match('^shortcut_') then
                     table.insert(options, { id = "remove_shortcut", label = "Remove Shortcut", enabled = true })
                 end
             end
-            table.insert(options, { id = "delete", label = "Delete (NYI)", enabled = true })
+            -- Disable Copy/Cut for now; keep Delete if allowed by FS rules
+            local deletable = item and item.path and self.file_system.isDeletable and self.file_system:isDeletable(item.path)
+            table.insert(options, { id = "delete", label = "Delete", enabled = deletable == true })
             table.insert(options, { id = "separator" })
             table.insert(options, { id = "properties", label = "Properties (NYI)", enabled = false })
         end
@@ -369,34 +372,13 @@ function FileExplorerState:navigateTo(path, skip_history)
 end
 
 function FileExplorerState:goUp()
-    local old_path = self.current_path
-    -- Handle special cases: Desktop goes to My Computer, C: goes to My Computer
-    if old_path == "/My Computer/Desktop" or old_path:match("^/My Computer/C:") or old_path:match("^/My Computer/D:") then
-         self:navigateTo("/My Computer")
-         return
-    elseif old_path == "/My Computer" or old_path == "/Recycle Bin" then
-         self:navigateTo("/")
-         return
-    end
-
-    -- Standard filesystem up navigation
-    local success, err = self.file_system:goUp()
-
-    if success then
-        local new_path = self.file_system:getCurrentPath()
-        self.current_path = new_path
-        self.selected_item = nil
-        self:_updateTitle() -- **Update title**
-
-        while #self.history > self.history_index do
-            table.remove(self.history)
-        end
-        if self.history[self.history_index] ~= new_path then
-            table.insert(self.history, new_path)
-            self.history_index = #self.history
-        end
-        self:refresh() -- Refresh view
-    end
+    local old_path = self.current_path or "/"
+    -- Compute parent path directly (breadcrumb-style)
+    local parent = old_path:match("(.+)/[^/]+$") or "/"
+    if parent == "" then parent = "/" end
+    -- Redirect the top-level to modern My Computer; hide legacy root from navigation
+    if parent == "/" then parent = "/My Computer" end
+    self:navigateTo(parent)
 end
 
 function FileExplorerState:goBack()
@@ -448,8 +430,11 @@ function FileExplorerState:handleItemDoubleClick(item)
     if item.type == "deleted" then
         print("Double-click on deleted item - attempting restore.")
         self:restoreFromRecycleBin(item.program_id)
-        -- Return content_interaction as an action occurred
         return { type = "content_interaction" }
+    elseif item.type == 'fs_deleted' then
+        print("Double-click on FS-deleted item - attempting restore.")
+        self:restoreFsDeleted(item.recycle_id)
+        return { type = 'content_interaction' }
     end
 
     -- Original logic for non-deleted items:
@@ -506,28 +491,33 @@ end
 
 function FileExplorerState:createShortcutInStartMenu(item)
     print("Attempting to create start menu shortcut for:", item.name, "Type:", item.type)
+    local okC, Constants = pcall(require, 'src.constants')
+    local start_root = okC and Constants.paths and Constants.paths.START_MENU_PROGRAMS or nil
+    if not (self.file_system and self.file_system.createExecutable and start_root) then return nil end
+
     if item.type == "executable" and item.program_id then
-        -- If program exists, toggle in_start_menu true for session
-        local program = self.program_registry:getProgram(item.program_id)
-        if program then
-            program.in_start_menu = true
-            if self.program_registry.setStartMenuOverride then self.program_registry:setStartMenuOverride(item.program_id, true) end
-            return { type = "content_interaction" }
-        end
+        -- Create an FS executable entry in Start Menu Programs pointing to this program
+        local name = item.name or (self.program_registry:getProgram(item.program_id) and self.program_registry:getProgram(item.program_id).name) or "Program"
+        local path = self.file_system:createExecutable(start_root, name, item.program_id)
+        if path then love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.", "info") end
+        return { type = "content_interaction" }
     elseif item.type == "folder" then
+        -- Create a real FS folder link under Start Menu Programs so it cascades and mirrors target
         local name = item.name or "Folder"
-        local program = self.program_registry:addFolderShortcut(name, item.path, { in_start_menu = true, shortcut_type = 'folder', icon_sprite = 'directory_open_file_mydocs_small-0' })
-        if program then
+        local link_path = self.file_system.createFolderLink and self.file_system:createFolderLink(start_root, name, item.path)
+        if link_path then
             love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.", "info")
             return { type = "content_interaction" }
         end
     elseif item.type == "file" then
+        -- For now, create an executable program launcher for files (could add file link later)
         local name = item.name or "File"
         local icon = 'document-0'
         if name:match('%.txt$') then icon = 'notepad_file-0' elseif name:match('%.json$') then icon = 'file_lines-0' elseif name:match('%.exe$') then icon = 'executable-0' end
-        local program = self.program_registry:addFolderShortcut(name, item.path, { in_start_menu = true, shortcut_type = 'file', icon_sprite = icon })
-        if program then
-            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut to parent folder created in Start Menu.", "info")
+        local program = self.program_registry:addFolderShortcut(name, item.path, { in_start_menu = false, shortcut_type = 'file', icon_sprite = icon })
+        if program and program.id then
+            local path = self.file_system:createExecutable(start_root, name, program.id)
+            if path then love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.", "info") end
             return { type = "content_interaction" }
         end
     end
@@ -557,24 +547,43 @@ end
 -- Fetch items directly from the RecycleBin model
 function FileExplorerState:getRecycleBinContents()
     local contents = {}
-    local deleted_items = self.recycle_bin:getItems() -- Get items from the model
-
+    -- Desktop icon deletions
+    local deleted_items = self.recycle_bin:getItems()
     for _, item in ipairs(deleted_items) do
         local program = self.program_registry:getProgram(item.program_id)
         if program then
             table.insert(contents, {
                 name = program.name,
-                path = "/Recycle Bin/" .. program.name, -- Fake path for display consistency
-                type = "deleted", -- Special type for view rendering
+                path = "/Recycle Bin/" .. program.name,
+                type = "deleted",
                 program_id = item.program_id,
                 deleted_at = item.deleted_at,
-                icon = program.icon_color, -- Keep color if needed elsewhere
-                icon_sprite = program.icon_sprite, -- Use program's icon sprite for display
-                original_position = item.original_position -- Pass original pos if needed
+                icon = program.icon_color,
+                icon_sprite = program.icon_sprite,
+                original_position = item.original_position
             })
         end
     end
-
+    -- Filesystem deletions
+    local fs_items = self.file_system.getFsRecycleBinItems and self.file_system:getFsRecycleBinItems() or {}
+    for _, it in ipairs(fs_items) do
+        local node = it.node or {}
+        local display_name = it.name or (it.original_path or 'Item')
+        local icon_sprite = nil
+        if node.type == 'executable' and node.program_id then
+            local program = self.program_registry:getProgram(node.program_id)
+            icon_sprite = program and program.icon_sprite or nil
+        end
+        table.insert(contents, {
+            name = display_name,
+            path = "/Recycle Bin/" .. display_name,
+            type = 'fs_deleted',
+            recycle_id = it.id,
+            original_path = it.original_path,
+            deleted_at = it.deleted_at,
+            icon_sprite = icon_sprite,
+        })
+    end
     return contents
 end
 
@@ -606,8 +615,9 @@ function FileExplorerState:emptyRecycleBin()
     )
 
     if pressed == 1 then -- "Yes, Empty"
-        local count = self.recycle_bin:empty()
-        print("Emptied Recycle Bin (" .. count .. " items).")
+        local count_desktop = self.recycle_bin:empty()
+        local count_fs = self.file_system.emptyFsRecycleBin and self.file_system:emptyFsRecycleBin() or 0
+        print("Emptied Recycle Bin (desktop=" .. tostring(count_desktop) .. ", fs=" .. tostring(count_fs) .. ")")
         self:refresh() -- Refresh the view
     end
 end
@@ -635,6 +645,76 @@ function FileExplorerState:permanentlyDeleteFromRecycleBin(program_id)
      end
 end
 
+-- Restore FS-deleted item
+function FileExplorerState:restoreFsDeleted(recycle_id)
+    local ok, dst = self.file_system:restoreDeletedEntry(recycle_id)
+    if ok then
+        self:refresh()
+    else
+        love.window.showMessageBox(Strings.get('messages.error_title','Error'), "Failed to restore item", 'error')
+    end
+end
+
+function FileExplorerState:permanentlyDeleteFsDeleted(recycle_id)
+    local buttons = {"Yes, Delete", "Cancel"}
+    local pressed = love.window.showMessageBox(
+        Strings.get('messages.info_title','Information'),
+        "Are you sure you want to permanently delete this item?",
+        buttons,
+        "warning"
+    )
+    if pressed == 1 then
+        local ok = self.file_system:permanentlyDeleteEntry(recycle_id)
+        if ok then self:refresh() end
+    end
+end
+
+-- Delete a normal item (moves to FS recycle bin if allowed)
+function FileExplorerState:deleteItem(item)
+    if not item or not item.path then return end
+    if not (self.file_system.isDeletable and self.file_system:isDeletable(item.path)) then
+        love.window.showMessageBox(Strings.get('messages.error_title','Error'), "This item cannot be deleted.", 'error')
+        return
+    end
+    local buttons = {"Yes, Delete", "Cancel"}
+    local pressed = love.window.showMessageBox(Strings.get('messages.info_title','Information'), "Delete '".. (item.name or 'Item') .."' and move it to Recycle Bin?", buttons, 'warning')
+    if pressed == 1 then
+        local ok, err = self.file_system:deleteEntry(item.path)
+        if not ok then
+            love.window.showMessageBox(Strings.get('messages.error_title','Error'), "Delete failed: ".. tostring(err), 'error')
+        else
+            self:refresh()
+        end
+    end
+end
+
+-- Clipboard operations
+function FileExplorerState:copyItem(item)
+    if not item or not item.path then return end
+    self.clipboard = { mode = 'copy', src_path = item.path, name = item.name or (item.path:match('([^/]+)$') or 'Item') }
+end
+
+function FileExplorerState:cutItem(item)
+    if not item or not item.path then return end
+    if not (self.file_system.isPathInDynamicRoot and self.file_system:isPathInDynamicRoot(item.path)) then return end
+    self.clipboard = { mode = 'cut', src_path = item.path, name = item.name or (item.path:match('([^/]+)$') or 'Item') }
+end
+
+function FileExplorerState:pasteIntoCurrent()
+    if not self.clipboard or not self.file_system then return end
+    local dst_parent = self.current_path
+    local dst_node = self.file_system:getItem(dst_parent)
+    if not dst_node or dst_node.type ~= 'folder' then return end
+    if not (self.file_system.canMoveOrCopy and self.file_system:canMoveOrCopy(self.clipboard.src_path, dst_parent)) then return end
+    if self.clipboard.mode == 'copy' then
+        local ok, _ = self.file_system:copyEntry(self.clipboard.src_path, dst_parent)
+        if ok then self:refresh() end
+    elseif self.clipboard.mode == 'cut' then
+        local ok, _ = self.file_system:moveEntry(self.clipboard.src_path, dst_parent)
+        if ok then self:refresh(); self.clipboard = nil end
+    end
+end
+
 
 -- Helper function to update the window title
 function FileExplorerState:_updateTitle()
@@ -648,7 +728,8 @@ function FileExplorerState:_updateTitle()
             if item.special_type == "desktop_view" then
                 title = "Desktop"
             elseif item.special_type == "recycle_bin" then
-                title = "Recycle Bin" .. (self.recycle_bin:isEmpty() and " (Empty)" or "") -- Add empty status
+                local empty = (self.recycle_bin:isEmpty() and (self.file_system.isFsRecycleBinEmpty and self.file_system:isFsRecycleBinEmpty()))
+                title = "Recycle Bin" .. (empty and " (Empty)" or "")
             elseif item.special_type == 'control_panel_general' or item.special_type == 'control_panel_screensavers' then
                 title = "Control Panel"
             end

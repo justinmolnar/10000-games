@@ -2,6 +2,7 @@
 -- Model managing deleted desktop icons and their restoration
 
 local Object = require('class')
+local json = require('json')
 local RecycleBin = Object:extend('RecycleBin')
 
 function RecycleBin:init(desktop_icons_model)
@@ -10,6 +11,8 @@ function RecycleBin:init(desktop_icons_model)
     end
     self.desktop_icons = desktop_icons_model -- Dependency injection
     self.items = {} -- Array of {program_id, original_position, deleted_at}
+    self._SAVE_FILE = 'recycle_bin.json'
+    self:_load()
 end
 
 -- Add item to recycle bin
@@ -32,6 +35,7 @@ function RecycleBin:addItem(program_id, original_position)
     -- Mark as deleted in desktop icons model
     self.desktop_icons:deleteIcon(program_id)
 
+    self:_save()
     return true
 end
 
@@ -51,6 +55,7 @@ function RecycleBin:restoreItem(program_id, screen_w, screen_h)
             end
             -- If no original position, it will appear in default grid on next view calc
 
+            self:_save()
             return true
         end
     end
@@ -68,6 +73,7 @@ function RecycleBin:empty()
 
     -- Save desktop layout to persist permanent deletion
     self.desktop_icons:save()
+    self:_save()
 
     return count
 end
@@ -96,10 +102,34 @@ function RecycleBin:permanentlyDelete(program_id)
             -- Also mark in desktop_icons model
             self.desktop_icons:permanentlyDelete(program_id)
             self.desktop_icons:save() -- Persist change
+            self:_save()
             return true
         end
     end
     return false
+end
+
+-- Persistence helpers
+function RecycleBin:_load()
+    local ok, contents = pcall(love.filesystem.read, self._SAVE_FILE)
+    if not ok or not contents or contents == '' then return end
+    local dec_ok, data = pcall(json.decode, contents)
+    if not dec_ok or type(data) ~= 'table' then return end
+    -- Validate minimal structure
+    if type(data.items) == 'table' then self.items = data.items end
+    -- Ensure desktop icons model reflects deleted state for loaded items
+    for _, it in ipairs(self.items or {}) do
+        if it.program_id then pcall(self.desktop_icons.deleteIcon, self.desktop_icons, it.program_id) end
+    end
+end
+
+function RecycleBin:_save()
+    local data = { items = self.items }
+    local enc_ok, out = pcall(json.encode, data)
+    if not enc_ok then return false end
+    local ok, err = pcall(love.filesystem.write, self._SAVE_FILE, out)
+    if not ok then print('ERROR writing recycle_bin.json: '..tostring(err)); return false end
+    return true
 end
 
 return RecycleBin

@@ -1,3 +1,7 @@
+This document is just a collection of thoughts, I just want to record interesting ideas as they come up
+
+
+
 * Restore defaults for control panel views
 * There should be a popup modal confirm window to restore (Ok, Cancel)
 
@@ -12,3 +16,6 @@ possiblity to download cracked full version, but it'll just have a message in th
 start up sequence
 
 sounds
+
+leisure suit larry copy protection
+
