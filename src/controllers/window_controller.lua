@@ -22,7 +22,7 @@ function WindowController:init(window_manager, program_registry, window_states_m
     self.resize_start_y = 0
     self.resize_start_bounds = nil
 
-    -- Minimum window size from config
+    -- Deprecated: per-window minima are resolved per program during resize; kept for legacy fallback
     local min_size = (Config and Config.window and Config.window.min_size) or { w = 200, h = 150 }
     self.min_window_width = min_size.w or 200
     self.min_window_height = min_size.h or 150
@@ -229,6 +229,13 @@ end
 function WindowController:handleResize(mouse_x, mouse_y)
     local window = self.window_manager:getWindowById(self.resizing_window_id)
     if not window or not self.resize_start_bounds then return end -- Safety check
+    local program = self.program_registry:getProgram(window.program_type)
+    local defaults = program and program.window_defaults or {}
+    local Config = rawget(_G, 'DI_CONFIG') or {}
+    local global_min = (Config and Config.window and Config.window.min_size) or { w = 200, h = 150 }
+    -- Prefer the window's stored minima (set on creation) then program defaults, then global
+    local min_w = tonumber(window.min_w) or tonumber(defaults.min_w) or global_min.w or self.min_window_width or 200
+    local min_h = tonumber(window.min_h) or tonumber(defaults.min_h) or global_min.h or self.min_window_height or 150
 
     local dx = mouse_x - self.resize_start_x
     local dy = mouse_y - self.resize_start_y
@@ -244,16 +251,16 @@ function WindowController:handleResize(mouse_x, mouse_y)
     -- Horizontal resize logic (adjust x, w)
     if edge:find("left") then
         local potential_w = bounds.width - dx
-        if potential_w >= self.min_window_width then new_w = potential_w; new_x = bounds.x + dx
-        else new_w = self.min_window_width; new_x = bounds.x + bounds.width - self.min_window_width end
-    elseif edge:find("right") then new_w = math.max(self.min_window_width, bounds.width + dx) end
+        if potential_w >= min_w then new_w = potential_w; new_x = bounds.x + dx
+        else new_w = min_w; new_x = bounds.x + bounds.width - min_w end
+    elseif edge:find("right") then new_w = math.max(min_w, bounds.width + dx) end
 
     -- Vertical resize logic (adjust y, h)
     if edge:find("top") then
         local potential_h = bounds.height - dy
-        if potential_h >= self.min_window_height then new_h = potential_h; new_y = bounds.y + dy
-        else new_h = self.min_window_height; new_y = bounds.y + bounds.height - self.min_window_height end
-    elseif edge:find("bottom") then new_h = math.max(self.min_window_height, bounds.height + dy) end
+        if potential_h >= min_h then new_h = potential_h; new_y = bounds.y + dy
+        else new_h = min_h; new_y = bounds.y + bounds.height - min_h end
+    elseif edge:find("bottom") then new_h = math.max(min_h, bounds.height + dy) end
 
     -- Screen bounds clamping logic
     local screen_w, screen_h = love.graphics.getWidth(), love.graphics.getHeight()
@@ -262,9 +269,9 @@ function WindowController:handleResize(mouse_x, mouse_y)
     new_y = math.max(0, math.min(new_y, screen_h - taskbar_h - new_h))
     new_w = math.min(new_w, screen_w - new_x)
     new_h = math.min(new_h, screen_h - taskbar_h - new_y)
-    new_w = math.max(self.min_window_width, new_w); new_h = math.max(self.min_window_height, new_h)
-    if edge:find("left") and new_w == self.min_window_width then new_x = math.max(0, math.min(new_x, screen_w - self.min_window_width)) end
-    if edge:find("top") and new_h == self.min_window_height then new_y = math.max(0, math.min(new_y, screen_h - taskbar_h - self.min_window_height)) end
+    new_w = math.max(min_w, new_w); new_h = math.max(min_h, new_h)
+    if edge:find("left") and new_w == min_w then new_x = math.max(0, math.min(new_x, screen_w - min_w)) end
+    if edge:find("top") and new_h == min_h then new_y = math.max(0, math.min(new_y, screen_h - taskbar_h - min_h)) end
 
     -- Update window model
     self.window_manager:updateWindowBounds(self.resizing_window_id, new_x, new_y, new_w, new_h)

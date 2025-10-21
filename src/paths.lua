@@ -8,7 +8,8 @@ Paths.assets = {
     sprites = 'assets/sprites/',
     fonts = 'assets/fonts/',
     shaders = 'assets/shaders/',
-    sounds = 'assets/sounds/'
+    sounds = 'assets/sounds/',
+    wallpaper = 'assets/wallpaper/'
 }
 
 Paths.data = {

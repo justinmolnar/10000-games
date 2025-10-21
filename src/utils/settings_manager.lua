@@ -14,6 +14,11 @@ local defaults = {
     sfx_volume = 0.7,
     tutorial_shown = false,
     fullscreen = true,
+    -- Solitaire
+    solitaire_draw_count = 1,           -- 1 or 3
+    solitaire_redeal_limit = "infinite", -- 'infinite' | 3 | 1
+    solitaire_empty_any = false,        -- false: Kings-only, true: Any
+    solitaire_card_back = nil,          -- id of selected back from assets/sprites/solitare/backs/
     -- Screensaver
     screensaver_enabled = true,
     screensaver_timeout = 10,   -- seconds
@@ -63,6 +68,8 @@ local defaults = {
     -- 3D Text screensaver options
     screensaver_text3d_text = "good?",
     screensaver_text3d_use_time = false,
+    -- Unified size control replaces font_size/fov/distance in UI; keep old keys for compatibility
+    screensaver_text3d_size = 1.0,
     screensaver_text3d_font_size = 96,
     screensaver_text3d_extrude_layers = 12,
     screensaver_text3d_fov = 350,
@@ -91,6 +98,9 @@ local defaults = {
     screensaver_text3d_specular = 0.0
     ,
     -- Desktop options
+    desktop_bg_type = "color", -- 'color' | 'image'
+    desktop_bg_image = nil,     -- wallpaper id
+    desktop_bg_scale_mode = "fill", -- 'fill'|'fit'|'stretch'|'center'|'tile'
     desktop_bg_r = 0.0,
     desktop_bg_g = 0.5,
     desktop_bg_b = 0.5,
@@ -108,8 +118,13 @@ end
 
 -- Load settings from file or use defaults
 function SettingsManager.load()
+    local save_dir = ''
+    local ok_dir, dir = pcall(love.filesystem.getSaveDirectory)
+    if ok_dir and dir then save_dir = dir end
+    --
     local read_ok, contents = pcall(love.filesystem.read, SETTINGS_FILE)
     if read_ok and contents then
+    --
         local decode_ok, data = pcall(json.decode, contents)
         if decode_ok then
             -- Merge loaded data with defaults to ensure all keys exist
@@ -120,6 +135,8 @@ function SettingsManager.load()
                 end
             end
             print("Settings loaded successfully from " .. SETTINGS_FILE)
+            -- Debug: show desktop wallpaper-related keys
+            --
             SettingsManager.applyAudioSettings() -- Apply volume on load
             SettingsManager.applyFullscreen() -- Apply fullscreen on load
             return true
@@ -174,6 +191,9 @@ end
 
 -- Save current settings to file
 function SettingsManager.save()
+    local save_dir = ''
+    local ok_dir, dir = pcall(love.filesystem.getSaveDirectory)
+    if ok_dir and dir then save_dir = dir end
     local encode_ok, json_str = pcall(json.encode, current_settings)
     if not encode_ok then
         print("Error encoding settings data: " .. tostring(json_str))
@@ -185,7 +205,8 @@ function SettingsManager.save()
         print("Failed to write settings file: " .. tostring(message))
         return false
     end
-    -- print("Settings saved successfully.") -- Optional debug message
+    -- Debug: confirm save and key values
+    --
     return true
 end
 

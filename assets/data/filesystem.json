@@ -5,7 +5,15 @@
   },
   "/My Computer": {
     "type": "folder",
-    "children": ["Desktop", "C:", "D:"]
+    "children": ["C:", "D:", "Desktop", "Recycle Bin", "My Documents"]
+  },
+  "/My Computer/Recycle Bin": {
+    "type": "special",
+    "special_type": "recycle_bin"
+  },
+  "/My Computer/My Documents": {
+    "type": "special",
+    "special_type": "my_documents"
   },
   "/My Computer/Desktop": {
     "type": "special",

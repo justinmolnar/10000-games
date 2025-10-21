@@ -48,6 +48,9 @@ function love.load()
     -- Set default cursor
     if system_cursors["arrow"] then love.mouse.setCursor(system_cursors["arrow"]) end
 
+    -- Enable key repeat to ensure keypress callbacks receive repeats when desired
+    if love.keyboard and love.keyboard.setKeyRepeat then love.keyboard.setKeyRepeat(true) end
+
 
     -- Require necessary classes/modules FIRST
     local PlayerData = require('models.player_data')
@@ -248,8 +251,20 @@ end
 
 function love.keypressed(key, scancode, isrepeat)
     if not state_machine then return end
+    -- Intercept Windows keys to toggle our Start Menu and prevent OS Start Menu from opening
+    if key == 'lgui' or key == 'rgui' then
+        -- Ask DesktopState to toggle the Start Menu
+        local active = state_machine.current_state
+        if active and active.toggleStartMenu then active:toggleStartMenu() end
+        return -- Consume; prevents default behavior while game window has focus
+    end
     -- Delegate to the active state via the StateMachine
     state_machine:keypressed(key)
+end
+
+function love.keyreleased(key)
+    -- Consume Windows keys on release as well (prevents stray OS actions while focused)
+    if key == 'lgui' or key == 'rgui' then return end
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
@@ -274,6 +289,14 @@ function love.wheelmoved(x, y)
 end
 
 function love.quit()
+    -- If quit wasn't explicitly allowed by the app, cancel it and show our shutdown dialog
+    if not _G.APP_ALLOW_QUIT then
+        -- Signal DesktopState to open shutdown dialog next frame
+        _G.WANT_SHUTDOWN_DIALOG = true
+        -- Cancel the default OS quit (e.g., Alt+F4 or window close button)
+        return true
+    end
+
     print("Saving game state on quit...")
     -- Ensure all necessary saves happen
     if SaveManager and player_data then SaveManager.save(player_data) end

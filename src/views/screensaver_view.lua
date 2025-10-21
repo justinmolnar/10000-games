@@ -55,10 +55,12 @@ function ScreensaverView:draw()
     local V = (C.ui and C.ui.views and C.ui.views.screensaver_starfield) or {}
     local bg = (V.bg_color or {0,0,0})
     love.graphics.clear(bg[1], bg[2], bg[3])
+    local viewport_scale = math.min(w, h) / 600
+    local fov_eff = (self.fov or 300) * viewport_scale
     -- Draw as projected points with speed streaks
     for _, s in ipairs(self.stars) do
         local z = s.z
-        local k = self.fov / z
+    local k = fov_eff / z
         local px = cx + s.x * k
         local py = cy + s.y * k
         if px >= 0 and px <= w and py >= 0 and py <= h then

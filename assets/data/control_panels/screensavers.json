@@ -1,4 +1,5 @@
 {
+  "icon_sprite": "standby_monitor_moon-0",
   "preview": { "type": "screensaver_preview", "width": 320, "height": 200 },
   "elements": [
     { "type": "dropdown", "id": "screensaver_type", "label": "Screen saver", "choices": [
@@ -78,10 +79,9 @@
     { "type": "section", "label": "3D Text options", "when": { "screensaver_type": "text3d" } },
     { "type": "text",   "id": "screensaver_text3d_text", "label": "Text", "max": 64, "when": { "screensaver_type": "text3d" } },
     { "type": "checkbox", "id": "screensaver_text3d_use_time", "label": "Use current time", "when": { "screensaver_type": "text3d" } },
-    { "type": "slider", "id": "screensaver_text3d_font_size", "label": "Font size", "min": 24, "max": 256, "step": 1, "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_size", "label": "Size", "min": 0.2, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
     { "type": "slider", "id": "screensaver_text3d_extrude_layers", "label": "Extrude", "min": 0, "max": 40, "step": 1, "when": { "screensaver_type": "text3d" } },
-    { "type": "slider", "id": "screensaver_text3d_fov", "label": "FOV", "min": 100, "max": 800, "step": 1, "when": { "screensaver_type": "text3d" } },
-  { "type": "slider", "id": "screensaver_text3d_distance", "label": "Distance", "min": 4, "max": 30, "step": 0.1, "format": "%.1f", "when": { "screensaver_type": "text3d" } },
+    
     { "type": "dropdown", "id": "screensaver_text3d_color_mode", "label": "Color mode", "choices": [
       {"label":"Solid","value":"solid"}, {"label":"Rainbow","value":"rainbow"}
     ], "when": { "screensaver_type": "text3d" } },
@@ -92,9 +92,9 @@
     { "type": "slider", "id": "screensaver_text3d_color_h", "label": "Hue", "min": 0, "max": 1, "step": 0.001, "format": "%.3f", "when": { "screensaver_type": "text3d", "screensaver_text3d_use_hsv": true } },
     { "type": "slider", "id": "screensaver_text3d_color_s", "label": "Sat", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d", "screensaver_text3d_use_hsv": true } },
     { "type": "slider", "id": "screensaver_text3d_color_v", "label": "Val", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d", "screensaver_text3d_use_hsv": true } },
-    { "type": "slider", "id": "screensaver_text3d_spin_x", "label": "Spin X", "min": -3, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
-    { "type": "slider", "id": "screensaver_text3d_spin_y", "label": "Spin Y", "min": -3, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
-    { "type": "slider", "id": "screensaver_text3d_spin_z", "label": "Spin Z", "min": -3, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_spin_x", "label": "Spin X", "min": 0, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_spin_y", "label": "Spin Y", "min": 0, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_spin_z", "label": "Spin Z", "min": 0, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
     { "type": "checkbox", "id": "screensaver_text3d_move_enabled", "label": "Move around", "when": { "screensaver_type": "text3d" } },
     { "type": "dropdown", "id": "screensaver_text3d_move_mode", "label": "Move mode", "choices": [
       {"label":"Orbit","value":"orbit"}, {"label":"Bounce","value":"bounce"}

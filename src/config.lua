@@ -97,6 +97,13 @@ local Config = {
             -- Vertical margin for taskbar buttons (top+bottom combined)
             button_vertical_margin = 3
         },
+            scrollbar = {
+                width = 10,          -- track width in pixels
+                margin_right = 2,    -- right margin in pixels (lane = width + margin)
+                arrow_height = 12,   -- up/down arrow region height in pixels
+                arrow_step_px = 20,  -- arrow click step in pixels
+                min_thumb_h = 20,    -- minimum thumb height in pixels
+            },
         -- Double-click timing threshold (seconds)
         double_click_time = 0.5,
         -- Window chrome metrics and colors

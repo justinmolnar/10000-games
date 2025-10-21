@@ -192,6 +192,21 @@ function VMManagerState:wheelmoved(x, y)
     end
 end
 
+function VMManagerState:mousemoved(x, y, dx, dy)
+    if not self.viewport then return end
+    if x < 0 or y < 0 or x > self.viewport.width or y > self.viewport.height then return end
+    if self.view and self.view.mousemoved then
+        return self.view:mousemoved(x, y, dx, dy, self.filtered_games, self.viewport.width, self.viewport.height)
+    end
+end
+
+function VMManagerState:mousereleased(x, y, button)
+    if not self.viewport then return end
+    if self.view and self.view.mousereleased then
+        return self.view:mousereleased(x, y, button)
+    end
+end
+
 -- Action handlers called by mousepressed based on view events
 function VMManagerState:assignGameToSlot(game_id, slot_index)
     local success, err = self.vm_manager:assignGame(

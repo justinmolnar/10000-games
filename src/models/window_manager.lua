@@ -120,8 +120,11 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
     w = tonumber(w) or default_w or conf_default_w
     h = tonumber(h) or default_h or conf_default_h
     local min_size = (Config and Config.window and Config.window.min_size) or { w = 200, h = 150 }
-    w = math.max(self.min_window_width or min_size.w or 200, w)
-    h = math.max(self.min_window_height or min_size.h or 150, h)
+    local prog_min_w = tonumber(defaults.min_w) or min_size.w or 200
+    local prog_min_h = tonumber(defaults.min_h) or min_size.h or 150
+    -- Enforce per-program minimums at creation
+    w = math.max(prog_min_w, w)
+    h = math.max(prog_min_h, h)
 
     x = math.max(0, math.min(x or 0, screen_w - w))
     y = math.max(0, math.min(y or 0, screen_h - taskbar_h - h))
@@ -134,6 +137,9 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
         icon_sprite = program.icon_sprite,
         content_state = content_state,
         x = x, y = y, width = w, height = h,
+        -- Persist per-window min sizes for future clamps (e.g., restore)
+        min_w = prog_min_w,
+        min_h = prog_min_h,
         is_resizable = is_resizable,
         is_maximized = false,
         pre_maximize_bounds = nil,
@@ -271,10 +277,24 @@ function WindowManager:restoreWindow(window_id)
     if window.is_maximized then
         local bounds_to_restore = window.pre_maximize_bounds or self.window_positions[window.program_type]
         if bounds_to_restore then
-            window.x = bounds_to_restore.x
-            window.y = bounds_to_restore.y
-            window.width = bounds_to_restore.w
-            window.height = bounds_to_restore.h
+            -- Clamp to per-window minimums and screen bounds when restoring
+            local screen_w = self.screen_w or (Config.ui and Config.ui.screen and Config.ui.screen.width) or love.graphics.getWidth() or 1024
+            local screen_h = self.screen_h or (Config.ui and Config.ui.screen and Config.ui.screen.height) or love.graphics.getHeight() or 768
+            local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
+            local min_w = tonumber(window.min_w) or ((Config and Config.window and Config.window.min_size and Config.window.min_size.w) or 200)
+            local min_h = tonumber(window.min_h) or ((Config and Config.window and Config.window.min_size and Config.window.min_size.h) or 150)
+
+            local rx = bounds_to_restore.x or 0
+            local ry = bounds_to_restore.y or 0
+            local rw = math.max(min_w, bounds_to_restore.w or min_w)
+            local rh = math.max(min_h, bounds_to_restore.h or min_h)
+            rx = math.max(0, math.min(rx, (screen_w - rw)))
+            ry = math.max(0, math.min(ry, (screen_h - taskbar_h - rh)))
+
+            window.x = rx
+            window.y = ry
+            window.width = rw
+            window.height = rh
             window.is_maximized = false
             window.pre_maximize_bounds = nil
             needs_focus = true -- Restoring size implies bringing focus

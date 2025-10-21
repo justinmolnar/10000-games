@@ -64,7 +64,7 @@ function View:_previewKey(settings, pending)
         return table.concat(parts, '|')
     elseif t == 'text3d' then
         local fields = {
-            'screensaver_text3d_text','screensaver_text3d_use_time','screensaver_text3d_font_size','screensaver_text3d_extrude_layers','screensaver_text3d_fov','screensaver_text3d_distance',
+            'screensaver_text3d_text','screensaver_text3d_use_time','screensaver_text3d_size','screensaver_text3d_extrude_layers',
             'screensaver_text3d_color_mode','screensaver_text3d_use_hsv','screensaver_text3d_color_r','screensaver_text3d_color_g','screensaver_text3d_color_b',
             'screensaver_text3d_color_h','screensaver_text3d_color_s','screensaver_text3d_color_v',
             'screensaver_text3d_spin_x','screensaver_text3d_spin_y','screensaver_text3d_spin_z',
@@ -227,9 +227,23 @@ function View:_ensurePreview(prev_w, prev_h, settings, pending)
             local C = (self.di and self.di.config) or {}
             local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.text3d) or {}
             local Text3DView = require('src.views.screensaver_text3d_view')
+            -- Use engine background color to keep preview and full-screen visuals consistent
+            local br,bg,bb = love.graphics.getBackgroundColor()
+                -- Derive size fallback if needed
+                local size_val = getVal(pending, settings, 'screensaver_text3d_size', d and d.size or nil)
+                if size_val == nil then
+                    -- Estimate from old fields: map font_size roughly to scale, with distance/fov influence weakly
+                    local fs = getVal(pending, settings, 'screensaver_text3d_font_size', d and d.font_size or 96)
+                    local fov = getVal(pending, settings, 'screensaver_text3d_fov', d and d.fov or 350)
+                    local dist = getVal(pending, settings, 'screensaver_text3d_distance', d and d.distance or 18)
+                    size_val = math.max(0.2, math.min(3.0, (fs / 96) * (350 / math.max(1, fov)) * (dist / 18)))
+                end
             self.preview.saver = Text3DView:new({
-                fov = getVal(pending, settings, 'screensaver_text3d_fov', d and d.fov),
-                distance = getVal(pending, settings, 'screensaver_text3d_distance', d and d.distance or 10),
+                    size = size_val,
+                    -- Keep old fields for internal fallback, but UI hides them
+                    fov = getVal(pending, settings, 'screensaver_text3d_fov', d and d.fov),
+                    distance = getVal(pending, settings, 'screensaver_text3d_distance', d and d.distance or 10),
+                bg_color = { br or 0, bg or 0, bb or 0 },
                 color = {
                     getVal(pending, settings, 'screensaver_text3d_color_r', d and d.color_r or 1.0),
                     getVal(pending, settings, 'screensaver_text3d_color_g', d and d.color_g or 1.0),
@@ -240,7 +254,7 @@ function View:_ensurePreview(prev_w, prev_h, settings, pending)
                 color_h = getVal(pending, settings, 'screensaver_text3d_color_h', d and d.color_h or 0.15),
                 color_s = getVal(pending, settings, 'screensaver_text3d_color_s', d and d.color_s or 1.0),
                 color_v = getVal(pending, settings, 'screensaver_text3d_color_v', d and d.color_v or 1.0),
-                font_size = getVal(pending, settings, 'screensaver_text3d_font_size', d and d.font_size or 96),
+                    font_size = getVal(pending, settings, 'screensaver_text3d_font_size', d and d.font_size or 96),
                 extrude_layers = getVal(pending, settings, 'screensaver_text3d_extrude_layers', d and d.extrude_layers or 12),
                 spin_x = getVal(pending, settings, 'screensaver_text3d_spin_x', d and d.spin_x or 0.0),
                 spin_y = getVal(pending, settings, 'screensaver_text3d_spin_y', d and d.spin_y or 0.8),
@@ -285,11 +299,17 @@ function View:drawPreview(x, y, w, h)
     -- Draw into canvas
     local old_canvas = love.graphics.getCanvas()
     local old_scissor = { love.graphics.getScissor() }
+    local old_font = love.graphics.getFont()
+    local old_shader = love.graphics.getShader()
+    local old_blend_mode, old_alpha_mode = love.graphics.getBlendMode()
+    local old_r, old_g, old_b, old_a = love.graphics.getColor()
     love.graphics.setCanvas(self.preview.canvas)
     love.graphics.push()
     love.graphics.origin()
     love.graphics.setScissor()
-    love.graphics.clear(0,0,0,1)
+    -- Clear preview to the current background color so it matches full-screen saver visuals
+    local br,bg,bb,ba = love.graphics.getBackgroundColor()
+    love.graphics.clear(br or 0, bg or 0, bb or 0, ba or 1)
     pcall(function()
         self.preview.saver:setViewport(0, 0, w, h)
         self.preview.saver:update(0.016)
@@ -298,6 +318,11 @@ function View:drawPreview(x, y, w, h)
     love.graphics.pop()
     love.graphics.setCanvas(old_canvas)
     if old_scissor[1] then love.graphics.setScissor(old_scissor[1], old_scissor[2], old_scissor[3], old_scissor[4]) else love.graphics.setScissor() end
+    -- Restore graphics state that the saver may have changed
+    if old_shader ~= love.graphics.getShader() then love.graphics.setShader(old_shader) end
+    love.graphics.setBlendMode(old_blend_mode, old_alpha_mode)
+    if old_font then love.graphics.setFont(old_font) end
+    if old_r and old_g and old_b and old_a then love.graphics.setColor(old_r, old_g, old_b, old_a) end
     -- Blit to screen
     love.graphics.setColor(1,1,1)
     love.graphics.draw(self.preview.canvas, x, y)
@@ -362,14 +387,16 @@ function View:drawWindowed(w, h, settings, pending)
     self:drawPreview(frame_x, frame_y, prev_w, prev_h)
 
     local current_type = pending.screensaver_type or settings.screensaver_type or 'starfield'
-    local cy = py - (self.scroll.offset or 0)
+    -- Use logical layout Y (cy) without scroll; apply scroll offset only when drawing.
+    local offset = self.scroll.offset or 0
+    local cy = py
     local dropdown_to_draw = nil
     local content_bottom = cy
     for _, el in ipairs(self.schema.elements or {}) do
         if passesWhen(el.when) then
             if el.type == 'dropdown' then
-                printLabel(el.label .. ':', label_x, cy)
-                local tp_x, tp_y = slider_x, cy - 4
+                printLabel(el.label .. ':', label_x, cy - offset)
+                local tp_x, tp_y = slider_x, (cy - offset) - 4
                 -- resolve current value (special-case screensaver_type default)
                 local cur = pending[el.id]; if cur == nil then cur = settings[el.id] end
                 if el.id == 'screensaver_type' and cur == nil then cur = 'starfield' end
@@ -401,7 +428,7 @@ function View:drawWindowed(w, h, settings, pending)
                 cy = cy + 34
             elseif el.type == 'checkbox' then
                 local cb_cfg = V.checkbox or {w=18, h=18}
-                local cb_x, cb_y, cb_w, cb_h = label_x, cy, cb_cfg.w, cb_cfg.h
+                local cb_x, cb_y, cb_w, cb_h = label_x, (cy - offset), cb_cfg.w, cb_cfg.h
                 love.graphics.setColor((V.colors and V.colors.checkbox_fill) or {1,1,1}); love.graphics.rectangle('fill', cb_x, cb_y, cb_w, cb_h)
                 love.graphics.setColor((V.colors and V.colors.checkbox_border) or {0,0,0}); love.graphics.rectangle('line', cb_x, cb_y, cb_w, cb_h)
                 local checked = pending[el.id]
@@ -418,29 +445,29 @@ function View:drawWindowed(w, h, settings, pending)
                 if el.id == 'screensaver_enabled' then self._enable_rect = {x=cb_x, y=cb_y, w=cb_w, h=cb_h} end
                 cy = cy + 34
             elseif el.type == 'section' then
-                printLabel(el.label .. ':', label_x, cy)
+                printLabel(el.label .. ':', label_x, cy - offset)
                 love.graphics.setColor((V.colors and V.colors.section_rule) or {0.8,0.8,0.8})
-                love.graphics.rectangle('fill', label_x, cy+14, right_edge - label_x, (V.section_rule_h or 2))
+                love.graphics.rectangle('fill', label_x, (cy - offset) + 14, right_edge - label_x, (V.section_rule_h or 2))
                 love.graphics.setColor(0,0,0)
                 cy = cy + 20
             elseif el.type == 'slider' then
-                printLabel(el.label, label_x, cy)
+                printLabel(el.label, label_x, cy - offset)
                 local sw = get_slider_w()
                 local v = pending[el.id]; if v == nil then v = settings[el.id] end
                 if v == nil then v = el.min end
                 local norm = (v - el.min) / (el.max - el.min)
                 -- Draw the slider track and handle so it's visible
-                self:drawSlider(slider_x, cy - 2, sw, (V.slider_h or 12), norm)
+                self:drawSlider(slider_x, (cy - offset) - 2, sw, (V.slider_h or 12), norm)
                 local display_v = v
                 if el.display_as_percent then display_v = math.floor((v * 100) + 0.5) end
                 local fmt = el.format or (el.display_as_percent and "%d%%" or "%s")
-                printValueRightAligned(string.format(fmt, display_v), slider_x, sw, cy-4)
-                self.layout_cache[el.id] = {rect={x=slider_x, y=cy-2, w=sw, h=(V.slider_h or 12)}, el=el}
+                printValueRightAligned(string.format(fmt, display_v), slider_x, sw, (cy - offset) - 4)
+                self.layout_cache[el.id] = {rect={x=slider_x, y=(cy - offset) - 2, w=sw, h=(V.slider_h or 12)}, el=el}
                 cy = cy + row_space
             elseif el.type == 'text' then
                 -- Simple one-line text input
-                printLabel(el.label .. ':', label_x, cy)
-                local box_x, box_y = slider_x, cy - 4
+                printLabel(el.label .. ':', label_x, cy - offset)
+                local box_x, box_y = slider_x, (cy - offset) - 4
                 local box_w, box_h = right_edge - slider_x, dropdown_h
                 love.graphics.setColor(1,1,1)
                 love.graphics.rectangle('fill', box_x, box_y, box_w, box_h)
@@ -467,32 +494,25 @@ function View:drawWindowed(w, h, settings, pending)
     end
 
     -- Update content height and clamp scroll
+    -- Compute full scrollable content height (independent of current offset)
     self.scroll.content_h = math.max(h, content_bottom + 16)
     local max_offset = math.max(0, self.scroll.content_h - h)
     if (self.scroll.offset or 0) > max_offset then self.scroll.offset = max_offset end
     if self.scroll.offset < 0 then self.scroll.offset = 0 end
 
-    -- Draw scrollbar if needed
+    -- Draw scrollbar if needed (using shared helper)
     if max_offset > 0 then
-        local sb_w = 10
-        local sb_x = w - sb_w - 4
-        local sb_h = h - 40
-        local track_y = 20
-        local track_h = sb_h
-        love.graphics.setColor(0.9,0.9,0.95)
-        love.graphics.rectangle('fill', sb_x, track_y, sb_w, track_h)
-        love.graphics.setColor(0.6,0.6,0.7)
-        love.graphics.rectangle('line', sb_x, track_y, sb_w, track_h)
-        local ratio = h / self.scroll.content_h
-        local thumb_h = math.max(24, track_h * ratio)
-        local thumb_y = track_y + (track_h - thumb_h) * ((self.scroll.offset or 0) / max_offset)
-        love.graphics.setColor(0.5,0.5,0.7)
-        love.graphics.rectangle('fill', sb_x+1, thumb_y, sb_w-2, thumb_h)
-        love.graphics.setColor(0.2,0.2,0.4)
-        love.graphics.rectangle('line', sb_x+1, thumb_y, sb_w-2, thumb_h)
-        self._scrollbar = { x=sb_x, y=thumb_y, w=sb_w, h=thumb_h, track_y=track_y, track_h=track_h, max_offset=max_offset }
+        local sb_geom = UI.computeScrollbar({
+            viewport_w = w, viewport_h = h,
+            content_h = self.scroll.content_h, offset = self.scroll.offset,
+            -- width/margin/min_thumb from config defaults
+            track_top = 20, track_bottom = 20
+        })
+        UI.drawScrollbar(sb_geom)
+        -- Store full geom for universal handlers
+        self._scrollbar_geom = sb_geom
     else
-        self._scrollbar = nil
+        self._scrollbar_geom = nil
     end
 end
 
@@ -529,12 +549,18 @@ function View:mousepressed(x, y, button, settings, pending)
             return nil
         end
     end
-    -- Scrollbar thumb drag
-    if self._scrollbar and x >= self._scrollbar.x and x <= self._scrollbar.x + self._scrollbar.w and y >= self._scrollbar.y and y <= self._scrollbar.y + self._scrollbar.h then
-        self.scroll.dragging = true
-        self.scroll.drag_start_y = y
-        self.scroll.drag_offset_start = self.scroll.offset or 0
-        return { name='content_interaction' }
+    -- Scrollbar interactions via universal handler (local coords already)
+    if self._scrollbar_geom then
+        local off_px = self.scroll.offset or 0
+        local res = UI.scrollbarHandlePress(x, y, button, self._scrollbar_geom, off_px, nil)
+        if res and res.consumed then
+            if res.new_offset_px ~= nil then self.scroll.offset = res.new_offset_px end
+            if res.drag then
+                self.scroll.dragging = true
+                self._scrollbar_drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
+            end
+            return { name='content_interaction' }
+        end
     end
     -- Schema-driven sliders and checkboxes
     for id,entry in pairs(self.layout_cache) do
@@ -577,22 +603,21 @@ function View:mousemoved(x, y, dx, dy, settings, pending)
         if el.step and el.step < 1 then val = tonumber(string.format('%.2f', val)) end
         return { name='set_pending', id=self.dragging, value=val }
     end
-    if self.scroll.dragging and self._scrollbar then
-        local sb = self._scrollbar
-        local track_span = sb.track_h - sb.h
-        if track_span < 1 then track_span = 1 end
-        local dy_pixels = (y - self.scroll.drag_start_y)
-        local ratio = dy_pixels / track_span
-        local new_offset = (self.scroll.drag_offset_start or 0) + (sb.max_offset * ratio)
-        if new_offset < 0 then new_offset = 0 end
-        if new_offset > sb.max_offset then new_offset = sb.max_offset end
-        self.scroll.offset = new_offset
-        return { name='content_interaction' }
+    if self.scroll.dragging and self._scrollbar_geom and self._scrollbar_drag then
+        local res = UI.scrollbarHandleMove(y, self._scrollbar_drag, self._scrollbar_geom)
+        if res and res.consumed and res.new_offset_px ~= nil then
+            self.scroll.offset = res.new_offset_px
+            return { name='content_interaction' }
+        end
     end
 end
 
 function View:mousereleased(x, y, button, settings, pending)
-    if button == 1 then self.dragging = nil; self.scroll.dragging = false end
+    if button == 1 then
+        self.dragging = nil
+        self.scroll.dragging = false
+        self._scrollbar_drag = nil
+    end
 end
 
 function View:wheelmoved(x, y, settings, pending)

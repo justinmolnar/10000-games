@@ -10,6 +10,8 @@ function FileSystem:init()
     self.filesystem = {}
     
     self:loadFilesystem()
+    -- Normalize key views after load so "My Computer" shows refined entries
+    self:normalizeMyComputerView()
 end
 
 -- Load filesystem structure from JSON
@@ -112,6 +114,32 @@ function FileSystem:createDefaultFilesystem()
             program_id = "control_panel_screensavers"
         }
     }
+    -- Ensure refined My Computer listing in defaults too
+    self:normalizeMyComputerView()
+end
+
+-- Ensure My Computer lists C:, D:, Desktop, Recycle Bin, My Documents, and that alias nodes exist
+function FileSystem:normalizeMyComputerView()
+    local fs = self.filesystem or {}
+    local mc = fs["/My Computer"]
+    if not mc then
+        fs["/My Computer"] = { type = "folder", children = {"C:", "D:", "Desktop", "Recycle Bin", "My Documents"} }
+        mc = fs["/My Computer"]
+    end
+    -- Force desired ordering/contents
+    mc.children = {"C:", "D:", "Desktop", "Recycle Bin", "My Documents"}
+    -- Ensure alias entries exist
+    if not fs["/My Computer/Recycle Bin"] then
+        fs["/My Computer/Recycle Bin"] = { type = "special", special_type = "recycle_bin" }
+    end
+    if not fs["/My Computer/My Documents"] then
+        fs["/My Computer/My Documents"] = { type = "special", special_type = "my_documents" }
+    end
+    -- Ensure Desktop node exists
+    if not fs["/My Computer/Desktop"] then
+        fs["/My Computer/Desktop"] = { type = "special", special_type = "desktop_view" }
+    end
+    -- Leave C:, D: as-is (created in JSON/defaults)
 end
 
 -- Get contents of current directory
@@ -148,6 +176,33 @@ function FileSystem:getContents(path)
     end
     
     return contents
+end
+
+-- Create a new folder under a parent path; optionally insert at index (1-based).
+-- Returns the new folder's path or nil on failure.
+function FileSystem:createFolder(parent_path, name, insert_index)
+    local parent = self.filesystem[parent_path]
+    if not parent or parent.type ~= 'folder' then return nil end
+    -- Sanitize/ensure unique child name within parent
+    local function childExists(n)
+        for _, c in ipairs(parent.children or {}) do if c == n then return true end end
+        return false
+    end
+    local base = tostring(name or 'New Folder')
+    local final = base
+    local i = 2
+    while childExists(final) do final = base .. ' ('..i..')'; i = i + 1 end
+    name = final
+    -- Create node
+    local child_path = parent_path == '/' and ('/'..name) or (parent_path .. '/' .. name)
+    if self.filesystem[child_path] then return nil end
+    self.filesystem[child_path] = { type = 'folder', children = {} }
+    parent.children = parent.children or {}
+    local idx = tonumber(insert_index) or (#parent.children + 1)
+    if idx < 1 then idx = 1 end
+    if idx > #parent.children + 1 then idx = #parent.children + 1 end
+    table.insert(parent.children, idx, name)
+    return child_path
 end
 
 -- Navigate to a path

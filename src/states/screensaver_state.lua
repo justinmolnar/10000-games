@@ -162,9 +162,22 @@ function ScreensaverState:enter()
         local ok, Text3DView = pcall(require, 'src.views.screensaver_text3d_view')
         if ok and Text3DView then
             local s = SettingsManager.getAll()
+            -- Use current background color so preview and full-screen match
+            local br,bg,bb = love.graphics.getBackgroundColor()
+            -- Derive size fallback from legacy fields if new size missing
+            local size_val = s.screensaver_text3d_size
+            if size_val == nil then
+                local fs = s.screensaver_text3d_font_size or 96
+                local fov = s.screensaver_text3d_fov or 350
+                local dist = s.screensaver_text3d_distance or 18
+                size_val = math.max(0.2, math.min(3.0, (fs / 96) * (350 / math.max(1, fov)) * (dist / 18)))
+            end
             self.view = Text3DView:new({
+                size = size_val,
+                -- Keep fov/distance for internal fallback only
                 fov = s.screensaver_text3d_fov,
                 distance = s.screensaver_text3d_distance,
+                bg_color = { br or 0, bg or 0, bb or 0 },
                 color = { s.screensaver_text3d_color_r, s.screensaver_text3d_color_g, s.screensaver_text3d_color_b },
                 color_mode = s.screensaver_text3d_color_mode,
                 use_hsv = s.screensaver_text3d_use_hsv,

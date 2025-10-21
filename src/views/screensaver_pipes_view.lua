@@ -151,6 +151,8 @@ function PipesView:project(pt)
     local w, h = self.viewport.width, self.viewport.height
     local cx, cy = w/2, h/2
     local x, y, z = pt[1], pt[2], pt[3]
+    local viewport_scale = math.min(w, h) / 600
+    local fov_eff = (self.fov or 420) * viewport_scale
     -- apply a tiny roll for projection (rotate around Z)
     local cr = math.cos(self.roll)
     local sr = math.sin(self.roll)
@@ -159,7 +161,7 @@ function PipesView:project(pt)
     x, y = rx, ry
     local zc = z - self.camera_z
     if zc <= self.near then return nil end
-    local k = self.fov / zc
+    local k = fov_eff / zc
     return cx + x * k, cy + y * k, k
 end
 

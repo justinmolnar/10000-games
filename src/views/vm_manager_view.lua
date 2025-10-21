@@ -53,6 +53,8 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data, di)
     self.modal_item_height = M.item_h or 40
 
     self.formula_renderer = FormulaRenderer:new()
+    -- Scrollbar interaction state (for modal list)
+    self._sb = { modal = { dragging = false, geom = nil, drag = nil } }
 end
 
 function VMManagerView:updateLayout(viewport_width, viewport_height)
@@ -220,6 +222,29 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
     if self.game_selection_open then
         -- Check click relative to modal's position *within the content area*
         if x >= self.modal_x and x <= self.modal_x + self.modal_w and y >= self.modal_y and y <= self.modal_y + self.modal_h then
+            -- Handle scrollbar interactions first if present
+            local list_area_y_start = self.modal_y + 40
+            local list_h = self.modal_h - 70
+            local visible_items = math.max(1, math.floor(list_h / self.modal_item_height))
+            if self._sb and self._sb.modal and self._sb.modal.geom and #filtered_games > visible_items then
+                local UI = UIComponents
+                local lx = x - self.modal_x
+                local ly = y - list_area_y_start
+                local off_px = (self.scroll_offset or 0) * self.modal_item_height
+                local res = UI.scrollbarHandlePress(lx, ly, button, self._sb.modal.geom, off_px, nil)
+                if res and res.consumed then
+                    if res.new_offset_px ~= nil then
+                        local new_off = math.floor(res.new_offset_px / self.modal_item_height + 0.0001)
+                        local max_off = math.max(0, #filtered_games - visible_items)
+                        self.scroll_offset = math.max(0, math.min(max_off, new_off))
+                    end
+                    if res.drag then
+                        self._sb.modal.dragging = true
+                        self._sb.modal.drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
+                    end
+                    return { name = 'content_interaction' }
+                end
+            end
             local clicked_game = self:getGameAtPosition(x, y, filtered_games, viewport_width, viewport_height) -- Pass local coords
             if clicked_game then
                 self.game_selection_open = false
@@ -306,6 +331,31 @@ function VMManagerView:getSlotAtPosition(x, y, viewport_width, viewport_height)
          end
     end
     return nil
+end
+
+-- Interactive scrollbar drag support for modal
+function VMManagerView:mousemoved(x, y, dx, dy, filtered_games, viewport_width, viewport_height)
+    if not (self.game_selection_open and self._sb and self._sb.modal and self._sb.modal.dragging and self._sb.modal.geom) then return nil end
+    local UI = UIComponents
+    local list_area_y_start = self.modal_y + 40
+    local ly = y - list_area_y_start
+    local g = self._sb.modal.geom
+    local res = UI.scrollbarHandleMove(ly, self._sb.modal.drag, g)
+    if res and res.consumed and res.new_offset_px ~= nil then
+        local list_h = self.modal_h - 70
+        local visible_items = math.max(1, math.floor(list_h / self.modal_item_height))
+        local new_off = math.floor(res.new_offset_px / self.modal_item_height + 0.0001)
+        local max_off = math.max(0, (filtered_games and #filtered_games or 0) - visible_items)
+        self.scroll_offset = math.max(0, math.min(max_off, new_off))
+        return { name = 'content_interaction' }
+    end
+end
+
+function VMManagerView:mousereleased(x, y, button)
+    if button == 1 and self._sb and self._sb.modal then
+        self._sb.modal.dragging = false
+        self._sb.modal.drag = nil
+    end
 end
 
 function VMManagerView:getGameAtPosition(x, y, filtered_games, viewport_width, viewport_height)
@@ -482,18 +532,29 @@ function VMManagerView:drawGameSelectionModal(games, scroll_offset, context)
                 local per_minute_suffix = Strings.get('tokens.per_minute_suffix','/min')
                 status_text = string.format("~%.0f%s", potential_rate, per_minute_suffix)
             end
-            love.graphics.printf(status_text, self.modal_x + 15, item_y + 20, self.modal_w - 30, "right", 0, 0.8, 0.8)
+            -- Reserve a scrollbar lane so text doesn't run under it
+            local lane_w = UIComponents.getScrollbarLaneWidth()
+            love.graphics.printf(status_text, self.modal_x + 15, item_y + 20, (self.modal_w - 30) - lane_w, "right", 0, 0.8, 0.8)
         end
     end
 
-    -- Scrollbar
+    -- Scrollbar (using UIComponents helper)
     if #games > visible_items then
-    love.graphics.setColor(MC.scrollbar or {0.5,0.5,0.5})
-        local scroll_track_height = list_h
-        local scroll_height = math.max(15, (visible_items / #games) * scroll_track_height)
-        local scroll_y = list_y_start + (scroll_offset / math.max(1, #games - visible_items)) * (scroll_track_height - scroll_height)
-        scroll_y = math.max(list_y_start, math.min(scroll_y, list_y_start + scroll_track_height - scroll_height))
-        love.graphics.rectangle('fill', self.modal_x + self.modal_w - 18, scroll_y, 8, scroll_height)
+        local UI = UIComponents
+        local item_h = self.modal_item_height
+        -- Translate so computeScrollbar can operate from modal origin
+        love.graphics.push(); love.graphics.translate(self.modal_x, list_y_start)
+        local sb_geom = UI.computeScrollbar({
+            viewport_w = self.modal_w,
+            viewport_h = list_h,
+            content_h = (#games) * item_h,
+            offset = (scroll_offset or 0) * item_h,
+            -- width/margin/arrow heights/min thumb from config defaults
+        })
+        UI.drawScrollbar(sb_geom)
+        -- Store geometry for interactive handling (list-local coordinates)
+        self._sb.modal.geom = sb_geom
+        love.graphics.pop()
     end
 
 

@@ -198,6 +198,25 @@ function CheatEngineState:mousepressed(x, y, button)
     return result_event -- Return the event object or generic interaction signal
 end
 
+function CheatEngineState:mousemoved(x, y, dx, dy)
+    if not self.viewport then return end
+    -- x, y are already local content coordinates from DesktopState
+    if self.view and self.view.mousemoved then
+        local ok, ev = pcall(self.view.mousemoved, self.view, x, y, dx, dy)
+        if ok and ev and ev.name == 'content_interaction' then
+            return { type = 'content_interaction' }
+        end
+    end
+end
+
+function CheatEngineState:mousereleased(x, y, button)
+    if not self.viewport then return end
+    if self.view and self.view.mousereleased then
+        pcall(self.view.mousereleased, self.view, x, y, button)
+        return { type = 'content_interaction' }
+    end
+end
+
 -- Calculates the scaled cost for a base cost and game
 function CheatEngineState:getScaledCost(base_cost)
     if not self.selected_game then return 999999 end

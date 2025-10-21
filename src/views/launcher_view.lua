@@ -27,6 +27,8 @@ function LauncherView:init(controller, player_data, game_data)
     -- Double-click tracking
     self.last_click_time = 0
     self.last_click_game = nil
+    -- Scrollbar interaction state
+    self._sb = { list = { dragging = false, geom = nil, drag = nil } }
 end
 
 function LauncherView:update(dt)
@@ -105,6 +107,30 @@ function LauncherView:mousepressed(x, y, button, filtered_games, viewport_width,
     local list_x = 10
     local list_width = (self.detail_panel_open and self.selected_game) and (viewport_width - self.detail_panel_width - 20) or (viewport_width - 20)
 
+    -- Scrollbar interactions (list origin local)
+    if self._sb and self._sb.list and self._sb.list.geom then
+        local g = self._sb.list.geom
+        local lx, ly = x - list_x, y - list_y
+        if ly >= 0 and ly <= list_h then
+            local UI = UIComponents
+            local off_px = ((self.scroll_offset or 1) - 1) * (self.button_height + self.button_padding)
+            local res = UI.scrollbarHandlePress(lx, ly, button, g, off_px, nil)
+            if res and res.consumed then
+                if res.new_offset_px ~= nil then
+                    local visible = self:getVisibleGameCount(list_h)
+                    local max_index = math.max(1, #filtered_games - visible + 1)
+                    local new_idx = math.floor(res.new_offset_px / (self.button_height + self.button_padding)) + 1
+                    self.scroll_offset = math.max(1, math.min(max_index, new_idx))
+                end
+                if res.drag then
+                    self._sb.list.dragging = true
+                    self._sb.list.drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
+                end
+                return { name = 'content_interaction' }
+            end
+        end
+    end
+
     local clicked_game_id = self:getGameAtPosition(x, y, filtered_games, list_x, list_y, list_width, list_h)
     if clicked_game_id then
         for i, g in ipairs(filtered_games) do
@@ -169,6 +195,37 @@ function LauncherView:mousepressed(x, y, button, filtered_games, viewport_width,
     return nil
 end
 
+function LauncherView:mousemoved(x, y, dx, dy)
+    if not self.controller or not self.controller.viewport then return end
+    local list_y = 50
+    local list_h = self.controller.viewport.height - list_y - 10
+    local list_x = 10
+    local list_width = (self.detail_panel_open and self.selected_game) and 
+                       (self.controller.viewport.width - self.detail_panel_width - 20) or 
+                       (self.controller.viewport.width - 20)
+    if self._sb and self._sb.list and self._sb.list.dragging and self._sb.list.geom then
+        local g = self._sb.list.geom
+        local lx, ly = x - list_x, y - list_y
+        local UI = UIComponents
+        local res = UI.scrollbarHandleMove(ly, self._sb.list.drag, g)
+        if res and res.consumed and res.new_offset_px ~= nil then
+            local visible = self:getVisibleGameCount(list_h)
+            local max_index = math.max(1, #self.controller.filtered_games - visible + 1)
+            local new_idx = math.floor(res.new_offset_px / (self.button_height + self.button_padding)) + 1
+            self.scroll_offset = math.max(1, math.min(max_index, new_idx))
+            return { name = 'content_interaction' }
+        end
+    end
+end
+
+function LauncherView:mousereleased(x, y, button)
+    if button == 1 and self._sb and self._sb.list and self._sb.list.dragging then
+        self._sb.list.dragging = false
+        self._sb.list.drag = nil
+        return { name = 'content_interaction' }
+    end
+end
+
 function LauncherView:wheelmoved(x, y, filtered_games, viewport_width, viewport_height)
     local list_y = 50
     local list_h = viewport_height - list_y - 10
@@ -205,6 +262,11 @@ function LauncherView:getGameAtPosition(x, y, filtered_games, list_x, list_y, li
     end
 
     local visible_games = self:getVisibleGameCount(list_height)
+    local shows_scrollbar = (#games > visible_games)
+    local sb_lane_w = shows_scrollbar and UIComponents.getScrollbarLaneWidth() or 0
+    if x > list_x + (list_width - sb_lane_w) then
+        return nil -- In scrollbar lane
+    end
     local start_index = self.scroll_offset or 1
 
     for i = 0, visible_games - 1 do
@@ -258,22 +320,34 @@ function LauncherView:drawGameList(x, y, w, h, games, selected_index, hovered_ga
 
     local end_index = math.min(#games, start_index + visible_games - 1)
 
+    local shows_scrollbar = (#games > visible_games)
+    local sb_lane_w = shows_scrollbar and 10 or 0
+    local content_w = w - sb_lane_w
+
     for i = start_index, end_index do
         local game_data = games[i]
         if game_data then
             local by = y + (i - start_index) * (button_height + button_padding)
-            self:drawGameCard(x, by, w, button_height, game_data, i == selected_index,
+            self:drawGameCard(x, by, content_w, button_height, game_data, i == selected_index,
                 hovered_game_id == game_data.id, self.player_data, self.game_data)
         end
     end
 
     if #games > visible_games then
-        love.graphics.setColor(0.5, 0.5, 0.5)
-        local scroll_track_height = h
-        local scroll_height = math.max(20, (visible_games / #games) * scroll_track_height)
-        local scroll_y = y + ((start_index - 1) / (#games - visible_games + 1)) * (scroll_track_height - scroll_height)
-        scroll_y = math.max(y, math.min(scroll_y, y + scroll_track_height - scroll_height))
-        love.graphics.rectangle('fill', x + w - 10, scroll_y, 8, scroll_height)
+        local UI = UIComponents
+        local item_h = (self.button_height + self.button_padding)
+        -- Translate to list origin so helper computes correctly
+        love.graphics.push(); love.graphics.translate(x, y)
+        local sb_geom = UI.computeScrollbar({
+            viewport_w = w,
+            viewport_h = h,
+            content_h = (#games) * item_h,
+            offset = ((start_index - 1) * item_h),
+            -- width/margin/arrow heights/min thumb from config defaults
+        })
+        UI.drawScrollbar(sb_geom)
+        self._sb.list.geom = sb_geom
+        love.graphics.pop()
     end
 
     love.graphics.setColor(1, 1, 1)

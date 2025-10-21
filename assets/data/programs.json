@@ -1,5 +1,31 @@
 [
   {
+    "id": "shutdown_dialog",
+    "name": "Shut Down Windows",
+    "executable": "shutdown.cpl",
+    "state_class_path": "states.shutdown_state",
+    "dependencies": ["window_controller", "di"],
+    "icon_sprite": "conn_pcs_off_off",
+    "icon_color": [0.9, 0.3, 0.3],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 360, "h": 200, "min_w": 320, "min_h": 180, "resizable": false, "single_instance": true }
+  },
+  {
+    "id": "run_dialog",
+    "name": "Run",
+    "executable": "run.cpl",
+    "state_class_path": "states.run_dialog_state",
+    "dependencies": ["window_controller", "di"],
+    "icon_sprite": "console_prompt-0",
+    "icon_color": [0.8, 0.8, 0.8],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 420, "h": 170, "min_w": 360, "min_h": 150, "resizable": false, "single_instance": true }
+  },
+  {
     "id": "minigame_runner",
     "name": "Minigame",
     "executable": "minigame.exe",
@@ -12,6 +38,32 @@
     "window_defaults": { "w": 200, "h": 200, "resizable": true, "single_instance": false }
   },
   {
+    "id": "solitaire_back_picker",
+    "name": "Choose Card Back",
+    "executable": "sol_backpicker.cpl",
+    "state_class_path": "states.solitaire_back_picker_state",
+    "dependencies": ["window_controller", "di"],
+    "icon_sprite": "cards_ace-0",
+    "icon_color": [0.9, 0.9, 0.9],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 580, "h": 500, "min_w": 580, "min_h": 500, "resizable": false, "single_instance": true }
+  },
+  {
+    "id": "wallpaper_picker",
+    "name": "Choose Wallpaper",
+    "executable": "wallpaperpicker.cpl",
+    "state_class_path": "states.wallpaper_picker_state",
+    "dependencies": ["window_controller", "di"],
+    "icon_sprite": "monitor_tweakui-0",
+    "icon_color": [0.9, 0.9, 0.9],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 740, "h": 520, "min_w": 600, "min_h": 420, "resizable": false, "single_instance": true }
+  },
+  {
     "id": "control_panel_desktop",
     "name": "Desktop Properties",
     "executable": "control_desktop.cpl",
@@ -22,7 +74,7 @@
     "on_desktop": false,
     "in_start_menu": false,
     "disabled": false,
-    "window_defaults": { "w": 460, "h": 340, "resizable": false, "single_instance": true }
+    "window_defaults": { "w": 660, "h": 340, "min_w": 660, "min_h": 320, "resizable": false, "single_instance": true }
   },
   {
     "id": "solitaire",
@@ -35,7 +87,7 @@
     "on_desktop": false,
     "in_start_menu": true,
     "disabled": false,
-    "window_defaults": { "w": 900, "h": 650, "resizable": true, "single_instance": true }
+    "window_defaults": { "w": 900, "h": 650, "min_w": 720, "min_h": 540, "resizable": true, "single_instance": true }
   },
   {
     "id": "launcher",
@@ -47,7 +99,7 @@
     "icon_color": [1.0, 0.8, 0.0],
     "on_desktop": true,
     "in_start_menu": true,
-    "window_defaults": { "w": 800, "h": 600, "resizable": true, "single_instance": true }
+    "window_defaults": { "w": 800, "h": 600, "min_w": 640, "min_h": 480, "resizable": true, "single_instance": true }
   },
   {
     "id": "vm_manager",
@@ -59,7 +111,7 @@
     "icon_color": [0.5, 0.5, 1.0],
     "on_desktop": true,
     "in_start_menu": true,
-    "window_defaults": { "w": 700, "h": 500, "resizable": true, "single_instance": true }
+    "window_defaults": { "w": 700, "h": 500, "min_w": 640, "min_h": 420, "resizable": true, "single_instance": true }
   },
   {
     "id": "space_defender",
@@ -72,7 +124,7 @@
     "icon_color": [1.0, 0.0, 0.0],
     "on_desktop": true,
     "in_start_menu": true,
-    "window_defaults": { "w": 1024, "h": 768, "resizable": true, "single_instance": true }
+    "window_defaults": { "w": 1024, "h": 768, "min_w": 800, "min_h": 600, "resizable": true, "single_instance": true }
   },
   {
     "id": "cheat_engine",
@@ -85,6 +137,19 @@
     "on_desktop": true,
     "in_start_menu": true,
     "window_defaults": { "w": 650, "h": 550, "resizable": false, "single_instance": true }
+  },
+  {
+    "id": "solitaire_settings",
+    "name": "Solitaire Settings",
+    "executable": "sol_settings.cpl",
+    "state_class_path": "states.solitaire_settings_state",
+    "dependencies": ["window_controller", "di"],
+    "icon_sprite": "cards_ace-0",
+    "icon_color": [0.9, 0.9, 0.9],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 420, "h": 320, "resizable": false, "single_instance": true }
   },
   {
     "id": "settings",
@@ -106,7 +171,7 @@
     "state_class_path": "states.file_explorer_state",
   "dependencies": ["file_system", "program_registry", "desktop_icons", "recycle_bin", "di"],
     "enter_args": { "type": "static", "value": "/Control Panel" },
-    "icon_sprite": "gears_tweakui_a-0",
+    "icon_sprite": "directory_control_panel-0",
     "icon_color": [0.8, 0.8, 0.8],
     "on_desktop": true,
     "in_start_menu": true,
@@ -124,7 +189,7 @@
     "on_desktop": false,
     "in_start_menu": false,
     "disabled": false,
-    "window_defaults": { "w": 460, "h": 340, "resizable": false, "single_instance": true }
+    "window_defaults": { "w": 460, "h": 340, "min_w": 460, "min_h": 320, "resizable": false, "single_instance": true }
   },
   {
     "id": "control_panel_screensavers",
@@ -137,7 +202,7 @@
     "on_desktop": false,
     "in_start_menu": false,
     "disabled": false,
-    "window_defaults": { "w": 720, "h": 520, "resizable": true, "single_instance": true }
+    "window_defaults": { "w": 720, "h": 520, "min_w": 680, "min_h": 480, "resizable": true, "single_instance": true }
   },
   {
     "id": "statistics",
@@ -149,7 +214,7 @@
     "icon_color": [1.0, 1.0, 0.5],
     "on_desktop": true,
     "in_start_menu": true,
-    "window_defaults": { "w": 450, "h": 350, "resizable": false, "single_instance": true }
+    "window_defaults": { "w": 450, "h": 350, "min_w": 420, "min_h": 320, "resizable": false, "single_instance": true }
   },
   {
     "id": "recycle_bin",
@@ -172,7 +237,7 @@
     "state_class_path": "states.file_explorer_state",
   "dependencies": ["file_system", "program_registry", "desktop_icons", "recycle_bin", "di"],
     "enter_args": { "type": "static", "value": "/My Computer" },
-    "icon_sprite": "computer_explorer-0",
+    "icon_sprite": "computer_2-0",
     "icon_color": [0.7, 0.7, 0.9],
     "on_desktop": true,
     "in_start_menu": true,

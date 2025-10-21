@@ -70,6 +70,8 @@ function ControlPanelDesktopState:_handleEvent(ev)
     if ev.name == 'set_pending' then
         self.pending[ev.id] = ev.value
         return { type = 'content_interaction' }
+    elseif ev.name == 'open_wallpaper_picker' then
+        return { type = 'event', name = 'launch_program', program_id = 'wallpaper_picker' }
     elseif ev.name == 'apply' then
         for k,v in pairs(self.pending) do SettingsManager.set(k, v); self.settings[k] = v end
         self.pending = {}

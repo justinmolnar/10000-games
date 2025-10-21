@@ -1,0 +1,17 @@
+{
+  "icon_sprite": "cards_ace-0",
+  "hideFromControlPanel": true,
+  "elements": [
+    { "type": "section", "label": "Solitaire Options" },
+    { "type": "dropdown", "id": "solitaire_draw_count", "label": "Draw", "choices": [
+      { "label": "1", "value": 1 },
+      { "label": "3", "value": 3 }
+    ]},
+    { "type": "dropdown", "id": "solitaire_redeal_limit", "label": "Redeal Limit", "choices": [
+      { "label": "Unlimited", "value": "infinite" },
+      { "label": "3", "value": 3 },
+      { "label": "1", "value": 1 }
+    ]},
+    { "type": "checkbox", "id": "solitaire_empty_any", "label": "Empty Tableau: Any card (off = Kings only)" }
+  ]
+}

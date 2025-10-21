@@ -1,6 +1,7 @@
 -- src/states/desktop_state.lua
 local Object = require('class')
 local DesktopView = require('views.desktop_view')
+local StartMenuState = require('src.states.start_menu_state')
 local DesktopIconController = require('src.controllers.desktop_icon_controller')
 local Constants = require('src.constants')
 local Strings = require('src.utils.strings')
@@ -15,11 +16,10 @@ local ContextMenuView = require('src.views.context_menu_view')
 if not WindowController then
     error("CRITICAL: WindowController failed to load!")
 end
-print("[DesktopState] WindowController class loaded:", WindowController)
+-- WindowController loaded
 
 function DesktopState:init(di)
-
-    print("[DesktopState:init] Starting initialization...") -- Debug Start
+    -- Begin initialization
 
     -- Dependency Injection container (required in new API)
     self.di = di or {}
@@ -52,7 +52,7 @@ function DesktopState:init(di)
         -- Only instantiate if dependencies seem okay
        if self.window_manager and self.program_registry and self.window_states then
            self.window_controller = WindowController:new(self.window_manager, self.program_registry, self.window_states)
-             print("[DesktopState:init] WindowController instantiated successfully.") -- Debug Success
+             -- WindowController instantiated successfully
              if not self.window_controller then print("CRITICAL ERROR: WindowController:new() returned nil!") end -- Check instantiation result
         else
              print("CRITICAL ERROR: Cannot instantiate WindowController due to missing dependencies.")
@@ -65,6 +65,10 @@ function DesktopState:init(di)
 
     -- Initialize Views and other properties AFTER window_controller
     self.view = DesktopView:new(self.program_registry, self.player_data, self.window_manager, self.desktop_icons, self.recycle_bin, self.di)
+    self.start_menu = StartMenuState:new(self.di, {
+        launchProgram = function(program_id) self:launchProgram(program_id) end,
+        showTextFileDialog = function(path, content) self:showTextFileDialog(path, content) end
+    })
     self.icon_controller = DesktopIconController:new(self.program_registry, self.desktop_icons, self.recycle_bin, self.di)
     self.tutorial_view = TutorialView:new(self)
     self.context_menu_view = ContextMenuView:new()
@@ -72,11 +76,56 @@ function DesktopState:init(di)
     local C = (self.di and self.di.config) or {}
     local colors = (C.ui and C.ui.colors) or {}
     local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
-    -- Desktop wallpaper color from settings (fallback to config)
+    -- Desktop wallpaper from settings (fallback to config color)
+    self.wallpaper_type = SettingsManager.get('desktop_bg_type') or 'color'
+    self.wallpaper_image = SettingsManager.get('desktop_bg_image')
+    -- Loaded wallpaper settings
     local r = SettingsManager.get('desktop_bg_r'); if r == nil then r = (colors.desktop and colors.desktop.wallpaper and colors.desktop.wallpaper[1]) or 0 end
     local g = SettingsManager.get('desktop_bg_g'); if g == nil then g = (colors.desktop and colors.desktop.wallpaper and colors.desktop.wallpaper[2]) or 0.5 end
     local b = SettingsManager.get('desktop_bg_b'); if b == nil then b = (colors.desktop and colors.desktop.wallpaper and colors.desktop.wallpaper[3]) or 0.5 end
     self.wallpaper_color = { r, g, b }
+    -- Resolve missing/invalid wallpaper id to a default and prewarm
+    if self.wallpaper_type == 'image' then
+        local okW, WP = pcall(require, 'src.utils.wallpapers')
+        if okW and WP then
+            local item = WP.getItemById(self.wallpaper_image)
+            -- Resolving wallpaper image
+            if not item then
+                -- Deep-dive diagnostics if image is missing at startup
+                if not self.wallpaper_image or self.wallpaper_image == '' then
+                    local ok_dir, dir = pcall(love.filesystem.getSaveDirectory)
+                    local ok_read, raw = pcall(love.filesystem.read, 'settings.json')
+                    -- diagnostics removed
+                    if ok_read and raw then
+                        local ok_dec, data = pcall(require('json').decode, raw)
+                        local raw_img = ok_dec and data and data.desktop_bg_image or nil
+                        -- diagnostics removed
+                        -- Recovery: if raw file has a non-empty image, honor it
+                        if raw_img and raw_img ~= '' then
+                            self.wallpaper_image = raw_img
+                            -- recovered image from file
+                            -- Prewarm cache
+                            if WP.getImageCached then pcall(WP.getImageCached, self.wallpaper_image) end
+                            -- Avoid defaulting below; also persist back to ensure consistency
+                            pcall(SettingsManager.set, 'desktop_bg_image', raw_img)
+                            return
+                        end
+                    end
+                end
+                -- If user has no saved ID at all, choose a default; otherwise don't overwrite their choice
+                if not self.wallpaper_image or self.wallpaper_image == '' then
+                    local def = WP.getDefaultId()
+                    if def then
+                        self.wallpaper_image = def
+                        -- Persist resolved default so it sticks across restarts
+                        pcall(SettingsManager.set, 'desktop_bg_image', def)
+                        -- set default image
+                    end
+                end
+            end
+            if self.wallpaper_image and WP.getImageCached then pcall(WP.getImageCached, self.wallpaper_image) end
+        end
+    end
     -- Icon snap setting cached
     self.icon_snap = SettingsManager.get('desktop_icon_snap') ~= false
     -- Prefer explicit flag from DI; otherwise compute from settings (not shown means tutorial)
@@ -86,9 +135,7 @@ function DesktopState:init(di)
         self.show_tutorial = not SettingsManager.get("tutorial_shown") or false
     end
 
-    self.start_menu_open = false
-    self.run_dialog_open = false
-    self.run_text = ""
+    self.start_menu_open = false -- kept for compatibility; mirrors self.start_menu:isOpen()
 
     -- Icon interaction state
     self.dragging_icon_id = nil
@@ -129,7 +176,7 @@ function DesktopState:init(di)
     self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or (desktopCfg.screensaver and desktopCfg.screensaver.default_timeout) or 10
     self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
 
-    print("[DesktopState:init] Initialization finished.") -- Debug End
+    -- Initialization finished
 end
 
 function DesktopState:enter()
@@ -139,6 +186,9 @@ function DesktopState:enter()
 end
 
 function DesktopState:update(dt)
+    -- Defensive defaults in case update is called before init completes fully
+    if self.idle_timer == nil then self.idle_timer = 0 end
+    if not self.wallpaper_color then self.wallpaper_color = {0, 0.5, 0.5} end
     -- Update global systems if they exist
     if self.statistics then self.statistics:addPlaytime(dt) end
 
@@ -171,13 +221,25 @@ function DesktopState:update(dt)
         self.context_menu_view:update(dt, self.menu_options, self.menu_x, self.menu_y)
     end
 
+    -- If the OS requested quit (Alt+F4 or window close), open our shutdown dialog instead
+    if _G.WANT_SHUTDOWN_DIALOG then
+        _G.WANT_SHUTDOWN_DIALOG = nil
+        self:launchProgram('shutdown_dialog')
+    end
+
     -- Update main desktop view or tutorial
     if self.show_tutorial then
         self.tutorial_view:update(dt)
     else
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
     if self.icon_controller then self.icon_controller:ensureDefaultPositions(sw, sh) end
-    self.view:update(dt, self.start_menu_open, self.dragging_icon_id)
+    -- Only DesktopView (no start menu update here); StartMenuView handles menu state
+    self.view:update(dt, false, self.dragging_icon_id)
+    if self.start_menu then
+        -- Start Menu state owns its open/close; mirror to legacy flag for compatibility
+        self.start_menu:update(dt)
+        self.start_menu_open = self.start_menu:isOpen()
+    end
     end
 
     -- Update system cursor based on context
@@ -190,7 +252,30 @@ function DesktopState:update(dt)
     local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
     self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
     self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or 10
-    -- Live-update desktop color and snap
+    -- Live-update desktop background and snap
+    self.wallpaper_type = SettingsManager.get('desktop_bg_type') or self.wallpaper_type or 'color'
+    self.wallpaper_image = SettingsManager.get('desktop_bg_image') or self.wallpaper_image
+    -- Debug: log when the image changes at runtime
+    if not self._dbg_last_img or self._dbg_last_img ~= self.wallpaper_image then
+        print(string.format('[DesktopState:update] wallpaper_image changed -> %s (type=%s)', tostring(self.wallpaper_image), tostring(self.wallpaper_type)))
+        self._dbg_last_img = self.wallpaper_image
+    end
+    self.wallpaper_scale_mode = SettingsManager.get('desktop_bg_scale_mode') or self.wallpaper_scale_mode or 'fill'
+    if self.wallpaper_type == 'image' and not self.wallpaper_image then
+        local okW, WP = pcall(require, 'src.utils.wallpapers')
+        if okW and WP then
+            -- Only set default if there's truly no saved choice; do not override a previously chosen but temporarily missing ID
+            local saved_id = SettingsManager.get('desktop_bg_image')
+            if not saved_id or saved_id == '' then
+                local def = WP.getDefaultId()
+                if def then
+                    self.wallpaper_image = def
+                    pcall(SettingsManager.set, 'desktop_bg_image', def)
+                    print(string.format('[DesktopState:update] No saved image; set default=%s', tostring(def)))
+                end
+            end
+        end
+    end
     local nr = SettingsManager.get('desktop_bg_r') or 0
     local ng = SettingsManager.get('desktop_bg_g') or 0.5
     local nb = SettingsManager.get('desktop_bg_b') or 0.5
@@ -220,14 +305,17 @@ end
 
 function DesktopState:draw()
     -- Pass dragging state for visual feedback
-    self.view:draw(
-        self.wallpaper_color,
-        self.player_data.tokens,
-        self.start_menu_open,
-        self.run_dialog_open,
-        self.run_text,
-        self.dragging_icon_id
-    )
+    local wallpaper_arg = (self.wallpaper_type == 'image' and self.wallpaper_image)
+        and { type = 'image', id = self.wallpaper_image, color = self.wallpaper_color, scale_mode = self.wallpaper_scale_mode }
+        or self.wallpaper_color
+        -- Inline run dialog removed; now a proper window
+        self.view:draw(
+            wallpaper_arg,
+            self.player_data.tokens,
+            self.start_menu_open,
+            self.dragging_icon_id
+        )
+    if self.start_menu and self.start_menu:isOpen() then self.start_menu:draw() end
 
     -- Draw windows respecting z-order from window manager
     local windows = self.window_manager:getAllWindows()
@@ -374,8 +462,7 @@ function DesktopState:mousepressed(x, y, button)
 
     -- If any window interaction occurred (even just focusing), close desktop menus
     if click_handled then
-        self.start_menu_open = false
-        self.run_dialog_open = false
+        if self.start_menu then self.start_menu:setOpen(false); self.start_menu_open = false end
         self.last_icon_click_id = nil
         if handled_by_window then return end -- Return if window fully handled it (e.g., content interaction, button press)
     end
@@ -385,29 +472,13 @@ function DesktopState:mousepressed(x, y, button)
     if button == 1 then
         local clicked_specific_desktop_ui = false
         -- Check Start button
-        if self.view:isStartButtonHovered(x, y) then
-             clicked_specific_desktop_ui = true; self.start_menu_open = not self.start_menu_open; self.run_dialog_open = false
+       if self.view:isStartButtonHovered(x, y) then
+           clicked_specific_desktop_ui = true
+           if self.start_menu then self.start_menu:onStartButtonPressed(); self.start_menu_open = self.start_menu:isOpen() end
         -- Check Start menu items
-        elseif self.start_menu_open then
-            local start_menu_event = self.view:mousepressedStartMenu(x, y, button)
-            if start_menu_event then
-                clicked_specific_desktop_ui = true
-                if start_menu_event.name == "launch_program" then
-                    local program = self.program_registry:getProgram(start_menu_event.program_id)
-                    if program and not program.disabled then self:launchProgram(start_menu_event.program_id)
-                    else love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), (program and program.name or "Program") .. " is not available yet.", "info") end
-                    self.start_menu_open = false
-                elseif start_menu_event.name == "open_run" then self.run_dialog_open = true; self.start_menu_open = false
-                elseif start_menu_event.name == "close_start_menu" then self.start_menu_open = false end
-            else self.start_menu_open = false end -- Clicked outside menu
-        -- Check Run dialog
-        elseif self.run_dialog_open then
-            local run_event = self.view:mousepressedRunDialog(x, y, button)
-            if run_event then
-                clicked_specific_desktop_ui = true
-                if run_event.name == "run_execute" then self:executeRunCommand(self.run_text); self.run_dialog_open = false; self.run_text = ""
-                elseif run_event.name == "run_cancel" then self.run_dialog_open = false; self.run_text = "" end
-            else self.run_dialog_open = false; self.run_text = "" end -- Clicked outside dialog
+        elseif self.start_menu and self.start_menu:isOpen() then
+            local consumed = self.start_menu:mousepressed(x, y, button)
+            if consumed then clicked_specific_desktop_ui = true end
         -- Check desktop icons
         else
             local icon_program_id = self.view:getProgramAtPosition(x, y)
@@ -433,18 +504,60 @@ function DesktopState:mousepressed(x, y, button)
             end
         end
         -- If click wasn't on specific desktop UI or window chrome/content
-        if not clicked_specific_desktop_ui and not click_handled then
-             self.start_menu_open = false; self.run_dialog_open = false; self.last_icon_click_id = nil
+       if not clicked_specific_desktop_ui and not click_handled then
+           if self.start_menu then self.start_menu:setOpen(false); self.start_menu_open = false end
+           self.last_icon_click_id = nil
         end
 
-    elseif button == 2 then -- Right click on empty space / non-window element
+    elseif button == 2 then -- Right click
+        -- If Start Menu is open and the click is inside it (no menu currently open), show Start Menu context and consume
+        if (not self.context_menu_open) and self.start_menu and self.start_menu:isOpen() then
+            local inside_any = self.start_menu:isPointInStartMenuOrSubmenu(x, y)
+                if inside_any then
+                local hit = self.start_menu.view and self.start_menu.view.hitTestStartMenuContext and self.start_menu.view:hitTestStartMenuContext(x, y)
+                local options = {}
+                local ctx = { type = 'start_menu' }
+                if hit then
+                    if hit.area == 'pane' and hit.item then
+                        if hit.kind == 'programs' and hit.item.type == 'program' then
+                            ctx = { type='start_menu_item', program_id=hit.item.program_id, pane_kind='programs', parent_path=nil, index=hit.index, pane_index=hit.pane_index }
+                            options = self:generateContextMenuOptions('start_menu_item', ctx)
+                            table.insert(options, 3, { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true })
+                        elseif hit.kind == 'fs' then
+                            ctx = { type='start_menu_fs', path = hit.item and (hit.item.path or hit.item.name), parent_path=hit.parent_path, is_folder = (hit.item and hit.item.type == 'folder'), index=hit.index, pane_index=hit.pane_index }
+                            options = {
+                                { id='open', label=Strings.get('menu.open','Open'), enabled=true },
+                                { id='separator' },
+                                { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true },
+                                { id='separator' },
+                                { id='delete_from_menu', label=Strings.get('menu.delete','Delete from Start Menu'), enabled=true }
+                            }
+                        elseif hit.kind == 'programs' and hit.item.type == 'folder' and hit.item.program_id then
+                            -- Top-level folder shortcut shown by Programs list: treat as program for deletion; still allow new folder below
+                            ctx = { type='start_menu_item', program_id = hit.item.program_id, pane_kind='programs', parent_path=nil, index=hit.index, pane_index=hit.pane_index }
+                            options = self:generateContextMenuOptions('start_menu_item', ctx)
+                            table.insert(options, 3, { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true })
+                        end
+                    elseif hit.area == 'submenu' and hit.id and self.start_menu.view.submenu_open_id == 'programs' then
+                        ctx = { type='start_menu_item', program_id=hit.id, pane_kind='programs', parent_path=nil, index=hit.index, pane_index=hit.pane_index }
+                        options = self:generateContextMenuOptions('start_menu_item', ctx)
+                        table.insert(options, 3, { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true })
+                    end
+                end
+                if #options > 0 then self:openContextMenu(x, y, options, ctx); return end
+                return -- Consume right click in Start Menu even if no options
+            end
+        end
         -- Generate desktop/icon/taskbar context menu
         local context_type = "desktop"; local context_data = {}
-        local icon_program_id = self.view:getProgramAtPosition(x, y)
+        -- Use controller for hit-test so we get accurate icon detection
+        local icon_program_id = self.icon_controller and self.icon_controller:getProgramAtPosition(x, y) or self.view:getProgramAtPosition(x, y)
         local taskbar_button_id = self.view:getTaskbarButtonAtPosition(x, y)
         local on_start_button = self.view:isStartButtonHovered(x, y)
         local start_menu_program_id = nil
-        if self.start_menu_open and self.view:isPointInStartMenu(x,y) then start_menu_program_id = self.view:getStartMenuProgramAtPosition(x, y) end
+        if self.start_menu and self.start_menu:isOpen() and self.start_menu.isPointInStartMenu and self.start_menu:isPointInStartMenu(x, y) then
+            start_menu_program_id = self.start_menu:getStartMenuProgramAtPosition(x, y)
+        end
 
         if start_menu_program_id and start_menu_program_id ~= "run" then context_type = "start_menu_item"; context_data = { program_id = start_menu_program_id }
         elseif icon_program_id then context_type = "icon"; context_data = { program_id = icon_program_id }
@@ -566,6 +679,11 @@ function DesktopState:mousemoved(x, y, dx, dy)
     -- If an icon drag is active, update visual position (drawing handles this)
     -- No model update needed here, only on release
 
+    -- Forward to Start Menu for drag hover updates
+    if self.start_menu and self.start_menu:isOpen() and self.start_menu.mousemoved then
+        self.start_menu:mousemoved(x, y, dx, dy)
+    end
+
     -- Forward mouse move to focused window's state with content-relative coords (for in-window drags)
     local focused_id = self.window_manager:getFocusedWindowId()
     if focused_id then
@@ -586,6 +704,12 @@ function DesktopState:mousereleased(x, y, button)
     self.idle_timer = 0
     -- Forward to window controller first
     self.window_controller:mousereleased(x, y, button)
+    -- Handle Start Menu activation on release
+    if self.start_menu and self.start_menu:isOpen() then
+        local consumed = self.start_menu:mousereleased(x, y, button)
+        if consumed then return end
+    end
+
 
     -- Handle icon drop
     if button == 1 and self.dragging_icon_id then
@@ -881,26 +1005,25 @@ function DesktopState:keypressed(key)
         return true
     end
 
+    -- Global: Alt+F4 should open Shutdown dialog (do not close the current window)
+    local alt_down_global = love.keyboard.isDown('lalt') or love.keyboard.isDown('ralt')
+    if alt_down_global and key == 'f4' then
+        self:launchProgram('shutdown_dialog')
+        return true
+    end
+
+    -- Global: Use Ctrl+Esc (Windows-style alternative) to toggle Start Menu; avoid Windows keys to prevent OS Start menu
+    if (love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')) and key == 'escape' then
+        if self.start_menu then self.start_menu:toggle(); self.start_menu_open = self.start_menu:isOpen() end
+        return true
+    end
+
     -- Focused window gets priority for most keys
     local focused_id = self.window_manager:getFocusedWindowId()
     if focused_id then
         local window_data = self.window_states[focused_id]
         local window_state = window_data and window_data.state
 
-        -- Alt+F4 handling (give window state a chance to intercept if needed?)
-        -- For now, handle it globally here if window doesn't consume 'f4' with 'alt'
-        local alt_down = love.keyboard.isDown('lalt') or love.keyboard.isDown('ralt')
-        if key == 'f4' and alt_down then
-            local should_close_globally = true
-            -- Optional: Check if state wants to handle Alt+F4 differently
-            -- if window_state and window_state.handleAltF4 then should_close_globally = not window_state:handleAltF4() end
-
-            if should_close_globally then
-                 print("Alt+F4 pressed, closing window:", focused_id)
-                 self:closeWindowById(focused_id) -- Use helper
-                 return true
-            end
-        end
 
         -- Pass other keypresses to focused window state
         if window_state and window_state.keypressed then
@@ -917,23 +1040,24 @@ function DesktopState:keypressed(key)
         end
     end
 
-    -- Global shortcuts if not handled by window OR no window focused
-    if self.run_dialog_open then
-        if key == "escape" then self.run_dialog_open = false; self.run_text = ""; return true
-        elseif key == "return" then self:executeRunCommand(self.run_text); self.run_dialog_open = false; self.run_text = ""; return true
-        elseif key == "backspace" then self.run_text = self.run_text:sub(1, -2); return true end
-         -- Let textinput handle other keys
-         return true -- Consume keys while run dialog is open
+    -- Start menu keyboard navigation: delegate to StartMenuState when open
+    if self.start_menu and self.start_menu:isOpen() then
+        local handled = self.start_menu:keypressed(key)
+        if handled then return true end
     end
 
-    if self.start_menu_open then
-        if key == "escape" then self.start_menu_open = false; return true end
-        return true -- Consume keys while start menu is open
-    end
-
-    -- Ctrl+R for Run dialog
+    -- Ctrl+R for Run dialog (now launches parametric input window with Run params)
     if (love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')) and key == 'r' then
-        self.run_dialog_open = true; self.start_menu_open = false; self.run_text = ""; return true
+        if self.start_menu then self.start_menu:setOpen(false); self.start_menu_open = false end
+        local params = {
+            title = Strings.get('start.run', 'Run'),
+            prompt = Strings.get('start.type_prompt','Type the name of a program:'),
+            ok_label = Strings.get('buttons.ok','OK'),
+            cancel_label = Strings.get('buttons.cancel','Cancel'),
+            submit_event = 'run_execute',
+        }
+        self:launchProgram('run_dialog', params)
+        return true
     end
 
     -- Debug menu toggle (F5)
@@ -946,20 +1070,30 @@ function DesktopState:keypressed(key)
         end
     end
 
-    -- ESC closes focused window (if any) or quits if none are open
-    if key == 'escape' then
-         if focused_id then
+    -- ESC: close Start Menu if open; else close focused window; else quit app (for fast debug)
+     if key == 'escape' then
+            if self.start_menu and self.start_menu:isOpen() then
+                self.start_menu:setOpen(false)
+                self.start_menu_open = false
+                return true
+            elseif focused_id then
              print("ESC pressed, closing window:", focused_id)
-             self:closeWindowById(focused_id) -- Use helper
+             self:closeWindowById(focused_id)
              return true
-         elseif #self.window_manager:getAllWindows() == 0 then
-             -- Quit game if ESC pressed on empty desktop
+         else
+             -- No focused windows: allow immediate quit (debug convenience)
+             _G.APP_ALLOW_QUIT = true
              love.event.quit()
              return true
          end
     end
 
     return false -- Key not handled
+end
+
+-- Toggle Start Menu from global key handlers (Windows key or Ctrl+Esc)
+function DesktopState:toggleStartMenu()
+    if self.start_menu then self.start_menu:toggle(); self.start_menu_open = self.start_menu:isOpen() end
 end
 
 function DesktopState:textinput(text)
@@ -978,10 +1112,7 @@ function DesktopState:textinput(text)
         end
     end
 
-    -- If not handled by window, check if run dialog is open
-    if self.run_dialog_open then
-        self.run_text = self.run_text .. text
-    end
+    -- If not handled by window, do nothing (Run is now its own window)
 end
 
 function DesktopState:wheelmoved(x, y)
@@ -1043,6 +1174,90 @@ function DesktopState:handleStateEvent(window_id, event)
         ensure_icon_visible = function()
             self:ensureIconIsVisible(event.program_id)
         end,
+        shutdown_now = function()
+            -- Allow quit and then quit
+            _G.APP_ALLOW_QUIT = true
+            love.event.quit()
+        end,
+        restart_now = function()
+            _G.APP_ALLOW_QUIT = true
+            love.event.quit('restart')
+        end,
+        run_execute = function()
+            if event.command and event.command ~= '' then
+                self:executeRunCommand(event.command)
+            end
+            -- Close the Run dialog window after executing
+            self:closeWindowById(window_id)
+        end,
+        start_menu_create_folder = function()
+            local name = (event.text or ''):gsub('^%s*(.-)%s*$', '%1')
+            if name == '' then return end
+            local ctx = event.context or {}
+            if ctx.pane_kind == 'programs' then
+                -- Create a virtual Start Menu folder and insert below index
+                local fs = self.file_system
+                local pr = self.program_registry
+                -- Ensure Start Menu root exists
+                if fs and fs.filesystem then
+                    fs.filesystem['/Start Menu'] = fs.filesystem['/Start Menu'] or { type='folder', children = {} }
+                    local parent = fs.filesystem['/Start Menu']
+                    -- Make unique name under /Start Menu
+                    local base = name
+                    local final = base
+                    local function exists(child) for _, c in ipairs(parent.children) do if c == child then return true end end return false end
+                    local i = 2
+                    while exists(final) do final = base .. ' ('..i..')'; i=i+1 end
+                    name = final
+                    local new_path = '/Start Menu/' .. name
+                    if not fs.filesystem[new_path] then fs.filesystem[new_path] = { type='folder', children = {} } end
+                    table.insert(parent.children, name)
+                    -- Create a folder shortcut program that targets this path
+                    local program = pr:addFolderShortcut(name, new_path, { in_start_menu = true, shortcut_type='folder', icon_sprite='directory_open_file_mydocs_small-0' })
+                    if program and program.id then
+                        -- Place directly below the clicked item
+                        local after_idx = (ctx.after_index or 0) + 1
+                        pcall(pr.moveInStartMenuProgramsOrder, pr, program.id, after_idx)
+                        -- Refresh panes
+                        if self.start_menu and self.start_menu.view then
+                            for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                                if p.kind == 'programs' then p.items = self.start_menu.view:buildPaneItems('programs', nil)
+                                elseif p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
+                            end
+                        end
+                    end
+                end
+            elseif ctx.pane_kind == 'fs' and ctx.parent_path then
+                -- Create a real folder under the given parent path and insert below index
+                local fs = self.file_system
+                local pr = self.program_registry
+                if fs and fs.createFolder then
+                    local after_idx = (ctx.after_index or 0) + 1
+                    local new_path = fs:createFolder(ctx.parent_path, name, after_idx)
+                    if new_path then
+                        -- Update ordering to reflect the requested position
+                        local dst_keys = {}
+                        if self.start_menu and self.start_menu.view then
+                            for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                                if p.kind == 'fs' and p.parent_path == ctx.parent_path then
+                                    for _, it in ipairs(p.items or {}) do table.insert(dst_keys, (it.path or it.name)) end
+                                    break
+                                end
+                            end
+                        end
+                        pcall(pr.moveInStartMenuFolderOrder, pr, ctx.parent_path, new_path, after_idx, dst_keys)
+                        -- Refresh panes
+                        if self.start_menu and self.start_menu.view then
+                            for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                                if p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
+                            end
+                        end
+                    end
+                end
+            end
+            -- Close the dialog window
+            self:closeWindowById(window_id)
+        end,
     }
 
     local handler = handlers[event.name]
@@ -1070,9 +1285,34 @@ function DesktopState:showTextFileDialog(title, content)
     love.window.showMessageBox(title, content or "[Empty File]", "info")
 end
 
+-- Defensive: ensure dependency_provider exists before launching programs
+function DesktopState:_ensureDependencyProvider()
+    if self.dependency_provider then return end
+    print('[DesktopState] Rebuilding dependency_provider map (was nil)')
+    self.dependency_provider = {
+        player_data = self.player_data,
+        game_data = self.game_data,
+        state_machine = self.state_machine,
+        save_manager = self.save_manager,
+        statistics = self.statistics,
+        window_manager = self.window_manager,
+        desktop_icons = self.desktop_icons,
+        file_system = self.file_system,
+        recycle_bin = self.recycle_bin,
+        program_registry = self.program_registry,
+        vm_manager = self.vm_manager,
+        cheat_system = self.cheat_system,
+        di = self.di,
+        window_controller = self.window_controller,
+    }
+end
+
 function DesktopState:launchProgram(program_id, ...)
     local launch_args = {...}
     print("Attempting to launch program: " .. program_id)
+
+    -- Ensure dependency provider is present
+    self:_ensureDependencyProvider()
 
     local program = self.program_registry:getProgram(program_id)
     if not program then print("Program definition not found: " .. program_id); return end
@@ -1119,7 +1359,8 @@ function DesktopState:launchProgram(program_id, ...)
     local state_args = {}
     local missing_deps = {}
     for _, dep_name in ipairs(program.dependencies or {}) do
-        local dependency = self.dependency_provider[dep_name]
+        local dp = self.dependency_provider or {}
+        local dependency = dp[dep_name]
         if dependency then table.insert(state_args, dependency)
         else print("ERROR: Missing dependency '" .. dep_name .. "'"); table.insert(missing_deps, dep_name) end
     end
@@ -1170,6 +1411,9 @@ function DesktopState:launchProgram(program_id, ...)
     elseif enter_args_config then
         if enter_args_config.type == "first_launch_arg" then enter_args = {launch_args[1] or enter_args_config.default}
         elseif enter_args_config.type == "static" then enter_args = {enter_args_config.value} end
+    else
+        -- Generic passthrough: if caller provided args and no program-specific enter_args config, pass them to state:enter
+        if #launch_args > 0 then enter_args = launch_args end
     end
 
     if new_state.enter then
@@ -1249,6 +1493,8 @@ function DesktopState:generateContextMenuOptions(context_type, context_data)
         end
 
     elseif context_type == "desktop" then
+    table.insert(options, { id = "desktop_properties", label = Strings.get('menu.desktop_properties', 'Desktop Properties...'), enabled = true })
+    table.insert(options, { id = "separator" })
     table.insert(options, { id = "arrange_icons", label = Strings.get('menu.arrange_icons', 'Arrange Icons') .. " (NYI)", enabled = false })
     table.insert(options, { id = "separator" })
     table.insert(options, { id = "refresh", label = Strings.get('menu.refresh', 'Refresh'), enabled = true })
@@ -1267,6 +1513,8 @@ function DesktopState:generateContextMenuOptions(context_type, context_data)
                 label = Strings.get('menu.create_shortcut_desktop', 'Create Shortcut (Desktop)'),
                 enabled = not is_visible and not program.disabled
             })
+            table.insert(options, { id = "separator" })
+            table.insert(options, { id = "delete_from_menu", label = Strings.get('menu.delete', 'Delete from Start Menu'), enabled = true })
             table.insert(options, { id = "separator" })
             table.insert(options, { id = "properties", label = Strings.get('menu.properties', 'Properties') .. " (NYI)", enabled = false })
         end
@@ -1371,7 +1619,47 @@ function DesktopState:handleContextMenuAction(action_id, context)
         end
 
     elseif context.type == "desktop" then
-        if action_id == "refresh" then print("Action 'Refresh' called."); self.view:calculateDefaultIconPositionsIfNeeded()
+        if action_id == "desktop_properties" then
+            self:launchProgram('control_panel_desktop')
+                -- If Start Menu is open and the click is inside it, show Start Menu context and consume
+                if self.start_menu and self.start_menu:isOpen() then
+                    local inside_any = self.start_menu:isPointInStartMenuOrSubmenu(x, y)
+                    if inside_any then
+                        local hit = self.start_menu.view and self.start_menu.view.hitTestStartMenuContext and self.start_menu.view:hitTestStartMenuContext(x, y)
+                        local options = {}
+                        local ctx = { type = 'start_menu' }
+                        if hit then
+                            if hit.area == 'pane' and hit.item then
+                                if hit.kind == 'programs' and hit.item.type == 'program' then
+                                    ctx = { type='start_menu_item', program_id=hit.item.program_id, index = hit.index }
+                                    -- Build options inline to include New Folder for Programs
+                                    options = {
+                                        { id='open', label=Strings.get('menu.open','Open'), enabled=true },
+                                        { id='separator' },
+                                        { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true },
+                                        { id='separator' },
+                                        { id='delete_from_menu', label=Strings.get('menu.delete','Delete from Start Menu'), enabled=true },
+                                    }
+                                elseif hit.kind == 'fs' then
+                                    -- Offer delete/hide for entries and a basic open option
+                                    ctx = { type='start_menu_fs', path = hit.item and (hit.item.path or hit.item.name), parent_path = hit.parent_path, index = hit.index, is_folder = (hit.item and hit.item.type == 'folder') }
+                                    options = {
+                                        { id='open', label=Strings.get('menu.open','Open'), enabled=true },
+                                        { id='separator' },
+                                        { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true },
+                                        { id='separator' },
+                                        { id='delete_from_menu', label=Strings.get('menu.delete','Delete from Start Menu'), enabled=true }
+                                    }
+                                end
+                            elseif hit.area == 'submenu' and hit.id and self.start_menu.view.submenu_open_id == 'programs' then
+                                ctx = { type='start_menu_item', program_id=hit.id }
+                                options = self:generateContextMenuOptions('start_menu_item', ctx)
+                            end
+                        end
+                        if #options > 0 then self:openContextMenu(x, y, options, ctx); return end
+                        return -- Consume right click in Start Menu even if no options
+                    end
+                end
         elseif action_id == "arrange_icons" then print("Action 'Arrange Icons' NYI")
         elseif action_id == "properties" then print("Action 'Properties' NYI")
         end
@@ -1380,7 +1668,71 @@ function DesktopState:handleContextMenuAction(action_id, context)
         if not program_id then print("ERROR: program_id missing for start_menu_item context!"); return end
         if action_id == "open" then self:launchProgram(program_id)
         elseif action_id == "create_shortcut_desktop" then self:ensureIconIsVisible(program_id)
+        elseif action_id == 'new_folder' then
+            -- Open parametric input dialog for folder name in Programs root, place below this item
+            local params = {
+                title = Strings.get('menu.new_folder','New Folder'),
+                prompt = Strings.get('menu.enter_folder_name','Enter a name for the new folder:'),
+                ok_label = Strings.get('buttons.create','Create'),
+                cancel_label = Strings.get('buttons.cancel','Cancel'),
+                submit_event = 'start_menu_create_folder',
+                context = { pane_kind='programs', parent_path=nil, after_index = (context.index or 0) }
+            }
+            self:launchProgram('run_dialog', params)
+        elseif action_id == "delete_from_menu" then
+            local pr = self.program_registry
+            if pr and pr.relocateProgram then
+                pcall(pr.relocateProgram, pr, program_id, '__trash__')
+                -- Refresh visible panes (Programs and any open fs panes)
+                if self.start_menu and self.start_menu.view then
+                    for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                        if p.kind == 'programs' then p.items = self.start_menu.view:buildPaneItems('programs', nil)
+                        elseif p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
+                    end
+                end
+                self:closeContextMenu()
+            end
         elseif action_id == "properties" then print("Action 'Properties' NYI")
+        end
+
+    elseif context.type == "start_menu_fs" then
+        local path = context.path
+        if not path then return end
+        if action_id == 'open' then
+            if self.start_menu and self.start_menu.openPath then self.start_menu:openPath(path) end
+        elseif action_id == 'new_folder' then
+            local params = {
+                title = Strings.get('menu.new_folder','New Folder'),
+                prompt = Strings.get('menu.enter_folder_name','Enter a name for the new folder:'),
+                ok_label = Strings.get('buttons.create','Create'),
+                cancel_label = Strings.get('buttons.cancel','Cancel'),
+                submit_event = 'start_menu_create_folder',
+                context = { pane_kind='fs', parent_path=context.parent_path or (path:match('(.+)/[^/]+$') or '/'), after_index = (context.index or 0) }
+            }
+            self:launchProgram('run_dialog', params)
+        elseif action_id == 'delete_from_menu' then
+            local pr = self.program_registry
+            if pr and pr.relocateStartMenuEntry then
+                local tomb = '__trash__'
+                local parent = path:match('(.+)/[^/]+$') or '/'
+                -- Find a pane showing this parent to build src_keys
+                local src_keys = {}
+                local src_pane = nil
+                if self.start_menu and self.start_menu.view then
+                    for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                        if p.kind == 'fs' and p.parent_path == parent then src_pane = p; break end
+                    end
+                    if src_pane and src_pane.items then for _, it in ipairs(src_pane.items) do table.insert(src_keys, (it.path or it.name)) end end
+                end
+                pcall(pr.relocateStartMenuEntry, pr, path, parent, tomb, 1, {}, src_keys)
+                -- Refresh visible panes
+                if self.start_menu and self.start_menu.view then
+                    for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                        if p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
+                    end
+                end
+                self:closeContextMenu()
+            end
         end
 
     elseif context.type == "file_explorer_item" or context.type == "file_explorer_empty" then
@@ -1405,6 +1757,21 @@ function DesktopState:handleContextMenuAction(action_id, context)
                  if type(result) == 'table' and result.type == "event" then
                      -- Handle events returned by createShortcut (like ensure_icon_visible)
                      self:handleStateEvent(fe_window_id, result) -- Pass event up
+                 end
+            elseif action_id == "create_shortcut_start_menu" and item then
+                 local result = fe_state:createShortcutInStartMenu(item)
+                 if type(result) == 'table' and result.type == "event" then
+                     self:handleStateEvent(fe_window_id, result)
+                 end
+            elseif action_id == "remove_shortcut" and item then
+                 -- If this is a dynamic shortcut, remove it
+                 if item.program_id and item.program_id:match('^shortcut_') then
+                     local ok = self.program_registry:removeDynamicProgram(item.program_id)
+                     if ok then
+                         -- Also clean desktop icon state
+                         self.desktop_icons:permanentlyDelete(item.program_id)
+                         self.desktop_icons:save()
+                     end
                  end
             elseif action_id == "delete" then print("Delete from file explorer NYI") -- Placeholder
             elseif action_id == "properties" then print("File properties NYI") -- Placeholder

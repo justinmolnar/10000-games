@@ -199,6 +199,9 @@ function ModelView:draw()
     local w, h = self.viewport.width, self.viewport.height
     local cx, cy = w/2, h/2
     local scale = self.scale
+    -- Scale projection to viewport so preview canvas renders proportionally smaller/larger
+    local viewport_scale = math.min(w, h) / 600
+    local fov_eff = (self.fov or 350) * viewport_scale
 
     -- Build rotation matrix R = Rz * Ry * Rx
     local R = matMul(rotZ(self.angle.z), matMul(rotY(self.angle.y), rotX(self.angle.x)))
@@ -403,7 +406,7 @@ function ModelView:draw()
         local pts = {}
         for _, idx in ipairs(face.idx) do
             local p = verts[idx]
-            local k = self.fov / p[3]
+            local k = fov_eff / p[3]
             local x = cx + p[1] * k
             local y = cy + p[2] * k
             table.insert(pts, x)

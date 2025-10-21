@@ -258,6 +258,36 @@ function LauncherState:mousepressed(x, y, button)
     return false -- No specific view element handled it
 end
 
+function LauncherState:mousemoved(x, y, dx, dy)
+    if not self.viewport then return end
+    if self.view and self.view.mousemoved then
+        return self.view:mousemoved(x, y, dx, dy)
+    end
+end
+
+function LauncherState:mousereleased(x, y, button)
+    if not self.viewport then return end
+    if self.view and self.view.mousereleased then
+        return self.view:mousereleased(x, y, button)
+    end
+end
+
+function LauncherState:mousemoved(x, y, dx, dy)
+    if not self.viewport then return end
+    if self.view and self.view.mousemoved then
+        local ok = pcall(self.view.mousemoved, self.view, x, y, dx, dy)
+        if not ok then return end
+    end
+end
+
+function LauncherState:mousereleased(x, y, button)
+    if not self.viewport then return end
+    if self.view and self.view.mousereleased then
+        pcall(self.view.mousereleased, self.view, x, y, button)
+        return { type = 'content_interaction' }
+    end
+end
+
 function LauncherState:launchSpaceDefender()
     self.state_machine:switch('space_defender', 1)
 end

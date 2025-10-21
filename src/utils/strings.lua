@@ -17,13 +17,26 @@ local DEFAULTS = {
         refresh = 'Refresh',
         arrange_icons = 'Arrange Icons',
         properties = 'Properties',
-        create_shortcut_desktop = 'Create Shortcut (Desktop)'
+    create_shortcut_desktop = 'Create Shortcut (Desktop)',
+    create_shortcut_start_menu = 'Create Shortcut (Start Menu)'
     },
     start = {
         title = 'Start',
-        run = 'Run...'
+        run = 'Run...',
+        shutdown = 'Shut down...'
+    },
+    shutdown = {
+        title = 'Shut Down Windows',
+        prompt = 'What do you want the computer to do?',
+        buttons = {
+            shutdown = 'Shut down',
+            restart = 'Restart',
+            cancel = 'Cancel'
+        }
     },
     messages = {
+        error_title = 'Error',
+        info_title = 'Information',
         not_available = 'Not Available',
         program_not_available_fmt = '%s is not available yet.',
         cannot_find_fmt = "Cannot find '%s'."

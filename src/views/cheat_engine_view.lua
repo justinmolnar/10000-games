@@ -28,6 +28,8 @@ function CheatEngineView:init(controller, di)
     self.hovered_game_id = nil
     self.hovered_cheat_id = nil
     self.hovered_button_id = nil -- Includes unlock_ce, purchase_cheat, launch
+    -- Scrollbar interaction state
+    self._sb = { list = { dragging=false }, cheats = { dragging=false } }
 
     self.formula_renderer = FormulaRenderer:new()
 end
@@ -134,6 +136,11 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
     -- Ensure scroll offsets are numbers
     local scroll_offset = list_scroll_offset or 1
     local cheat_scroll_offset = cheat_scroll_offset_in or 0
+    -- Theme/config for widths used throughout this draw
+    local C = (self.di and self.di.config) or {}
+    local V = (C.ui and C.ui.views and C.ui.views.cheat_engine) or {}
+    -- Lane width from config (track + margin)
+    local lane_w = UIComponents.getScrollbarLaneWidth()
 
     -- Background within viewport
     love.graphics.setColor(0, 0, 0)
@@ -167,7 +174,8 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
         elseif is_hovered then love.graphics.setColor(0.1, 0.1, 0.1)
         else love.graphics.setColor(0, 0, 0) end
 
-        love.graphics.rectangle('fill', self.list_x + 2, by, self.list_w - 4, self.item_h)
+            -- Exclude scrollbar lane
+            love.graphics.rectangle('fill', self.list_x + 2, by, self.list_w - 4 - lane_w, self.item_h)
 
         if is_unlocked then love.graphics.setColor(0, 1, 0)
         else love.graphics.setColor(0.3, 0.3, 0.3) end
@@ -176,18 +184,24 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
             love.graphics.print("[LOCKED]", self.list_x + self.list_w - 70, by + 8)
         end
     end
-     -- Draw List Scrollbar
-    local C = (self.di and self.di.config) or {}
-    local V = (C.ui and C.ui.views and C.ui.views.cheat_engine) or {}
-    local L = V.list or { scrollbar_w = 6 }
+     -- Draw List Scrollbar (using UI helper)
+    local L = L_cfg
     if #games > visible_games then
-        love.graphics.setColor(0.3, 1, 0.3)
-        local scroll_track_height = self.list_h
-        local scroll_height = math.max(15, (visible_games / #games) * scroll_track_height)
-        local scroll_pos_ratio = (start_index - 1) / math.max(1, #games - visible_games)
-        local scroll_y = self.list_y + scroll_pos_ratio * (scroll_track_height - scroll_height)
-        scroll_y = math.max(self.list_y, math.min(scroll_y, self.list_y + scroll_track_height - scroll_height))
-        love.graphics.rectangle('fill', self.list_x + self.list_w - (L.scrollbar_w + 2), scroll_y, (L.scrollbar_w or 6), scroll_height)
+        local UI = UIComponents
+        love.graphics.push(); love.graphics.translate(self.list_x, self.list_y)
+        local sb_geom = UI.computeScrollbar({
+            viewport_w = self.list_w,
+            viewport_h = self.list_h,
+            content_h = (#games) * self.item_h,
+            offset = (start_index - 1) * self.item_h,
+            -- width/margin from config defaults
+            track_top = 12,
+            track_bottom = 12,
+            -- min_thumb_h from config defaults
+        })
+        UI.drawScrollbar(sb_geom)
+        self._sb.list.geom = sb_geom
+        love.graphics.pop()
     end
 
     -- Draw Detail Panel (using layout vars)
@@ -272,16 +286,23 @@ function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats,
                  end
             end
              -- Draw Cheat Scrollbar
-          if num_cheats > visible_cheats then
-                 love.graphics.setColor(0.3, 1, 0.3)
-                 local scroll_track_height = available_height_for_cheats
-                 local scroll_height = math.max(15, (visible_cheats / num_cheats) * scroll_track_height)
-                 local scroll_pos_ratio = cheat_scroll_offset / math.max(1, num_cheats - visible_cheats)
-                 local scroll_y = self.detail_y + 100 + scroll_pos_ratio * (scroll_track_height - scroll_height)
-                 scroll_y = math.max(self.detail_y + 100, math.min(scroll_y, self.detail_y + 100 + scroll_track_height - scroll_height))
-              local L = V.list or { scrollbar_w = 6 }
-              love.graphics.rectangle('fill', self.detail_x + self.detail_w - ((L.scrollbar_w or 6) + 2), scroll_y, (L.scrollbar_w or 6), scroll_height)
-            end
+                      if num_cheats > visible_cheats then
+                            local UI = UIComponents
+                          love.graphics.push(); love.graphics.translate(self.detail_x, self.detail_y + 100)
+                    local sb_geom = UI.computeScrollbar({
+                                    viewport_w = self.detail_w,
+                                    viewport_h = available_height_for_cheats,
+                              content_h = (num_cheats) * (self.item_h + (V.spacing and V.spacing.cheat_item_extra_h or 20)),
+                              offset = (cheat_scroll_offset or 0) * (self.item_h + (V.spacing and V.spacing.cheat_item_extra_h or 20)),
+                    -- width/margin from config defaults
+                              track_top = 12,
+                              track_bottom = 12,
+                        -- min_thumb_h from config defaults
+                            })
+                            UI.drawScrollbar(sb_geom)
+                          self._sb.cheats.geom = sb_geom
+                            love.graphics.pop()
+                        end
 
             -- Launch Button (at bottom)
             local is_hovered_launch = (self.hovered_button_id == "launch")
@@ -335,6 +356,29 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, ava
     -- x, y are LOCAL coords relative to content area (0,0)
     if button ~= 1 then return nil end
 
+    -- Scrollbar interactions: game list via universal handler
+    if self._sb and self._sb.list and self._sb.list.geom then
+        local g = self._sb.list.geom
+        local lx, ly = x - self.list_x, y - self.list_y
+        local UI = UIComponents
+        local off_px = ((self.controller.scroll_offset or 1) - 1) * self.item_h
+    local res = UI.scrollbarHandlePress(lx, ly, button, g, off_px, nil)
+        if res and res.consumed then
+            if res.new_offset_px ~= nil then
+                local total = #games
+                local visible = self:getVisibleGameCount(viewport_height)
+                local max_index = math.max(1, total - visible + 1)
+                local new_index = math.floor(res.new_offset_px / self.item_h) + 1
+                self.controller.scroll_offset = math.max(1, math.min(max_index, new_index))
+            end
+            if res.drag then
+                self._sb.list.dragging = true
+                self._sb.list.drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
+            end
+            return { name = 'content_interaction' }
+        end
+    end
+
     -- Check game list (using local coords)
     local visible_games = self:getVisibleGameCount(viewport_height) -- Use helper
     local start_index = self.controller.scroll_offset or 1 -- Get from controller
@@ -369,6 +413,34 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, ava
                 return { name = "unlock_cheat_engine" }
             end
         else
+            -- Scrollbar interactions: cheat list via universal handler
+            do
+                local g = self._sb and self._sb.cheats and self._sb.cheats.geom
+                if g then
+                    local UI = UIComponents
+                    local cheat_list_y_start = self.detail_y + 100
+                    local lx, ly = x - self.detail_x, y - cheat_list_y_start
+                    local cheat_item_total_height = self.item_h + 20
+                    local off_px = (self.controller.cheat_scroll_offset or 0) * cheat_item_total_height
+                    local res = UI.scrollbarHandlePress(lx, ly, button, g, off_px, nil)
+                    if res and res.consumed then
+                        if res.new_offset_px ~= nil then
+                            local new_off = math.floor(res.new_offset_px / cheat_item_total_height + 0.0001)
+                            -- Clamp to max
+                            local num_cheats = 0; if available_cheats then for _ in ipairs(available_cheats) do num_cheats = num_cheats + 1 end end
+                            local visible_cheats = math.max(1, math.floor((self.detail_h - 160) / cheat_item_total_height))
+                            local max_off = math.max(0, num_cheats - visible_cheats)
+                            self.controller.cheat_scroll_offset = math.max(0, math.min(max_off, new_off))
+                        end
+                        if res.drag then
+                            self._sb.cheats.dragging = true
+                            self._sb.cheats.drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
+                        end
+                        return { name = 'content_interaction' }
+                    end
+                end
+            end
+
             -- Check cheat list purchase buttons (using local coords)
             local available_height_for_cheats = self.detail_h - 160
             local cheat_item_total_height = self.item_h + 20
@@ -400,6 +472,46 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, ava
     end
 
     return nil -- Clicked on empty space within the view's area
+end
+
+function CheatEngineView:mousemoved(x, y, dx, dy)
+    local UI = UIComponents
+    -- List scrollbar drag via universal handler
+    if self._sb and self._sb.list and self._sb.list.dragging and self._sb.list.geom then
+        local g = self._sb.list.geom
+        local ly = y - self.list_y
+        local res = UI.scrollbarHandleMove(ly, self._sb.list.drag, g)
+        if res and res.consumed and res.new_offset_px ~= nil then
+            local new_index = math.floor(res.new_offset_px / self.item_h) + 1
+            self.controller.scroll_offset = math.max(1, new_index)
+            return { name = 'content_interaction' }
+        end
+    end
+    -- Cheats scrollbar drag via universal handler
+    if self._sb and self._sb.cheats and self._sb.cheats.dragging and self._sb.cheats.geom then
+        local g = self._sb.cheats.geom
+        local cheat_item_total_height = self.item_h + 20
+        local ly = y - (self.detail_y + 100)
+        local res = UI.scrollbarHandleMove(ly, self._sb.cheats.drag, g)
+        if res and res.consumed and res.new_offset_px ~= nil then
+            local new_off = math.floor(res.new_offset_px / cheat_item_total_height + 0.0001)
+            self.controller.cheat_scroll_offset = math.max(0, new_off)
+            return { name = 'content_interaction' }
+        end
+    end
+end
+
+function CheatEngineView:mousereleased(x, y, button)
+    if button == 1 and self._sb then
+        if self._sb.list and self._sb.list.dragging then
+            self._sb.list.dragging = false
+            self._sb.list.drag = nil
+        end
+        if self._sb.cheats and self._sb.cheats.dragging then
+            self._sb.cheats.dragging = false
+            self._sb.cheats.drag = nil
+        end
+    end
 end
 
 function CheatEngineView:wheelmoved(x, y, item_count, viewport_width, viewport_height)

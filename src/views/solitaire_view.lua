@@ -11,9 +11,14 @@ local PADDING = (SOLCFG.layout and SOLCFG.layout.padding) or 12
 local TOP_MARGIN = (SOLCFG.layout and SOLCFG.layout.top_margin) or 40
 local FACEUP_DY = (SOLCFG.layout and SOLCFG.layout.faceup_dy) or 24
 local FACEDOWN_DY = (SOLCFG.layout and SOLCFG.layout.facedown_dy) or 14
+local WASTE_FAN_DX = (SOLCFG.layout and SOLCFG.layout.waste_fan_dx) or 16
 
 local RANK_STR = {"A","2","3","4","5","6","7","8","9","10","J","Q","K"}
 local SolitaireSave = require('src.utils.solitaire_save')
+local SettingsManager = require('src.utils.settings_manager')
+local UI = require('src.views.ui_components')
+local Backs = require('src.utils.solitaire_backs')
+local Fronts = require('src.utils.solitaire_fronts')
 
 function SolitaireView:init(state)
     self.state = state
@@ -21,8 +26,10 @@ function SolitaireView:init(state)
     -- Options persist across new games
     self.options = {
         draw_count = 1,          -- 1 or 3
-        redeal_limit = nil       -- nil = unlimited, or number (e.g., 3, 1)
+        redeal_limit = nil,      -- nil = unlimited, or number (e.g., 3, 1)
+        empty_any = false        -- false: only Kings in empty tableau; true: any card
     }
+    self._last_saved_card_back = nil
     self:resetGame()
 end
 
@@ -75,9 +82,35 @@ function SolitaireView:setViewport(x, y, w, h)
     end
 end
 
-function SolitaireView:enter() end
+function SolitaireView:enter()
+    self:_syncOptionsFromSettings()
+end
+
+-- Apply any persisted global settings to view options
+function SolitaireView:_syncOptionsFromSettings()
+    local s = SettingsManager and SettingsManager.getAll and SettingsManager.getAll() or nil
+    if not s then return end
+    -- draw_count
+    local dc = s.solitaire_draw_count; if dc == 1 or dc == 3 then self.options.draw_count = dc end
+    -- redeal_limit: "infinite" or number
+    local rl = s.solitaire_redeal_limit
+    if rl == 'infinite' or rl == nil then self.options.redeal_limit = nil elseif type(rl) == 'number' then self.options.redeal_limit = rl end
+    -- empty_any
+    if s.solitaire_empty_any ~= nil then self.options.empty_any = not not s.solitaire_empty_any end
+    -- card back id
+    self.options.card_back = s.solitaire_card_back or self.options.card_back or Backs.getDefaultId()
+end
 
 function SolitaireView:update(dt)
+    -- Keep options in sync with global settings (reflect changes from Settings UI immediately)
+    self:_syncOptionsFromSettings()
+    -- Persist snapshot if card back changed so it survives restarts
+    if self.options and self.options.card_back and self.options.card_back ~= self._last_saved_card_back then
+        if self.getSnapshot then
+            local ok, snap = pcall(self.getSnapshot, self)
+            if ok and snap then pcall(SolitaireSave.save, snap); self._last_saved_card_back = self.options.card_back end
+        end
+    end
     if self.mode == 'win' then
         self:updateWin(dt)
     end
@@ -100,7 +133,7 @@ function SolitaireView:getSnapshot()
     -- Serialize tableaus, stock, waste, foundations, options and redeals
     local data = {
         mode = self.mode,
-        options = { draw_count = self.options.draw_count, redeal_limit = self.options.redeal_limit },
+    options = { draw_count = self.options.draw_count, redeal_limit = self.options.redeal_limit, empty_any = self.options.empty_any, card_back = self.options.card_back },
         redeals_used = self.redeals_used,
         stock = serializePile(self.stock),
         waste = serializePile(self.waste),
@@ -129,6 +162,8 @@ function SolitaireView:loadSnapshot(data)
     if data.options then
         self.options.draw_count = data.options.draw_count or 1
         self.options.redeal_limit = data.options.redeal_limit
+        self.options.empty_any = not not data.options.empty_any
+        self.options.card_back = data.options.card_back or self.options.card_back
     end
     self.redeals_used = data.redeals_used or 0
     local function rebuildPile(src)
@@ -156,6 +191,10 @@ function SolitaireView:loadSnapshot(data)
     -- reset transient state
     self.drag = { active=false }
     self.history = {}
+    -- Sync options from global Settings (if present)
+    self:_syncOptionsFromSettings()
+    -- keep last-saved marker aligned
+    self._last_saved_card_back = self.options and self.options.card_back or nil
 end
 
 -- Layout helpers
@@ -179,9 +218,9 @@ function SolitaireView:getTableauColumnRect(col)
 end
 
 -- Rules
-local function canPlaceOnTableau(card, destTop)
-    -- Empty column accepts any card (easier mode)
-    if not destTop then return true end
+function SolitaireView:canPlaceOnTableau(card, destTop)
+    -- Empty column rule is configurable
+    if not destTop then return (self.options and self.options.empty_any) or (card.rank == 13) end
     return destTop.faceup and (card.color ~= destTop.color) and (card.rank == destTop.rank - 1)
 end
 
@@ -199,19 +238,30 @@ end
 function SolitaireView:drawCard(x, y, card)
     local g = love.graphics
     if card.faceup then
-        g.setColor(1,1,1)
-        g.rectangle('fill', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
-        g.setColor(0,0,0)
-        g.rectangle('line', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
-        local rank = RANK_STR[card.rank]
-        if card.color == 'r' then g.setColor(0.8,0,0) else g.setColor(0,0,0) end
-        g.print(rank, x + 6, y + 5)
+        -- Try drawing a provided front image; fall back to the simple face-up style
+        local drawn = Fronts.drawFront(card.suit, card.rank, x, y, CARD_W, CARD_H)
+        if not drawn then
+            g.setColor(1,1,1)
+            g.rectangle('fill', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
+            g.setColor(0,0,0)
+            g.rectangle('line', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
+            local rank = RANK_STR[card.rank]
+            if card.color == 'r' then g.setColor(0.8,0,0) else g.setColor(0,0,0) end
+            g.print(rank, x + 6, y + 5)
+        end
     else
-        local back = (SOLCFG.card and SOLCFG.card.back_color) or {0.3,0.5,0.8}
-        g.setColor(back[1], back[2], back[3])
-        g.rectangle('fill', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
-        g.setColor(1,1,1)
-        g.rectangle('line', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
+        -- Try drawing the selected back image; fall back to solid color
+        local drew = false
+        if self.options and self.options.card_back then
+            drew = Backs.drawBack(self.options.card_back, x, y, CARD_W, CARD_H)
+        end
+        if not drew then
+            local back = (SOLCFG.card and SOLCFG.card.back_color) or {0.3,0.5,0.8}
+            g.setColor(back[1], back[2], back[3])
+            g.rectangle('fill', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
+            g.setColor(1,1,1)
+            g.rectangle('line', x, y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
+        end
     end
 end
 
@@ -229,15 +279,39 @@ function SolitaireView:drawBoard()
     if #self.stock > 0 then self:drawCard(stockRect.x, stockRect.y, {faceup=false})
     else local ec=(SOLCFG.empty_slot_color or {0.2,0.4,0.2}); g.setColor(ec[1],ec[2],ec[3]); g.rectangle('line', stockRect.x, stockRect.y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6) end
 
-    -- Waste (draw top only for simplicity)
-    if #self.waste > 0 then self:drawCard(wasteRect.x, wasteRect.y, self.waste[#self.waste])
+    -- Waste (show up to draw_count cards fanned; only top is playable)
+    if #self.waste > 0 then
+        local n = math.min(self.options.draw_count or 1, #self.waste)
+        local startIndex = #self.waste - n + 1
+        local draggingWasteTop = (self.drag.active and self.drag.from and self.drag.from.type == 'waste')
+        for i = startIndex, #self.waste do
+            -- Hide the top card at its origin while dragging
+            if not (draggingWasteTop and i == #self.waste) then
+                local dx = (i - startIndex) * WASTE_FAN_DX
+                self:drawCard(wasteRect.x + dx, wasteRect.y, self.waste[i])
+            end
+        end
     else local ec=(SOLCFG.empty_slot_color or {0.2,0.4,0.2}); g.setColor(ec[1],ec[2],ec[3]); g.rectangle('line', wasteRect.x, wasteRect.y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6) end
 
     -- Foundations
     for i=1,4 do
         local r = foundationRects[i]
-    if #self.foundations[i] > 0 then self:drawCard(r.x, r.y, self.foundations[i][#self.foundations[i]])
-    else local ec=(SOLCFG.empty_slot_color or {0.2,0.4,0.2}); g.setColor(ec[1],ec[2],ec[3]); g.rectangle('line', r.x, r.y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6) end
+        local pile = self.foundations[i]
+        local draggingTopHere = (self.drag.active and self.drag.from and self.drag.from.type=='foundation' and self.drag.from.idx==i)
+        if #pile > 0 then
+            if draggingTopHere then
+                -- While dragging the top card, show the next card if any, otherwise the empty slot
+                if #pile > 1 then
+                    self:drawCard(r.x, r.y, pile[#pile - 1])
+                else
+                    local ec=(SOLCFG.empty_slot_color or {0.2,0.4,0.2}); g.setColor(ec[1],ec[2],ec[3]); g.rectangle('line', r.x, r.y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
+                end
+            else
+                self:drawCard(r.x, r.y, pile[#pile])
+            end
+        else
+            local ec=(SOLCFG.empty_slot_color or {0.2,0.4,0.2}); g.setColor(ec[1],ec[2],ec[3]); g.rectangle('line', r.x, r.y, CARD_W, CARD_H, (SOLCFG.card and SOLCFG.card.corner_radius) or 6, (SOLCFG.card and SOLCFG.card.corner_radius) or 6)
+        end
     end
 
     -- Tableau
@@ -265,12 +339,22 @@ function SolitaireView:drawBoard()
 
     -- HUD: options
     love.graphics.setColor(1,1,1)
-    local hud = string.format("Draw:%d  Redeals:%s%s", self.options.draw_count,
+    local empty_rule = (self.options.empty_any and "Any") or "Kings"
+    local hud = string.format("Draw:%d  Redeals:%s%s  Empty:%s", self.options.draw_count,
         (self.options.redeal_limit and tostring(self.options.redeal_limit) or "∞"),
-        (self.options.redeal_limit and string.format(" (%d used)", self.redeals_used) or ""))
+        (self.options.redeal_limit and string.format(" (%d used)", self.redeals_used) or ""),
+        empty_rule)
     local hud_pos = SOLCFG.hud or { x1 = PADDING, x2 = PADDING + 200, y = 8 }
     love.graphics.print(hud, hud_pos.x1 or PADDING, hud_pos.y or 8)
-    love.graphics.print("N:New  D:Draw1/3  L:Redeal limit  Z:Undo", hud_pos.x2 or (PADDING + 200), hud_pos.y or 8)
+    -- Settings and New Game buttons (top-right)
+    local btn_w, btn_h = 90, 24
+    local btn_y = (hud_pos.y or 8) - 6
+    local settings_x = math.max((hud_pos.x2 or (PADDING + 200)) + 8, vp.width - (btn_w*2 + PADDING + 8))
+    local newgame_x = settings_x + btn_w + 8
+    UI.drawButton(settings_x, btn_y, btn_w, btn_h, 'Settings', true, false)
+    UI.drawButton(newgame_x, btn_y, btn_w, btn_h, 'New Game', true, false)
+    self._settings_btn_rect = { x = settings_x, y = btn_y, w = btn_w, h = btn_h }
+    self._newgame_btn_rect = { x = newgame_x, y = btn_y, w = btn_w, h = btn_h }
 end
 
 function SolitaireView:draw()
@@ -336,9 +420,15 @@ end
 function SolitaireView:startDragFromWaste(mx, my)
     if #self.waste == 0 then return end
     local stockRect, wasteRect = self:getTopRowPositions()
-    if not self:hitInRect(mx, my, wasteRect) then return end
+    -- Only allow dragging when clicking the actual top card (rightmost in the fan)
+    local n = math.min(self.options.draw_count or 1, #self.waste)
+    local fanOffset = (n - 1) * WASTE_FAN_DX
+    local topX, topY = wasteRect.x + fanOffset, wasteRect.y
+    local topRect = { x = topX, y = topY, w = CARD_W, h = CARD_H }
+    if not self:hitInRect(mx, my, topRect) then return end
+    -- Only the top waste card is draggable (even if 3 shown)
     local card = self.waste[#self.waste]
-    self.drag = { active=true, cards={card}, from={type='waste'}, x=mx, y=my, offset_x=mx - wasteRect.x, offset_y=my - wasteRect.y }
+    self.drag = { active=true, cards={card}, from={type='waste'}, x=mx, y=my, offset_x=mx - topX, offset_y=my - topY }
 end
 
 function SolitaireView:startDragFromFoundation(mx, my)
@@ -355,6 +445,18 @@ end
 function SolitaireView:mousepressed(x, y, button)
     if self.mode == 'win' then return { type = 'content_interaction' } end
     if button ~= 1 then return false end
+
+    -- Settings button click
+    local r = self._settings_btn_rect
+    if r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
+        return { type='event', name='launch_program', program_id='solitaire_settings' }
+    end
+    -- New Game button click
+    local ng = self._newgame_btn_rect
+    if ng and x >= ng.x and x <= ng.x + ng.w and y >= ng.y and y <= ng.y + ng.h then
+        self:resetGame()
+        return { type='content_interaction' }
+    end
 
     local stockRect, wasteRect = self:getTopRowPositions()
     -- Click stock: flip 1 to waste, else recycle
@@ -408,9 +510,13 @@ function SolitaireView:mousereleased(x, y, button)
     local dc = SOLCFG.double_click or { time = 0.35, jitter = 8 }
     if t - self._last_click.t < (dc.time or 0.35) and math.abs(x - self._last_click.x) < (dc.jitter or 8) and math.abs(y - self._last_click.y) < (dc.jitter or 8) then
         -- Try waste first
-        local moved = false
-        local stockRect, wasteRect = self:getTopRowPositions()
-        if self:hitInRect(x, y, wasteRect) and #self.waste>0 then
+    local moved = false
+    local stockRect, wasteRect = self:getTopRowPositions()
+    -- Use the fanned hitbox for waste double-click too
+    local n = math.min(self.options.draw_count or 1, #self.waste)
+    local fanOffset = (n - 1) * WASTE_FAN_DX
+    local fanRect = { x = wasteRect.x, y = wasteRect.y, w = CARD_W + fanOffset, h = CARD_H }
+    if self:hitInRect(x, y, fanRect) and #self.waste>0 then
             local c = self.waste[#self.waste]
             for i=1,4 do local top=self.foundations[i][#(self.foundations[i])]; if canPlaceOnFoundation(c, top) then table.remove(self.waste); table.insert(self.foundations[i], c); table.insert(self.history, { from={type='waste'}, to={type='foundation', idx=i}, cards={c} }); moved=true; break end end
         end
@@ -444,6 +550,8 @@ function SolitaireView:tryDrop(x, y)
             local destTop = self.foundations[i][#(self.foundations[i])]
             local card = self.drag.cards[#self.drag.cards]
             if #self.drag.cards == 1 and canPlaceOnFoundation(card, destTop) then
+                -- Ensure the card being moved to foundation is face up
+                card.faceup = true
                 -- capture possible flip under origin
                 local flipped=nil
                 if self.drag.from.type=='tableau' and self.drag.from.index>1 then
@@ -467,7 +575,7 @@ function SolitaireView:tryDrop(x, y)
         if self:hitInRect(x, y, rect) then
             local destTop = self.tableau[c][#(self.tableau[c])]
             local first = self.drag.cards[1]
-            if canPlaceOnTableau(first, destTop) then
+            if self:canPlaceOnTableau(first, destTop) then
                 -- capture possible flip under origin
                 local flipped=nil
                 if self.drag.from.type=='tableau' and self.drag.from.index>1 then
@@ -519,51 +627,7 @@ function SolitaireView:postMoveCleanup()
 end
 
 function SolitaireView:keypressed(key)
-    if key == 'space' then
-        -- Draw based on difficulty option
-        local n = math.min(self.options.draw_count, #self.stock)
-        for i=1,n do local c=table.remove(self.stock); if c then c.faceup=true; table.insert(self.waste, c) end end
-        return { type='content_interaction' }
-    elseif key == 'n' then
-        -- New game keeps options
-        self:resetGame()
-        return { type='content_interaction' }
-    elseif key == 'd' then
-        -- Toggle draw 1/3
-        self.options.draw_count = (self.options.draw_count == 1) and 3 or 1
-        return { type='content_interaction' }
-    elseif key == 'l' then
-        -- Cycle redeal limit: ∞ -> 3 -> 1 -> ∞
-        local v = self.options.redeal_limit
-        if v == nil then self.options.redeal_limit = 3
-        elseif v == 3 then self.options.redeal_limit = 1
-        else self.options.redeal_limit = nil end
-        self.redeals_used = 0
-        return { type='content_interaction' }
-    elseif key == 'z' then
-        -- Undo last placement
-        if self.history and #self.history>0 then
-            local m = table.remove(self.history)
-            -- remove from destination
-            if m.to.type=='foundation' then
-                for i=1,#m.cards do table.remove(self.foundations[m.to.idx]) end
-            elseif m.to.type=='tableau' then
-                for i=1,#m.cards do table.remove(self.tableau[m.to.col]) end
-            end
-            -- restore to origin
-            if m.from.type=='tableau' then
-                for _,card in ipairs(m.cards) do table.insert(self.tableau[m.from.col], card) end
-            elseif m.from.type=='waste' then
-                for _,card in ipairs(m.cards) do table.insert(self.waste, card) end
-            elseif m.from.type=='foundation' then
-                for _,card in ipairs(m.cards) do table.insert(self.foundations[m.from.idx], card) end
-            end
-            -- restore flipped state if any
-            if m.flipped and m.flipped.card then m.flipped.card.faceup = false end
-            self.drag = { active=false }
-        end
-        return { type='content_interaction' }
-    elseif key == 'a' then
+    if key == 'a' then
         -- Auto-move top waste/tableau to foundations when legal (repeat while possible)
         local moved = true
         while moved do
@@ -583,7 +647,7 @@ function SolitaireView:keypressed(key)
                 if c then
                     local flipped=nil
                     if #pile>1 and pile[#pile-1].faceup==false then flipped={col=col, card=pile[#pile-1]} end
-                    for i=1,4 do local top=self.foundations[i][#(self.foundations[i])]; if canPlaceOnFoundation(c, top) then table.remove(pile); table.insert(self.foundations[i], c); table.insert(self.history, { from={type='tableau', col=col, index=#pile+1}, to={type='foundation', idx=i}, cards={c}, flipped=flipped }); moved=true; break end end
+                    for i=1,4 do local top=self.foundations[i][#(self.foundations[i])]; if canPlaceOnFoundation(c, top) then table.remove(pile); c.faceup=true; table.insert(self.foundations[i], c); table.insert(self.history, { from={type='tableau', col=col, index=#pile+1}, to={type='foundation', idx=i}, cards={c}, flipped=flipped }); moved=true; break end end
                     if moved then break end
                 end
             end

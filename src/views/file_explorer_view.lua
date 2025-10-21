@@ -22,7 +22,8 @@ function FileExplorerView:init(controller, di)
     self.address_bar_height = V.address_bar_height or 25
     self.status_bar_height = V.status_bar_height or 20
     self.item_height = V.item_height or 25
-    self.scrollbar_width = (V.scrollbar_width or 15)
+    -- Scrollbar lane width from config (track + margin)
+    self.scrollbar_width = UIComponents.getScrollbarLaneWidth()
     self.scroll_offset = 0
 
     -- Hover state
@@ -34,6 +35,8 @@ function FileExplorerView:init(controller, di)
     self.last_click_time = 0
 
     -- No modal rendering here; Control Panel applets launch as separate windows
+    -- Scrollbar interaction state
+    self._sb = { list = { dragging = false, geom = nil, drag = nil } }
 end
 
 function FileExplorerView:updateLayout(width, height)
@@ -228,10 +231,23 @@ function FileExplorerView:drawItemList(x, y, width, height, contents, selected_i
         self:drawItem(x, item_y, width, self.item_height, item, is_selected, is_hovered)
     end
 
-    -- Draw scrollbar if needed
+    -- Draw scrollbar if needed (using shared UI helper)
     if #contents > visible_items then
-        local sbw = self.scrollbar_width or 15
-        self:drawScrollbar(x + width - sbw, y, sbw, height, #contents, visible_items)
+        local UI = UIComponents
+        local item_h = self.item_height
+        -- Translate to the list's local origin so helper can compute at (0,0)
+        love.graphics.push()
+        love.graphics.translate(x, y)
+        local sb_geom = UI.computeScrollbar({
+            viewport_w = width,
+            viewport_h = height,
+            content_h = (#contents) * item_h,
+            offset = (self.scroll_offset or 0) * item_h,
+            -- width/margin/arrow heights/min thumb from config defaults
+        })
+        UI.drawScrollbar(sb_geom)
+        self._sb.list.geom = sb_geom
+        love.graphics.pop()
     end
 end
 
@@ -247,8 +263,8 @@ function FileExplorerView:drawItem(x, y, width, height, item, is_selected, is_ho
     else
         love.graphics.setColor(C.item_bg or {1,1,1})
     end
-    local sbw = (self.scrollbar_width or 15)
-    love.graphics.rectangle('fill', x, y, width - sbw, height) -- Exclude scrollbar area
+    local sbw = UIComponents.getScrollbarLaneWidth()
+    love.graphics.rectangle('fill', x, y, width - sbw, height) -- Exclude standardized lane
 
     -- Icon
     local I = (V.item or {})
@@ -277,46 +293,24 @@ function FileExplorerView:drawItem(x, y, width, height, item, is_selected, is_ho
         local font = love.graphics.getFont()
         local ts = (I.type_scale or 0.8)
         local text_width = font:getWidth(type_text) * ts
-        love.graphics.print(type_text, x + width - (self.scrollbar_width or 15) - text_width - 10, y + 5, 0, ts, ts)
+    love.graphics.print(type_text, x + width - UIComponents.getScrollbarLaneWidth() - text_width - 10, y + 5, 0, ts, ts)
     end
 end
 
 function FileExplorerView:drawItemIcon(x, y, size, item)
-    -- Base rectangle
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.rectangle('fill', x, y, size, size)
+    local SpriteLoader = require('src.utils.sprite_loader')
+    local sprite_loader = SpriteLoader.getInstance()
 
-    local color = {0.8, 0.8, 0.8} -- Default grey
-    if item.type == "folder" then color = {1, 1, 0}
-    elseif item.type == "executable" then color = item.icon or {0, 0.5, 0}
-    elseif item.type == "file" then color = {1, 1, 1}
-    elseif item.type == "deleted" then color = item.icon or {0.7, 0.7, 0.7}
-    elseif item.type == "special" then
-        -- Distinguish control panel applets by color
-        if item.special_type == 'control_panel_general' then
-            color = {0.6, 0.8, 1.0}
-        elseif item.special_type == 'control_panel_desktop' then
-            color = {0.6, 1.0, 0.6}
-        elseif item.special_type == 'control_panel_screensavers' then
-            color = {1.0, 0.8, 0.4}
-        else
-            color = {0.85, 0.85, 0.85}
-        end
-    end
-
-    -- Draw icon color square
-    love.graphics.setColor(color)
-    love.graphics.rectangle('fill', x + 1, y + 1, size - 2, size - 2)
-
-    -- Border
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.rectangle('line', x, y, size, size)
+    local sprite_name = self:resolveItemSprite(item)
+    local tint = {1,1,1}
+    -- Draw sprite or fallback box via sprite_loader
+    sprite_loader:drawSprite(sprite_name, x, y, size, size, tint)
 
     -- Special overlay for deleted
     if item.type == "deleted" then
-    local di = self.controller and self.controller.di
-    local C = di and di.config or {}
-    local V = (C.ui and C.ui.views and C.ui.views.file_explorer) or {}
+        local di = self.controller and self.controller.di
+        local C = di and di.config or {}
+        local V = (C.ui and C.ui.views and C.ui.views.file_explorer) or {}
         local del = V.deleted_overlay or { color = {1,0,0,0.7}, line_width = 2 }
         love.graphics.setColor(del.color or {1,0,0,0.7})
         love.graphics.setLineWidth(del.line_width or 2)
@@ -326,28 +320,88 @@ function FileExplorerView:drawItemIcon(x, y, size, item)
     end
 end
 
-
-function FileExplorerView:drawScrollbar(x, y, width, height, total_items, visible_items)
-    -- Track
-    local di = self.controller and self.controller.di
-    local C = di and di.config or {}
-    local V = (C.ui and C.ui.views and C.ui.views.file_explorer) or {}
-    local C = V.colors or {}
-    love.graphics.setColor(C.scrollbar_track or {0.9,0.9,0.9})
-    love.graphics.rectangle('fill', x, y, width, height)
-
-    -- Thumb
-    if total_items > visible_items then
-         local thumb_height = math.max(20, (visible_items / total_items) * height)
-         local scroll_range = math.max(1, total_items - visible_items)
-         local thumb_y = y + (self.scroll_offset / scroll_range) * (height - thumb_height)
-         -- Clamp thumb position
-         thumb_y = math.max(y, math.min(thumb_y, y + height - thumb_height))
-
-         love.graphics.setColor(C.scrollbar_thumb or {0.6,0.6,0.6})
-         love.graphics.rectangle('fill', x, thumb_y, width, thumb_height)
+function FileExplorerView:resolveItemSprite(item)
+    -- Prefer program-specific icon for executables and deleted items
+    -- Special-case the Control Panel root folder
+    if item.type == 'folder' and (item.path == '/Control Panel' or item.name == 'Control Panel') then
+        return 'directory_control_panel-0'
     end
+
+    -- Control Panel applets listed inside the Control Panel folder
+    if item.path and item.path:match('^/Control Panel/') then
+        local panel_key = item.name and item.name:lower():gsub('%s+', '') or nil
+        local sprite = panel_key and self:getControlPanelIconSprite(panel_key) or nil
+        if sprite then return sprite end
+        -- Fallbacks: try program icon, then a default control-panel gear
+        if item.program_id then
+            local program = self.controller.program_registry:getProgram(item.program_id)
+            if program and program.icon_sprite then return program.icon_sprite end
+        end
+        return 'settings_gear-0'
+    end
+
+    if item.type == 'deleted' and item.icon_sprite then
+        return item.icon_sprite
+    end
+    if item.type == 'executable' then
+        -- If coming from desktop or folder with a program_id, try that program's icon
+        if item.program_id then
+            local program = self.controller.program_registry:getProgram(item.program_id)
+            if program and program.icon_sprite then return program.icon_sprite end
+        end
+        return 'executable-0'
+    end
+    if item.type == 'folder' then
+        -- Use a generic folder icon
+        return 'directory_open_file_mydocs_small-0'
+    end
+    if item.type == 'file' then
+        -- Extension-based defaults
+        if item.name and item.name:match('%.txt$') then
+            return 'notepad_file-0'
+        elseif item.name and item.name:match('%.json$') then
+            return 'file_lines-0'
+        elseif item.name and item.name:match('%.exe$') then
+            return 'executable-0'
+        else
+            return 'document-0'
+        end
+    end
+    if item.type == 'special' then
+        if item.special_type == 'desktop_view' then return 'computer_explorer-0' end
+        if item.special_type == 'recycle_bin' then return 'recycle_bin_empty-0' end
+        if item.special_type == 'my_documents' then return 'directory_open_file_mydocs_small-0' end
+        if item.special_type == 'control_panel_general' or item.special_type == 'control_panel_desktop' or item.special_type == 'control_panel_screensavers' then
+            return 'settings_gear-0'
+        end
+        return 'gears_tweakui_a-0'
+    end
+    return 'document-0'
 end
+
+-- Cached fetch of per-panel icon from control_panel JSON
+function FileExplorerView:getControlPanelIconSprite(panel_key)
+    self._cp_icons_cache = self._cp_icons_cache or {}
+    if self._cp_icons_cache[panel_key] ~= nil then
+        return self._cp_icons_cache[panel_key]
+    end
+    local ok, sprite = pcall(function()
+        local Paths = require('src.paths')
+        local json = require('json')
+        local file_path = Paths.assets.data .. 'control_panels/' .. panel_key .. '.json'
+        local read_ok, contents = pcall(love.filesystem.read, file_path)
+        if not read_ok or not contents then return nil end
+        local decode_ok, data = pcall(json.decode, contents)
+        if not decode_ok or type(data) ~= 'table' then return nil end
+        return data.icon_sprite
+    end)
+    local result = (ok and sprite) or nil
+    self._cp_icons_cache[panel_key] = result -- cache even nil to avoid repeated IO
+    return result
+end
+
+
+-- Removed old drawScrollbar; now using UIComponents.drawScrollbar
 
 function FileExplorerView:drawStatusBar(x, y, width, contents)
     -- Status bar background
@@ -415,6 +469,31 @@ function FileExplorerView:mousepressed(x, y, button, contents, viewport_width, v
         local content_y = self.toolbar_height + self.address_bar_height -- Relative y start
         local content_h = viewport_height - content_y - self.status_bar_height
 
+        -- Scrollbar interactions (compute local coords relative to list origin)
+        if self._sb and self._sb.list and self._sb.list.geom then
+            local g = self._sb.list.geom
+            local lx, ly = x - 0, y - content_y
+            if ly >= 0 and ly <= content_h then
+                local UI = UIComponents
+                local off_px = (self.scroll_offset or 0) * self.item_height
+                local res = UI.scrollbarHandlePress(lx, ly, button, g, off_px, nil)
+                if res and res.consumed then
+                    if res.new_offset_px ~= nil then
+                        local contents_count = #contents
+                        local visible_items = math.max(1, math.floor(content_h / self.item_height))
+                        local max_off = math.max(0, contents_count - visible_items)
+                        local new_idx = math.floor((res.new_offset_px / self.item_height) + 0.0001)
+                        self.scroll_offset = math.max(0, math.min(max_off, new_idx))
+                    end
+                    if res.drag then
+                        self._sb.list.dragging = true
+                        self._sb.list.drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
+                    end
+                    return { name = 'noop' }
+                end
+            end
+        end
+
         local clicked_item = self:getItemAtPosition(x, y, contents, content_y, content_h, viewport_width) -- Pass local coords
 
         if clicked_item then
@@ -462,7 +541,35 @@ function FileExplorerView:wheelmoved(x, y, viewport_width, viewport_height)
 end
 
 function FileExplorerView:mousemoved(x, y, dx, dy, viewport_width, viewport_height, is_modal)
-    -- No modal-specific handling
+    local content_y = self.toolbar_height + self.address_bar_height
+    local content_h = viewport_height - content_y - self.status_bar_height
+    if self._sb and self._sb.list and self._sb.list.dragging and self._sb.list.geom then
+        local g = self._sb.list.geom
+        local lx, ly = x - 0, y - content_y
+        if ly >= -50 and ly <= content_h + 50 then -- allow slight out-of-bounds drags
+            local UI = UIComponents
+            local res = UI.scrollbarHandleMove(ly, self._sb.list.drag, g)
+            if res and res.consumed and res.new_offset_px ~= nil then
+                local contents = self.controller:getCurrentViewContents()
+                local contents_count = (type(contents) == 'table') and #contents or 0
+                local visible_items = math.max(1, math.floor(content_h / self.item_height))
+                local max_off = math.max(0, contents_count - visible_items)
+                local new_idx = math.floor((res.new_offset_px / self.item_height) + 0.0001)
+                self.scroll_offset = math.max(0, math.min(max_off, new_idx))
+                return { name = 'noop' }
+            end
+        end
+    end
+end
+
+function FileExplorerView:mousereleased(x, y, button)
+    if button == 1 and self._sb and self._sb.list then
+        if self._sb.list.dragging then
+            self._sb.list.dragging = false
+            self._sb.list.drag = nil
+            return { name = 'noop' }
+        end
+    end
 end
 
 function FileExplorerView:getButtonAtPosition(x, y, is_recycle_bin)
@@ -519,8 +626,8 @@ function FileExplorerView:getItemAtPosition(x, y, contents, content_y, content_h
     local item_index = start_index + item_index_in_view
 
     if item_index >= 1 and item_index <= #contents then
-        -- Check x bounds (excluding scrollbar)
-        if x >= 0 and x <= viewport_width - 15 then
+        -- Check x bounds (excluding scrollbar lane)
+        if x >= 0 and x <= viewport_width - UIComponents.getScrollbarLaneWidth() then
             return contents[item_index]
         end
     end

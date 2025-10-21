@@ -218,7 +218,18 @@ function FileExplorerState:mousepressed(x, y, button)
             if can_create_shortcut then
                 local target_program_id = item.program_id
                 local is_visible = (item.type == "executable" and target_program_id) and self.desktop_icons:isIconVisible(target_program_id) or false
-                table.insert(options, { id = "create_shortcut_desktop", label = "Create Shortcut (Desktop)", enabled = not is_visible })
+                table.insert(options, { id = "create_shortcut_desktop", label = "Create Shortcut (Desktop)", enabled = (item.type ~= 'executable') or not is_visible })
+                -- Start Menu shortcut option
+                local start_enabled = true
+                if item.type == "executable" and target_program_id then
+                    local program = self.program_registry:getProgram(target_program_id)
+                    local overridden = self.program_registry.hasStartMenuOverride and self.program_registry:hasStartMenuOverride(target_program_id)
+                    start_enabled = not ((program and program.in_start_menu) or overridden)
+                end
+                table.insert(options, { id = "create_shortcut_start_menu", label = "Create Shortcut (Start Menu)", enabled = start_enabled })
+                if item.type == 'executable' and item.program_id and item.program_id:match('^shortcut_') then
+                    table.insert(options, { id = "remove_shortcut", label = "Remove Shortcut", enabled = true })
+                end
             end
             table.insert(options, { id = "delete", label = "Delete (NYI)", enabled = true })
             table.insert(options, { id = "separator" })
@@ -289,6 +300,18 @@ function FileExplorerState:mousemoved(x, y, dx, dy)
                 end
             end
         end
+    end
+    -- Always forward to the view for generic interactions (e.g., scrollbar drags)
+    if self.view and self.view.mousemoved then
+        pcall(self.view.mousemoved, self.view, x, y, dx, dy, self.viewport.width, self.viewport.height, false)
+    end
+end
+
+function FileExplorerState:mousereleased(x, y, button)
+    if not self.viewport then return end
+    if self.view and self.view.mousereleased then
+        pcall(self.view.mousereleased, self.view, x, y, button)
+        return { type = 'content_interaction' }
     end
 end
 
@@ -440,10 +463,11 @@ function FileExplorerState:handleItemDoubleClick(item)
             return { type = "event", name = "launch_program", program_id = action.program_id }
         elseif action.type == "show_text" then
             return { type = "event", name = "show_text", title = action.title, content = action.content }
-        elseif action.type == "special" then
-             if action.special_type == "desktop_view" then self:navigateTo("/My Computer/Desktop"); return { type = "content_interaction" }
-             elseif action.special_type == "recycle_bin" then self:navigateTo("/Recycle Bin"); return { type = "content_interaction" }
-             end
+       elseif action.type == "special" then
+           if action.special_type == "desktop_view" then self:navigateTo("/My Computer/Desktop"); return { type = "content_interaction" }
+           elseif action.special_type == "recycle_bin" then self:navigateTo("/Recycle Bin"); return { type = "content_interaction" }
+           elseif action.special_type == "my_documents" then self:navigateTo("/My Computer/C:/Documents"); return { type = "content_interaction" }
+           end
         end
     elseif action and action.type == "error" then
         print("Error opening item: " .. action.message)
@@ -459,13 +483,55 @@ function FileExplorerState:createShortcutOnDesktop(item)
         -- DesktopState.ensureIconIsVisible handles this logic
         return { type = "event", name = "ensure_icon_visible", program_id = item.program_id }
     elseif item.type == "folder" then
-        -- TODO: Implement folder shortcut logic (needs new icon type/data)
-    love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Creating shortcuts for folders is not yet implemented.", "info")
+        -- Create a desktop folder shortcut via ProgramRegistry
+        local name = item.name or "Folder"
+        local program = self.program_registry:addFolderShortcut(name, item.path, { on_desktop = true, shortcut_type = 'folder', icon_sprite = 'directory_open_file_mydocs_small-0' })
+        if program then
+            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut created on Desktop.", "info")
+            return { type = "event", name = "ensure_icon_visible", program_id = program.id }
+        end
     elseif item.type == "file" then
-        -- TODO: Implement file shortcut logic (needs new icon type/data)
-    love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Creating shortcuts for files is not yet implemented.", "info")
+        -- Optional: create shortcut to parent folder
+        local name = item.name or "File"
+        local icon = 'document-0'
+        if name:match('%.txt$') then icon = 'notepad_file-0' elseif name:match('%.json$') then icon = 'file_lines-0' elseif name:match('%.exe$') then icon = 'executable-0' end
+        local program = self.program_registry:addFolderShortcut(name, item.path, { on_desktop = true, shortcut_type = 'file', icon_sprite = icon })
+        if program then
+            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut to parent folder created on Desktop.", "info")
+            return { type = "event", name = "ensure_icon_visible", program_id = program.id }
+        end
     end
     return nil -- No action bubbled up yet
+end
+
+function FileExplorerState:createShortcutInStartMenu(item)
+    print("Attempting to create start menu shortcut for:", item.name, "Type:", item.type)
+    if item.type == "executable" and item.program_id then
+        -- If program exists, toggle in_start_menu true for session
+        local program = self.program_registry:getProgram(item.program_id)
+        if program then
+            program.in_start_menu = true
+            if self.program_registry.setStartMenuOverride then self.program_registry:setStartMenuOverride(item.program_id, true) end
+            return { type = "content_interaction" }
+        end
+    elseif item.type == "folder" then
+        local name = item.name or "Folder"
+        local program = self.program_registry:addFolderShortcut(name, item.path, { in_start_menu = true, shortcut_type = 'folder', icon_sprite = 'directory_open_file_mydocs_small-0' })
+        if program then
+            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.", "info")
+            return { type = "content_interaction" }
+        end
+    elseif item.type == "file" then
+        local name = item.name or "File"
+        local icon = 'document-0'
+        if name:match('%.txt$') then icon = 'notepad_file-0' elseif name:match('%.json$') then icon = 'file_lines-0' elseif name:match('%.exe$') then icon = 'executable-0' end
+        local program = self.program_registry:addFolderShortcut(name, item.path, { in_start_menu = true, shortcut_type = 'file', icon_sprite = icon })
+        if program then
+            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut to parent folder created in Start Menu.", "info")
+            return { type = "content_interaction" }
+        end
+    end
+    return nil
 end
 
 function FileExplorerState:getDesktopContents()
@@ -502,7 +568,8 @@ function FileExplorerState:getRecycleBinContents()
                 type = "deleted", -- Special type for view rendering
                 program_id = item.program_id,
                 deleted_at = item.deleted_at,
-                icon = program.icon_color, -- Use program's icon color
+                icon = program.icon_color, -- Keep color if needed elsewhere
+                icon_sprite = program.icon_sprite, -- Use program's icon sprite for display
                 original_position = item.original_position -- Pass original pos if needed
             })
         end

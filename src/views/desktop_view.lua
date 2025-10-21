@@ -3,6 +3,7 @@ local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local Strings = require('src.utils.strings')
 local DesktopView = Object:extend('DesktopView')
+local Wallpapers = require('src.utils.wallpapers')
 
 function DesktopView:init(program_registry, player_data, window_manager, desktop_icons, recycle_bin, di)
     -- Optional DI for views: forward to UIComponents and allow DI Config/Strings
@@ -15,6 +16,7 @@ function DesktopView:init(program_registry, player_data, window_manager, desktop
     self.window_manager = window_manager
     self.desktop_icons = desktop_icons -- Injected
     self.recycle_bin = recycle_bin -- Injected
+    self.file_system = (di and di.fileSystem) or nil
 
     local taskbar_cfg = (self.config and self.config.ui and self.config.ui.taskbar) or {}
     self.taskbar_height = taskbar_cfg.height or 40
@@ -38,19 +40,9 @@ function DesktopView:init(program_registry, player_data, window_manager, desktop
 
     self:calculateDefaultIconPositionsIfNeeded() -- Calculate defaults once
 
-    -- Start menu layout
-    local start_cfg = (desktop_cfg.start_menu or {})
-    self.start_menu_w = start_cfg.width or 200
-    self.start_menu_h = start_cfg.height or 300
-    self.start_menu_x = 0
-    self.start_menu_y = love.graphics.getHeight() - self.taskbar_height - self.start_menu_h
+    -- Start Menu UI is handled by StartMenuView (geometry/state removed from DesktopView)
 
-    -- Run dialog layout
-    local run_cfg = desktop_cfg.run_dialog or {}
-    self.run_dialog_w = run_cfg.width or 400
-    self.run_dialog_h = run_cfg.height or 150
-    self.run_dialog_x = (love.graphics.getWidth() - self.run_dialog_w) / 2
-    self.run_dialog_y = (love.graphics.getHeight() - self.run_dialog_h) / 2
+    -- Legacy inline Run overlay removed (Run is a proper window now)
 
      -- Taskbar layout
     self.taskbar_start_button_width = taskbar_cfg.start_button_width or 60
@@ -109,17 +101,50 @@ function DesktopView:update(dt, start_menu_open, dragging_icon_id)
     self.start_button_hovered = self:isStartButtonHovered(mx, my)
     self.hovered_taskbar_button_id = self:getTaskbarButtonAtPosition(mx, my) -- Update taskbar hover
 
-    if start_menu_open then
-        self.hovered_start_program_id = self:getStartMenuProgramAtPosition(mx, my)
-    else
-        self.hovered_start_program_id = nil
-    end
+    -- Start Menu logic is managed by StartMenuView; nothing to update here for it
 end
 
-function DesktopView:draw(wallpaper_color, tokens, start_menu_open, run_dialog_open, run_text, dragging_icon_id)
-    -- Draw wallpaper
-    love.graphics.setColor(wallpaper_color)
-    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+-- Hit test for the Start button on the taskbar
+function DesktopView:isStartButtonHovered(x, y)
+    local taskbar_cfg = (self.config and self.config.ui and self.config.ui.taskbar) or {}
+    local left_margin = taskbar_cfg.left_margin or 10
+    local vpad = taskbar_cfg.vertical_padding or 5
+    local btn_x = left_margin
+    local btn_y = love.graphics.getHeight() - self.taskbar_height + vpad
+    local btn_w = self.taskbar_start_button_width
+    local btn_h = self.taskbar_height - 2 * vpad
+    return x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h
+end
+
+-- Clear any pending pressed item in the Start Menu (used when menu opens)
+-- Start Menu press handling removed from DesktopView
+
+function DesktopView:draw(wallpaper, tokens, start_menu_open, dragging_icon_id)
+    -- Draw wallpaper: either color or image
+    if type(wallpaper) == 'table' and wallpaper.type == 'image' and wallpaper.id then
+        -- Fill with a fallback color first
+        local c = wallpaper.color or {0,0,0}
+        love.graphics.setColor(c)
+        love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+        -- Then draw image using selected scaling mode
+        local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
+        local mode = wallpaper.scale_mode or 'fill'
+        local ok = false
+        if mode == 'fill' then ok = Wallpapers.drawCover(wallpaper.id, 0, 0, sw, sh)
+        elseif mode == 'fit' then ok = Wallpapers.drawFit(wallpaper.id, 0, 0, sw, sh)
+        elseif mode == 'stretch' then ok = Wallpapers.drawStretch(wallpaper.id, 0, 0, sw, sh)
+        elseif mode == 'center' then ok = Wallpapers.drawCenter(wallpaper.id, 0, 0, sw, sh)
+        elseif mode == 'tile' then ok = Wallpapers.drawTile(wallpaper.id, 0, 0, sw, sh)
+        end
+        if not ok then
+            -- fallback to solid color if image unavailable
+            love.graphics.setColor(wallpaper.color or {0,0,0})
+            love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+        end
+    else
+        love.graphics.setColor(wallpaper)
+        love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    end
 
     -- Draw desktop icons based on model data
     local desktop_programs = self.program_registry:getDesktopPrograms()
@@ -138,15 +163,9 @@ function DesktopView:draw(wallpaper_color, tokens, start_menu_open, run_dialog_o
     -- Draw taskbar
     self:drawTaskbar(tokens)
 
-    -- Draw start menu
-    if start_menu_open then
-        self:drawStartMenu()
-    end
+    -- Start Menu drawing handled by StartMenuView
 
-    -- Draw run dialog
-    if run_dialog_open then
-        self:drawRunDialog(run_text)
-    end
+    -- Run dialog is now a proper program window; nothing to draw here.
 end
 
 function DesktopView:drawIcon(program, hovered, position_override, is_dragging)
@@ -229,38 +248,8 @@ function DesktopView:mousepressed(x, y, button)
     return nil -- Clicked on empty space
 end
 
-function DesktopView:mousepressedStartMenu(x, y, button)
-    if button ~= 1 then return nil end
+-- Start Menu mouse handlers moved to StartMenuView
 
-     if x >= self.start_menu_x and x <= self.start_menu_x + self.start_menu_w and
-         y >= self.start_menu_y and y <= self.start_menu_y + self.start_menu_h then
-
-        local result = self:getStartMenuProgramAtPosition(x, y)
-        if result then
-            if result == "run" then return {name = "open_run"}
-            else return {name = "launch_program", program_id = result} end
-        end
-        return nil -- Click inside menu but not on item
-    else
-        return {name = "close_start_menu"} -- Clicked outside
-    end
-end
-
-function DesktopView:mousepressedRunDialog(x, y, button)
-    if button ~= 1 then return nil end
-
-    local run_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).run_dialog) or {}
-    local buttons = run_cfg.buttons or {}
-    local ok_x = self.run_dialog_x + self.run_dialog_w - (buttons.ok_offset_x or 180)
-    local ok_y = self.run_dialog_y + self.run_dialog_h - (buttons.bottom_margin or 40)
-    if x >= ok_x and x <= ok_x + (buttons.ok_w or 80) and y >= ok_y and y <= ok_y + (buttons.ok_h or 30) then return {name = "run_execute"} end
-
-    local cancel_x = self.run_dialog_x + self.run_dialog_w - (buttons.cancel_offset_x or 90)
-    local cancel_y = self.run_dialog_y + self.run_dialog_h - (buttons.bottom_margin or 40)
-    if x >= cancel_x and x <= cancel_x + (buttons.cancel_w or 80) and y >= cancel_y and y <= cancel_y + (buttons.cancel_h or 30) then return {name = "run_cancel"} end
-
-    return nil
-end
 
 -- Get program at position using model data
 function DesktopView:getProgramAtPosition(x, y)
@@ -279,62 +268,19 @@ function DesktopView:getProgramAtPosition(x, y)
 end
 
 
-function DesktopView:getStartMenuProgramAtPosition(x, y)
-    local start_programs = self.program_registry:getStartMenuPrograms()
-    local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
-    local item_y = self.start_menu_y + (start_cfg.padding or 10)
-    local item_h = start_cfg.item_height or 25
+-- Start Menu program hit-test moved to StartMenuView
 
-    for _, program in ipairs(start_programs) do
-        if x >= self.start_menu_x and x <= self.start_menu_x + self.start_menu_w and
-           y >= item_y and y <= item_y + item_h then
-            return program.id
-        end
-        item_y = item_y + item_h
+    -- Helper to check if a point is within the Start Menu bounds
+    -- Start Menu bounds checks moved to StartMenuView
+
+    -- Get Recycle Bin icon position (needed for drop detection)
+    function DesktopView:getRecycleBinPosition()
+        local program = self.program_registry:getProgram("recycle_bin")
+        if not program or self.desktop_icons:isDeleted("recycle_bin") then return nil end
+        local pos = self.desktop_icons:getPosition("recycle_bin") or self:getDefaultIconPosition("recycle_bin")
+        local w, h = self.desktop_icons:getIconDimensions()
+        return { x = pos.x, y = pos.y, w = w, h = h }
     end
-
-    item_y = item_y + (start_cfg.separator_space or 10) -- Separator space
-    if x >= self.start_menu_x and x <= self.start_menu_x + self.start_menu_w and
-       y >= item_y and y <= item_y + item_h then
-        return "run"
-    end
-
-    return nil
-end
-
--- Helper to check if a point is within the Start Menu bounds
-function DesktopView:isPointInStartMenu(x, y)
-    -- Check if start menu is even relevant (open is handled by state)
-    -- Just check bounds based on view layout variables
-    return x >= self.start_menu_x and x <= self.start_menu_x + self.start_menu_w and
-           y >= self.start_menu_y and y <= self.start_menu_y + self.start_menu_h
-end
-
--- Helper to check if a point is within the Run Dialog bounds
-function DesktopView:isPointInRunDialog(x, y)
-    -- Check if run dialog is relevant (open is handled by state)
-    -- Just check bounds based on view layout variables
-    return x >= self.run_dialog_x and x <= self.run_dialog_x + self.run_dialog_w and
-           y >= self.run_dialog_y and y <= self.run_dialog_y + self.run_dialog_h
-end
-
-function DesktopView:isStartButtonHovered(x, y)
-    local taskbar_y = love.graphics.getHeight() - self.taskbar_height
-    local taskbar_cfg = (self.config and self.config.ui and self.config.ui.taskbar) or {}
-    local left_margin = taskbar_cfg.left_margin or 10
-    local vpad = taskbar_cfg.vertical_padding or 5
-    return x >= left_margin and x <= left_margin + self.taskbar_start_button_width and y >= taskbar_y + vpad and y <= taskbar_y + self.taskbar_height - vpad
-end
-
--- Get Recycle Bin icon position (needed for drop detection)
-function DesktopView:getRecycleBinPosition()
-    -- Kept for compatibility; state uses DesktopIconController
-    local program = self.program_registry:getProgram("recycle_bin")
-    if not program or self.desktop_icons:isDeleted("recycle_bin") then return nil end
-    local pos = self.desktop_icons:getPosition("recycle_bin") or self:getDefaultIconPosition("recycle_bin")
-    local w, h = self.desktop_icons:getIconDimensions()
-    return { x = pos.x, y = pos.y, w = w, h = h }
-end
 
 function DesktopView:drawTaskbar(tokens)
     local y = love.graphics.getHeight() - self.taskbar_height
@@ -485,97 +431,16 @@ function DesktopView:drawSystemTray(x, y, w, h, tokens)
     UIComponents.drawTokenCounter(x + token_off.x, y + token_off.y, tokens)
 end
 
-function DesktopView:drawStartMenu()
-    local SpriteLoader = require('src.utils.sprite_loader')
-    local sprite_loader = SpriteLoader.getInstance()
-    local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
-    love.graphics.setColor(theme.bg or {0.75, 0.75, 0.75})
-    love.graphics.rectangle('fill', self.start_menu_x, self.start_menu_y, self.start_menu_w, self.start_menu_h)
-    love.graphics.setColor(theme.border_light or {1, 1, 1})
-    love.graphics.line(self.start_menu_x, self.start_menu_y, self.start_menu_x + self.start_menu_w, self.start_menu_y)
-    love.graphics.line(self.start_menu_x, self.start_menu_y, self.start_menu_x, self.start_menu_y + self.start_menu_h)
-    love.graphics.setColor(theme.border_dark or {0.2, 0.2, 0.2})
-    love.graphics.line(self.start_menu_x + self.start_menu_w, self.start_menu_y, self.start_menu_x + self.start_menu_w, self.start_menu_y + self.start_menu_h)
-    love.graphics.line(self.start_menu_x, self.start_menu_y + self.start_menu_h, self.start_menu_x + self.start_menu_w, self.start_menu_y + self.start_menu_h)
+-- Start Menu drawing moved to StartMenuView
 
-    local start_programs = self.program_registry:getStartMenuPrograms()
-    local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
-    local item_y = self.start_menu_y + (start_cfg.padding or 10)
-    local item_h = start_cfg.item_height or 25
-    local icon_size = start_cfg.icon_size or 20
-    
-    for _, program in ipairs(start_programs) do
-        local is_hovered = self.hovered_start_program_id == program.id
-        
-        -- Highlight
-        if is_hovered then
-            local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
-            local inset = start_cfg.highlight_inset or 2
-            love.graphics.setColor(theme.highlight or {0, 0, 0.5})
-            love.graphics.rectangle('fill', self.start_menu_x + inset, item_y, self.start_menu_w - 2 * inset, item_h)
-        end
-        
-        -- Icon
-    local icon_x = self.start_menu_x + 5
-        local icon_y_centered = item_y + (item_h - icon_size) / 2
-        
-        local sprite_name = program.icon_sprite or "executable-0"
-    local tint = program.disabled and {0.5, 0.5, 0.5} or (is_hovered and {1.2, 1.2, 1.2} or {1, 1, 1})
-        sprite_loader:drawSprite(sprite_name, icon_x, icon_y_centered, icon_size, icon_size, tint)
-        
-    -- Text
-    love.graphics.setColor(program.disabled and (theme.text_disabled or {0.5, 0.5, 0.5}) or (is_hovered and (theme.text_hover or {1,1,1}) or (theme.text or {0, 0, 0})))
-        love.graphics.print(program.name, self.start_menu_x + icon_size + 10, item_y + 5)
-        
-        item_y = item_y + item_h
-    end
+-- Start Menu keyboard selection handled by StartMenuView
 
-    -- Separator
-    item_y = item_y + 5
-    love.graphics.setColor(theme.separator or {0.5, 0.5, 0.5})
-    love.graphics.line(self.start_menu_x + 5, item_y, self.start_menu_x + self.start_menu_w - 5, item_y)
-    item_y = item_y + 5
-    
-    -- Run option with icon
-    local run_hovered = self.hovered_start_program_id == "run"
-    if run_hovered then
-    local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
-        local inset = start_cfg.highlight_inset or 2
-        love.graphics.setColor(theme.highlight or {0, 0, 0.5})
-        love.graphics.rectangle('fill', self.start_menu_x + inset, item_y, self.start_menu_w - 2 * inset, item_h)
-    end
-    
-    -- Run icon
-    local icon_x = self.start_menu_x + 5
-    local icon_y_centered = item_y + (item_h - icon_size) / 2
-    sprite_loader:drawSprite("console_prompt-0", icon_x, icon_y_centered, icon_size, icon_size, run_hovered and {1.2, 1.2, 1.2} or {1, 1, 1})
-    
-    love.graphics.setColor(run_hovered and (theme.text_hover or {1,1,1}) or (theme.text or {0, 0, 0}))
-    love.graphics.print(Strings.get('start.run','Run...'), self.start_menu_x + icon_size + 10, item_y + 5)
-    love.graphics.setColor(theme.shortcut or {0.4, 0.4, 0.4})
-    love.graphics.print("Ctrl+R", self.start_menu_x + self.start_menu_w - (start_cfg.run_shortcut_offset or 60), item_y + 5, 0, 0.8, 0.8)
-end
+-- Determine which main Start Menu item is hovered
+-- Start Menu main item hit-test moved to StartMenuView
 
-function DesktopView:drawRunDialog(run_text)
-    local desktop_cfg = (self.config and self.config.ui and self.config.ui.desktop) or {}
-    local run_cfg = desktop_cfg.run_dialog or {}
-    local title_bar_h = run_cfg.title_bar_height or 25
-    local pad = run_cfg.padding or 10
-    local input_y = run_cfg.input_y or 65
-    local input_h = run_cfg.input_h or 25
-    local btns = run_cfg.buttons or {}
-    local colors = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.run_dialog) or {}
+-- Start Menu submenu bounds moved to StartMenuView
 
-    love.graphics.setColor(colors.bg or {0.75, 0.75, 0.75}); love.graphics.rectangle('fill', self.run_dialog_x, self.run_dialog_y, self.run_dialog_w, self.run_dialog_h)
-    love.graphics.setColor(colors.title_bg or {0, 0, 0.5}); love.graphics.rectangle('fill', self.run_dialog_x, self.run_dialog_y, self.run_dialog_w, title_bar_h)
-    love.graphics.setColor(colors.title_text or {1, 1, 1}); love.graphics.print(Strings.get('start.run','Run'), self.run_dialog_x + 5, self.run_dialog_y + 5)
-    love.graphics.setColor(colors.label_text or {0, 0, 0}); love.graphics.print(Strings.get('start.type_prompt','Type the name of a program:'), self.run_dialog_x + pad, self.run_dialog_y + 40)
-    love.graphics.setColor(colors.input_bg or {1, 1, 1}); love.graphics.rectangle('fill', self.run_dialog_x + pad, self.run_dialog_y + input_y, self.run_dialog_w - 2 * pad, input_h)
-    love.graphics.setColor(colors.input_border or {0, 0, 0}); love.graphics.rectangle('line', self.run_dialog_x + pad, self.run_dialog_y + input_y, self.run_dialog_w - 2 * pad, input_h)
-    love.graphics.setColor(colors.input_text or {0, 0, 0}); love.graphics.print(run_text, self.run_dialog_x + pad + 5, self.run_dialog_y + input_y + 5)
-    UIComponents.drawButton(self.run_dialog_x + self.run_dialog_w - (btns.ok_offset_x or 180), self.run_dialog_y + self.run_dialog_h - (btns.bottom_margin or 40), btns.ok_w or 80, btns.ok_h or 30, Strings.get('buttons.ok','OK'), true, false)
-    UIComponents.drawButton(self.run_dialog_x + self.run_dialog_w - (btns.cancel_offset_x or 90), self.run_dialog_y + self.run_dialog_h - (btns.bottom_margin or 40), btns.cancel_w or 80, btns.cancel_h or 30, Strings.get('buttons.cancel','Cancel'), true, false)
-end
+-- Start Menu submenu hit-test moved to StartMenuView
 
-
+-- Start Menu legacy submenu rendering moved to StartMenuView
 return DesktopView
