@@ -402,9 +402,12 @@ function VMManagerView:drawTokensPerMinute(x, y, rate)
 end
 
 function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
-    if self.sprite_manager then
-        self.sprite_manager:ensureLoaded()
+    -- Ensure sprite_manager is loaded via DI
+    if not self.sprite_manager then
+        error("VMManagerView: sprite_manager not available via DI")
     end
+    self.sprite_manager:ensureLoaded() -- Ensure dependencies like sprite_loader are ready
+
     local Config_ = (self.di and self.di.config) or {}
     local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local S = (V.colors and V.colors.slot) or {}
@@ -422,9 +425,10 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
         local game = context.game_data:getGame(slot.assigned_game_id)
         if game then
             -- Phase 7.1: Show game's sprite thumbnail
-            local palette_id = SpriteManager:getPaletteId(game)
-            local icon_sprite = SpriteManager:getMetricSprite(game, game.metrics_tracked[1] or "default")
-            if icon_sprite then
+            -- FIX: Use self.sprite_manager instance
+            local palette_id = self.sprite_manager:getPaletteId(game)
+            local icon_sprite = self.sprite_manager:getMetricSprite(game, game.metrics_tracked[1] or "default")
+            if icon_sprite and self.sprite_manager.sprite_loader then -- Check sprite_loader exists
                 self.sprite_manager.sprite_loader:drawSprite(icon_sprite, x + 8, y + 35, 48, 48, nil, palette_id)
             end
 
@@ -443,8 +447,9 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
             end
             love.graphics.setColor(S.progress_bg or {0.3, 0.3, 0.3})
             love.graphics.rectangle('fill', x + 5, y + h - 25, w - 10, 15)
-            
+
             -- Phase 7.1: Use game's palette for progress bar
+            -- FIX: Use self.sprite_manager instance
             local palette = self.sprite_manager.palette_manager:getPalette(palette_id)
             local progress_color = (palette and palette.colors and palette.colors.primary) or {0, 1, 0}
             love.graphics.setColor(progress_color)

@@ -1,3 +1,4 @@
+-- src/controllers/minigame_controller.lua
 local Object = require('class')
 local Strings = require('src.utils.strings')
 local ProgressionManager = require('src.models.progression_manager')
@@ -12,6 +13,7 @@ function MinigameController:init(player_data, game_data_model, save_manager, che
     self.save_manager = save_manager
     self.cheat_system = cheat_system
     self.di = di
+    self.event_bus = di and di.eventBus -- Store event bus from DI
 
     self.game_instance = nil
     self.game_data = nil
@@ -42,6 +44,13 @@ function MinigameController:begin(game_instance, game_data)
     self.auto_completed_games = {}
     self.auto_complete_power = 0
     self.overlay_visible = false
+
+    -- Publish game_started event
+    if self.event_bus then
+        -- Assuming window_id context might be needed later, passing nil for now
+        -- MinigameState holds the window_id if needed: self.game_instance.window_id (requires passing context)
+        pcall(self.event_bus.publish, self.event_bus, 'game_started', self.game_data.id, nil)
+    end
 end
 
 function MinigameController:isOverlayVisible()
@@ -54,6 +63,11 @@ function MinigameController:update(dt)
     local ok_base, err_base = pcall(self.game_instance.updateBase, self.game_instance, dt)
     if not ok_base then
         print("Error during game updateBase:", err_base)
+        -- Publish game_failed event on error
+        if self.event_bus then
+            pcall(self.event_bus.publish, self.event_bus, 'game_failed', self.game_data.id, 'updateBase_error')
+        end
+        self:processCompletion() -- Show overlay even on error
         return
     end
 
@@ -61,6 +75,11 @@ function MinigameController:update(dt)
         local ok_logic, err_logic = pcall(self.game_instance.updateGameLogic, self.game_instance, dt)
         if not ok_logic then
             print("Error during game updateGameLogic:", err_logic)
+            -- Publish game_failed event on error
+            if self.event_bus then
+                pcall(self.event_bus.publish, self.event_bus, 'game_failed', self.game_data.id, 'updateLogic_error')
+            end
+            self:processCompletion() -- Show overlay even on error
             return
         end
     end
@@ -112,6 +131,10 @@ function MinigameController:processCompletion()
             self.auto_completed_games = {}
             self.auto_complete_power = 0
         end
+        -- Publish high_score event only if it's a new best and not fail-gated
+        if self.event_bus then
+            pcall(self.event_bus.publish, self.event_bus, 'high_score', self.game_data.id, self.current_performance, metrics_to_save)
+        end
     else
         self.auto_completed_games = {}
         self.auto_complete_power = 0
@@ -119,6 +142,20 @@ function MinigameController:processCompletion()
 
     local ok_save, err_save = pcall(self.save_manager.save, self.player_data)
     if not ok_save then print("Error saving game data:", err_save) end
+
+    -- Publish game_completed event regardless of new best score (unless it failed earlier)
+    if self.event_bus then
+        local completion_data = {
+            score = self.current_performance,
+            base_score = self.base_performance,
+            metrics = metrics_to_save,
+            cheats_used = self.active_cheats,
+            is_new_best = is_new_best,
+            fail_gate_triggered = self.fail_gate_triggered,
+            auto_completed = self.auto_completed_games
+        }
+        pcall(self.event_bus.publish, self.event_bus, 'game_completed', self.game_data.id, completion_data)
+    end
 end
 
 function MinigameController:getMetrics()

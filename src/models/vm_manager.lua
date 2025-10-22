@@ -1,4 +1,4 @@
--- vm_manager.lua: Manages virtual machines for automated game playing
+-- src/models/vm_manager.lua: Manages virtual machines for automated game playing
 
 local Object = require('class')
 local Config = {} -- Will be set from DI in init
@@ -7,6 +7,7 @@ local VMManager = Object:extend('VMManager')
 function VMManager:init(di)
     -- Optional DI for config
     if di and di.config then Config = di.config end
+    self.event_bus = di and di.eventBus -- Store event bus from DI
     self.vm_slots = {}
     self.total_tokens_per_minute = 0
     self.max_slots = Config.vm_max_slots
@@ -27,6 +28,10 @@ function VMManager:initialize(player_data)
             tokens_per_cycle = 0,
             is_auto_completed = false
         })
+        -- Publish vm_created event for initial slots
+        if self.event_bus then
+            pcall(self.event_bus.publish, self.event_bus, 'vm_created', i)
+        end
     end
 
     if not player_data.active_vms then player_data.active_vms = {} end
@@ -43,6 +48,10 @@ function VMManager:initialize(player_data)
             slot.time_remaining = math.min(vm_data.time_remaining or slot.cycle_time, slot.cycle_time)
             -- Power will be recalculated on first update
             print(string.format("Restored VM %d: %s (%.1fs remaining / %.1fs cycle)", slot_index, vm_data.game_id, slot.time_remaining, slot.cycle_time))
+            -- Publish vm_started event for restored active VMs
+            if self.event_bus then
+                pcall(self.event_bus.publish, self.event_bus, 'vm_started', slot.slot_index, slot.assigned_game_id)
+            end
         elseif slot_index then
              print("Warning: Could not restore VM slot " .. slot_index .. ", data missing or invalid.")
              -- Ensure invalid save data is cleared
@@ -86,8 +95,14 @@ function VMManager:update(dt, player_data, game_data)
                     slot.time_remaining = math.min(slot.time_remaining, slot.cycle_time)
                 else
                     print("Warning: Performance data missing for VM game " .. slot.assigned_game_id .. ". Deactivating slot.")
+                    local old_game_id = slot.assigned_game_id
                     slot.active = false
+                    slot.assigned_game_id = nil
                     player_data.active_vms[tostring(slot.slot_index)] = nil -- Clear from save (use string key)
+                    -- Publish vm_stopped event when deactivated due to missing data
+                    if self.event_bus then
+                        pcall(self.event_bus.publish, self.event_bus, 'vm_stopped', slot.slot_index, old_game_id, 'missing_data')
+                    end
                     goto next_slot -- Skip update for this slot
                 end
             end
@@ -108,6 +123,7 @@ function VMManager:update(dt, player_data, game_data)
                     game_id = slot.assigned_game_id,
                     time_remaining = slot.time_remaining
                 }
+                -- NOTE: No specific 'vm_cycle_completed' event defined in plan, could add later if needed
             end
         end
         ::next_slot::
@@ -153,6 +169,11 @@ function VMManager:assignGame(slot_index, game_id, game_data, player_data)
     print(string.format("Assigned %s to VM slot %d (Power: %.1f, Cycle: %.1fs)",
         game.display_name, slot_index, vm_power, cycle_time))
 
+    -- Publish vm_started event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'vm_started', slot.slot_index, slot.assigned_game_id)
+    end
+
     return true
 end
 
@@ -161,6 +182,7 @@ function VMManager:removeGame(slot_index, player_data)
     if slot_index < 1 or slot_index > #self.vm_slots then return false end
 
     local slot = self.vm_slots[slot_index]
+    local old_game_id = slot.assigned_game_id -- Store before clearing
     slot.active = false
     slot.assigned_game_id = nil
     slot.time_remaining = 0
@@ -172,8 +194,13 @@ function VMManager:removeGame(slot_index, player_data)
        player_data.active_vms[tostring(slot_index)] = nil
     end
 
-
     print("Removed game from VM slot " .. slot_index)
+
+    -- Publish vm_stopped event
+    if self.event_bus and old_game_id then
+        pcall(self.event_bus.publish, self.event_bus, 'vm_stopped', slot.slot_index, old_game_id, 'user_removed')
+    end
+
     -- Recalculate TPM after removal
     self:calculateTokensPerMinute()
     return true
@@ -204,6 +231,13 @@ function VMManager:purchaseVM(player_data)
         })
 
         print("Purchased VM slot " .. new_slot_index .. " for " .. cost .. " tokens")
+
+        -- Publish vm_created event
+        if self.event_bus then
+            pcall(self.event_bus.publish, self.event_bus, 'vm_created', new_slot_index)
+        end
+        -- Note: vm_destroyed is not needed as VMs aren't currently destroyable
+
         return true
     end
 
