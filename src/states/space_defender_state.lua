@@ -133,7 +133,8 @@ function SpaceDefenderState:enter(level_number)
         max_bombs = pcfg.bombs or 3
     }
 
-    self.bullet_system = BulletSystem:new(self.statistics)
+    local sprite_manager = self.di and self.di.spriteManager
+    self.bullet_system = BulletSystem:new(self.statistics, sprite_manager)
     if self.di and self.di.config and self.bullet_system.injectConfig then
         self.bullet_system:injectConfig(self.di.config)
     end

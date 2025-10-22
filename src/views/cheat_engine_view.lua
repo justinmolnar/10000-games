@@ -2,13 +2,13 @@
 local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local FormulaRenderer = require('src.views.formula_renderer')
-local SpriteManager = require('src.utils.sprite_manager').getInstance()
 local CheatEngineView = Object:extend('CheatEngineView')
 
 function CheatEngineView:init(controller, di)
     self.controller = controller -- This is the cheat_engine_state
     self.di = di
     if di and UIComponents and UIComponents.inject then UIComponents.inject(di) end
+    self.sprite_manager = (di and di.spriteManager) or nil
 
     -- Base Layout (will be adjusted by updateLayout)
     local C = (self.di and self.di.config) or {}
@@ -31,7 +31,7 @@ function CheatEngineView:init(controller, di)
     -- Scrollbar interaction state
     self._sb = { list = { dragging=false }, cheats = { dragging=false } }
 
-    self.formula_renderer = FormulaRenderer:new()
+    self.formula_renderer = FormulaRenderer:new(di)
 end
 
 function CheatEngineView:updateLayout(viewport_width, viewport_height)
@@ -341,13 +341,13 @@ function CheatEngineView:drawPanel(x, y, w, h, title)
     love.graphics.rectangle('fill', x+1, y+21, w-2, h-22)
 
     -- Phase 7.2: Show game's sprite set when game selected
-    if title == "Memory Editor" and self.controller and self.controller.selected_game then
-        SpriteManager:ensureLoaded()
+    if title == "Memory Editor" and self.controller and self.controller.selected_game and self.sprite_manager then
+        self.sprite_manager:ensureLoaded()
         local game = self.controller.selected_game
-        local palette_id = SpriteManager:getPaletteId(game)
-        local icon_sprite = SpriteManager:getMetricSprite(game, game.metrics_tracked[1] or "default")
+        local palette_id = self.sprite_manager:getPaletteId(game)
+        local icon_sprite = self.sprite_manager:getMetricSprite(game, game.metrics_tracked[1] or "default")
         if icon_sprite then
-            SpriteManager.sprite_loader:drawSprite(icon_sprite, x + w - 50, y + 25, 48, 48, {1,1,1,0.1}, palette_id)
+            self.sprite_manager.sprite_loader:drawSprite(icon_sprite, x + w - 50, y + 25, 48, 48, {1,1,1,0.1}, palette_id)
         end
     end
 end

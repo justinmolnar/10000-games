@@ -12,6 +12,7 @@ local SAVE_VERSION = "1.0" -- Increment if structure changes significantly
 function WindowManager:init(di)
     -- Optional DI for config
     if di and di.config then Config = di.config end
+    self.event_bus = (di and di.eventBus) or (rawget(_G, 'DI') and rawget(_G, 'DI').eventBus)
     self.windows = {} -- Array for z-order (index 1 = bottom, last = top)
     self.focused_window_id = nil
     self.next_window_id = 1
@@ -32,6 +33,20 @@ function WindowManager:init(di)
         self.screen_w = nil
         self.screen_h = nil
     end
+
+    if self.event_bus then
+        self:subscribeToEvents()
+    end
+end
+
+function WindowManager:subscribeToEvents()
+    self.event_bus:subscribe('request_window_close', function(window_id) self:closeWindow(window_id) end)
+    self.event_bus:subscribe('request_window_focus', function(window_id) self:focusWindow(window_id) end)
+    self.event_bus:subscribe('request_window_minimize', function(window_id) self:minimizeWindow(window_id) end)
+    self.event_bus:subscribe('request_window_maximize', function(window_id, w, h) self:maximizeWindow(window_id, w, h) end)
+    self.event_bus:subscribe('request_window_restore', function(window_id) self:restoreWindow(window_id) end)
+    self.event_bus:subscribe('request_window_move', function(window_id, x, y) self:updateWindowBounds(window_id, x, y, nil, nil) end)
+    self.event_bus:subscribe('request_window_resize', function(window_id, x, y, w, h) self:updateWindowBounds(window_id, x, y, w, h) end)
 end
 
 function WindowManager:setScreenSize(w, h)
@@ -150,6 +165,10 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
     table.insert(self.windows, window)
     self:focusWindow(window_id)
 
+    if self.event_bus then
+        self.event_bus:publish('window_opened', window.id, window.program_type)
+    end
+
     return window_id
 end
 
@@ -178,6 +197,10 @@ function WindowManager:closeWindow(window_id)
                 end
             end
 
+            if self.event_bus then
+                self.event_bus:publish('window_closed', window_id)
+            end
+
             return true
         end
     end
@@ -203,6 +226,11 @@ function WindowManager:focusWindow(window_id)
     -- Bring to front and set focus
     self:bringToFront(window_id) -- bringToFront handles the array move
     self.focused_window_id = window_id
+
+    if self.event_bus then
+        self.event_bus:publish('window_focused', window_id)
+    end
+
     return true
 end
 
@@ -227,6 +255,10 @@ function WindowManager:minimizeWindow(window_id)
                  break -- Found the next focus target
             end
         end
+    end
+
+    if self.event_bus then
+        self.event_bus:publish('window_minimized', window_id)
     end
 
     return true
@@ -261,6 +293,10 @@ function WindowManager:maximizeWindow(window_id, screen_width, screen_height)
     window.is_minimized = false
     self.minimized_windows[window_id] = nil
     self:focusWindow(window_id) -- Maximizing brings focus
+
+    if self.event_bus then
+        self.event_bus:publish('window_maximized', window_id)
+    end
 
     return true
 end
@@ -317,6 +353,9 @@ function WindowManager:restoreWindow(window_id)
     if needs_focus then
         self:bringToFront(window_id) -- Ensure z-order
         self.focused_window_id = window_id -- Set focus
+        if self.event_bus then
+            self.event_bus:publish('window_restored', window_id)
+        end
     end
 
     return needs_focus -- Return true if a restore action occurred
@@ -402,12 +441,24 @@ function WindowManager:updateWindowBounds(window_id, x, y, w, h)
     local window = self:getWindowById(window_id)
     if not window then return false end
 
+    local moved = false
+    local resized = false
+
     -- Only update if not maximized (unless forcing bounds, which we aren't here)
     if not window.is_maximized then
-        if x then window.x = x end
-        if y then window.y = y end
-        if w then window.width = w end
-        if h then window.height = h end
+        if x and window.x ~= x then window.x = x; moved = true end
+        if y and window.y ~= y then window.y = y; moved = true end
+        if w and window.width ~= w then window.width = w; resized = true end
+        if h and window.height ~= h then window.height = h; resized = true end
+    end
+
+    if self.event_bus then
+        if moved then
+            self.event_bus:publish('window_moved', window_id, window.x, window.y)
+        end
+        if resized then
+            self.event_bus:publish('window_resized', window_id, window.width, window.height)
+        end
     end
 
     return true

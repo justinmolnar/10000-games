@@ -48,7 +48,7 @@ function MinigameView:drawOverlay(viewport, snapshot)
 
     if game_data and game_data.metrics_tracked then
         local MetricLegend = require('src.views.metric_legend')
-        local metric_legend = MetricLegend:new()
+        local metric_legend = MetricLegend:new(self.di)
         love.graphics.push()
         love.graphics.origin()
         y = metric_legend:draw(game_data, metrics, x + 20, y, vpWidth - x - 40, true)
@@ -64,7 +64,7 @@ function MinigameView:drawOverlay(viewport, snapshot)
 
     if game_data and game_data.base_formula_string then
         local FormulaRenderer = require('src.views.formula_renderer')
-        local formula_renderer = FormulaRenderer:new()
+        local formula_renderer = FormulaRenderer:new(self.di)
         love.graphics.push()
         love.graphics.origin()
         local formula_end_y = formula_renderer:draw(game_data, x + 20, y, vpWidth * 0.7, 20)

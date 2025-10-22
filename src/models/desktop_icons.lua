@@ -13,12 +13,27 @@ local ICON_WIDTH = 80
 local ICON_HEIGHT = 100
 local TASKBAR_HEIGHT = 40 -- Assumed taskbar height for validation
 
-function DesktopIcons:init()
+function DesktopIcons:init(di)
     self.positions = {} -- {program_id = {x, y}}
     self.deleted = {} -- {program_id = true}
     self.layout_version = SAVE_VERSION
+    self.event_bus = (di and di.eventBus) or (rawget(_G, 'DI') and rawget(_G, 'DI').eventBus)
 
     self:load()
+
+    if self.event_bus then
+        self:subscribeToEvents()
+    end
+end
+
+function DesktopIcons:subscribeToEvents()
+    self.event_bus:subscribe('request_icon_move', function(prog_id, x, y, w, h) self:setPosition(prog_id, x, y, w, h) end)
+    self.event_bus:subscribe('request_icon_delete', function(prog_id) self:deleteIcon(prog_id) end)
+    self.event_bus:subscribe('request_icon_restore', function(prog_id) self:restoreIcon(prog_id) end)
+    self.event_bus:subscribe('request_icon_create', function(prog_id, x, y, w, h) 
+        self:restoreIcon(prog_id) -- Make sure it's not marked as deleted
+        self:setPosition(prog_id, x, y, w, h) 
+    end)
 end
 
 -- Helper to get standard icon dimensions
@@ -31,7 +46,16 @@ function DesktopIcons:setPosition(program_id, x, y, desktop_width, desktop_heigh
     if not program_id then return false end
 
     local valid_x, valid_y = self:validatePosition(x, y, desktop_width, desktop_height)
+    local old_pos = self.positions[program_id]
+
     self.positions[program_id] = {x = valid_x, y = valid_y}
+
+    if self.event_bus then
+        local old_x = old_pos and old_pos.x or valid_x
+        local old_y = old_pos and old_pos.y or valid_y
+        self.event_bus:publish('icon_moved', program_id, old_x, old_y, valid_x, valid_y)
+    end
+
     return true
 end
 
@@ -45,6 +69,11 @@ function DesktopIcons:deleteIcon(program_id)
     if not program_id then return false end
 
     self.deleted[program_id] = true
+
+    if self.event_bus then
+        self.event_bus:publish('icon_deleted', program_id)
+    end
+
     return true
 end
 
@@ -53,6 +82,11 @@ function DesktopIcons:restoreIcon(program_id)
     if not program_id then return false end
 
     self.deleted[program_id] = nil
+
+    if self.event_bus then
+        self.event_bus:publish('icon_restored', program_id)
+    end
+
     return true
 end
 

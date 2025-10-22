@@ -15,6 +15,7 @@ function FileExplorerView:init(controller, di)
     if di then UIComponents.inject(di) end
     local Config_ = (di and di.config) or Config
     local Strings_ = (di and di.strings) or Strings
+    self.sprite_loader = (di and di.spriteLoader) or nil
 
     -- Layout constants
     local V = (Config_.ui and Config_.ui.views and Config_.ui.views.file_explorer) or {}
@@ -298,8 +299,10 @@ function FileExplorerView:drawItem(x, y, width, height, item, is_selected, is_ho
 end
 
 function FileExplorerView:drawItemIcon(x, y, size, item)
-    local SpriteLoader = require('src.utils.sprite_loader')
-    local sprite_loader = SpriteLoader.getInstance()
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
+    if not sprite_loader then
+        error("FileExplorerView: sprite_loader not available in DI")
+    end
 
     local sprite_name = self:resolveItemSprite(item)
     local tint = {1,1,1}

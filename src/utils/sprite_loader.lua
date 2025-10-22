@@ -5,11 +5,12 @@ local Object = require('class')
 local SpriteLoader = Object:extend('SpriteLoader')
 local Paths = require('src.paths')
 
-function SpriteLoader:init()
+function SpriteLoader:init(palette_manager)
     self.sprites = {}
     self.sprite_dir = Paths.assets.sprites .. "win98/"
     self.loaded = false
     self.aliases = nil
+    self.palette_manager = palette_manager -- Injected dependency
 end
 
 function SpriteLoader:loadAll()
@@ -112,10 +113,8 @@ function SpriteLoader:drawSprite(sprite_name, x, y, width, height, tint, palette
     end
     
     -- If palette requested, use PaletteManager
-    if palette_id and palette_id ~= "default" then
-        local PaletteManager = require('src.utils.palette_manager')
-        local palette_mgr = PaletteManager.getInstance()
-        return palette_mgr:drawSpriteWithPalette(sprite, x, y, width, height, palette_id, tint)
+    if palette_id and palette_id ~= "default" and self.palette_manager then
+        return self.palette_manager:drawSpriteWithPalette(sprite, x, y, width, height, palette_id, tint)
     end
     
     -- No palette, draw normally
@@ -135,16 +134,4 @@ function SpriteLoader:drawSprite(sprite_name, x, y, width, height, tint, palette
     return true
 end
 
--- Singleton instance
-local instance = nil
-
-local SpriteLoaderModule = {}
-
-function SpriteLoaderModule.getInstance()
-    if not instance then
-        instance = SpriteLoader:new()
-    end
-    return instance
-end
-
-return SpriteLoaderModule
+return SpriteLoader

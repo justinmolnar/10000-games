@@ -5,7 +5,10 @@ local Object = require('class')
 local json = require('json')
 local FileSystem = Object:extend('FileSystem')
 
-function FileSystem:init()
+function FileSystem:init(di)
+    self.di = di or {}
+    self.event_bus = self.di.eventBus
+
     self.current_path = "/"
     self.filesystem = {}
     -- FS Recycle Bin persistence (for filesystem entries)
@@ -13,7 +16,7 @@ function FileSystem:init()
     self._FS_RECYCLE_FILE = 'fs_recycle_bin.json'
     -- Runtime FS persistence (entire filesystem map)
     self._FS_RUNTIME_FILE = 'fs_runtime.json'
-    
+
     self:loadFilesystem()
     -- Normalize key views after load so "My Computer" shows refined entries
     self:normalizeMyComputerView()
@@ -231,6 +234,12 @@ function FileSystem:createFolder(parent_path, name, insert_index)
     if idx > #parent.children + 1 then idx = #parent.children + 1 end
     table.insert(parent.children, idx, name)
     self:_saveFsRuntime()
+
+    -- Publish event
+    if self.event_bus then
+        self.event_bus:publish('folder_created', child_path)
+    end
+
     return child_path
 end
 
@@ -293,6 +302,12 @@ function FileSystem:moveEntry(src_path, dst_parent_path, new_name)
     end
     dst_parent.children = dst_parent.children or {}; table.insert(dst_parent.children, name)
     self:_saveFsRuntime()
+
+    -- Publish event
+    if self.event_bus then
+        self.event_bus:publish('file_moved', src_path, dst_path)
+    end
+
     return true, dst_path
 end
 
@@ -446,6 +461,12 @@ function FileSystem:deleteEntry(path)
     -- Persist recycle bin
     self:_saveFsRecycleBin()
     self:_saveFsRuntime()
+
+    -- Publish event
+    if self.event_bus then
+        self.event_bus:publish('file_deleted', path)
+    end
+
     return true
 end
 
@@ -482,6 +503,12 @@ function FileSystem:restoreDeletedEntry(recycle_id)
     parent.children = parent.children or {}; table.insert(parent.children, name)
     self:_saveFsRecycleBin()
     self:_saveFsRuntime()
+
+    -- Publish event
+    if self.event_bus then
+        self.event_bus:publish('file_restored', dst_path)
+    end
+
     return true, dst_path
 end
 
@@ -496,6 +523,12 @@ function FileSystem:emptyFsRecycleBin()
     self._fs_recycle.items = {}
     self._fs_recycle.next_id = 1
     self:_saveFsRecycleBin()
+
+    -- Publish event
+    if self.event_bus then
+        self.event_bus:publish('recycle_bin_emptied')
+    end
+
     return count
 end
 

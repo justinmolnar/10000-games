@@ -187,16 +187,4 @@ function PaletteManager:drawSpriteWithPalette(sprite_image, x, y, width, height,
     end
 end
 
--- Singleton instance
-local instance = nil
-
-local PaletteManagerModule = {}
-
-function PaletteManagerModule.getInstance()
-    if not instance then
-        instance = PaletteManager:new()
-    end
-    return instance
-end
-
-return PaletteManagerModule
+return PaletteManager

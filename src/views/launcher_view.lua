@@ -10,7 +10,11 @@ function LauncherView:init(controller, player_data, game_data)
     self.controller = controller
     self.player_data = player_data
     self.game_data = game_data
-    
+    local di = controller and controller.di
+    self.di = di
+    self.sprite_loader = (di and di.spriteLoader) or nil
+    self.sprite_manager = (di and di.spriteManager) or nil
+
     self.selected_category = "all"
     self.selected_index = 1
     self.scroll_offset = 1
@@ -356,10 +360,10 @@ end
 
 function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, player_data, game_data_obj)
     local SpriteLoader = require('src.utils.sprite_loader')
-    local sprite_loader = SpriteLoader.getInstance()
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local SpriteManager = require('src.utils.sprite_manager')
-    local sprite_manager = SpriteManager.getInstance()
-    local formula_renderer = FormulaRenderer:new()
+    local sprite_manager = self.sprite_manager or (self.di and self.di.spriteManager)
+    local formula_renderer = FormulaRenderer:new(self.di)
     
     local is_unlocked = player_data:isGameUnlocked(game_data.id)
     local perf = player_data:getGamePerformance(game_data.id)
@@ -480,11 +484,11 @@ end
 
 function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
     local SpriteLoader = require('src.utils.sprite_loader')
-    local sprite_loader = SpriteLoader.getInstance()
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local SpriteManager = require('src.utils.sprite_manager')
-    local sprite_manager = SpriteManager.getInstance()
-    local formula_renderer = FormulaRenderer:new()
-    local metric_legend = MetricLegend:new()
+    local sprite_manager = self.sprite_manager or (self.di and self.di.spriteManager)
+    local formula_renderer = FormulaRenderer:new(self.di)
+    local metric_legend = MetricLegend:new(self.di)
 
     local function drawHeaderPanel()
         UIComponents.drawPanel(x, y, w, h, {0.2, 0.2, 0.2})

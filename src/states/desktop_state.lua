@@ -51,7 +51,7 @@ function DesktopState:init(di)
 
         -- Only instantiate if dependencies seem okay
        if self.window_manager and self.program_registry and self.window_states then
-           self.window_controller = WindowController:new(self.window_manager, self.program_registry, self.window_states)
+           self.window_controller = WindowController:new(self.window_manager, self.program_registry, self.window_states, self.di)
              -- WindowController instantiated successfully
              if not self.window_controller then print("CRITICAL ERROR: WindowController:new() returned nil!") end -- Check instantiation result
         else
@@ -108,7 +108,8 @@ function DesktopState:init(di)
                             if WP.getImageCached then pcall(WP.getImageCached, self.wallpaper_image) end
                             -- Avoid defaulting below; also persist back to ensure consistency
                             pcall(SettingsManager.set, 'desktop_bg_image', raw_img)
-                            return
+                            -- Don't return early - we need to finish init!
+                            goto wallpaper_resolved
                         end
                     end
                 end
@@ -126,6 +127,7 @@ function DesktopState:init(di)
             if self.wallpaper_image and WP.getImageCached then pcall(WP.getImageCached, self.wallpaper_image) end
         end
     end
+    ::wallpaper_resolved::
     -- Icon snap setting cached
     self.icon_snap = SettingsManager.get('desktop_icon_snap') ~= false
     -- Prefer explicit flag from DI; otherwise compute from settings (not shown means tutorial)
@@ -175,6 +177,18 @@ function DesktopState:init(di)
     local desktopCfg = (C.ui and C.ui.desktop) or {}
     self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or (desktopCfg.screensaver and desktopCfg.screensaver.default_timeout) or 10
     self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
+
+    -- Subscribe to EventBus events
+    local event_bus = self.di and self.di.eventBus
+    if event_bus then
+        event_bus:subscribe('launch_program', function(program_id, ...)
+            self:launchProgram(program_id, ...)
+        end)
+
+        event_bus:subscribe('window_closed', function(window_id)
+            self.window_states[window_id] = nil
+        end)
+    end
 
     -- Initialization finished
 end
@@ -315,7 +329,6 @@ function DesktopState:draw()
             self.start_menu_open,
             self.dragging_icon_id
         )
-    if self.start_menu and self.start_menu:isOpen() then self.start_menu:draw() end
 
     -- Draw windows respecting z-order from window manager
     local windows = self.window_manager:getAllWindows()
@@ -338,6 +351,9 @@ function DesktopState:draw()
         end
     end
 
+    -- Draw start menu on top of windows
+    if self.start_menu and self.start_menu:isOpen() then self.start_menu:draw() end
+
     -- Draw context menu on top if open
     if self.context_menu_open then
         self.context_menu_view:draw()
@@ -354,7 +370,8 @@ function DesktopState:drawWindow(window)
     local is_focused = self.window_manager:getFocusedWindowId() == window.id
 
     -- Draw window chrome (border, title bar, buttons)
-    self.window_chrome:draw(window, is_focused)
+    local sprite_loader = self.di and self.di.spriteLoader
+    self.window_chrome:draw(window, is_focused, sprite_loader)
 
     -- Draw window content state
     local window_data = self.window_states[window.id]
@@ -491,8 +508,35 @@ function DesktopState:mousepressed(x, y, button)
                     local C = (self.di and self.di.config) or {}
                     local dbl = (C and C.ui and C.ui.double_click_time) or 0.5
                     local is_double_click = (self.last_icon_click_id == icon_program_id and love.timer.getTime() - self.last_icon_click_time < dbl)
-                    if is_double_click then self:launchProgram(icon_program_id); self.last_icon_click_id = nil; self.last_icon_click_time = 0; self.dragging_icon_id = nil
-                    else self.last_icon_click_id = icon_program_id; self.last_icon_click_time = love.timer.getTime(); self.dragging_icon_id = icon_program_id; local icon_pos = self.desktop_icons:getPosition(icon_program_id) or self.icon_controller:getDefaultIconPosition(icon_program_id); self.drag_offset_x = x - icon_pos.x; self.drag_offset_y = y - icon_pos.y end
+                    if is_double_click then
+                        if self.di.eventBus then self.di.eventBus:publish('icon_double_clicked', icon_program_id) end
+
+                        -- Check if this is a file shortcut (txt file)
+                        if program.shortcut_type == 'file' and program.shortcut_target then
+                            local file_path = program.shortcut_target
+                            local fs = self.file_system
+                            if fs then
+                                local item = fs:getItem(file_path)
+                                if item and item.type == 'file' then
+                                    self:showTextFileDialog(item.name or file_path, item.content)
+                                end
+                            end
+                        else
+                            self:launchProgram(icon_program_id)
+                        end
+
+                        self.last_icon_click_id = nil;
+                        self.last_icon_click_time = 0;
+                        self.dragging_icon_id = nil
+                    else 
+                        if self.di.eventBus then self.di.eventBus:publish('icon_drag_started', icon_program_id) end
+                        self.last_icon_click_id = icon_program_id; 
+                        self.last_icon_click_time = love.timer.getTime(); 
+                        self.dragging_icon_id = icon_program_id; 
+                        local icon_pos = self.desktop_icons:getPosition(icon_program_id) or self.icon_controller:getDefaultIconPosition(icon_program_id); 
+                        self.drag_offset_x = x - icon_pos.x; 
+                        self.drag_offset_y = y - icon_pos.y 
+                    end
                 elseif program and program.disabled then love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is planned.", "info"); self.last_icon_click_id = nil; self.last_icon_click_time = 0 end
             end
             -- Check taskbar buttons if icon wasn't clicked
@@ -501,7 +545,19 @@ function DesktopState:mousepressed(x, y, button)
                 if taskbar_button_id then
                     clicked_specific_desktop_ui = true
                     local window = self.window_manager:getWindowById(taskbar_button_id)
-                    if window then local focused_id = self.window_manager:getFocusedWindowId(); if window.is_minimized then self.window_manager:restoreWindow(taskbar_button_id); self.window_manager:focusWindow(taskbar_button_id); elseif window.id == focused_id then self.window_manager:minimizeWindow(taskbar_button_id); else self.window_manager:focusWindow(taskbar_button_id); end end
+                    if window then 
+                        local focused_id = self.window_manager:getFocusedWindowId()
+                        if window.is_minimized then
+                            if self.di.eventBus then
+                                self.di.eventBus:publish('request_window_restore', taskbar_button_id)
+                                self.di.eventBus:publish('request_window_focus', taskbar_button_id)
+                            end
+                        elseif window.id == focused_id then
+                            if self.di.eventBus then self.di.eventBus:publish('request_window_minimize', taskbar_button_id) end
+                        else
+                            if self.di.eventBus then self.di.eventBus:publish('request_window_focus', taskbar_button_id) end
+                        end 
+                    end
                 end
             end
         end
@@ -516,7 +572,7 @@ function DesktopState:mousepressed(x, y, button)
         if (not self.context_menu_open) and self.start_menu and self.start_menu:isOpen() then
             local inside_any = self.start_menu:isPointInStartMenuOrSubmenu(x, y)
                 if inside_any then
-                local hit = self.start_menu.view and self.start_menu.view.hitTestStartMenuContext and self.start_menu.view:hitTestStartMenuContext(x, y)
+                local hit = self.start_menu.view and self.start_menu.view.hitTestStartMenuContext and self.start_menu.view:hitTestStartMenuContext(x, y, self.start_menu)
                 local options = {}
                 local ctx = { type = 'start_menu' }
                 if hit then
@@ -561,8 +617,11 @@ function DesktopState:mousepressed(x, y, button)
             start_menu_program_id = self.start_menu:getStartMenuProgramAtPosition(x, y)
         end
 
-        if start_menu_program_id and start_menu_program_id ~= "run" then context_type = "start_menu_item"; context_data = { program_id = start_menu_program_id }
-        elseif icon_program_id then context_type = "icon"; context_data = { program_id = icon_program_id }
+        if start_menu_program_id and start_menu_program_id ~= "run" then context_type = "start_menu_item"; context_data = { program_id = start_menu_program_id } 
+        elseif icon_program_id then 
+            context_type = "icon"; 
+            context_data = { program_id = icon_program_id } 
+            if self.di.eventBus then self.di.eventBus:publish('icon_right_clicked', icon_program_id, x, y) end
         elseif taskbar_button_id then context_type = "taskbar"; context_data = { window_id = taskbar_button_id }
         elseif on_start_button then context_type = "start_button" -- NYI
         end
@@ -578,7 +637,7 @@ function DesktopState:_handleWindowClick(window, x, y, button)
     local handled = false
 
     if self.window_manager:getFocusedWindowId() ~= window.id then
-        self.window_manager:focusWindow(window.id)
+        if self.di.eventBus then self.di.eventBus:publish('request_window_focus', window.id) end
         handled = true
     end
 
@@ -632,9 +691,9 @@ function DesktopState:_handleWindowClick(window, x, y, button)
                 local is_resizable = (window.is_resizable ~= nil) and window.is_resizable or computed_resizable
                 if is_resizable then
                     if window.is_maximized then
-                        self.window_manager:restoreWindow(window.id)
+                        if self.di.eventBus then self.di.eventBus:publish('request_window_restore', window.id) end
                     else
-                        self.window_manager:maximizeWindow(window.id, love.graphics.getWidth(), love.graphics.getHeight())
+                        if self.di.eventBus then self.di.eventBus:publish('request_window_maximize', window.id, love.graphics.getWidth(), love.graphics.getHeight()) end
                     end
                     
                     -- ADD: Call setViewport after double-click maximize/restore
@@ -737,8 +796,13 @@ function DesktopState:mousereleased(x, y, button)
             if drop_center_x >= recycle_bin_pos.x and drop_center_x <= recycle_bin_pos.x + recycle_bin_pos.w and
                drop_center_y >= recycle_bin_pos.y and drop_center_y <= recycle_bin_pos.y + recycle_bin_pos.h then
                 print("Deleting icon:", dropped_icon_id)
-                local original_pos = self.desktop_icons:getPosition(dropped_icon_id)
-                self.recycle_bin:addItem(dropped_icon_id, original_pos); self.desktop_icons:save()
+                if self.di.eventBus then
+                    self.di.eventBus:publish('request_icon_recycle', dropped_icon_id)
+                    self.di.eventBus:publish('icon_drag_ended', dropped_icon_id, 'recycle_bin')
+                else
+                    local original_pos = self.desktop_icons:getPosition(dropped_icon_id)
+                    self.recycle_bin:addItem(dropped_icon_id, original_pos); self.desktop_icons:save()
+                end
                 return -- Deleted
             end
         end
@@ -844,7 +908,10 @@ function DesktopState:mousereleased(x, y, button)
             final_x, final_y = self.desktop_icons:validatePosition(final_x, final_y, screen_w, screen_h)
         end
         -- Update position in the model
-        self.desktop_icons:setPosition(dropped_icon_id, final_x, final_y, screen_w, screen_h)
+        if self.di.eventBus then
+            self.di.eventBus:publish('request_icon_move', dropped_icon_id, final_x, final_y, screen_w, screen_h)
+            self.di.eventBus:publish('icon_drag_ended', dropped_icon_id, 'desktop')
+        end
         self.desktop_icons:save()
         print("Dropped icon", dropped_icon_id, "at final position", final_x, final_y)
     end
@@ -866,20 +933,32 @@ end
 
 function DesktopState:handleWindowEvent(event, x, y, button)
     local final_result = nil
+    local event_bus = self.di and self.di.eventBus
 
     if event.type == "window_close" then
         local window = self.window_manager:getWindowById(event.window_id)
         if window then self.window_manager:rememberWindowPosition(window) end
-        self.window_manager:closeWindow(event.window_id)
-        self.window_states[event.window_id] = nil
+        if event_bus then
+            event_bus:publish('request_window_close', event.window_id)
+        else
+            self.window_manager:closeWindow(event.window_id)
+        end
         final_result = { type = "window_action" }
 
     elseif event.type == "window_minimize" then
-        self.window_manager:minimizeWindow(event.window_id)
+        if event_bus then
+            event_bus:publish('request_window_minimize', event.window_id)
+        else
+            self.window_manager:minimizeWindow(event.window_id)
+        end
         final_result = { type = "window_action" }
 
     elseif event.type == "window_maximize" then
-        self.window_manager:maximizeWindow(event.window_id, love.graphics.getWidth(), love.graphics.getHeight())
+        if event_bus then
+            event_bus:publish('request_window_maximize', event.window_id, love.graphics.getWidth(), love.graphics.getHeight())
+        else
+            self.window_manager:maximizeWindow(event.window_id, love.graphics.getWidth(), love.graphics.getHeight())
+        end
         
         -- Call setViewport on the state after maximizing
         local window = self.window_manager:getWindowById(event.window_id)
@@ -897,7 +976,11 @@ function DesktopState:handleWindowEvent(event, x, y, button)
         final_result = { type = "window_action" }
 
     elseif event.type == "window_restore" then
-        self.window_manager:restoreWindow(event.window_id)
+        if event_bus then
+            event_bus:publish('request_window_restore', event.window_id)
+        else
+            self.window_manager:restoreWindow(event.window_id)
+        end
         
         -- Call setViewport on the state after restoring
         local window = self.window_manager:getWindowById(event.window_id)
@@ -927,9 +1010,9 @@ function DesktopState:handleWindowEvent(event, x, y, button)
 
                  if is_resizable then
                      if window.is_maximized then
-                         self.window_manager:restoreWindow(event.window_id)
+                        if event_bus then event_bus:publish('request_window_restore', event.window_id) end
                      else
-                         self.window_manager:maximizeWindow(event.window_id, love.graphics.getWidth(), love.graphics.getHeight())
+                        if event_bus then event_bus:publish('request_window_maximize', event.window_id, love.graphics.getWidth(), love.graphics.getHeight()) end
                      end
                      
                      -- Call setViewport after toggle
@@ -1609,11 +1692,17 @@ function DesktopState:handleContextMenuAction(action_id, context)
 
     elseif context.type == "taskbar" then
         if not window_id then print("ERROR: window_id missing for taskbar context!"); return end
-        if action_id == "restore" then self.window_manager:restoreWindow(window_id); self.window_manager:focusWindow(window_id)
-        elseif action_id == "restore_size" then self.window_manager:restoreWindow(window_id)
-        elseif action_id == "minimize" then self.window_manager:minimizeWindow(window_id)
-        elseif action_id == "maximize" then self.window_manager:maximizeWindow(window_id, love.graphics.getWidth(), love.graphics.getHeight())
-        elseif action_id == "close_window" then self:closeWindowById(window_id)
+        if action_id == "restore" then
+            if self.di.eventBus then self.di.eventBus:publish('request_window_restore', window_id) end
+            if self.di.eventBus then self.di.eventBus:publish('request_window_focus', window_id) end
+        elseif action_id == "restore_size" then
+            if self.di.eventBus then self.di.eventBus:publish('request_window_restore', window_id) end
+        elseif action_id == "minimize" then
+            if self.di.eventBus then self.di.eventBus:publish('request_window_minimize', window_id) end
+        elseif action_id == "maximize" then
+            if self.di.eventBus then self.di.eventBus:publish('request_window_maximize', window_id, love.graphics.getWidth(), love.graphics.getHeight()) end
+        elseif action_id == "close_window" then 
+            self:closeWindowById(window_id)
         end
 
     elseif context.type == "desktop" then
@@ -1782,23 +1871,14 @@ function DesktopState:ensureIconIsVisible(program_id)
     if not program_id then return end
 
     print("Ensuring icon is visible for:", program_id)
-    -- 1. Un-delete the icon (safe to call even if not deleted)
-    self.desktop_icons:restoreIcon(program_id)
-
-    -- 2. Check if it already has a position
-    local current_pos = self.desktop_icons:getPosition(program_id)
-    if current_pos then
-         print("Icon already has a position, leaving it there.")
-         -- Optionally bring window to front if program is open?
-    else
-        print("Icon needs position, placing in default grid.")
-        -- 3. Find next available default grid spot
+    
+    if self.di.eventBus then
         local default_pos = self:findNextAvailableGridPosition(program_id)
         local screen_w, screen_h = love.graphics.getDimensions()
-        self.desktop_icons:setPosition(program_id, default_pos.x, default_pos.y, screen_w, screen_h)
+        self.di.eventBus:publish('request_icon_create', program_id, default_pos.x, default_pos.y, screen_w, screen_h)
     end
 
-    -- 4. Save changes
+    -- Save changes
     self.desktop_icons:save()
     -- Optional: Maybe briefly highlight the icon?
 end
@@ -1868,17 +1948,24 @@ end
 function DesktopState:closeWindowById(window_id)
       local window = self.window_manager:getWindowById(window_id)
       if window then self.window_manager:rememberWindowPosition(window) end
-      self.window_manager:closeWindow(window_id)
-      self.window_states[window_id] = nil
+      if self.di.eventBus then 
+          self.di.eventBus:publish('request_window_close', window_id)
+      else
+          self.window_manager:closeWindow(window_id)
+      end
 end
 
 -- Helper for deleting icons via context menu
 function DesktopState:deleteDesktopIcon(program_id)
      if program_id ~= "recycle_bin" and program_id ~= "my_computer" then
          print("Deleting icon via context menu:", program_id)
-         local original_pos = self.desktop_icons:getPosition(program_id)
-         self.recycle_bin:addItem(program_id, original_pos)
-         self.desktop_icons:save()
+         if self.di.eventBus then
+             self.di.eventBus:publish('request_icon_recycle', program_id)
+         else
+             local original_pos = self.desktop_icons:getPosition(program_id)
+             self.recycle_bin:addItem(program_id, original_pos)
+             self.desktop_icons:save()
+         end
      else
          print("Cannot delete core icon:", program_id)
      end

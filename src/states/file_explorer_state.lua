@@ -476,13 +476,15 @@ function FileExplorerState:createShortcutOnDesktop(item)
             return { type = "event", name = "ensure_icon_visible", program_id = program.id }
         end
     elseif item.type == "file" then
-        -- Optional: create shortcut to parent folder
+        -- Create a shortcut that launches the file with its default program
         local name = item.name or "File"
         local icon = 'document-0'
         if name:match('%.txt$') then icon = 'notepad_file-0' elseif name:match('%.json$') then icon = 'file_lines-0' elseif name:match('%.exe$') then icon = 'executable-0' end
-        local program = self.program_registry:addFolderShortcut(name, item.path, { on_desktop = true, shortcut_type = 'file', icon_sprite = icon })
+        
+        local program = self.program_registry:addFileShortcut(name, item.path, { on_desktop = true, shortcut_type = 'file', icon_sprite = icon })
+
         if program then
-            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut to parent folder created on Desktop.", "info")
+            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut to " .. name .. " created on Desktop.", "info")
             return { type = "event", name = "ensure_icon_visible", program_id = program.id }
         end
     end

@@ -27,13 +27,11 @@ end
 
 function DodgeView:ensureLoaded()
     if not self.sprite_loader then
-        local SpriteLoader = require('src.utils.sprite_loader')
-        self.sprite_loader = SpriteLoader.getInstance()
+        self.sprite_loader = (self.di and self.di.spriteLoader) or error("DodgeView: spriteLoader not available in DI")
     end
-    
+
     if not self.sprite_manager then
-        local SpriteManager = require('src.utils.sprite_manager')
-        self.sprite_manager = SpriteManager.getInstance()
+        self.sprite_manager = (self.di and self.di.spriteManager) or error("DodgeView: spriteManager not available in DI")
     end
 end
 

@@ -9,6 +9,7 @@ local ShutdownView = Object:extend('ShutdownView')
 function ShutdownView:init(di)
     self.di = di
     if di and UIComponents and UIComponents.inject then UIComponents.inject(di) end
+    self.sprite_loader = (di and di.spriteLoader) or nil
     self.title = Strings.get('shutdown.title', 'Shut Down Windows')
     self.prompt = Strings.get('shutdown.prompt', 'What do you want the computer to do?')
     self.buttons = {
@@ -47,8 +48,10 @@ function ShutdownView:drawWindowed(w, h)
     -- Icon and prompt
     local icon_x = 16
     local icon_y = 44
-    local sprite_loader = SpriteLoader.getInstance()
-    sprite_loader:drawSprite(self.icon_name, icon_x, icon_y, self.icon_size, self.icon_size, {1,1,1})
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
+    if sprite_loader then
+        sprite_loader:drawSprite(self.icon_name, icon_x, icon_y, self.icon_size, self.icon_size, {1,1,1})
+    end
 
     love.graphics.setColor(colors.text or {0, 0, 0})
     love.graphics.print(self.prompt, icon_x + self.icon_size + 12, icon_y + 12)

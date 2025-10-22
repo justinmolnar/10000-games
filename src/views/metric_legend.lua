@@ -4,20 +4,19 @@
 local Object = require('class')
 local MetricLegend = Object:extend('MetricLegend')
 
-function MetricLegend:init()
-    self.sprite_loader = nil
-    self.sprite_manager = nil
+function MetricLegend:init(di)
+    self.di = di
+    self.sprite_loader = (di and di.spriteLoader) or nil
+    self.sprite_manager = (di and di.spriteManager) or nil
 end
 
 function MetricLegend:ensureLoaded()
     if not self.sprite_loader then
-        local SpriteLoader = require('src.utils.sprite_loader')
-        self.sprite_loader = SpriteLoader.getInstance()
+        self.sprite_loader = (self.di and self.di.spriteLoader) or error("MetricLegend: spriteLoader not available in DI")
     end
-    
+
     if not self.sprite_manager then
-        local SpriteManager = require('src.utils.sprite_manager')
-        self.sprite_manager = SpriteManager.getInstance()
+        self.sprite_manager = (self.di and self.di.spriteManager) or error("MetricLegend: spriteManager not available in DI")
     end
 end
 

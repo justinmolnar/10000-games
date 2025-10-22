@@ -11,6 +11,7 @@ function DesktopIconController:init(program_registry, desktop_icons, recycle_bin
     self.desktop_icons = desktop_icons
     self.recycle_bin = recycle_bin
     self.di = di
+    self.event_bus = di and di.eventBus
 
     self.default_icon_positions = {}
     self.grid_cfg = (((di and di.config and di.config.ui and di.config.ui.desktop) or {}).grid) or {}

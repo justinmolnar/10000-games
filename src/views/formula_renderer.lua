@@ -4,10 +4,11 @@
 local Object = require('class')
 local FormulaRenderer = Object:extend('FormulaRenderer')
 
-function FormulaRenderer:init()
-    self.sprite_loader = nil
-    self.sprite_manager = nil
-    
+function FormulaRenderer:init(di)
+    self.di = di
+    self.sprite_loader = (di and di.spriteLoader) or nil
+    self.sprite_manager = (di and di.spriteManager) or nil
+
     -- Operator sprite mappings (using Win98 icons)
     self.operator_sprites = {
         ["+"] = "nil", -- Draw as text
@@ -26,13 +27,11 @@ end
 
 function FormulaRenderer:ensureLoaded()
     if not self.sprite_loader then
-        local SpriteLoader = require('src.utils.sprite_loader')
-        self.sprite_loader = SpriteLoader.getInstance()
+        self.sprite_loader = (self.di and self.di.spriteLoader) or error("FormulaRenderer: spriteLoader not available in DI")
     end
-    
+
     if not self.sprite_manager then
-        local SpriteManager = require('src.utils.sprite_manager')
-        self.sprite_manager = SpriteManager.getInstance()
+        self.sprite_manager = (self.di and self.di.spriteManager) or error("FormulaRenderer: spriteManager not available in DI")
     end
 end
 

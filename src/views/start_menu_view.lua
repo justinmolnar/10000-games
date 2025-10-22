@@ -10,6 +10,7 @@ function StartMenuView:init(program_registry, file_system, di)
     self.file_system = file_system
     self.di = di or {}
     self.config = (self.di and self.di.config) or {}
+    self.sprite_loader = (self.di and self.di.spriteLoader) or nil
     -- Ensure any invalid persisted Start Menu state is cleaned immediately (e.g., moves into Documents)
     if self.program_registry and self.program_registry.sanitizeStartMenuState then
         pcall(self.program_registry.sanitizeStartMenuState, self.program_registry)
@@ -24,65 +25,38 @@ function StartMenuView:init(program_registry, file_system, di)
     local taskbar_cfg = (self.config and self.config.ui and self.config.ui.taskbar) or {}
     self.taskbar_height = taskbar_cfg.height or 40
 
-    -- Geometry
+    -- Geometry (presentation config only)
     self.start_menu_w = start_cfg.width or 200
     self.start_menu_h = start_cfg.height or 300 -- recomputed when open
     self.start_menu_x = 0
     self.start_menu_y = love.graphics.getHeight() - self.taskbar_height - self.start_menu_h
 
-    -- State
-    self.submenu_open_id = nil -- 'programs' | 'documents' | 'settings'
-    self.hovered_main_id = nil
-    self.hovered_sub_id = nil
-    self.keyboard_start_selected_id = nil
-    self._start_menu_pressed_id = nil
-
-    -- Cascading panes
-    self.open_panes = {}
-    self.cascade_hover = { level = nil, index = nil, t = 0 }
+    -- Timing configuration
     self.cascade_hover_delay = start_cfg.hover_delay or 0.2
-    -- Delay before closing panes when leaving them (mirrors open delay by default)
     self.cascade_close_delay = start_cfg.hover_leave_delay or self.cascade_hover_delay or 0.2
     self.start_menu_close_grace = start_cfg.close_grace or 0.5
-    self._start_menu_keepalive_t = 0
-    self._cascade_root_id = nil
-    -- Per-pane close timers (index -> elapsed seconds while mouse is off that pane)
-    self._pane_close = {}
-    -- Drag and drop state (Programs and nested folders)
-    self.dnd_active = false
-    self.dnd_source_index = nil
-    self.dnd_hover_index = nil
-    self.dnd_pane_index = nil -- which pane level is being dragged within
-    self.dnd_item_id = nil -- program id for programs items; nil for pure fs entries
-    self.dnd_entry_key = nil -- key for folder entries (path)
-    self.dnd_scope = nil -- 'programs' or folder path
-    -- Drop target mode: 'into' when hovering directly over a folder row while dragging
-    self.dnd_drop_mode = nil -- nil | 'into'
-    self.dnd_target_folder_path = nil -- path of folder to drop into when dnd_drop_mode == 'into'
-    -- Pending drag (activate after threshold)
-    self.dnd_pending = nil
-    self.dnd_start_x, self.dnd_start_y = nil, nil
     self.dnd_threshold = 4
 end
 
 -- External helpers used by DesktopState when toggling the menu via keyboard/mouse
+-- NOTE: These are now deprecated - state management moved to StartMenuState
 function StartMenuView:clearStartMenuPress()
-    self._start_menu_pressed_id = nil
+    -- Deprecated: state now managed by StartMenuState
 end
 
 function StartMenuView:setStartMenuKeyboardSelection(id)
-    self.keyboard_start_selected_id = id
+    -- Deprecated: state now managed by StartMenuState
 end
 
-function StartMenuView:update(dt, start_menu_open)
+function StartMenuView:update(dt, start_menu_open, state)
     if not start_menu_open then
         -- Reset all menu state when closed
-        self.submenu_open_id = nil
-        self.open_panes = {}
-        self._cascade_root_id = nil
-        self._start_menu_keepalive_t = 0
-        self.hovered_main_id = nil
-        self.hovered_sub_id = nil
+        state.submenu_open_id = nil
+        state.open_panes = {}
+        state._cascade_root_id = nil
+        state._start_menu_keepalive_t = 0
+        state.hovered_main_id = nil
+        state.hovered_sub_id = nil
         return
     end
 
@@ -92,39 +66,39 @@ function StartMenuView:update(dt, start_menu_open)
     self.start_menu_y = love.graphics.getHeight() - self.taskbar_height - self.start_menu_h
 
     -- Hover main row
-    self.hovered_main_id = self:getStartMenuMainAtPosition(mx, my)
+    state.hovered_main_id = self:getStartMenuMainAtPosition(mx, my)
 
     -- Inside legacy submenu
-    local sub_bounds = self:getSubmenuBounds()
+    local sub_bounds = self:getSubmenuBounds(state)
     local inside_sub = sub_bounds and (mx >= sub_bounds.x and mx <= sub_bounds.x + sub_bounds.w and my >= sub_bounds.y and my <= sub_bounds.y + sub_bounds.h)
     -- Inside any cascading pane
     local inside_panes = false
-    for _, p in ipairs(self.open_panes or {}) do
+    for _, p in ipairs(state.open_panes or {}) do
         local b = p.bounds
         if mx >= b.x and mx <= b.x + b.w and my >= b.y and my <= b.y + b.h then inside_panes = true; break end
     end
 
     -- Open/keep submenu (with grace)
-    if self.hovered_main_id == 'programs' or self.hovered_main_id == 'documents' or self.hovered_main_id == 'settings' then
-        self.submenu_open_id = self.hovered_main_id
-        self._start_menu_keepalive_t = 0
+    if state.hovered_main_id == 'programs' or state.hovered_main_id == 'documents' or state.hovered_main_id == 'settings' then
+        state.submenu_open_id = state.hovered_main_id
+        state._start_menu_keepalive_t = 0
     elseif inside_sub or inside_panes then
-        self._start_menu_keepalive_t = 0
+        state._start_menu_keepalive_t = 0
     else
-        self._start_menu_keepalive_t = (self._start_menu_keepalive_t or 0) + dt
-        if self._start_menu_keepalive_t >= (self.start_menu_close_grace or 0.5) then
-            self.submenu_open_id = nil
-            self.open_panes = {}
-            self._cascade_root_id = nil
-            self._start_menu_keepalive_t = 0
-            self._pane_close = {}
+        state._start_menu_keepalive_t = (state._start_menu_keepalive_t or 0) + dt
+        if state._start_menu_keepalive_t >= (self.start_menu_close_grace or 0.5) then
+            state.submenu_open_id = nil
+            state.open_panes = {}
+            state._cascade_root_id = nil
+            state._start_menu_keepalive_t = 0
+            state._pane_close = {}
         end
     end
 
     -- Update hovered item in legacy submenu
-    self.hovered_sub_id = self:getStartMenuSubItemAtPosition(mx, my)
+    state.hovered_sub_id = self:getStartMenuSubItemAtPosition(mx, my, state)
     -- Always update cascading panes
-    self:updateCascade(mx, my, dt)
+    self:updateCascade(mx, my, dt, state)
 
     -- Auto-size menu height for 6 rows
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
@@ -141,11 +115,13 @@ function StartMenuView:update(dt, start_menu_open)
     self.start_menu_y = love.graphics.getHeight() - self.taskbar_height - self.start_menu_h
 end
 
-function StartMenuView:draw()
-    local SpriteLoader = require('src.utils.sprite_loader')
-    local sprite_loader = SpriteLoader.getInstance()
+function StartMenuView:draw(state)
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
+    if not sprite_loader then
+        error("StartMenuView: sprite_loader not available in DI")
+    end
     local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
-    if self.open_panes and #self.open_panes > 0 then self:reflowOpenPanesBounds() end
+    if state.open_panes and #state.open_panes > 0 then self:reflowOpenPanesBounds(state) end
     love.graphics.setColor(theme.bg or {0.75, 0.75, 0.75})
     love.graphics.rectangle('fill', self.start_menu_x, self.start_menu_y, self.start_menu_w, self.start_menu_h)
     love.graphics.setColor(theme.border_light or {1, 1, 1})
@@ -181,7 +157,7 @@ function StartMenuView:draw()
     end
 
     local function draw_main_item(id, label, icon_sprite)
-        local is_hovered = (self.hovered_main_id == id) or (self.keyboard_start_selected_id == id) or (self.submenu_open_id == id)
+        local is_hovered = (state.hovered_main_id == id) or (state.keyboard_start_selected_id == id) or (state.submenu_open_id == id)
         if is_hovered then
             local inset = start_cfg.highlight_inset or 2
             love.graphics.setColor(theme.highlight or {0, 0, 0.5})
@@ -213,7 +189,7 @@ function StartMenuView:draw()
     draw_main_item('help', Strings.get('start.help','Help'), resolveMainMenuIcon('help'))
 
     -- Run
-    local run_hovered = (self.hovered_main_id or self.keyboard_start_selected_id) == 'run'
+    local run_hovered = (state.hovered_main_id or state.keyboard_start_selected_id) == 'run'
     if run_hovered then
         local inset = start_cfg.highlight_inset or 2
         love.graphics.setColor(theme.highlight or {0, 0, 0.5})
@@ -229,7 +205,7 @@ function StartMenuView:draw()
 
     -- Shutdown
     item_y = item_y + main_h
-    local shut_hovered = (self.hovered_main_id or self.keyboard_start_selected_id) == 'shutdown'
+    local shut_hovered = (state.hovered_main_id or state.keyboard_start_selected_id) == 'shutdown'
     if shut_hovered then
         local inset = start_cfg.highlight_inset or 2
         love.graphics.setColor(theme.highlight or {0, 0, 0.5})
@@ -242,38 +218,38 @@ function StartMenuView:draw()
     love.graphics.print(Strings.get('start.shutdown','Shut down...'), self.start_menu_x + main_icon_size + 10, item_y + (main_h - love.graphics.getFont():getHeight())/2)
 
     -- Draw cascading panes; fallback to legacy submenu when none
-    if self.open_panes and #self.open_panes > 0 then
-        for _, pane in ipairs(self.open_panes) do self:drawPane(pane) end
+    if state.open_panes and #state.open_panes > 0 then
+        for _, pane in ipairs(state.open_panes) do self:drawPane(pane, state) end
         -- Draw insertion indicator when dragging in the active pane, unless we're dropping INTO a folder
-        if self.dnd_active and self.open_panes[self.dnd_pane_index or 1] and not (self.dnd_drop_mode == 'into' and self.dnd_target_folder_path) then
-            local pane = self.open_panes[self.dnd_pane_index or 1]
+        if state.dnd_active and state.open_panes[state.dnd_pane_index or 1] and not (state.dnd_drop_mode == 'into' and state.dnd_target_folder_path) then
+            local pane = state.open_panes[state.dnd_pane_index or 1]
             local start_cfg2 = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
             local item_h2 = start_cfg2.item_height or 25
             local padding2 = start_cfg2.padding or 10
-            local idx2 = math.max(1, self.dnd_hover_index or self.dnd_source_index or 1)
+            local idx2 = math.max(1, state.dnd_hover_index or state.dnd_source_index or 1)
             local y2 = pane.bounds.y + padding2 + (idx2 - 1) * item_h2
             local theme2 = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
             love.graphics.setColor(theme2.highlight or {0,0,0.5})
             love.graphics.rectangle('fill', pane.bounds.x + 2, y2 - 2, pane.bounds.w - 4, 3)
         end
     else
-        if self.submenu_open_id == 'programs' then self:drawProgramsSubmenu()
-        elseif self.submenu_open_id == 'documents' then self:drawDocumentsSubmenu()
-        elseif self.submenu_open_id == 'settings' then self:drawSettingsSubmenu() end
+        if state.submenu_open_id == 'programs' then self:drawProgramsSubmenu(state)
+        elseif state.submenu_open_id == 'documents' then self:drawDocumentsSubmenu(state)
+        elseif state.submenu_open_id == 'settings' then self:drawSettingsSubmenu(state) end
     end
 end
 
-function StartMenuView:mousepressedStartMenu(x, y, button)
+function StartMenuView:mousepressedStartMenu(x, y, button, state)
     if button ~= 1 then return nil end
     local in_main = (x >= self.start_menu_x and x <= self.start_menu_x + self.start_menu_w and y >= self.start_menu_y and y <= self.start_menu_y + self.start_menu_h)
-    local sub = self:getSubmenuBounds()
+    local sub = self:getSubmenuBounds(state)
     local in_sub = sub and (x >= sub.x and x <= sub.x + sub.w and y >= sub.y and y <= sub.y + sub.h)
     local in_pane = false
     local hit_pane = nil
     local hit_pane_level = nil
-    for i, p in ipairs(self.open_panes or {}) do local b = p.bounds; if x>=b.x and x<=b.x+b.w and y>=b.y and y<=b.y+b.h then in_pane=true; hit_pane=p; hit_pane_level=i; break end end
+    for i, p in ipairs(state.open_panes or {}) do local b = p.bounds; if x>=b.x and x<=b.x+b.w and y>=b.y and y<=b.y+b.h then in_pane=true; hit_pane=p; hit_pane_level=i; break end end
     if in_main or in_sub or in_pane then
-        self._start_menu_pressed_id = true
+        state._start_menu_pressed_id = true
         -- Start drag if pressed on a reorder-eligible item in the hit pane (supports nested panes)
         if hit_pane then
             local idx = self:getPaneIndexAtPosition(hit_pane, x, y)
@@ -283,23 +259,23 @@ function StartMenuView:mousepressedStartMenu(x, y, button)
             end
             if idx and it then
                 if hit_pane.kind == 'programs' and it.program_id then
-                    self.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=it.program_id, entry_key=nil, scope='programs' }
-                    self.dnd_start_x, self.dnd_start_y = x, y
+                    state.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=it.program_id, entry_key=nil, scope='programs' }
+                    state.dnd_start_x, state.dnd_start_y = x, y
                 elseif hit_pane.kind == 'fs' and hit_pane.parent_path and not isFsRootRestricted(hit_pane.parent_path) then
                     if it.type == 'program' and it.program_id then
                         -- Program inside a folder: keep program_id; use name as entry key for same-folder reordering
-                        self.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=it.program_id, entry_key=it.name, scope=hit_pane.parent_path }
-                        self.dnd_start_x, self.dnd_start_y = x, y
+                        state.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=it.program_id, entry_key=it.name, scope=hit_pane.parent_path }
+                        state.dnd_start_x, state.dnd_start_y = x, y
                     elseif it.type == 'executable' and it.program_id then
                         -- Executable node with a program_id: treat similarly to a program entry
                         local key = it.path or it.name
-                        self.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=it.program_id, entry_key=key, scope=hit_pane.parent_path }
-                        self.dnd_start_x, self.dnd_start_y = x, y
+                        state.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=it.program_id, entry_key=key, scope=hit_pane.parent_path }
+                        state.dnd_start_x, state.dnd_start_y = x, y
                     else
                         local key = it.path or it.name
                         if key then
-                            self.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=nil, entry_key=key, scope=hit_pane.parent_path }
-                            self.dnd_start_x, self.dnd_start_y = x, y
+                            state.dnd_pending = { pane_index=hit_pane_level, source_index=idx, hover_index=idx, item_id=nil, entry_key=key, scope=hit_pane.parent_path }
+                            state.dnd_start_x, state.dnd_start_y = x, y
                         end
                     end
                 end
@@ -310,49 +286,49 @@ function StartMenuView:mousepressedStartMenu(x, y, button)
     return { name = 'close_start_menu' }
 end
 
-function StartMenuView:mousereleasedStartMenu(x, y, button)
+function StartMenuView:mousereleasedStartMenu(x, y, button, state)
     if button ~= 1 then return nil end
     local in_main = (x >= self.start_menu_x and x <= self.start_menu_x + self.start_menu_w and y >= self.start_menu_y and y <= self.start_menu_y + self.start_menu_h)
-    local sub = self:getSubmenuBounds()
+    local sub = self:getSubmenuBounds(state)
     local in_sub = sub and (x >= sub.x and x <= sub.x + sub.w and y >= sub.y and y <= sub.y + sub.h)
     -- Cascading pane click
     local in_pane = false; local pane_ref=nil; local row_idx=nil; local pane_level=nil
-    for i, p in ipairs(self.open_panes or {}) do local b=p.bounds; if x>=b.x and x<=b.x+b.w and y>=b.y and y<=b.y+b.h then in_pane=true; pane_ref=p; pane_level=i; row_idx=self:getPaneIndexAtPosition(p,x,y); break end end
+    for i, p in ipairs(state.open_panes or {}) do local b=p.bounds; if x>=b.x and x<=b.x+b.w and y>=b.y and y<=b.y+b.h then in_pane=true; pane_ref=p; pane_level=i; row_idx=self:getPaneIndexAtPosition(p,x,y); break end end
     if not in_main and not in_sub and not in_pane then
-        self._start_menu_pressed_id=nil
+        state._start_menu_pressed_id=nil
         -- Always clear drag state on mouse release, even if dropping outside
-        self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil; self.dnd_pending=nil; self.dnd_start_x=nil; self.dnd_start_y=nil
+        state.dnd_active=false; state.dnd_source_index=nil; state.dnd_hover_index=nil; state.dnd_pane_index=nil; state.dnd_item_id=nil; state.dnd_entry_key=nil; state.dnd_scope=nil; state.dnd_pending=nil; state.dnd_start_x=nil; state.dnd_start_y=nil
         return { name = 'close_start_menu' }
     end
     -- Finish drag reorder first if active, even if not exactly over a row
     if in_pane and pane_ref then
-        if self.dnd_active then
-            self._start_menu_pressed_id = nil
+        if state.dnd_active then
+            state._start_menu_pressed_id = nil
             local fs = self.file_system
             local function isFsRootRestricted(path)
                 -- Only allow operations inside dynamic roots
                 return not (fs and fs.isPathInDynamicRoot and fs:isPathInDynamicRoot(path))
             end
             -- Preferred branch: dropping directly INTO a hovered folder
-            if self.dnd_drop_mode == 'into' and self.dnd_target_folder_path then
-                local dst_path = self.dnd_target_folder_path
+            if state.dnd_drop_mode == 'into' and state.dnd_target_folder_path then
+                local dst_path = state.dnd_target_folder_path
                 -- Guard against relocating a folder into itself/descendant
-                if self.dnd_entry_key and (self.dnd_entry_key == dst_path or (dst_path:sub(1, #self.dnd_entry_key) == self.dnd_entry_key and (dst_path == self.dnd_entry_key or dst_path:sub(#self.dnd_entry_key+1, #self.dnd_entry_key+1) == '/'))) then
+                if state.dnd_entry_key and (state.dnd_entry_key == dst_path or (dst_path:sub(1, #state.dnd_entry_key) == state.dnd_entry_key and (dst_path == state.dnd_entry_key or dst_path:sub(#state.dnd_entry_key+1, #state.dnd_entry_key+1) == '/'))) then
                     -- Cancel and consume
-                    self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil; self.dnd_drop_mode=nil; self.dnd_target_folder_path=nil
+                    state.dnd_active=false; state.dnd_source_index=nil; state.dnd_hover_index=nil; state.dnd_pane_index=nil; state.dnd_item_id=nil; state.dnd_entry_key=nil; state.dnd_scope=nil; state.dnd_drop_mode=nil; state.dnd_target_folder_path=nil
                     return { name = 'start_menu_pressed' }
                 end
                 -- FS entry being dragged into folder: move using FileSystem
-                local src_path = self.dnd_scope
-                if fs and src_path and self.dnd_entry_key and not isFsRootRestricted(src_path) and not isFsRootRestricted(dst_path) then
-                    pcall(fs.moveEntry, fs, self.dnd_entry_key, dst_path)
+                local src_path = state.dnd_scope
+                if fs and src_path and state.dnd_entry_key and not isFsRootRestricted(src_path) and not isFsRootRestricted(dst_path) then
+                    pcall(fs.moveEntry, fs, state.dnd_entry_key, dst_path)
                 end
                 -- Refresh panes and clear drag state
-                for _, p in ipairs(self.open_panes or {}) do
+                for _, p in ipairs(state.open_panes or {}) do
                     if p.kind == 'fs' and p.parent_path then p.items = self:buildPaneItems('fs', p.parent_path) end
                 end
-                if self.open_panes and #self.open_panes > 0 then self:reflowOpenPanesBounds() end
-                self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil; self.dnd_drop_mode=nil; self.dnd_target_folder_path=nil
+                if state.open_panes and #state.open_panes > 0 then self:reflowOpenPanesBounds(state) end
+                state.dnd_active=false; state.dnd_source_index=nil; state.dnd_hover_index=nil; state.dnd_pane_index=nil; state.dnd_item_id=nil; state.dnd_entry_key=nil; state.dnd_scope=nil; state.dnd_drop_mode=nil; state.dnd_target_folder_path=nil
                 return { name = 'start_menu_pressed' }
             end
             -- Compute insertion index from y position
@@ -364,88 +340,95 @@ function StartMenuView:mousereleasedStartMenu(x, y, button)
             if y < b.y + padding then idx_calc = 1
             elseif y > b.y + b.h then idx_calc = (#(pane_ref.items or {}) ) + 1
             else idx_calc = math.floor((y - (b.y + padding)) / item_h) + 1 end
-            local target_idx = math.max(1, idx_calc or self.dnd_hover_index or 1)
+            local target_idx = math.max(1, idx_calc or state.dnd_hover_index or 1)
             -- Ignore program drag paths; Start is FS-only now
             -- Ignore moving FS entries into 'programs' pane; FS-only editing occurs within FS panes
             -- Ignore program drag cases
             -- Folder reorder or relocate (includes program entries living in folder panes) (insert-line behavior)
-            if self.dnd_scope and pane_ref.kind == 'fs' and self.dnd_entry_key then
+            if state.dnd_scope and pane_ref.kind == 'fs' and state.dnd_entry_key then
                 local dst_path = pane_ref.parent_path
-                local src_path = self.dnd_scope
+                local src_path = state.dnd_scope
                 if dst_path and not isFsRootRestricted(dst_path) then
                     -- Prevent relocating a folder into itself or its descendant
-                    if self.dnd_entry_key == dst_path or (dst_path:sub(1, #self.dnd_entry_key) == self.dnd_entry_key and (dst_path == self.dnd_entry_key or dst_path:sub(#self.dnd_entry_key+1, #self.dnd_entry_key+1) == '/')) then
+                    if state.dnd_entry_key == dst_path or (dst_path:sub(1, #state.dnd_entry_key) == state.dnd_entry_key and (dst_path == state.dnd_entry_key or dst_path:sub(#state.dnd_entry_key+1, #state.dnd_entry_key+1) == '/')) then
                         -- Cancel move, consume event
-                        self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil
+                        state.dnd_active=false; state.dnd_source_index=nil; state.dnd_hover_index=nil; state.dnd_pane_index=nil; state.dnd_item_id=nil; state.dnd_entry_key=nil; state.dnd_scope=nil
                         return { name = 'start_menu_pressed' }
                     end
                     -- Cross-folder relocate for FS entry (append order)
-                    if fs and src_path ~= dst_path then pcall(fs.moveEntry, fs, self.dnd_entry_key, dst_path) end
+                    if fs and src_path ~= dst_path then pcall(fs.moveEntry, fs, state.dnd_entry_key, dst_path) end
                     -- Refresh all panes so updates are immediate
-                    for _, p in ipairs(self.open_panes or {}) do
+                    for _, p in ipairs(state.open_panes or {}) do
                         if p.kind == 'fs' and p.parent_path then p.items = self:buildPaneItems('fs', p.parent_path) end
                     end
-                    self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil
+                    state.dnd_active=false; state.dnd_source_index=nil; state.dnd_hover_index=nil; state.dnd_pane_index=nil; state.dnd_item_id=nil; state.dnd_entry_key=nil; state.dnd_scope=nil
                     return { name = 'start_menu_pressed' }
                 end
             end
             -- Could not drop (invalid target); cancel drag without activating items
-            self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil; self.dnd_pending=nil; self.dnd_start_x=nil; self.dnd_start_y=nil; self.dnd_drop_mode=nil; self.dnd_target_folder_path=nil
+            state.dnd_active=false; state.dnd_source_index=nil; state.dnd_hover_index=nil; state.dnd_pane_index=nil; state.dnd_item_id=nil; state.dnd_entry_key=nil; state.dnd_scope=nil; state.dnd_pending=nil; state.dnd_start_x=nil; state.dnd_start_y=nil; state.dnd_drop_mode=nil; state.dnd_target_folder_path=nil
             return { name = 'start_menu_pressed' }
         end
     end
     -- If not dragging, process item activation when directly on a row
     if in_pane and pane_ref and row_idx and pane_ref.items and pane_ref.items[row_idx] then
         local item = pane_ref.items[row_idx]
-        self._start_menu_pressed_id = nil
-        if item.type == 'program' then return { name = 'launch_program', program_id = item.program_id }
-        elseif item.type ~= 'folder' then return { name = 'open_path', path = item.path }
-        else return nil end
+        state._start_menu_pressed_id = nil
+        -- Check for programs (type='program') or executables (type='executable' with program_id)
+        if item.type == 'program' then
+            return { name = 'launch_program', program_id = item.program_id }
+        elseif item.type == 'executable' and item.program_id then
+            return { name = 'launch_program', program_id = item.program_id }
+        elseif item.type ~= 'folder' then
+            return { name = 'open_path', path = item.path }
+        else
+            return nil
+        end
     end
     -- Legacy submenu activation
     if in_sub then
-        local sub_item = self:getStartMenuSubItemAtPosition(x, y)
-        self._start_menu_pressed_id = nil
+        local sub_item = self:getStartMenuSubItemAtPosition(x, y, state)
+        state._start_menu_pressed_id = nil
         if sub_item then
-            if self.submenu_open_id == 'programs' then return { name='launch_program', program_id=sub_item }
+            if state.submenu_open_id == 'programs' then return { name='launch_program', program_id=sub_item }
             else return { name='open_path', path=sub_item } end
         end
         return nil
     end
     -- Main items: only Run/Shutdown/Help activate on click here
     local main = self:getStartMenuMainAtPosition(x, y)
-    self._start_menu_pressed_id = nil
-    self.dnd_active=false; self.dnd_source_index=nil; self.dnd_hover_index=nil; self.dnd_pane_index=nil; self.dnd_item_id=nil; self.dnd_entry_key=nil; self.dnd_scope=nil; self.dnd_pending=nil; self.dnd_start_x=nil; self.dnd_start_y=nil; self.dnd_drop_mode=nil; self.dnd_target_folder_path=nil
+    state._start_menu_pressed_id = nil
+    state.dnd_active=false; state.dnd_source_index=nil; state.dnd_hover_index=nil; state.dnd_pane_index=nil; state.dnd_item_id=nil; state.dnd_entry_key=nil; state.dnd_scope=nil; state.dnd_pending=nil; state.dnd_start_x=nil; state.dnd_start_y=nil; state.dnd_drop_mode=nil; state.dnd_target_folder_path=nil
     if main == 'run' then return { name='open_run' }
     elseif main=='shutdown' then return { name='open_shutdown' }
     elseif main=='help' then return { name='close_start_menu' } end
     return nil
 end
 
-function StartMenuView:mousemovedStartMenu(x, y, dx, dy)
+function StartMenuView:mousemovedStartMenu(x, y, dx, dy, state)
     -- Activate pending drag after threshold
-    if self.dnd_pending and (math.abs((x or 0) - (self.dnd_start_x or 0)) + math.abs((y or 0) - (self.dnd_start_y or 0)) >= (self.dnd_threshold or 4)) then
-        local p = self.dnd_pending
-        self.dnd_active = true
-        self.dnd_source_index = p.source_index
-        self.dnd_hover_index = p.hover_index
-        self.dnd_pane_index = p.pane_index
-        self.dnd_item_id = p.item_id
-        self.dnd_entry_key = p.entry_key
-        self.dnd_scope = p.scope
-        self.dnd_pending = nil
+    if state.dnd_pending and (math.abs((x or 0) - (state.dnd_start_x or 0)) + math.abs((y or 0) - (state.dnd_start_y or 0)) >= (self.dnd_threshold or 4)) then
+        local p = state.dnd_pending
+        state.dnd_active = true
+        state.dnd_source_index = p.source_index
+        state.dnd_hover_index = p.hover_index
+        state.dnd_pane_index = p.pane_index
+        state.dnd_item_id = p.item_id
+        state.dnd_entry_key = p.entry_key
+        state.dnd_scope = p.scope
+        state.dnd_pending = nil
     end
-    if not self.dnd_active then return end
+    if not state.dnd_active then return end
     -- Choose the pane under the cursor vertically to support cross-pane targeting
     local pane = nil
-    local pane_idx = self.dnd_pane_index or 1
-    for i, p in ipairs(self.open_panes or {}) do
+    local pane_idx = state.dnd_pane_index or 1
+    for i, p in ipairs(state.open_panes or {}) do
         local btest = p.bounds
         if btest and y >= btest.y and y <= btest.y + btest.h then pane = p; pane_idx = i; break end
     end
-    pane = pane or ((self.open_panes and self.open_panes[self.dnd_pane_index or 1]) or nil)
+    pane = pane or ((state.open_panes and state.open_panes[state.dnd_pane_index or 1]) or nil)
     if not pane or not pane.bounds then return end
-    self.dnd_pane_index = pane_idx
+    state.dnd_pane_index = pane_idx
     local b = pane.bounds
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25
@@ -459,18 +442,18 @@ function StartMenuView:mousemovedStartMenu(x, y, dx, dy)
     else
         idx = math.floor((y - (b.y + padding)) / item_h) + 1
     end
-    if idx and idx >= 1 then self.dnd_hover_index = idx end
+    if idx and idx >= 1 then state.dnd_hover_index = idx end
     -- Determine if we are directly hovering a folder row (x within pane bounds) to enable drop-into-folder behavior
     local direct_idx = self:getPaneIndexAtPosition(pane, x, y)
     local direct_item = (direct_idx and pane.items and pane.items[direct_idx]) or nil
     if direct_item and direct_item.type == 'folder' then
-        self.dnd_drop_mode = 'into'
-        self.dnd_target_folder_path = direct_item.path
+        state.dnd_drop_mode = 'into'
+        state.dnd_target_folder_path = direct_item.path
         -- For visual accuracy, snap hover index to the folder row
-        self.dnd_hover_index = direct_idx or self.dnd_hover_index
+        state.dnd_hover_index = direct_idx or state.dnd_hover_index
     else
-        self.dnd_drop_mode = nil
-        self.dnd_target_folder_path = nil
+        state.dnd_drop_mode = nil
+        state.dnd_target_folder_path = nil
     end
 end
 
@@ -479,18 +462,18 @@ function StartMenuView:isPointInStartMenu(x, y)
     return x >= self.start_menu_x and x <= self.start_menu_x + self.start_menu_w and y >= self.start_menu_y and y <= self.start_menu_y + self.start_menu_h
 end
 
-function StartMenuView:isPointInStartMenuOrSubmenu(x, y)
+function StartMenuView:isPointInStartMenuOrSubmenu(x, y, state)
     if self:isPointInStartMenu(x, y) then return true end
-    local bounds = self.getSubmenuBounds and self:getSubmenuBounds() or nil
+    local bounds = self.getSubmenuBounds and self:getSubmenuBounds(state) or nil
     if bounds and x >= bounds.x and x <= bounds.x + bounds.w and y >= bounds.y and y <= bounds.y + bounds.h then return true end
-    for _, pane in ipairs(self.open_panes or {}) do local b=pane.bounds; if x>=b.x and x<=b.x+b.w and y>=b.y and y<=b.y+b.h then return true end end
+    for _, pane in ipairs(state.open_panes or {}) do local b=pane.bounds; if x>=b.x and x<=b.x+b.w and y>=b.y and y<=b.y+b.h then return true end end
     return false
 end
 
 -- Context hit-test for right-clicks: returns { area='pane'|'submenu'|'main', ... }
-function StartMenuView:hitTestStartMenuContext(x, y)
+function StartMenuView:hitTestStartMenuContext(x, y, state)
     -- Check panes first
-    for i, pane in ipairs(self.open_panes or {}) do
+    for i, pane in ipairs(state.open_panes or {}) do
         local b = pane.bounds
         if x>=b.x and x<=b.x+b.w and y>=b.y and y<=b.y+b.h then
             local idx = self:getPaneIndexAtPosition(pane, x, y)
@@ -499,10 +482,10 @@ function StartMenuView:hitTestStartMenuContext(x, y)
         end
     end
     -- Legacy submenu
-    local sub_bounds = self:getSubmenuBounds()
+    local sub_bounds = self:getSubmenuBounds(state)
     if sub_bounds and x>=sub_bounds.x and x<=sub_bounds.x+sub_bounds.w and y>=sub_bounds.y and y<=sub_bounds.y+sub_bounds.h then
-        local sub_id = self:getStartMenuSubItemAtPosition(x, y)
-        return { area='submenu', submenu=self.submenu_open_id, id=sub_id }
+        local sub_id = self:getStartMenuSubItemAtPosition(x, y, state)
+        return { area='submenu', submenu=state.submenu_open_id, id=sub_id }
     end
     -- Main area
     if self:isPointInStartMenu(x, y) then
@@ -548,20 +531,20 @@ function StartMenuView:getStartMenuMainAtPosition(x, y)
     return nil
 end
 
-function StartMenuView:getSubmenuBounds()
-    if self.submenu_open_id ~= 'programs' and self.submenu_open_id ~= 'documents' and self.submenu_open_id ~= 'settings' then return nil end
+function StartMenuView:getSubmenuBounds(state)
+    if state.submenu_open_id ~= 'programs' and state.submenu_open_id ~= 'documents' and state.submenu_open_id ~= 'settings' then return nil end
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25
     local main_h = start_cfg.main_item_height or (item_h * 2)
     local padding = start_cfg.padding or 10
     local count = 0
-    if self.submenu_open_id == 'programs' then local items = self.program_registry:getStartMenuPrograms() or {}; count = #items
-    elseif self.submenu_open_id == 'documents' then local fs=self.file_system; local docs=fs and fs:getContents('/My Computer/C:/Documents') or {}; count=#docs
+    if state.submenu_open_id == 'programs' then local items = self.program_registry:getStartMenuPrograms() or {}; count = #items
+    elseif state.submenu_open_id == 'documents' then local fs=self.file_system; local docs=fs and fs:getContents('/My Computer/C:/Documents') or {}; count=#docs
     else local fs=self.file_system; local items=fs and fs:getContents('/Control Panel') or {}; count=#items end
     local h = padding + count * item_h + 10
     local w = self.start_menu_w + (start_cfg.submenu_extra_width or 40)
     local x = self.start_menu_x + self.start_menu_w - (start_cfg.submenu_overlap or 2)
-    local rowIndex = (self.submenu_open_id == 'programs') and 0 or ((self.submenu_open_id == 'documents') and 1 or 2)
+    local rowIndex = (state.submenu_open_id == 'programs') and 0 or ((state.submenu_open_id == 'documents') and 1 or 2)
     local y = self.start_menu_y + padding + rowIndex * main_h
     local screen_h = love.graphics.getHeight()
     -- Clamp inside screen (minY) and above taskbar (maxY)
@@ -574,24 +557,24 @@ function StartMenuView:getSubmenuBounds()
     return {x=x, y=y, w=w, h=h}
 end
 
-function StartMenuView:getStartMenuSubItemAtPosition(x, y)
-    local bounds = self:getSubmenuBounds(); if not bounds then return nil end
+function StartMenuView:getStartMenuSubItemAtPosition(x, y, state)
+    local bounds = self:getSubmenuBounds(state); if not bounds then return nil end
     if x < bounds.x or x > bounds.x + bounds.w or y < bounds.y or y > bounds.y + bounds.h then return nil end
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25
     local padding = start_cfg.padding or 10
     local index = math.floor((y - (bounds.y + padding)) / item_h) + 1
-    if self.submenu_open_id == 'programs' then local fs=self.file_system; local items=fs and fs:getContents(Constants.paths.START_MENU_PROGRAMS) or {}; local e=items[index]; return e and e.path or nil
-    elseif self.submenu_open_id == 'documents' then local fs=self.file_system; local docs=fs and fs:getContents('/My Computer/C:/Documents') or {}; local e=docs[index]; return e and e.path or nil
-    elseif self.submenu_open_id == 'settings' then local fs=self.file_system; local items=fs and fs:getContents('/Control Panel') or {}; local e=items[index]; return e and e.path or nil end
+    if state.submenu_open_id == 'programs' then local fs=self.file_system; local items=fs and fs:getContents(Constants.paths.START_MENU_PROGRAMS) or {}; local e=items[index]; return e and e.path or nil
+    elseif state.submenu_open_id == 'documents' then local fs=self.file_system; local docs=fs and fs:getContents('/My Computer/C:/Documents') or {}; local e=docs[index]; return e and e.path or nil
+    elseif state.submenu_open_id == 'settings' then local fs=self.file_system; local items=fs and fs:getContents('/Control Panel') or {}; local e=items[index]; return e and e.path or nil end
     return nil
 end
 
 -- Legacy submenus drawing
-function StartMenuView:drawProgramsSubmenu()
-    local bounds = self:getSubmenuBounds(); if not bounds then return end
+function StartMenuView:drawProgramsSubmenu(state)
+    local bounds = self:getSubmenuBounds(state); if not bounds then return end
     local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
-    local SpriteLoader = require('src.utils.sprite_loader'); local sprite_loader = SpriteLoader.getInstance()
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25; local icon_size = start_cfg.icon_size or 20
     local prev_sx, prev_sy, prev_sw, prev_sh = love.graphics.getScissor()
@@ -612,7 +595,7 @@ function StartMenuView:drawProgramsSubmenu()
     end
     local y = bounds.y + (start_cfg.padding or 10)
     for _, entry in ipairs(items) do
-        local is_hovered = self.hovered_sub_id == entry.path
+        local is_hovered = state.hovered_sub_id == entry.path
         if is_hovered then love.graphics.setColor(theme.highlight or {0,0,0.5}); love.graphics.rectangle('fill', bounds.x + 2, y, bounds.w - 4, item_h) end
         local sprite
         if fe_resolve then sprite = fe_resolve(entry) else
@@ -626,10 +609,10 @@ function StartMenuView:drawProgramsSubmenu()
     love.graphics.setScissor(prev_sx, prev_sy, prev_sw, prev_sh)
 end
 
-function StartMenuView:drawDocumentsSubmenu()
-    local bounds = self:getSubmenuBounds(); if not bounds then return end
+function StartMenuView:drawDocumentsSubmenu(state)
+    local bounds = self:getSubmenuBounds(state); if not bounds then return end
     local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
-    local SpriteLoader = require('src.utils.sprite_loader'); local sprite_loader = SpriteLoader.getInstance()
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25; local icon_size = start_cfg.icon_size or 20
     local prev_sx, prev_sy, prev_sw, prev_sh = love.graphics.getScissor()
@@ -648,7 +631,7 @@ function StartMenuView:drawDocumentsSubmenu()
     end
     local y = bounds.y + (start_cfg.padding or 10)
     for _, entry in ipairs(docs) do
-        local is_hovered = self.hovered_sub_id == entry.path
+        local is_hovered = state.hovered_sub_id == entry.path
         if is_hovered then love.graphics.setColor(theme.highlight or {0,0,0.5}); love.graphics.rectangle('fill', bounds.x + 2, y, bounds.w - 4, item_h) end
         local sprite
         if fe_resolve then sprite = fe_resolve(entry) else
@@ -662,10 +645,10 @@ function StartMenuView:drawDocumentsSubmenu()
     love.graphics.setScissor(prev_sx, prev_sy, prev_sw, prev_sh)
 end
 
-function StartMenuView:drawSettingsSubmenu()
-    local bounds = self:getSubmenuBounds(); if not bounds then return end
+function StartMenuView:drawSettingsSubmenu(state)
+    local bounds = self:getSubmenuBounds(state); if not bounds then return end
     local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
-    local SpriteLoader = require('src.utils.sprite_loader'); local sprite_loader = SpriteLoader.getInstance()
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25; local icon_size = start_cfg.icon_size or 20
     local prev_sx, prev_sy, prev_sw, prev_sh = love.graphics.getScissor()
@@ -688,7 +671,7 @@ function StartMenuView:drawSettingsSubmenu()
     end
     local y = bounds.y + (start_cfg.padding or 10)
     for _, entry in ipairs(items) do
-        local is_hovered = self.hovered_sub_id == entry.path
+        local is_hovered = state.hovered_sub_id == entry.path
         if is_hovered then love.graphics.setColor(theme.highlight or {0,0,0.5}); love.graphics.rectangle('fill', bounds.x + 2, y, bounds.w - 4, item_h) end
         local sprite = 'executable-0'
         if fe_resolve then sprite = fe_resolve(entry) or sprite else
@@ -708,7 +691,7 @@ function StartMenuView:drawSettingsSubmenu()
 end
 
 -- Cascading panes
-function StartMenuView:updateCascade(mx, my, dt)
+function StartMenuView:updateCascade(mx, my, dt, state)
     dt = dt or 0
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25
@@ -716,15 +699,15 @@ function StartMenuView:updateCascade(mx, my, dt)
     local extra_w = start_cfg.submenu_extra_width or 40
     local overlap = start_cfg.submenu_overlap or 2
     local main_h = start_cfg.main_item_height or (item_h * 2)
-    if not self.open_panes then self.open_panes = {} end
+    if not state.open_panes then state.open_panes = {} end
 
     local root_kind, root_path, base_row = nil, nil, nil
-    if self.hovered_main_id == 'documents' then root_kind='fs'; root_path='/My Computer/C:/Documents'; base_row=1
-    elseif self.hovered_main_id == 'settings' then root_kind='fs'; root_path='/Control Panel'; base_row=2
-    elseif self.hovered_main_id == 'programs' then root_kind='fs'; root_path=Constants.paths.START_MENU_PROGRAMS; base_row=0 end
+    if state.hovered_main_id == 'documents' then root_kind='fs'; root_path='/My Computer/C:/Documents'; base_row=1
+    elseif state.hovered_main_id == 'settings' then root_kind='fs'; root_path='/Control Panel'; base_row=2
+    elseif state.hovered_main_id == 'programs' then root_kind='fs'; root_path=Constants.paths.START_MENU_PROGRAMS; base_row=0 end
 
     local inside_pane=false
-    for _, p in ipairs(self.open_panes) do local b=p.bounds; if mx>=b.x and mx<=b.x+b.w and my>=b.y and my<=b.y+b.h then inside_pane=true; break end end
+    for _, p in ipairs(state.open_panes) do local b=p.bounds; if mx>=b.x and mx<=b.x+b.w and my>=b.y and my<=b.y+b.h then inside_pane=true; break end end
     -- Don't clear panes here; allow StartMenuView:update to handle grace close.
     -- We still process close timers even if not inside any pane/root.
     -- If not inside any pane and no root hovered, we will only advance close timers and potentially close panes after delay.
@@ -732,7 +715,7 @@ function StartMenuView:updateCascade(mx, my, dt)
     local desired_root_id = root_kind and (root_kind .. '|' .. tostring(root_path or '')) or nil
     -- Create or re-create the root pane when hovering a root section. If the root id changed OR the
     -- root pane was previously closed (e.g., by leave-close timer), rebuild it.
-    if desired_root_id and (self._cascade_root_id ~= desired_root_id or not (self.open_panes[1] and self.open_panes[1].kind)) then
+    if desired_root_id and (state._cascade_root_id ~= desired_root_id or not (state.open_panes[1] and state.open_panes[1].kind)) then
         local base_x = self.start_menu_x + self.start_menu_w - overlap
         local base_y = self.start_menu_y + padding + (base_row or 0) * main_h
         local items = self:buildPaneItems(root_kind, root_path)
@@ -745,47 +728,47 @@ function StartMenuView:updateCascade(mx, my, dt)
         if h > maxH then h = maxH end
         if base_y < minY then base_y = minY end
         if base_y + h > maxY then base_y = math.max(minY, maxY - h) end
-        self.open_panes[1] = { kind = root_kind, items = items, bounds = { x = base_x, y = base_y, w = w, h = h }, parent_path = root_path }
-        self.cascade_hover = { level = nil, index = nil, t = 0 }
-        for i=2,#self.open_panes do self.open_panes[i]=nil end
-        self._cascade_root_id = desired_root_id
+        state.open_panes[1] = { kind = root_kind, items = items, bounds = { x = base_x, y = base_y, w = w, h = h }, parent_path = root_path }
+        state.cascade_hover = { level = nil, index = nil, t = 0 }
+        for i=2,#state.open_panes do state.open_panes[i]=nil end
+        state._cascade_root_id = desired_root_id
         -- Reset close timers beyond root
-        self._pane_close = {}
+        state._pane_close = {}
         -- Immediately reflow to avoid a frame of incorrect size/position
-        if self.open_panes and #self.open_panes > 0 then self:reflowOpenPanesBounds() end
+        if state.open_panes and #state.open_panes > 0 then self:reflowOpenPanesBounds(state) end
     end
 
     -- active pane under cursor
     local level, idx = nil, nil
-    for i,p in ipairs(self.open_panes) do local b=p.bounds; if mx>=b.x and mx<=b.x+b.w and my>=b.y and my<=b.y+b.h then level=i; idx=self:getPaneIndexAtPosition(p,mx,my); break end end
+    for i,p in ipairs(state.open_panes) do local b=p.bounds; if mx>=b.x and mx<=b.x+b.w and my>=b.y and my<=b.y+b.h then level=i; idx=self:getPaneIndexAtPosition(p,mx,my); break end end
 
     -- Manage delayed closing for panes deeper than the active level (or all if mouse not over any pane)
     local function close_deeper_from(from_level)
         -- Never auto-close the root pane via leave timers; allow global grace to close it.
         local start_i = math.max(2, from_level)
-        for i=start_i,#self.open_panes do self.open_panes[i]=nil; self._pane_close[i]=nil end
+        for i=start_i,#state.open_panes do state.open_panes[i]=nil; state._pane_close[i]=nil end
     end
     local active_level = level or 0
     -- Cancel pending close for panes up to the active level; advance timers for deeper ones
-    for i=1,active_level do self._pane_close[i] = nil end
-    for i=math.max(2, active_level+1), #self.open_panes do
-        self._pane_close[i] = (self._pane_close[i] or 0) + (dt or 0)
-        if (self._pane_close[i] or 0) >= (self.cascade_close_delay or 0.2) then
+    for i=1,active_level do state._pane_close[i] = nil end
+    for i=math.max(2, active_level+1), #state.open_panes do
+        state._pane_close[i] = (state._pane_close[i] or 0) + (dt or 0)
+        if (state._pane_close[i] or 0) >= (self.cascade_close_delay or 0.2) then
             close_deeper_from(i)
             -- Reflow right away to prevent a frame of stale bounds
-            if self.open_panes and #self.open_panes > 0 then self:reflowOpenPanesBounds() end
+            if state.open_panes and #state.open_panes > 0 then self:reflowOpenPanesBounds(state) end
             break
         end
     end
 
-    if not level then self.cascade_hover.t = 0; return end
+    if not level then state.cascade_hover.t = 0; return end
     -- Hover delay accumulation
-    if self.cascade_hover.level ~= level or self.cascade_hover.index ~= idx then self.cascade_hover = { level=level, index=idx, t=0 } else self.cascade_hover.t=(self.cascade_hover.t or 0)+dt end
-    local pane = self.open_panes[level]; if not pane or not idx or not pane.items or not pane.items[idx] then return end
+    if state.cascade_hover.level ~= level or state.cascade_hover.index ~= idx then state.cascade_hover = { level=level, index=idx, t=0 } else state.cascade_hover.t=(state.cascade_hover.t or 0)+dt end
+    local pane = state.open_panes[level]; if not pane or not idx or not pane.items or not pane.items[idx] then return end
     local item = pane.items[idx]; if item.type ~= 'folder' then return end
-    -- If dragging this folder, do not open its child pane (avoids trapping drop target on the folder’s own child pane)
-    if self.dnd_active and self.dnd_entry_key and item.path == self.dnd_entry_key then return end
-    if (self.cascade_hover.t or 0) < (self.cascade_hover_delay or 0.2) then return end
+    -- If dragging this folder, do not open its child pane (avoids trapping drop target on the folder's own child pane)
+    if state.dnd_active and state.dnd_entry_key and item.path == state.dnd_entry_key then return end
+    if (state.cascade_hover.t or 0) < (self.cascade_hover_delay or 0.2) then return end
     local child_items = self:buildPaneItems('fs', item.path); if #child_items == 0 then return end
     local child_x = pane.bounds.x + pane.bounds.w - overlap
     local child_y = pane.bounds.y + padding + (idx - 1) * item_h
@@ -798,12 +781,12 @@ function StartMenuView:updateCascade(mx, my, dt)
     if child_h > maxH then child_h = maxH end
     if child_y < minY then child_y = minY end
     if child_y + child_h > maxY then child_y = math.max(minY, maxY - child_h) end
-    self.open_panes[level + 1] = { kind='fs', items=child_items, bounds={ x=child_x, y=child_y, w=child_w, h=child_h }, parent_path=item.path }
+    state.open_panes[level + 1] = { kind='fs', items=child_items, bounds={ x=child_x, y=child_y, w=child_w, h=child_h }, parent_path=item.path }
     -- When opening a new child, immediately discard panes deeper than it and reset close timer for this one
-    for i=level+2, #self.open_panes do self.open_panes[i]=nil end
-    self._pane_close[level + 1] = nil
+    for i=level+2, #state.open_panes do state.open_panes[i]=nil end
+    state._pane_close[level + 1] = nil
     -- Reflow after opening child to clamp size
-    if self.open_panes and #self.open_panes > 0 then self:reflowOpenPanesBounds() end
+    if state.open_panes and #state.open_panes > 0 then self:reflowOpenPanesBounds(state) end
 end
 
 function StartMenuView:getPaneIndexAtPosition(pane, mx, my)
@@ -847,11 +830,10 @@ function StartMenuView:buildPaneItems(kind, path)
     return items
 end
 
-function StartMenuView:drawPane(pane)
+function StartMenuView:drawPane(pane, state)
     if not pane or not pane.bounds then return end
     local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
-    local SpriteLoader = require('src.utils.sprite_loader')
-    local sprite_loader = SpriteLoader.getInstance()
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25
     local icon_size = start_cfg.icon_size or 20
@@ -875,9 +857,9 @@ function StartMenuView:drawPane(pane)
     for i, entry in ipairs(pane.items) do
         local hovered = false
         local idx = self:getPaneIndexAtPosition(pane, love.mouse.getX(), love.mouse.getY())
-        if not self.dnd_active and idx == i then love.graphics.setColor(theme.highlight or {0,0,0.5}); love.graphics.rectangle('fill', pane.bounds.x + 2, y, pane.bounds.w - 4, item_h); hovered = true end
+        if not state.dnd_active and idx == i then love.graphics.setColor(theme.highlight or {0,0,0.5}); love.graphics.rectangle('fill', pane.bounds.x + 2, y, pane.bounds.w - 4, item_h); hovered = true end
         -- While dragging: highlight the folder row under the cursor when dropping INTO it
-        if self.dnd_active and self.dnd_drop_mode == 'into' and entry.type == 'folder' and self.dnd_target_folder_path == entry.path then
+        if state.dnd_active and state.dnd_drop_mode == 'into' and entry.type == 'folder' and state.dnd_target_folder_path == entry.path then
             love.graphics.setColor(theme.highlight or {0,0,0.5})
             love.graphics.rectangle('fill', pane.bounds.x + 2, y, pane.bounds.w - 4, item_h)
         end
@@ -905,8 +887,8 @@ function StartMenuView:drawPane(pane)
 end
 
 -- Recompute bounds (height and position) for all currently open panes based on their items
-function StartMenuView:reflowOpenPanesBounds()
-    if not (self.open_panes and #self.open_panes > 0) then return end
+function StartMenuView:reflowOpenPanesBounds(state)
+    if not (state.open_panes and #state.open_panes > 0) then return end
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25
     local padding = start_cfg.padding or 10
@@ -915,7 +897,7 @@ function StartMenuView:reflowOpenPanesBounds()
     local minY = 10
     local maxY = love.graphics.getHeight() - self.taskbar_height - 2
     local maxH = math.max(0, maxY - minY)
-    for i, pane in ipairs(self.open_panes) do
+    for i, pane in ipairs(state.open_panes) do
         local count = #(pane.items or {})
         local h = padding + count * item_h + 10
         if h > maxH then h = maxH end

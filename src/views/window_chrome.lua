@@ -28,9 +28,9 @@ function WindowChrome:init()
 end
 
 -- Draw complete window chrome
-function WindowChrome:draw(window, is_focused)
+function WindowChrome:draw(window, is_focused, sprite_loader)
     self:drawBorder(window, is_focused)
-    self:drawTitleBar(window, is_focused)
+    self:drawTitleBar(window, is_focused, sprite_loader)
     self:drawButtons(window, is_focused)
 end
 
@@ -50,10 +50,7 @@ function WindowChrome:drawBorder(window, is_focused)
 end
 
 -- Draw title bar
-function WindowChrome:drawTitleBar(window, is_focused)
-    local SpriteLoader = require('src.utils.sprite_loader')
-    local sprite_loader = SpriteLoader.getInstance()
-    
+function WindowChrome:drawTitleBar(window, is_focused, sprite_loader)
     local bar_height = self.TITLE_BAR_HEIGHT
 
     -- Title bar background (gradient effect)

@@ -2,13 +2,16 @@
 -- Manages window input, dragging, resizing, and focus
 
 local Object = require('class')
-local Config = rawget(_G, 'DI_CONFIG') or {}
 local WindowController = Object:extend('WindowController')
 
-function WindowController:init(window_manager, program_registry, window_states_map)
+function WindowController:init(window_manager, program_registry, window_states_map, di)
     self.window_manager = window_manager
     self.program_registry = program_registry -- Injected dependency
     self.window_states = window_states_map -- Store reference to DesktopState's map
+    self.event_bus = di and di.eventBus
+
+    -- Optional DI for config
+    local Config = (di and di.config) or require('src.config')
 
     -- Drag state
     self.dragging_window_id = nil
@@ -64,7 +67,9 @@ function WindowController:checkWindowClick(window, x, y, window_chrome)
 
     -- Focus this window if not already focused
     if self.window_manager:getFocusedWindowId() ~= window.id then
-        self.window_manager:focusWindow(window.id)
+        if self.event_bus then
+            self.event_bus:publish('request_window_focus', window.id)
+        end
     end
 
     -- Check window control buttons FIRST
@@ -187,6 +192,9 @@ function WindowController:startResize(window_id, edge, mouse_x, mouse_y)
         width = window.width,
         height = window.height
     }
+    if self.event_bus then
+        self.event_bus:publish('window_resize_started', window_id)
+    end
     print("Start resize", window_id, edge)
 end
 
@@ -202,6 +210,10 @@ function WindowController:mousemoved(x, y, dx, dy, window_chrome) -- Added windo
             self.drag_offset_x = self.drag_pending.offset_x
             self.drag_offset_y = self.drag_pending.offset_y
             self.drag_pending = nil
+
+            if self.event_bus then
+                self.event_bus:publish('window_drag_started', self.dragging_window_id)
+            end
         end
     end
 
@@ -211,7 +223,9 @@ function WindowController:mousemoved(x, y, dx, dy, window_chrome) -- Added windo
         local new_y = y - self.drag_offset_y
 
         -- Update bounds directly without clamping here
-        self.window_manager:updateWindowBounds(self.dragging_window_id, new_x, new_y, nil, nil)
+        if self.event_bus then
+            self.event_bus:publish('request_window_move', self.dragging_window_id, new_x, new_y)
+        end
 
         return true -- Indicate mouse move was handled
     end
@@ -270,11 +284,12 @@ function WindowController:handleResize(mouse_x, mouse_y)
     new_w = math.min(new_w, screen_w - new_x)
     new_h = math.min(new_h, screen_h - taskbar_h - new_y)
     new_w = math.max(min_w, new_w); new_h = math.max(min_h, new_h)
-    if edge:find("left") and new_w == min_w then new_x = math.max(0, math.min(new_x, screen_w - min_w)) end
-    if edge:find("top") and new_h == min_h then new_y = math.max(0, math.min(new_y, screen_h - taskbar_h - min_h)) end
+    if edge:find('top') and new_h == min_h then new_y = math.max(0, math.min(new_y, screen_h - taskbar_h - min_h)) end
 
     -- Update window model
-    self.window_manager:updateWindowBounds(self.resizing_window_id, new_x, new_y, new_w, new_h)
+    if self.event_bus then
+        self.event_bus:publish('request_window_resize', self.resizing_window_id, new_x, new_y, new_w, new_h)
+    end
 
     -- Notify state about new viewport bounds (x, y, width, height)
     local window_data = self.window_states[self.resizing_window_id]
@@ -338,41 +353,52 @@ function WindowController:mousereleased(x, y, button)
             local snap = inter.snap or {}
             if snap.enabled then
                 local pad = snap.padding or 10
-                if snap.to_edges ~= false then
-                    if final_x <= pad then final_x = 0 end
-                    if final_x + window.width >= screen_w - pad then final_x = screen_w - window.width end
-                    if final_y <= pad then
-                        if snap.top_maximize then
-                            -- Maximize instead of snapping to top
-                            self.window_manager:maximizeWindow(window_id, screen_w, screen_h)
-                            -- Clear drag state and pending; skip normal update
+                            if snap.to_edges ~= false then
+                                if final_x <= pad then final_x = 0 end
+                                if final_x + window.width >= screen_w - pad then final_x = screen_w - window.width end
+                                if final_y <= pad then
+                                    if snap.top_maximize then
+                                        -- Maximize instead of snapping to top
+                                        if self.event_bus then
+                                            self.event_bus:publish('request_window_maximize', window_id, screen_w, screen_h)
+                                        end
+                                        -- Clear drag state and pending; skip normal update
+                                        self.dragging_window_id = nil
+                                        self.drag_offset_x = 0
+                                        self.drag_offset_y = 0
+                                        self.drag_pending = nil
+                                        return true
+                                    else
+                                        final_y = 0
+                                    end
+                                end
+                                if final_y + window.height >= (screen_h - taskbar_h - pad) then
+                                    final_y = (screen_h - taskbar_h - window.height)
+                                end
+                            end
+                        end
+                
+                        -- Update the window bounds to the final clamped/snapped position
+                        if self.event_bus then
+                            self.event_bus:publish('request_window_move', window_id, final_x, final_y)
+                        end
+                                print("Dropped window", window_id, "at validated position", final_x, final_y)
+                        
+                                if self.event_bus then
+                                    self.event_bus:publish('window_drag_ended', window_id)
+                                end
+                            end
+                        
+                            -- Clear drag state AFTER applying final position
                             self.dragging_window_id = nil
                             self.drag_offset_x = 0
                             self.drag_offset_y = 0
-                            self.drag_pending = nil
-                            return true
-                        else
-                            final_y = 0
-                        end
-                    end
-                    if final_y + window.height >= (screen_h - taskbar_h - pad) then
-                        final_y = (screen_h - taskbar_h - window.height)
-                    end
-                end
-            end
-
-            -- Update the window bounds to the final clamped/snapped position
-            self.window_manager:updateWindowBounds(window_id, final_x, final_y, nil, nil)
-            print("Dropped window", window_id, "at validated position", final_x, final_y)
-        end
-
-        -- Clear drag state AFTER applying final position
-        self.dragging_window_id = nil
-        self.drag_offset_x = 0
-        self.drag_offset_y = 0
     end
 
     if was_resizing then
+        if self.event_bus then
+            self.event_bus:publish('window_resize_ended', self.resizing_window_id)
+        end
         print("End resize", self.resizing_window_id)
         self.resizing_window_id = nil
         self.resize_edge = nil

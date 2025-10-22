@@ -29,7 +29,6 @@ function love.load()
     print("=== Starting love.load() ===")
 
     -- Create standard system cursors
-    -- Use try-catch (pcall) in case a cursor type isn't supported on some OS
     local cursor_types = {"arrow", "ibeam", "wait", "crosshair", "waitarrow", "sizenwse", "sizenesw", "sizewe", "sizens", "sizeall", "no", "hand"}
     for _, type in ipairs(cursor_types) do
         local success, cursor = pcall(love.mouse.getSystemCursor, type)
@@ -37,7 +36,6 @@ function love.load()
             system_cursors[type] = cursor
         else
             print("Warning: Could not get system cursor for type:", type)
-            -- Use arrow as fallback if creation failed
             if not system_cursors["arrow"] then
                  local success_arrow, arrow_cursor = pcall(love.mouse.getSystemCursor, "arrow")
                  if success_arrow then system_cursors["arrow"] = arrow_cursor end
@@ -45,76 +43,90 @@ function love.load()
             system_cursors[type] = system_cursors["arrow"] -- Fallback
         end
     end
-    -- Set default cursor
     if system_cursors["arrow"] then love.mouse.setCursor(system_cursors["arrow"]) end
 
-    -- Enable key repeat to ensure keypress callbacks receive repeats when desired
+    -- Enable key repeat
     if love.keyboard and love.keyboard.setKeyRepeat then love.keyboard.setKeyRepeat(true) end
 
-
-    -- Require necessary classes/modules FIRST
+    -- == 1. Require Modules ==
     local PlayerData = require('models.player_data')
     local GameData = require('models.game_data')
-    SaveManager = require('utils.save_manager') -- Assign to global
+    SaveManager = require('utils.save_manager')
     local VMManager = require('models.vm_manager')
     local StateMachineBuilder = require('controllers.state_machine')
     local CheatSystem = require('models.cheat_system')
     local Config = require('src.config')
-    _G.DI_CONFIG = Config -- expose for modules that read global fallback
-    SettingsManager = require('src.utils.settings_manager') -- Assign to global
+    SettingsManager = require('src.utils.settings_manager')
     local Statistics = require('models.statistics')
     local WindowManager = require('models.window_manager')
     local DesktopIcons = require('models.desktop_icons')
     local FileSystem = require('models.file_system')
     local RecycleBin = require('models.recycle_bin')
     local ProgramRegistry = require('models.program_registry')
-    local SpriteLoader = require('src.utils.sprite_loader')
+    SpriteLoader = require('src.utils.sprite_loader')
+    local PaletteManager = require('src.utils.palette_manager')
+    local SpriteManager = require('src.utils.sprite_manager')
+    local EventBus = require('src.utils.event_bus')
 
-
-
-    -- Load settings FIRST (applies fullscreen/windowed mode)
+    -- == 2. Initialize Core Systems & DI Container ==
     SettingsManager.inject({ config = Config })
     SettingsManager.load()
 
-    -- Instantiate Statistics FIRST
-    statistics = Statistics:new() -- Assign to global
+    statistics = Statistics:new()
     statistics:load()
 
-    -- Instantiate other main systems, injecting statistics into PlayerData
-    -- Prepare a partial di for model constructors that accept it
-    local di_models = { config = Config }
-    player_data = PlayerData:new(statistics, di_models) -- Assign to global
-    game_data = GameData:new(di_models) -- Assign to global
-    vm_manager = VMManager:new(di_models) -- Assign to global
-    cheat_system = CheatSystem:new() -- Assign to global
+    local event_bus = EventBus:new()
+    local di = {
+        config = Config,
+        settingsManager = SettingsManager,
+        saveManager = SaveManager,
+        statistics = statistics,
+        eventBus = event_bus,
+        systemCursors = system_cursors,
+    }
 
-    -- Check tutorial flag *once* at startup
-    local show_tutorial_on_startup = not SettingsManager.get("tutorial_shown")
+    -- == 3. Instantiate Models with DI ==
+    player_data = PlayerData:new(statistics, di)
+    di.playerData = player_data
+    game_data = GameData:new(di)
+    di.gameData = game_data
+    vm_manager = VMManager:new(di)
+    di.vmManager = vm_manager
+    cheat_system = CheatSystem:new()
+    di.cheatSystem = cheat_system
+    
+    window_manager = WindowManager:new(di)
+    di.windowManager = window_manager
+    desktop_icons = DesktopIcons:new(di)
+    di.desktopIcons = desktop_icons
+    file_system = FileSystem:new(di)
+    di.fileSystem = file_system
+    recycle_bin = RecycleBin:new(desktop_icons, di)
+    di.recycleBin = recycle_bin
+    program_registry = ProgramRegistry:new()
+    di.programRegistry = program_registry
 
-    -- Load save data
+    -- == 4. Load Save Data ==
     local saved_data = SaveManager.load()
     if saved_data then
         print("Loading saved game...")
-        -- Basic loading logic
         for key, value in pairs(saved_data) do
             if player_data[key] ~= nil then
                player_data[key] = value
-            elseif key == 'cheat_engine_data' then -- Handle specific nested tables
+            elseif key == 'cheat_engine_data' then
                  if type(value) == 'table' then player_data[key] = value
                  else print("Warning: Ignoring invalid cheat_engine_data from save."); player_data[key] = {} end
             else print("Warning: Unknown key in save data ignored: " .. key) end
         end
-        -- Ensure required tables exist after loading potentially old save
         player_data.unlocked_games = player_data.unlocked_games or {}
         player_data.completed_games = player_data.completed_games or {}
         player_data.game_performance = player_data.game_performance or {}
-        player_data.active_vms = player_data.active_vms or {} -- VM state now loaded in VMManager:initialize
+        player_data.active_vms = player_data.active_vms or {}
         player_data.cheat_engine_data = player_data.cheat_engine_data or {}
         player_data.upgrades = player_data.upgrades or { cpu_speed=0, overclock=0, auto_dodge=0 }
     else
         print("No save found, starting new game")
         player_data:addTokens(Config.start_tokens)
-        -- Ensure required tables exist for new game
         player_data.unlocked_games = {}
         player_data.completed_games = {}
         player_data.game_performance = {}
@@ -123,74 +135,41 @@ function love.load()
         player_data.upgrades = { cpu_speed=0, overclock=0, auto_dodge=0 }
     end
 
-    -- Initialize VM Manager *after* player data is loaded/initialized (loads VM state from player_data.active_vms)
     vm_manager:initialize(player_data)
 
-    -- Initialize Windowing/Desktop system models AFTER SettingsManager.load()
-    window_manager = WindowManager:new(di_models) -- Assign to global (loads remembered positions)
-    desktop_icons = DesktopIcons:new() -- Assign to global (loads layout)
-    file_system = FileSystem:new() -- Assign to global
-    recycle_bin = RecycleBin:new(desktop_icons) -- Assign to global, inject dependency
-    program_registry = ProgramRegistry:new() -- Assign to global
-    local sprite_loader = SpriteLoader.getInstance()
+    -- == 5. Initialize Sprite Utilities ==
+    local palette_manager = PaletteManager:new()
+    local sprite_loader = SpriteLoader:new(palette_manager)
     sprite_loader:loadAll()
+    local sprite_manager = SpriteManager:new(sprite_loader, palette_manager)
+    di.paletteManager = palette_manager
+    di.spriteLoader = sprite_loader
+    di.spriteManager = sprite_manager
 
-    print("Initialized windowing system models")
-
-    -- Create a DI table (composition root) for gradual injection into states
-    local di = {
-        config = Config,
-        settingsManager = SettingsManager,
-        saveManager = SaveManager,
-        statistics = statistics,
-        playerData = player_data,
-        gameData = game_data,
-        vmManager = vm_manager,
-        cheatSystem = cheat_system,
-        windowManager = window_manager,
-        desktopIcons = desktop_icons,
-        fileSystem = file_system,
-        recycleBin = recycle_bin,
-        programRegistry = program_registry,
-        systemCursors = system_cursors,
-    }
-
-    -- Ensure utils that support injection receive DI early
+    -- == 6. Initialize State Machine and States ==
     if SaveManager and SaveManager.inject then SaveManager.inject(di) end
 
-    -- Create and set up state machine with DI (states can optionally use state_machine.di)
     local StateMachine = StateMachineBuilder(Object)
-    state_machine = StateMachine:new(di) -- Assign to global
-    -- Attach back-reference for states that want it injected
+    state_machine = StateMachine:new(di)
     di.stateMachine = state_machine
 
-    -- Require state classes (just before instantiation)
-    -- Remove MinigameState require here as it's no longer a global state
     local CompletionState = require('states.completion_state')
-    local DebugState = require('states.debug_state') -- Overlay state
+    local DebugState = require('states.debug_state')
     local DesktopState = require('states.desktop_state')
     local ScreensaverState = require('states.screensaver_state')
 
-    -- Instantiate states that are switched to globally
-    local completion_state = CompletionState:new(state_machine, statistics) -- Fullscreen for now
-    local debug_state = DebugState:new(player_data, game_data, state_machine, SaveManager) -- Overlay state
+    local completion_state = CompletionState:new(state_machine, statistics)
+    local debug_state = DebugState:new(player_data, game_data, state_machine, SaveManager)
     local screensaver_state = ScreensaverState:new(state_machine)
-
-    -- Desktop state now needs more dependencies
     local desktop = DesktopState:new(di)
-
-    -- Pass system cursors to DesktopState
     desktop.cursors = system_cursors
 
-    -- Register states (Minigame state is removed)
-    state_machine:register(Constants.state.COMPLETION, completion_state) -- Launched from Space Defender window signal
-    state_machine:register(Constants.state.DEBUG, debug_state) -- Launched via F5
-    state_machine:register(Constants.state.DESKTOP, desktop) -- Initial state
+    state_machine:register(Constants.state.COMPLETION, completion_state)
+    state_machine:register(Constants.state.DEBUG, debug_state)
+    state_machine:register(Constants.state.DESKTOP, desktop)
     state_machine:register(Constants.state.SCREENSAVER, screensaver_state)
 
-    -- States launched as windows (Launcher, VMManager, SpaceDefender, CheatEngine, Settings, Statistics, FileExplorer, MinigameRunner)
-    -- are instantiated *by* DesktopState, not registered globally here.
-
+    -- == 7. Start Game ==
     print("Starting game - switching to desktop")
     state_machine:switch(Constants.state.DESKTOP)
 

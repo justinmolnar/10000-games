@@ -5,9 +5,10 @@ local Collision = require('utils.collision')
 -- self.config will be set via injectConfig(config)
 local BulletSystem = Object:extend('BulletSystem')
 
--- Accept statistics instance
-function BulletSystem:init(statistics_instance)
+-- Accept statistics instance and sprite_manager
+function BulletSystem:init(statistics_instance, sprite_manager)
     self.statistics = statistics_instance -- Store injected instance
+    self.sprite_manager = sprite_manager -- Store injected sprite manager
     self.config = nil
 
     self.bullet_types = {}
@@ -56,8 +57,10 @@ end
 
 -- Pick a valid sprite for bullets, with graceful fallbacks
 function BulletSystem:resolveBulletSprite(game)
-    local SpriteManager = require('src.utils.sprite_manager').getInstance()
-    SpriteManager:ensureLoaded()
+    if not self.sprite_manager then
+        error("BulletSystem: sprite_manager not injected")
+    end
+    self.sprite_manager:ensureLoaded()
     local candidates = {}
     if game.bullet_sprite and game.bullet_sprite ~= '' then
         table.insert(candidates, game.bullet_sprite)
@@ -79,7 +82,7 @@ function BulletSystem:resolveBulletSprite(game)
     table.insert(candidates, "world_star-0")
     table.insert(candidates, "joystick_alt-1")
     for _, name in ipairs(candidates) do
-        if SpriteManager.sprite_loader:hasSprite(name) then
+        if self.sprite_manager.sprite_loader:hasSprite(name) then
             return name
         end
     end
@@ -87,10 +90,12 @@ function BulletSystem:resolveBulletSprite(game)
 end
 
 function BulletSystem:getBulletColorFromPalette(game)
-    local SpriteManager = require('src.utils.sprite_manager').getInstance()
-    SpriteManager:ensureLoaded()
-    local palette_id = SpriteManager:getPaletteId(game)
-    local palette = SpriteManager.palette_manager:getPalette(palette_id)
+    if not self.sprite_manager then
+        error("BulletSystem: sprite_manager not injected")
+    end
+    self.sprite_manager:ensureLoaded()
+    local palette_id = self.sprite_manager:getPaletteId(game)
+    local palette = self.sprite_manager.palette_manager:getPalette(palette_id)
     
     if palette and palette.colors then
         -- Use accent color if available, otherwise primary

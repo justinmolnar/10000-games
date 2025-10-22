@@ -4,6 +4,7 @@ local SpaceDefenderView = Object:extend('SpaceDefenderView')
 function SpaceDefenderView:init(controller)
     self.controller = controller
     local di = controller and controller.di
+    self.sprite_manager = (di and di.spriteManager) or nil
     local cfg_root = (di and di.config and di.config.games and di.config.games.space_defender) or {}
     self._cfg = (cfg_root and cfg_root.view) or {}
     self.stars = {}
@@ -67,15 +68,15 @@ end
 
 function SpaceDefenderView:drawPlayer(player)
     if not player then return end
-    local SpriteManager = require('src.utils.sprite_manager').getInstance()
-    SpriteManager:ensureLoaded()
-    SpriteManager.sprite_loader:drawSprite("joystick_alt-0", player.x - player.width/2, player.y - player.height/2, player.width, player.height)
+    local sprite_manager = self.sprite_manager or (self.di and self.di.spriteManager)
+    sprite_manager:ensureLoaded()
+    sprite_manager.sprite_loader:drawSprite("joystick_alt-0", player.x - player.width/2, player.y - player.height/2, player.width, player.height)
 end
 
 function SpaceDefenderView:drawEnemies(enemies)
     if not enemies then return end
-    local SpriteManager = require('src.utils.sprite_manager').getInstance()
-    SpriteManager:ensureLoaded()
+    local sprite_manager = self.sprite_manager or (self.di and self.di.spriteManager)
+    sprite_manager:ensureLoaded()
 
     for _, enemy in ipairs(enemies) do
         local sprite_name = "computer_explorer-0" -- Default
@@ -91,24 +92,24 @@ function SpaceDefenderView:drawEnemies(enemies)
         else
             love.graphics.setColor(1, 1, 1)
         end
-        SpriteManager.sprite_loader:drawSprite(sprite_name, enemy.x - enemy.width/2, enemy.y - enemy.height/2, enemy.width, enemy.height)
+        sprite_manager.sprite_loader:drawSprite(sprite_name, enemy.x - enemy.width/2, enemy.y - enemy.height/2, enemy.width, enemy.height)
     end
 end
 
 function SpaceDefenderView:drawBullets(bullet_system, game_data)
     if not bullet_system then return end
     local bullets = bullet_system.getActiveBullets and bullet_system:getActiveBullets() or {}
-    local SpriteManager = require('src.utils.sprite_manager').getInstance()
-    SpriteManager:ensureLoaded()
+    local sprite_manager = self.sprite_manager or (self.di and self.di.spriteManager)
+    sprite_manager:ensureLoaded()
 
     for _, bullet in ipairs(bullets) do
         if bullet.sprite and bullet.sprite ~= "bullet_basic" then
             local game = game_data and game_data.getGame and game_data:getGame(bullet.id)
             local palette_id = "default"
-            if game then palette_id = SpriteManager:getPaletteId(game) end
+            if game then palette_id = sprite_manager:getPaletteId(game) end
             local cfg = (self._cfg and self._cfg.bullets) or {}
             local s = (cfg.sprite_scale) or (((self._cfg and self._cfg.systems and self._cfg.systems.bullets) and self._cfg.systems.bullets.sprite_scale) or 2.0)
-            SpriteManager.sprite_loader:drawSprite(
+            sprite_manager.sprite_loader:drawSprite(
                 bullet.sprite,
                 bullet.x - bullet.width/2,
                 bullet.y - bullet.height/2,
@@ -126,8 +127,8 @@ end
 
 function SpaceDefenderView:drawBoss(boss)
     if not boss then return end
-    local SpriteManager = require('src.utils.sprite_manager').getInstance()
-    SpriteManager:ensureLoaded()
+    local sprite_manager = self.sprite_manager or (self.di and self.di.spriteManager)
+    sprite_manager:ensureLoaded()
 
     -- Resolve a valid boss sprite once and cache it
     if not self._boss_sprite_name then
@@ -139,7 +140,7 @@ function SpaceDefenderView:drawBoss(boss)
             "windows_movie-0"
         }
         for _, name in ipairs(candidates) do
-            if SpriteManager.sprite_loader:hasSprite(name) then
+            if sprite_manager.sprite_loader:hasSprite(name) then
                 self._boss_sprite_name = name
                 break
             end
@@ -148,7 +149,7 @@ function SpaceDefenderView:drawBoss(boss)
     end
 
     love.graphics.setColor(1, 1, 1)
-    SpriteManager.sprite_loader:drawSprite(self._boss_sprite_name, boss.x - boss.width/2, boss.y - boss.height/2, boss.width, boss.height)
+    sprite_manager.sprite_loader:drawSprite(self._boss_sprite_name, boss.x - boss.width/2, boss.y - boss.height/2, boss.width, boss.height)
     
     -- Health bar
     local bb = (self._cfg.boss_bar) or { width = 200, height = 15, offset_y = 20 }

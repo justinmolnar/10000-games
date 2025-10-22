@@ -9,6 +9,7 @@ function LauncherState:init(player_data, game_data, state_machine, save_manager,
     self.state_machine = state_machine
     self.save_manager = save_manager
     self.di = di
+    self.event_bus = di and di.eventBus
 
     -- Create the view instance, passing a reference to this state (as controller)
     self.view = LauncherView:new(self, player_data, game_data)
@@ -18,9 +19,14 @@ function LauncherState:init(player_data, game_data, state_machine, save_manager,
 end
 
 function LauncherState:enter()
+    -- Publish shop_opened event
+    if self.event_bus then
+        self.event_bus:publish('shop_opened')
+    end
+
     -- Load games from GameData
     self.all_games = self.game_data:getAllGames()
-    
+
     -- Sort by ID with natural number sorting
     table.sort(self.all_games, function(a, b)
         -- Extract base name and number from id
@@ -55,7 +61,12 @@ end
 function LauncherState:updateFilter(category)
     self.view.selected_category = category -- Update view's state
     self.filtered_games = {}
-    
+
+    -- Publish shop_category_changed event
+    if self.event_bus then
+        self.event_bus:publish('shop_category_changed', category)
+    end
+
     local filters = {
         all = function(_) return true end,
         action = function(g) return g.category == 'action' end,
@@ -163,6 +174,11 @@ function LauncherState:launchGame(game_id)
     local game_data = self.game_data:getGame(game_id)
     if not game_data then return nil end -- Return nil if game not found
 
+    -- Publish game_launch_requested event
+    if self.event_bus then
+        self.event_bus:publish('game_launch_requested', game_id)
+    end
+
     local is_unlocked = self.player_data:isGameUnlocked(game_id)
 
     if not is_unlocked then
@@ -217,8 +233,24 @@ function LauncherState:showUnlockPrompt(game_data)
             self.player_data:unlockGame(game_data.id)
             self.save_manager.save(self.player_data)
             print("Unlocked: " .. game_data.display_name)
+
+            -- Publish game_purchased event
+            if self.event_bus then
+                self.event_bus:publish('game_purchased', game_data.id, cost)
+            end
+
+            -- Publish game_unlocked event
+            if self.event_bus then
+                self.event_bus:publish('game_unlocked', game_data.id)
+            end
+
             -- Return the launch event instead of switching state
             return { type = "event", name = "launch_minigame", game_data = game_data }
+        else
+            -- Publish purchase_failed event
+            if self.event_bus then
+                self.event_bus:publish('purchase_failed', game_data.id, 'insufficient_tokens')
+            end
         end
     end
     return nil -- Indicate cancellation or failure
@@ -227,6 +259,11 @@ end
 function LauncherState:showGameDetails(game_id)
     self.view.selected_game = self.game_data:getGame(game_id)
     self.view.detail_panel_open = true
+
+    -- Publish game_details_viewed event
+    if self.event_bus then
+        self.event_bus:publish('game_details_viewed', game_id)
+    end
 end
 
 function LauncherState:mousepressed(x, y, button)

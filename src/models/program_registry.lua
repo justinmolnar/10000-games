@@ -383,6 +383,72 @@ function ProgramRegistry:findShortcutByPath(path)
     return self:findFolderShortcutByPath(path)
 end
 
+-- Create a shortcut to a file that launches the correct application
+function ProgramRegistry:addFileShortcut(name, file_path, opts)
+    opts = opts or {}
+
+    -- 1. Determine the target program based on file extension
+    local target_program_id
+    if file_path:match('%.txt$') then
+        target_program_id = 'notepad'
+    else
+        print("ERROR: No default program for this file type to create a shortcut.")
+        return nil
+    end
+
+    local base_program = self:getProgram(target_program_id)
+    if not base_program then
+        print("ERROR: Base program '" .. target_program_id .. "' not found for shortcut.")
+        return nil
+    end
+
+    -- 2. Generate a unique ID for the shortcut
+    local function sanitize(s)
+        s = tostring(s or '')
+        s = s:gsub('[^%w]+', '_')
+        return s:lower()
+    end
+    local base_id = 'shortcut_file_' .. sanitize(name ~= '' and name or file_path)
+    local id = base_id
+    local idx = 1
+    while self:getProgram(id) do
+        idx = idx + 1
+        id = base_id .. '_' .. tostring(idx)
+    end
+
+    -- 3. Build the new program from scratch
+    local program = {
+        id = id,
+        name = name or file_path,
+        
+        -- Properties from the base program that define its behavior
+        state_class_path = base_program.state_class_path,
+        dependencies = base_program.dependencies,
+        window_defaults = base_program.window_defaults or { w = 600, h = 400, resizable = true, single_instance = false },
+
+        -- Shortcut-specific properties
+        executable = 'file_shortcut.lnk', -- Differentiate from folder shortcuts
+        icon_sprite = opts.icon_sprite or 'document-0',
+        icon_color = { 0.9, 0.9, 0.9 },
+        on_desktop = opts.on_desktop == true,
+        in_start_menu = opts.in_start_menu == true,
+        disabled = false, -- Explicitly enable the shortcut
+        
+        -- The crucial override: launch with the target file path
+        enter_args = { type = 'static', value = file_path },
+        
+        -- Metadata for the shortcut itself
+        shortcut_target = file_path,
+        shortcut_type = 'file'
+    }
+
+    -- 4. Add to registry and save
+    table.insert(self.dynamic_programs, program)
+    table.insert(self.programs, program)
+    self:saveDynamicPrograms()
+    return program
+end
+
 -- Create or update a folder shortcut program entry
 -- opts = { on_desktop = bool, in_start_menu = bool }
 function ProgramRegistry:addFolderShortcut(name, path, opts)

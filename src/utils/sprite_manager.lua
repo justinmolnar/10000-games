@@ -4,21 +4,16 @@
 local Object = require('class')
 local SpriteManager = Object:extend('SpriteManager')
 
-function SpriteManager:init()
-    self.sprite_loader = nil
-    self.palette_manager = nil
+function SpriteManager:init(sprite_loader, palette_manager)
+    self.sprite_loader = sprite_loader
+    self.palette_manager = palette_manager
     self.cached_sprites = {} -- {game_id = {metric_name = sprite_name}}
 end
 
 function SpriteManager:ensureLoaded()
-    if not self.sprite_loader then
-        local SpriteLoader = require('src.utils.sprite_loader')
-        self.sprite_loader = SpriteLoader.getInstance()
-    end
-    
-    if not self.palette_manager then
-        local PaletteManager = require('src.utils.palette_manager')
-        self.palette_manager = PaletteManager.getInstance()
+    -- Dependencies now injected via init, no lazy loading needed
+    if not self.sprite_loader or not self.palette_manager then
+        error("SpriteManager: sprite_loader and palette_manager must be injected via init")
     end
 end
 
@@ -105,16 +100,4 @@ function SpriteManager:getMetricSprites(game_data)
     return sprites
 end
 
--- Singleton instance
-local instance = nil
-
-local SpriteManagerModule = {}
-
-function SpriteManagerModule.getInstance()
-    if not instance then
-        instance = SpriteManager:new()
-    end
-    return instance
-end
-
-return SpriteManagerModule
+return SpriteManager

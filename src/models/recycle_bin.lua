@@ -5,18 +5,23 @@ local Object = require('class')
 local json = require('json')
 local RecycleBin = Object:extend('RecycleBin')
 
-function RecycleBin:init(desktop_icons_model)
+function RecycleBin:init(desktop_icons_model, di)
     if not desktop_icons_model then
         error("RecycleBin requires DesktopIcons model instance.")
     end
     self.desktop_icons = desktop_icons_model -- Dependency injection
+    self.event_bus = (di and di.eventBus) or (rawget(_G, 'DI') and rawget(_G, 'DI').eventBus)
     self.items = {} -- Array of {program_id, original_position, deleted_at}
     self._SAVE_FILE = 'recycle_bin.json'
     self:_load()
+
+    if self.event_bus then
+        self.event_bus:subscribe('request_icon_recycle', function(prog_id) self:addItem(prog_id) end)
+    end
 end
 
 -- Add item to recycle bin
-function RecycleBin:addItem(program_id, original_position)
+function RecycleBin:addItem(program_id)
     if not program_id then return false end
 
     -- Check if already in bin
@@ -26,14 +31,21 @@ function RecycleBin:addItem(program_id, original_position)
         end
     end
 
+    local original_position = self.desktop_icons:getPosition(program_id)
+
     table.insert(self.items, {
         program_id = program_id,
         original_position = original_position, -- Store {x, y} or nil
         deleted_at = os.time()
     })
 
-    -- Mark as deleted in desktop icons model
-    self.desktop_icons:deleteIcon(program_id)
+    -- Publish event to have the icon marked as deleted
+    if self.event_bus then
+        self.event_bus:publish('request_icon_delete', program_id)
+    else
+        -- Fallback for non-event-driven contexts
+        self.desktop_icons:deleteIcon(program_id)
+    end
 
     self:_save()
     return true

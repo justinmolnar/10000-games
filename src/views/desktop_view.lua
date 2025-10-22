@@ -17,6 +17,7 @@ function DesktopView:init(program_registry, player_data, window_manager, desktop
     self.desktop_icons = desktop_icons -- Injected
     self.recycle_bin = recycle_bin -- Injected
     self.file_system = (di and di.fileSystem) or nil
+    self.sprite_loader = (di and di.spriteLoader) or nil
 
     local taskbar_cfg = (self.config and self.config.ui and self.config.ui.taskbar) or {}
     self.taskbar_height = taskbar_cfg.height or 40
@@ -169,9 +170,11 @@ function DesktopView:draw(wallpaper, tokens, start_menu_open, dragging_icon_id)
 end
 
 function DesktopView:drawIcon(program, hovered, position_override, is_dragging)
-    local SpriteLoader = require('src.utils.sprite_loader')
-    local sprite_loader = SpriteLoader.getInstance()
-    
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
+    if not sprite_loader then
+        error("DesktopView: sprite_loader not available in DI")
+    end
+
     local pos = position_override or self.desktop_icons:getPosition(program.id) or self:getDefaultIconPosition(program.id)
     local px = pos.x
     local py = pos.y
@@ -311,8 +314,7 @@ function DesktopView:drawTaskbar(tokens)
 
     local focused_window_id = self.window_manager:getFocusedWindowId()
     local font = love.graphics.getFont()
-    local SpriteLoader = require('src.utils.sprite_loader')
-    local sprite_loader = SpriteLoader.getInstance()
+    local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
 
     for i, window in ipairs(windows) do
         local button_x = button_area_start_x + (i - 1) * (button_width + self.taskbar_button_padding)

@@ -3,7 +3,6 @@
 local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local FormulaRenderer = require('src.views.formula_renderer')
-local SpriteManager = require('src.utils.sprite_manager').getInstance()
 -- Config is supplied via DI; avoid requiring src.config here
 local Strings = require('src.utils.strings')
 local VMManagerView = Object:extend('VMManagerView')
@@ -15,6 +14,7 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data, di)
     self.game_data = game_data
     self.di = di
     if di then UIComponents.inject(di) end
+    self.sprite_manager = (di and di.spriteManager) or nil
 
     self.selected_slot = nil
     self.game_selection_open = false
@@ -52,7 +52,7 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data, di)
     self.modal_h = 400 -- Placeholder
     self.modal_item_height = M.item_h or 40
 
-    self.formula_renderer = FormulaRenderer:new()
+    self.formula_renderer = FormulaRenderer:new(self.di)
     -- Scrollbar interaction state (for modal list)
     self._sb = { modal = { dragging = false, geom = nil, drag = nil } }
 end
@@ -402,7 +402,9 @@ function VMManagerView:drawTokensPerMinute(x, y, rate)
 end
 
 function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
-    SpriteManager:ensureLoaded()
+    if self.sprite_manager then
+        self.sprite_manager:ensureLoaded()
+    end
     local Config_ = (self.di and self.di.config) or {}
     local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local S = (V.colors and V.colors.slot) or {}
@@ -423,7 +425,7 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
             local palette_id = SpriteManager:getPaletteId(game)
             local icon_sprite = SpriteManager:getMetricSprite(game, game.metrics_tracked[1] or "default")
             if icon_sprite then
-                SpriteManager.sprite_loader:drawSprite(icon_sprite, x + 8, y + 35, 48, 48, nil, palette_id)
+                self.sprite_manager.sprite_loader:drawSprite(icon_sprite, x + 8, y + 35, 48, 48, nil, palette_id)
             end
 
             love.graphics.setColor(S.name_text or {1,1,1})
@@ -443,7 +445,7 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
             love.graphics.rectangle('fill', x + 5, y + h - 25, w - 10, 15)
             
             -- Phase 7.1: Use game's palette for progress bar
-            local palette = SpriteManager.palette_manager:getPalette(palette_id)
+            local palette = self.sprite_manager.palette_manager:getPalette(palette_id)
             local progress_color = (palette and palette.colors and palette.colors.primary) or {0, 1, 0}
             love.graphics.setColor(progress_color)
             love.graphics.rectangle('fill', x + 5, y + h - 25, (w - 10) * progress, 15)
