@@ -57,12 +57,22 @@ function StartMenuState:setStartMenuKeyboardSelection(id)
 end
 
 function StartMenuState:setOpen(flag)
-    self.open = flag and true or false
+    local new_state = flag and true or false
+    if self.open == new_state then return end -- No change
+
+    self.open = new_state
     if not self.open then
         self:setStartMenuKeyboardSelection(nil)
-    end
-    if self.open then
+        -- Publish start_menu_closed event
+        if self.event_bus then
+            pcall(self.event_bus.publish, self.event_bus, 'start_menu_closed')
+        end
+    else
         self:clearStartMenuPress()
+        -- Publish start_menu_opened event
+        if self.event_bus then
+            pcall(self.event_bus.publish, self.event_bus, 'start_menu_opened')
+        end
     end
 end
 

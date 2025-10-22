@@ -5,11 +5,12 @@ local Config = rawget(_G, 'DI_CONFIG') or {}
 
 local PlayerData = Object:extend('PlayerData')
 
--- Accept statistics instance
+-- Accept statistics instance and di
 function PlayerData:init(statistics_instance, di)
     -- Optional DI for config (fallback to module require)
     if di and di.config then Config = di.config end
     self.statistics = statistics_instance -- Store injected instance
+    self.event_bus = di and di.eventBus -- Store injected event bus
 
     self.tokens = 0
     self.unlocked_games = {}
@@ -23,8 +24,12 @@ function PlayerData:init(statistics_instance, di)
 end
 
 function PlayerData:addTokens(amount)
-    if type(amount) ~= "number" or amount < 0 then return self.tokens end
+    if type(amount) ~= "number" or amount <= 0 then return self.tokens end -- Only add positive amounts
+    local old_tokens = self.tokens
     self.tokens = self.tokens + amount
+    local new_tokens = self.tokens
+    local delta = amount
+
     -- Update statistics using self.statistics
     if self.statistics and self.statistics.addTokensEarned then
         self.statistics:addTokensEarned(amount)
@@ -32,15 +37,32 @@ function PlayerData:addTokens(amount)
     else
         -- print("Debug PlayerData: Statistics object not found in addTokens") -- Optional debug
     end
+
+    -- Publish tokens_changed event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'tokens_changed', old_tokens, new_tokens, delta)
+    end
+
     return self.tokens
 end
 
 function PlayerData:spendTokens(amount)
     if type(amount) ~= "number" or amount <= 0 then return false end
     if not self:hasTokens(amount) then return false end
+    local old_tokens = self.tokens
     self.tokens = self.tokens - amount
+    local new_tokens = self.tokens
+    local delta = -amount
+
+    -- Publish tokens_changed event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'tokens_changed', old_tokens, new_tokens, delta)
+    end
+
     return true
 end
+
+-- ... (rest of the file remains the same) ...
 
 function PlayerData:hasTokens(amount)
     if type(amount) ~= "number" or amount < 0 then return false end
@@ -49,6 +71,7 @@ end
 
 function PlayerData:unlockGame(game_id)
     if not self.unlocked_games[game_id] then
+        local old_value = self.unlocked_games[game_id] -- will be nil
         self.unlocked_games[game_id] = true
         -- Update statistics using self.statistics
         if self.statistics and self.statistics.incrementGamesUnlocked then
@@ -57,6 +80,7 @@ function PlayerData:unlockGame(game_id)
         else
             -- print("Debug PlayerData: Statistics object not found in unlockGame") -- Optional debug
         end
+        -- NOTE: Could publish player_data_changed here, but relying on save_completed for now
         return true
     end
     return false
@@ -88,6 +112,7 @@ function PlayerData:updateGamePerformance(game_id, metrics, formula_result, is_a
              record.auto_completed = false
              is_new_best = true
              self.completed_games[game_id] = true
+             -- NOTE: Could publish player_data_changed here
         end
     else
         if not record.best_score or record.best_score == 0 or (formula_result > record.best_score and record.auto_completed) then
@@ -96,6 +121,7 @@ function PlayerData:updateGamePerformance(game_id, metrics, formula_result, is_a
              record.auto_completed = true
              is_new_best = true
              self.completed_games[game_id] = true
+             -- NOTE: Could publish player_data_changed here
         end
     end
     return is_new_best
@@ -114,8 +140,10 @@ end
 function PlayerData:unlockLevel(level)
     local highest_unlocked = self.space_defender_level
     if level >= highest_unlocked then
+        local old_level = self.space_defender_level
         self.space_defender_level = level + 1
         print("Unlocked Space Defender Level: " .. self.space_defender_level)
+        -- NOTE: Could publish player_data_changed here
         return true
     end
     return false
@@ -136,9 +164,14 @@ function PlayerData:purchaseUpgrade(type)
     local current_level = self.upgrades[type] or 0
     local cost = base_costs[type] * (current_level + 1)
 
-    if self:spendTokens(cost) then
+    -- Temporarily store old value before spending tokens might trigger event
+    local old_upgrades = {}
+    for k, v in pairs(self.upgrades) do old_upgrades[k] = v end
+
+    if self:spendTokens(cost) then -- This will publish tokens_changed
         self.upgrades[type] = current_level + 1
         print("Purchased upgrade: " .. type .. " level " .. self.upgrades[type] .. " for " .. cost .. " tokens")
+        -- NOTE: Could publish player_data_changed here for upgrades
         return true
     end
     print("Failed purchase upgrade: " .. type .. ". Needed " .. cost .. ", had " .. self.tokens)
@@ -158,6 +191,7 @@ function PlayerData:unlockCheatEngineForGame(game_id)
     self:initCheatData(game_id)
     if not self.cheat_engine_data[game_id].unlocked then
         self.cheat_engine_data[game_id].unlocked = true
+        -- NOTE: Could publish player_data_changed here
         return true
     end
     return false
@@ -176,6 +210,7 @@ function PlayerData:purchaseCheatLevel(game_id, cheat_id)
     local current_level = self.cheat_engine_data[game_id].cheats[cheat_id] or 0
     self.cheat_engine_data[game_id].cheats[cheat_id] = current_level + 1
     print("Purchased cheat " .. cheat_id .. " level " .. (current_level + 1) .. " for " .. game_id)
+    -- NOTE: Could publish player_data_changed here
 end
 
 function PlayerData:getCheatLevel(game_id, cheat_id)

@@ -1,0 +1,80 @@
+# Event-Driven Architecture Refactoring - COMPLETE (Phases 4.1-4.10)
+
+**Date**: 2025-10-21
+**Status**: ✅ COMPLETE
+
+---
+
+## Overview
+
+The Event-Driven Architecture Plan (EDAP) involved a significant refactoring effort across 10 distinct phases (4.1 to 4.10) to transform the codebase into a fully event-driven system. The primary goal was to **decouple major components** by replacing direct method calls with an event publishing/subscription model using the central `EventBus`. Instead of components directly telling each other what to do, they now announce significant state changes or request actions via events.
+
+This refactoring successfully laid the foundation for a more modular, testable, and extensible application. A total of **74 events** were implemented across all core systems.
+
+---
+
+## Summary of Phases Accomplished
+
+* **Phase 4.1: Program Launching**
+    * Decoupled program launching from `StartMenuState` by publishing a `launch_program` event, subscribed to by `DesktopState`. (1 Event)
+* **Phase 4.2: Window Management Events**
+    * Implemented 18 events covering window lifecycle (`window_opened`, `window_closed`), requests (`request_window_focus`), and interactions (`window_drag_started`).
+    * `WindowManager` subscribes to requests and publishes completions; `WindowController` publishes requests/interactions.
+    * Removed ~15 direct `WindowManager` calls (fallbacks).
+* **Phase 4.3: Desktop Icon Events**
+    * Implemented 11 events for icon operations (`icon_created`, `icon_moved`) and interactions (`icon_double_clicked`).
+    * `DesktopIcons` subscribes to requests and publishes completions; `DesktopState` publishes requests/interactions.
+    * Removed 2 direct `DesktopIcons` calls (fallbacks).
+    * Fixed a critical bug where `.txt` files wouldn't open from desktop icons.
+* **Phase 4.4: File System Events**
+    * Implemented 5 events (`folder_created`, `file_moved`, `file_deleted`, `file_restored`, `recycle_bin_emptied`).
+    * `FileSystem` model now publishes events upon modification. Zero fallbacks removed.
+* **Phase 4.5: Launcher/Shop Events**
+    * Implemented 7 events related to game purchasing, unlocking, launching, and browsing (`game_purchased`, `game_launch_requested`).
+    * `LauncherState` now publishes these events. Zero fallbacks removed.
+* **Phase 4.6: VM/Minigame Events**
+    * Implemented 8 events covering VM lifecycle (`vm_created`, `vm_started`) and game progress (`game_started`, `game_completed`).
+    * `VMManager` and `MinigameController` now publish these events. Zero fallbacks removed.
+* **Phase 4.7: Cheat Engine Events**
+    * Implemented 3 events (`cheat_engine_unlocked`, `cheat_level_purchased`, `cheats_applied_to_launch`).
+    * `CheatEngineState` now publishes these events. Zero fallbacks removed.
+* **Phase 4.8: UI/Input Events**
+    * Implemented 9 events for key UI interactions (`start_menu_opened/closed`, `context_menu_opened/closed/action_invoked`, `dialog_opened/closed`, `tutorial_shown/dismissed`).
+    * `StartMenuState` and `DesktopState` now publish these events. Zero fallbacks removed.
+* **Phase 4.9: Settings Events**
+    * Implemented 5 events (`settings_loaded`, `settings_saved`, `setting_changed`, `fullscreen_toggled`, `wallpaper_changed`).
+    * `SettingsManager` now publishes events on load, save, and change.
+* **Phase 4.10: Save/Load Events**
+    * Implemented 7 events related to saving/loading game progress and token changes (`save_started`, `save_completed`, `load_started`, `load_completed`, `tokens_changed`).
+    * `SaveManager` and `PlayerData` now publish these events. Zero fallbacks removed.
+
+---
+
+## Overall Accomplishments
+
+* **Decoupling**: Major systems (Windowing, Icons, File System, Launcher, VMs, Cheats, Settings, Save/Load) are now decoupled through the EventBus.
+* **Observability**: System state changes are now observable via events, enabling easier integration of features like statistics, achievements, and improved UI feedback.
+* **Testability**: Components can be more easily tested in isolation by mocking the EventBus or listening for specific events.
+* **Extensibility**: New features can often be added by creating new subscribers without modifying the core publishers.
+* **Total Events**: 74 distinct events implemented across the core application architecture.
+* **Fallbacks Removed**: Successfully removed ~17 direct method calls that were acting as fallbacks during the transition, ensuring the event system now fully drives behavior in key areas like Window Management and Desktop Icons.
+
+---
+
+## What's Left / Next Steps
+
+* **Implement Subscribers**: While many events are now published, not all have active subscribers yet. Future work involves adding subscribers where needed, for example:
+    * UI views subscribing to `tokens_changed` for automatic updates.
+    * Statistics system subscribing to various game/VM/purchase events.
+    * Achievement system subscribing to relevant events.
+    * FileExplorerState subscribing to `file_` events for auto-refresh.
+    * DesktopState explicitly subscribing to `wallpaper_changed`.
+* **Refine Event Payloads/Naming**: Review event names and data payloads for consistency and clarity. Address minor inconsistencies noted during the refactor (e.g., `dialog_closed` result reporting).
+* **Add EventBus Debug Mode**: Implement logging or visualization for event flow to aid debugging.
+* **Continue Development**: Proceed with the main project roadmap (e.g., Phase 2 Content Expansion), leveraging the new event-driven foundation.
+
+---
+
+## Conclusion
+
+The planned Event-Driven Architecture refactoring (Phases 4.1-4.10) is **complete**. The core systems now communicate primarily through events, achieving the goals of decoupling, observability, and extensibility. While further work is needed to implement subscribers for all events, the foundational architecture is now in place.

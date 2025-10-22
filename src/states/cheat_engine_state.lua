@@ -11,6 +11,7 @@ function CheatEngineState:init(player_data, game_data, state_machine, save_manag
     self.save_manager = save_manager
     self.cheat_system = cheat_system -- Injected dependency
     self.di = di
+    self.event_bus = di and di.eventBus -- Store event bus from DI
 
     self.view = CheatEngineView:new(self, di)
 
@@ -36,7 +37,7 @@ end
 function CheatEngineState:enter()
     -- Load ALL games from game_data
     self.all_games = self.game_data:getAllGames()
-    
+
     -- Sort by ID with natural number sorting
     table.sort(self.all_games, function(a, b)
         local a_base, a_num = a.id:match("^(.-)_(%d+)$")
@@ -50,7 +51,7 @@ function CheatEngineState:enter()
         end
         return a.id < b.id
     end)
-    
+
     -- Select the first game by default if list is not empty
     if #self.all_games > 0 then
         self.selected_game_id = self.all_games[1].id
@@ -61,7 +62,7 @@ function CheatEngineState:enter()
     else
         self:resetSelection()
     end
-    
+
     print("CheatEngine loaded " .. #self.all_games .. " games")
 end
 
@@ -88,7 +89,7 @@ end
 
 function CheatEngineState:update(dt)
     if not self.viewport then return end
-    
+
     -- Delegate to view with properly translated coordinates
     self.view:update(dt, self.all_games, self.selected_game_id, self.available_cheats, self.viewport.width, self.viewport.height)
 end
@@ -292,9 +293,14 @@ function CheatEngineState:unlockCheatEngine()
         self.player_data:unlockCheatEngineForGame(self.selected_game_id)
         self.save_manager.save(self.player_data)
         self:buildAvailableCheats() -- Refresh cheat list
+
+        -- Publish cheat_engine_unlocked event
+        if self.event_bus then
+            pcall(self.event_bus.publish, self.event_bus, 'cheat_engine_unlocked', self.selected_game_id, cost)
+        end
     else
         print("Not enough tokens to unlock CE for " .. self.selected_game_id)
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Not enough tokens! Need " .. cost, "warning")
+        love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Not enough tokens! Need " .. cost, "warning")
     end
 end
 
@@ -321,25 +327,32 @@ function CheatEngineState:purchaseCheat(cheat_id)
     end
 
     local cost = cheat_to_buy.cost_for_next
+    local old_level = cheat_to_buy.current_level
+    local new_level = old_level + 1
 
     if self.player_data:spendTokens(cost) then
         self.player_data:purchaseCheatLevel(self.selected_game_id, cheat_id)
         self.save_manager.save(self.player_data)
         self:buildAvailableCheats() -- Refresh list to show new level and cost
+
+        -- Publish cheat_level_purchased event
+        if self.event_bus then
+            pcall(self.event_bus.publish, self.event_bus, 'cheat_level_purchased', self.selected_game_id, cheat_id, new_level, cost)
+        end
     else
         print("Not enough tokens to buy cheat level")
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Not enough tokens! Need " .. cost, "warning")
+        love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Not enough tokens! Need " .. cost, "warning")
     end
 end
 
 function CheatEngineState:launchGame()
     if not self.selected_game_id then
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "No game selected.", "warning")
+        love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "No game selected.", "warning")
         return nil -- Return nil on failure
     end
     if not self.player_data:isGameUnlocked(self.selected_game_id) then
         print("Cannot launch a locked game via Cheat Engine")
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Game is locked. Unlock it in the Game Collection first.", "warning")
+        love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Game is locked. Unlock it in the Game Collection first.", "warning")
         return nil -- Return nil on failure
     end
 
@@ -367,10 +380,15 @@ function CheatEngineState:launchGame()
     -- Activate cheats in the system
     self.cheat_system:activateCheats(self.selected_game_id, cheats_to_activate)
 
+    -- Publish cheats_applied_to_launch event
+    if self.event_bus and next(cheats_to_activate) ~= nil then -- Only publish if cheats were actually applied
+        pcall(self.event_bus.publish, self.event_bus, 'cheats_applied_to_launch', self.selected_game_id, cheats_to_activate)
+    end
+
     -- Get the game data for the selected game
     local game_data = self.game_data:getGame(self.selected_game_id)
     if not game_data then
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Could not find game data to launch.", "error")
+        love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Could not find game data to launch.", "error")
         return nil -- Return nil on failure
     end
 

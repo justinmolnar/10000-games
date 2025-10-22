@@ -69,8 +69,8 @@ function love.load()
     local EventBus = require('src.utils.event_bus')
 
     -- == 2. Initialize Core Systems & DI Container ==
-    SettingsManager.inject({ config = Config })
-    SettingsManager.load()
+    SettingsManager.inject({ config = Config }) -- Inject config into SettingsManager early
+    SettingsManager.load() -- Load settings after config injection
 
     statistics = Statistics:new()
     statistics:load()
@@ -83,10 +83,11 @@ function love.load()
         statistics = statistics,
         eventBus = event_bus,
         systemCursors = system_cursors,
+        -- screen size can be added here if needed initially
     }
 
     -- == 3. Instantiate Models with DI ==
-    player_data = PlayerData:new(statistics, di)
+    player_data = PlayerData:new(statistics, di) -- Pass full di container
     di.playerData = player_data
     game_data = GameData:new(di)
     di.gameData = game_data
@@ -94,7 +95,7 @@ function love.load()
     di.vmManager = vm_manager
     cheat_system = CheatSystem:new()
     di.cheatSystem = cheat_system
-    
+
     window_manager = WindowManager:new(di)
     di.windowManager = window_manager
     desktop_icons = DesktopIcons:new(di)
@@ -107,10 +108,15 @@ function love.load()
     di.programRegistry = program_registry
 
     -- == 4. Load Save Data ==
-    local saved_data = SaveManager.load()
-    if saved_data then
+    -- Inject DI into SaveManager before loading (Phase 4.9/4.10 change)
+    if SaveManager and SaveManager.inject then SaveManager.inject(di) end
+    -- Load function now publishes events internally
+    local saved_player_data = SaveManager.load()
+    if saved_player_data then
         print("Loading saved game...")
-        for key, value in pairs(saved_data) do
+        -- Update player_data instance with loaded data
+        player_data:init(statistics, di) -- Re-init to clear defaults before loading
+        for key, value in pairs(saved_player_data) do
             if player_data[key] ~= nil then
                player_data[key] = value
             elseif key == 'cheat_engine_data' then
@@ -118,6 +124,7 @@ function love.load()
                  else print("Warning: Ignoring invalid cheat_engine_data from save."); player_data[key] = {} end
             else print("Warning: Unknown key in save data ignored: " .. key) end
         end
+        -- Ensure tables exist after loading potentially minimal save data
         player_data.unlocked_games = player_data.unlocked_games or {}
         player_data.completed_games = player_data.completed_games or {}
         player_data.game_performance = player_data.game_performance or {}
@@ -125,17 +132,13 @@ function love.load()
         player_data.cheat_engine_data = player_data.cheat_engine_data or {}
         player_data.upgrades = player_data.upgrades or { cpu_speed=0, overclock=0, auto_dodge=0 }
     else
-        print("No save found, starting new game")
-        player_data:addTokens(Config.start_tokens)
-        player_data.unlocked_games = {}
-        player_data.completed_games = {}
-        player_data.game_performance = {}
-        player_data.active_vms = {}
-        player_data.cheat_engine_data = {}
-        player_data.upgrades = { cpu_speed=0, overclock=0, auto_dodge=0 }
+        print("No save found or load failed, starting new game")
+        player_data:init(statistics, di) -- Ensure fresh init
+        player_data:addTokens(Config.start_tokens) -- This will publish tokens_changed
     end
 
-    vm_manager:initialize(player_data)
+    vm_manager:initialize(player_data) -- Initialize VMs based on loaded/new player data
+
 
     -- == 5. Initialize Sprite Utilities ==
     local palette_manager = PaletteManager:new()
@@ -147,7 +150,9 @@ function love.load()
     di.spriteManager = sprite_manager
 
     -- == 6. Initialize State Machine and States ==
-    if SaveManager and SaveManager.inject then SaveManager.inject(di) end
+    -- Inject DI into SaveManager if it supports it (it does)
+    -- Inject DI into SettingsManager (Phase 4.9 change)
+    if SettingsManager and SettingsManager.inject then SettingsManager.inject(di) end
 
     local StateMachine = StateMachineBuilder(Object)
     state_machine = StateMachine:new(di)
@@ -159,10 +164,10 @@ function love.load()
     local ScreensaverState = require('states.screensaver_state')
 
     local completion_state = CompletionState:new(state_machine, statistics)
-    local debug_state = DebugState:new(player_data, game_data, state_machine, SaveManager)
+    local debug_state = DebugState:new(di) -- Pass DI to DebugState
     local screensaver_state = ScreensaverState:new(state_machine)
     local desktop = DesktopState:new(di)
-    desktop.cursors = system_cursors
+    desktop.cursors = system_cursors -- Pass cursors directly for now
 
     state_machine:register(Constants.state.COMPLETION, completion_state)
     state_machine:register(Constants.state.DEBUG, debug_state)

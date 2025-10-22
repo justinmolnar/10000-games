@@ -5,6 +5,7 @@ local ConfigRef = rawget(_G, 'DI_CONFIG') or {}
 
 local SettingsManager = {}
 local SETTINGS_FILE = "settings.json"
+local event_bus = nil -- Module-level variable to hold the injected EventBus
 
 -- Default settings
 local Paths = require('src.paths')
@@ -109,10 +110,11 @@ local defaults = {
 
 local current_settings = {}
 
--- Optional DI injection (call early at startup)
+-- DI injection for config and event_bus
 function SettingsManager.inject(di)
-    if di and di.config then
-        ConfigRef = di.config
+    if di then
+        if di.config then ConfigRef = di.config end
+        if di.eventBus then event_bus = di.eventBus end -- Store injected event bus
     end
 end
 
@@ -135,6 +137,10 @@ function SettingsManager.load()
                 end
             end
             print("Settings loaded successfully from " .. SETTINGS_FILE)
+            -- Publish settings_loaded event
+            if event_bus then
+                pcall(event_bus.publish, event_bus, 'settings_loaded', current_settings)
+            end
             -- Debug: show desktop wallpaper-related keys
             --
             SettingsManager.applyAudioSettings() -- Apply volume on load
@@ -152,6 +158,10 @@ function SettingsManager.load()
     for key, value in pairs(defaults) do
         current_settings[key] = value
     end
+    -- Publish settings_loaded event even when using defaults
+    if event_bus then
+        pcall(event_bus.publish, event_bus, 'settings_loaded', current_settings)
+    end
     SettingsManager.applyAudioSettings() -- Apply default volume
     SettingsManager.applyFullscreen() -- Apply default fullscreen
     return false
@@ -161,7 +171,7 @@ end
 function SettingsManager.applyFullscreen()
     local fullscreen = current_settings.fullscreen
     if fullscreen == nil then fullscreen = defaults.fullscreen end
-    
+
     if fullscreen then
         -- Fullscreen mode - use Config.window.fullscreen if available
         local wf = (ConfigRef and ConfigRef.window and ConfigRef.window.fullscreen) or {}
@@ -207,6 +217,10 @@ function SettingsManager.save()
     end
     -- Debug: confirm save and key values
     --
+    -- Publish settings_saved event
+    if event_bus then
+        pcall(event_bus.publish, event_bus, 'settings_saved', current_settings)
+    end
     return true
 end
 
@@ -217,14 +231,26 @@ end
 
 -- Set a specific setting value
 function SettingsManager.set(key, value)
-    if current_settings[key] ~= value then
+    local old_value = current_settings[key]
+    if old_value ~= value then
         current_settings[key] = value
-        -- Apply immediately if it's an audio or fullscreen setting
-        if key == "master_volume" or key == "music_volume" or key == "sfx_volume" then
-            SettingsManager.applyAudioSettings()
-        elseif key == "fullscreen" then
-            SettingsManager.applyFullscreen()
+
+        -- Publish generic setting_changed event
+        if event_bus then
+            pcall(event_bus.publish, event_bus, 'setting_changed', key, old_value, value)
         end
+
+        -- Publish specific events for important settings
+        if key == "fullscreen" then
+            SettingsManager.applyFullscreen()
+            if event_bus then pcall(event_bus.publish, event_bus, 'fullscreen_toggled', value) end
+        elseif key == "master_volume" or key == "music_volume" or key == "sfx_volume" then
+            SettingsManager.applyAudioSettings()
+            -- Could publish volume_changed here if needed
+        elseif key == "desktop_bg_image" then
+            if event_bus then pcall(event_bus.publish, event_bus, 'wallpaper_changed', value) end
+        end
+
         SettingsManager.save() -- Auto-save on change
     end
 end

@@ -197,6 +197,10 @@ function DesktopState:enter()
     self:updateClock()
     print("Desktop loaded. Tutorial active: " .. tostring(self.show_tutorial))
     self.view:calculateDefaultIconPositionsIfNeeded() -- View uses model data now
+    -- Publish tutorial_shown event if tutorial is active
+    if self.show_tutorial and self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'tutorial_shown')
+    end
 end
 
 function DesktopState:update(dt)
@@ -1460,11 +1464,11 @@ function DesktopState:launchProgram(program_id, ...)
     local initial_title = (title_prefix ~= "" and (title_prefix .. program.name)) or program.name
     local game_data_arg = nil
     local program_for_window = program
-    
+
     if program_id == "minigame_runner" then
         game_data_arg = launch_args[1]
-        if game_data_arg and game_data_arg.display_name then 
-            initial_title = (title_prefix ~= "" and (title_prefix .. game_data_arg.display_name)) or game_data_arg.display_name 
+        if game_data_arg and game_data_arg.display_name then
+            initial_title = (title_prefix ~= "" and (title_prefix .. game_data_arg.display_name)) or game_data_arg.display_name
             -- Create a modified program definition with the game's icon
             program_for_window = {
                 id = program.id,
@@ -1472,12 +1476,12 @@ function DesktopState:launchProgram(program_id, ...)
                 icon_sprite = game_data_arg.icon_sprite,
                 window_defaults = program.window_defaults
             }
-        else 
-            initial_title = (title_prefix ~= "" and (title_prefix .. "Minigame")) or "Minigame" 
+        else
+            initial_title = (title_prefix ~= "" and (title_prefix .. "Minigame")) or "Minigame"
         end
     end
 
-    local window_id = self.window_manager:createWindow( program_for_window, initial_title, new_state, default_w, default_h )    
+    local window_id = self.window_manager:createWindow( program_for_window, initial_title, new_state, default_w, default_h )
     if not window_id then print("ERROR: WindowManager failed to create window for " .. program_id); return end
 
     self.window_states[window_id] = { state = new_state }
@@ -1530,13 +1534,26 @@ function DesktopState:launchProgram(program_id, ...)
     end
 
     print("Opened window for " .. initial_title .. " ID: " .. window_id)
+
+    -- Publish dialog_opened event for specific dialog types
+    local dialog_types = {run_dialog=true, shutdown_dialog=true, solitaire_back_picker=true, wallpaper_picker=true, solitaire_settings=true}
+    if dialog_types[program_id] and self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'dialog_opened', program_id, window_id)
+    end
 end
 
 function DesktopState:dismissTutorial()
+    if not self.show_tutorial then return end -- Prevent duplicate events
+
     self.show_tutorial = false
     local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
     SettingsManager.set("tutorial_shown", true)
     print("Tutorial dismissed.")
+
+    -- Publish tutorial_dismissed event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'tutorial_dismissed')
+    end
 end
 
 -- Helper function to generate context menu options based on context
@@ -1667,14 +1684,30 @@ function DesktopState:openContextMenu(x, y, options, context)
 
     self.context_menu_open = true
     print("Opened context menu at", self.menu_x, self.menu_y, "with context type:", self.menu_context.type, "#Options:", #self.menu_options)
+
+    -- Publish context_menu_opened event
+    if self.event_bus then
+        local context_type = self.menu_context.type or "unknown"
+        local context_data = self.menu_context -- Pass the whole context
+        pcall(self.event_bus.publish, self.event_bus, 'context_menu_opened', self.menu_x, self.menu_y, context_type, context_data)
+    end
 end
 
 
 -- Helper function to close the context menu
 function DesktopState:closeContextMenu()
+    if not self.context_menu_open then return end -- Prevent duplicate events if already closed
+
     self.context_menu_open = false
+    local old_options = self.menu_options -- Store before clearing
+    local old_context = self.menu_context
     self.menu_options = {}
     self.menu_context = nil
+
+    -- Publish context_menu_closed event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'context_menu_closed', old_context)
+    end
 end
 
 -- Function to handle actions selected from the context menu
@@ -1683,6 +1716,12 @@ function DesktopState:handleContextMenuAction(action_id, context)
     local program_id = context.program_id -- Used by multiple contexts
     local window_id = context.window_id   -- Used by taskbar and potentially FE
 
+    -- Publish context_action_invoked event BEFORE handling the action
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'context_action_invoked', action_id, context)
+    end
+
+    -- Original handling logic (unchanged)...
     if context.type == "icon" then
         if not program_id then print("ERROR: program_id missing for icon context!"); return end
         if action_id == "open" then self:launchProgram(program_id)
@@ -1701,7 +1740,7 @@ function DesktopState:handleContextMenuAction(action_id, context)
             if self.di.eventBus then self.di.eventBus:publish('request_window_minimize', window_id) end
         elseif action_id == "maximize" then
             if self.di.eventBus then self.di.eventBus:publish('request_window_maximize', window_id, love.graphics.getWidth(), love.graphics.getHeight()) end
-        elseif action_id == "close_window" then 
+        elseif action_id == "close_window" then
             self:closeWindowById(window_id)
         end
 
@@ -1948,10 +1987,30 @@ end
 function DesktopState:closeWindowById(window_id)
       local window = self.window_manager:getWindowById(window_id)
       if window then self.window_manager:rememberWindowPosition(window) end
-      if self.di.eventBus then 
+
+      -- Store program_id before closing for event
+      local program_id = window and window.program_type or "unknown"
+
+      local closed_successfully = false
+      if self.di.eventBus then
+          -- Publish request first
           self.di.eventBus:publish('request_window_close', window_id)
+          -- Check if window was actually closed (WindowManager handles this on subscribe)
+          if not self.window_manager:getWindowById(window_id) then
+             closed_successfully = true
+          end
       else
-          self.window_manager:closeWindow(window_id)
+          -- Fallback direct call
+          closed_successfully = self.window_manager:closeWindow(window_id)
+      end
+
+      -- Publish dialog_closed if it was a dialog and closed successfully
+      if closed_successfully then
+          local dialog_types = {run_dialog=true, shutdown_dialog=true, solitaire_back_picker=true, wallpaper_picker=true, solitaire_settings=true}
+          if dialog_types[program_id] and self.event_bus then
+              -- Assuming 'cancel' as default result for simple close; specific states might publish 'dialog_confirmed' before closing.
+              pcall(self.event_bus.publish, self.event_bus, 'dialog_closed', program_id, window_id, 'cancel')
+          end
       end
 end
 
