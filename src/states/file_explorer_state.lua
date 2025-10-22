@@ -445,7 +445,10 @@ function FileExplorerState:handleItemDoubleClick(item)
             self:navigateTo(action.path)
             return { type = "content_interaction" }
         elseif action.type == "launch_program" then
-            return { type = "event", name = "launch_program", program_id = action.program_id }
+            -- Publish launch event instead of returning it
+            if self.di.eventBus then self.di.eventBus:publish('launch_program', action.program_id) end
+            -- Return content interaction because the launch is now handled elsewhere
+            return { type = "content_interaction" }
         elseif action.type == "show_text" then
             return { type = "event", name = "show_text", title = action.title, content = action.content }
        elseif action.type == "special" then

@@ -56,7 +56,7 @@ function love.load()
     local StateMachineBuilder = require('controllers.state_machine')
     local CheatSystem = require('models.cheat_system')
     local Config = require('src.config')
-    SettingsManager = require('src.utils.settings_manager')
+    SettingsManager = require('utils.settings_manager')
     local Statistics = require('models.statistics')
     local WindowManager = require('models.window_manager')
     local DesktopIcons = require('models.desktop_icons')
@@ -67,10 +67,13 @@ function love.load()
     local PaletteManager = require('src.utils.palette_manager')
     local SpriteManager = require('src.utils.sprite_manager')
     local EventBus = require('src.utils.event_bus')
+    local WindowChrome = require('src.views.window_chrome')
+    local WindowController = require('src.controllers.window_controller') -- Require WindowController
+    local ProgramLauncher = require('src.utils.program_launcher') -- Require ProgramLauncher
 
     -- == 2. Initialize Core Systems & DI Container ==
-    SettingsManager.inject({ config = Config }) -- Inject config into SettingsManager early
-    SettingsManager.load() -- Load settings after config injection
+    SettingsManager.inject({ config = Config })
+    SettingsManager.load()
 
     statistics = Statistics:new()
     statistics:load()
@@ -83,11 +86,10 @@ function love.load()
         statistics = statistics,
         eventBus = event_bus,
         systemCursors = system_cursors,
-        -- screen size can be added here if needed initially
     }
 
     -- == 3. Instantiate Models with DI ==
-    player_data = PlayerData:new(statistics, di) -- Pass full di container
+    player_data = PlayerData:new(statistics, di)
     di.playerData = player_data
     game_data = GameData:new(di)
     di.gameData = game_data
@@ -107,24 +109,25 @@ function love.load()
     program_registry = ProgramRegistry:new()
     di.programRegistry = program_registry
 
+    -- == 3.5 Instantiate WindowController with DI ==
+    -- Create WindowController here and add it to DI *before* DesktopState or ProgramLauncher need it
+    -- Note: WindowController needs window_manager and program_registry, which are already in di
+    local window_controller_instance = WindowController:new(window_manager, program_registry, nil, di) -- Pass nil for window_states_map initially
+    if not window_controller_instance then error("CRITICAL ERROR: Failed to instantiate WindowController in main.lua!") end
+    di.window_controller = window_controller_instance -- Add to DI container
+
     -- == 4. Load Save Data ==
-    -- Inject DI into SaveManager before loading (Phase 4.9/4.10 change)
     if SaveManager and SaveManager.inject then SaveManager.inject(di) end
-    -- Load function now publishes events internally
     local saved_player_data = SaveManager.load()
     if saved_player_data then
         print("Loading saved game...")
-        -- Update player_data instance with loaded data
-        player_data:init(statistics, di) -- Re-init to clear defaults before loading
+        player_data:init(statistics, di) -- Re-init before loading
         for key, value in pairs(saved_player_data) do
-            if player_data[key] ~= nil then
-               player_data[key] = value
+            if player_data[key] ~= nil then player_data[key] = value
             elseif key == 'cheat_engine_data' then
-                 if type(value) == 'table' then player_data[key] = value
-                 else print("Warning: Ignoring invalid cheat_engine_data from save."); player_data[key] = {} end
+                 if type(value) == 'table' then player_data[key] = value else print("Warning: Ignoring invalid cheat_engine_data from save."); player_data[key] = {} end
             else print("Warning: Unknown key in save data ignored: " .. key) end
         end
-        -- Ensure tables exist after loading potentially minimal save data
         player_data.unlocked_games = player_data.unlocked_games or {}
         player_data.completed_games = player_data.completed_games or {}
         player_data.game_performance = player_data.game_performance or {}
@@ -133,12 +136,10 @@ function love.load()
         player_data.upgrades = player_data.upgrades or { cpu_speed=0, overclock=0, auto_dodge=0 }
     else
         print("No save found or load failed, starting new game")
-        player_data:init(statistics, di) -- Ensure fresh init
-        player_data:addTokens(Config.start_tokens) -- This will publish tokens_changed
+        player_data:init(statistics, di)
+        player_data:addTokens(Config.start_tokens)
     end
-
-    vm_manager:initialize(player_data) -- Initialize VMs based on loaded/new player data
-
+    vm_manager:initialize(player_data)
 
     -- == 5. Initialize Sprite Utilities ==
     local palette_manager = PaletteManager:new()
@@ -150,8 +151,6 @@ function love.load()
     di.spriteManager = sprite_manager
 
     -- == 6. Initialize State Machine and States ==
-    -- Inject DI into SaveManager if it supports it (it does)
-    -- Inject DI into SettingsManager (Phase 4.9 change)
     if SettingsManager and SettingsManager.inject then SettingsManager.inject(di) end
 
     local StateMachine = StateMachineBuilder(Object)
@@ -164,15 +163,26 @@ function love.load()
     local ScreensaverState = require('states.screensaver_state')
 
     local completion_state = CompletionState:new(state_machine, statistics)
-    local debug_state = DebugState:new(di) -- Pass DI to DebugState
+    local debug_state = DebugState:new(di)
     local screensaver_state = ScreensaverState:new(state_machine)
-    local desktop = DesktopState:new(di)
-    desktop.cursors = system_cursors -- Pass cursors directly for now
+    local desktop = DesktopState:new(di) -- DesktopState now gets window_controller via di
+    desktop.cursors = system_cursors
 
     state_machine:register(Constants.state.COMPLETION, completion_state)
     state_machine:register(Constants.state.DEBUG, debug_state)
     state_machine:register(Constants.state.DESKTOP, desktop)
     state_machine:register(Constants.state.SCREENSAVER, screensaver_state)
+
+    -- === Phase 1: ProgramLauncher Extraction ===
+    di.desktopState = desktop -- Add desktop instance to DI *before* launcher
+    local window_chrome_instance = desktop.window_chrome or WindowChrome:new()
+    di.windowChrome = window_chrome_instance
+    di.programLauncher = ProgramLauncher:new(di) -- Create the launcher service *after* window_controller is in DI
+
+    -- Pass the window_states map reference from DesktopState to WindowController *after* DesktopState is created
+    di.window_controller.window_states = desktop.window_states
+    if not di.window_controller.window_states then print("CRITICAL WARNING: Failed to link window_states map to WindowController!") end
+    -- ==========================================
 
     -- == 7. Start Game ==
     print("Starting game - switching to desktop")
@@ -180,7 +190,6 @@ function love.load()
 
     print("=== love.load() completed ===")
 end
-
 local auto_save_timer = 0
 local AUTO_SAVE_INTERVAL = 30
 

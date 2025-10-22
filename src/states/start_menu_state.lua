@@ -139,10 +139,14 @@ function StartMenuState:mousereleased(x, y, button)
     local ev = self.view and self.view:mousereleasedStartMenu(x, y, button, self)
     if ev then
         if ev.name == 'launch_program' and ev.program_id then
+            -- Publish launch event instead of calling directly
             if self.event_bus then
                 self.event_bus:publish('launch_program', ev.program_id)
             elseif self.host and self.host.launchProgram then
-                self.host.launchProgram(ev.program_id)
+                 print("WARNING [StartMenuState]: Using legacy host.launchProgram fallback.")
+                self.host.launchProgram(ev.program_id) -- Legacy fallback
+            else
+                 print("ERROR [StartMenuState]: No event_bus and no host! Cannot launch program.")
             end
             self:setOpen(false); self._opened_by_mousepress = nil; return true
         elseif ev.name == 'open_path' and ev.path then
@@ -155,17 +159,21 @@ function StartMenuState:mousereleased(x, y, button)
                 cancel_label = Strings.get('buttons.cancel','Cancel'),
                 submit_event = 'run_execute',
             }
+            -- Publish launch event instead of calling directly
             if self.event_bus then
                 self.event_bus:publish('launch_program', 'run_dialog', params)
             elseif self.host and self.host.launchProgram then
-                self.host.launchProgram('run_dialog', params)
+                 print("WARNING [StartMenuState]: Using legacy host.launchProgram fallback for Run dialog.")
+                self.host.launchProgram('run_dialog', params) -- Legacy fallback
             end
             self:setOpen(false); self._opened_by_mousepress = nil; return true
         elseif ev.name == 'open_shutdown' then
+            -- Publish launch event instead of calling directly
             if self.event_bus then
                 self.event_bus:publish('launch_program', 'shutdown_dialog')
             elseif self.host and self.host.launchProgram then
-                self.host.launchProgram('shutdown_dialog')
+                 print("WARNING [StartMenuState]: Using legacy host.launchProgram fallback for Shutdown dialog.")
+                self.host.launchProgram('shutdown_dialog') -- Legacy fallback
             end
             self:setOpen(false); self._opened_by_mousepress = nil; return true
         elseif ev.name == 'close_start_menu' then
@@ -201,16 +209,20 @@ function StartMenuState:keypressed(key)
                 cancel_label = Strings.get('buttons.cancel','Cancel'),
                 submit_event = 'run_execute',
             }
+            -- Publish launch event instead of calling directly
             if self.event_bus then
                 self.event_bus:publish('launch_program', 'run_dialog', params)
             elseif self.host and self.host.launchProgram then
-                self.host.launchProgram('run_dialog', params)
+                 print("WARNING [StartMenuState]: Using legacy host.launchProgram fallback for Run dialog (keypressed).")
+                self.host.launchProgram('run_dialog', params) -- Legacy fallback
             end
         elseif sel == 'shutdown' then
+            -- Publish launch event instead of calling directly
             if self.event_bus then
                 self.event_bus:publish('launch_program', 'shutdown_dialog')
             elseif self.host and self.host.launchProgram then
-                self.host.launchProgram('shutdown_dialog')
+                 print("WARNING [StartMenuState]: Using legacy host.launchProgram fallback for Shutdown dialog (keypressed).")
+                self.host.launchProgram('shutdown_dialog') -- Legacy fallback
             end
         end
         return true
@@ -248,37 +260,45 @@ function StartMenuState:openPath(path)
         if pr and pr.addFolderShortcut then
             local program = pr:addFolderShortcut(item.name or path, path, { in_start_menu = false })
             if program and program.id then
+                -- Publish launch event instead of calling directly
                 if self.event_bus then
                     self.event_bus:publish('launch_program', program.id)
                 elseif self.host and self.host.launchProgram then
-                    self.host.launchProgram(program.id)
+                    print("WARNING [StartMenuState]: Using legacy host.launchProgram fallback for folder shortcut.")
+                    self.host.launchProgram(program.id) -- Legacy fallback
                 end
             end
         end
     elseif item.type == 'executable' and item.program_id then
+        -- Publish launch event instead of calling directly
         if self.event_bus then
             self.event_bus:publish('launch_program', item.program_id)
         elseif self.host and self.host.launchProgram then
-            self.host.launchProgram(item.program_id)
+            print("WARNING [StartMenuState]: Using legacy host.launchProgram fallback for executable.")
+            self.host.launchProgram(item.program_id) -- Legacy fallback
         end
     elseif item.type == 'file' then
         if self.host and self.host.showTextFileDialog then self.host.showTextFileDialog(path, item.content) end
     elseif item.type == 'special' then
         if item.special_type == 'recycle_bin' then
+            -- Publish launch event instead of calling directly
             if self.event_bus then
                 self.event_bus:publish('launch_program', 'recycle_bin')
             elseif self.host and self.host.launchProgram then
-                self.host.launchProgram('recycle_bin')
+                 print("WARNING [StartMenuState]: Using legacy host.launchProgram fallback for Recycle Bin.")
+                self.host.launchProgram('recycle_bin') -- Legacy fallback
             end
         elseif item.special_type == 'desktop_view' then
             local pr = self.program_registry
             if pr and pr.addFolderShortcut then
                 local program = pr:addFolderShortcut('Desktop', '/My Computer/Desktop', { in_start_menu = false })
                 if program and program.id then
+                    -- Publish launch event instead of calling directly
                     if self.event_bus then
                         self.event_bus:publish('launch_program', program.id)
                     elseif self.host and self.host.launchProgram then
-                        self.host.launchProgram(program.id)
+                         print("WARNING [StartMenuState]: Using legacy host.launchProgram fallback for Desktop view.")
+                        self.host.launchProgram(program.id) -- Legacy fallback
                     end
                 end
             end

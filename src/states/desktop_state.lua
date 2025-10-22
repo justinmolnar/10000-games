@@ -9,7 +9,6 @@ local TutorialView = require('src.views.tutorial_view')
 local WindowChrome = require('src.views.window_chrome')
 local WindowController = require('src.controllers.window_controller')
 local Collision = require('src/utils.collision')
-local DesktopState = Object:extend('DesktopState')
 local ContextMenuView = require('src.views.context_menu_view')
 
 -- DEBUG: Check if WindowController loaded
@@ -17,6 +16,8 @@ if not WindowController then
     error("CRITICAL: WindowController failed to load!")
 end
 -- WindowController loaded
+
+local DesktopState = Object:extend('DesktopState')
 
 function DesktopState:init(di)
     -- Begin initialization
@@ -37,38 +38,24 @@ function DesktopState:init(di)
     self.cheat_system = self.di.cheatSystem
     self.save_manager = self.di.saveManager
     self.game_data = self.di.gameData
+    self.event_bus = self.di.eventBus -- Store event bus
 
     -- Initialize basic properties first
-    self.window_chrome = WindowChrome:new()
-    self.window_states = {} -- Initialize the map *before* passing it
+    self.window_chrome = WindowChrome:new() -- Create chrome view here
+    self.window_states = {} -- Initialize the map for WindowController
 
-    -- *** Crucial: Instantiate WindowController AFTER its dependencies are ready ***
-    if WindowController then -- Check if require succeeded
-        -- Ensure dependencies are valid before passing
-       if not self.window_manager then print("CRITICAL ERROR: window_manager is nil during DesktopState:init!") end
-       if not self.program_registry then print("CRITICAL ERROR: program_registry is nil during DesktopState:init!") end
-        if not self.window_states then print("CRITICAL ERROR: self.window_states is nil during DesktopState:init!") end
-
-        -- Only instantiate if dependencies seem okay
-       if self.window_manager and self.program_registry and self.window_states then
-           self.window_controller = WindowController:new(self.window_manager, self.program_registry, self.window_states, self.di)
-             -- WindowController instantiated successfully
-             if not self.window_controller then print("CRITICAL ERROR: WindowController:new() returned nil!") end -- Check instantiation result
-        else
-             print("CRITICAL ERROR: Cannot instantiate WindowController due to missing dependencies.")
-             self.window_controller = nil
-        end
-    else
-        print("CRITICAL ERROR: Cannot instantiate WindowController because require failed.")
-        self.window_controller = nil -- Explicitly set to nil if require failed
+    -- *** Get WindowController from DI (created in main.lua) ***
+    self.window_controller = self.di.window_controller
+    if not self.window_controller then
+        print("CRITICAL ERROR [DesktopState]: WindowController not found in DI container!")
+        -- Optionally create a dummy controller to prevent crashes, though functionality will be broken
+        -- self.window_controller = { getCursorType = function() return "arrow" end, mousepressed = function() end, mousemoved = function() end, mousereleased = function() end }
     end
 
-    -- Initialize Views and other properties AFTER window_controller
+    -- Initialize Views and other properties
     self.view = DesktopView:new(self.program_registry, self.player_data, self.window_manager, self.desktop_icons, self.recycle_bin, self.di)
-    self.start_menu = StartMenuState:new(self.di, {
-        launchProgram = function(program_id) self:launchProgram(program_id) end,
-        showTextFileDialog = function(path, content) self:showTextFileDialog(path, content) end
-    })
+    -- Pass self as host for legacy fallback compatibility during EventBus rollout
+    self.start_menu = StartMenuState:new(self.di, self) -- Host is self for legacy launchProgram fallback
     self.icon_controller = DesktopIconController:new(self.program_registry, self.desktop_icons, self.recycle_bin, self.di)
     self.tutorial_view = TutorialView:new(self)
     self.context_menu_view = ContextMenuView:new()
@@ -79,65 +66,36 @@ function DesktopState:init(di)
     -- Desktop wallpaper from settings (fallback to config color)
     self.wallpaper_type = SettingsManager.get('desktop_bg_type') or 'color'
     self.wallpaper_image = SettingsManager.get('desktop_bg_image')
-    -- Loaded wallpaper settings
+    self.wallpaper_scale_mode = SettingsManager.get('desktop_bg_scale_mode') or 'fill'
     local r = SettingsManager.get('desktop_bg_r'); if r == nil then r = (colors.desktop and colors.desktop.wallpaper and colors.desktop.wallpaper[1]) or 0 end
     local g = SettingsManager.get('desktop_bg_g'); if g == nil then g = (colors.desktop and colors.desktop.wallpaper and colors.desktop.wallpaper[2]) or 0.5 end
     local b = SettingsManager.get('desktop_bg_b'); if b == nil then b = (colors.desktop and colors.desktop.wallpaper and colors.desktop.wallpaper[3]) or 0.5 end
     self.wallpaper_color = { r, g, b }
-    -- Resolve missing/invalid wallpaper id to a default and prewarm
     if self.wallpaper_type == 'image' then
         local okW, WP = pcall(require, 'src.utils.wallpapers')
         if okW and WP then
             local item = WP.getItemById(self.wallpaper_image)
-            -- Resolving wallpaper image
             if not item then
-                -- Deep-dive diagnostics if image is missing at startup
-                if not self.wallpaper_image or self.wallpaper_image == '' then
-                    local ok_dir, dir = pcall(love.filesystem.getSaveDirectory)
-                    local ok_read, raw = pcall(love.filesystem.read, 'settings.json')
-                    -- diagnostics removed
-                    if ok_read and raw then
-                        local ok_dec, data = pcall(require('json').decode, raw)
-                        local raw_img = ok_dec and data and data.desktop_bg_image or nil
-                        -- diagnostics removed
-                        -- Recovery: if raw file has a non-empty image, honor it
-                        if raw_img and raw_img ~= '' then
-                            self.wallpaper_image = raw_img
-                            -- recovered image from file
-                            -- Prewarm cache
-                            if WP.getImageCached then pcall(WP.getImageCached, self.wallpaper_image) end
-                            -- Avoid defaulting below; also persist back to ensure consistency
-                            pcall(SettingsManager.set, 'desktop_bg_image', raw_img)
-                            -- Don't return early - we need to finish init!
-                            goto wallpaper_resolved
-                        end
-                    end
-                end
-                -- If user has no saved ID at all, choose a default; otherwise don't overwrite their choice
-                if not self.wallpaper_image or self.wallpaper_image == '' then
+                local saved_id = SettingsManager.get('desktop_bg_image')
+                if not saved_id or saved_id == '' then
                     local def = WP.getDefaultId()
                     if def then
                         self.wallpaper_image = def
-                        -- Persist resolved default so it sticks across restarts
                         pcall(SettingsManager.set, 'desktop_bg_image', def)
-                        -- set default image
                     end
                 end
             end
             if self.wallpaper_image and WP.getImageCached then pcall(WP.getImageCached, self.wallpaper_image) end
         end
     end
-    ::wallpaper_resolved::
-    -- Icon snap setting cached
     self.icon_snap = SettingsManager.get('desktop_icon_snap') ~= false
-    -- Prefer explicit flag from DI; otherwise compute from settings (not shown means tutorial)
     if self.di and self.di.showTutorialOnStartup ~= nil then
         self.show_tutorial = self.di.showTutorialOnStartup
     else
         self.show_tutorial = not SettingsManager.get("tutorial_shown") or false
     end
 
-    self.start_menu_open = false -- kept for compatibility; mirrors self.start_menu:isOpen()
+    self.start_menu_open = false
 
     -- Icon interaction state
     self.dragging_icon_id = nil
@@ -154,44 +112,67 @@ function DesktopState:init(di)
     self.context_menu_open = false
     self.menu_x = 0
     self.menu_y = 0
-    self.menu_options = {} -- Will hold { id="action", label="Text", enabled=true/false }
-    self.menu_context = nil -- Store data related to what was clicked (e.g., program_id, window_id)
+    self.menu_options = {}
+    self.menu_context = nil
+    self._suppress_next_mousereleased = nil
 
-    -- Dependency provider map (used by launchProgram)
-    self.dependency_provider = {
-        player_data = self.player_data, game_data = self.game_data, state_machine = self.state_machine,
-        save_manager = self.save_manager, statistics = self.statistics, window_manager = self.window_manager,
-        desktop_icons = self.desktop_icons, file_system = self.file_system, recycle_bin = self.recycle_bin,
-        program_registry = self.program_registry, vm_manager = self.vm_manager, cheat_system = self.cheat_system,
-        di = self.di,
-        window_controller = self.window_controller -- Pass controller itself if needed by states (e.g. Settings)
-    }
-
-    -- Store cursors (created in main.lua)
-    self.cursors = (self.di and self.di.systemCursors) or {} -- Populated via DI when available; main.lua may also set
+    -- Store cursors
+    self.cursors = (self.di and self.di.systemCursors) or {}
 
     -- Screensaver idle timer
     self.idle_timer = 0
-    local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
-    local C = (self.di and self.di.config) or {}
     local desktopCfg = (C.ui and C.ui.desktop) or {}
     self.screensaver_timeout = SettingsManager.get('screensaver_timeout') or (desktopCfg.screensaver and desktopCfg.screensaver.default_timeout) or 10
     self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
 
     -- Subscribe to EventBus events
-    local event_bus = self.di and self.di.eventBus
-    if event_bus then
-        event_bus:subscribe('launch_program', function(program_id, ...)
-            self:launchProgram(program_id, ...)
-        end)
-
-        event_bus:subscribe('window_closed', function(window_id)
+    if self.event_bus then
+        self.event_bus:subscribe('window_closed', function(window_id)
             self.window_states[window_id] = nil
         end)
+        -- Subscribe to wallpaper changes to update live
+        self.event_bus:subscribe('wallpaper_changed', function(new_wallpaper_id)
+            self.wallpaper_type = 'image' -- Assume changing image sets type to image
+            self.wallpaper_image = new_wallpaper_id
+            -- Prewarm cache
+            local okW, WP = pcall(require, 'src.utils.wallpapers')
+            if okW and WP and WP.getImageCached then pcall(WP.getImageCached, new_wallpaper_id) end
+        end)
+        -- Subscribe to other relevant setting changes if needed
+        self.event_bus:subscribe('setting_changed', function(key, old_value, new_value)
+            if key == 'desktop_bg_type' then self.wallpaper_type = new_value
+            elseif key == 'desktop_bg_scale_mode' then self.wallpaper_scale_mode = new_value
+            elseif key == 'desktop_bg_r' then self.wallpaper_color[1] = new_value
+            elseif key == 'desktop_bg_g' then self.wallpaper_color[2] = new_value
+            elseif key == 'desktop_bg_b' then self.wallpaper_color[3] = new_value
+            elseif key == 'desktop_icon_snap' then self.icon_snap = (new_value ~= false)
+            end
+        end)
+    else
+        print("WARNING [DesktopState]: EventBus not found in DI. Some features might not work correctly.")
     end
 
     -- Initialization finished
 end
+
+-- NEW function added as per plan
+function DesktopState:registerWindowState(window_id, state)
+    self.window_states[window_id] = { state = state }
+    -- Important: Re-apply context if needed by state
+    if state.setWindowContext then state:setWindowContext(window_id, self.window_manager) end
+    if state.setViewport then
+         local window = self.window_manager:getWindowById(window_id)
+         if window then
+             -- Use the injected windowChrome instance
+             local bounds = self.di.windowChrome:getContentBounds(window)
+             pcall(state.setViewport, state, bounds.x, bounds.y, bounds.width, bounds.height)
+         end
+    end
+end
+
+-- DELETED launchProgram function
+
+-- DELETED _ensureDependencyProvider function
 
 function DesktopState:enter()
     self:updateClock()
@@ -214,9 +195,6 @@ function DesktopState:update(dt)
     if self.vm_manager and self.player_data and self.game_data then
         self.vm_manager:update(dt, self.player_data, self.game_data)
     end
-
-    -- *** REMOVED: WindowController doesn't have an update method ***
-    -- It only handles input events (mousepressed, mousemoved, mousereleased)
 
     -- Update active window states
     local windows = self.window_manager:getAllWindows()
@@ -242,22 +220,23 @@ function DesktopState:update(dt)
     -- If the OS requested quit (Alt+F4 or window close), open our shutdown dialog instead
     if _G.WANT_SHUTDOWN_DIALOG then
         _G.WANT_SHUTDOWN_DIALOG = nil
-        self:launchProgram('shutdown_dialog')
+        -- Use event bus to launch
+        if self.event_bus then self.event_bus:publish('launch_program', 'shutdown_dialog') end
     end
 
     -- Update main desktop view or tutorial
     if self.show_tutorial then
         self.tutorial_view:update(dt)
     else
-    local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
-    if self.icon_controller then self.icon_controller:ensureDefaultPositions(sw, sh) end
-    -- Only DesktopView (no start menu update here); StartMenuView handles menu state
-    self.view:update(dt, false, self.dragging_icon_id)
-    if self.start_menu then
-        -- Start Menu state owns its open/close; mirror to legacy flag for compatibility
-        self.start_menu:update(dt)
-        self.start_menu_open = self.start_menu:isOpen()
-    end
+        local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
+        if self.icon_controller then self.icon_controller:ensureDefaultPositions(sw, sh) end
+        -- Only DesktopView (no start menu update here); StartMenuView handles menu state
+        self.view:update(dt, false, self.dragging_icon_id)
+        if self.start_menu then
+            -- Start Menu state owns its open/close; mirror to legacy flag for compatibility
+            self.start_menu:update(dt)
+            self.start_menu_open = self.start_menu:isOpen()
+        end
     end
 
     -- Update system cursor based on context
@@ -273,23 +252,16 @@ function DesktopState:update(dt)
     -- Live-update desktop background and snap
     self.wallpaper_type = SettingsManager.get('desktop_bg_type') or self.wallpaper_type or 'color'
     self.wallpaper_image = SettingsManager.get('desktop_bg_image') or self.wallpaper_image
-    -- Debug: log when the image changes at runtime
-    if not self._dbg_last_img or self._dbg_last_img ~= self.wallpaper_image then
-        print(string.format('[DesktopState:update] wallpaper_image changed -> %s (type=%s)', tostring(self.wallpaper_image), tostring(self.wallpaper_type)))
-        self._dbg_last_img = self.wallpaper_image
-    end
     self.wallpaper_scale_mode = SettingsManager.get('desktop_bg_scale_mode') or self.wallpaper_scale_mode or 'fill'
     if self.wallpaper_type == 'image' and not self.wallpaper_image then
         local okW, WP = pcall(require, 'src.utils.wallpapers')
         if okW and WP then
-            -- Only set default if there's truly no saved choice; do not override a previously chosen but temporarily missing ID
             local saved_id = SettingsManager.get('desktop_bg_image')
             if not saved_id or saved_id == '' then
                 local def = WP.getDefaultId()
                 if def then
                     self.wallpaper_image = def
                     pcall(SettingsManager.set, 'desktop_bg_image', def)
-                    print(string.format('[DesktopState:update] No saved image; set default=%s', tostring(def)))
                 end
             end
         end
@@ -317,10 +289,12 @@ function DesktopState:update(dt)
     end
 end
 
+-- updateClock remains the same
 function DesktopState:updateClock()
     self.current_time = os.date("%H:%M")
 end
 
+-- draw remains the same
 function DesktopState:draw()
     -- Pass dragging state for visual feedback
     local wallpaper_arg = (self.wallpaper_type == 'image' and self.wallpaper_image)
@@ -369,7 +343,7 @@ function DesktopState:draw()
     end
 end
 
-
+-- drawWindow remains the same
 function DesktopState:drawWindow(window)
     local is_focused = self.window_manager:getFocusedWindowId() == window.id
 
@@ -417,6 +391,7 @@ function DesktopState:drawWindow(window)
     end
 end
 
+-- mousepressed: Replace self:launchProgram with event publish
 function DesktopState:mousepressed(x, y, button)
     self.idle_timer = 0
     -- If tutorial is showing, it consumes all input
@@ -526,20 +501,21 @@ function DesktopState:mousepressed(x, y, button)
                                 end
                             end
                         else
-                            self:launchProgram(icon_program_id)
+                            -- Publish launch event instead of calling directly
+                            if self.di.eventBus then self.di.eventBus:publish('launch_program', icon_program_id) end
                         end
 
                         self.last_icon_click_id = nil;
                         self.last_icon_click_time = 0;
                         self.dragging_icon_id = nil
-                    else 
+                    else
                         if self.di.eventBus then self.di.eventBus:publish('icon_drag_started', icon_program_id) end
-                        self.last_icon_click_id = icon_program_id; 
-                        self.last_icon_click_time = love.timer.getTime(); 
-                        self.dragging_icon_id = icon_program_id; 
-                        local icon_pos = self.desktop_icons:getPosition(icon_program_id) or self.icon_controller:getDefaultIconPosition(icon_program_id); 
-                        self.drag_offset_x = x - icon_pos.x; 
-                        self.drag_offset_y = y - icon_pos.y 
+                        self.last_icon_click_id = icon_program_id;
+                        self.last_icon_click_time = love.timer.getTime();
+                        self.dragging_icon_id = icon_program_id;
+                        local icon_pos = self.desktop_icons:getPosition(icon_program_id) or self.icon_controller:getDefaultIconPosition(icon_program_id);
+                        self.drag_offset_x = x - icon_pos.x;
+                        self.drag_offset_y = y - icon_pos.y
                     end
                 elseif program and program.disabled then love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is planned.", "info"); self.last_icon_click_id = nil; self.last_icon_click_time = 0 end
             end
@@ -549,7 +525,7 @@ function DesktopState:mousepressed(x, y, button)
                 if taskbar_button_id then
                     clicked_specific_desktop_ui = true
                     local window = self.window_manager:getWindowById(taskbar_button_id)
-                    if window then 
+                    if window then
                         local focused_id = self.window_manager:getFocusedWindowId()
                         if window.is_minimized then
                             if self.di.eventBus then
@@ -560,7 +536,7 @@ function DesktopState:mousepressed(x, y, button)
                             if self.di.eventBus then self.di.eventBus:publish('request_window_minimize', taskbar_button_id) end
                         else
                             if self.di.eventBus then self.di.eventBus:publish('request_window_focus', taskbar_button_id) end
-                        end 
+                        end
                     end
                 end
             end
@@ -572,6 +548,7 @@ function DesktopState:mousepressed(x, y, button)
         end
 
     elseif button == 2 then -- Right click
+        -- (Right click logic remains the same for now, still calls self:openContextMenu)
         -- If Start Menu is open and the click is inside it (no menu currently open), show Start Menu context and consume
         if (not self.context_menu_open) and self.start_menu and self.start_menu:isOpen() then
             local inside_any = self.start_menu:isPointInStartMenuOrSubmenu(x, y)
@@ -621,10 +598,10 @@ function DesktopState:mousepressed(x, y, button)
             start_menu_program_id = self.start_menu:getStartMenuProgramAtPosition(x, y)
         end
 
-        if start_menu_program_id and start_menu_program_id ~= "run" then context_type = "start_menu_item"; context_data = { program_id = start_menu_program_id } 
-        elseif icon_program_id then 
-            context_type = "icon"; 
-            context_data = { program_id = icon_program_id } 
+        if start_menu_program_id and start_menu_program_id ~= "run" then context_type = "start_menu_item"; context_data = { program_id = start_menu_program_id }
+        elseif icon_program_id then
+            context_type = "icon";
+            context_data = { program_id = icon_program_id }
             if self.di.eventBus then self.di.eventBus:publish('icon_right_clicked', icon_program_id, x, y) end
         elseif taskbar_button_id then context_type = "taskbar"; context_data = { window_id = taskbar_button_id }
         elseif on_start_button then context_type = "start_button" -- NYI
@@ -637,6 +614,7 @@ function DesktopState:mousepressed(x, y, button)
     end
 end
 
+-- _handleWindowClick remains the same
 function DesktopState:_handleWindowClick(window, x, y, button)
     local handled = false
 
@@ -699,7 +677,7 @@ function DesktopState:_handleWindowClick(window, x, y, button)
                     else
                         if self.di.eventBus then self.di.eventBus:publish('request_window_maximize', window.id, love.graphics.getWidth(), love.graphics.getHeight()) end
                     end
-                    
+
                     -- ADD: Call setViewport after double-click maximize/restore
                     local updated_window = self.window_manager:getWindowById(window.id)
                     if updated_window then
@@ -735,6 +713,7 @@ function DesktopState:_handleWindowClick(window, x, y, button)
     return handled
 end
 
+-- mousemoved remains the same
 function DesktopState:mousemoved(x, y, dx, dy)
     self.idle_timer = 0
     -- Forward to window controller first (handles window drag/resize)
@@ -765,6 +744,7 @@ function DesktopState:mousemoved(x, y, dx, dy)
     end
 end
 
+-- mousereleased remains the same
 function DesktopState:mousereleased(x, y, button)
     self.idle_timer = 0
     -- If a context menu click was just handled, swallow this release to avoid click-through
@@ -935,6 +915,7 @@ function DesktopState:mousereleased(x, y, button)
     end
 end
 
+-- handleWindowEvent remains the same
 function DesktopState:handleWindowEvent(event, x, y, button)
     local final_result = nil
     local event_bus = self.di and self.di.eventBus
@@ -963,7 +944,7 @@ function DesktopState:handleWindowEvent(event, x, y, button)
         else
             self.window_manager:maximizeWindow(event.window_id, love.graphics.getWidth(), love.graphics.getHeight())
         end
-        
+
         -- Call setViewport on the state after maximizing
         local window = self.window_manager:getWindowById(event.window_id)
         if window then
@@ -976,7 +957,7 @@ function DesktopState:handleWindowEvent(event, x, y, button)
                       content_bounds.width, content_bounds.height)
             end
         end
-        
+
         final_result = { type = "window_action" }
 
     elseif event.type == "window_restore" then
@@ -985,7 +966,7 @@ function DesktopState:handleWindowEvent(event, x, y, button)
         else
             self.window_manager:restoreWindow(event.window_id)
         end
-        
+
         -- Call setViewport on the state after restoring
         local window = self.window_manager:getWindowById(event.window_id)
         if window then
@@ -998,7 +979,7 @@ function DesktopState:handleWindowEvent(event, x, y, button)
                       content_bounds.width, content_bounds.height)
             end
         end
-        
+
         final_result = { type = "window_action" }
 
     elseif event.type == "window_drag_start" then
@@ -1018,7 +999,7 @@ function DesktopState:handleWindowEvent(event, x, y, button)
                      else
                         if event_bus then event_bus:publish('request_window_maximize', event.window_id, love.graphics.getWidth(), love.graphics.getHeight()) end
                      end
-                     
+
                      -- Call setViewport after toggle
                      local updated_window = self.window_manager:getWindowById(event.window_id)
                      if updated_window then
@@ -1057,9 +1038,9 @@ function DesktopState:handleWindowEvent(event, x, y, button)
                      if result.type == "close_window" then
                          local window = self.window_manager:getWindowById(event.window_id)
                          if window then self.window_manager:rememberWindowPosition(window) end
-                         self.window_manager:closeWindow(event.window_id)
-                         self.window_states[event.window_id] = nil
-                         final_result = { type = "window_closed" }
+                         -- Publish close request
+                         if event_bus then event_bus:publish('request_window_close', event.window_id) end
+                         final_result = { type = "window_closed_request" } -- Signal that we requested close
                      elseif result.type == "set_setting" then
                          if window_state.setSetting then
                              window_state:setSetting(result.id, result.value)
@@ -1091,6 +1072,7 @@ function DesktopState:handleWindowEvent(event, x, y, button)
     return final_result
 end
 
+-- keypressed remains the same
 function DesktopState:keypressed(key)
     self.idle_timer = 0
     if self.show_tutorial then
@@ -1102,7 +1084,8 @@ function DesktopState:keypressed(key)
     -- Global: Alt+F4 should open Shutdown dialog (do not close the current window)
     local alt_down_global = love.keyboard.isDown('lalt') or love.keyboard.isDown('ralt')
     if alt_down_global and key == 'f4' then
-        self:launchProgram('shutdown_dialog')
+        -- Use event bus to launch
+        if self.event_bus then self.event_bus:publish('launch_program', 'shutdown_dialog') end
         return true
     end
 
@@ -1117,7 +1100,6 @@ function DesktopState:keypressed(key)
     if focused_id then
         local window_data = self.window_states[focused_id]
         local window_state = window_data and window_data.state
-
 
         -- Pass other keypresses to focused window state
         if window_state and window_state.keypressed then
@@ -1150,7 +1132,8 @@ function DesktopState:keypressed(key)
             cancel_label = Strings.get('buttons.cancel','Cancel'),
             submit_event = 'run_execute',
         }
-        self:launchProgram('run_dialog', params)
+        -- Use event bus to launch
+        if self.event_bus then self.event_bus:publish('launch_program', 'run_dialog', params) end
         return true
     end
 
@@ -1185,11 +1168,12 @@ function DesktopState:keypressed(key)
     return false -- Key not handled
 end
 
--- Toggle Start Menu from global key handlers (Windows key or Ctrl+Esc)
+-- toggleStartMenu remains the same
 function DesktopState:toggleStartMenu()
     if self.start_menu then self.start_menu:toggle(); self.start_menu_open = self.start_menu:isOpen() end
 end
 
+-- textinput remains the same
 function DesktopState:textinput(text)
     self.idle_timer = 0
      local focused_id = self.window_manager:getFocusedWindowId()
@@ -1209,6 +1193,7 @@ function DesktopState:textinput(text)
     -- If not handled by window, do nothing (Run is now its own window)
 end
 
+-- wheelmoved remains the same
 function DesktopState:wheelmoved(x, y)
     self.idle_timer = 0
     -- Send to focused window first
@@ -1237,24 +1222,28 @@ function DesktopState:wheelmoved(x, y)
     -- Could add desktop background scroll handling here later if needed
 end
 
+-- handleStateEvent: Replace self:launchProgram with event publish
 function DesktopState:handleStateEvent(window_id, event)
     print("Received event from window " .. window_id .. ": " .. tostring(event.name))
 
     local handlers = {
         next_level = function()
             self:closeWindowById(window_id)
-            self:launchProgram("space_defender", event.level)
+            -- Publish launch event instead of calling directly
+            if self.event_bus then self.event_bus:publish('launch_program', "space_defender", event.level) end
         end,
         show_completion = function()
             self:closeWindowById(window_id)
             self.state_machine:switch(Constants.state.COMPLETION)
         end,
         launch_program = function()
-            self:launchProgram(event.program_id)
+            -- Publish launch event instead of calling directly
+            if self.event_bus then self.event_bus:publish('launch_program', event.program_id) end
         end,
         launch_minigame = function()
             if event.game_data then
-                self:launchProgram("minigame_runner", event.game_data)
+                -- Publish launch event instead of calling directly
+                if self.event_bus then self.event_bus:publish('launch_program', "minigame_runner", event.game_data) end
             else
                 print("ERROR: launch_minigame event missing game_data!")
             end
@@ -1349,6 +1338,7 @@ function DesktopState:handleStateEvent(window_id, event)
     if handler then handler() end
 end
 
+-- executeRunCommand: Replace self:launchProgram with event publish
 function DesktopState:executeRunCommand(command)
     command = command:gsub("^%s*(.-)%s*$", "%1"):lower() -- Trim whitespace and lower
 
@@ -1357,7 +1347,8 @@ function DesktopState:executeRunCommand(command)
     local program = self.program_registry:findByExecutable(command)
     if program then
         if not program.disabled then
-            self:launchProgram(program.id)
+            -- Publish launch event instead of calling directly
+            if self.event_bus then self.event_bus:publish('launch_program', program.id) end
         else
             love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), string.format(Strings.get('messages.cannot_find_fmt', "Cannot find '%s'."), command), "error")
         end
@@ -1366,197 +1357,12 @@ function DesktopState:executeRunCommand(command)
     end
 end
 
+-- showTextFileDialog remains the same
 function DesktopState:showTextFileDialog(title, content)
     love.window.showMessageBox(title, content or "[Empty File]", "info")
 end
 
--- Defensive: ensure dependency_provider exists before launching programs
-function DesktopState:_ensureDependencyProvider()
-    if self.dependency_provider then return end
-    print('[DesktopState] Rebuilding dependency_provider map (was nil)')
-    self.dependency_provider = {
-        player_data = self.player_data,
-        game_data = self.game_data,
-        state_machine = self.state_machine,
-        save_manager = self.save_manager,
-        statistics = self.statistics,
-        window_manager = self.window_manager,
-        desktop_icons = self.desktop_icons,
-        file_system = self.file_system,
-        recycle_bin = self.recycle_bin,
-        program_registry = self.program_registry,
-        vm_manager = self.vm_manager,
-        cheat_system = self.cheat_system,
-        di = self.di,
-        window_controller = self.window_controller,
-    }
-end
-
-function DesktopState:launchProgram(program_id, ...)
-    local launch_args = {...}
-    print("Attempting to launch program: " .. program_id)
-
-    -- Ensure dependency provider is present
-    self:_ensureDependencyProvider()
-
-    local program = self.program_registry:getProgram(program_id)
-    if not program then print("Program definition not found: " .. program_id); return end
-    if program.disabled then print("Program disabled: " .. program_id); love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is not available yet.", "info"); return end
-    if not program.state_class_path then print("Program missing state_class_path: " .. program_id); return end
-
-    local defaults = program.window_defaults or {}
-    if defaults.single_instance then
-        local existing_id = self.window_manager:isProgramOpen(program_id)
-        if existing_id then
-            print(program.name .. " already running.")
-            self.window_manager:focusWindow(existing_id)
-            return
-        end
-    end
-
-    local module_name_slash = program.state_class_path:gsub("%.", "/")
-    local require_ok, StateClass = pcall(require, module_name_slash)
-    if not require_ok or not StateClass then
-        local err = tostring(StateClass)
-        print("ERROR loading state class '" .. program.state_class_path .. "': " .. err)
-        -- If we hit Lua's 'loop or previous error' cache, clear and retry once to surface the real cause
-        if err:find("previous error loading module", 1, true) or err:find("loop or previous error", 1, true) then
-            -- Try to extract the exact failing module from the error text and purge it as well
-            local offending = err:match("module '([^']+)'%s-") or err:match("no field package%.preload%['([^']+)'%]")
-            if offending then
-                package.loaded[offending] = nil
-                package.loaded[offending:gsub('%.','/')] = nil
-            end
-            package.loaded[program.state_class_path] = nil
-            package.loaded[module_name_slash] = nil
-            local retry_ok, RetryClass = pcall(require, module_name_slash)
-            if not retry_ok or not RetryClass then
-                print("Retry require failed for '" .. program.state_class_path .. "': " .. tostring(RetryClass))
-                return
-            else
-                StateClass = RetryClass
-            end
-        else
-            return
-        end
-    end
-
-    local state_args = {}
-    local missing_deps = {}
-    for _, dep_name in ipairs(program.dependencies or {}) do
-        local dp = self.dependency_provider or {}
-        local dependency = dp[dep_name]
-        if dependency then table.insert(state_args, dependency)
-        else print("ERROR: Missing dependency '" .. dep_name .. "'"); table.insert(missing_deps, dep_name) end
-    end
-    if #missing_deps > 0 then love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Missing dependencies: " .. table.concat(missing_deps, ", "), "error"); return end
-
-    local instance_ok, new_state = pcall(StateClass.new, StateClass, unpack(state_args))
-    if not instance_ok or not new_state then print("ERROR instantiating state: " .. tostring(new_state)); return end
-
-    local screen_w, screen_h = love.graphics.getDimensions()
-    local C = (self.di and self.di.config) or {}
-    local wd = (C and C.window and C.window.defaults) or {}
-    local default_w = defaults.w or wd.width or 800
-    local default_h = defaults.h or wd.height or 600
-
-    local title_prefix = wd.title_prefix or ""
-    local initial_title = (title_prefix ~= "" and (title_prefix .. program.name)) or program.name
-    local game_data_arg = nil
-    local program_for_window = program
-
-    if program_id == "minigame_runner" then
-        game_data_arg = launch_args[1]
-        if game_data_arg and game_data_arg.display_name then
-            initial_title = (title_prefix ~= "" and (title_prefix .. game_data_arg.display_name)) or game_data_arg.display_name
-            -- Create a modified program definition with the game's icon
-            program_for_window = {
-                id = program.id,
-                name = game_data_arg.display_name,
-                icon_sprite = game_data_arg.icon_sprite,
-                window_defaults = program.window_defaults
-            }
-        else
-            initial_title = (title_prefix ~= "" and (title_prefix .. "Minigame")) or "Minigame"
-        end
-    end
-
-    local window_id = self.window_manager:createWindow( program_for_window, initial_title, new_state, default_w, default_h )
-    if not window_id then print("ERROR: WindowManager failed to create window for " .. program_id); return end
-
-    self.window_states[window_id] = { state = new_state }
-    if new_state.setWindowContext then new_state:setWindowContext(window_id, self.window_manager) end
-
-    -- REMOVED: Early setViewport call before enter()
-
-    local enter_args = {}
-    local enter_args_config = program.enter_args
-    if program_id == "minigame_runner" then
-        if game_data_arg then enter_args = { game_data_arg } end
-    elseif enter_args_config then
-        if enter_args_config.type == "first_launch_arg" then enter_args = {launch_args[1] or enter_args_config.default}
-        elseif enter_args_config.type == "static" then enter_args = {enter_args_config.value} end
-    else
-        -- Generic passthrough: if caller provided args and no program-specific enter_args config, pass them to state:enter
-        if #launch_args > 0 then enter_args = launch_args end
-    end
-
-    if new_state.enter then
-        local enter_ok, enter_err = pcall(new_state.enter, new_state, unpack(enter_args))
-        if type(enter_err) == 'table' and enter_err.type == "close_window" then
-            print("State signaled close during enter for " .. program_id); self.window_manager:closeWindow(window_id); self.window_states[window_id] = nil; return
-        elseif not enter_ok then
-            print("ERROR calling enter on state for " .. program_id .. ": " .. tostring(enter_err)); self.window_manager:closeWindow(window_id); self.window_states[window_id] = nil; return
-        end
-    end
-
-    -- MOVED: Call setViewport AFTER enter() completes successfully
-    local created_window = self.window_manager:getWindowById(window_id)
-    if created_window and new_state.setViewport then
-        local initial_content_bounds = self.window_chrome:getContentBounds(created_window)
-        local viewport_ok, viewport_err = pcall(new_state.setViewport, new_state,
-              initial_content_bounds.x, initial_content_bounds.y,
-              initial_content_bounds.width, initial_content_bounds.height)
-        if not viewport_ok then
-            print("ERROR calling setViewport after enter for " .. program_id .. ": " .. tostring(viewport_err))
-        end
-    end
-
-    if defaults.prefer_maximized and defaults.resizable ~= false then
-        self.window_manager:maximizeWindow(window_id, screen_w, screen_h)
-         local maximized_window = self.window_manager:getWindowById(window_id)
-         if maximized_window and new_state.setViewport then
-             local maximized_content_bounds = self.window_chrome:getContentBounds(maximized_window)
-             pcall(new_state.setViewport, new_state,
-                   maximized_content_bounds.x, maximized_content_bounds.y,
-                   maximized_content_bounds.width, maximized_content_bounds.height)
-         end
-    end
-
-    print("Opened window for " .. initial_title .. " ID: " .. window_id)
-
-    -- Publish dialog_opened event for specific dialog types
-    local dialog_types = {run_dialog=true, shutdown_dialog=true, solitaire_back_picker=true, wallpaper_picker=true, solitaire_settings=true}
-    if dialog_types[program_id] and self.event_bus then
-        pcall(self.event_bus.publish, self.event_bus, 'dialog_opened', program_id, window_id)
-    end
-end
-
-function DesktopState:dismissTutorial()
-    if not self.show_tutorial then return end -- Prevent duplicate events
-
-    self.show_tutorial = false
-    local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
-    SettingsManager.set("tutorial_shown", true)
-    print("Tutorial dismissed.")
-
-    -- Publish tutorial_dismissed event
-    if self.event_bus then
-        pcall(self.event_bus.publish, self.event_bus, 'tutorial_dismissed')
-    end
-end
-
--- Helper function to generate context menu options based on context
+-- generateContextMenuOptions remains the same
 function DesktopState:generateContextMenuOptions(context_type, context_data)
     local options = {}
     context_data = context_data or {} -- Ensure context_data exists
@@ -1618,15 +1424,7 @@ function DesktopState:generateContextMenuOptions(context_type, context_data)
         end
 
     elseif context_type == "file_explorer_item" or context_type == "file_explorer_empty" then
-        -- Options are generated by FileExplorerState and passed in context_data.options
-        -- Just return them directly
-        print("[Debug generateContextMenuOptions] Passing through FE options")
-        -- The context_data.options ALREADY includes separators handled by FileExplorerState logic if needed
-        -- Or rather, the options passed *to* openContextMenu are already processed there.
-        -- So, we retrieve the raw options from the context provided by FE.
-        -- Let's assume the FE state passes the raw options it generated.
         options = context_data.options or {} -- Get the options generated by FE
-        -- We still need to process them for separators here for consistent rendering
         local final_options = {}
         for _, opt in ipairs(options or {}) do
             if opt.id == "separator" then
@@ -1651,12 +1449,11 @@ function DesktopState:generateContextMenuOptions(context_type, context_data)
         end
         return final_options
     else
-         -- This path should technically not be reached due to the return inside the elseif block
         return options
     end
 end
 
--- Helper function to open the context menu. Called with generated options and context.
+-- openContextMenu remains the same
 function DesktopState:openContextMenu(x, y, options, context)
     -- Add separator rendering support (visual only)
     local final_options = {}
@@ -1693,8 +1490,7 @@ function DesktopState:openContextMenu(x, y, options, context)
     end
 end
 
-
--- Helper function to close the context menu
+-- closeContextMenu remains the same
 function DesktopState:closeContextMenu()
     if not self.context_menu_open then return end -- Prevent duplicate events if already closed
 
@@ -1710,7 +1506,7 @@ function DesktopState:closeContextMenu()
     end
 end
 
--- Function to handle actions selected from the context menu
+-- handleContextMenuAction: Replace self:launchProgram with event publish
 function DesktopState:handleContextMenuAction(action_id, context)
     print("[Action Handler] Action:", action_id, "Context Type:", context.type)
     local program_id = context.program_id -- Used by multiple contexts
@@ -1724,12 +1520,15 @@ function DesktopState:handleContextMenuAction(action_id, context)
     -- Original handling logic (unchanged)...
     if context.type == "icon" then
         if not program_id then print("ERROR: program_id missing for icon context!"); return end
-        if action_id == "open" then self:launchProgram(program_id)
+        if action_id == "open" then
+            -- Publish launch event instead of calling directly
+            if self.event_bus then self.event_bus:publish('launch_program', program_id) end
         elseif action_id == "delete" then self:deleteDesktopIcon(program_id)
         elseif action_id == "properties" then print("Action 'Properties' NYI")
         end
 
     elseif context.type == "taskbar" then
+        -- Taskbar actions remain the same (using event bus)
         if not window_id then print("ERROR: window_id missing for taskbar context!"); return end
         if action_id == "restore" then
             if self.di.eventBus then self.di.eventBus:publish('request_window_restore', window_id) end
@@ -1746,19 +1545,21 @@ function DesktopState:handleContextMenuAction(action_id, context)
 
     elseif context.type == "desktop" then
         if action_id == "desktop_properties" then
-            self:launchProgram('control_panel_desktop')
+            -- Publish launch event instead of calling directly
+            if self.event_bus then self.event_bus:publish('launch_program', 'control_panel_desktop') end
         elseif action_id == "arrange_icons" then print("Action 'Arrange Icons' NYI")
         elseif action_id == "properties" then print("Action 'Properties' NYI")
         end
 
     elseif context.type == "start_menu_item" then
+        -- Start menu actions remain the same, but 'open' uses event bus
         if not program_id then print("ERROR: program_id missing for start_menu_item context!"); return end
         if action_id == "open" then
-            self:launchProgram(program_id)
+            -- Publish launch event instead of calling directly
+            if self.event_bus then self.event_bus:publish('launch_program', program_id) end
         elseif action_id == "create_shortcut_desktop" then
             self:ensureIconIsVisible(program_id)
         elseif action_id == 'create_shortcut_start_menu' then
-            -- Mark program to appear in Start Menu via ProgramRegistry
             local pr = self.program_registry
             local program = pr and pr:getProgram(program_id)
             if program then
@@ -1766,7 +1567,6 @@ function DesktopState:handleContextMenuAction(action_id, context)
                 if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, true) end
             end
         elseif action_id == 'new_folder' then
-            -- Open parametric input dialog to create a new folder under Start Menu Programs root
             local Constants = require('src.constants')
             local params = {
                 title = Strings.get('menu.new_folder', 'New Folder...'),
@@ -1780,9 +1580,9 @@ function DesktopState:handleContextMenuAction(action_id, context)
                     after_index = context.index or 0,
                 }
             }
-            self:launchProgram('run_dialog', params)
+            -- Publish launch event instead of calling directly
+            if self.event_bus then self.event_bus:publish('launch_program', 'run_dialog', params) end
         elseif action_id == 'delete_from_menu' then
-            -- Hide program from Start Menu
             local pr = self.program_registry
             local program = pr and pr:getProgram(program_id)
             if program then
@@ -1790,7 +1590,6 @@ function DesktopState:handleContextMenuAction(action_id, context)
                 if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, false) end
                 if pr.removeFromStartMenuOrder then pcall(pr.removeFromStartMenuOrder, pr, program_id) end
             end
-            -- Refresh any open panes/submenus
             if self.start_menu and self.start_menu.view then
                 for _, p in ipairs(self.start_menu.view.open_panes or {}) do
                     if p.kind == 'programs' then p.items = self.start_menu.view:buildPaneItems('programs', nil)
@@ -1802,12 +1601,12 @@ function DesktopState:handleContextMenuAction(action_id, context)
         end
 
     elseif context.type == "start_menu_fs" then
+        -- Start menu FS actions remain the same, but 'new_folder' uses event bus
         local path = context.path
         if not path then return end
         if action_id == 'open' then
             if self.start_menu and self.start_menu.openPath then self.start_menu:openPath(path) end
         elseif action_id == 'new_folder' then
-            -- Create a new real folder under the parent path of the pane
             local params = {
                 title = Strings.get('menu.new_folder', 'New Folder...'),
                 prompt = Strings.get('start.type_prompt', 'Type the name:'),
@@ -1820,7 +1619,8 @@ function DesktopState:handleContextMenuAction(action_id, context)
                     after_index = context.index or 0,
                 }
             }
-            self:launchProgram('run_dialog', params)
+            -- Publish launch event instead of calling directly
+            if self.event_bus then self.event_bus:publish('launch_program', 'run_dialog', params) end
         elseif action_id == 'delete_from_menu' then
             local fs = self.file_system
             if fs and fs.deleteEntry then
@@ -1828,7 +1628,6 @@ function DesktopState:handleContextMenuAction(action_id, context)
                 if not ok then
                     print('Delete failed for Start Menu FS item:', path, err)
                 end
-                -- Refresh panes
                 if self.start_menu and self.start_menu.view then
                     for _, p in ipairs(self.start_menu.view.open_panes or {}) do
                         if p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
@@ -1838,12 +1637,11 @@ function DesktopState:handleContextMenuAction(action_id, context)
         end
 
     elseif context.type == "file_explorer_item" or context.type == "file_explorer_empty" then
-        -- Find the correct File Explorer state instance using the window_id from the context
+        -- File explorer actions remain the same (delegated to FE state)
         local fe_window_id = context.window_id
         local fe_state_data = fe_window_id and self.window_states[fe_window_id]
         local fe_state = fe_state_data and fe_state_data.state
 
-        -- Check if it's actually a FileExplorerState instance
         if fe_state and fe_state.handleItemDoubleClick then
             local item = context.item -- Might be nil for empty space clicks
 
@@ -1861,13 +1659,10 @@ function DesktopState:handleContextMenuAction(action_id, context)
                 end
             elseif action_id == "open" and item then
                  local result = fe_state:handleItemDoubleClick(item)
-                 -- If double click resulted in an event (like launch), handle it
                  if type(result) == 'table' and result.type == "event" then self:handleStateEvent(fe_window_id, result) end
             elseif action_id == "create_shortcut_desktop" and item then
-                 -- Call the FE state method, which might return an event for DesktopState
                  local result = fe_state:createShortcutOnDesktop(item)
                  if type(result) == 'table' and result.type == "event" then
-                     -- Handle events returned by createShortcut (like ensure_icon_visible)
                      self:handleStateEvent(fe_window_id, result) -- Pass event up
                  end
             elseif action_id == "create_shortcut_start_menu" and item then
@@ -1876,11 +1671,9 @@ function DesktopState:handleContextMenuAction(action_id, context)
                      self:handleStateEvent(fe_window_id, result)
                  end
             elseif action_id == "remove_shortcut" and item then
-                 -- If this is a dynamic shortcut, remove it
                  if item.program_id and item.program_id:match('^shortcut_') then
                      local ok = self.program_registry:removeDynamicProgram(item.program_id)
                      if ok then
-                         -- Also clean desktop icon state
                          self.desktop_icons:permanentlyDelete(item.program_id)
                          self.desktop_icons:save()
                      end
@@ -1905,12 +1698,12 @@ function DesktopState:handleContextMenuAction(action_id, context)
     end
 end
 
--- Helper to ensure a program's icon is visible on the desktop
+-- ensureIconIsVisible remains the same
 function DesktopState:ensureIconIsVisible(program_id)
     if not program_id then return end
 
     print("Ensuring icon is visible for:", program_id)
-    
+
     if self.di.eventBus then
         local default_pos = self:findNextAvailableGridPosition(program_id)
         local screen_w, screen_h = love.graphics.getDimensions()
@@ -1922,7 +1715,7 @@ function DesktopState:ensureIconIsVisible(program_id)
     -- Optional: Maybe briefly highlight the icon?
 end
 
--- Helper to find the next free spot in the default grid layout
+-- findNextAvailableGridPosition remains the same
 function DesktopState:findNextAvailableGridPosition(program_id_to_place)
     self.view:calculateDefaultIconPositionsIfNeeded() -- Ensure defaults are calculated
 
@@ -1970,7 +1763,7 @@ function DesktopState:findNextAvailableGridPosition(program_id_to_place)
     end
 end
 
--- Helper to find a specific File Explorer instance (basic)
+-- findFileExplorerStateInstance remains the same
 function DesktopState:findFileExplorerStateInstance(target_path)
      for win_id, win_data in pairs(self.window_states) do
          if win_data.state and win_data.state.__cname == "FileExplorerState" then
@@ -1983,7 +1776,7 @@ function DesktopState:findFileExplorerStateInstance(target_path)
      return nil -- Not found
 end
 
--- Helper to close window and clean up state map
+-- closeWindowById remains the same
 function DesktopState:closeWindowById(window_id)
       local window = self.window_manager:getWindowById(window_id)
       if window then self.window_manager:rememberWindowPosition(window) end
@@ -2014,7 +1807,7 @@ function DesktopState:closeWindowById(window_id)
       end
 end
 
--- Helper for deleting icons via context menu
+-- deleteDesktopIcon remains the same
 function DesktopState:deleteDesktopIcon(program_id)
      if program_id ~= "recycle_bin" and program_id ~= "my_computer" then
          print("Deleting icon via context menu:", program_id)

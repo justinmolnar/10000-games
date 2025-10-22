@@ -1,11 +1,12 @@
 -- src/utils/program_launcher.lua
 local Object = require('lib.class')
+local Strings = require('src.utils.strings') -- Required for error messages
 local ProgramLauncher = Object:extend('ProgramLauncher')
 
 function ProgramLauncher:init(di)
     self.di = di
 
-    -- Dependency provider map (used by launchProgram)
+    -- Dependency provider map (moved from DesktopState)
     self.dependency_provider = {
         player_data = self.di.playerData,
         game_data = self.di.gameData,
@@ -19,19 +20,25 @@ function ProgramLauncher:init(di)
         program_registry = self.di.programRegistry,
         vm_manager = self.di.vmManager,
         cheat_system = self.di.cheatSystem,
-        di = self.di,
-        window_controller = self.di.window_controller -- Pass controller itself if needed by states (e.g. Settings)
+        di = self.di, -- Pass the whole DI container
+        window_controller = self.di.window_controller -- Pass controller itself if needed
     }
 
-    self.di.eventBus:subscribe('launch_program', function(program_id, ...)
-        self:launchProgram(program_id, ...)
-    end)
+    -- Subscribe to the launch_program event
+    if self.di.eventBus then
+        self.di.eventBus:subscribe('launch_program', function(program_id, ...)
+            self:launchProgram(program_id, ...)
+        end)
+    else
+        print("ERROR [ProgramLauncher]: EventBus not found in DI container.")
+    end
 end
 
--- Defensive: ensure dependency_provider exists before launching programs
+-- Defensive: ensure dependency_provider exists before launching programs (moved from DesktopState)
 function ProgramLauncher:_ensureDependencyProvider()
     if self.dependency_provider then return end
     print('[ProgramLauncher] Rebuilding dependency_provider map (was nil)')
+    -- Rebuild using self.di
     self.dependency_provider = {
         player_data = self.di.playerData,
         game_data = self.di.gameData,
@@ -50,6 +57,7 @@ function ProgramLauncher:_ensureDependencyProvider()
     }
 end
 
+-- launchProgram function (moved from DesktopState and adapted)
 function ProgramLauncher:launchProgram(program_id, ...)
     local launch_args = {...}
     print("Attempting to launch program: " .. program_id)
@@ -67,7 +75,12 @@ function ProgramLauncher:launchProgram(program_id, ...)
         local existing_id = self.di.windowManager:isProgramOpen(program_id)
         if existing_id then
             print(program.name .. " already running.")
-            self.di.windowManager:focusWindow(existing_id)
+            -- Use event bus to request focus
+            if self.di.eventBus then
+                self.di.eventBus:publish('request_window_focus', existing_id)
+            else
+                self.di.windowManager:focusWindow(existing_id) -- Fallback
+            end
             return
         end
     end
@@ -77,9 +90,7 @@ function ProgramLauncher:launchProgram(program_id, ...)
     if not require_ok or not StateClass then
         local err = tostring(StateClass)
         print("ERROR loading state class '" .. program.state_class_path .. "': " .. err)
-        -- If we hit Lua's 'loop or previous error' cache, clear and retry once to surface the real cause
         if err:find("previous error loading module", 1, true) or err:find("loop or previous error", 1, true) then
-            -- Try to extract the exact failing module from the error text and purge it as well
             local offending = err:match("module '([^']+)'%s-") or err:match("no field package%.preload%['([^']+)'%]")
             if offending then
                 package.loaded[offending] = nil
@@ -105,12 +116,12 @@ function ProgramLauncher:launchProgram(program_id, ...)
         local dp = self.dependency_provider or {}
         local dependency = dp[dep_name]
         if dependency then table.insert(state_args, dependency)
-        else print("ERROR: Missing dependency '" .. dep_name .. "'"); table.insert(missing_deps, dep_name) end
+        else print("ERROR: Missing dependency '" .. dep_name .. "' for program '" .. program_id .. "'"); table.insert(missing_deps, dep_name) end
     end
     if #missing_deps > 0 then love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Missing dependencies: " .. table.concat(missing_deps, ", "), "error"); return end
 
     local instance_ok, new_state = pcall(StateClass.new, StateClass, unpack(state_args))
-    if not instance_ok or not new_state then print("ERROR instantiating state: " .. tostring(new_state)); return end
+    if not instance_ok or not new_state then print("ERROR instantiating state '" .. program.state_class_path .. "': " .. tostring(new_state)); return end
 
     local screen_w, screen_h = love.graphics.getDimensions()
     local C = (self.di and self.di.config) or {}
@@ -127,7 +138,6 @@ function ProgramLauncher:launchProgram(program_id, ...)
         game_data_arg = launch_args[1]
         if game_data_arg and game_data_arg.display_name then
             initial_title = (title_prefix ~= "" and (title_prefix .. game_data_arg.display_name)) or game_data_arg.display_name
-            -- Create a modified program definition with the game's icon
             program_for_window = {
                 id = program.id,
                 name = game_data_arg.display_name,
@@ -139,13 +149,13 @@ function ProgramLauncher:launchProgram(program_id, ...)
         end
     end
 
+    -- Create window via WindowManager (it publishes window_opened)
     local window_id = self.di.windowManager:createWindow( program_for_window, initial_title, new_state, default_w, default_h )
     if not window_id then print("ERROR: WindowManager failed to create window for " .. program_id); return end
 
+    -- Register the state instance with DesktopState
     self.di.desktopState:registerWindowState(window_id, new_state)
-    if new_state.setWindowContext then new_state:setWindowContext(window_id, self.di.windowManager) end
-
-    -- REMOVED: Early setViewport call before enter()
+    -- setWindowContext and setViewport are now handled within registerWindowState
 
     local enter_args = {}
     local enter_args_config = program.enter_args
@@ -155,45 +165,39 @@ function ProgramLauncher:launchProgram(program_id, ...)
         if enter_args_config.type == "first_launch_arg" then enter_args = {launch_args[1] or enter_args_config.default}
         elseif enter_args_config.type == "static" then enter_args = {enter_args_config.value} end
     else
-        -- Generic passthrough: if caller provided args and no program-specific enter_args config, pass them to state:enter
         if #launch_args > 0 then enter_args = launch_args end
     end
 
     if new_state.enter then
         local enter_ok, enter_err = pcall(new_state.enter, new_state, unpack(enter_args))
         if type(enter_err) == 'table' and enter_err.type == "close_window" then
-            print("State signaled close during enter for " .. program_id); self.di.windowManager:closeWindow(window_id); self.di.desktopState:registerWindowState(window_id, nil); return
+            print("State signaled close during enter for " .. program_id);
+            -- Request close via event bus
+            if self.di.eventBus then self.di.eventBus:publish('request_window_close', window_id) end
+            return
         elseif not enter_ok then
-            print("ERROR calling enter on state for " .. program_id .. ": " .. tostring(enter_err)); self.di.windowManager:closeWindow(window_id); self.di.desktopState:registerWindowState(window_id, nil); return
+            print("ERROR calling enter on state for " .. program_id .. ": " .. tostring(enter_err));
+            -- Request close via event bus
+            if self.di.eventBus then self.di.eventBus:publish('request_window_close', window_id) end
+            return
         end
     end
 
-    -- MOVED: Call setViewport AFTER enter() completes successfully
-    local created_window = self.di.windowManager:getWindowById(window_id)
-    if created_window and new_state.setViewport then
-        local initial_content_bounds = self.di.windowChrome:getContentBounds(created_window)
-        local viewport_ok, viewport_err = pcall(new_state.setViewport, new_state,
-              initial_content_bounds.x, initial_content_bounds.y,
-              initial_content_bounds.width, initial_content_bounds.height)
-        if not viewport_ok then
-            print("ERROR calling setViewport after enter for " .. program_id .. ": " .. tostring(viewport_err))
-        end
-    end
+    -- Set viewport after enter is now handled by registerWindowState
 
     if defaults.prefer_maximized and defaults.resizable ~= false then
-        self.di.windowManager:maximizeWindow(window_id, screen_w, screen_h)
-         local maximized_window = self.di.windowManager:getWindowById(window_id)
-         if maximized_window and new_state.setViewport then
-             local maximized_content_bounds = self.di.windowChrome:getContentBounds(maximized_window)
-             pcall(new_state.setViewport, new_state,
-                   maximized_content_bounds.x, maximized_content_bounds.y,
-                   maximized_content_bounds.width, maximized_content_bounds.height)
-         end
+        -- Request maximize via event bus
+        if self.di.eventBus then
+            self.di.eventBus:publish('request_window_maximize', window_id, screen_w, screen_h)
+        else
+            self.di.windowManager:maximizeWindow(window_id, screen_w, screen_h) -- Fallback
+        end
+        -- setViewport after maximize is handled by WindowManager reacting to event/call
     end
 
     print("Opened window for " .. initial_title .. " ID: " .. window_id)
 
-    -- Publish dialog_opened event for specific dialog types
+    -- Publish dialog_opened event (remains the same)
     local dialog_types = {run_dialog=true, shutdown_dialog=true, solitaire_back_picker=true, wallpaper_picker=true, solitaire_settings=true}
     if dialog_types[program_id] and self.di.eventBus then
         pcall(self.di.eventBus.publish, self.di.eventBus, 'dialog_opened', program_id, window_id)
