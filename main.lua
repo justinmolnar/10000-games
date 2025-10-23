@@ -70,6 +70,7 @@ function love.load()
     local WindowChrome = require('src.views.window_chrome')
     local WindowController = require('src.controllers.window_controller') -- Require WindowController
     local ProgramLauncher = require('src.utils.program_launcher') -- Require ProgramLauncher
+    local ContextMenuService = require('src.utils.context_menu_service') -- Require ContextMenuService
 
     -- == 2. Initialize Core Systems & DI Container ==
     SettingsManager.inject({ config = Config })
@@ -183,6 +184,10 @@ function love.load()
     di.window_controller.window_states = desktop.window_states
     if not di.window_controller.window_states then print("CRITICAL WARNING: Failed to link window_states map to WindowController!") end
     -- ==========================================
+
+    -- === Phase 2: ContextMenuService Extraction ===
+    di.contextMenuService = ContextMenuService:new(di) -- Create the context menu service
+    -- ===============================================
 
     -- == 7. Start Game ==
     print("Starting game - switching to desktop")

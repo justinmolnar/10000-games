@@ -9,7 +9,6 @@ local TutorialView = require('src.views.tutorial_view')
 local WindowChrome = require('src.views.window_chrome')
 local WindowController = require('src.controllers.window_controller')
 local Collision = require('src/utils.collision')
-local ContextMenuView = require('src.views.context_menu_view')
 
 -- DEBUG: Check if WindowController loaded
 if not WindowController then
@@ -58,7 +57,6 @@ function DesktopState:init(di)
     self.start_menu = StartMenuState:new(self.di, self) -- Host is self for legacy launchProgram fallback
     self.icon_controller = DesktopIconController:new(self.program_registry, self.desktop_icons, self.recycle_bin, self.di)
     self.tutorial_view = TutorialView:new(self)
-    self.context_menu_view = ContextMenuView:new()
 
     local C = (self.di and self.di.config) or {}
     local colors = (C.ui and C.ui.colors) or {}
@@ -108,14 +106,6 @@ function DesktopState:init(di)
     self.last_title_bar_click_time = 0
     self.last_title_bar_click_id = nil
 
-    -- Context Menu State
-    self.context_menu_open = false
-    self.menu_x = 0
-    self.menu_y = 0
-    self.menu_options = {}
-    self.menu_context = nil
-    self._suppress_next_mousereleased = nil
-
     -- Store cursors
     self.cursors = (self.di and self.di.systemCursors) or {}
 
@@ -147,6 +137,78 @@ function DesktopState:init(di)
             elseif key == 'desktop_bg_b' then self.wallpaper_color[3] = new_value
             elseif key == 'desktop_icon_snap' then self.icon_snap = (new_value ~= false)
             end
+        end)
+
+        -- Subscribe to ContextMenuService events
+        self.event_bus:subscribe('request_icon_recycle', function(program_id)
+            self:deleteDesktopIcon(program_id)
+        end)
+        self.event_bus:subscribe('ensure_icon_visible', function(program_id)
+            self:ensureIconIsVisible(program_id)
+        end)
+        self.event_bus:subscribe('add_to_start_menu', function(program_id)
+            local pr = self.program_registry
+            local program = pr and pr:getProgram(program_id)
+            if program then
+                program.in_start_menu = true
+                if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, true) end
+            end
+        end)
+        self.event_bus:subscribe('remove_from_start_menu', function(program_id)
+            local pr = self.program_registry
+            local program = pr and pr:getProgram(program_id)
+            if program then
+                program.in_start_menu = false
+                if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, false) end
+                if pr.removeFromStartMenuOrder then pcall(pr.removeFromStartMenuOrder, pr, program_id) end
+            end
+            if self.start_menu and self.start_menu.view then
+                for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                    if p.kind == 'programs' then p.items = self.start_menu.view:buildPaneItems('programs', nil)
+                    elseif p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
+                end
+            end
+        end)
+        self.event_bus:subscribe('start_menu_new_folder', function(context)
+            local Constants = require('src.constants')
+            local params = {
+                title = Strings.get('menu.new_folder', 'New Folder...'),
+                prompt = Strings.get('start.type_prompt', 'Type the name:'),
+                ok_label = Strings.get('buttons.create', 'Create'),
+                cancel_label = Strings.get('buttons.cancel', 'Cancel'),
+                submit_event = 'start_menu_create_folder',
+                context = {
+                    pane_kind = context.pane_kind or 'programs',
+                    parent_path = context.parent_path or Constants.paths.START_MENU_PROGRAMS,
+                    after_index = context.index or 0,
+                }
+            }
+            self.event_bus:publish('launch_program', 'run_dialog', params)
+        end)
+        self.event_bus:subscribe('start_menu_open_path', function(path)
+            if self.start_menu and self.start_menu.openPath then
+                self.start_menu:openPath(path)
+            end
+        end)
+        self.event_bus:subscribe('start_menu_delete_fs', function(path)
+            local fs = self.file_system
+            if fs and fs.deleteEntry then
+                local ok, err = fs:deleteEntry(path)
+                if not ok then
+                    print('Delete failed for Start Menu FS item:', path, err)
+                end
+                if self.start_menu and self.start_menu.view then
+                    for _, p in ipairs(self.start_menu.view.open_panes or {}) do
+                        if p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
+                    end
+                end
+            end
+        end)
+        self.event_bus:subscribe('request_window_close', function(window_id)
+            self:closeWindowById(window_id)
+        end)
+        self.event_bus:subscribe('file_explorer_action', function(action_id, context)
+            self:handleFileExplorerAction(action_id, context)
         end)
     else
         print("WARNING [DesktopState]: EventBus not found in DI. Some features might not work correctly.")
@@ -212,9 +274,9 @@ function DesktopState:update(dt)
         end
     end
 
-    -- Update context menu view if open
-    if self.context_menu_open then
-        self.context_menu_view:update(dt, self.menu_options, self.menu_x, self.menu_y)
+    -- Update context menu service
+    if self.di.contextMenuService then
+        self.di.contextMenuService:update(dt)
     end
 
     -- If the OS requested quit (Alt+F4 or window close), open our shutdown dialog instead
@@ -333,8 +395,8 @@ function DesktopState:draw()
     if self.start_menu and self.start_menu:isOpen() then self.start_menu:draw() end
 
     -- Draw context menu on top if open
-    if self.context_menu_open then
-        self.context_menu_view:draw()
+    if self.di.contextMenuService then
+        self.di.contextMenuService:draw()
     end
 
     -- Draw tutorial overlay last if active
@@ -403,30 +465,11 @@ function DesktopState:mousepressed(x, y, button)
 
     local click_handled = false -- General flag if click was processed
 
-    -- --- Context Menu Handling (Priority 1: Left-click on open menu OR Right-click anywhere) ---
-    if self.context_menu_open then
-        if button == 1 then -- Left click
-            local clicked_option_index = self.context_menu_view:getClickedOptionIndex(x, y)
-            if clicked_option_index then -- Clicked inside the menu bounds
-                if clicked_option_index > 0 then -- Clicked on an item
-                    local selected_option = self.menu_options[clicked_option_index]
-                    if selected_option and selected_option.enabled ~= false and not selected_option.is_separator then
-                         self:handleContextMenuAction(selected_option.id, self.menu_context)
-                    end
-                end
-                -- Click was inside menu (item or padding), close it and consume click
-                self:closeContextMenu()
-                -- Prevent this click from triggering underlying Start Menu actions on release
-                self._suppress_next_mousereleased = true
-                return
-            else
-                -- Click was outside the menu, close it and let click fall through
-                self:closeContextMenu()
-            end
-        elseif button == 2 then -- Right click anywhere closes the current menu
-            self:closeContextMenu()
-            -- Let the right-click fall through to potentially open a new menu below
-        end
+    -- --- Context Menu Handling (Priority 1) ---
+    if self.di.contextMenuService and self.di.contextMenuService:isOpen() then
+        local handled_by_menu = self.di.contextMenuService:mousepressed(x, y, button)
+        if handled_by_menu then return end -- Menu consumed click
+        -- If right-clicked outside, menu closed but didn't consume, fall through
     end
 
     -- --- Window Interaction Handling (Priority 2) ---
@@ -548,9 +591,8 @@ function DesktopState:mousepressed(x, y, button)
         end
 
     elseif button == 2 then -- Right click
-        -- (Right click logic remains the same for now, still calls self:openContextMenu)
         -- If Start Menu is open and the click is inside it (no menu currently open), show Start Menu context and consume
-        if (not self.context_menu_open) and self.start_menu and self.start_menu:isOpen() then
+        if (not self.di.contextMenuService or not self.di.contextMenuService:isOpen()) and self.start_menu and self.start_menu:isOpen() then
             local inside_any = self.start_menu:isPointInStartMenuOrSubmenu(x, y)
                 if inside_any then
                 local hit = self.start_menu.view and self.start_menu.view.hitTestStartMenuContext and self.start_menu.view:hitTestStartMenuContext(x, y, self.start_menu)
@@ -560,7 +602,9 @@ function DesktopState:mousepressed(x, y, button)
                     if hit.area == 'pane' and hit.item then
                         if hit.kind == 'programs' and hit.item.type == 'program' then
                             ctx = { type='start_menu_item', program_id=hit.item.program_id, pane_kind='programs', parent_path=nil, index=hit.index, pane_index=hit.pane_index }
-                            options = self:generateContextMenuOptions('start_menu_item', ctx)
+                            if self.di.contextMenuService then
+                                options = self.di.contextMenuService:generateContextMenuOptions('start_menu_item', ctx)
+                            end
                             table.insert(options, 3, { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true })
                         elseif hit.kind == 'fs' then
                             ctx = { type='start_menu_fs', path = hit.item and (hit.item.path or hit.item.name), parent_path=hit.parent_path, is_folder = (hit.item and hit.item.type == 'folder'), index=hit.index, pane_index=hit.pane_index }
@@ -574,16 +618,23 @@ function DesktopState:mousepressed(x, y, button)
                         elseif hit.kind == 'programs' and hit.item.type == 'folder' and hit.item.program_id then
                             -- Top-level folder shortcut shown by Programs list: treat as program for deletion; still allow new folder below
                             ctx = { type='start_menu_item', program_id = hit.item.program_id, pane_kind='programs', parent_path=nil, index=hit.index, pane_index=hit.pane_index }
-                            options = self:generateContextMenuOptions('start_menu_item', ctx)
+                            if self.di.contextMenuService then
+                                options = self.di.contextMenuService:generateContextMenuOptions('start_menu_item', ctx)
+                            end
                             table.insert(options, 3, { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true })
                         end
                     elseif hit.area == 'submenu' and hit.id and self.start_menu.view.submenu_open_id == 'programs' then
                         ctx = { type='start_menu_item', program_id=hit.id, pane_kind='programs', parent_path=nil, index=hit.index, pane_index=hit.pane_index }
-                        options = self:generateContextMenuOptions('start_menu_item', ctx)
+                        if self.di.contextMenuService then
+                            options = self.di.contextMenuService:generateContextMenuOptions('start_menu_item', ctx)
+                        end
                         table.insert(options, 3, { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true })
                     end
                 end
-                if #options > 0 then self:openContextMenu(x, y, options, ctx); return end
+                if #options > 0 and self.di.contextMenuService then
+                    self.di.contextMenuService:show(x, y, options, ctx)
+                    return
+                end
                 return -- Consume right click in Start Menu even if no options
             end
         end
@@ -607,9 +658,8 @@ function DesktopState:mousepressed(x, y, button)
         elseif on_start_button then context_type = "start_button" -- NYI
         end
 
-        if context_type ~= "start_button" then
-            local options = self:generateContextMenuOptions(context_type, context_data)
-            if #options > 0 then self:openContextMenu(x, y, options, { type = context_type, program_id = context_data.program_id, window_id = context_data.window_id }) end
+        if context_type ~= "start_button" and self.di.contextMenuService then
+            self.di.contextMenuService:show(x, y, context_type, { type = context_type, program_id = context_data.program_id, window_id = context_data.window_id })
         end
     end
 end
@@ -744,12 +794,10 @@ function DesktopState:mousemoved(x, y, dx, dy)
     end
 end
 
--- mousereleased remains the same
 function DesktopState:mousereleased(x, y, button)
     self.idle_timer = 0
     -- If a context menu click was just handled, swallow this release to avoid click-through
-    if self._suppress_next_mousereleased then
-        self._suppress_next_mousereleased = nil
+    if self.di.contextMenuService and self.di.contextMenuService:shouldSuppressMouseRelease() then
         return
     end
     -- Forward to window controller first
@@ -1252,7 +1300,9 @@ function DesktopState:handleStateEvent(window_id, event)
             self:showTextFileDialog(event.title, event.content)
         end,
         show_context_menu = function()
-            self:openContextMenu(event.menu_x, event.menu_y, event.options, event.context)
+            if self.di.contextMenuService then
+                self.di.contextMenuService:show(event.menu_x, event.menu_y, event.options, event.context)
+            end
         end,
         ensure_icon_visible = function()
             self:ensureIconIsVisible(event.program_id)
@@ -1362,281 +1412,16 @@ function DesktopState:showTextFileDialog(title, content)
     love.window.showMessageBox(title, content or "[Empty File]", "info")
 end
 
--- generateContextMenuOptions remains the same
-function DesktopState:generateContextMenuOptions(context_type, context_data)
-    local options = {}
-    context_data = context_data or {} -- Ensure context_data exists
-
-    if context_type == "icon" then
-        local program_id = context_data.program_id
-        local program = self.program_registry:getProgram(program_id)
-        if program then
-          table.insert(options, { id = "open", label = Strings.get('menu.open', 'Open'), enabled = not program.disabled })
-          table.insert(options, { id = "separator" })
-            if program_id ~= "recycle_bin" and program_id ~= "my_computer" then
-              table.insert(options, { id = "delete", label = Strings.get('menu.delete', 'Delete'), enabled = true })
-            end
-          table.insert(options, { id = "separator" })
-          table.insert(options, { id = "properties", label = Strings.get('menu.properties', 'Properties') .. " (NYI)", enabled = false })
-        end
-
-    elseif context_type == "taskbar" then
-        local window_id = context_data.window_id
-        local window = self.window_manager:getWindowById(window_id)
-        if window then
-            table.insert(options, { id = "restore", label = Strings.get('menu.restore', 'Restore'), enabled = window.is_minimized })
-            table.insert(options, { id = "minimize", label = Strings.get('menu.minimize', 'Minimize'), enabled = not window.is_minimized })
-            local can_maximize = true -- Add check for program.window_defaults.resizable later
-            if window.is_maximized then
-                table.insert(options, { id = "restore_size", label = Strings.get('menu.restore_size', 'Restore Size'), enabled = can_maximize })
-            else
-                table.insert(options, { id = "maximize", label = Strings.get('menu.maximize', 'Maximize'), enabled = can_maximize and not window.is_minimized })
-            end
-            table.insert(options, { id = "separator" })
-            table.insert(options, { id = "close_window", label = Strings.get('menu.close', 'Close'), enabled = true })
-        end
-
-    elseif context_type == "desktop" then
-    table.insert(options, { id = "desktop_properties", label = Strings.get('menu.desktop_properties', 'Desktop Properties...'), enabled = true })
-    table.insert(options, { id = "separator" })
-    table.insert(options, { id = "arrange_icons", label = Strings.get('menu.arrange_icons', 'Arrange Icons') .. " (NYI)", enabled = false })
-    table.insert(options, { id = "separator" })
-    table.insert(options, { id = "refresh", label = Strings.get('menu.refresh', 'Refresh'), enabled = true })
-    table.insert(options, { id = "separator" })
-    table.insert(options, { id = "properties", label = Strings.get('menu.properties', 'Properties') .. " (NYI)", enabled = false })
-
-    elseif context_type == "start_menu_item" then
-        local program_id = context_data.program_id
-        local program = self.program_registry:getProgram(program_id)
-        if program then
-            table.insert(options, { id = "open", label = Strings.get('menu.open', 'Open'), enabled = not program.disabled })
-            table.insert(options, { id = "separator" })
-            local is_visible = self.desktop_icons:isIconVisible(program_id)
-            table.insert(options, {
-                id = "create_shortcut_desktop",
-                label = Strings.get('menu.create_shortcut_desktop', 'Create Shortcut (Desktop)'),
-                enabled = not is_visible and not program.disabled
-            })
-            table.insert(options, { id = "separator" })
-            table.insert(options, { id = "delete_from_menu", label = Strings.get('menu.delete', 'Delete from Start Menu'), enabled = true })
-            table.insert(options, { id = "separator" })
-            table.insert(options, { id = "properties", label = Strings.get('menu.properties', 'Properties') .. " (NYI)", enabled = false })
-        end
-
-    elseif context_type == "file_explorer_item" or context_type == "file_explorer_empty" then
-        options = context_data.options or {} -- Get the options generated by FE
-        local final_options = {}
-        for _, opt in ipairs(options or {}) do
-            if opt.id == "separator" then
-                 table.insert(final_options, { id = "_sep_" .. #final_options, label = "---", enabled = false, is_separator = true })
-            else
-                 table.insert(final_options, opt)
-            end
-        end
-        return final_options -- Return the processed FE options
-
+-- Handle file explorer actions from ContextMenuService
+function DesktopState:handleFileExplorerAction(action_id, context)
+    -- File Explorer actions - DesktopState still handles these directly until FE is refactored
+    local window_id = context.window_id
+    if not window_id then
+        print("ERROR: window_id missing for file_explorer context!")
+        return
     end
 
-    -- Add separator rendering support (visual only) - Apply only if not returning FE options directly
-    if context_type ~= "file_explorer_item" and context_type ~= "file_explorer_empty" then
-        local final_options = {}
-        for _, opt in ipairs(options or {}) do
-            if opt.id == "separator" then
-                 table.insert(final_options, { id = "_sep_" .. #final_options, label = "---", enabled = false, is_separator = true })
-            else
-                 table.insert(final_options, opt)
-            end
-        end
-        return final_options
-    else
-        return options
-    end
-end
-
--- openContextMenu remains the same
-function DesktopState:openContextMenu(x, y, options, context)
-    -- Add separator rendering support (visual only)
-    local final_options = {}
-    for _, opt in ipairs(options or {}) do -- Add nil check for options
-        if opt.id == "separator" then
-             table.insert(final_options, { id = "_sep_" .. #final_options, label = "---", enabled = false, is_separator = true })
-        else
-             table.insert(final_options, opt)
-        end
-    end
-    self.menu_options = final_options
-
-    self.menu_context = context or {} -- Ensure context is a table
-    self.menu_x = x
-    self.menu_y = y
-
-    -- Adjust position slightly if menu goes off screen
-    local screen_w, screen_h = love.graphics.getDimensions()
-    local menu_w = self.context_menu_view.menu_w -- Use view's width
-    local menu_h = #self.menu_options * self.context_menu_view.item_height + self.context_menu_view.padding * 2
-    if self.menu_x + menu_w > screen_w then self.menu_x = screen_w - menu_w end
-    if self.menu_y + menu_h > screen_h then self.menu_y = screen_h - menu_h end
-    self.menu_x = math.max(0, self.menu_x)
-    self.menu_y = math.max(0, self.menu_y)
-
-    self.context_menu_open = true
-    print("Opened context menu at", self.menu_x, self.menu_y, "with context type:", self.menu_context.type, "#Options:", #self.menu_options)
-
-    -- Publish context_menu_opened event
-    if self.event_bus then
-        local context_type = self.menu_context.type or "unknown"
-        local context_data = self.menu_context -- Pass the whole context
-        pcall(self.event_bus.publish, self.event_bus, 'context_menu_opened', self.menu_x, self.menu_y, context_type, context_data)
-    end
-end
-
--- closeContextMenu remains the same
-function DesktopState:closeContextMenu()
-    if not self.context_menu_open then return end -- Prevent duplicate events if already closed
-
-    self.context_menu_open = false
-    local old_options = self.menu_options -- Store before clearing
-    local old_context = self.menu_context
-    self.menu_options = {}
-    self.menu_context = nil
-
-    -- Publish context_menu_closed event
-    if self.event_bus then
-        pcall(self.event_bus.publish, self.event_bus, 'context_menu_closed', old_context)
-    end
-end
-
--- handleContextMenuAction: Replace self:launchProgram with event publish
-function DesktopState:handleContextMenuAction(action_id, context)
-    print("[Action Handler] Action:", action_id, "Context Type:", context.type)
-    local program_id = context.program_id -- Used by multiple contexts
-    local window_id = context.window_id   -- Used by taskbar and potentially FE
-
-    -- Publish context_action_invoked event BEFORE handling the action
-    if self.event_bus then
-        pcall(self.event_bus.publish, self.event_bus, 'context_action_invoked', action_id, context)
-    end
-
-    -- Original handling logic (unchanged)...
-    if context.type == "icon" then
-        if not program_id then print("ERROR: program_id missing for icon context!"); return end
-        if action_id == "open" then
-            -- Publish launch event instead of calling directly
-            if self.event_bus then self.event_bus:publish('launch_program', program_id) end
-        elseif action_id == "delete" then self:deleteDesktopIcon(program_id)
-        elseif action_id == "properties" then print("Action 'Properties' NYI")
-        end
-
-    elseif context.type == "taskbar" then
-        -- Taskbar actions remain the same (using event bus)
-        if not window_id then print("ERROR: window_id missing for taskbar context!"); return end
-        if action_id == "restore" then
-            if self.di.eventBus then self.di.eventBus:publish('request_window_restore', window_id) end
-            if self.di.eventBus then self.di.eventBus:publish('request_window_focus', window_id) end
-        elseif action_id == "restore_size" then
-            if self.di.eventBus then self.di.eventBus:publish('request_window_restore', window_id) end
-        elseif action_id == "minimize" then
-            if self.di.eventBus then self.di.eventBus:publish('request_window_minimize', window_id) end
-        elseif action_id == "maximize" then
-            if self.di.eventBus then self.di.eventBus:publish('request_window_maximize', window_id, love.graphics.getWidth(), love.graphics.getHeight()) end
-        elseif action_id == "close_window" then
-            self:closeWindowById(window_id)
-        end
-
-    elseif context.type == "desktop" then
-        if action_id == "desktop_properties" then
-            -- Publish launch event instead of calling directly
-            if self.event_bus then self.event_bus:publish('launch_program', 'control_panel_desktop') end
-        elseif action_id == "arrange_icons" then print("Action 'Arrange Icons' NYI")
-        elseif action_id == "properties" then print("Action 'Properties' NYI")
-        end
-
-    elseif context.type == "start_menu_item" then
-        -- Start menu actions remain the same, but 'open' uses event bus
-        if not program_id then print("ERROR: program_id missing for start_menu_item context!"); return end
-        if action_id == "open" then
-            -- Publish launch event instead of calling directly
-            if self.event_bus then self.event_bus:publish('launch_program', program_id) end
-        elseif action_id == "create_shortcut_desktop" then
-            self:ensureIconIsVisible(program_id)
-        elseif action_id == 'create_shortcut_start_menu' then
-            local pr = self.program_registry
-            local program = pr and pr:getProgram(program_id)
-            if program then
-                program.in_start_menu = true
-                if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, true) end
-            end
-        elseif action_id == 'new_folder' then
-            local Constants = require('src.constants')
-            local params = {
-                title = Strings.get('menu.new_folder', 'New Folder...'),
-                prompt = Strings.get('start.type_prompt', 'Type the name:'),
-                ok_label = Strings.get('buttons.create', 'Create'),
-                cancel_label = Strings.get('buttons.cancel', 'Cancel'),
-                submit_event = 'start_menu_create_folder',
-                context = {
-                    pane_kind = 'programs',
-                    parent_path = Constants.paths.START_MENU_PROGRAMS,
-                    after_index = context.index or 0,
-                }
-            }
-            -- Publish launch event instead of calling directly
-            if self.event_bus then self.event_bus:publish('launch_program', 'run_dialog', params) end
-        elseif action_id == 'delete_from_menu' then
-            local pr = self.program_registry
-            local program = pr and pr:getProgram(program_id)
-            if program then
-                program.in_start_menu = false
-                if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, false) end
-                if pr.removeFromStartMenuOrder then pcall(pr.removeFromStartMenuOrder, pr, program_id) end
-            end
-            if self.start_menu and self.start_menu.view then
-                for _, p in ipairs(self.start_menu.view.open_panes or {}) do
-                    if p.kind == 'programs' then p.items = self.start_menu.view:buildPaneItems('programs', nil)
-                    elseif p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
-                end
-            end
-        elseif action_id == "properties" then
-            print("Action 'Properties' NYI")
-        end
-
-    elseif context.type == "start_menu_fs" then
-        -- Start menu FS actions remain the same, but 'new_folder' uses event bus
-        local path = context.path
-        if not path then return end
-        if action_id == 'open' then
-            if self.start_menu and self.start_menu.openPath then self.start_menu:openPath(path) end
-        elseif action_id == 'new_folder' then
-            local params = {
-                title = Strings.get('menu.new_folder', 'New Folder...'),
-                prompt = Strings.get('start.type_prompt', 'Type the name:'),
-                ok_label = Strings.get('buttons.create', 'Create'),
-                cancel_label = Strings.get('buttons.cancel', 'Cancel'),
-                submit_event = 'start_menu_create_folder',
-                context = {
-                    pane_kind = 'fs',
-                    parent_path = context.parent_path or (path:match('(.+)/[^/]+$') or '/'),
-                    after_index = context.index or 0,
-                }
-            }
-            -- Publish launch event instead of calling directly
-            if self.event_bus then self.event_bus:publish('launch_program', 'run_dialog', params) end
-        elseif action_id == 'delete_from_menu' then
-            local fs = self.file_system
-            if fs and fs.deleteEntry then
-                local ok, err = fs:deleteEntry(path)
-                if not ok then
-                    print('Delete failed for Start Menu FS item:', path, err)
-                end
-                if self.start_menu and self.start_menu.view then
-                    for _, p in ipairs(self.start_menu.view.open_panes or {}) do
-                        if p.kind == 'fs' and p.parent_path then p.items = self.start_menu.view:buildPaneItems('fs', p.parent_path) end
-                    end
-                end
-            end
-        end
-
-    elseif context.type == "file_explorer_item" or context.type == "file_explorer_empty" then
+    if context.type == "file_explorer_item" or context.type == "file_explorer_empty" then
         -- File explorer actions remain the same (delegated to FE state)
         local fe_window_id = context.window_id
         local fe_state_data = fe_window_id and self.window_states[fe_window_id]
@@ -1693,8 +1478,6 @@ function DesktopState:handleContextMenuAction(action_id, context)
         else
             print("Error: Could not find relevant File Explorer state instance for window ID:", fe_window_id)
         end
-    else
-         print("Warning: Unhandled context menu context type:", context.type)
     end
 end
 
