@@ -58,6 +58,10 @@ function DesktopState:init(di)
     self.icon_controller = DesktopIconController:new(self.program_registry, self.desktop_icons, self.recycle_bin, self.di)
     self.tutorial_view = TutorialView:new(self)
 
+    -- Create TaskbarController (after start_menu is created, before it's added to DI in main.lua)
+    local TaskbarController = require('src.controllers.taskbar_controller')
+    self.taskbar_controller = nil -- Will be created in main.lua after start_menu is added to DI
+
     local C = (self.di and self.di.config) or {}
     local colors = (C.ui and C.ui.colors) or {}
     local SettingsManager = (self.di and self.di.settingsManager) or require('src.utils.settings_manager')
@@ -237,7 +241,6 @@ end
 -- DELETED _ensureDependencyProvider function
 
 function DesktopState:enter()
-    self:updateClock()
     print("Desktop loaded. Tutorial active: " .. tostring(self.show_tutorial))
     self.view:calculateDefaultIconPositionsIfNeeded() -- View uses model data now
     -- Publish tutorial_shown event if tutorial is active
@@ -277,6 +280,11 @@ function DesktopState:update(dt)
     -- Update context menu service
     if self.di.contextMenuService then
         self.di.contextMenuService:update(dt)
+    end
+
+    -- Update taskbar controller
+    if self.taskbar_controller then
+        self.taskbar_controller:update(dt)
     end
 
     -- If the OS requested quit (Alt+F4 or window close), open our shutdown dialog instead
@@ -351,10 +359,7 @@ function DesktopState:update(dt)
     end
 end
 
--- updateClock remains the same
-function DesktopState:updateClock()
-    self.current_time = os.date("%H:%M")
-end
+-- Clock update moved to TaskbarController
 
 -- draw remains the same
 function DesktopState:draw()
@@ -391,7 +396,12 @@ function DesktopState:draw()
         end
     end
 
-    -- Draw start menu on top of windows
+    -- Draw taskbar
+    if self.taskbar_controller then
+        self.taskbar_controller:draw()
+    end
+
+    -- Draw start menu on top of windows and taskbar
     if self.start_menu and self.start_menu:isOpen() then self.start_menu:draw() end
 
     -- Draw context menu on top if open
@@ -512,12 +522,9 @@ function DesktopState:mousepressed(x, y, button)
     -- --- Desktop UI / Empty Space Click Handling (Priority 3 - Only if not handled by window) ---
     if button == 1 then
         local clicked_specific_desktop_ui = false
-        -- Check Start button
-       if self.view:isStartButtonHovered(x, y) then
-           clicked_specific_desktop_ui = true
-           if self.start_menu then self.start_menu:onStartButtonPressed(); self.start_menu_open = self.start_menu:isOpen() end
+        -- Start button handled by TaskbarController
         -- Check Start menu items
-        elseif self.start_menu and self.start_menu:isOpen() then
+        if self.start_menu and self.start_menu:isOpen() then
             local consumed = self.start_menu:mousepressed(x, y, button)
             if consumed then clicked_specific_desktop_ui = true end
         -- Check desktop icons
@@ -562,25 +569,10 @@ function DesktopState:mousepressed(x, y, button)
                     end
                 elseif program and program.disabled then love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is planned.", "info"); self.last_icon_click_id = nil; self.last_icon_click_time = 0 end
             end
-            -- Check taskbar buttons if icon wasn't clicked
-            if not icon_program_id then
-                local taskbar_button_id = self.view:getTaskbarButtonAtPosition(x, y)
-                if taskbar_button_id then
+            -- Check taskbar (delegated to TaskbarController)
+            if not icon_program_id and self.taskbar_controller then
+                if self.taskbar_controller:mousepressed(x, y, button) then
                     clicked_specific_desktop_ui = true
-                    local window = self.window_manager:getWindowById(taskbar_button_id)
-                    if window then
-                        local focused_id = self.window_manager:getFocusedWindowId()
-                        if window.is_minimized then
-                            if self.di.eventBus then
-                                self.di.eventBus:publish('request_window_restore', taskbar_button_id)
-                                self.di.eventBus:publish('request_window_focus', taskbar_button_id)
-                            end
-                        elseif window.id == focused_id then
-                            if self.di.eventBus then self.di.eventBus:publish('request_window_minimize', taskbar_button_id) end
-                        else
-                            if self.di.eventBus then self.di.eventBus:publish('request_window_focus', taskbar_button_id) end
-                        end
-                    end
                 end
             end
         end
@@ -638,12 +630,11 @@ function DesktopState:mousepressed(x, y, button)
                 return -- Consume right click in Start Menu even if no options
             end
         end
-        -- Generate desktop/icon/taskbar context menu
+        -- Generate desktop/icon context menu
         local context_type = "desktop"; local context_data = {}
         -- Use controller for hit-test so we get accurate icon detection
         local icon_program_id = self.icon_controller and self.icon_controller:getProgramAtPosition(x, y) or self.view:getProgramAtPosition(x, y)
-        local taskbar_button_id = self.view:getTaskbarButtonAtPosition(x, y)
-        local on_start_button = self.view:isStartButtonHovered(x, y)
+        local taskbar_button_id = self.taskbar_controller and self.taskbar_controller.view:getTaskbarButtonAtPosition(x, y)
         local start_menu_program_id = nil
         if self.start_menu and self.start_menu:isOpen() and self.start_menu.isPointInStartMenu and self.start_menu:isPointInStartMenu(x, y) then
             start_menu_program_id = self.start_menu:getStartMenuProgramAtPosition(x, y)
@@ -654,11 +645,12 @@ function DesktopState:mousepressed(x, y, button)
             context_type = "icon";
             context_data = { program_id = icon_program_id }
             if self.di.eventBus then self.di.eventBus:publish('icon_right_clicked', icon_program_id, x, y) end
-        elseif taskbar_button_id then context_type = "taskbar"; context_data = { window_id = taskbar_button_id }
-        elseif on_start_button then context_type = "start_button" -- NYI
+        elseif taskbar_button_id then
+            context_type = "taskbar"
+            context_data = { window_id = taskbar_button_id }
         end
 
-        if context_type ~= "start_button" and self.di.contextMenuService then
+        if self.di.contextMenuService then
             self.di.contextMenuService:show(x, y, context_type, { type = context_type, program_id = context_data.program_id, window_id = context_data.window_id })
         end
     end

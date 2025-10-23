@@ -189,6 +189,12 @@ function love.load()
     di.contextMenuService = ContextMenuService:new(di) -- Create the context menu service
     -- ===============================================
 
+    -- === Phase 3: TaskbarController Extraction ===
+    di.startMenuState = desktop.start_menu -- Add start menu to DI for TaskbarController
+    local TaskbarController = require('src.controllers.taskbar_controller')
+    desktop.taskbar_controller = TaskbarController:new(di) -- Create TaskbarController
+    -- ===========================================
+
     -- == 7. Start Game ==
     print("Starting game - switching to desktop")
     state_machine:switch(Constants.state.DESKTOP)
