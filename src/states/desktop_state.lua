@@ -99,12 +99,7 @@ function DesktopState:init(di)
 
     self.start_menu_open = false
 
-    -- Icon interaction state
-    self.dragging_icon_id = nil
-    self.drag_offset_x = 0
-    self.drag_offset_y = 0
-    self.last_icon_click_time = 0
-    self.last_icon_click_id = nil
+    -- Icon interaction moved to DesktopIconController
 
     -- Title bar double-click state
     self.last_title_bar_click_time = 0
@@ -214,6 +209,34 @@ function DesktopState:init(di)
         self.event_bus:subscribe('file_explorer_action', function(action_id, context)
             self:handleFileExplorerAction(action_id, context)
         end)
+
+        -- Subscribe to icon events from DesktopIconController
+        self.event_bus:subscribe('icon_double_clicked', function(program_id)
+            local program = self.program_registry:getProgram(program_id)
+            if not program then return end
+
+            -- Check if this is a file shortcut (txt file)
+            if program.shortcut_type == 'file' and program.shortcut_target then
+                local file_path = program.shortcut_target
+                local fs = self.file_system
+                if fs then
+                    local item = fs:getItem(file_path)
+                    if item and item.type == 'file' then
+                        self:showTextFileDialog(item.name or file_path, item.content)
+                    end
+                end
+            else
+                -- Launch the program
+                self.event_bus:publish('launch_program', program_id)
+            end
+        end)
+
+        self.event_bus:subscribe('icon_dropped_on_recycle_bin', function(program_id)
+            -- Add to recycle bin with original position for restoration
+            local original_pos = self.desktop_icons:getPosition(program_id)
+            self.recycle_bin:addItem(program_id, original_pos)
+            self.desktop_icons:save()
+        end)
     else
         print("WARNING [DesktopState]: EventBus not found in DI. Some features might not work correctly.")
     end
@@ -299,9 +322,14 @@ function DesktopState:update(dt)
         self.tutorial_view:update(dt)
     else
         local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
-        if self.icon_controller then self.icon_controller:ensureDefaultPositions(sw, sh) end
+        if self.icon_controller then
+            self.icon_controller:ensureDefaultPositions(sw, sh)
+            -- Update icon controller with mouse position
+            local mx, my = love.mouse.getPosition()
+            self.icon_controller:update(dt, mx, my)
+        end
         -- Only DesktopView (no start menu update here); StartMenuView handles menu state
-        self.view:update(dt, false, self.dragging_icon_id)
+        self.view:update(dt, false, self.icon_controller and self.icon_controller.dragging_icon_id)
         if self.start_menu then
             -- Start Menu state owns its open/close; mirror to legacy flag for compatibility
             self.start_menu:update(dt)
@@ -372,7 +400,7 @@ function DesktopState:draw()
             wallpaper_arg,
             self.player_data.tokens,
             self.start_menu_open,
-            self.dragging_icon_id
+            self.icon_controller and self.icon_controller.dragging_icon_id
         )
 
     -- Draw windows respecting z-order from window manager
@@ -384,16 +412,9 @@ function DesktopState:draw()
         end
     end
 
-     -- Draw the icon being dragged on top of windows
-    if self.dragging_icon_id then
-        local program = self.program_registry:getProgram(self.dragging_icon_id)
-        if program then
-            local mx, my = love.mouse.getPosition()
-            local drag_x = mx - self.drag_offset_x
-            local drag_y = my - self.drag_offset_y
-            local temp_pos = { x = drag_x, y = drag_y }
-            self.view:drawIcon(program, true, temp_pos, true) -- Pass dragging flag
-        end
+    -- Draw dragged icon on top of windows (delegated to icon controller)
+    if self.icon_controller then
+        self.icon_controller:drawDraggedIcon(self.view)
     end
 
     -- Draw taskbar
@@ -514,7 +535,7 @@ function DesktopState:mousepressed(x, y, button)
     -- If any window interaction occurred (even just focusing), close desktop menus
     if click_handled then
         if self.start_menu then self.start_menu:setOpen(false); self.start_menu_open = false end
-        self.last_icon_click_id = nil
+        if self.icon_controller then self.icon_controller:cancelDrag() end
         if handled_by_window then return end -- Return if window fully handled it (e.g., content interaction, button press)
     end
 
@@ -527,50 +548,15 @@ function DesktopState:mousepressed(x, y, button)
         if self.start_menu and self.start_menu:isOpen() then
             local consumed = self.start_menu:mousepressed(x, y, button)
             if consumed then clicked_specific_desktop_ui = true end
-        -- Check desktop icons
+        -- Check desktop icons (delegated to DesktopIconController)
         else
-            local icon_program_id = self.view:getProgramAtPosition(x, y)
-            if icon_program_id then
+            local icon_result = self.icon_controller and self.icon_controller:mousepressed(x, y, button)
+            if icon_result then
                 clicked_specific_desktop_ui = true
-                local program = self.program_registry:getProgram(icon_program_id)
-                if program and not program.disabled then
-                    local C = (self.di and self.di.config) or {}
-                    local dbl = (C and C.ui and C.ui.double_click_time) or 0.5
-                    local is_double_click = (self.last_icon_click_id == icon_program_id and love.timer.getTime() - self.last_icon_click_time < dbl)
-                    if is_double_click then
-                        if self.di.eventBus then self.di.eventBus:publish('icon_double_clicked', icon_program_id) end
-
-                        -- Check if this is a file shortcut (txt file)
-                        if program.shortcut_type == 'file' and program.shortcut_target then
-                            local file_path = program.shortcut_target
-                            local fs = self.file_system
-                            if fs then
-                                local item = fs:getItem(file_path)
-                                if item and item.type == 'file' then
-                                    self:showTextFileDialog(item.name or file_path, item.content)
-                                end
-                            end
-                        else
-                            -- Publish launch event instead of calling directly
-                            if self.di.eventBus then self.di.eventBus:publish('launch_program', icon_program_id) end
-                        end
-
-                        self.last_icon_click_id = nil;
-                        self.last_icon_click_time = 0;
-                        self.dragging_icon_id = nil
-                    else
-                        if self.di.eventBus then self.di.eventBus:publish('icon_drag_started', icon_program_id) end
-                        self.last_icon_click_id = icon_program_id;
-                        self.last_icon_click_time = love.timer.getTime();
-                        self.dragging_icon_id = icon_program_id;
-                        local icon_pos = self.desktop_icons:getPosition(icon_program_id) or self.icon_controller:getDefaultIconPosition(icon_program_id);
-                        self.drag_offset_x = x - icon_pos.x;
-                        self.drag_offset_y = y - icon_pos.y
-                    end
-                elseif program and program.disabled then love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is planned.", "info"); self.last_icon_click_id = nil; self.last_icon_click_time = 0 end
+                -- Icon controller handles drag/double-click internally and publishes events
             end
             -- Check taskbar (delegated to TaskbarController)
-            if not icon_program_id and self.taskbar_controller then
+            if not icon_result and self.taskbar_controller then
                 if self.taskbar_controller:mousepressed(x, y, button) then
                     clicked_specific_desktop_ui = true
                 end
@@ -579,7 +565,7 @@ function DesktopState:mousepressed(x, y, button)
         -- If click wasn't on specific desktop UI or window chrome/content
        if not clicked_specific_desktop_ui and not click_handled then
            if self.start_menu then self.start_menu:setOpen(false); self.start_menu_open = false end
-           self.last_icon_click_id = nil
+           if self.icon_controller then self.icon_controller:cancelDrag() end
         end
 
     elseif button == 2 then -- Right click
@@ -801,38 +787,17 @@ function DesktopState:mousereleased(x, y, button)
     end
 
 
-    -- Handle icon drop
-    if button == 1 and self.dragging_icon_id then
-        local dropped_icon_id = self.dragging_icon_id
-        self.dragging_icon_id = nil -- Stop drag state
-
-        local initial_drop_x = x - self.drag_offset_x
-        local initial_drop_y = y - self.drag_offset_y
-        local screen_w, screen_h = love.graphics.getDimensions()
-        local icon_w, icon_h = self.desktop_icons:getIconDimensions()
-        local padding = 5 -- Buffer
-
-        -- 1. Check Recycle Bin drop first
-    local recycle_bin_pos = self.icon_controller:getRecycleBinPosition()
-        if recycle_bin_pos and dropped_icon_id ~= "recycle_bin" then
-            local drop_center_x = initial_drop_x + icon_w / 2
-            local drop_center_y = initial_drop_y + icon_h / 2
-            if drop_center_x >= recycle_bin_pos.x and drop_center_x <= recycle_bin_pos.x + recycle_bin_pos.w and
-               drop_center_y >= recycle_bin_pos.y and drop_center_y <= recycle_bin_pos.y + recycle_bin_pos.h then
-                print("Deleting icon:", dropped_icon_id)
-                if self.di.eventBus then
-                    self.di.eventBus:publish('request_icon_recycle', dropped_icon_id)
-                    self.di.eventBus:publish('icon_drag_ended', dropped_icon_id, 'recycle_bin')
-                else
-                    local original_pos = self.desktop_icons:getPosition(dropped_icon_id)
-                    self.recycle_bin:addItem(dropped_icon_id, original_pos); self.desktop_icons:save()
-                end
-                return -- Deleted
-            end
+    -- Handle icon drop (delegated to DesktopIconController)
+    if button == 1 and self.icon_controller then
+        local drop_result = self.icon_controller:mousereleased(x, y, button)
+        if drop_result then
+            return -- Icon controller handled it
         end
+    end
 
-        -- 2. Start overlap resolution with initial drop position
-    local final_x, final_y = initial_drop_x, initial_drop_y
+    -- Legacy code below kept for safety but should not be reached now
+    if false then -- Disabled - controller handles this
+    local final_x, final_y = 0, 0
         local overlap_resolved = false
         local attempts = 0
         local max_attempts = 15
@@ -1585,14 +1550,10 @@ end
 -- deleteDesktopIcon remains the same
 function DesktopState:deleteDesktopIcon(program_id)
      if program_id ~= "recycle_bin" and program_id ~= "my_computer" then
-         print("Deleting icon via context menu:", program_id)
-         if self.di.eventBus then
-             self.di.eventBus:publish('request_icon_recycle', program_id)
-         else
-             local original_pos = self.desktop_icons:getPosition(program_id)
-             self.recycle_bin:addItem(program_id, original_pos)
-             self.desktop_icons:save()
-         end
+         -- This function is called by the event subscriber, so DON'T publish the event again
+         local original_pos = self.desktop_icons:getPosition(program_id)
+         self.recycle_bin:addItem(program_id, original_pos)
+         self.desktop_icons:save()
      else
          print("Cannot delete core icon:", program_id)
      end

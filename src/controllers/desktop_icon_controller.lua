@@ -12,10 +12,19 @@ function DesktopIconController:init(program_registry, desktop_icons, recycle_bin
     self.recycle_bin = recycle_bin
     self.di = di
     self.event_bus = di and di.eventBus
+    self.config = di and di.config
 
     self.default_icon_positions = {}
     self.grid_cfg = (((di and di.config and di.config.ui and di.config.ui.desktop) or {}).grid) or {}
     self.taskbar_height = (((di and di.config and di.config.ui and di.config.ui.taskbar) or {}).height) or 40
+
+    -- Icon interaction state
+    self.dragging_icon_id = nil
+    self.drag_offset_x = 0
+    self.drag_offset_y = 0
+    self.last_icon_click_time = 0
+    self.last_icon_click_id = nil
+    self.hovered_icon_id = nil
 end
 
 -- Ensure default grid positions are calculated for the current screen
@@ -176,6 +185,144 @@ function DesktopIconController:resolveDropPosition(dropped_icon_id, initial_drop
     end
 
     return final_x, final_y
+end
+
+-- Update hover state based on mouse position
+function DesktopIconController:update(dt, mx, my)
+    self.hovered_icon_id = self:getProgramAtPosition(mx, my)
+end
+
+-- Handle icon click - returns action type or nil
+function DesktopIconController:mousepressed(x, y, button)
+    if button ~= 1 then return nil end
+
+    local icon_program_id = self:getProgramAtPosition(x, y)
+    if not icon_program_id then return nil end
+
+    local program = self.program_registry:getProgram(icon_program_id)
+    if not program then return nil end
+
+    -- Check for disabled program
+    if program.disabled then
+        local Strings = require('src.utils.strings')
+        love.window.showMessageBox(
+            Strings.get('messages.not_available', 'Not Available'),
+            program.name .. " is planned.",
+            "info"
+        )
+        self.last_icon_click_id = nil
+        self.last_icon_click_time = 0
+        return { type = "disabled_click", program_id = icon_program_id }
+    end
+
+    -- Check for double-click
+    local dbl = (self.config and self.config.ui and self.config.ui.double_click_time) or 0.5
+    local is_double_click = (self.last_icon_click_id == icon_program_id and love.timer.getTime() - self.last_icon_click_time < dbl)
+
+    if is_double_click then
+        -- Double-click: open program
+        self.last_icon_click_id = nil
+        self.last_icon_click_time = 0
+        self.dragging_icon_id = nil
+
+        -- Publish event
+        if self.event_bus then
+            self.event_bus:publish('icon_double_clicked', icon_program_id)
+        end
+
+        return { type = "double_click", program_id = icon_program_id }
+    end
+
+    -- Single click: start drag
+    self.last_icon_click_id = icon_program_id
+    self.last_icon_click_time = love.timer.getTime()
+    self.dragging_icon_id = icon_program_id
+
+    local icon_pos = self.desktop_icons:getPosition(icon_program_id) or self:getDefaultIconPosition(icon_program_id)
+    self.drag_offset_x = x - icon_pos.x
+    self.drag_offset_y = y - icon_pos.y
+
+    -- Publish event
+    if self.event_bus then
+        self.event_bus:publish('icon_drag_started', icon_program_id)
+    end
+
+    return { type = "drag_start", program_id = icon_program_id }
+end
+
+-- Handle icon drop - returns action type or nil
+function DesktopIconController:mousereleased(x, y, button)
+    if button ~= 1 or not self.dragging_icon_id then return nil end
+
+    local dropped_icon_id = self.dragging_icon_id
+    self.dragging_icon_id = nil -- Stop drag state
+
+    local initial_drop_x = x - self.drag_offset_x
+    local initial_drop_y = y - self.drag_offset_y
+    local screen_w, screen_h = love.graphics.getDimensions()
+
+    -- Check if dropped on Recycle Bin
+    local recycle_bin_rect = self:getRecycleBinPosition()
+    if recycle_bin_rect and dropped_icon_id ~= "recycle_bin" then
+        local icon_w, icon_h = self.desktop_icons:getIconDimensions()
+        -- Check if dragged icon overlaps with recycle bin icon
+        if Collision.checkAABB(initial_drop_x, initial_drop_y, icon_w, icon_h,
+                               recycle_bin_rect.x, recycle_bin_rect.y, recycle_bin_rect.w, recycle_bin_rect.h) then
+            -- Publish recycle event
+            if self.event_bus then
+                self.event_bus:publish('icon_dropped_on_recycle_bin', dropped_icon_id)
+            end
+            return { type = "recycle", program_id = dropped_icon_id }
+        end
+    end
+
+    -- Normal drop: resolve position and update
+    local icon_snap = (self.config and self.config.ui and self.config.ui.desktop and self.config.ui.desktop.icon_snap)
+    if icon_snap == nil then icon_snap = true end
+
+    local final_x, final_y
+    if icon_snap then
+        local snapped_x, snapped_y = self:snapToGrid(initial_drop_x, initial_drop_y)
+        final_x, final_y = self:resolveDropPosition(dropped_icon_id, snapped_x, snapped_y, screen_w, screen_h)
+    else
+        final_x, final_y = self:resolveDropPosition(dropped_icon_id, initial_drop_x, initial_drop_y, screen_w, screen_h)
+    end
+
+    self.desktop_icons:setPosition(dropped_icon_id, final_x, final_y, screen_w, screen_h)
+    self.desktop_icons:save()
+
+    -- Publish event
+    if self.event_bus then
+        self.event_bus:publish('icon_dropped', dropped_icon_id, final_x, final_y)
+    end
+
+    return { type = "drop", program_id = dropped_icon_id, x = final_x, y = final_y }
+end
+
+-- Draw dragged icon (if any)
+function DesktopIconController:drawDraggedIcon(desktop_view)
+    if not self.dragging_icon_id then return end
+
+    local program = self.program_registry:getProgram(self.dragging_icon_id)
+    if not program then return end
+
+    local mx, my = love.mouse.getPosition()
+    local drag_x = mx - self.drag_offset_x
+    local drag_y = my - self.drag_offset_y
+    local temp_pos = { x = drag_x, y = drag_y }
+
+    desktop_view:drawIcon(program, true, temp_pos, true) -- Pass dragging flag
+end
+
+-- Cancel drag (called when clicking outside icons)
+function DesktopIconController:cancelDrag()
+    self.last_icon_click_id = nil
+    self.dragging_icon_id = nil
+end
+
+-- Check if currently dragging
+function DesktopIconController:isDragging()
+    return self.dragging_icon_id ~= nil
 end
 
 return DesktopIconController
