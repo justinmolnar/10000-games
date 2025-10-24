@@ -72,6 +72,7 @@ function love.load()
     local WindowController = require('src.controllers.window_controller') -- Require WindowController
     local ProgramLauncher = require('src.utils.program_launcher') -- Require ProgramLauncher
     local ContextMenuService = require('src.utils.context_menu_service') -- Require ContextMenuService
+    local GameVariantLoader = require('src.models.game_variant_loader') -- Require GameVariantLoader
 
     -- == 2. Initialize Core Systems & DI Container ==
     local event_bus = EventBus:new()
@@ -98,6 +99,11 @@ function love.load()
     di.playerData = player_data
     game_data = GameData:new(di)
     di.gameData = game_data
+
+    -- Initialize GameVariantLoader (needs to load after GameData)
+    local game_variant_loader = GameVariantLoader:new()
+    di.gameVariantLoader = game_variant_loader
+
     vm_manager = VMManager:new(di)
     di.vmManager = vm_manager
     cheat_system = CheatSystem:new()

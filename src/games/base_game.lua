@@ -1,23 +1,26 @@
 local Object = require('class')
 local BaseGame = Object:extend('BaseGame')
 
-function BaseGame:init(game_data, cheats)
+function BaseGame:init(game_data, cheats, di)
     -- Store game definition
     self.data = game_data
-    
+
+    -- Store DI container (optional)
+    self.di = di
+
     -- Store active cheats
     self.cheats = cheats or {}
-    
+
     -- Performance tracking
     self.metrics = {}
     self.completed = false
     self.time_elapsed = 0
-    
+
     -- Reset all metrics tracked by this game
     for _, metric in ipairs(self.data.metrics_tracked) do
         self.metrics[metric] = 0
     end
-    
+
     -- Apply difficulty modifiers
     self.difficulty_modifiers = self.data.difficulty_modifiers or {
         speed = 1,
@@ -25,9 +28,35 @@ function BaseGame:init(game_data, cheats)
         complexity = 1,
         time_limit = 1
     }
-    
+
     -- Store difficulty level
     self.difficulty_level = self.data.difficulty_level or 1
+
+    -- Load variant data if GameVariantLoader is available
+    self.variant = nil
+    if di and di.gameVariantLoader then
+        local variant_data = di.gameVariantLoader:getVariantData(game_data.id)
+        if variant_data then
+            self.variant = variant_data
+        end
+    end
+
+    -- If no variant loaded, create a default one to avoid nil checks everywhere
+    if not self.variant then
+        self.variant = {
+            clone_index = 0,
+            name = game_data.display_name or "Unknown",
+            sprite_set = "default",
+            palette = "default",
+            music_track = nil,
+            sfx_pack = "retro_beeps",
+            background = "default",
+            difficulty_modifier = 1.0,
+            enemies = {},
+            flavor_text = "",
+            intro_cutscene = nil
+        }
+    end
 end
 
 function BaseGame:updateBase(dt)
