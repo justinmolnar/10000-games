@@ -4,6 +4,43 @@ local Collision = require('src.utils.collision')
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
+-- Enemy type definitions (Phase 1.4)
+-- These define the behaviors that variants can compose from
+SpaceShooter.ENEMY_TYPES = {
+    basic = {
+        name = "basic",
+        movement_pattern = "straight",
+        speed_multiplier = 1.0,
+        shoot_rate_multiplier = 1.0,
+        health = 1,
+        description = "Standard enemy ship"
+    },
+    weaver = {
+        name = "weaver",
+        movement_pattern = "zigzag",
+        speed_multiplier = 0.8,
+        shoot_rate_multiplier = 1.2,
+        health = 1,
+        description = "Weaves through space while shooting"
+    },
+    bomber = {
+        name = "bomber",
+        movement_pattern = "straight",
+        speed_multiplier = 0.6,
+        shoot_rate_multiplier = 2.0,
+        health = 2,
+        description = "Slow but fires rapidly"
+    },
+    kamikaze = {
+        name = "kamikaze",
+        movement_pattern = "dive",
+        speed_multiplier = 1.5,
+        shoot_rate_multiplier = 0.0,
+        health = 1,
+        description = "Dives directly at player without shooting"
+    }
+}
+
 -- Config-driven defaults with safe fallbacks
 local SCfg = (Config and Config.games and Config.games.space_shooter) or {}
 local PLAYER_WIDTH = (SCfg.player and SCfg.player.width) or 30
@@ -149,16 +186,40 @@ function SpaceShooter:updateEnemies(dt)
         local enemy = self.enemies[i]
         if not enemy then goto continue_enemy_loop end
 
-        enemy.y = enemy.y + self.enemy_speed * dt
+        -- Phase 1.4: Apply speed multiplier for variant enemies
+        local speed = self.enemy_speed
+        if enemy.is_variant_enemy and enemy.speed_multiplier then
+            speed = speed * enemy.speed_multiplier
+        end
+
         if enemy.movement_pattern == 'zigzag' then
-            enemy.x = enemy.x + math.sin(self.time_elapsed * ZIGZAG_FREQUENCY) * self.enemy_speed * dt
+            enemy.y = enemy.y + speed * dt
+            enemy.x = enemy.x + math.sin(self.time_elapsed * ZIGZAG_FREQUENCY) * speed * dt
+        elseif enemy.movement_pattern == 'dive' then
+            -- Phase 1.4: Kamikaze dive toward target
+            local dx = enemy.target_x - enemy.x
+            local dy = enemy.target_y - enemy.y
+            local dist = math.sqrt(dx*dx + dy*dy)
+            if dist > 0 then
+                enemy.x = enemy.x + (dx / dist) * speed * dt
+                enemy.y = enemy.y + (dy / dist) * speed * dt
+            else
+                -- Reached target, continue downward
+                enemy.y = enemy.y + speed * dt
+            end
+        else
+            enemy.y = enemy.y + speed * dt
         end
 
         if self.can_shoot_back then
-            enemy.shoot_timer = enemy.shoot_timer - dt
-            if enemy.shoot_timer <= 0 then
-                self:enemyShoot(enemy)
-                enemy.shoot_timer = enemy.shoot_rate
+            -- Phase 1.4: Don't shoot if shoot_rate_multiplier is 0 (kamikaze)
+            local shoot_multiplier = enemy.shoot_rate_multiplier or 1.0
+            if shoot_multiplier > 0 then
+                enemy.shoot_timer = enemy.shoot_timer - dt
+                if enemy.shoot_timer <= 0 then
+                    self:enemyShoot(enemy)
+                    enemy.shoot_timer = enemy.shoot_rate
+                end
             end
         end
 
@@ -179,8 +240,17 @@ function SpaceShooter:updateBullets(dt)
             local enemy = self.enemies[j]
             if enemy and self:checkCollision(bullet, enemy) then
                 table.remove(self.player_bullets, i)
-                table.remove(self.enemies, j)
-                self.metrics.kills = self.metrics.kills + 1
+                -- Phase 1.4: Handle health for variant enemies
+                if enemy.is_variant_enemy and enemy.health then
+                    enemy.health = enemy.health - 1
+                    if enemy.health <= 0 then
+                        table.remove(self.enemies, j)
+                        self.metrics.kills = self.metrics.kills + 1
+                    end
+                else
+                    table.remove(self.enemies, j)
+                    self.metrics.kills = self.metrics.kills + 1
+                end
                 goto next_player_bullet
             end
         end
@@ -231,18 +301,90 @@ function SpaceShooter:enemyShoot(enemy)
 end
 
 function SpaceShooter:spawnEnemy()
+    -- Phase 1.4: Check if variant has enemy composition
+    if self:hasVariantEnemies() and math.random() < 0.5 then
+        -- 50% chance to spawn variant-specific enemy
+        return self:spawnVariantEnemy()
+    end
+
+    -- Default enemy spawning (for base game)
     local movement = 'straight'
     if self.difficulty_modifiers.complexity >= 2 then
         movement = math.random() > 0.5 and 'zigzag' or 'straight'
     end
     local enemy = {
-        x = math.random(0, self.game_width - ENEMY_WIDTH), 
+        x = math.random(0, self.game_width - ENEMY_WIDTH),
         y = ENEMY_START_Y_OFFSET,
         width = ENEMY_WIDTH, height = ENEMY_HEIGHT,
         movement_pattern = movement,
         shoot_timer = math.random() * (ENEMY_BASE_SHOOT_RATE_MAX - ENEMY_BASE_SHOOT_RATE_MIN) + ENEMY_BASE_SHOOT_RATE_MIN,
-        shoot_rate = math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR))
+        shoot_rate = math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR)),
+        health = 1
     }
+    table.insert(self.enemies, enemy)
+end
+
+-- Phase 1.4: Check if variant has enemies defined
+function SpaceShooter:hasVariantEnemies()
+    return self.enemy_composition and next(self.enemy_composition) ~= nil
+end
+
+-- Phase 1.4: Spawn an enemy from variant composition
+function SpaceShooter:spawnVariantEnemy()
+    if not self:hasVariantEnemies() then
+        return self:spawnEnemy()
+    end
+
+    -- Pick a random enemy type from composition
+    local enemy_types = {}
+    local total_weight = 0
+    for enemy_type, multiplier in pairs(self.enemy_composition) do
+        table.insert(enemy_types, {type = enemy_type, weight = multiplier})
+        total_weight = total_weight + multiplier
+    end
+
+    local r = math.random() * total_weight
+    local chosen_type = enemy_types[1].type -- fallback
+    for _, entry in ipairs(enemy_types) do
+        r = r - entry.weight
+        if r <= 0 then
+            chosen_type = entry.type
+            break
+        end
+    end
+
+    local enemy_def = self.ENEMY_TYPES[chosen_type]
+    if not enemy_def then
+        -- Fallback to default spawning
+        return self:spawnEnemy()
+    end
+
+    -- Create enemy based on definition
+    local enemy = {
+        x = math.random(0, self.game_width - ENEMY_WIDTH),
+        y = ENEMY_START_Y_OFFSET,
+        width = ENEMY_WIDTH,
+        height = ENEMY_HEIGHT,
+        movement_pattern = enemy_def.movement_pattern,
+        enemy_type = enemy_def.name,
+        is_variant_enemy = true,
+        health = enemy_def.health or 1,
+        max_health = enemy_def.health or 1,
+        speed_multiplier = enemy_def.speed_multiplier or 1.0,
+        shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0
+    }
+
+    -- Set shoot timer and rate
+    local base_rate = math.random() * (ENEMY_BASE_SHOOT_RATE_MAX - ENEMY_BASE_SHOOT_RATE_MIN) + ENEMY_BASE_SHOOT_RATE_MIN
+    enemy.shoot_timer = base_rate
+    enemy.shoot_rate = (math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR))) / enemy.shoot_rate_multiplier
+
+    -- Special initialization for dive pattern (kamikaze)
+    if enemy.movement_pattern == 'dive' then
+        enemy.target_x = self.player.x
+        enemy.target_y = self.player.y
+    end
+
     table.insert(self.enemies, enemy)
 end
 

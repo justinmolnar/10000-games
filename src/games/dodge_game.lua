@@ -4,6 +4,44 @@ local Collision = require('src.utils.collision')
 local DodgeView = require('src.games.views.dodge_view')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
+-- Enemy type definitions (Phase 1.4)
+-- These define the behaviors that variants can compose from
+DodgeGame.ENEMY_TYPES = {
+    chaser = {
+        name = "chaser",
+        base_type = "seeker",  -- Maps to existing seeker behavior
+        speed_multiplier = 0.9,
+        description = "Homes in on player position"
+    },
+    shooter = {
+        name = "shooter",
+        base_type = "shooter",  -- New behavior (fires projectiles)
+        speed_multiplier = 0.7,
+        shoot_interval = 2.0,
+        description = "Fires projectiles at player"
+    },
+    bouncer = {
+        name = "bouncer",
+        base_type = "bouncer",  -- New behavior (bounces off walls)
+        speed_multiplier = 1.0,
+        description = "Bounces off walls in predictable patterns"
+    },
+    zigzag = {
+        name = "zigzag",
+        base_type = "zigzag",  -- Maps to existing zigzag behavior
+        speed_multiplier = 1.1,
+        description = "Moves in zigzag pattern across screen"
+    },
+    teleporter = {
+        name = "teleporter",
+        base_type = "teleporter",  -- New behavior (teleports)
+        speed_multiplier = 0.8,
+        teleport_interval = 3.0,
+        teleport_range = 100,
+        description = "Disappears and reappears near player"
+    }
+}
+
 -- Config-driven tunables with safe fallbacks (preserve previous behavior)
 local DodgeCfg = (Config and Config.games and Config.games.dodge) or {}
 local PLAYER_SIZE = (DodgeCfg.player and DodgeCfg.player.size) or 20
@@ -184,6 +222,65 @@ function DodgeGame:updateObjects(dt)
         obj.vx = obj.vx or math.cos(obj.angle) * obj.speed
         obj.vy = obj.vy or math.sin(obj.angle) * obj.speed
 
+        -- Phase 1.4: Handle variant enemy special behaviors
+        if obj.type == 'shooter' and obj.is_enemy then
+            -- Shooter: Fire projectiles at player
+            obj.shoot_timer = obj.shoot_timer - dt
+            if obj.shoot_timer <= 0 then
+                obj.shoot_timer = obj.shoot_interval
+                -- Spawn projectile toward player
+                local dx = self.player.x - obj.x
+                local dy = self.player.y - obj.y
+                local proj_angle = math.atan2(dy, dx)
+                local projectile = {
+                    x = obj.x,
+                    y = obj.y,
+                    radius = OBJECT_RADIUS * 0.5,
+                    type = 'linear',
+                    speed = self.object_speed * 0.8,
+                    angle = proj_angle,
+                    is_projectile = true,
+                    warned = false
+                }
+                projectile.vx = math.cos(proj_angle) * projectile.speed
+                projectile.vy = math.sin(proj_angle) * projectile.speed
+                table.insert(self.objects, projectile)
+            end
+        elseif obj.type == 'bouncer' and obj.is_enemy then
+            -- Bouncer: Bounce off walls
+            local next_x = obj.x + obj.vx * dt
+            local next_y = obj.y + obj.vy * dt
+            if next_x <= obj.radius or next_x >= self.game_width - obj.radius then
+                obj.vx = -obj.vx
+                obj.bounce_count = obj.bounce_count + 1
+            end
+            if next_y <= obj.radius or next_y >= self.game_height - obj.radius then
+                obj.vy = -obj.vy
+                obj.bounce_count = obj.bounce_count + 1
+            end
+        elseif obj.type == 'teleporter' and obj.is_enemy then
+            -- Teleporter: Disappear and reappear near player
+            obj.teleport_timer = obj.teleport_timer - dt
+            if obj.teleport_timer <= 0 then
+                obj.teleport_timer = obj.teleport_interval
+                -- Teleport near player
+                local angle = math.random() * math.pi * 2
+                local dist = obj.teleport_range
+                obj.x = self.player.x + math.cos(angle) * dist
+                obj.y = self.player.y + math.sin(angle) * dist
+                -- Clamp to bounds
+                obj.x = math.max(obj.radius, math.min(self.game_width - obj.radius, obj.x))
+                obj.y = math.max(obj.radius, math.min(self.game_height - obj.radius, obj.y))
+                -- Update velocity toward player
+                local dx = self.player.x - obj.x
+                local dy = self.player.y - obj.y
+                local new_angle = math.atan2(dy, dx)
+                obj.angle = new_angle
+                obj.vx = math.cos(new_angle) * obj.speed
+                obj.vy = math.sin(new_angle) * obj.speed
+            end
+        end
+
         if obj.type == 'seeker' then
             -- Subtle steering toward player: small max turn rate so they still fly past
             local tx, ty = self.player.x, self.player.y
@@ -281,12 +378,102 @@ function DodgeGame:spawnObjectOrWarning()
     local accel = 1 + math.min(((DodgeCfg.spawn and DodgeCfg.spawn.accel and DodgeCfg.spawn.accel.max) or 2.0), self.time_elapsed / ((DodgeCfg.spawn and DodgeCfg.spawn.accel and DodgeCfg.spawn.accel.time) or 60))
     self.spawn_rate = (BASE_SPAWN_RATE / self.difficulty_modifiers.count) / accel
 
-    if self.warning_enabled and math.random() < ((DodgeCfg.spawn and DodgeCfg.spawn.warning_chance) or 0.7) then
+    -- Phase 1.4: Spawn variant-specific enemies if defined
+    if self:hasVariantEnemies() and math.random() < 0.3 then
+        -- 30% chance to spawn a variant-specific enemy
+        self:spawnVariantEnemy(false)
+    elseif self.warning_enabled and math.random() < ((DodgeCfg.spawn and DodgeCfg.spawn.warning_chance) or 0.7) then
         table.insert(self.warnings, self:createWarning())
     else
         -- createRandomObject already inserts into self.objects
         self:createRandomObject(false)
     end
+end
+
+-- Phase 1.4: Check if variant has enemies defined
+function DodgeGame:hasVariantEnemies()
+    return self.enemy_composition and next(self.enemy_composition) ~= nil
+end
+
+-- Phase 1.4: Spawn an enemy from variant composition
+function DodgeGame:spawnVariantEnemy(warned_status)
+    if not self:hasVariantEnemies() then
+        return self:createRandomObject(warned_status)
+    end
+
+    -- Pick a random enemy type from composition
+    local enemy_types = {}
+    local total_weight = 0
+    for enemy_type, multiplier in pairs(self.enemy_composition) do
+        table.insert(enemy_types, {type = enemy_type, weight = multiplier})
+        total_weight = total_weight + multiplier
+    end
+
+    local r = math.random() * total_weight
+    local chosen_type = enemy_types[1].type -- fallback
+    for _, entry in ipairs(enemy_types) do
+        r = r - entry.weight
+        if r <= 0 then
+            chosen_type = entry.type
+            break
+        end
+    end
+
+    -- Spawn the enemy
+    local sx, sy = self:pickSpawnPoint()
+    local tx, ty = self:pickTargetPointOnRing()
+    local angle = math.atan2(ty - sy, tx - sx)
+    angle = self:ensureInboundAngle(sx, sy, angle)
+
+    local enemy_def = self.ENEMY_TYPES[chosen_type]
+    if enemy_def then
+        self:createEnemyObject(sx, sy, angle, warned_status, enemy_def)
+    else
+        -- Fallback to regular object if enemy type not found
+        self:createObject(sx, sy, angle, warned_status, 'linear')
+    end
+end
+
+-- Phase 1.4: Create enemy object based on enemy definition
+function DodgeGame:createEnemyObject(spawn_x, spawn_y, angle, was_warned, enemy_def)
+    -- Map enemy type to base behavior
+    local base_type = enemy_def.base_type or 'linear'
+    local speed_mult = enemy_def.speed_multiplier or 1.0
+
+    local obj = {
+        warned = was_warned,
+        radius = OBJECT_RADIUS,
+        type = base_type,
+        enemy_type = enemy_def.name,  -- Store enemy type for identification
+        speed = self.object_speed * speed_mult,
+        is_enemy = true  -- Mark as variant enemy (not regular obstacle)
+    }
+
+    obj.x = spawn_x
+    obj.y = spawn_y
+    obj.angle = angle or 0
+    obj.vx = math.cos(obj.angle) * obj.speed
+    obj.vy = math.sin(obj.angle) * obj.speed
+
+    -- Special initialization for specific enemy types
+    if base_type == 'zigzag' or base_type == 'sine' then
+        local zig = (DodgeCfg.objects and DodgeCfg.objects.zigzag) or { wave_speed_min = 6, wave_speed_range = 4, wave_amp = 30 }
+        obj.wave_speed = (zig.wave_speed_min or 6) + math.random() * (zig.wave_speed_range or 4)
+        obj.wave_amp = zig.wave_amp or 30
+        obj.wave_phase = math.random()*math.pi*2
+    elseif base_type == 'shooter' then
+        obj.shoot_timer = enemy_def.shoot_interval or 2.0
+        obj.shoot_interval = enemy_def.shoot_interval or 2.0
+    elseif base_type == 'teleporter' then
+        obj.teleport_timer = enemy_def.teleport_interval or 3.0
+        obj.teleport_interval = enemy_def.teleport_interval or 3.0
+        obj.teleport_range = enemy_def.teleport_range or 100
+    elseif base_type == 'bouncer' then
+        obj.bounce_count = 0
+    end
+
+    table.insert(self.objects, obj)
+    return obj
 end
 
 -- Choose a spawn point just outside the play bounds on a random edge
