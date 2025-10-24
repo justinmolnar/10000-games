@@ -10,8 +10,8 @@
     "base_formula_string": "(metrics.kills - metrics.deaths)",
     "metrics_tracked": ["kills", "deaths"],
     "icon_sprite": "game_mine_1-0",
-  "token_threshold": 0.75,
-    
+    "token_threshold": 0.75,
+
     "visual_identity": {
       "sprite_set_id": "space_set_1",
       "palette_id": "default",
@@ -25,7 +25,7 @@
         "result": "check-0"
       }
     },
-    
+
     "cheat_engine_base_cost": 1000,
     "cheat_cost_exponent": 1.15,
     "available_cheats": [
@@ -33,19 +33,19 @@
         "id": "speed_modifier",
         "base_cost": 500,
         "max_level": 3,
-        "value_per_level": 0.15 
+        "value_per_level": 0.15
       },
       {
         "id": "advantage_modifier",
         "base_cost": 1000,
         "max_level": 5,
-        "value_per_level": { "deaths": 1 } 
+        "value_per_level": { "deaths": 1 }
       },
       {
         "id": "performance_modifier",
         "base_cost": 2000,
         "max_level": 5,
-        "value_per_level": 0.1 
+        "value_per_level": 0.1
       },
       {
         "id": "aim_assist",
@@ -55,11 +55,63 @@
       }
     ],
 
-  "bullet_fire_rate": 1,
-  "bullet_sprite": "world_star-0",
+    "bullet_fire_rate": 1,
+    "bullet_sprite": "world_star-0",
     "variant_multiplier": 1,
     "difficulty_level": 1,
-    "auto_play_performance": {"kills": 20, "deaths": 2}
+    "auto_play_performance": {"kills": 20, "deaths": 2},
+
+    "clone_variants": [
+      {
+        "clone_index": 0,
+        "name": "Space Shooter Alpha",
+        "sprite_set": "fighter_1",
+        "palette": "blue_squadron",
+        "music_track": "space_shooter_theme_1",
+        "sfx_pack": "retro_beeps",
+        "background": "stars_blue",
+        "difficulty_modifier": 1.0,
+        "enemies": [
+          { "type": "basic", "multiplier": 1.0 }
+        ],
+        "flavor_text": "Classic space combat! Blast through enemy waves.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 1,
+        "name": "Space Shooter Beta",
+        "sprite_set": "fighter_1",
+        "palette": "red_squadron",
+        "music_track": "space_shooter_theme_2",
+        "sfx_pack": "retro_beeps",
+        "background": "stars_red",
+        "difficulty_modifier": 1.3,
+        "enemies": [
+          { "type": "basic", "multiplier": 1.0 },
+          { "type": "weaver", "multiplier": 0.5 }
+        ],
+        "flavor_text": "Enemies weave through space! Sharpen your aim.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 2,
+        "name": "Space Shooter Omega",
+        "sprite_set": "fighter_2",
+        "palette": "gold_squadron",
+        "music_track": "space_shooter_theme_3",
+        "sfx_pack": "8bit_arcade",
+        "background": "stars_purple",
+        "difficulty_modifier": 1.6,
+        "enemies": [
+          { "type": "basic", "multiplier": 2.0 },
+          { "type": "weaver", "multiplier": 1.0 },
+          { "type": "bomber", "multiplier": 0.5 },
+          { "type": "kamikaze", "multiplier": 1.0 }
+        ],
+        "flavor_text": "Ultimate space warfare! Multiple enemy tactics!",
+        "intro_cutscene": null
+      }
+    ]
   },
   {
     "id": "snake_1",
@@ -72,8 +124,8 @@
     "base_formula_string": "(metrics.snake_length * (metrics.survival_time / 10))",
     "metrics_tracked": ["snake_length", "survival_time"],
     "icon_sprite": "game_spider-0",
-  "token_threshold": 0.75,
-    
+    "token_threshold": 0.75,
+
     "visual_identity": {
       "sprite_set_id": "snake_set_1",
       "palette_id": "neon_green",
@@ -111,11 +163,53 @@
       }
     ],
 
-  "bullet_fire_rate": 0.8,
-  "bullet_sprite": "joystick_alt-1",
+    "bullet_fire_rate": 0.8,
+    "bullet_sprite": "joystick_alt-1",
     "variant_multiplier": 1,
     "difficulty_level": 1,
-    "auto_play_performance": {"snake_length": 10, "survival_time": 30}
+    "auto_play_performance": {"snake_length": 10, "survival_time": 30},
+
+    "clone_variants": [
+      {
+        "clone_index": 0,
+        "name": "Snake Classic",
+        "sprite_set": "classic",
+        "palette": "neon_green",
+        "music_track": "snake_theme_retro",
+        "sfx_pack": "retro_beeps",
+        "background": "grid_classic",
+        "difficulty_modifier": 1.0,
+        "enemies": [],
+        "flavor_text": "The timeless classic! Grow your snake and survive.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 1,
+        "name": "Snake Neon",
+        "sprite_set": "classic",
+        "palette": "neon_pink",
+        "music_track": "snake_theme_electronic",
+        "sfx_pack": "8bit_arcade",
+        "background": "grid_neon",
+        "difficulty_modifier": 1.3,
+        "enemies": [],
+        "flavor_text": "Neon vibes! Navigate the glowing grid.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 2,
+        "name": "Snake Modern",
+        "sprite_set": "modern",
+        "palette": "cyber_blue",
+        "music_track": "snake_theme_techno",
+        "sfx_pack": "8bit_arcade",
+        "background": "grid_modern",
+        "difficulty_modifier": 1.6,
+        "enemies": [],
+        "flavor_text": "Sleek modern design meets classic gameplay!",
+        "intro_cutscene": null
+      }
+    ]
   },
   {
     "id": "memory_1",
@@ -128,8 +222,8 @@
     "base_formula_string": "(metrics.matches * 10 - metrics.time + metrics.perfect * 5)",
     "metrics_tracked": ["matches", "time", "perfect"],
     "icon_sprite": "game_freecell-0",
-  "token_threshold": 0.75,
-    
+    "token_threshold": 0.75,
+
     "visual_identity": {
       "sprite_set_id": "memory_set_1",
       "palette_id": "pastel_blue",
@@ -163,11 +257,66 @@
       }
     ],
 
-  "bullet_fire_rate": 1.2,
-  "bullet_sprite": "xml_gear-0",
+    "bullet_fire_rate": 1.2,
+    "bullet_sprite": "xml_gear-0",
     "variant_multiplier": 1,
     "difficulty_level": 1,
-    "auto_play_performance": {"matches": 8, "time": 40, "perfect": 2}
+    "auto_play_performance": {"matches": 8, "time": 40, "perfect": 2},
+
+    "clone_variants": [
+      {
+        "clone_index": 0,
+        "name": "Memory Match Classic",
+        "sprite_set": "icons_1",
+        "palette": "pastel_blue",
+        "music_track": "memory_theme_calm",
+        "sfx_pack": "retro_beeps",
+        "background": "felt_blue",
+        "difficulty_modifier": 1.0,
+        "enemies": [],
+        "flavor_text": "Classic memory matching! Test your recall skills.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 1,
+        "name": "Memory Match Animals",
+        "sprite_set": "icons_2",
+        "palette": "nature_green",
+        "music_track": "memory_theme_playful",
+        "sfx_pack": "retro_beeps",
+        "background": "felt_green",
+        "difficulty_modifier": 1.2,
+        "enemies": [],
+        "flavor_text": "Match adorable animals in this memory challenge!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 2,
+        "name": "Memory Match Gems",
+        "sprite_set": "icons_3",
+        "palette": "rainbow",
+        "music_track": "memory_theme_sparkle",
+        "sfx_pack": "8bit_arcade",
+        "background": "felt_purple",
+        "difficulty_modifier": 1.4,
+        "enemies": [],
+        "flavor_text": "Match glittering gems and test your memory!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 3,
+        "name": "Memory Match Tech",
+        "sprite_set": "icons_4",
+        "palette": "tech_cyan",
+        "music_track": "memory_theme_electronic",
+        "sfx_pack": "8bit_arcade",
+        "background": "felt_black",
+        "difficulty_modifier": 1.6,
+        "enemies": [],
+        "flavor_text": "High-tech icons for the digital memory master!",
+        "intro_cutscene": null
+      }
+    ]
   },
   {
     "id": "dodge_1",
@@ -180,8 +329,8 @@
     "base_formula_string": "((metrics.objects_dodged * metrics.objects_dodged) / (metrics.collisions + 1))",
     "metrics_tracked": ["objects_dodged", "collisions", "perfect_dodges"],
     "icon_sprite": "game_solitaire-0",
-  "token_threshold": 0.75,
-    
+    "token_threshold": 0.75,
+
     "visual_identity": {
       "sprite_set_id": "dodge_set_1",
       "palette_id": "fire",
@@ -197,7 +346,7 @@
         "result": "certificate-0"
       }
     },
-    
+
     "cheat_engine_base_cost": 1200,
     "cheat_cost_exponent": 1.2,
     "available_cheats": [
@@ -227,11 +376,76 @@
       }
     ],
 
-  "bullet_fire_rate": 0.9,
-  "bullet_sprite": "windows_slanted-1",
+    "bullet_fire_rate": 0.9,
+    "bullet_sprite": "windows_slanted-1",
     "variant_multiplier": 1,
     "difficulty_level": 1,
-    "auto_play_performance": {"objects_dodged": 15, "collisions": 3, "perfect_dodges": 5}
+    "auto_play_performance": {"objects_dodged": 15, "collisions": 3, "perfect_dodges": 5},
+
+    "clone_variants": [
+      {
+        "clone_index": 0,
+        "name": "Dodge Master",
+        "sprite_set": "dodge_base_1",
+        "palette": "blue",
+        "music_track": "dodge_theme_1",
+        "sfx_pack": "retro_beeps",
+        "background": "starfield_blue",
+        "difficulty_modifier": 1.0,
+        "enemies": [],
+        "flavor_text": "Classic obstacle avoidance! Master the art of dodging.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 1,
+        "name": "Dodge Deluxe",
+        "sprite_set": "dodge_base_1",
+        "palette": "red",
+        "music_track": "dodge_theme_2",
+        "sfx_pack": "retro_beeps",
+        "background": "starfield_red",
+        "difficulty_modifier": 1.2,
+        "enemies": [
+          { "type": "chaser", "multiplier": 1.0 },
+          { "type": "shooter", "multiplier": 0.5 }
+        ],
+        "flavor_text": "Now with aggressive enemies! Can you handle the heat?",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 2,
+        "name": "Dodge Chaos",
+        "sprite_set": "dodge_base_1",
+        "palette": "purple",
+        "music_track": "dodge_theme_3",
+        "sfx_pack": "retro_beeps",
+        "background": "starfield_purple",
+        "difficulty_modifier": 1.5,
+        "enemies": [
+          { "type": "chaser", "multiplier": 3.0 },
+          { "type": "shooter", "multiplier": 1.0 },
+          { "type": "bouncer", "multiplier": 2.0 },
+          { "type": "zigzag", "multiplier": 1.5 }
+        ],
+        "flavor_text": "Absolute mayhem! Multiple enemy types swarm you!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 3,
+        "name": "Dodge Elite",
+        "sprite_set": "dodge_base_2",
+        "palette": "green",
+        "music_track": "dodge_theme_1",
+        "sfx_pack": "8bit_arcade",
+        "background": "starfield_green",
+        "difficulty_modifier": 1.8,
+        "enemies": [
+          { "type": "teleporter", "multiplier": 2.0 }
+        ],
+        "flavor_text": "They teleport now?! Only the elite can survive.",
+        "intro_cutscene": null
+      }
+    ]
   },
   {
     "id": "hidden_1",
@@ -244,8 +458,8 @@
     "base_formula_string": "(metrics.objects_found * metrics.time_bonus)",
     "metrics_tracked": ["objects_found", "time_bonus"],
     "icon_sprite": "magnifying_glass-0",
-  "token_threshold": 0.75,
-    
+    "token_threshold": 0.75,
+
     "visual_identity": {
       "sprite_set_id": "hidden_set_1",
       "palette_id": "retro_amber",
@@ -259,7 +473,7 @@
         "result": "certificate-0"
       }
     },
-    
+
     "cheat_engine_base_cost": 400,
     "cheat_cost_exponent": 1.1,
     "available_cheats": [
@@ -277,10 +491,78 @@
       }
     ],
 
-  "bullet_fire_rate": 1.1,
-  "bullet_sprite": "wm_file-0",
+    "bullet_fire_rate": 1.1,
+    "bullet_sprite": "wm_file-0",
     "variant_multiplier": 1,
     "difficulty_level": 1,
-    "auto_play_performance": {"objects_found": 8, "time_bonus": 3}
+    "auto_play_performance": {"objects_found": 8, "time_bonus": 3},
+
+    "clone_variants": [
+      {
+        "clone_index": 0,
+        "name": "Hidden Treasures",
+        "sprite_set": "forest",
+        "palette": "natural_green",
+        "music_track": "hidden_object_ambient_forest",
+        "sfx_pack": "retro_beeps",
+        "background": "forest_scene",
+        "difficulty_modifier": 1.0,
+        "enemies": [],
+        "flavor_text": "Search the enchanted forest for hidden treasures!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 1,
+        "name": "Mansion Mysteries",
+        "sprite_set": "mansion",
+        "palette": "gothic_purple",
+        "music_track": "hidden_object_ambient_mansion",
+        "sfx_pack": "retro_beeps",
+        "background": "mansion_interior",
+        "difficulty_modifier": 1.2,
+        "enemies": [],
+        "flavor_text": "Uncover secrets in the mysterious old mansion!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 2,
+        "name": "Beach Bonanza",
+        "sprite_set": "beach",
+        "palette": "sunny_yellow",
+        "music_track": "hidden_object_ambient_beach",
+        "sfx_pack": "retro_beeps",
+        "background": "beach_scene",
+        "difficulty_modifier": 1.4,
+        "enemies": [],
+        "flavor_text": "Find lost items among the sandy shores!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 3,
+        "name": "Space Station Seek",
+        "sprite_set": "space_station",
+        "palette": "tech_blue",
+        "music_track": "hidden_object_ambient_scifi",
+        "sfx_pack": "8bit_arcade",
+        "background": "space_station_interior",
+        "difficulty_modifier": 1.6,
+        "enemies": [],
+        "flavor_text": "Locate equipment in the abandoned space station!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 4,
+        "name": "Haunted Library",
+        "sprite_set": "library",
+        "palette": "dusty_brown",
+        "music_track": "hidden_object_ambient_library",
+        "sfx_pack": "retro_beeps",
+        "background": "library_scene",
+        "difficulty_modifier": 1.8,
+        "enemies": [],
+        "flavor_text": "Search for lost tomes in the spectral library!",
+        "intro_cutscene": null
+      }
+    ]
   }
 ]

@@ -67,6 +67,7 @@ function love.load()
     local PaletteManager = require('src.utils.palette_manager')
     local SpriteManager = require('src.utils.sprite_manager')
     local EventBus = require('src.utils.event_bus')
+    local AttributionManager = require('src.utils.attribution_manager')
     local WindowChrome = require('src.views.window_chrome')
     local WindowController = require('src.controllers.window_controller') -- Require WindowController
     local ProgramLauncher = require('src.utils.program_launcher') -- Require ProgramLauncher
@@ -74,6 +75,7 @@ function love.load()
 
     -- == 2. Initialize Core Systems & DI Container ==
     local event_bus = EventBus:new()
+    local attribution_manager = AttributionManager.new(nil) -- Will inject di later
 
     SettingsManager.inject({ config = Config, eventBus = event_bus })
     SettingsManager.load()
@@ -88,6 +90,7 @@ function love.load()
         statistics = statistics,
         eventBus = event_bus,
         systemCursors = system_cursors,
+        attributionManager = attribution_manager,
     }
 
     -- == 3. Instantiate Models with DI ==
