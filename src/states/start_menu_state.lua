@@ -46,6 +46,90 @@ function StartMenuState:init(di, host)
     self.dnd_pending = nil
     self.dnd_start_x, self.dnd_start_y = nil, nil
     self.dnd_threshold = 4
+
+    -- Subscribe to Start Menu events
+    if self.event_bus then
+        self.event_bus:subscribe('add_to_start_menu', function(program_id)
+            self:addProgramToStartMenu(program_id)
+        end)
+        self.event_bus:subscribe('remove_from_start_menu', function(program_id)
+            self:removeProgramFromStartMenu(program_id)
+        end)
+        self.event_bus:subscribe('start_menu_new_folder', function(context)
+            local Constants = require('src.constants')
+            local params = {
+                title = Strings.get('menu.new_folder', 'New Folder...'),
+                prompt = Strings.get('start.type_prompt', 'Type the name:'),
+                ok_label = Strings.get('buttons.create', 'Create'),
+                cancel_label = Strings.get('buttons.cancel', 'Cancel'),
+                submit_event = 'start_menu_create_folder',
+                context = {
+                    pane_kind = context.pane_kind or 'programs',
+                    parent_path = context.parent_path or Constants.paths.START_MENU_PROGRAMS,
+                    after_index = context.index or 0,
+                }
+            }
+            self.event_bus:publish('launch_program', 'run_dialog', params)
+        end)
+        self.event_bus:subscribe('start_menu_open_path', function(path)
+            self:openPath(path)
+        end)
+        self.event_bus:subscribe('start_menu_delete_fs', function(path)
+            print('DEBUG: start_menu_delete_fs event received for path:', path)
+            local fs = self.file_system
+            if fs and fs.deleteEntry then
+                local ok, err = fs:deleteEntry(path)
+                if not ok then
+                    print('Delete failed for Start Menu FS item:', path, err)
+                else
+                    print('Successfully deleted Start Menu FS item:', path)
+                end
+                -- Refresh all open panes after delete (open_panes is on STATE, not VIEW)
+                if self.view and self.open_panes then
+                    print('DEBUG: Refreshing', #(self.open_panes or {}), 'panes')
+                    for i, p in ipairs(self.open_panes or {}) do
+                        print('  Pane', i, 'kind:', p.kind, 'parent_path:', p.parent_path)
+                        if p.kind == 'programs' then
+                            p.items = self.view:buildPaneItems('programs', nil)
+                            print('    -> Rebuilt programs pane, now has', #(p.items or {}), 'items')
+                        elseif p.kind == 'fs' and p.parent_path then
+                            p.items = self.view:buildPaneItems('fs', p.parent_path)
+                            print('    -> Rebuilt fs pane for', p.parent_path, ', now has', #(p.items or {}), 'items')
+                        end
+                    end
+                else
+                    print('DEBUG: No view or open_panes found!', self.view ~= nil, self.open_panes ~= nil)
+                end
+            else
+                print('DEBUG: No file system or deleteEntry method!')
+            end
+        end)
+    end
+end
+
+function StartMenuState:addProgramToStartMenu(program_id)
+    local pr = self.program_registry
+    local program = pr and pr:getProgram(program_id)
+    if program then
+        program.in_start_menu = true
+        if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, true) end
+    end
+end
+
+function StartMenuState:removeProgramFromStartMenu(program_id)
+    local pr = self.program_registry
+    local program = pr and pr:getProgram(program_id)
+    if program then
+        program.in_start_menu = false
+        if pr.setStartMenuOverride then pr:setStartMenuOverride(program_id, false) end
+        if pr.removeFromStartMenuOrder then pcall(pr.removeFromStartMenuOrder, pr, program_id) end
+    end
+    if self.view then
+        for _, p in ipairs(self.view.open_panes or {}) do
+            if p.kind == 'programs' then p.items = self.view:buildPaneItems('programs', nil)
+            elseif p.kind == 'fs' and p.parent_path then p.items = self.view:buildPaneItems('fs', p.parent_path) end
+        end
+    end
 end
 
 function StartMenuState:clearStartMenuPress()
@@ -178,11 +262,21 @@ function StartMenuState:mousereleased(x, y, button)
             self:setOpen(false); self._opened_by_mousepress = nil; return true
         elseif ev.name == 'close_start_menu' then
             self:setOpen(false); self._opened_by_mousepress = nil; return true
+        elseif ev.name == 'start_menu_pressed' then
+            -- Event was handled within the start menu (e.g., drag operations, clicking on folders)
+            self._opened_by_mousepress = nil
+            return true
+        else
+            -- Unknown event name - consume to prevent fallthrough
+            print("WARNING [StartMenuState]: Unknown event name from view: " .. tostring(ev.name))
+            self._opened_by_mousepress = nil
+            return true
         end
     else
+        -- No event returned from view - consume to prevent fallthrough
         self._opened_by_mousepress = nil
+        return true
     end
-    return false
 end
 
 function StartMenuState:keypressed(key)
@@ -248,6 +342,53 @@ function StartMenuState:getStartMenuProgramAtPosition(x, y)
     if not self.open then return nil end
     if self.view and self.view.getStartMenuProgramAtPosition then return self.view:getStartMenuProgramAtPosition(x, y) end
     return nil
+end
+
+function StartMenuState:handleRightClick(x, y, context_menu_service)
+    if not self:isPointInStartMenuOrSubmenu(x, y) then return false end
+
+    local hit = self.view and self.view.hitTestStartMenuContext and self.view:hitTestStartMenuContext(x, y, self)
+    local options = {}
+    local ctx = { type = 'start_menu' }
+
+    if hit then
+        if hit.area == 'pane' and hit.item then
+            if hit.kind == 'programs' and hit.item.type == 'program' then
+                ctx = { type='start_menu_item', program_id=hit.item.program_id, pane_kind='programs', parent_path=nil, index=hit.index, pane_index=hit.pane_index }
+                if context_menu_service then
+                    options = context_menu_service:generateContextMenuOptions('start_menu_item', ctx)
+                end
+                table.insert(options, 3, { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true })
+            elseif hit.kind == 'fs' then
+                ctx = { type='start_menu_fs', path = hit.item and (hit.item.path or hit.item.name), parent_path=hit.parent_path, is_folder = (hit.item and hit.item.type == 'folder'), index=hit.index, pane_index=hit.pane_index }
+                options = {
+                    { id='open', label=Strings.get('menu.open','Open'), enabled=true },
+                    { id='separator' },
+                    { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true },
+                    { id='separator' },
+                    { id='delete_from_menu', label=Strings.get('menu.delete','Delete from Start Menu'), enabled=true }
+                }
+            elseif hit.kind == 'programs' and hit.item.type == 'folder' and hit.item.program_id then
+                ctx = { type='start_menu_item', program_id = hit.item.program_id, pane_kind='programs', parent_path=nil, index=hit.index, pane_index=hit.pane_index }
+                if context_menu_service then
+                    options = context_menu_service:generateContextMenuOptions('start_menu_item', ctx)
+                end
+                table.insert(options, 3, { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true })
+            end
+        elseif hit.area == 'submenu' and hit.id and self.view.submenu_open_id == 'programs' then
+            ctx = { type='start_menu_item', program_id=hit.id, pane_kind='programs', parent_path=nil, index=hit.index, pane_index=hit.pane_index }
+            if context_menu_service then
+                options = context_menu_service:generateContextMenuOptions('start_menu_item', ctx)
+            end
+            table.insert(options, 3, { id='new_folder', label=Strings.get('menu.new_folder','New Folder...'), enabled=true })
+        end
+    end
+
+    if #options > 0 and context_menu_service then
+        context_menu_service:show(x, y, options, ctx)
+    end
+
+    return true -- Consumed the right-click
 end
 
 -- Internal: open filesystem path via FileSystem + ProgramRegistry

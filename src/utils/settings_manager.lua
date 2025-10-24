@@ -5,7 +5,19 @@ local ConfigRef = rawget(_G, 'DI_CONFIG') or {}
 
 local SettingsManager = {}
 local SETTINGS_FILE = "settings.json"
-local event_bus = nil -- Module-level variable to hold the injected EventBus
+local batch_mode = false -- When true, defer saving until endBatch()
+
+-- Current settings table
+local current_settings = {}
+
+-- Event bus storage using upvalue closure (guaranteed to persist)
+local _injected_event_bus = nil
+local function get_event_bus()
+    return _injected_event_bus
+end
+local function set_event_bus(eb)
+    _injected_event_bus = eb
+end
 
 -- Default settings
 local Paths = require('src.paths')
@@ -108,13 +120,13 @@ local defaults = {
     desktop_icon_snap = true
 }
 
-local current_settings = {}
+-- (current_settings declared above)
 
 -- DI injection for config and event_bus
 function SettingsManager.inject(di)
     if di then
         if di.config then ConfigRef = di.config end
-        if di.eventBus then event_bus = di.eventBus end -- Store injected event bus
+        if di.eventBus then set_event_bus(di.eventBus) end
     end
 end
 
@@ -129,20 +141,33 @@ function SettingsManager.load()
     --
         local decode_ok, data = pcall(json.decode, contents)
         if decode_ok then
+            -- DEBUG: Check what's in the loaded JSON
+            print("[SettingsManager.load] Loaded JSON data.desktop_bg_image = " .. tostring(data.desktop_bg_image))
+            print("[SettingsManager.load] Loaded JSON data.desktop_bg_type = " .. tostring(data.desktop_bg_type))
+
             -- Merge loaded data with defaults to ensure all keys exist
+            local defaults_count = 0
+            for _ in pairs(defaults) do defaults_count = defaults_count + 1 end
+            print("[SettingsManager.load] defaults table has " .. tostring(defaults_count) .. " keys")
+            print("[SettingsManager.load] defaults.desktop_bg_image = " .. tostring(defaults.desktop_bg_image))
+
+            -- First, copy ALL values from loaded data
+            for key, value in pairs(data) do
+                current_settings[key] = value
+            end
+
+            -- Then, fill in any missing keys with defaults
             for key, default_value in pairs(defaults) do
-                current_settings[key] = data[key]
-                if current_settings[key] == nil then -- Use default if key missing in save
+                if current_settings[key] == nil then
                     current_settings[key] = default_value
                 end
             end
             print("Settings loaded successfully from " .. SETTINGS_FILE)
+            print("[SettingsManager.load] After merge: current_settings.desktop_bg_image = " .. tostring(current_settings.desktop_bg_image))
+            print("[SettingsManager.load] After merge: current_settings.desktop_bg_type = " .. tostring(current_settings.desktop_bg_type))
             -- Publish settings_loaded event
-            if event_bus then
-                pcall(event_bus.publish, event_bus, 'settings_loaded', current_settings)
-            end
-            -- Debug: show desktop wallpaper-related keys
-            --
+            local eb = get_event_bus()
+            if eb then pcall(eb.publish, eb, 'settings_loaded', current_settings) end
             SettingsManager.applyAudioSettings() -- Apply volume on load
             SettingsManager.applyFullscreen() -- Apply fullscreen on load
             return true
@@ -154,14 +179,12 @@ function SettingsManager.load()
     end
 
     -- Use defaults if loading failed
-    current_settings = {}
     for key, value in pairs(defaults) do
         current_settings[key] = value
     end
     -- Publish settings_loaded event even when using defaults
-    if event_bus then
-        pcall(event_bus.publish, event_bus, 'settings_loaded', current_settings)
-    end
+    local eb = get_event_bus()
+    if eb then pcall(eb.publish, eb, 'settings_loaded', current_settings) end
     SettingsManager.applyAudioSettings() -- Apply default volume
     SettingsManager.applyFullscreen() -- Apply default fullscreen
     return false
@@ -204,6 +227,11 @@ function SettingsManager.save()
     local save_dir = ''
     local ok_dir, dir = pcall(love.filesystem.getSaveDirectory)
     if ok_dir and dir then save_dir = dir end
+
+    -- DEBUG: Check what we're saving
+    print("[SettingsManager.save] Saving desktop_bg_image = " .. tostring(current_settings.desktop_bg_image))
+    print("[SettingsManager.save] Saving desktop_bg_type = " .. tostring(current_settings.desktop_bg_type))
+
     local encode_ok, json_str = pcall(json.encode, current_settings)
     if not encode_ok then
         print("Error encoding settings data: " .. tostring(json_str))
@@ -215,12 +243,9 @@ function SettingsManager.save()
         print("Failed to write settings file: " .. tostring(message))
         return false
     end
-    -- Debug: confirm save and key values
-    --
     -- Publish settings_saved event
-    if event_bus then
-        pcall(event_bus.publish, event_bus, 'settings_saved', current_settings)
-    end
+    local eb = get_event_bus()
+    if eb then pcall(eb.publish, eb, 'settings_saved', current_settings) end
     return true
 end
 
@@ -235,24 +260,40 @@ function SettingsManager.set(key, value)
     if old_value ~= value then
         current_settings[key] = value
 
-        -- Publish generic setting_changed event
-        if event_bus then
-            pcall(event_bus.publish, event_bus, 'setting_changed', key, old_value, value)
+        local eb = get_event_bus()
+        if key == 'desktop_bg_image' or key == 'desktop_bg_type' then
+            print("[SettingsManager.set] " .. key .. " = " .. tostring(value) .. ", eb = " .. tostring(eb))
         end
+
+        -- Publish generic setting_changed event
+        if eb then pcall(eb.publish, eb, 'setting_changed', key, old_value, value) end
 
         -- Publish specific events for important settings
         if key == "fullscreen" then
             SettingsManager.applyFullscreen()
-            if event_bus then pcall(event_bus.publish, event_bus, 'fullscreen_toggled', value) end
+            if eb then pcall(eb.publish, eb, 'fullscreen_toggled', value) end
         elseif key == "master_volume" or key == "music_volume" or key == "sfx_volume" then
             SettingsManager.applyAudioSettings()
-            -- Could publish volume_changed here if needed
-        elseif key == "desktop_bg_image" then
-            if event_bus then pcall(event_bus.publish, event_bus, 'wallpaper_changed', value) end
+        elseif key == "desktop_bg_image" and eb then
+            pcall(eb.publish, eb, 'wallpaper_changed', value)
         end
 
-        SettingsManager.save() -- Auto-save on change
+        -- Auto-save on change (unless in batch mode)
+        if not batch_mode then
+            SettingsManager.save()
+        end
     end
+end
+
+-- Begin batch mode - defer saving until endBatch()
+function SettingsManager.beginBatch()
+    batch_mode = true
+end
+
+-- End batch mode and save all changes
+function SettingsManager.endBatch()
+    batch_mode = false
+    SettingsManager.save()
 end
 
 -- Apply volume settings to love.audio

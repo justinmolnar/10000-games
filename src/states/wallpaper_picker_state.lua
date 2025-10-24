@@ -115,13 +115,13 @@ function State:mousepressed(x, y, button)
             if hit(r,x,y) then
                 local chosen = self.items[i]
                 if chosen then
-                    -- Save the exact filename to disambiguate between files with the same base name but different extensions
-                    local value = chosen.name or chosen.id
-                    -- persist selection
-                    SettingsManager.set('desktop_bg_image', value)
-                    -- Ensure type is image
+                    -- Save the id (filename without extension) for proper lookup
+                    local value = chosen.id
+                    -- Use batch mode to save both settings atomically
+                    SettingsManager.beginBatch()
                     SettingsManager.set('desktop_bg_type', 'image')
-                    SettingsManager.save()
+                    SettingsManager.set('desktop_bg_image', value)
+                    SettingsManager.endBatch()
                     return { type = 'close_window' }
                 end
             end

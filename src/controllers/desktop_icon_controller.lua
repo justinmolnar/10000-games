@@ -325,4 +325,55 @@ function DesktopIconController:isDragging()
     return self.dragging_icon_id ~= nil
 end
 
+-- Find next available grid position for a new icon
+function DesktopIconController:findNextAvailablePosition(program_id_to_place, desktop_view)
+    local occupied_positions = {} -- Store positions currently in use
+    local desktop_programs = self.program_registry:getDesktopPrograms()
+    local icon_w, icon_h = self.desktop_icons:getIconDimensions()
+
+    for _, program in ipairs(desktop_programs) do
+        -- Consider a spot occupied if the icon is visible and is NOT the one we are currently placing
+        if program.id ~= program_id_to_place and self.desktop_icons:isIconVisible(program.id) then
+             local pos = self.desktop_icons:getPosition(program.id) or self:getDefaultIconPosition(program.id)
+             -- Use a simple representation for occupied check (e.g., top-left corner)
+             occupied_positions[string.format("%.0f,%.0f", pos.x, pos.y)] = true
+        end
+    end
+
+    -- Get layout info from desktop_view or use defaults
+    local icon_start_x = desktop_view and desktop_view.icon_start_x or 20
+    local icon_start_y = desktop_view and desktop_view.icon_start_y or 20
+    local icon_padding = desktop_view and desktop_view.icon_padding or 10
+    local taskbar_height = desktop_view and desktop_view.taskbar_height or 40
+
+    -- Iterate through default positions in order
+    local available_height = love.graphics.getHeight() - taskbar_height - icon_start_y
+    local icons_per_column = math.max(1, math.floor(available_height / (icon_h + icon_padding)))
+    local col = 0
+    local row = 0
+
+    while true do -- Loop until a spot is found (should always find one eventually)
+         local potential_x = icon_start_x + col * (icon_w + icon_padding)
+         local potential_y = icon_start_y + row * (icon_h + icon_padding)
+         local pos_key = string.format("%.0f,%.0f", potential_x, potential_y)
+
+         -- Check if this default grid position is occupied
+         if not occupied_positions[pos_key] then
+             print("Found available grid position:", potential_x, potential_y)
+             return { x = potential_x, y = potential_y }
+         end
+
+         -- Move to next grid position
+         row = row + 1
+         if row >= icons_per_column then
+             row = 0
+             col = col + 1
+             -- Add safety break if columns get too high
+             if col > 20 then
+                  print("Warning: Could not find free grid slot easily, returning default.")
+                  return self:getDefaultIconPosition(program_id_to_place) or { x=20, y=20 }
+             end
+         end
+    end
+end
 return DesktopIconController

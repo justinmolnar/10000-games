@@ -79,11 +79,16 @@ function Form:draw()
                 self:_print((el.label or '') .. ':', self.label_x, cy)
                 local tp_x, tp_y = self.slider_x, cy-4
                 local cur = self.get(el.id)
-                local label = tostring(cur)
+                local label = tostring(cur or '')
                 if el.choices and type(el.choices[1]) == 'table' then
                     -- find label for current value
+                    local found = false
                     for _,c in ipairs(el.choices) do
-                        if c.value == cur then label = c.label break end
+                        if c.value == cur then label = c.label; found = true; break end
+                    end
+                    -- If current value is nil and not found, use first choice label
+                    if not found and cur == nil and el.choices[1] then
+                        label = el.choices[1].label
                     end
                 end
                 UI.drawDropdown(tp_x, tp_y, self.dropdown_w, self.dropdown_h, label, true, false)

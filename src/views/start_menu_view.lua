@@ -68,9 +68,6 @@ function StartMenuView:update(dt, start_menu_open, state)
     -- Hover main row
     state.hovered_main_id = self:getStartMenuMainAtPosition(mx, my)
 
-    -- Inside legacy submenu
-    local sub_bounds = self:getSubmenuBounds(state)
-    local inside_sub = sub_bounds and (mx >= sub_bounds.x and mx <= sub_bounds.x + sub_bounds.w and my >= sub_bounds.y and my <= sub_bounds.y + sub_bounds.h)
     -- Inside any cascading pane
     local inside_panes = false
     for _, p in ipairs(state.open_panes or {}) do
@@ -78,16 +75,14 @@ function StartMenuView:update(dt, start_menu_open, state)
         if mx >= b.x and mx <= b.x + b.w and my >= b.y and my <= b.y + b.h then inside_panes = true; break end
     end
 
-    -- Open/keep submenu (with grace)
+    -- Keep cascading panes open (with grace close when mouse leaves)
     if state.hovered_main_id == 'programs' or state.hovered_main_id == 'documents' or state.hovered_main_id == 'settings' then
-        state.submenu_open_id = state.hovered_main_id
         state._start_menu_keepalive_t = 0
-    elseif inside_sub or inside_panes then
+    elseif inside_panes then
         state._start_menu_keepalive_t = 0
     else
         state._start_menu_keepalive_t = (state._start_menu_keepalive_t or 0) + dt
         if state._start_menu_keepalive_t >= (self.start_menu_close_grace or 0.5) then
-            state.submenu_open_id = nil
             state.open_panes = {}
             state._cascade_root_id = nil
             state._start_menu_keepalive_t = 0
@@ -95,8 +90,6 @@ function StartMenuView:update(dt, start_menu_open, state)
         end
     end
 
-    -- Update hovered item in legacy submenu
-    state.hovered_sub_id = self:getStartMenuSubItemAtPosition(mx, my, state)
     -- Always update cascading panes
     self:updateCascade(mx, my, dt, state)
 
@@ -217,7 +210,7 @@ function StartMenuView:draw(state)
     love.graphics.setColor(shut_hovered and (theme.text_hover or {1,1,1}) or (theme.text or {0,0,0}))
     love.graphics.print(Strings.get('start.shutdown','Shut down...'), self.start_menu_x + main_icon_size + 10, item_y + (main_h - love.graphics.getFont():getHeight())/2)
 
-    -- Draw cascading panes; fallback to legacy submenu when none
+    -- Draw cascading panes (always use cascading, no legacy submenu)
     if state.open_panes and #state.open_panes > 0 then
         for _, pane in ipairs(state.open_panes) do self:drawPane(pane, state) end
         -- Draw insertion indicator when dragging in the active pane, unless we're dropping INTO a folder
@@ -232,10 +225,6 @@ function StartMenuView:draw(state)
             love.graphics.setColor(theme2.highlight or {0,0,0.5})
             love.graphics.rectangle('fill', pane.bounds.x + 2, y2 - 2, pane.bounds.w - 4, 3)
         end
-    else
-        if state.submenu_open_id == 'programs' then self:drawProgramsSubmenu(state)
-        elseif state.submenu_open_id == 'documents' then self:drawDocumentsSubmenu(state)
-        elseif state.submenu_open_id == 'settings' then self:drawSettingsSubmenu(state) end
     end
 end
 
@@ -289,12 +278,10 @@ end
 function StartMenuView:mousereleasedStartMenu(x, y, button, state)
     if button ~= 1 then return nil end
     local in_main = (x >= self.start_menu_x and x <= self.start_menu_x + self.start_menu_w and y >= self.start_menu_y and y <= self.start_menu_y + self.start_menu_h)
-    local sub = self:getSubmenuBounds(state)
-    local in_sub = sub and (x >= sub.x and x <= sub.x + sub.w and y >= sub.y and y <= sub.y + sub.h)
     -- Cascading pane click
     local in_pane = false; local pane_ref=nil; local row_idx=nil; local pane_level=nil
     for i, p in ipairs(state.open_panes or {}) do local b=p.bounds; if x>=b.x and x<=b.x+b.w and y>=b.y and y<=b.y+b.h then in_pane=true; pane_ref=p; pane_level=i; row_idx=self:getPaneIndexAtPosition(p,x,y); break end end
-    if not in_main and not in_sub and not in_pane then
+    if not in_main and not in_pane then
         state._start_menu_pressed_id=nil
         -- Always clear drag state on mouse release, even if dropping outside
         state.dnd_active=false; state.dnd_source_index=nil; state.dnd_hover_index=nil; state.dnd_pane_index=nil; state.dnd_item_id=nil; state.dnd_entry_key=nil; state.dnd_scope=nil; state.dnd_pending=nil; state.dnd_start_x=nil; state.dnd_start_y=nil
@@ -320,8 +307,11 @@ function StartMenuView:mousereleasedStartMenu(x, y, button, state)
                 end
                 -- FS entry being dragged into folder: move using FileSystem
                 local src_path = state.dnd_scope
-                if fs and src_path and state.dnd_entry_key and not isFsRootRestricted(src_path) and not isFsRootRestricted(dst_path) then
-                    pcall(fs.moveEntry, fs, state.dnd_entry_key, dst_path)
+                -- Skip if dropping into the same folder (no-op)
+                if src_path ~= dst_path then
+                    if fs and src_path and state.dnd_entry_key and not isFsRootRestricted(src_path) and not isFsRootRestricted(dst_path) then
+                        pcall(fs.moveEntry, fs, state.dnd_entry_key, dst_path)
+                    end
                 end
                 -- Refresh panes and clear drag state
                 for _, p in ipairs(state.open_panes or {}) do
@@ -382,18 +372,9 @@ function StartMenuView:mousereleasedStartMenu(x, y, button, state)
         elseif item.type ~= 'folder' then
             return { name = 'open_path', path = item.path }
         else
-            return nil
+            -- Clicked on a folder, consume the event
+            return { name = 'start_menu_pressed' }
         end
-    end
-    -- Legacy submenu activation
-    if in_sub then
-        local sub_item = self:getStartMenuSubItemAtPosition(x, y, state)
-        state._start_menu_pressed_id = nil
-        if sub_item then
-            if state.submenu_open_id == 'programs' then return { name='launch_program', program_id=sub_item }
-            else return { name='open_path', path=sub_item } end
-        end
-        return nil
     end
     -- Main items: only Run/Shutdown/Help activate on click here
     local main = self:getStartMenuMainAtPosition(x, y)
@@ -402,7 +383,8 @@ function StartMenuView:mousereleasedStartMenu(x, y, button, state)
     if main == 'run' then return { name='open_run' }
     elseif main=='shutdown' then return { name='open_shutdown' }
     elseif main=='help' then return { name='close_start_menu' } end
-    return nil
+    -- Clicked in main menu but not on an actionable item, consume the event
+    return { name = 'start_menu_pressed' }
 end
 
 function StartMenuView:mousemovedStartMenu(x, y, dx, dy, state)
@@ -419,16 +401,26 @@ function StartMenuView:mousemovedStartMenu(x, y, dx, dy, state)
         state.dnd_pending = nil
     end
     if not state.dnd_active then return end
-    -- Choose the pane under the cursor vertically to support cross-pane targeting
+    -- Choose the pane under the cursor to support cross-pane targeting
     local pane = nil
-    local pane_idx = state.dnd_pane_index or 1
+    local pane_idx = nil
     for i, p in ipairs(state.open_panes or {}) do
         local btest = p.bounds
-        if btest and y >= btest.y and y <= btest.y + btest.h then pane = p; pane_idx = i; break end
+        if btest and x >= btest.x and x <= btest.x + btest.w and y >= btest.y and y <= btest.y + btest.h then
+            pane = p
+            pane_idx = i
+            break
+        end
     end
-    pane = pane or ((state.open_panes and state.open_panes[state.dnd_pane_index or 1]) or nil)
+    -- If no pane found at cursor, keep the current drag pane
+    if not pane then
+        pane = (state.open_panes and state.open_panes[state.dnd_pane_index]) or nil
+        pane_idx = state.dnd_pane_index  -- Keep existing pane index
+    else
+        -- Update pane_idx to the matched pane
+        state.dnd_pane_index = pane_idx
+    end
     if not pane or not pane.bounds then return end
-    state.dnd_pane_index = pane_idx
     local b = pane.bounds
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25
@@ -443,14 +435,19 @@ function StartMenuView:mousemovedStartMenu(x, y, dx, dy, state)
         idx = math.floor((y - (b.y + padding)) / item_h) + 1
     end
     if idx and idx >= 1 then state.dnd_hover_index = idx end
-    -- Determine if we are directly hovering a folder row (x within pane bounds) to enable drop-into-folder behavior
-    local direct_idx = self:getPaneIndexAtPosition(pane, x, y)
-    local direct_item = (direct_idx and pane.items and pane.items[direct_idx]) or nil
-    if direct_item and direct_item.type == 'folder' then
+    -- Determine if we are hovering a folder row to enable drop-into-folder behavior
+    -- Use idx (Y-based) if we're in the correct pane, otherwise use strict hit test
+    local check_idx = idx
+    if x < b.x or x > b.x + b.w then
+        -- Mouse is outside pane horizontally, use strict hit test
+        check_idx = self:getPaneIndexAtPosition(pane, x, y)
+    end
+    local check_item = (check_idx and pane.items and pane.items[check_idx]) or nil
+    if check_item and check_item.type == 'folder' then
         state.dnd_drop_mode = 'into'
-        state.dnd_target_folder_path = direct_item.path
+        state.dnd_target_folder_path = check_item.path
         -- For visual accuracy, snap hover index to the folder row
-        state.dnd_hover_index = direct_idx or state.dnd_hover_index
+        state.dnd_hover_index = check_idx or state.dnd_hover_index
     else
         state.dnd_drop_mode = nil
         state.dnd_target_folder_path = nil
@@ -804,14 +801,44 @@ function StartMenuView:buildPaneItems(kind, path)
     local items = {}
     if kind == 'programs' then
         local fs = self.file_system
+        local Constants = require('src.constants')
         local progs = self.program_registry:getStartMenuPrograms() or {}
         local moves = self.program_registry and self.program_registry.getStartMenuMoves and self.program_registry:getStartMenuMoves() or {}
         for _, p in ipairs(progs) do
             -- Skip programs that have been moved to a folder or hidden to tomb
             local mv = moves['program:' .. p.id]
             if not mv or mv == 'PROGRAMS_ROOT' then
-                if p.shortcut_type == 'folder' and p.shortcut_target and fs and fs:pathExists(p.shortcut_target) then
-                    table.insert(items, { type = 'folder', name = p.name or p.shortcut_target, path = p.shortcut_target, program_id = p.id, icon_sprite = p.icon_sprite })
+                if p.shortcut_type == 'folder' and p.shortcut_target and fs then
+                    -- Create a materialized folder in Start Menu Programs for this shortcut
+                    -- This allows the folder to be modified independently from the original
+                    local start_menu_folder_name = p.name or p.shortcut_target:match('([^/]+)$')
+                    local start_menu_folder_path = Constants.paths.START_MENU_PROGRAMS .. '/' .. start_menu_folder_name
+
+                    -- Ensure the folder exists in the filesystem
+                    if not fs:pathExists(start_menu_folder_path) then
+                        local created = fs:createFolder(Constants.paths.START_MENU_PROGRAMS, start_menu_folder_name)
+                        -- Populate with the original folder's contents (read-only snapshot)
+                        if created and fs:pathExists(p.shortcut_target) then
+                            local original_contents = fs:getContents(p.shortcut_target) or {}
+                            for _, item in ipairs(original_contents) do
+                                if item.type == 'executable' and item.program_id then
+                                    -- Copy executable reference into the Start Menu folder
+                                    local exe_path = created .. '/' .. item.name
+                                    fs.filesystem[exe_path] = { type = 'executable', program_id = item.program_id }
+                                    local parent = fs.filesystem[created]
+                                    if parent and parent.children then
+                                        table.insert(parent.children, item.name)
+                                    end
+                                elseif item.type == 'folder' or item.type == 'directory' then
+                                    -- Create sub-folder reference (will be isolated if opened)
+                                    fs:createFolder(created, item.name)
+                                end
+                                -- Skip files - they're not useful in Start Menu context
+                            end
+                        end
+                    end
+
+                    table.insert(items, { type = 'folder', name = start_menu_folder_name, path = start_menu_folder_path, program_id = p.id, icon_sprite = p.icon_sprite })
                 else
                     table.insert(items, { type = 'program', name = p.name, program_id = p.id, icon_sprite = p.icon_sprite })
                 end

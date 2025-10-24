@@ -56,7 +56,7 @@ function love.load()
     local StateMachineBuilder = require('controllers.state_machine')
     local CheatSystem = require('models.cheat_system')
     local Config = require('src.config')
-    SettingsManager = require('utils.settings_manager')
+    SettingsManager = require('src.utils.settings_manager')
     local Statistics = require('models.statistics')
     local WindowManager = require('models.window_manager')
     local DesktopIcons = require('models.desktop_icons')
@@ -73,13 +73,14 @@ function love.load()
     local ContextMenuService = require('src.utils.context_menu_service') -- Require ContextMenuService
 
     -- == 2. Initialize Core Systems & DI Container ==
-    SettingsManager.inject({ config = Config })
+    local event_bus = EventBus:new()
+
+    SettingsManager.inject({ config = Config, eventBus = event_bus })
     SettingsManager.load()
 
     statistics = Statistics:new()
     statistics:load()
 
-    local event_bus = EventBus:new()
     local di = {
         config = Config,
         settingsManager = SettingsManager,

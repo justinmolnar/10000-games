@@ -46,6 +46,15 @@ end
 function FileExplorerState:setWindowContext(window_id, window_manager)
     self.window_id = window_id
     self.window_manager = window_manager
+
+    -- Subscribe to events now that we have window_id
+    if self.di.eventBus then
+        self.di.eventBus:subscribe('file_explorer_action', function(action_id, context)
+            if context.window_id == self.window_id then
+                self:handleContextMenuAction(action_id, context)
+            end
+        end)
+    end
 end
 
 function FileExplorerState:setViewport(x, y, width, height)
@@ -593,22 +602,6 @@ function FileExplorerState:getRecycleBinContents()
 end
 
 -- Restore item using the RecycleBin model
-function FileExplorerState:restoreFromRecycleBin(program_id)
-    print("[DEBUG] restoreFromRecycleBin called for:", program_id) -- DEBUG
-    local sw, sh = love.graphics.getDimensions()
-    local success = self.recycle_bin:restoreItem(program_id, sw, sh)
-
-    if success then
-        print("Restored " .. program_id .. " from Recycle Bin")
-        self.desktop_icons:save() -- Persist the restoration
-        self:refresh() -- Refresh the current view to show changes
-    else
-        print("Failed to restore " .. program_id)
-        -- Optionally show an error message to the user
-        -- love.window.showMessageBox("Error", "Failed to restore " .. program_id, "error")
-    end
-end
-
 -- Empty recycle bin using the RecycleBin model
 function FileExplorerState:emptyRecycleBin()
      -- Confirmation dialog
@@ -790,6 +783,74 @@ function FileExplorerState:permanentlyDeleteFromRecycleBin(program_id)
              love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Failed to delete " .. program_id, "error")
          end
      end
+end
+
+-- Handle context menu actions for File Explorer
+function FileExplorerState:handleContextMenuAction(action_id, context)
+    if not self.window_id then
+        print("ERROR: FileExplorerState has no window_id set!")
+        return
+    end
+
+    local item = context.item -- Might be nil for empty space clicks
+
+    if action_id == "restore" and item then
+        if item.type == 'deleted' then
+            self:restoreFromRecycleBin(item.program_id)
+        elseif item.type == 'fs_deleted' then
+            self:restoreFsDeleted(item.recycle_id)
+        end
+    elseif action_id == "delete_permanently" and item then
+        if item.type == 'deleted' then
+            self:permanentlyDeleteFromRecycleBin(item.program_id)
+        elseif item.type == 'fs_deleted' then
+            self:permanentlyDeleteFsDeleted(item.recycle_id)
+        end
+    elseif action_id == "open" and item then
+        local result = self:handleItemDoubleClick(item)
+        if type(result) == 'table' and result.type == "event" then
+            -- Publish event for DesktopState's event_dispatcher to handle
+            if self.di.eventBus then
+                self.di.eventBus:publish('window_state_event', self.window_id, result)
+            end
+        end
+    elseif action_id == "create_shortcut_desktop" and item then
+        local result = self:createShortcutOnDesktop(item)
+        if type(result) == 'table' and result.type == "event" then
+            if self.di.eventBus then
+                self.di.eventBus:publish('window_state_event', self.window_id, result)
+            end
+        end
+    elseif action_id == "create_shortcut_start_menu" and item then
+        local result = self:createShortcutInStartMenu(item)
+        if type(result) == 'table' and result.type == "event" then
+            if self.di.eventBus then
+                self.di.eventBus:publish('window_state_event', self.window_id, result)
+            end
+        end
+    elseif action_id == "remove_shortcut" and item then
+        if item.program_id and item.program_id:match('^shortcut_') then
+            local ok = self.program_registry:removeDynamicProgram(item.program_id)
+            if ok then
+                self.desktop_icons:permanentlyDelete(item.program_id)
+                self.desktop_icons:save()
+            end
+        end
+    elseif action_id == "copy" and item then
+        self:copyItem(item)
+    elseif action_id == "cut" and item then
+        self:cutItem(item)
+    elseif action_id == "paste" then
+        self:pasteIntoCurrent()
+    elseif action_id == "delete" and item then
+        self:deleteItem(item)
+    elseif action_id == "properties" then
+        print("File properties NYI") -- Placeholder
+    elseif action_id == "refresh" then
+        self:refresh()
+    else
+        print("Warning: Unhandled file explorer action:", action_id)
+    end
 end
 
 return FileExplorerState
