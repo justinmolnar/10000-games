@@ -25,7 +25,7 @@ end
 
 function SpaceShooterView:draw()
     self:ensureLoaded()
-    
+
     local game = self.game
     local g = love.graphics
 
@@ -39,7 +39,8 @@ function SpaceShooterView:draw()
     g.setColor(bg[1], bg[2], bg[3])
     g.rectangle('fill', 0, 0, game_width, game_height)
 
-    local palette_id = self.sprite_manager:getPaletteId(game.data)
+    -- Phase 1.6: Use variant palette if available
+    local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local player_sprite = game.data.icon_sprite or "game_mine_1-0"
     
     if game.player then

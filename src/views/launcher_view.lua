@@ -384,9 +384,18 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     local icon_size = 64
     local icon_x = x + 8
     local icon_y = y + (h - icon_size) / 2
-    
+
     local sprite_name = game_data.icon_sprite or "game_freecell-0"
+
+    -- Phase 1.6: Use variant palette if available
     local palette_id = sprite_manager:getPaletteId(game_data)
+    if self.variant_loader then
+        local variant = self.variant_loader:getVariantData(game_data.id)
+        if variant and variant.palette then
+            palette_id = variant.palette
+        end
+    end
+
     local tint = is_unlocked and {1, 1, 1} or {0.5, 0.5, 0.5}
     sprite_loader:drawSprite(sprite_name, icon_x, icon_y, icon_size, icon_size, tint, palette_id)
     
@@ -511,7 +520,16 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
         love.graphics.setColor(0.15, 0.15, 0.15)
         love.graphics.rectangle('fill', preview_x - 5, line_y - 5, preview_size + 10, preview_size + 10)
         local sprite_name = game_data.icon_sprite or "game_freecell-0"
+
+        -- Phase 1.6: Use variant palette if available
         local palette_id = sprite_manager:getPaletteId(game_data)
+        if self.variant_loader then
+            local variant = self.variant_loader:getVariantData(game_data.id)
+            if variant and variant.palette then
+                palette_id = variant.palette
+            end
+        end
+
         sprite_loader:drawSprite(sprite_name, preview_x, line_y, preview_size, preview_size, {1, 1, 1}, palette_id)
         return line_y + preview_size + 15
     end

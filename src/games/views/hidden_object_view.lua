@@ -32,12 +32,13 @@ end
 
 function HiddenObjectView:draw()
     self:ensureLoaded()
-    
+
     local game = self.game
 
     self:drawBackground()
 
-    local palette_id = self.sprite_manager:getPaletteId(game.data)
+    -- Phase 1.6: Use variant palette if available
+    local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local object_sprite = game.data.icon_sprite or "magnifying_glass-0"
 
     for _, obj in ipairs(game.objects) do

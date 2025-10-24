@@ -28,14 +28,15 @@ end
 
 function SnakeView:draw()
     self:ensureLoaded()
-    
+
     local game = self.game
     local GRID_SIZE = self.GRID_SIZE
 
     love.graphics.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
     love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
 
-    local palette_id = self.sprite_manager:getPaletteId(game.data)
+    -- Phase 1.6: Use variant palette if available
+    local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local snake_sprite = game.data.icon_sprite or "game_spider-0"
     
     for i, segment in ipairs(game.snake) do

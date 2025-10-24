@@ -41,7 +41,7 @@ end
 
 function DodgeView:draw()
     self:ensureLoaded()
-    
+
     local game = self.game
     local g = love.graphics
 
@@ -62,7 +62,8 @@ function DodgeView:draw()
         g.setLineWidth(1)
     end
 
-    local palette_id = self.sprite_manager:getPaletteId(game.data)
+    -- Phase 1.6: Use variant palette if available
+    local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local player_sprite = game.data.icon_sprite or "game_solitaire-0"
     
     self.sprite_loader:drawSprite(
