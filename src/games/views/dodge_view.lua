@@ -2,13 +2,17 @@ local Object = require('class')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local DodgeView = Object:extend('DodgeView')
 
-function DodgeView:init(game_state)
+function DodgeView:init(game_state, variant)
     self.game = game_state
+    self.variant = variant -- Store variant data for future use (Phase 1.3)
     self.OBJECT_DRAW_SIZE = game_state.OBJECT_SIZE or 15
     self.di = game_state and game_state.di
     local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.dodge and self.di.config.games.dodge.view) or
                  (Config and Config.games and Config.games.dodge and Config.games.dodge.view) or {})
     self.bg_color = cfg.bg_color or {0.08, 0.05, 0.1}
+
+    -- NOTE: In Phase 2, background will be determined by variant.background
+    -- e.g., variant.background could be "starfield_blue", "starfield_red", etc.
     self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
     local sf = cfg.starfield or { count = 180, speed_min = 20, speed_max = 100, size_divisor = 60 }
     self.sprite_loader = nil

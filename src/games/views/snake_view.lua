@@ -2,8 +2,10 @@ local Object = require('class')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local SnakeView = Object:extend('SnakeView')
 
-function SnakeView:init(game_state)
+function SnakeView:init(game_state, variant)
     self.game = game_state
+    self.variant = variant -- Store variant data for future use (Phase 1.3)
+    -- NOTE: In Phase 2, snake sprites and grid will use variant.sprite_set and variant.background
     self.GRID_SIZE = game_state.GRID_SIZE or 20
     self.di = game_state and game_state.di
     local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.snake and self.di.config.games.snake.view) or

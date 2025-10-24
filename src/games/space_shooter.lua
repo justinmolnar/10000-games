@@ -29,11 +29,13 @@ local SPAWN_BASE_RATE = (SCfg.spawn and SCfg.spawn.base_rate) or 1.0
 local BASE_TARGET_KILLS = (SCfg.goals and SCfg.goals.base_target_kills) or 20
 local ZIGZAG_FREQUENCY = (SCfg.movement and SCfg.movement.zigzag_frequency) or 2
 
-function SpaceShooter:init(game_data, cheats)
-    SpaceShooter.super.init(self, game_data, cheats)
-    -- Optional DI container passed by MinigameState
-    self.di = select(3, ...)
+function SpaceShooter:init(game_data, cheats, di)
+    SpaceShooter.super.init(self, game_data, cheats, di)
+    self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter) or SCfg
+
+    -- Apply variant difficulty modifier (from Phase 1.1-1.2)
+    local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
 
     -- Override file-scope constants with DI values when present
     PLAYER_WIDTH = (runtimeCfg.player and runtimeCfg.player.width) or PLAYER_WIDTH
@@ -83,15 +85,30 @@ function SpaceShooter:init(game_data, cheats)
     self.metrics.kills = 0
     self.metrics.deaths = 0
 
-    self.enemy_speed = (ENEMY_BASE_SPEED * self.difficulty_modifiers.speed) * speed_modifier
-    self.spawn_rate = SPAWN_BASE_RATE / self.difficulty_modifiers.count
+    self.enemy_speed = ((ENEMY_BASE_SPEED * self.difficulty_modifiers.speed) * speed_modifier) * variant_difficulty
+    self.spawn_rate = (SPAWN_BASE_RATE / self.difficulty_modifiers.count) / variant_difficulty
     self.spawn_timer = 0
     self.can_shoot_back = self.difficulty_modifiers.complexity > 2
 
-    self.target_kills = math.floor(BASE_TARGET_KILLS * self.difficulty_modifiers.complexity)
-    
-    self.view = SpaceShooterView:new(self) 
+    self.target_kills = math.floor(BASE_TARGET_KILLS * self.difficulty_modifiers.complexity * variant_difficulty)
+
+    -- Enemy composition from variant (Phase 1.3)
+    -- NOTE: Enemy spawning will be implemented when assets are ready (Phase 2+)
+    self.enemy_composition = {}
+    if self.variant and self.variant.enemies then
+        for _, enemy_def in ipairs(self.variant.enemies) do
+            self.enemy_composition[enemy_def.type] = enemy_def.multiplier
+        end
+    end
+
+    -- Audio/visual variant data (Phase 1.3)
+    -- NOTE: Asset loading will be implemented in Phase 2-3
+    -- Ship sprites will be loaded from variant.sprite_set
+    -- e.g., "fighter_1" (blue squadron), "fighter_2" (gold squadron)
+
+    self.view = SpaceShooterView:new(self, self.variant)
     print("[SpaceShooter:init] Initialized with default game dimensions:", self.game_width, self.game_height)
+    print("[SpaceShooter:init] Variant:", self.variant and self.variant.name or "Default")
 end
 
 function SpaceShooter:setPlayArea(width, height)

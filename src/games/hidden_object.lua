@@ -19,10 +19,13 @@ local BACKGROUND_HASH_1 = (HOCfg.background and HOCfg.background.background_hash
 local BACKGROUND_HASH_2 = (HOCfg.background and HOCfg.background.background_hash and HOCfg.background.background_hash.h2) or 3
 
 function HiddenObject:init(game_data, cheats, di)
-    HiddenObject.super.init(self, game_data, cheats)
+    HiddenObject.super.init(self, game_data, cheats, di)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.hidden_object) or HOCfg
-    
+
+    -- Apply variant difficulty modifier (from Phase 1.1-1.2)
+    local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
+
     local speed_modifier_value = self.cheats.speed_modifier or 1.0
     local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
 
@@ -33,18 +36,24 @@ function HiddenObject:init(game_data, cheats, di)
     self.game_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (HOCfg.arena and HOCfg.arena.width) or 800
     self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (HOCfg.arena and HOCfg.arena.height) or 600
 
-    self.time_limit = (TIME_LIMIT_BASE / self.difficulty_modifiers.speed) * time_bonus_multiplier
-    self.total_objects = math.floor(OBJECTS_BASE * self.difficulty_modifiers.count) 
-    
+    self.time_limit = ((TIME_LIMIT_BASE / self.difficulty_modifiers.speed) * time_bonus_multiplier) / variant_difficulty
+    self.total_objects = math.floor(OBJECTS_BASE * self.difficulty_modifiers.count * variant_difficulty)
+
     self.time_remaining = self.time_limit
     self.objects_found = 0
-    self.objects = self:generateObjects() 
-    
+    self.objects = self:generateObjects()
+
     self.metrics.objects_found = 0
     self.metrics.time_bonus = 0
-    
-    self.view = HiddenObjectView:new(self)
+
+    -- Audio/visual variant data (Phase 1.3)
+    -- NOTE: Asset loading will be implemented in Phase 2-3
+    -- Scene background will be determined by variant.sprite_set
+    -- e.g., "forest", "mansion", "beach", "space_station", "library"
+
+    self.view = HiddenObjectView:new(self, self.variant)
     print("[HiddenObject:init] Initialized with default game dimensions:", self.game_width, self.game_height)
+    print("[HiddenObject:init] Variant:", self.variant and self.variant.name or "Default")
 end
 
 function HiddenObject:setPlayArea(width, height)

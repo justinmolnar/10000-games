@@ -23,9 +23,12 @@ local TARGET_RING_MIN_SCALE = (DodgeCfg.arena and DodgeCfg.arena.target_ring and
 local TARGET_RING_MAX_SCALE = (DodgeCfg.arena and DodgeCfg.arena.target_ring and DodgeCfg.arena.target_ring.max_scale) or 1.5
 
 function DodgeGame:init(game_data, cheats, di)
-    DodgeGame.super.init(self, game_data, cheats)
+    DodgeGame.super.init(self, game_data, cheats, di)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.dodge) or DodgeCfg
+
+    -- Apply variant difficulty modifier (from Phase 1.1-1.2)
+    local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
 
     local speed_modifier = self.cheats.speed_modifier or 1.0
     local advantage_modifier = self.cheats.advantage_modifier or {}
@@ -48,10 +51,19 @@ function DodgeGame:init(game_data, cheats, di)
     self.warnings = {}
     self.time_elapsed = 0
 
-    self.spawn_rate = BASE_SPAWN_RATE / self.difficulty_modifiers.count
-    self.object_speed = (BASE_OBJECT_SPEED * self.difficulty_modifiers.speed) * speed_modifier
+    self.spawn_rate = (BASE_SPAWN_RATE / self.difficulty_modifiers.count) / variant_difficulty
+    self.object_speed = ((BASE_OBJECT_SPEED * self.difficulty_modifiers.speed) * speed_modifier) * variant_difficulty
     self.warning_enabled = self.difficulty_modifiers.complexity <= ((DodgeCfg.warnings and DodgeCfg.warnings.complexity_threshold) or 2)
-    self.dodge_target = math.floor(BASE_DODGE_TARGET * self.difficulty_modifiers.complexity)
+    self.dodge_target = math.floor(BASE_DODGE_TARGET * self.difficulty_modifiers.complexity * variant_difficulty)
+
+    -- Enemy composition from variant (Phase 1.3)
+    -- NOTE: Enemy spawning will be implemented when assets are ready (Phase 2+)
+    self.enemy_composition = {}
+    if self.variant and self.variant.enemies then
+        for _, enemy_def in ipairs(self.variant.enemies) do
+            self.enemy_composition[enemy_def.type] = enemy_def.multiplier
+        end
+    end
 
     self.spawn_timer = 0
 
@@ -59,8 +71,16 @@ function DodgeGame:init(game_data, cheats, di)
     self.metrics.collisions = 0
     self.metrics.perfect_dodges = 0
 
-    self.view = DodgeView:new(self)
+    -- Audio/visual variant data (Phase 1.3)
+    -- NOTE: Asset loading will be implemented in Phase 2-3
+    -- self.music_track = self.variant.music_track
+    -- self.sfx_pack = self.variant.sfx_pack
+    -- self.sprite_set = self.variant.sprite_set
+    -- self.palette = self.variant.palette
+
+    self.view = DodgeView:new(self, self.variant)
     print("[DodgeGame:init] Initialized with default game dimensions:", self.game_width, self.game_height)
+    print("[DodgeGame:init] Variant:", self.variant and self.variant.name or "Default")
 
     -- Safe zone (Undertale-like arena)
     local min_dim = math.min(self.game_width, self.game_height)

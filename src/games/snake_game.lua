@@ -11,11 +11,14 @@ local BASE_TARGET_LENGTH = SCfg.base_target_length or 20
 local BASE_OBSTACLE_COUNT = SCfg.base_obstacle_count or 5
 
 function SnakeGame:init(game_data, cheats, di)
-    SnakeGame.super.init(self, game_data, cheats)
+    SnakeGame.super.init(self, game_data, cheats, di)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.snake) or SCfg
     self.GRID_SIZE = (runtimeCfg and runtimeCfg.grid_size) or GRID_SIZE
-    
+
+    -- Apply variant difficulty modifier (from Phase 1.1-1.2)
+    local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
+
     local speed_modifier = self.cheats.speed_modifier or 1.0
     
     self.game_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (SCfg.arena and SCfg.arena.width) or 800
@@ -29,18 +32,24 @@ function SnakeGame:init(game_data, cheats, di)
     self.next_direction = {x = 1, y = 0}
     
     self.move_timer = 0
-    self.speed = (BASE_SPEED * self.difficulty_modifiers.speed) * speed_modifier
-    self.target_length = math.floor(BASE_TARGET_LENGTH * self.difficulty_modifiers.complexity)
-    
+    self.speed = ((BASE_SPEED * self.difficulty_modifiers.speed) * speed_modifier) * variant_difficulty
+    self.target_length = math.floor(BASE_TARGET_LENGTH * self.difficulty_modifiers.complexity * variant_difficulty)
+
     self.obstacles = self:createObstacles()
     self.food = self:spawnFood()
-    
+
     self.metrics.snake_length = 1
     self.metrics.survival_time = 0
-    
+
     self.died = false -- Track death state
-    
-    self.view = SnakeView:new(self)
+
+    -- Audio/visual variant data (Phase 1.3)
+    -- NOTE: Asset loading will be implemented in Phase 2-3
+    -- Snake sprites will be loaded from variant.sprite_set
+    -- e.g., "classic" (retro green), "modern" (sleek), grid patterns from variant.background
+
+    self.view = SnakeView:new(self, self.variant)
+    print("[SnakeGame:init] Variant:", self.variant and self.variant.name or "Default")
 end
 
 function SnakeGame:setPlayArea(width, height)

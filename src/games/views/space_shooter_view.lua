@@ -2,8 +2,11 @@ local Object = require('class')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local SpaceShooterView = Object:extend('SpaceShooterView')
 
-function SpaceShooterView:init(game_state)
+function SpaceShooterView:init(game_state, variant)
     self.game = game_state
+    self.variant = variant -- Store variant data for future use (Phase 1.3)
+    -- NOTE: In Phase 2, ship sprites will be loaded from variant.sprite_set
+    -- Background will use variant.background (e.g., "stars_blue", "stars_red", "stars_purple")
     self.sprite_loader = nil
     self.sprite_manager = nil
     -- capture DI if passed via game_state

@@ -13,10 +13,13 @@ local MEMORIZE_TIME_BASE = (MMCfg.timings and MMCfg.timings.memorize_time_base) 
 local MATCH_VIEW_TIME = (MMCfg.timings and MMCfg.timings.match_view_time) or 1
 
 function MemoryMatch:init(game_data, cheats, di)
-    MemoryMatch.super.init(self, game_data, cheats)
+    MemoryMatch.super.init(self, game_data, cheats, di)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match) or MMCfg
-    
+
+    -- Apply variant difficulty modifier (from Phase 1.1-1.2)
+    local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
+
     local speed_modifier_value = self.cheats.speed_modifier or 1.0
     local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
     
@@ -29,7 +32,7 @@ function MemoryMatch:init(game_data, cheats, di)
     self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (MMCfg.arena and MMCfg.arena.height) or 600
     
     local per_complexity = (MMCfg.pairs and MMCfg.pairs.per_complexity) or 6
-    local pairs_count = math.floor(per_complexity * self.difficulty_modifiers.complexity) 
+    local pairs_count = math.floor(per_complexity * self.difficulty_modifiers.complexity * variant_difficulty)
     self.grid_size = math.ceil(math.sqrt(pairs_count * 2)) 
     local total_cards = self.grid_size * self.grid_size
     if total_cards % 2 ~= 0 then total_cards = total_cards -1 end
@@ -42,18 +45,24 @@ function MemoryMatch:init(game_data, cheats, di)
     self.selected_indices = {} 
     self.matched_pairs = {}    
     self.memorize_phase = true
-    self.memorize_timer = (MEMORIZE_TIME_BASE / self.difficulty_modifiers.time_limit) * time_bonus_multiplier
-    self.match_check_timer = 0 
-    
+    self.memorize_timer = ((MEMORIZE_TIME_BASE / self.difficulty_modifiers.time_limit) * time_bonus_multiplier) / variant_difficulty
+    self.match_check_timer = 0
+
     self.metrics.matches = 0
-    self.metrics.perfect = 0 
-    self.metrics.time = 0    
-    
+    self.metrics.perfect = 0
+    self.metrics.time = 0
+
     -- Calculate initial grid position now that all constants are set
     self:calculateGridPosition()
-    
-    self.view = MemoryMatchView:new(self)
+
+    -- Audio/visual variant data (Phase 1.3)
+    -- NOTE: Asset loading will be implemented in Phase 2-3
+    -- Card face icons will be loaded from variant.sprite_set
+    -- e.g., "icons_1" (classic), "icons_2" (animals), "icons_3" (gems), "icons_4" (tech)
+
+    self.view = MemoryMatchView:new(self, self.variant)
     print("[MemoryMatch:init] Initialized with default game dimensions:", self.game_width, self.game_height)
+    print("[MemoryMatch:init] Variant:", self.variant and self.variant.name or "Default")
 end
 
 function MemoryMatch:setPlayArea(width, height)

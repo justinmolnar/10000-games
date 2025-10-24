@@ -2,8 +2,11 @@ local Object = require('class')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local MemoryMatchView = Object:extend('MemoryMatchView')
 
-function MemoryMatchView:init(game_state)
+function MemoryMatchView:init(game_state, variant)
     self.game = game_state
+    self.variant = variant -- Store variant data for future use (Phase 1.3)
+    -- NOTE: In Phase 2, card icons will be loaded from variant.sprite_set
+    -- e.g., "icons_1" (classic), "icons_2" (animals), "icons_3" (gems), "icons_4" (tech)
     self.CARD_WIDTH = game_state.CARD_WIDTH or 60
     self.CARD_HEIGHT = game_state.CARD_HEIGHT or 80
     self.CARD_SPACING = game_state.CARD_SPACING or 10
