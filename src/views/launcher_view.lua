@@ -14,6 +14,7 @@ function LauncherView:init(controller, player_data, game_data)
     self.di = di
     self.sprite_loader = (di and di.spriteLoader) or nil
     self.sprite_manager = (di and di.spriteManager) or nil
+    self.variant_loader = (di and di.gameVariantLoader) or nil  -- Phase 1.5
 
     self.selected_category = "all"
     self.selected_index = 1
@@ -402,8 +403,17 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     local text_x = icon_x + icon_size + 12
     local text_w = w - (text_x - x) - 120
     
+    -- Phase 1.5: Display variant name if available
+    local display_name = game_data.display_name
+    if self.variant_loader then
+        local variant = self.variant_loader:getVariantData(game_data.id)
+        if variant and variant.name then
+            display_name = variant.name
+        end
+    end
+
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(game_data.display_name, text_x, y + 8, 0, 1.1, 1.1)
+    love.graphics.print(display_name, text_x, y + 8, 0, 1.1, 1.1)
     
     local star_y = y + 28
     local difficulty = game_data.difficulty_level or 1
@@ -507,12 +517,55 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
     end
 
     local function drawTitleAndDifficulty(line_y)
+        -- Phase 1.5: Display variant name if available
+        local display_name = game_data.display_name
+        local variant = nil
+        if self.variant_loader then
+            variant = self.variant_loader:getVariantData(game_data.id)
+            if variant and variant.name then
+                display_name = variant.name
+            end
+        end
+
         love.graphics.setColor(1, 1, 1)
-        local title_width = love.graphics.getFont():getWidth(game_data.display_name) * 1.2
-        love.graphics.print(game_data.display_name, x + (w - title_width) / 2, line_y, 0, 1.2, 1.2)
+        local title_width = love.graphics.getFont():getWidth(display_name) * 1.2
+        love.graphics.print(display_name, x + (w - title_width) / 2, line_y, 0, 1.2, 1.2)
         line_y = line_y + 20 * 1.5
 
+        -- Phase 1.5: Display flavor text if available
+        if variant and variant.flavor_text and variant.flavor_text ~= "" then
+            love.graphics.setColor(0.8, 0.8, 0.9)
+            local wrapped = {}
+            local current_line = ""
+            for word in variant.flavor_text:gmatch("%S+") do
+                local test_line = current_line == "" and word or (current_line .. " " .. word)
+                if love.graphics.getFont():getWidth(test_line) > (w - 20) then
+                    table.insert(wrapped, current_line)
+                    current_line = word
+                else
+                    current_line = test_line
+                end
+            end
+            if current_line ~= "" then
+                table.insert(wrapped, current_line)
+            end
+
+            for _, line in ipairs(wrapped) do
+                local line_width = love.graphics.getFont():getWidth(line)
+                love.graphics.print(line, x + (w - line_width) / 2, line_y, 0, 0.9, 0.9)
+                line_y = line_y + 15
+            end
+            line_y = line_y + 10
+        end
+
         local difficulty = game_data.difficulty_level or 1
+
+        -- Phase 1.5: Apply variant difficulty modifier
+        local difficulty_modifier = 1.0
+        if variant and variant.difficulty_modifier then
+            difficulty_modifier = variant.difficulty_modifier
+        end
+
         local diff_text, diff_color = "Easy", {0, 1, 0}
         if difficulty > 6 then diff_text, diff_color = "HARD", {1, 0, 0}
         elseif difficulty > 3 then diff_text, diff_color = "Medium", {1, 1, 0} end
@@ -521,10 +574,20 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
         love.graphics.print("Difficulty: ", x + 10, line_y)
         love.graphics.setColor(diff_color)
         love.graphics.print(diff_text, x + 90, line_y)
+
+        -- Phase 1.5: Show difficulty modifier if not 1.0
+        if difficulty_modifier ~= 1.0 then
+            love.graphics.setColor(1, 0.7, 0)
+            love.graphics.print(string.format("×%.1f", difficulty_modifier), x + 160, line_y, 0, 0.9, 0.9)
+        end
+
+        line_y = line_y + 20
+
+        -- Show stars
         local stars = math.min(5, math.ceil(difficulty / 2))
         for i = 1, 5 do
             if i <= stars then love.graphics.setColor(1, 1, 0) else love.graphics.setColor(0.3, 0.3, 0.3) end
-            love.graphics.print("★", x + 160 + (i - 1) * 16, line_y, 0, 1.0, 1.0)
+            love.graphics.print("★", x + 10 + (i - 1) * 16, line_y, 0, 1.0, 1.0)
         end
         return line_y + 20
     end
@@ -533,6 +596,21 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
         love.graphics.setColor(0.8, 0.8, 0.8)
         love.graphics.print("Tier: " .. game_data.tier, x + 10, line_y)
         line_y = line_y + 20
+
+        -- Phase 1.5: Show enemy types if variant has them
+        local variant = self.variant_loader and self.variant_loader:getVariantData(game_data.id)
+        if variant and variant.enemies and #variant.enemies > 0 then
+            love.graphics.setColor(0.9, 0.7, 0.7)
+            love.graphics.print("Enemies:", x + 10, line_y)
+            line_y = line_y + 18
+            for _, enemy in ipairs(variant.enemies) do
+                love.graphics.setColor(0.7, 0.7, 0.7)
+                love.graphics.print("• " .. enemy.type, x + 20, line_y, 0, 0.85, 0.85)
+                line_y = line_y + 15
+            end
+            line_y = line_y + 5
+        end
+
         local is_unlocked = self.player_data:isGameUnlocked(game_data.id)
         if not is_unlocked then
             love.graphics.setColor(1, 0.5, 0)
