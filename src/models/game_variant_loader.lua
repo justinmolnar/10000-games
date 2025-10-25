@@ -5,8 +5,10 @@ local GameVariantLoader = Object:extend('GameVariantLoader')
 
 function GameVariantLoader:init()
     self.base_game_definitions = {}
+    self.standalone_variants = {}  -- Variants loaded from separate files (e.g., dodge_variants.json)
     self.launcher_icons = {}  -- Phase 2.4: Cache for loaded launcher icons
     self:loadBaseGameDefinitions()
+    self:loadStandaloneVariants()
 end
 
 function GameVariantLoader:loadBaseGameDefinitions()
@@ -35,6 +37,35 @@ function GameVariantLoader:loadBaseGameDefinitions()
     print("GameVariantLoader: Loaded " .. #base_games .. " base game definitions")
 end
 
+function GameVariantLoader:loadStandaloneVariants()
+    -- Load standalone variant files (e.g., dodge_variants.json, snake_variants.json)
+    local variant_files = {
+        { base_id = "dodge_1", file = "variants/dodge_variants.json" }
+        -- Add more variant files here as needed
+    }
+
+    for _, variant_file in ipairs(variant_files) do
+        local file_path = Paths.assets.data .. variant_file.file
+        local read_ok, contents = pcall(love.filesystem.read, file_path)
+
+        if read_ok and contents then
+            local decode_ok, variants = pcall(json.decode, contents)
+
+            if decode_ok and variants then
+                self.standalone_variants[variant_file.base_id] = variants
+                print("========================================")
+                print("GameVariantLoader: Successfully loaded " .. #variants .. " variants from " .. variant_file.file)
+                print("Variant examples: " .. (variants[1] and variants[1].name or "nil") .. ", " .. (variants[5] and variants[5].name or "nil") .. ", " .. (variants[10] and variants[10].name or "nil"))
+                print("========================================")
+            else
+                print("ERROR: GameVariantLoader: Failed to decode " .. file_path .. " - " .. tostring(variants))
+            end
+        else
+            print("GameVariantLoader: Could not read " .. file_path .. " (file may not exist)")
+        end
+    end
+end
+
 function GameVariantLoader:getVariantData(game_id)
     if not game_id then
         return self:getDefaultVariant()
@@ -51,6 +82,29 @@ function GameVariantLoader:getVariantData(game_id)
 
     -- Reconstruct the base game ID (always ends with _1)
     local base_game_id = base_id .. "_1"
+
+    -- Convert variant_num to clone_index (0-based)
+    -- dodge_1 = clone_index 0, dodge_2 = clone_index 1, etc.
+    local clone_index = tonumber(variant_num) - 1
+
+    -- FIRST: Check if there's a standalone variants file for this game
+    if self.standalone_variants[base_game_id] then
+        local variants = self.standalone_variants[base_game_id]
+
+        -- Find the variant with matching clone_index
+        for _, v in ipairs(variants) do
+            if v.clone_index == clone_index then
+                return v
+            end
+        end
+
+        -- If no exact match, cycle through available variants
+        local variant_index = (clone_index % #variants) + 1
+        print("GameVariantLoader: No variant for clone_index " .. clone_index .. ", using cycled variant " .. variant_index)
+        return variants[variant_index]
+    end
+
+    -- FALLBACK: Check base_game_definitions for clone_variants array
     local base_game = self.base_game_definitions[base_game_id]
 
     if not base_game then
@@ -62,10 +116,6 @@ function GameVariantLoader:getVariantData(game_id)
         print("GameVariantLoader: No clone_variants defined for: " .. base_game_id)
         return self:getDefaultVariant()
     end
-
-    -- Convert variant_num to clone_index (0-based)
-    -- dodge_1 = clone_index 0, dodge_2 = clone_index 1, etc.
-    local clone_index = tonumber(variant_num) - 1
 
     -- Find the variant with matching clone_index
     local variant = nil

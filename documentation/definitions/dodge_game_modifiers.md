@@ -4,19 +4,49 @@ All properties can be added to any Dodge variant in `assets/data/variants/dodge_
 
 ## Per-Variant Modifiers (Gameplay Feel)
 
-**movement_type** [default]: Movement control scheme. Options: "default" (WASD direct movement), "asteroids" (turn + thrust)
+**movement_type** [default]: Movement control scheme. Options: "default" (WASD direct movement), "asteroids" (turn + thrust), "jump" (discrete jumps with cooldown)
 
 **rotation_speed** [2.0]: How fast the player sprite rotates. Lower = sluggish tank-like turning, Higher = twitchy responsive turning. (2.0 ≈ 115°/s, 8.0 ≈ 458°/s). Range: 0.5-20
 
-**movement_speed** [300]: Player movement speed. In default mode: direct velocity. In asteroids mode: thrust acceleration power. Range: 50-600
+**movement_speed** [300]: Player movement speed. In default mode: direct velocity. In asteroids mode: thrust acceleration power. In jump mode: not used (use jump_distance instead). Range: 50-600
 
-**accel_friction** [1.0]: Friction when accelerating (starting up). 1.0 = instant acceleration. <1.0 = resistance when starting to move. Lower = slower ramp-up. Range: 0.0-1.0
+**jump_distance** [80]: Distance each jump travels (jump mode only). Higher = longer jumps, farther you rocket in each direction. Range: 20-200
 
-**decel_friction** [1.0]: Friction when decelerating (stopping). 1.0 = instant stop. 0.98 = very slippery ice, 0.95 = moderate drift, 0.90 = heavy drag. Lower = more drift/momentum after releasing keys. Range: 0.0-1.0
+**jump_cooldown** [0.5]: Time between jumps in seconds (jump mode only). Higher = slower strategic movement, lower = rapid successive jumps. Range: 0.1-2.0
 
-**bounce_damping** [0.5]: Wall bounce strength. 0.0 = no bounce (stick to walls), 0.5 = medium bounce (50% velocity retained), 1.0 = perfect elastic bounce. Applies to screen edges and safe zone boundary. Range: 0.0-1.0
+**jump_speed** [800]: Speed of the jump/dash movement in pixels/second (jump mode only). Lower = see the dash movement, higher = faster dash. 9999+ = instant teleport. Range: 200-9999
+
+**accel_friction** [1.0]: Friction when accelerating (starting up). 1.0 = instant acceleration. <1.0 = resistance when starting to move. Lower = slower ramp-up. Applies to default and asteroids modes only (not jump mode). Range: 0.0-1.0
+
+**decel_friction** [1.0]: Friction when decelerating (stopping). 1.0 = instant stop. 0.98 = very slippery ice, 0.95 = moderate drift, 0.90 = heavy drag. Lower = more drift/momentum after releasing keys. In jump mode: when < 1.0, enables drift after jumps (slide in jump direction). Range: 0.0-1.0
+
+**bounce_damping** [0.5]: Wall bounce strength. 0.0 = no bounce (stick to walls), 0.5 = medium bounce (50% velocity retained), 1.0 = perfect elastic bounce. Applies to screen edges and safe zone boundary. In jump mode: only works when decel_friction < 1.0 (momentum enabled). Range: 0.0-1.0
 
 **reverse_mode** [none]: Down key behavior (asteroids mode only). Options: "none" (down does nothing), "brake" (active braking, faster deceleration), "thrust" (reverse thrust, accelerate backwards)
+
+## Per-Variant Modifiers (Safe Zone Customization)
+
+**area_size** [1.0]: Multiplier on safe zone radius. 2.0 = double size, 0.5 = half size. Affects both initial and minimum radius. Range: 0.3-3.0
+
+**area_shape** [circle]: Shape of the safe zone boundary. Options: "circle" (smooth), "square" (sharp corners), "hex" (hexagonal)
+
+**area_morph_type** [shrink]: How the safe zone changes over time. Options: "shrink" (gradually shrinks to min), "pulsing" (oscillates in size), "shape_shifting" (cycles through shapes), "deformation" (wobbles/warps), "none" (static)
+
+**area_morph_speed** [1.0]: Speed multiplier for morphing effects. 0 = disabled, higher = faster morphing. Range: 0.0-5.0
+
+**area_movement_type** [random]: How the safe zone moves. Options: "random" (smooth random drift), "cardinal" (switches between N/S/E/W), "none" (stationary)
+
+**area_movement_speed** [1.0]: Safe zone movement speed multiplier. 0 = static, 1.0 = default drift speed, 2.0 = twice as fast. Range: 0.0-3.0
+
+**area_friction** [1.0]: How quickly safe zone changes direction. 1.0 = instant direction changes, <1.0 = smooth momentum-based transitions. Lower = more drift when changing direction. Range: 0.8-1.0
+
+## Per-Variant Modifiers (Game Over System)
+
+**leaving_area_ends_game** [false]: If true, player leaving the safe zone = instant game over. Creates high-tension variants where staying inside is critical
+
+**holes_type** [none]: Type of hazard holes. Options: "circle" (holes on safe zone boundary, move with it), "background" (static holes in arena), "none" (no holes)
+
+**holes_count** [0]: Number of hazard holes to spawn. Touching a hole = instant game over. Range: 0-15
 
 ## Per-Variant Modifiers (Audio/Visual)
 

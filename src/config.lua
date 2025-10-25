@@ -512,7 +512,11 @@ local Config = {
                 rotation_speed = 2.0,  -- radians per second (2 rad/s ≈ 114°/s, fast but smooth)
                 -- Asteroids mode physics
                 thrust_acceleration = 600,  -- Acceleration when thrusting (pixels/sec²)
-                friction = 0.98  -- Velocity multiplier per second (0.98 = slight friction, 1.0 = no friction)
+                friction = 0.98,  -- Velocity multiplier per second (0.98 = slight friction, 1.0 = no friction)
+                -- Jump mode physics
+                jump_distance = 80,  -- How far each jump goes (pixels)
+                jump_cooldown = 0.5,  -- Time between jumps (seconds)
+                jump_speed = 800  -- Speed of the jump movement (pixels/sec, 9999 = instant teleport)
             },
             objects = {
                 size = 15,
@@ -559,7 +563,19 @@ local Config = {
                 min_safe_radius_fraction = 0.35,
                 safe_zone_shrink_sec = 45,
                 spawn_inset = 2,
-                target_ring = { min_scale = 1.2, max_scale = 1.5 }
+                target_ring = { min_scale = 1.2, max_scale = 1.5 },
+                -- Safe zone customization
+                area_size = 1.0,  -- Multiplier on safe zone radius (2.0 = double, 0.5 = half)
+                area_morph_type = "shrink",  -- "shrink", "pulsing", "shape_shifting", "deformation", "none"
+                area_morph_speed = 1.0,  -- Speed multiplier for morphing effects (0 = disabled)
+                area_movement_speed = 1.0,  -- Movement speed multiplier (current drift is baseline, 0 = static)
+                area_movement_type = "random",  -- "random" (current drift), "cardinal", "none"
+                area_friction = 1.0,  -- How quickly safe zone changes direction (1.0 = instant, <1.0 = momentum/drift)
+                area_shape = "circle",  -- "circle", "square", "hex"
+                -- Game over system
+                leaving_area_ends_game = false,  -- If true, leaving safe zone = instant game over
+                holes_type = "none",  -- "circle" (on boundary), "background" (static), "none"
+                holes_count = 0  -- Number of hazard holes (0 = disabled)
             },
             spawn = {
                 warning_chance = 0.7,

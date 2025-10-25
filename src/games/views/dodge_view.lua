@@ -52,14 +52,92 @@ function DodgeView:draw()
     g.rectangle('fill', 0, 0, game_width, game_height)
     self:drawBackground(game_width, game_height)
 
-    -- Safe zone ring
+    -- Safe zone ring (shape-aware)
     if game.safe_zone then
-        g.setColor(0.2, 0.8, 1.0, 0.2)
-        g.circle('fill', game.safe_zone.x, game.safe_zone.y, game.safe_zone.radius)
-        g.setColor(0.2, 0.8, 1.0)
-        g.setLineWidth(2)
-        g.circle('line', game.safe_zone.x, game.safe_zone.y, game.safe_zone.radius)
+        local sz = game.safe_zone
+        local shape = sz.area_shape or "circle"
+
+        -- Game over flash effect
+        local flash_alpha = 0.2
+        if game.game_over then
+            local flash = (math.sin(love.timer.getTime() * 10) + 1) / 2
+            flash_alpha = 0.2 + flash * 0.3
+            g.setColor(1.0, 0.2, 0.2, flash_alpha)
+        else
+            g.setColor(0.2, 0.8, 1.0, flash_alpha)
+        end
+
+        if shape == "circle" then
+            g.circle('fill', sz.x, sz.y, sz.radius)
+            if game.game_over then
+                g.setColor(1.0, 0.2, 0.2)
+            else
+                g.setColor(0.2, 0.8, 1.0)
+            end
+            g.setLineWidth(2)
+            g.circle('line', sz.x, sz.y, sz.radius)
+
+        elseif shape == "square" then
+            local half = sz.radius
+            g.rectangle('fill', sz.x - half, sz.y - half, half * 2, half * 2)
+            if game.game_over then
+                g.setColor(1.0, 0.2, 0.2)
+            else
+                g.setColor(0.2, 0.8, 1.0)
+            end
+            g.setLineWidth(2)
+            g.rectangle('line', sz.x - half, sz.y - half, half * 2, half * 2)
+
+        elseif shape == "hex" then
+            -- Draw hexagon (6 vertices)
+            local vertices = {}
+            for i = 0, 5 do
+                local angle = (i / 6) * math.pi * 2 - math.pi / 2  -- Start at top
+                table.insert(vertices, sz.x + math.cos(angle) * sz.radius)
+                table.insert(vertices, sz.y + math.sin(angle) * sz.radius)
+            end
+            g.polygon('fill', vertices)
+            if game.game_over then
+                g.setColor(1.0, 0.2, 0.2)
+            else
+                g.setColor(0.2, 0.8, 1.0)
+            end
+            g.setLineWidth(2)
+            g.polygon('line', vertices)
+        end
+
+        -- Draw deformation effect for "deformation" morph type
+        if sz.area_morph_type == "deformation" then
+            -- Simple wobble visualization: draw additional circles at perturbed positions
+            g.setColor(0.2, 0.8, 1.0, 0.1)
+            local wobble = math.sin(sz.morph_time * 3) * 5
+            g.circle('line', sz.x + wobble, sz.y, sz.radius + wobble)
+            g.circle('line', sz.x, sz.y + wobble, sz.radius + wobble)
+        end
+
         g.setLineWidth(1)
+    end
+
+    -- Render holes
+    if game.holes then
+        for _, hole in ipairs(game.holes) do
+            if hole.on_boundary then
+                -- Holes on boundary (red with warning effect)
+                g.setColor(1.0, 0.2, 0.2, 0.6)
+                g.circle('fill', hole.x, hole.y, hole.radius)
+                g.setColor(1.0, 0.0, 0.0)
+                g.setLineWidth(2)
+                g.circle('line', hole.x, hole.y, hole.radius)
+                g.setLineWidth(1)
+            else
+                -- Background holes (darker, static)
+                g.setColor(0.3, 0.0, 0.0, 0.8)
+                g.circle('fill', hole.x, hole.y, hole.radius)
+                g.setColor(0.6, 0.0, 0.0)
+                g.setLineWidth(1)
+                g.circle('line', hole.x, hole.y, hole.radius)
+            end
+        end
     end
 
     -- Phase 2.3: Draw player (sprite or fallback to icon)

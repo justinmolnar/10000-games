@@ -120,6 +120,22 @@ function DodgeGame:init(game_data, cheats, di)
         reverse_mode = self.variant.reverse_mode
     end
 
+    -- Jump-specific: jump distance and cooldown
+    local jump_distance = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.jump_distance) or 80
+    if self.variant and self.variant.jump_distance ~= nil then
+        jump_distance = self.variant.jump_distance
+    end
+
+    local jump_cooldown = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.jump_cooldown) or 0.5
+    if self.variant and self.variant.jump_cooldown ~= nil then
+        jump_cooldown = self.variant.jump_cooldown
+    end
+
+    local jump_speed = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.jump_speed) or 800
+    if self.variant and self.variant.jump_speed ~= nil then
+        jump_speed = self.variant.jump_speed
+    end
+
     self.player = {
         x = self.game_width / 2,
         y = self.game_height / 2,
@@ -133,6 +149,15 @@ function DodgeGame:init(game_data, cheats, di)
         decel_friction = decel_friction,  -- Friction when decelerating/stopping (1.0 = instant stop, <1.0 = drift)
         bounce_damping = bounce_damping,  -- Universal bounce damping
         reverse_mode = reverse_mode,      -- Asteroids reverse mode
+        jump_distance = jump_distance,    -- Jump mode: how far each jump goes
+        jump_cooldown = jump_cooldown,    -- Jump mode: time between jumps
+        jump_speed = jump_speed,          -- Jump mode: speed of the jump movement (px/sec)
+        last_jump_time = -999,            -- Jump mode: timestamp of last jump (start ready to jump)
+        is_jumping = false,               -- Jump mode: currently mid-jump
+        jump_target_x = 0,                -- Jump mode: target x position
+        jump_target_y = 0,                -- Jump mode: target y position
+        jump_dir_x = 0,                   -- Jump mode: normalized direction x
+        jump_dir_y = 0,                   -- Jump mode: normalized direction y
         vx = 0,  -- Velocity (used in asteroids mode, and optionally in default mode if friction < 1.0)
         vy = 0   -- Velocity
     }
@@ -168,22 +193,140 @@ function DodgeGame:init(game_data, cheats, di)
     print("[DodgeGame:init] Initialized with default game dimensions:", self.game_width, self.game_height)
     print("[DodgeGame:init] Variant:", self.variant and self.variant.name or "Default")
 
+    -- Load per-variant safe zone customization properties
+    local area_size = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_size) or 1.0
+    if self.variant and self.variant.area_size ~= nil then
+        area_size = self.variant.area_size
+    end
+
+    local area_morph_type = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_morph_type) or "shrink"
+    if self.variant and self.variant.area_morph_type then
+        area_morph_type = self.variant.area_morph_type
+    end
+
+    local area_morph_speed = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_morph_speed) or 1.0
+    if self.variant and self.variant.area_morph_speed ~= nil then
+        area_morph_speed = self.variant.area_morph_speed
+    end
+
+    local area_movement_speed = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_movement_speed) or 1.0
+    if self.variant and self.variant.area_movement_speed ~= nil then
+        area_movement_speed = self.variant.area_movement_speed
+    end
+
+    local area_movement_type = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_movement_type) or "random"
+    if self.variant and self.variant.area_movement_type then
+        area_movement_type = self.variant.area_movement_type
+    end
+
+    local area_friction = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_friction) or 1.0
+    if self.variant and self.variant.area_friction ~= nil then
+        area_friction = self.variant.area_friction
+    end
+
+    local area_shape = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_shape) or "circle"
+    if self.variant and self.variant.area_shape then
+        area_shape = self.variant.area_shape
+    end
+
+    -- Load per-variant game over properties
+    local leaving_area_ends_game = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.leaving_area_ends_game) or false
+    if self.variant and self.variant.leaving_area_ends_game ~= nil then
+        leaving_area_ends_game = self.variant.leaving_area_ends_game
+    end
+
+    local holes_type = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.holes_type) or "none"
+    if self.variant and self.variant.holes_type then
+        holes_type = self.variant.holes_type
+    end
+
+    local holes_count = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.holes_count) or 0
+    if self.variant and self.variant.holes_count ~= nil then
+        holes_count = self.variant.holes_count
+    end
+
     -- Safe zone (Undertale-like arena)
     local min_dim = math.min(self.game_width, self.game_height)
-    local level_scale = 1 + ((DodgeCfg.drift and DodgeCfg.drift.level_scale_add_per_level) or 0.15) * math.max(0, (self.difficulty_level or 1) - 1) -- faster with clone iteration
-    local drift_speed = ((DodgeCfg.drift and DodgeCfg.drift.base_speed) or 45) * level_scale -- px/sec base
-    local drift_angle = math.random() * math.pi * 2
-    local drift_vx = math.cos(drift_angle) * drift_speed
-    local drift_vy = math.sin(drift_angle) * drift_speed
+    local level_scale = 1 + ((DodgeCfg.drift and DodgeCfg.drift.level_scale_add_per_level) or 0.15) * math.max(0, (self.difficulty_level or 1) - 1)
+    local drift_speed = ((DodgeCfg.drift and DodgeCfg.drift.base_speed) or 45) * level_scale
+
+    -- Calculate initial target velocity based on area_movement_type
+    local target_vx, target_vy = 0, 0
+    if area_movement_type == "random" then
+        -- Random drift (current default behavior)
+        local drift_angle = math.random() * math.pi * 2
+        target_vx = math.cos(drift_angle) * drift_speed * area_movement_speed
+        target_vy = math.sin(drift_angle) * drift_speed * area_movement_speed
+    elseif area_movement_type == "cardinal" then
+        -- Start with random cardinal direction
+        local cardinal_dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+        local dir = cardinal_dirs[math.random(1, 4)]
+        target_vx = dir[1] * drift_speed * area_movement_speed
+        target_vy = dir[2] * drift_speed * area_movement_speed
+    elseif area_movement_type == "none" then
+        -- No movement
+        target_vx, target_vy = 0, 0
+    end
+
+    -- Apply area_size multiplier to initial and min radius
+    local initial_radius = min_dim * INITIAL_SAFE_RADIUS_FRACTION * area_size
+    local min_radius = min_dim * MIN_SAFE_RADIUS_FRACTION * area_size
+
     self.safe_zone = {
         x = self.game_width / 2,
         y = self.game_height / 2,
-    radius = min_dim * ((DodgeCfg.arena and DodgeCfg.arena.initial_safe_radius_fraction) or 0.48),
-        min_radius = min_dim * MIN_SAFE_RADIUS_FRACTION,
-    shrink_speed = (min_dim * (((DodgeCfg.arena and DodgeCfg.arena.initial_safe_radius_fraction) or 0.48) - MIN_SAFE_RADIUS_FRACTION)) / (SAFE_ZONE_SHRINK_SEC / self.difficulty_modifiers.complexity),
-        vx = drift_vx,
-        vy = drift_vy
+        radius = initial_radius,
+        initial_radius = initial_radius,  -- Store for pulsing
+        min_radius = min_radius,
+        shrink_speed = (initial_radius - min_radius) / (SAFE_ZONE_SHRINK_SEC / self.difficulty_modifiers.complexity),
+        -- Velocity system with friction
+        vx = target_vx,  -- Current velocity
+        vy = target_vy,
+        target_vx = target_vx,  -- Target velocity for friction interpolation
+        target_vy = target_vy,
+        -- Area customization properties
+        area_size = area_size,
+        area_morph_type = area_morph_type,
+        area_morph_speed = area_morph_speed,
+        area_movement_speed = area_movement_speed,
+        area_movement_type = area_movement_type,
+        area_friction = area_friction,
+        area_shape = area_shape,
+        -- Morph state
+        morph_time = 0,  -- Timer for pulsing/shape shifting
+        shape_index = 1,  -- Current shape index for shape shifting
+        -- Movement state
+        direction_timer = 0,  -- Timer for changing cardinal/random direction
+        direction_change_interval = 2.0  -- Change direction every 2 seconds
     }
+
+    -- Initialize holes
+    self.holes = {}
+    if holes_count > 0 and holes_type ~= "none" then
+        for i = 1, holes_count do
+            local hole = { radius = 8 }  -- Simple circle holes for now
+
+            if holes_type == "circle" then
+                -- Position on safe zone boundary (clustered randomly)
+                local angle = math.random() * math.pi * 2
+                hole.angle = angle  -- Store angle for updating position
+                hole.x = self.safe_zone.x + math.cos(angle) * self.safe_zone.radius
+                hole.y = self.safe_zone.y + math.sin(angle) * self.safe_zone.radius
+                hole.on_boundary = true
+            elseif holes_type == "background" then
+                -- Random static position in arena
+                hole.x = math.random(hole.radius, self.game_width - hole.radius)
+                hole.y = math.random(hole.radius, self.game_height - hole.radius)
+                hole.on_boundary = false
+            end
+
+            table.insert(self.holes, hole)
+        end
+    end
+
+    -- Game over state
+    self.game_over = false
+    self.leaving_area_ends_game = leaving_area_ends_game
 end
 
 -- Phase 2.3: Load sprite assets from variant.sprite_set
@@ -263,8 +406,17 @@ function DodgeGame:setPlayArea(width, height)
 end
 
 function DodgeGame:updateGameLogic(dt)
+    -- Check for game over conditions first
+    self:checkGameOver()
+
+    -- If game is over, freeze game state
+    if self.game_over then
+        return
+    end
+
     self.time_elapsed = self.time_elapsed + dt
     self:updateSafeZone(dt)
+    self:updateSafeMorph(dt)
     self:updatePlayer(dt)
 
     self.spawn_timer = self.spawn_timer - dt
@@ -291,6 +443,8 @@ end
 function DodgeGame:updatePlayer(dt)
     if self.player.movement_type == "asteroids" then
         self:updatePlayerAsteroids(dt)
+    elseif self.player.movement_type == "jump" then
+        self:updatePlayerJump(dt)
     else
         self:updatePlayerDefault(dt)
     end
@@ -486,34 +640,352 @@ function DodgeGame:updatePlayerAsteroids(dt)
     end
 end
 
+function DodgeGame:updatePlayerJump(dt)
+    -- Jump/dash movement: discrete jumps with cooldown
+    -- Press a direction key → player dashes a fixed distance at jump_speed
+    -- Must wait for cooldown before next jump
+    --
+    -- Supports optional momentum/drift:
+    -- - If accel_friction or decel_friction < 1.0, uses velocity-based movement (can drift after jump)
+    -- - Otherwise, uses direct positional movement (instant stop after jump)
+
+    local time_since_jump = self.time_elapsed - self.player.last_jump_time
+    local can_jump = time_since_jump >= self.player.jump_cooldown
+
+    -- Check if momentum/drift is enabled
+    local has_momentum = self.player.accel_friction < 1.0 or self.player.decel_friction < 1.0
+
+    -- If currently mid-jump, continue moving towards target
+    if self.player.is_jumping then
+        -- Safety check: if jump has been going too long, end it (prevents getting stuck)
+        local expected_jump_time = self.player.jump_distance / self.player.jump_speed
+        local actual_jump_time = self.time_elapsed - self.player.last_jump_time
+        if actual_jump_time > expected_jump_time * 2.5 then
+            -- Jump took way too long, probably stuck on wall - end it
+            self.player.is_jumping = false
+        end
+
+        if self.player.is_jumping then
+            local dx = self.player.jump_target_x - self.player.x
+            local dy = self.player.jump_target_y - self.player.y
+            local dist_to_target = math.sqrt(dx*dx + dy*dy)
+
+            -- If very high speed (9999+), teleport instantly
+            if self.player.jump_speed >= 9999 then
+                self.player.x = self.player.jump_target_x
+                self.player.y = self.player.jump_target_y
+                self.player.is_jumping = false
+                -- If using momentum mode, set velocity to jump direction for drift
+                if has_momentum then
+                    self.player.vx = self.player.jump_dir_x * self.player.jump_speed * 0.3
+                    self.player.vy = self.player.jump_dir_y * self.player.jump_speed * 0.3
+                end
+            -- Otherwise, move smoothly towards target
+            elseif dist_to_target > 1 then
+                -- Recalculate direction to target (in case clamping pushed us off course)
+                local dir_x = dx / dist_to_target
+                local dir_y = dy / dist_to_target
+
+                -- Move at jump_speed towards target
+                local move_dist = self.player.jump_speed * dt
+
+                if move_dist >= dist_to_target then
+                    -- Reached target
+                    self.player.x = self.player.jump_target_x
+                    self.player.y = self.player.jump_target_y
+                    self.player.is_jumping = false
+                    -- If using momentum mode, set velocity to jump direction for drift
+                    if has_momentum then
+                        self.player.vx = self.player.jump_dir_x * self.player.jump_speed * 0.3
+                        self.player.vy = self.player.jump_dir_y * self.player.jump_speed * 0.3
+                    end
+                else
+                    -- Store position before moving
+                    local old_x, old_y = self.player.x, self.player.y
+
+                    -- Move towards target using recalculated direction
+                    self.player.x = self.player.x + dir_x * move_dist
+                    self.player.y = self.player.y + dir_y * move_dist
+
+                    -- Apply clamping
+                    self:clampPlayerPosition()
+
+                    -- After clamping, check if we actually moved
+                    -- (if not, we're stuck on a wall and should end jump)
+                    local moved_x = math.abs(self.player.x - old_x)
+                    local moved_y = math.abs(self.player.y - old_y)
+                    if moved_x < 0.5 and moved_y < 0.5 then
+                        -- Barely moved, stuck on wall - end jump
+                        self.player.is_jumping = false
+                        -- If using momentum mode, preserve some velocity for bounce
+                        if has_momentum then
+                            self.player.vx = dir_x * self.player.jump_speed * 0.2
+                            self.player.vy = dir_y * self.player.jump_speed * 0.2
+                        end
+                    end
+                end
+
+                -- Rotate sprite towards current movement direction
+                if self.player.is_jumping then
+                    local target_rotation = math.atan2(dir_y, dir_x) + math.pi / 2
+                    local function angdiff(a, b)
+                        local d = (a - b + math.pi) % (2 * math.pi) - math.pi
+                        return d
+                    end
+                    local diff = angdiff(target_rotation, self.player.rotation)
+                    local max_turn = self.player.rotation_speed * dt
+                    if diff > max_turn then diff = max_turn
+                    elseif diff < -max_turn then diff = -max_turn end
+                    self.player.rotation = (self.player.rotation + diff) % (2 * math.pi)
+                end
+            else
+                -- Close enough, snap to target
+                self.player.x = self.player.jump_target_x
+                self.player.y = self.player.jump_target_y
+                self.player.is_jumping = false
+                -- If using momentum mode, set velocity to jump direction for drift
+                if has_momentum then
+                    self.player.vx = self.player.jump_dir_x * self.player.jump_speed * 0.3
+                    self.player.vy = self.player.jump_dir_y * self.player.jump_speed * 0.3
+                end
+            end
+        end
+
+    -- Not jumping, check if we can start a new jump
+    elseif can_jump and not self.player.is_jumping then
+        -- Check for directional input (only register one direction per jump)
+        local jump_dx, jump_dy = 0, 0
+
+        if love.keyboard.isDown('left', 'a') then
+            jump_dx = -1
+        elseif love.keyboard.isDown('right', 'd') then
+            jump_dx = 1
+        elseif love.keyboard.isDown('up', 'w') then
+            jump_dy = -1
+        elseif love.keyboard.isDown('down', 's') then
+            jump_dy = 1
+        end
+
+        -- If a direction was pressed, start jump
+        if jump_dx ~= 0 or jump_dy ~= 0 then
+            -- Calculate target position
+            self.player.jump_target_x = self.player.x + jump_dx * self.player.jump_distance
+            self.player.jump_target_y = self.player.y + jump_dy * self.player.jump_distance
+
+            -- Clamp target to bounds
+            self.player.jump_target_x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.jump_target_x))
+            self.player.jump_target_y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.jump_target_y))
+
+            -- Store normalized direction
+            self.player.jump_dir_x = jump_dx
+            self.player.jump_dir_y = jump_dy
+
+            -- Start jump
+            self.player.is_jumping = true
+            self.player.last_jump_time = self.time_elapsed
+
+            -- Play a jump sound (if available)
+            self:playSound("jump", 0.5)
+        end
+    end
+
+    -- If not jumping and momentum mode is enabled, apply drift/friction
+    if not self.player.is_jumping and has_momentum then
+        -- Apply deceleration friction (drift after jump)
+        if self.player.decel_friction < 1.0 then
+            local decel_factor = math.pow(self.player.decel_friction, dt * 60)
+            self.player.vx = self.player.vx * decel_factor
+            self.player.vy = self.player.vy * decel_factor
+        else
+            -- Instant stop if decel_friction = 1.0
+            self.player.vx = 0
+            self.player.vy = 0
+        end
+
+        -- Update position from velocity (drift)
+        self.player.x = self.player.x + self.player.vx * dt
+        self.player.y = self.player.y + self.player.vy * dt
+
+        -- Rotate sprite towards drift direction (if moving)
+        local speed = math.sqrt(self.player.vx * self.player.vx + self.player.vy * self.player.vy)
+        if speed > 10 then
+            local target_rotation = math.atan2(self.player.vy, self.player.vx) + math.pi / 2
+            local function angdiff(a, b)
+                local d = (a - b + math.pi) % (2 * math.pi) - math.pi
+                return d
+            end
+            local diff = angdiff(target_rotation, self.player.rotation)
+            local max_turn = self.player.rotation_speed * dt
+            if diff > max_turn then diff = max_turn
+            elseif diff < -max_turn then diff = -max_turn end
+            self.player.rotation = (self.player.rotation + diff) % (2 * math.pi)
+        end
+    end
+
+    -- Clamp to safe zone
+    self:clampPlayerPosition()
+
+    -- Apply bounce if momentum mode is enabled and hit boundaries
+    if has_momentum then
+        local hit_boundary = false
+        if self.player.x <= self.player.radius or self.player.x >= self.game_width - self.player.radius then
+            self.player.vx = -self.player.vx * self.player.bounce_damping
+            hit_boundary = true
+        end
+        if self.player.y <= self.player.radius or self.player.y >= self.game_height - self.player.radius then
+            self.player.vy = -self.player.vy * self.player.bounce_damping
+            hit_boundary = true
+        end
+
+        if hit_boundary then
+            self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
+            self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
+        end
+    end
+end
+
+-- Shape-specific collision helpers
+function DodgeGame:isPointInCircle(px, py, cx, cy, radius)
+    local dx = px - cx
+    local dy = py - cy
+    return (dx*dx + dy*dy) <= (radius * radius)
+end
+
+function DodgeGame:isPointInSquare(px, py, cx, cy, half_size)
+    return px >= (cx - half_size) and px <= (cx + half_size) and
+           py >= (cy - half_size) and py <= (cy + half_size)
+end
+
+function DodgeGame:isPointInHex(px, py, cx, cy, radius)
+    -- Hexagon is approximated as 6 sides
+    -- For simplicity, use distance check with adjusted radius (inscribed hex)
+    local dx = px - cx
+    local dy = py - cy
+    local dist = math.sqrt(dx*dx + dy*dy)
+    if dist > radius then return false end
+
+    -- Hex-specific check: use 6-sided polygon
+    local angle = math.atan2(dy, dx)
+    local sector_angle = math.pi / 3  -- 60 degrees
+    local sector = math.floor((angle + math.pi) / sector_angle)
+    local sector_mid_angle = -math.pi + (sector + 0.5) * sector_angle
+    local dx_rot = dx * math.cos(-sector_mid_angle) - dy * math.sin(-sector_mid_angle)
+
+    -- Check against flat edge of hexagon
+    local hex_flat_radius = radius * math.cos(math.pi / 6)
+    return math.abs(dx_rot) <= hex_flat_radius
+end
+
 function DodgeGame:clampPlayerPosition()
     -- Clamp to rectangular bounds first
     self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
     self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
 
-    -- Clamp to circular safe zone
+    -- Clamp to safe zone based on shape
     local sz = self.safe_zone
     if sz then
+        local shape = sz.area_shape or "circle"
         local dxp = self.player.x - sz.x
         local dyp = self.player.y - sz.y
         local dist = math.sqrt(dxp*dxp + dyp*dyp)
-        local max_dist = math.max(0, sz.radius - self.player.radius)
-        if dist > max_dist and dist > 0 then
-            local scale = max_dist / dist
-            self.player.x = sz.x + dxp * scale
-            self.player.y = sz.y + dyp * scale
 
-            -- If using velocity-based movement, dampen velocity when hitting safe zone boundary
-            if self.player.friction < 1.0 then
-                -- Project velocity onto boundary normal and dampen
+        if shape == "circle" then
+            -- Circle clamping (original behavior)
+            local max_dist = math.max(0, sz.radius - self.player.radius)
+            if dist > max_dist and dist > 0 then
+                local scale = max_dist / dist
+                self.player.x = sz.x + dxp * scale
+                self.player.y = sz.y + dyp * scale
+
+                -- Bounce velocity
                 local nx = dxp / dist
                 local ny = dyp / dist
                 local dot = self.player.vx * nx + self.player.vy * ny
-                if dot > 0 then  -- Moving outward
+                if dot > 0 then
                     local bounce_factor = 1.0 + self.player.bounce_damping
-                    self.player.vx = self.player.vx - nx * dot * bounce_factor  -- Bounce inward
+                    self.player.vx = self.player.vx - nx * dot * bounce_factor
                     self.player.vy = self.player.vy - ny * dot * bounce_factor
                 end
+            end
+
+        elseif shape == "square" then
+            -- Square clamping (AABB)
+            local half_size = sz.radius - self.player.radius
+            local clamped_x = math.max(sz.x - half_size, math.min(sz.x + half_size, self.player.x))
+            local clamped_y = math.max(sz.y - half_size, math.min(sz.y + half_size, self.player.y))
+
+            if clamped_x ~= self.player.x or clamped_y ~= self.player.y then
+                -- Hit boundary
+                if clamped_x ~= self.player.x then
+                    self.player.vx = -self.player.vx * self.player.bounce_damping
+                end
+                if clamped_y ~= self.player.y then
+                    self.player.vy = -self.player.vy * self.player.bounce_damping
+                end
+                self.player.x = clamped_x
+                self.player.y = clamped_y
+            end
+
+        elseif shape == "hex" then
+            -- Hexagon clamping (approximate with circle for now, refined check for edges)
+            local max_dist = math.max(0, sz.radius - self.player.radius)
+            if dist > max_dist and dist > 0 then
+                local scale = max_dist / dist
+                self.player.x = sz.x + dxp * scale
+                self.player.y = sz.y + dyp * scale
+
+                -- Bounce velocity
+                local nx = dxp / dist
+                local ny = dyp / dist
+                local dot = self.player.vx * nx + self.player.vy * ny
+                if dot > 0 then
+                    local bounce_factor = 1.0 + self.player.bounce_damping
+                    self.player.vx = self.player.vx - nx * dot * bounce_factor
+                    self.player.vy = self.player.vy - ny * dot * bounce_factor
+                end
+            end
+        end
+    end
+end
+
+function DodgeGame:checkGameOver()
+    if self.game_over then return end  -- Already game over
+
+    local sz = self.safe_zone
+    if not sz then return end
+
+    -- Check if player left safe zone (if enabled)
+    if self.leaving_area_ends_game then
+        local shape = sz.area_shape or "circle"
+        local is_inside = false
+
+        if shape == "circle" then
+            is_inside = self:isPointInCircle(self.player.x, self.player.y, sz.x, sz.y, sz.radius - self.player.radius)
+        elseif shape == "square" then
+            is_inside = self:isPointInSquare(self.player.x, self.player.y, sz.x, sz.y, sz.radius - self.player.radius)
+        elseif shape == "hex" then
+            is_inside = self:isPointInHex(self.player.x, self.player.y, sz.x, sz.y, sz.radius - self.player.radius)
+        end
+
+        if not is_inside then
+            self.game_over = true
+            print("[DodgeGame] Game Over: Player left safe zone")
+            return
+        end
+    end
+
+    -- Check if player touched any hole
+    if self.holes then
+        for _, hole in ipairs(self.holes) do
+            local dx = self.player.x - hole.x
+            local dy = self.player.y - hole.y
+            local dist_sq = dx*dx + dy*dy
+            local collision_dist = self.player.radius + hole.radius
+
+            if dist_sq <= (collision_dist * collision_dist) then
+                self.game_over = true
+                print("[DodgeGame] Game Over: Player touched hole")
+                return
             end
         end
     end
@@ -931,21 +1403,120 @@ end
 function DodgeGame:updateSafeZone(dt)
     local sz = self.safe_zone
     if not sz then return end
-    -- Shrink toward min radius
-    if sz.radius > sz.min_radius then
-        sz.radius = math.max(sz.min_radius, sz.radius - sz.shrink_speed * dt)
+
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.dodge) or {}
+    local drift_speed = ((runtimeCfg.drift and runtimeCfg.drift.base_speed) or 45)
+    local level_scale = 1 + ((runtimeCfg.drift and runtimeCfg.drift.level_scale_add_per_level) or 0.15) * math.max(0, (self.difficulty_level or 1) - 1)
+    drift_speed = drift_speed * level_scale
+
+    -- Update direction timer and change target velocity periodically
+    sz.direction_timer = sz.direction_timer + dt
+    if sz.direction_timer >= sz.direction_change_interval then
+        sz.direction_timer = 0
+
+        if sz.area_movement_type == "random" then
+            -- Pick new random direction
+            local drift_angle = math.random() * math.pi * 2
+            sz.target_vx = math.cos(drift_angle) * drift_speed * sz.area_movement_speed
+            sz.target_vy = math.sin(drift_angle) * drift_speed * sz.area_movement_speed
+        elseif sz.area_movement_type == "cardinal" then
+            -- Pick new random cardinal direction
+            local cardinal_dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+            local dir = cardinal_dirs[math.random(1, 4)]
+            sz.target_vx = dir[1] * drift_speed * sz.area_movement_speed
+            sz.target_vy = dir[2] * drift_speed * sz.area_movement_speed
+        end
     end
-    -- Drift and bounce (slight acceleration over time)
-    local accel = 1 + math.min(((DodgeCfg.drift and DodgeCfg.drift.accel and DodgeCfg.drift.accel.max) or 1.0), (self.time_elapsed or 0) / ((DodgeCfg.drift and DodgeCfg.drift.accel and DodgeCfg.drift.accel.time) or 90))
+
+    -- Apply friction to interpolate actual velocity toward target velocity
+    if sz.area_friction < 1.0 then
+        -- Smooth momentum-based transition
+        local friction_factor = math.pow(sz.area_friction, dt * 60)
+        sz.vx = sz.vx + (sz.target_vx - sz.vx) * (1 - friction_factor)
+        sz.vy = sz.vy + (sz.target_vy - sz.vy) * (1 - friction_factor)
+    else
+        -- Instant direction changes
+        sz.vx = sz.target_vx
+        sz.vy = sz.target_vy
+    end
+
+    -- Movement and bounce
+    local accel = 1 + math.min(((runtimeCfg.drift and runtimeCfg.drift.accel and runtimeCfg.drift.accel.max) or 1.0), (self.time_elapsed or 0) / ((runtimeCfg.drift and runtimeCfg.drift.accel and runtimeCfg.drift.accel.time) or 90))
     sz.x = sz.x + sz.vx * accel * dt
     sz.y = sz.y + sz.vy * accel * dt
-    local margin = sz.radius
-    if sz.x - sz.radius < 0 or sz.x + sz.radius > self.game_width then sz.vx = -sz.vx; sz.x = math.max(sz.radius, math.min(self.game_width - sz.radius, sz.x)) end
-    if sz.y - sz.radius < 0 or sz.y + sz.radius > self.game_height then sz.vy = -sz.vy; sz.y = math.max(sz.radius, math.min(self.game_height - sz.radius, sz.y)) end
+
+    -- Bounce at arena bounds (and reverse target velocity too for consistency)
+    if sz.x - sz.radius < 0 or sz.x + sz.radius > self.game_width then
+        sz.vx = -sz.vx
+        sz.target_vx = -sz.target_vx
+        sz.x = math.max(sz.radius, math.min(self.game_width - sz.radius, sz.x))
+    end
+    if sz.y - sz.radius < 0 or sz.y + sz.radius > self.game_height then
+        sz.vy = -sz.vy
+        sz.target_vy = -sz.target_vy
+        sz.y = math.max(sz.radius, math.min(self.game_height - sz.radius, sz.y))
+    end
+
+    -- Update holes that are attached to the safe zone boundary
+    if self.holes then
+        for _, hole in ipairs(self.holes) do
+            if hole.on_boundary then
+                -- Reposition hole on the boundary at its stored angle
+                hole.x = sz.x + math.cos(hole.angle) * sz.radius
+                hole.y = sz.y + math.sin(hole.angle) * sz.radius
+            end
+        end
+    end
+end
+
+function DodgeGame:updateSafeMorph(dt)
+    local sz = self.safe_zone
+    if not sz then return end
+
+    sz.morph_time = sz.morph_time + dt * sz.area_morph_speed
+
+    if sz.area_morph_type == "shrink" then
+        -- Shrink toward min radius over time
+        if sz.radius > sz.min_radius then
+            sz.radius = math.max(sz.min_radius, sz.radius - sz.shrink_speed * dt)
+        end
+
+    elseif sz.area_morph_type == "pulsing" then
+        -- Oscillate between initial_radius and min_radius using sine wave
+        local pulse = (math.sin(sz.morph_time * 2) + 1) / 2  -- 0 to 1
+        sz.radius = sz.min_radius + (sz.initial_radius - sz.min_radius) * pulse
+
+    elseif sz.area_morph_type == "shape_shifting" then
+        -- Cycle through shapes at intervals
+        local shape_shift_interval = 3.0  -- seconds per shape
+        if sz.morph_time >= shape_shift_interval then
+            sz.morph_time = 0
+            -- Cycle: circle -> square -> hex -> circle
+            local shapes = {"circle", "square", "hex"}
+            sz.shape_index = (sz.shape_index % 3) + 1
+            sz.area_shape = shapes[sz.shape_index]
+        end
+
+        -- Still shrink even while shape shifting
+        if sz.radius > sz.min_radius then
+            sz.radius = math.max(sz.min_radius, sz.radius - sz.shrink_speed * dt)
+        end
+
+    elseif sz.area_morph_type == "deformation" then
+        -- Wobble/deformation (visual effect, handled in rendering)
+        -- Still shrink the base radius
+        if sz.radius > sz.min_radius then
+            sz.radius = math.max(sz.min_radius, sz.radius - sz.shrink_speed * dt)
+        end
+
+    elseif sz.area_morph_type == "none" then
+        -- No morphing, static size
+        -- Do nothing
+    end
 end
 
 function DodgeGame:checkComplete()
-    return self.metrics.collisions >= self.MAX_COLLISIONS or self.metrics.objects_dodged >= self.dodge_target
+    return self.game_over or self.metrics.collisions >= self.MAX_COLLISIONS or self.metrics.objects_dodged >= self.dodge_target
 end
 
 -- Phase 3.3: Override onComplete to play appropriate sound
