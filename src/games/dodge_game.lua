@@ -47,6 +47,7 @@ local DodgeCfg = (Config and Config.games and Config.games.dodge) or {}
 local PLAYER_SIZE = (DodgeCfg.player and DodgeCfg.player.size) or 20
 local PLAYER_RADIUS = PLAYER_SIZE
 local PLAYER_SPEED = (DodgeCfg.player and DodgeCfg.player.speed) or 300
+local PLAYER_ROTATION_SPEED = (DodgeCfg.player and DodgeCfg.player.rotation_speed) or 8.0
 local OBJECT_SIZE = (DodgeCfg.objects and DodgeCfg.objects.size) or 15
 local OBJECT_RADIUS = OBJECT_SIZE
 local BASE_SPAWN_RATE = (DodgeCfg.objects and DodgeCfg.objects.base_spawn_rate) or 1.0
@@ -78,11 +79,62 @@ function DodgeGame:init(game_data, cheats, di)
     self.game_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (DodgeCfg.arena and DodgeCfg.arena.width) or 400
     self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (DodgeCfg.arena and DodgeCfg.arena.height) or 400
 
+    -- Per-variant rotation speed (fallback to runtime config, then file constant)
+    local rotation_speed = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.rotation_speed) or PLAYER_ROTATION_SPEED
+    if self.variant and self.variant.rotation_speed then
+        rotation_speed = self.variant.rotation_speed
+    end
+
+    -- Per-variant movement speed (fallback to runtime config, then file constant)
+    local movement_speed = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.speed) or PLAYER_SPEED
+    if self.variant and self.variant.movement_speed then
+        movement_speed = self.variant.movement_speed
+    end
+
+    -- Per-variant movement type (default or asteroids)
+    local movement_type = "default"
+    if self.variant and self.variant.movement_type then
+        movement_type = self.variant.movement_type
+    end
+
+    -- Universal physics properties (apply to all movement types)
+    -- Separate friction for acceleration (start-up) and deceleration (stopping)
+    local accel_friction = 1.0  -- Default: no friction when accelerating
+    if self.variant and self.variant.accel_friction ~= nil then
+        accel_friction = self.variant.accel_friction
+    end
+
+    local decel_friction = 1.0  -- Default: no friction when decelerating
+    if self.variant and self.variant.decel_friction ~= nil then
+        decel_friction = self.variant.decel_friction
+    end
+
+    local bounce_damping = 0.5  -- Default: 50% bounce
+    if self.variant and self.variant.bounce_damping ~= nil then
+        bounce_damping = self.variant.bounce_damping
+    end
+
+    -- Asteroids-specific: reverse mode (down key behavior)
+    local reverse_mode = "none"  -- "none", "brake", or "thrust"
+    if self.variant and self.variant.reverse_mode then
+        reverse_mode = self.variant.reverse_mode
+    end
+
     self.player = {
         x = self.game_width / 2,
         y = self.game_height / 2,
         size = PLAYER_SIZE,
-        radius = PLAYER_RADIUS
+        radius = PLAYER_RADIUS,
+        rotation = 0,  -- Current rotation angle in radians (0 = facing right)
+        rotation_speed = rotation_speed,  -- Store per-variant rotation speed
+        movement_speed = movement_speed,  -- Store per-variant movement speed
+        movement_type = movement_type,    -- Store per-variant movement type
+        accel_friction = accel_friction,  -- Friction when accelerating (1.0 = none, <1.0 = resistance)
+        decel_friction = decel_friction,  -- Friction when decelerating/stopping (1.0 = instant stop, <1.0 = drift)
+        bounce_damping = bounce_damping,  -- Universal bounce damping
+        reverse_mode = reverse_mode,      -- Asteroids reverse mode
+        vx = 0,  -- Velocity (used in asteroids mode, and optionally in default mode if friction < 1.0)
+        vy = 0   -- Velocity
     }
 
     self.objects = {}
@@ -177,6 +229,9 @@ function DodgeGame:loadAssets()
     tryLoad("background.png", "background")
 
     print("[DodgeGame:loadAssets] Loaded " .. self:countLoadedSprites() .. " sprites for variant: " .. (self.variant.name or "Unknown"))
+
+    -- Phase 3.3: Load audio (music + SFX pack) - using BaseGame helper
+    self:loadAudio()
 end
 
 -- Helper: Count how many sprites were successfully loaded
@@ -234,20 +289,204 @@ function DodgeGame:draw()
 end
 
 function DodgeGame:updatePlayer(dt)
+    if self.player.movement_type == "asteroids" then
+        self:updatePlayerAsteroids(dt)
+    else
+        self:updatePlayerDefault(dt)
+    end
+end
+
+function DodgeGame:updatePlayerDefault(dt)
     local dx, dy = 0, 0
     if love.keyboard.isDown('left', 'a') then dx = dx - 1 end
     if love.keyboard.isDown('right', 'd') then dx = dx + 1 end
     if love.keyboard.isDown('up', 'w') then dy = dy - 1 end
     if love.keyboard.isDown('down', 's') then dy = dy + 1 end
 
+    -- Update rotation towards movement direction
+    if dx ~= 0 or dy ~= 0 then
+        -- Add π/2 offset because sprite's default orientation is facing up (not right)
+        local target_rotation = math.atan2(dy, dx) + math.pi / 2
+
+        -- Calculate shortest path to target rotation
+        local function angdiff(a, b)
+            local d = (a - b + math.pi) % (2 * math.pi) - math.pi
+            return d
+        end
+
+        local diff = angdiff(target_rotation, self.player.rotation)
+        local max_turn = self.player.rotation_speed * dt
+
+        -- Clamp rotation delta to max turn speed
+        if diff > max_turn then
+            diff = max_turn
+        elseif diff < -max_turn then
+            diff = -max_turn
+        end
+
+        self.player.rotation = self.player.rotation + diff
+
+        -- Normalize rotation to [0, 2π] range for consistency
+        self.player.rotation = self.player.rotation % (2 * math.pi)
+    end
+
     if dx ~= 0 and dy ~= 0 then
         local inv_sqrt2 = 0.70710678118
         dx = dx * inv_sqrt2; dy = dy * inv_sqrt2
     end
 
-    self.player.x = self.player.x + dx * PLAYER_SPEED * dt
-    self.player.y = self.player.y + dy * PLAYER_SPEED * dt
+    -- If friction is enabled, use velocity-based movement (momentum)
+    local has_momentum = self.player.accel_friction < 1.0 or self.player.decel_friction < 1.0
+    if has_momentum then
+        -- Apply input as acceleration/force
+        if dx ~= 0 or dy ~= 0 then
+            -- Player is accelerating - apply accel_friction
+            self.player.vx = self.player.vx + dx * self.player.movement_speed * dt
+            self.player.vy = self.player.vy + dy * self.player.movement_speed * dt
 
+            if self.player.accel_friction < 1.0 then
+                local accel_factor = math.pow(self.player.accel_friction, dt * 60)
+                self.player.vx = self.player.vx * accel_factor
+                self.player.vy = self.player.vy * accel_factor
+            end
+        else
+            -- Player is coasting - apply decel_friction (stopping)
+            if self.player.decel_friction < 1.0 then
+                local decel_factor = math.pow(self.player.decel_friction, dt * 60)
+                self.player.vx = self.player.vx * decel_factor
+                self.player.vy = self.player.vy * decel_factor
+            else
+                -- Instant stop if decel_friction = 1.0
+                self.player.vx = 0
+                self.player.vy = 0
+            end
+        end
+
+        -- Update position from velocity
+        self.player.x = self.player.x + self.player.vx * dt
+        self.player.y = self.player.y + self.player.vy * dt
+    else
+        -- Direct positional movement (classic, no momentum)
+        self.player.x = self.player.x + dx * self.player.movement_speed * dt
+        self.player.y = self.player.y + dy * self.player.movement_speed * dt
+    end
+
+    self:clampPlayerPosition()
+
+    -- Apply bounce if friction is enabled (has velocity)
+    if has_momentum then
+        local hit_boundary = false
+        if self.player.x <= self.player.radius or self.player.x >= self.game_width - self.player.radius then
+            self.player.vx = -self.player.vx * self.player.bounce_damping
+            hit_boundary = true
+        end
+        if self.player.y <= self.player.radius or self.player.y >= self.game_height - self.player.radius then
+            self.player.vy = -self.player.vy * self.player.bounce_damping
+            hit_boundary = true
+        end
+
+        if hit_boundary then
+            self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
+            self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
+        end
+    end
+end
+
+function DodgeGame:updatePlayerAsteroids(dt)
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.dodge) or {}
+    local thrust_accel = (runtimeCfg.player and runtimeCfg.player.thrust_acceleration) or 600
+
+    -- Rotation controls (left/right turn the ship)
+    if love.keyboard.isDown('left', 'a') then
+        self.player.rotation = self.player.rotation - self.player.rotation_speed * dt
+    end
+    if love.keyboard.isDown('right', 'd') then
+        self.player.rotation = self.player.rotation + self.player.rotation_speed * dt
+    end
+
+    -- Normalize rotation
+    self.player.rotation = self.player.rotation % (2 * math.pi)
+
+    -- Thrust controls (forward accelerates in facing direction)
+    local is_thrusting = false
+    if love.keyboard.isDown('up', 'w') then
+        is_thrusting = true
+        -- Calculate thrust direction (sprite faces up by default, so rotation 0 = up)
+        local thrust_angle = self.player.rotation - math.pi / 2  -- Subtract π/2 to convert from sprite space to world space
+        local thrust_x = math.cos(thrust_angle) * thrust_accel * dt
+        local thrust_y = math.sin(thrust_angle) * thrust_accel * dt
+
+        self.player.vx = self.player.vx + thrust_x
+        self.player.vy = self.player.vy + thrust_y
+
+        -- Apply acceleration friction (resistance when starting up)
+        if self.player.accel_friction < 1.0 then
+            local accel_factor = math.pow(self.player.accel_friction, dt * 60)
+            self.player.vx = self.player.vx * accel_factor
+            self.player.vy = self.player.vy * accel_factor
+        end
+    end
+
+    -- Reverse/brake controls (down key behavior)
+    if love.keyboard.isDown('down', 's') then
+        if self.player.reverse_mode == "thrust" then
+            is_thrusting = true
+            -- Reverse thrust (accelerate backwards)
+            local thrust_angle = self.player.rotation - math.pi / 2
+            local thrust_x = math.cos(thrust_angle) * thrust_accel * dt
+            local thrust_y = math.sin(thrust_angle) * thrust_accel * dt
+
+            self.player.vx = self.player.vx - thrust_x  -- Opposite direction
+            self.player.vy = self.player.vy - thrust_y
+
+            -- Apply acceleration friction
+            if self.player.accel_friction < 1.0 then
+                local accel_factor = math.pow(self.player.accel_friction, dt * 60)
+                self.player.vx = self.player.vx * accel_factor
+                self.player.vy = self.player.vy * accel_factor
+            end
+        elseif self.player.reverse_mode == "brake" then
+            -- Active braking (reduce velocity toward zero)
+            local brake_strength = 0.92  -- Aggressive decay when braking
+            local brake_factor = math.pow(brake_strength, dt * 60)  -- Normalized to 60fps
+            self.player.vx = self.player.vx * brake_factor
+            self.player.vy = self.player.vy * brake_factor
+        end
+        -- "none" = down does nothing
+    end
+
+    -- Apply deceleration friction when coasting (not actively thrusting)
+    if not is_thrusting and self.player.decel_friction < 1.0 then
+        local decel_factor = math.pow(self.player.decel_friction, dt * 60)  -- Normalize to 60fps
+        self.player.vx = self.player.vx * decel_factor
+        self.player.vy = self.player.vy * decel_factor
+    end
+
+    -- Update position based on velocity
+    self.player.x = self.player.x + self.player.vx * dt
+    self.player.y = self.player.y + self.player.vy * dt
+
+    self:clampPlayerPosition()
+
+    -- When hitting boundaries, bounce/dampen velocity
+    local hit_boundary = false
+    if self.player.x <= self.player.radius or self.player.x >= self.game_width - self.player.radius then
+        self.player.vx = -self.player.vx * self.player.bounce_damping  -- Reverse and dampen
+        hit_boundary = true
+    end
+    if self.player.y <= self.player.radius or self.player.y >= self.game_height - self.player.radius then
+        self.player.vy = -self.player.vy * self.player.bounce_damping  -- Reverse and dampen
+        hit_boundary = true
+    end
+
+    -- Clamp position again after potential bounce
+    if hit_boundary then
+        self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
+        self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
+    end
+end
+
+function DodgeGame:clampPlayerPosition()
     -- Clamp to rectangular bounds first
     self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
     self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
@@ -263,6 +502,19 @@ function DodgeGame:updatePlayer(dt)
             local scale = max_dist / dist
             self.player.x = sz.x + dxp * scale
             self.player.y = sz.y + dyp * scale
+
+            -- If using velocity-based movement, dampen velocity when hitting safe zone boundary
+            if self.player.friction < 1.0 then
+                -- Project velocity onto boundary normal and dampen
+                local nx = dxp / dist
+                local ny = dyp / dist
+                local dot = self.player.vx * nx + self.player.vy * ny
+                if dot > 0 then  -- Moving outward
+                    local bounce_factor = 1.0 + self.player.bounce_damping
+                    self.player.vx = self.player.vx - nx * dot * bounce_factor  -- Bounce inward
+                    self.player.vy = self.player.vy - ny * dot * bounce_factor
+                end
+            end
         end
     end
 end
@@ -403,11 +655,23 @@ function DodgeGame:updateObjects(dt)
             -- Count hit, remove (splitter no longer splits here)
             table.remove(self.objects, i)
             self.metrics.collisions = self.metrics.collisions + 1
-            if self.metrics.collisions >= self.MAX_COLLISIONS then self:onComplete(); return end
+
+            -- Phase 3.3: Play hit sound
+            self:playSound("hit", 1.0)
+
+            if self.metrics.collisions >= self.MAX_COLLISIONS then
+                -- Phase 3.3: Play death sound
+                self:playSound("death", 1.0)
+                self:onComplete()
+                return
+            end
         elseif self:isObjectOffscreen(obj) then
             table.remove(self.objects, i)
             if obj.entered_play then
                 self.metrics.objects_dodged = self.metrics.objects_dodged + 1
+
+                -- Phase 3.3: Play dodge sound (subtle)
+                self:playSound("dodge", 0.3)
             end
             if obj.warned then self.metrics.perfect_dodges = self.metrics.perfect_dodges + 1 end
         end
@@ -682,6 +946,23 @@ end
 
 function DodgeGame:checkComplete()
     return self.metrics.collisions >= self.MAX_COLLISIONS or self.metrics.objects_dodged >= self.dodge_target
+end
+
+-- Phase 3.3: Override onComplete to play appropriate sound
+function DodgeGame:onComplete()
+    -- Determine if win or loss
+    local is_win = self.metrics.objects_dodged >= self.dodge_target
+
+    -- Play appropriate sound (death sound already played inline at collision)
+    if is_win then
+        self:playSound("success", 1.0)
+    end
+
+    -- Stop music
+    self:stopMusic()
+
+    -- Call parent onComplete
+    DodgeGame.super.onComplete(self)
 end
 
 -- Report progress toward goal for token gating (0..1)

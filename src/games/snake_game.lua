@@ -105,6 +105,9 @@ function SnakeGame:loadAssets()
 
     print(string.format("[SnakeGame:loadAssets] Loaded %d sprites for variant: %s",
         self:countLoadedSprites(), self.variant.name or "Unknown"))
+
+    -- Phase 3.3: Load audio - using BaseGame helper
+    self:loadAudio()
 end
 
 function SnakeGame:countLoadedSprites()
@@ -162,16 +165,21 @@ function SnakeGame:updateGameLogic(dt)
         }
         
         -- Check collision and trigger game over
-        if self:checkCollision(new_head, true) then 
+        if self:checkCollision(new_head, true) then
+            -- Phase 3.3: Play death sound
+            self:playSound("death", 1.0)
             self:onComplete() -- Mark game as completed
             return
         end
-        
+
         table.insert(self.snake, 1, new_head)
-        
+
         if new_head.x == self.food.x and new_head.y == self.food.y then
             self.metrics.snake_length = self.metrics.snake_length + 1
             self.food = self:spawnFood()
+
+            -- Phase 3.3: Play eat sound
+            self:playSound("eat", 0.8)
         else
             table.remove(self.snake)
         end
@@ -188,6 +196,22 @@ function SnakeGame:checkComplete()
         return true
     end
     return false
+end
+
+-- Phase 3.3: Override onComplete to play success sound
+function SnakeGame:onComplete()
+    -- Determine if win (death sound already played inline at collision line 170)
+    local is_win = self.metrics.snake_length >= self.target_length
+
+    if is_win then
+        self:playSound("success", 1.0)
+    end
+
+    -- Stop music
+    self:stopMusic()
+
+    -- Call parent onComplete
+    SnakeGame.super.onComplete(self)
 end
 
 function SnakeGame:draw()

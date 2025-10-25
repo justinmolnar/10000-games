@@ -45,6 +45,11 @@ function MinigameController:begin(game_instance, game_data)
     self.auto_complete_power = 0
     self.overlay_visible = false
 
+    -- Phase 3.3: Start music
+    if game_instance.playMusic then
+        game_instance:playMusic()
+    end
+
     -- Publish game_started event
     if self.event_bus then
         -- Assuming window_id context might be needed later, passing nil for now

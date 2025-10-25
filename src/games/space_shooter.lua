@@ -199,6 +199,9 @@ function SpaceShooter:loadAssets()
 
     print(string.format("[SpaceShooter:loadAssets] Loaded %d sprites for variant: %s",
         self:countLoadedSprites(), self.variant.name or "Unknown"))
+
+    -- Phase 3.3: Load audio - using BaseGame helper
+    self:loadAudio()
 end
 
 function SpaceShooter:countLoadedSprites()
@@ -311,10 +314,16 @@ function SpaceShooter:updateBullets(dt)
                     if enemy.health <= 0 then
                         table.remove(self.enemies, j)
                         self.metrics.kills = self.metrics.kills + 1
+
+                        -- Phase 3.3: Play enemy explode sound
+                        self:playSound("enemy_explode", 1.0)
                     end
                 else
                     table.remove(self.enemies, j)
                     self.metrics.kills = self.metrics.kills + 1
+
+                    -- Phase 3.3: Play enemy explode sound
+                    self:playSound("enemy_explode", 1.0)
                 end
                 goto next_player_bullet
             end
@@ -332,6 +341,9 @@ function SpaceShooter:updateBullets(dt)
         if self:checkCollision(bullet, self.player) then
             table.remove(self.enemy_bullets, i)
             self.metrics.deaths = self.metrics.deaths + 1
+
+            -- Phase 3.3: Play hit sound
+            self:playSound("hit", 1.0)
             -- Let checkComplete handle game over
         end
 
@@ -355,6 +367,9 @@ function SpaceShooter:playerShoot()
         width = BULLET_WIDTH, height = BULLET_HEIGHT
     })
     self.player.fire_cooldown = FIRE_COOLDOWN
+
+    -- Phase 3.3: Play shoot sound
+    self:playSound("shoot", 0.6)
 end
 
 function SpaceShooter:enemyShoot(enemy)
@@ -460,6 +475,25 @@ end
 
 function SpaceShooter:checkComplete()
     return self.metrics.deaths >= self.PLAYER_MAX_DEATHS or self.metrics.kills >= self.target_kills
+end
+
+-- Phase 3.3: Override onComplete to play success sound and stop music
+function SpaceShooter:onComplete()
+    -- Determine if win (reached target kills) or loss (max deaths)
+    local is_win = self.metrics.kills >= self.target_kills
+
+    if is_win then
+        self:playSound("success", 1.0)
+    else
+        -- Lost due to too many deaths
+        self:playSound("death", 1.0)
+    end
+
+    -- Stop music
+    self:stopMusic()
+
+    -- Call parent onComplete
+    SpaceShooter.super.onComplete(self)
 end
 
 function SpaceShooter:keypressed(key)

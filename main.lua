@@ -73,6 +73,7 @@ function love.load()
     local ProgramLauncher = require('src.utils.program_launcher') -- Require ProgramLauncher
     local ContextMenuService = require('src.utils.context_menu_service') -- Require ContextMenuService
     local GameVariantLoader = require('src.models.game_variant_loader') -- Require GameVariantLoader
+    local AudioManager = require('src.utils.audio_manager') -- Phase 3.2/3.3: Audio system
 
     -- == 2. Initialize Core Systems & DI Container ==
     local event_bus = EventBus:new()
@@ -160,6 +161,10 @@ function love.load()
     di.paletteManager = palette_manager
     di.spriteLoader = sprite_loader
     di.spriteManager = sprite_manager
+
+    -- == 5.5. Initialize Audio System (Phase 3.2/3.3) ==
+    local audio_manager = AudioManager:new(di)
+    di.audioManager = audio_manager
 
     -- == 6. Initialize State Machine and States ==
     if SettingsManager and SettingsManager.inject then SettingsManager.inject(di) end

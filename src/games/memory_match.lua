@@ -106,6 +106,9 @@ function MemoryMatch:loadAssets()
 
     print(string.format("[MemoryMatch:loadAssets] Loaded %d sprites for variant: %s",
         self:countLoadedSprites(), self.variant.name or "Unknown"))
+
+    -- Phase 3.3: Load audio - using BaseGame helper
+    self:loadAudio()
 end
 
 function MemoryMatch:countLoadedSprites()
@@ -156,13 +159,21 @@ function MemoryMatch:updateGameLogic(dt)
             if self.match_check_timer <= 0 then
                 local idx1 = self.selected_indices[1]
                 local idx2 = self.selected_indices[2]
-                if idx1 and idx2 and self.cards[idx1] and self.cards[idx2] then 
+                if idx1 and idx2 and self.cards[idx1] and self.cards[idx2] then
                     if self.cards[idx1].value == self.cards[idx2].value then
+                        -- Cards match!
                         self.matched_pairs[self.cards[idx1].value] = true
                         self.metrics.matches = self.metrics.matches + 1
                         if #self.cards[idx1].attempts == 1 and #self.cards[idx2].attempts == 1 then
                              self.metrics.perfect = self.metrics.perfect + 1
                         end
+
+                        -- Phase 3.3: Play match sound
+                        self:playSound("match", 1.0)
+                    else
+                        -- Cards don't match
+                        -- Phase 3.3: Play mismatch sound
+                        self:playSound("mismatch", 0.8)
                     end
                 end
                  self.selected_indices = {}
@@ -188,10 +199,14 @@ function MemoryMatch:mousepressed(x, y, button)
         
         if x >= card_x and x <= card_x + self.CARD_WIDTH and y >= card_y and y <= card_y + self.CARD_HEIGHT then
             if not self.matched_pairs[card.value] and not self:isSelected(i) then
-                table.insert(card.attempts, self.time_elapsed) 
+                table.insert(card.attempts, self.time_elapsed)
                 table.insert(self.selected_indices, i)
+
+                -- Phase 3.3: Play flip sound
+                self:playSound("flip_card", 0.7)
+
                 if #self.selected_indices == 2 then self.match_check_timer = MATCH_VIEW_TIME end
-                break 
+                break
             end
         end
     end
@@ -225,6 +240,18 @@ function MemoryMatch:checkComplete()
     local matched_count = 0
     for _ in pairs(self.matched_pairs) do matched_count = matched_count + 1 end
     return matched_count >= self.total_pairs
+end
+
+-- Phase 3.3: Override onComplete to play success sound
+function MemoryMatch:onComplete()
+    -- All matches found = win
+    self:playSound("success", 1.0)
+
+    -- Stop music
+    self:stopMusic()
+
+    -- Call parent onComplete
+    MemoryMatch.super.onComplete(self)
 end
 
 function MemoryMatch:keypressed(key)

@@ -116,4 +116,51 @@ function BaseGame:getCompletionRatio()
     return 1.0
 end
 
+-- Phase 3.3: Audio helpers (graceful fallback if no audio assets)
+function BaseGame:loadAudio()
+    local audioManager = self.di and self.di.audioManager
+
+    if not audioManager then
+        -- No audio system available (silent mode)
+        return
+    end
+
+    if not self.variant then
+        -- No variant data (silent mode)
+        return
+    end
+
+    -- Load music track
+    if self.variant.music_track then
+        self.music = audioManager:loadMusic(self.variant.music_track)
+    end
+
+    -- Load SFX pack
+    if self.variant.sfx_pack then
+        audioManager:loadSFXPack(self.variant.sfx_pack)
+        self.sfx_pack = self.variant.sfx_pack
+    end
+end
+
+function BaseGame:playMusic()
+    local audioManager = self.di and self.di.audioManager
+    if audioManager and self.variant and self.variant.music_track then
+        audioManager:playMusic(self.variant.music_track)
+    end
+end
+
+function BaseGame:stopMusic()
+    local audioManager = self.di and self.di.audioManager
+    if audioManager then
+        audioManager:stopMusic()
+    end
+end
+
+function BaseGame:playSound(action, volume)
+    local audioManager = self.di and self.di.audioManager
+    if audioManager and self.sfx_pack and action then
+        audioManager:playSound(self.sfx_pack, action, volume or 1.0)
+    end
+end
+
 return BaseGame

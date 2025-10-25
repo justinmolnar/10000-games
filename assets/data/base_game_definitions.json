@@ -392,6 +392,7 @@
         "sfx_pack": "retro_beeps",
         "background": "starfield_blue",
         "difficulty_modifier": 1.0,
+        "movement_speed": 600,
         "enemies": [],
         "flavor_text": "Classic obstacle avoidance! Master the art of dodging.",
         "intro_cutscene": null
@@ -405,6 +406,7 @@
         "sfx_pack": "retro_beeps",
         "background": "starfield_red",
         "difficulty_modifier": 1.2,
+        "movement_speed": 100,
         "enemies": [
           { "type": "chaser", "multiplier": 1.0 },
           { "type": "shooter", "multiplier": 0.5 }
@@ -415,6 +417,7 @@
       {
         "clone_index": 2,
         "name": "Dodge Chaos",
+        "movement_type": "asteroids",
         "sprite_set": "base_1",
         "palette": "purple",
         "music_track": "dodge_theme_3",

@@ -97,6 +97,9 @@ function HiddenObject:loadAssets()
 
     print(string.format("[HiddenObject:loadAssets] Loaded %d sprites for variant: %s",
         self:countLoadedSprites(), self.variant.name or "Unknown"))
+
+    -- Phase 3.3: Load audio - using BaseGame helper
+    self:loadAudio()
 end
 
 function HiddenObject:countLoadedSprites()
@@ -176,16 +179,22 @@ function HiddenObject:draw()
 end
 
 function HiddenObject:mousepressed(x, y, button)
-    if self.completed or button ~= 1 then return end 
+    if self.completed or button ~= 1 then return end
 
     for i = #self.objects, 1, -1 do
         local obj = self.objects[i]
         if not obj.found and self:checkObjectClick(obj, x, y) then
             obj.found = true
             self.objects_found = self.objects_found + 1
+
+            -- Phase 3.3: Play find_object sound
+            self:playSound("find_object", 1.0)
             return
         end
     end
+
+    -- Phase 3.3: Play wrong_click sound (clicked but didn't hit an object)
+    self:playSound("wrong_click", 0.5)
 end
 
 function HiddenObject:checkObjectClick(obj, x, y)
@@ -195,6 +204,10 @@ end
 function HiddenObject:onComplete()
     if self.completed then return end
     self.metrics.objects_found = self.objects_found
+
+    -- Determine if win or loss
+    local is_win = self.objects_found >= self.total_objects
+
     -- Only set time bonus to 0 if not all objects found
     if self.objects_found < self.total_objects then
         self.metrics.time_bonus = 0
@@ -202,6 +215,16 @@ function HiddenObject:onComplete()
         -- If all objects found and time_bonus not set, calculate it
         self.metrics.time_bonus = math.floor(math.max(0, self.time_remaining) * BONUS_TIME_MULTIPLIER)
     end
+
+    -- Phase 3.3: Play success sound if won
+    if is_win then
+        self:playSound("success", 1.0)
+    end
+    -- Note: No death sound for time running out (just silence)
+
+    -- Stop music
+    self:stopMusic()
+
     HiddenObject.super.onComplete(self)
 end
 

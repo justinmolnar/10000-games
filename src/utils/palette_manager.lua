@@ -140,19 +140,26 @@ function PaletteManager:applyPaletteCPU(original_image, palette)
     return new_image
 end
 
-function PaletteManager:drawSpriteWithPalette(sprite_image, x, y, width, height, palette_id, tint)
+function PaletteManager:drawSpriteWithPalette(sprite_image, x, y, width, height, palette_id, tint, rotation)
     if not sprite_image then return false end
-    
+
+    -- Default rotation to 0 if not provided
+    rotation = rotation or 0
+
+    -- Calculate origin offset for centered rotation
+    local origin_x = width / 2
+    local origin_y = height / 2
+
     local palette = self:getPalette(palette_id)
     if not palette or palette_id == "default" then
         -- Draw without palette swap
         if tint then love.graphics.setColor(tint) else love.graphics.setColor(1, 1, 1) end
         local scale_x = width / sprite_image:getWidth()
         local scale_y = height / sprite_image:getHeight()
-        love.graphics.draw(sprite_image, x, y, 0, scale_x, scale_y)
+        love.graphics.draw(sprite_image, x, y, rotation, scale_x, scale_y, origin_x / scale_x, origin_y / scale_y)
         return true
     end
-    
+
     -- Apply shader if available
     if self.use_shader and self.shader then
         local source_colors = self:getDefaultSourceColors()
@@ -162,18 +169,18 @@ function PaletteManager:drawSpriteWithPalette(sprite_image, x, y, width, height,
             palette.colors.accent,
             palette.colors.highlight
         }
-        
+
         self.shader:send("source_colors", unpack(source_colors))
         self.shader:send("target_colors", unpack(target_colors))
         self.shader:send("tolerance", 0.3)
-        
+
         love.graphics.setShader(self.shader)
         if tint then love.graphics.setColor(tint) else love.graphics.setColor(1, 1, 1) end
-        
+
         local scale_x = width / sprite_image:getWidth()
         local scale_y = height / sprite_image:getHeight()
-        love.graphics.draw(sprite_image, x, y, 0, scale_x, scale_y)
-        
+        love.graphics.draw(sprite_image, x, y, rotation, scale_x, scale_y, origin_x / scale_x, origin_y / scale_y)
+
         love.graphics.setShader()
         return true
     else
@@ -182,7 +189,7 @@ function PaletteManager:drawSpriteWithPalette(sprite_image, x, y, width, height,
         if tint then love.graphics.setColor(tint) else love.graphics.setColor(1, 1, 1) end
         local scale_x = width / swapped:getWidth()
         local scale_y = height / swapped:getHeight()
-        love.graphics.draw(swapped, x, y, 0, scale_x, scale_y)
+        love.graphics.draw(swapped, x, y, rotation, scale_x, scale_y, origin_x / scale_x, origin_y / scale_y)
         return true
     end
 end

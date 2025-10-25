@@ -67,42 +67,52 @@ function DodgeView:draw()
     local paletteManager = self.di and self.di.paletteManager
 
     if game.sprites and game.sprites.player then
-        -- Use loaded player sprite with palette swapping
+        -- Use loaded player sprite with palette swapping and rotation
         local sprite = game.sprites.player
         local size = game.player.radius * 2
 
         if paletteManager and palette_id then
             paletteManager:drawSpriteWithPalette(
                 sprite,
-                game.player.x - game.player.radius,
-                game.player.y - game.player.radius,
+                game.player.x,  -- Draw from center for rotation
+                game.player.y,
                 size,
                 size,
                 palette_id,
-                {1, 1, 1}
+                {1, 1, 1},
+                game.player.rotation or 0  -- Rotation angle
             )
         else
-            -- No palette, just draw normally
+            -- No palette, just draw normally with rotation
+            g.push()
+            g.translate(game.player.x, game.player.y)
+            g.rotate(game.player.rotation or 0)
             g.setColor(1, 1, 1)
             g.draw(sprite,
-                game.player.x - game.player.radius,
-                game.player.y - game.player.radius,
+                -game.player.radius,
+                -game.player.radius,
                 0,
                 size / sprite:getWidth(),
                 size / sprite:getHeight())
+            g.pop()
         end
     else
-        -- Fallback to icon system
+        -- Fallback to icon system with rotation
         local player_sprite = game.data.icon_sprite or "game_solitaire-0"
+
+        g.push()
+        g.translate(game.player.x, game.player.y)
+        g.rotate(game.player.rotation or 0)
         self.sprite_loader:drawSprite(
             player_sprite,
-            game.player.x - game.player.radius,
-            game.player.y - game.player.radius,
+            -game.player.radius,
+            -game.player.radius,
             game.player.radius * 2,
             game.player.radius * 2,
             {1, 1, 1},
             palette_id
         )
+        g.pop()
     end
 
     g.setColor(0.9, 0.9, 0.3, 0.45)

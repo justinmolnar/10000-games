@@ -508,7 +508,11 @@ local Config = {
             base_target = 30,
             player = {
                 size = 20,
-                speed = 300
+                speed = 300,
+                rotation_speed = 2.0,  -- radians per second (2 rad/s ≈ 114°/s, fast but smooth)
+                -- Asteroids mode physics
+                thrust_acceleration = 600,  -- Acceleration when thrusting (pixels/sec²)
+                friction = 0.98  -- Velocity multiplier per second (0.98 = slight friction, 1.0 = no friction)
             },
             objects = {
                 size = 15,
