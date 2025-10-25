@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(\"C:\\Program Files\\LOVE\\love.exe\" . --console scripts/generate_placeholder_sprites.lua)",
+      "Bash(python scripts/generate_placeholders.py:*)"
     ],
     "deny": [],
     "ask": []

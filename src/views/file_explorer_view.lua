@@ -208,8 +208,12 @@ function FileExplorerView:drawAddressBar(x, y, width, current_path)
     -- Path text
     love.graphics.setColor(0, 0, 0)
     -- Clip text rendering to address bar bounds
+    -- IMPORTANT: setScissor uses SCREEN coordinates, so we must add the window position offset
+    local viewport = self.controller.viewport
+    local screen_x = viewport and viewport.x or 0
+    local screen_y = viewport and viewport.y or 0
     love.graphics.push()
-    love.graphics.setScissor(x + (A.text_pad_x or 10), y + (A.inset_y or 2), width - 2*(A.text_pad_x or 10), self.address_bar_height - 2*(A.inset_y or 2))
+    love.graphics.setScissor(screen_x + x + (A.text_pad_x or 10), screen_y + y + (A.inset_y or 2), width - 2*(A.text_pad_x or 10), self.address_bar_height - 2*(A.inset_y or 2))
     local ts = A.text_scale or 0.9
     love.graphics.print(current_path, x + (A.text_pad_x or 10), y + ((A.inset_y or 2) + 4), 0, ts, ts)
     love.graphics.setScissor()

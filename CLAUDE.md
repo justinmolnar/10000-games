@@ -171,6 +171,71 @@ if not success or not data then
 end
 ```
 
+### Viewport Coordinates vs Screen Coordinates
+
+**CRITICAL: This is a recurring bug when creating new windowed views!**
+
+LÖVE2D has two coordinate systems that must be handled correctly:
+- **Viewport coordinates**: Relative to window content area (0,0 = top-left of window viewport)
+- **Screen coordinates**: Absolute screen position (includes window position offset)
+
+**Rules for windowed views (views with `drawWindowed()` method):**
+
+1. **NEVER call `love.graphics.origin()` inside windowed views**
+   - `origin()` resets to screen coordinates 0,0
+   - This causes content to only render when window is at top-left of screen
+   - The window transformation matrix is already set up correctly
+
+2. **`love.graphics.setScissor()` requires SCREEN coordinates, not viewport coordinates**
+   - Scissor regions must account for window position on desktop
+   - Always add `viewport.x` and `viewport.y` offsets
+
+**Correct pattern for scissor in windowed views:**
+```lua
+function MyView:drawWindowed(viewport_width, viewport_height)
+    -- Get window screen position
+    local viewport = self.controller.viewport
+    local screen_x = viewport and viewport.x or 0
+    local screen_y = viewport and viewport.y or 0
+
+    -- Content area in viewport coordinates
+    local content_y = 30  -- Below title bar
+    local content_height = viewport_height - 30
+
+    -- Scissor MUST use screen coordinates
+    love.graphics.setScissor(screen_x, screen_y + content_y, viewport_width, content_height)
+
+    -- Draw using viewport coordinates (not screen)
+    love.graphics.print("Text", 10, content_y)
+
+    love.graphics.setScissor()
+end
+```
+
+**Wrong patterns that cause clipping bugs:**
+```lua
+-- ❌ WRONG - uses viewport coordinates for scissor
+love.graphics.setScissor(0, content_y, viewport_width, content_height)
+
+-- ❌ WRONG - resets to screen coordinates
+love.graphics.origin()
+love.graphics.print("Text", 10, 10)  -- Will only show if window at 0,0
+
+-- ❌ WRONG - drawing to screen coordinates instead of viewport
+local screen_x = viewport.x
+love.graphics.print("Text", screen_x + 10, 10)  -- Double offset!
+```
+
+**When origin() IS correct:**
+- Error screens (fullscreen, no window context)
+- Screensavers (fullscreen rendering)
+- Drawing to canvases (canvases have their own coordinate space)
+
+**Files with correct implementations:**
+- `src/views/credits_view.lua:65` - Scissor with screen offset
+- `src/views/minigame_view.lua` - No origin() calls in overlay
+- `src/views/file_explorer_view.lua:216` - Address bar scissor with screen offset
+
 ### Require Statements
 - All `require` calls at **top of file** (file scope)
 - Exception: Dynamic game class loading based on type

@@ -17,8 +17,9 @@ function CreditsView:init(controller)
 end
 
 function CreditsView:updateLayout(viewport_width, viewport_height)
-    -- Update close button position
-    self.close_button.y = viewport_height - 60
+    -- Update close button position (centered in button area at bottom)
+    local button_height = 50
+    self.close_button.y = viewport_height - button_height + 10  -- 10px padding from top of button area
     self.close_button.x = (viewport_width - self.close_button.w) / 2
 end
 
@@ -44,19 +45,30 @@ function CreditsView:drawWindowed(viewport_width, viewport_height)
     love.graphics.setColor(1, 1, 1)
     love.graphics.printf(self.title, 0, 10, viewport_width, "center")
 
-    -- Scrollable content area
-    local content_area_y = 40
-    local content_area_height = viewport_height - content_area_y - 70 -- Leave space for button
+    -- Define areas
+    local title_height = 30
+    local button_height = 50
+    local content_area_y = title_height
+    local content_area_height = viewport_height - title_height - button_height
 
-    -- Enable scissor for scrollable area
+    -- Get window position for scissor (scissor uses screen coordinates, not viewport coordinates)
+    local viewport = self.controller.viewport
+    local screen_x = viewport and viewport.x or 0
+    local screen_y = viewport and viewport.y or 0
+
+    print(string.format("SCISSOR: screen_x=%d, screen_y=%d, viewport y=%d, scissor spans screen y=%d to y=%d",
+        screen_x, screen_y, content_area_y, screen_y + content_area_y, screen_y + content_area_y + content_area_height))
+
+    -- Enable scissor for scrollable content area ONLY
+    -- IMPORTANT: setScissor uses SCREEN coordinates, so we must add the window position offset
     love.graphics.push()
-    love.graphics.setScissor(0, content_area_y, viewport_width, content_area_height)
+    love.graphics.setScissor(screen_x, screen_y + content_area_y, viewport_width, content_area_height)
     love.graphics.translate(0, -self.scroll_offset)
 
     local y_pos = content_area_y
     local x_pos = 20
     local line_height = 20
-    local section_gap = 30
+    local section_gap = 20
 
     local attributionManager = self.controller.attributionManager
 
@@ -93,7 +105,7 @@ function CreditsView:drawWindowed(viewport_width, viewport_height)
                 y_pos = y_pos + line_height + 5
 
                 -- List attributions in this category
-                for _, attr in ipairs(attrs) do
+                for i, attr in ipairs(attrs) do
                     love.graphics.setColor(1, 1, 1)
 
                     -- Asset path/name
@@ -145,7 +157,7 @@ function CreditsView:drawWindowed(viewport_width, viewport_height)
         self:drawScrollbar(viewport_width, content_area_y, content_area_height)
     end
 
-    -- Close button
+    -- Close button (drawn AFTER scissor is cleared, in button area)
     love.graphics.setColor(1, 1, 1)
     UIComponents.drawButton(self.close_button.x, self.close_button.y,
                            self.close_button.w, self.close_button.h,

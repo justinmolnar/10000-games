@@ -12,7 +12,7 @@ function MinigameView:drawOverlay(viewport, snapshot)
     local vpWidth, vpHeight = viewport.width, viewport.height
 
     love.graphics.push()
-    love.graphics.origin()
+    -- Don't call origin() - we want to draw in viewport coordinates, not screen coordinates
 
     love.graphics.setColor(0, 0, 0, 0.8)
     love.graphics.rectangle('fill', 0, 0, vpWidth, vpHeight)
@@ -50,7 +50,7 @@ function MinigameView:drawOverlay(viewport, snapshot)
         local MetricLegend = require('src.views.metric_legend')
         local metric_legend = MetricLegend:new(self.di)
         love.graphics.push()
-        love.graphics.origin()
+        -- Don't call origin() - already in viewport coordinates
         y = metric_legend:draw(game_data, metrics, x + 20, y, vpWidth - x - 40, true)
         love.graphics.pop()
     else
@@ -66,7 +66,7 @@ function MinigameView:drawOverlay(viewport, snapshot)
         local FormulaRenderer = require('src.views.formula_renderer')
         local formula_renderer = FormulaRenderer:new(self.di)
         love.graphics.push()
-        love.graphics.origin()
+        -- Don't call origin() - already in viewport coordinates
         local formula_end_y = formula_renderer:draw(game_data, x + 20, y, vpWidth * 0.7, 20)
         love.graphics.pop()
         y = formula_end_y + line_height * 0.5

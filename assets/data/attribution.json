@@ -22,6 +22,16 @@
       "modifications": "None",
       "date_added": "2025-10-23",
       "notes": "JSON encoding/decoding library"
+    },
+    {
+      "asset_path": "assets/sprites/win98/*",
+      "asset_type": "sprite",
+      "author": "Alex Meub, Microsoft",
+      "license": "Unsure",
+      "source_url": "https://alexmeub.com/old-windows-icons/",
+      "modifications": "None",
+      "date_added": "2025-10-24",
+      "notes": "Created by Microsoft, collected by Alex Meub"
     }
   ],
 

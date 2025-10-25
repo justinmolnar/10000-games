@@ -15,6 +15,7 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data, di)
     self.di = di
     if di then UIComponents.inject(di) end
     self.sprite_manager = (di and di.spriteManager) or nil
+    self.variant_loader = (di and di.gameVariantLoader) or nil  -- Phase 2.4
 
     self.selected_slot = nil
     self.game_selection_open = false
@@ -424,12 +425,24 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
     if slot.active and slot.assigned_game_id then
         local game = context.game_data:getGame(slot.assigned_game_id)
         if game then
-            -- Phase 7.1: Show game's sprite thumbnail
-            -- FIX: Use self.sprite_manager instance
-            local palette_id = self.sprite_manager:getPaletteId(game)
-            local icon_sprite = self.sprite_manager:getMetricSprite(game, game.metrics_tracked[1] or "default")
-            if icon_sprite and self.sprite_manager.sprite_loader then -- Check sprite_loader exists
-                self.sprite_manager.sprite_loader:drawSprite(icon_sprite, x + 8, y + 35, 48, 48, nil, palette_id)
+            -- Phase 2.4: Try to load variant-specific launcher icon
+            local launcher_icon = nil
+            if self.variant_loader then
+                launcher_icon = self.variant_loader:getLauncherIcon(game.id, game.game_class)
+            end
+
+            if launcher_icon then
+                -- Draw loaded launcher icon directly
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.draw(launcher_icon, x + 8, y + 35, 0,
+                    48 / launcher_icon:getWidth(), 48 / launcher_icon:getHeight())
+            else
+                -- Fallback to metric sprite icon
+                local palette_id = self.sprite_manager:getPaletteId(game)
+                local icon_sprite = self.sprite_manager:getMetricSprite(game, game.metrics_tracked[1] or "default")
+                if icon_sprite and self.sprite_manager.sprite_loader then
+                    self.sprite_manager.sprite_loader:drawSprite(icon_sprite, x + 8, y + 35, 48, 48, nil, palette_id)
+                end
             end
 
             love.graphics.setColor(S.name_text or {1,1,1})

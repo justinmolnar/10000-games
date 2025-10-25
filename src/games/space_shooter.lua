@@ -146,6 +146,71 @@ function SpaceShooter:init(game_data, cheats, di)
     self.view = SpaceShooterView:new(self, self.variant)
     print("[SpaceShooter:init] Initialized with default game dimensions:", self.game_width, self.game_height)
     print("[SpaceShooter:init] Variant:", self.variant and self.variant.name or "Default")
+
+    -- Phase 2.3: Load sprite assets with graceful fallback
+    self:loadAssets()
+end
+
+-- Phase 2.3: Asset loading with fallback
+function SpaceShooter:loadAssets()
+    self.sprites = {}
+
+    if not self.variant or not self.variant.sprite_set then
+        print("[SpaceShooter:loadAssets] No variant sprite_set, using fallback rendering")
+        return
+    end
+
+    local game_type = "space_shooter"
+    local base_path = "assets/sprites/games/" .. game_type .. "/" .. self.variant.sprite_set .. "/"
+
+    local function tryLoad(filename, sprite_key)
+        local filepath = base_path .. filename
+        local success, result = pcall(function()
+            return love.graphics.newImage(filepath)
+        end)
+
+        if success then
+            self.sprites[sprite_key] = result
+            print("[SpaceShooter:loadAssets] Loaded: " .. filepath)
+        else
+            print("[SpaceShooter:loadAssets] Missing: " .. filepath .. " (using fallback)")
+        end
+    end
+
+    -- Load player ship sprite
+    tryLoad("player.png", "player")
+
+    -- Load enemy type sprites
+    for enemy_type, _ in pairs(SpaceShooter.ENEMY_TYPES) do
+        local filename = "enemy_" .. enemy_type .. ".png"
+        local sprite_key = "enemy_" .. enemy_type
+        tryLoad(filename, sprite_key)
+    end
+
+    -- Load bullet sprites
+    tryLoad("bullet_player.png", "bullet_player")
+    tryLoad("bullet_enemy.png", "bullet_enemy")
+
+    -- Load power-up sprite
+    tryLoad("power_up.png", "power_up")
+
+    -- Load background
+    tryLoad("background.png", "background")
+
+    print(string.format("[SpaceShooter:loadAssets] Loaded %d sprites for variant: %s",
+        self:countLoadedSprites(), self.variant.name or "Unknown"))
+end
+
+function SpaceShooter:countLoadedSprites()
+    local count = 0
+    for _ in pairs(self.sprites) do
+        count = count + 1
+    end
+    return count
+end
+
+function SpaceShooter:hasSprite(sprite_key)
+    return self.sprites and self.sprites[sprite_key] ~= nil
 end
 
 function SpaceShooter:setPlayArea(width, height)

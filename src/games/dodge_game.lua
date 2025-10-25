@@ -109,12 +109,8 @@ function DodgeGame:init(game_data, cheats, di)
     self.metrics.collisions = 0
     self.metrics.perfect_dodges = 0
 
-    -- Audio/visual variant data (Phase 1.3)
-    -- NOTE: Asset loading will be implemented in Phase 2-3
-    -- self.music_track = self.variant.music_track
-    -- self.sfx_pack = self.variant.sfx_pack
-    -- self.sprite_set = self.variant.sprite_set
-    -- self.palette = self.variant.palette
+    -- Phase 2.3: Load variant assets (with fallback to icons)
+    self:loadAssets()
 
     self.view = DodgeView:new(self, self.variant)
     print("[DodgeGame:init] Initialized with default game dimensions:", self.game_width, self.game_height)
@@ -136,6 +132,65 @@ function DodgeGame:init(game_data, cheats, di)
         vx = drift_vx,
         vy = drift_vy
     }
+end
+
+-- Phase 2.3: Load sprite assets from variant.sprite_set
+function DodgeGame:loadAssets()
+    self.sprites = {}  -- Store loaded sprites
+
+    if not self.variant or not self.variant.sprite_set then
+        print("[DodgeGame:loadAssets] No variant sprite_set, using icon fallback")
+        return
+    end
+
+    local base_path = "assets/sprites/games/dodge/" .. self.variant.sprite_set .. "/"
+
+    -- Try to load each sprite with fallback
+    local function tryLoad(filename, sprite_key)
+        local filepath = base_path .. filename
+        local success, result = pcall(function()
+            return love.graphics.newImage(filepath)
+        end)
+
+        if success then
+            self.sprites[sprite_key] = result
+            print("[DodgeGame:loadAssets] Loaded: " .. filepath)
+        else
+            print("[DodgeGame:loadAssets] Missing: " .. filepath .. " (using fallback)")
+        end
+    end
+
+    -- Load player sprite
+    tryLoad("player.png", "player")
+
+    -- Load obstacle sprite
+    tryLoad("obstacle.png", "obstacle")
+
+    -- Load enemy sprites based on variant composition
+    if self.enemy_composition then
+        for enemy_type, _ in pairs(self.enemy_composition) do
+            tryLoad("enemy_" .. enemy_type .. ".png", "enemy_" .. enemy_type)
+        end
+    end
+
+    -- Load background
+    tryLoad("background.png", "background")
+
+    print("[DodgeGame:loadAssets] Loaded " .. self:countLoadedSprites() .. " sprites for variant: " .. (self.variant.name or "Unknown"))
+end
+
+-- Helper: Count how many sprites were successfully loaded
+function DodgeGame:countLoadedSprites()
+    local count = 0
+    for _ in pairs(self.sprites) do
+        count = count + 1
+    end
+    return count
+end
+
+-- Helper: Check if a specific sprite is loaded
+function DodgeGame:hasSprite(sprite_key)
+    return self.sprites and self.sprites[sprite_key] ~= nil
 end
 
 function DodgeGame:setPlayArea(width, height)

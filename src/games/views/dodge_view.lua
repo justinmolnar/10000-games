@@ -62,19 +62,48 @@ function DodgeView:draw()
         g.setLineWidth(1)
     end
 
-    -- Phase 1.6: Use variant palette if available
+    -- Phase 2.3: Draw player (sprite or fallback to icon)
     local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
-    local player_sprite = game.data.icon_sprite or "game_solitaire-0"
-    
-    self.sprite_loader:drawSprite(
-        player_sprite,
-        game.player.x - game.player.radius,
-        game.player.y - game.player.radius,
-        game.player.radius * 2,
-        game.player.radius * 2,
-        {1, 1, 1},
-        palette_id
-    )
+    local paletteManager = self.di and self.di.paletteManager
+
+    if game.sprites and game.sprites.player then
+        -- Use loaded player sprite with palette swapping
+        local sprite = game.sprites.player
+        local size = game.player.radius * 2
+
+        if paletteManager and palette_id then
+            paletteManager:drawSpriteWithPalette(
+                sprite,
+                game.player.x - game.player.radius,
+                game.player.y - game.player.radius,
+                size,
+                size,
+                palette_id,
+                {1, 1, 1}
+            )
+        else
+            -- No palette, just draw normally
+            g.setColor(1, 1, 1)
+            g.draw(sprite,
+                game.player.x - game.player.radius,
+                game.player.y - game.player.radius,
+                0,
+                size / sprite:getWidth(),
+                size / sprite:getHeight())
+        end
+    else
+        -- Fallback to icon system
+        local player_sprite = game.data.icon_sprite or "game_solitaire-0"
+        self.sprite_loader:drawSprite(
+            player_sprite,
+            game.player.x - game.player.radius,
+            game.player.y - game.player.radius,
+            game.player.radius * 2,
+            game.player.radius * 2,
+            {1, 1, 1},
+            palette_id
+        )
+    end
 
     g.setColor(0.9, 0.9, 0.3, 0.45)
     local warning_draw_thickness = self.OBJECT_DRAW_SIZE * 1.5
@@ -94,23 +123,65 @@ function DodgeView:draw()
         end
     end
 
+    -- Phase 2.3: Draw objects/enemies (sprites or fallback to icons)
     for _, obj in ipairs(game.objects) do
-        local tint = {1,1,1}
-        local sprite = "msg_error-0"
-        if obj.type == 'seeker' then tint = {1, 0.3, 0.3}; sprite = "world_lock-0"
-        elseif obj.type == 'zigzag' then tint = {1, 1, 0.3}; sprite = "world_star-1"
-        elseif obj.type == 'sine' then tint = {0.6, 1, 0.6}; sprite = "world_star-0"
-        elseif obj.type == 'splitter' then tint = {0.8, 0.6, 1.0}; sprite = "xml_gear-1" end
+        local sprite_img = nil
+        local sprite_key = nil
 
-        self.sprite_loader:drawSprite(
-            sprite,
-            obj.x - obj.radius,
-            obj.y - obj.radius,
-            obj.radius * 2,
-            obj.radius * 2,
-            tint,
-            palette_id
-        )
+        -- Determine which sprite to use
+        if obj.is_enemy and obj.enemy_type then
+            -- Variant enemy - try to load enemy sprite
+            sprite_key = "enemy_" .. obj.enemy_type
+            sprite_img = game.sprites and game.sprites[sprite_key]
+        elseif not obj.is_enemy then
+            -- Regular obstacle
+            sprite_key = "obstacle"
+            sprite_img = game.sprites and game.sprites[sprite_key]
+        end
+
+        if sprite_img then
+            -- Use loaded sprite with palette swapping
+            local size = obj.radius * 2
+
+            if paletteManager and palette_id then
+                paletteManager:drawSpriteWithPalette(
+                    sprite_img,
+                    obj.x - obj.radius,
+                    obj.y - obj.radius,
+                    size,
+                    size,
+                    palette_id,
+                    {1, 1, 1}
+                )
+            else
+                -- No palette, just draw normally
+                g.setColor(1, 1, 1)
+                g.draw(sprite_img,
+                    obj.x - obj.radius,
+                    obj.y - obj.radius,
+                    0,
+                    size / sprite_img:getWidth(),
+                    size / sprite_img:getHeight())
+            end
+        else
+            -- Fallback to icon system
+            local tint = {1,1,1}
+            local icon_sprite = "msg_error-0"
+            if obj.type == 'seeker' then tint = {1, 0.3, 0.3}; icon_sprite = "world_lock-0"
+            elseif obj.type == 'zigzag' then tint = {1, 1, 0.3}; icon_sprite = "world_star-1"
+            elseif obj.type == 'sine' then tint = {0.6, 1, 0.6}; icon_sprite = "world_star-0"
+            elseif obj.type == 'splitter' then tint = {0.8, 0.6, 1.0}; icon_sprite = "xml_gear-1" end
+
+            self.sprite_loader:drawSprite(
+                icon_sprite,
+                obj.x - obj.radius,
+                obj.y - obj.radius,
+                obj.radius * 2,
+                obj.radius * 2,
+                tint,
+                palette_id
+            )
+        end
     end
 
     local hud_icon_size = self.hud.icon_size or 16
@@ -139,6 +210,44 @@ end
 
 function DodgeView:drawBackground(width, height)
     local g = love.graphics
+    local game = self.game
+
+    -- Phase 2.3: Use loaded background sprite if available
+    if game and game.sprites and game.sprites.background then
+        -- Tile the background to fill the play area
+        local bg = game.sprites.background
+        local bg_width = bg:getWidth()
+        local bg_height = bg:getHeight()
+
+        -- Apply palette swap
+        local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
+        local paletteManager = self.di and self.di.paletteManager
+
+        -- Tile the background with palette swapping
+        for y = 0, math.ceil(height / bg_height) do
+            for x = 0, math.ceil(width / bg_width) do
+                if paletteManager and palette_id then
+                    paletteManager:drawSpriteWithPalette(
+                        bg,
+                        x * bg_width,
+                        y * bg_height,
+                        bg_width,
+                        bg_height,
+                        palette_id,
+                        {1, 1, 1}
+                    )
+                else
+                    -- No palette, just draw normally
+                    g.setColor(1, 1, 1)
+                    g.draw(bg, x * bg_width, y * bg_height)
+                end
+            end
+        end
+
+        return -- Don't draw starfield if we have a background sprite
+    end
+
+    -- Fallback: Draw animated starfield
     local t = love.timer.getTime()
     g.setColor(1, 1, 1)
     for _, star in ipairs(self.stars) do

@@ -24,6 +24,12 @@ This checklist encodes our project’s architectural and refactoring rules. Foll
 - Windowing + UI patterns
   - Respect `window_defaults` (min_w/min_h/resizable). Call `setViewport` after maximize/restore.
   - Context menus: options built by the owning state; separators are visual-only; actions routed centrally.
+  - **CRITICAL: Viewport coordinates vs Screen coordinates**
+    - Windowed views use **viewport coordinates** (0,0 = top-left of window content)
+    - `love.graphics.setScissor()` requires **screen coordinates** (add `viewport.x`, `viewport.y` offsets)
+    - **NEVER** call `love.graphics.origin()` in windowed views (breaks when window moves)
+    - Example: `love.graphics.setScissor(screen_x + content_x, screen_y + content_y, width, height)`
+    - See `credits_view.lua:65`, `file_explorer_view.lua:216` for correct patterns
 - Desktop + File Explorer
   - Icons managed via `DesktopIconController`; positions validated via `DesktopIcons`.
   - File Explorer: view emits intents; state handles navigation, opening, and context actions; special folders via FileSystem.
@@ -50,6 +56,7 @@ This checklist encodes our project’s architectural and refactoring rules. Foll
 - [ ] Magic numbers moved to config with safe fallbacks.
 - [ ] IO/JSON guarded by pcall with graceful recovery.
 - [ ] Window min sizes enforced; setViewport called after geometry changes.
+- [ ] Windowed views: no `origin()` calls; scissor uses screen coordinates (viewport.x/y offset).
 - [ ] Context menu actions built/handled in the right state; dispatch tables used.
 - [ ] Persistence updated as needed (save versioning, tolerant reads); no accidental overwrites.
 - [ ] Performance-sensitive loops avoid churn; caches/pools used where relevant.

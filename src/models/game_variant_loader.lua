@@ -5,6 +5,7 @@ local GameVariantLoader = Object:extend('GameVariantLoader')
 
 function GameVariantLoader:init()
     self.base_game_definitions = {}
+    self.launcher_icons = {}  -- Phase 2.4: Cache for loaded launcher icons
     self:loadBaseGameDefinitions()
 end
 
@@ -100,6 +101,57 @@ function GameVariantLoader:getDefaultVariant()
         flavor_text = "",
         intro_cutscene = nil
     }
+end
+
+-- Phase 2.4: Launcher Icon Loading
+function GameVariantLoader:getLauncherIcon(game_id, game_class)
+    -- Return cached icon if already loaded
+    if self.launcher_icons[game_id] then
+        return self.launcher_icons[game_id]
+    end
+
+    -- Try to load launcher icon for this variant
+    local variant = self:getVariantData(game_id)
+    if not variant or not variant.sprite_set or not game_class then
+        return nil  -- No icon loaded, will fall back to icon_sprite
+    end
+
+    -- Determine game_type from game_class
+    local game_type = self:getGameTypeFromClass(game_class)
+    if not game_type then
+        return nil
+    end
+
+    -- Construct path: assets/sprites/games/{game_type}/{sprite_set}/launcher_icon.png
+    local icon_path = string.format("assets/sprites/games/%s/%s/launcher_icon.png", game_type, variant.sprite_set)
+
+    -- Try to load the icon
+    local success, image = pcall(function()
+        return love.graphics.newImage(icon_path)
+    end)
+
+    if success and image then
+        self.launcher_icons[game_id] = image
+        print("[GameVariantLoader] Loaded launcher icon: " .. icon_path)
+        return image
+    else
+        -- Cache nil to avoid repeated load attempts
+        self.launcher_icons[game_id] = false
+        print("[GameVariantLoader] No launcher icon at: " .. icon_path .. " (using fallback)")
+        return nil
+    end
+end
+
+function GameVariantLoader:getGameTypeFromClass(game_class)
+    -- Map game class names to folder names
+    local class_to_folder = {
+        SpaceShooter = "space_shooter",
+        SnakeGame = "snake",
+        MemoryMatch = "memory_match",
+        HiddenObject = "hidden_object",
+        DodgeGame = "dodge"
+    }
+    return class_to_folder[game_class]
 end
 
 return GameVariantLoader

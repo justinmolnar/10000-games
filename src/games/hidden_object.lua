@@ -54,6 +54,61 @@ function HiddenObject:init(game_data, cheats, di)
     self.view = HiddenObjectView:new(self, self.variant)
     print("[HiddenObject:init] Initialized with default game dimensions:", self.game_width, self.game_height)
     print("[HiddenObject:init] Variant:", self.variant and self.variant.name or "Default")
+
+    -- Phase 2.3: Load sprite assets with graceful fallback
+    self:loadAssets()
+end
+
+-- Phase 2.3: Asset loading with fallback
+function HiddenObject:loadAssets()
+    self.sprites = {}
+
+    if not self.variant or not self.variant.sprite_set then
+        print("[HiddenObject:loadAssets] No variant sprite_set, using icon fallback")
+        return
+    end
+
+    local game_type = "hidden_object"
+    local base_path = "assets/sprites/games/" .. game_type .. "/" .. self.variant.sprite_set .. "/"
+
+    local function tryLoad(filename, sprite_key)
+        local filepath = base_path .. filename
+        local success, result = pcall(function()
+            return love.graphics.newImage(filepath)
+        end)
+
+        if success then
+            self.sprites[sprite_key] = result
+            print("[HiddenObject:loadAssets] Loaded: " .. filepath)
+        else
+            print("[HiddenObject:loadAssets] Missing: " .. filepath .. " (using fallback)")
+        end
+    end
+
+    -- Load background
+    tryLoad("background.png", "background")
+
+    -- Load object sprites (try up to 30 object sprites)
+    for i = 1, 30 do
+        local filename = string.format("object_%02d.png", i)
+        local sprite_key = "object_" .. i
+        tryLoad(filename, sprite_key)
+    end
+
+    print(string.format("[HiddenObject:loadAssets] Loaded %d sprites for variant: %s",
+        self:countLoadedSprites(), self.variant.name or "Unknown"))
+end
+
+function HiddenObject:countLoadedSprites()
+    local count = 0
+    for _ in pairs(self.sprites) do
+        count = count + 1
+    end
+    return count
+end
+
+function HiddenObject:hasSprite(sprite_key)
+    return self.sprites and self.sprites[sprite_key] ~= nil
 end
 
 function HiddenObject:setPlayArea(width, height)

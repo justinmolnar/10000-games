@@ -50,6 +50,73 @@ function SnakeGame:init(game_data, cheats, di)
 
     self.view = SnakeView:new(self, self.variant)
     print("[SnakeGame:init] Variant:", self.variant and self.variant.name or "Default")
+
+    -- Phase 2.3: Load sprite assets with graceful fallback
+    self:loadAssets()
+end
+
+-- Phase 2.3: Asset loading with fallback
+function SnakeGame:loadAssets()
+    self.sprites = {}
+
+    if not self.variant or not self.variant.sprite_set then
+        print("[SnakeGame:loadAssets] No variant sprite_set, using fallback rendering")
+        return
+    end
+
+    local game_type = "snake"
+    local base_path = "assets/sprites/games/" .. game_type .. "/" .. self.variant.sprite_set .. "/"
+
+    local function tryLoad(filename, sprite_key)
+        local filepath = base_path .. filename
+        local success, result = pcall(function()
+            return love.graphics.newImage(filepath)
+        end)
+
+        if success then
+            self.sprites[sprite_key] = result
+            print("[SnakeGame:loadAssets] Loaded: " .. filepath)
+        else
+            print("[SnakeGame:loadAssets] Missing: " .. filepath .. " (using fallback)")
+        end
+    end
+
+    -- Load snake head sprites (4 directions)
+    tryLoad("head_up.png", "head_up")
+    tryLoad("head_down.png", "head_down")
+    tryLoad("head_left.png", "head_left")
+    tryLoad("head_right.png", "head_right")
+
+    -- Load snake body sprites
+    tryLoad("body_horizontal.png", "body_horizontal")
+    tryLoad("body_vertical.png", "body_vertical")
+
+    -- Load snake tail sprites (4 directions)
+    tryLoad("tail_up.png", "tail_up")
+    tryLoad("tail_down.png", "tail_down")
+    tryLoad("tail_left.png", "tail_left")
+    tryLoad("tail_right.png", "tail_right")
+
+    -- Load food sprite
+    tryLoad("food.png", "food")
+
+    -- Load background (optional)
+    tryLoad("background.png", "background")
+
+    print(string.format("[SnakeGame:loadAssets] Loaded %d sprites for variant: %s",
+        self:countLoadedSprites(), self.variant.name or "Unknown"))
+end
+
+function SnakeGame:countLoadedSprites()
+    local count = 0
+    for _ in pairs(self.sprites) do
+        count = count + 1
+    end
+    return count
+end
+
+function SnakeGame:hasSprite(sprite_key)
+    return self.sprites and self.sprites[sprite_key] ~= nil
 end
 
 function SnakeGame:setPlayArea(width, height)

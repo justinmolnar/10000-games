@@ -385,19 +385,34 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     local icon_x = x + 8
     local icon_y = y + (h - icon_size) / 2
 
-    local sprite_name = game_data.icon_sprite or "game_freecell-0"
-
-    -- Phase 1.6: Use variant palette if available
-    local palette_id = sprite_manager:getPaletteId(game_data)
+    -- Phase 2.4: Try to load variant-specific launcher icon
+    local launcher_icon = nil
     if self.variant_loader then
-        local variant = self.variant_loader:getVariantData(game_data.id)
-        if variant and variant.palette then
-            palette_id = variant.palette
-        end
+        launcher_icon = self.variant_loader:getLauncherIcon(game_data.id, game_data.game_class)
     end
 
-    local tint = is_unlocked and {1, 1, 1} or {0.5, 0.5, 0.5}
-    sprite_loader:drawSprite(sprite_name, icon_x, icon_y, icon_size, icon_size, tint, palette_id)
+    if launcher_icon then
+        -- Draw loaded launcher icon directly
+        local tint = is_unlocked and {1, 1, 1} or {0.5, 0.5, 0.5}
+        love.graphics.setColor(tint[1], tint[2], tint[3])
+        love.graphics.draw(launcher_icon, icon_x, icon_y, 0,
+            icon_size / launcher_icon:getWidth(), icon_size / launcher_icon:getHeight())
+    else
+        -- Fallback to icon sprite system
+        local sprite_name = game_data.icon_sprite or "game_freecell-0"
+
+        -- Phase 1.6: Use variant palette if available
+        local palette_id = sprite_manager:getPaletteId(game_data)
+        if self.variant_loader then
+            local variant = self.variant_loader:getVariantData(game_data.id)
+            if variant and variant.palette then
+                palette_id = variant.palette
+            end
+        end
+
+        local tint = is_unlocked and {1, 1, 1} or {0.5, 0.5, 0.5}
+        sprite_loader:drawSprite(sprite_name, icon_x, icon_y, icon_size, icon_size, tint, palette_id)
+    end
     
     local badge_x = icon_x + icon_size - 16
     local badge_y = icon_y

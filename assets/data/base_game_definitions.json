@@ -386,7 +386,7 @@
       {
         "clone_index": 0,
         "name": "Dodge Master",
-        "sprite_set": "dodge_base_1",
+        "sprite_set": "base_1",
         "palette": "blue",
         "music_track": "dodge_theme_1",
         "sfx_pack": "retro_beeps",
@@ -399,7 +399,7 @@
       {
         "clone_index": 1,
         "name": "Dodge Deluxe",
-        "sprite_set": "dodge_base_1",
+        "sprite_set": "base_1",
         "palette": "red",
         "music_track": "dodge_theme_2",
         "sfx_pack": "retro_beeps",
@@ -415,7 +415,7 @@
       {
         "clone_index": 2,
         "name": "Dodge Chaos",
-        "sprite_set": "dodge_base_1",
+        "sprite_set": "base_1",
         "palette": "purple",
         "music_track": "dodge_theme_3",
         "sfx_pack": "retro_beeps",
@@ -433,7 +433,7 @@
       {
         "clone_index": 3,
         "name": "Dodge Elite",
-        "sprite_set": "dodge_base_2",
+        "sprite_set": "base_2",
         "palette": "green",
         "music_track": "dodge_theme_1",
         "sfx_pack": "8bit_arcade",

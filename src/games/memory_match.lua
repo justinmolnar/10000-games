@@ -63,6 +63,61 @@ function MemoryMatch:init(game_data, cheats, di)
     self.view = MemoryMatchView:new(self, self.variant)
     print("[MemoryMatch:init] Initialized with default game dimensions:", self.game_width, self.game_height)
     print("[MemoryMatch:init] Variant:", self.variant and self.variant.name or "Default")
+
+    -- Phase 2.3: Load sprite assets with graceful fallback
+    self:loadAssets()
+end
+
+-- Phase 2.3: Asset loading with fallback
+function MemoryMatch:loadAssets()
+    self.sprites = {}
+
+    if not self.variant or not self.variant.sprite_set then
+        print("[MemoryMatch:loadAssets] No variant sprite_set, using icon fallback")
+        return
+    end
+
+    local game_type = "memory_match"
+    local base_path = "assets/sprites/games/" .. game_type .. "/" .. self.variant.sprite_set .. "/"
+
+    local function tryLoad(filename, sprite_key)
+        local filepath = base_path .. filename
+        local success, result = pcall(function()
+            return love.graphics.newImage(filepath)
+        end)
+
+        if success then
+            self.sprites[sprite_key] = result
+            print("[MemoryMatch:loadAssets] Loaded: " .. filepath)
+        else
+            print("[MemoryMatch:loadAssets] Missing: " .. filepath .. " (using fallback)")
+        end
+    end
+
+    -- Load card back
+    tryLoad("card_back.png", "card_back")
+
+    -- Load card icons (try up to 24 icons)
+    for i = 1, 24 do
+        local filename = string.format("icon_%02d.png", i)
+        local sprite_key = "icon_" .. i
+        tryLoad(filename, sprite_key)
+    end
+
+    print(string.format("[MemoryMatch:loadAssets] Loaded %d sprites for variant: %s",
+        self:countLoadedSprites(), self.variant.name or "Unknown"))
+end
+
+function MemoryMatch:countLoadedSprites()
+    local count = 0
+    for _ in pairs(self.sprites) do
+        count = count + 1
+    end
+    return count
+end
+
+function MemoryMatch:hasSprite(sprite_key)
+    return self.sprites and self.sprites[sprite_key] ~= nil
 end
 
 function MemoryMatch:setPlayArea(width, height)

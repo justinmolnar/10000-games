@@ -37,28 +37,54 @@ function HiddenObjectView:draw()
 
     self:drawBackground()
 
-    -- Phase 1.6: Use variant palette if available
+    -- Phase 1.6 & 2.3: Use variant palette if available
     local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
-    local object_sprite = game.data.icon_sprite or "magnifying_glass-0"
+    local object_sprite_fallback = game.data.icon_sprite or "magnifying_glass-0"
+    local paletteManager = self.di and self.di.paletteManager
 
+    -- Phase 2.3: Draw objects (sprite or fallback to icon)
     for _, obj in ipairs(game.objects) do
         if not obj.found then
             local angle = (obj.id * 13) % 360
-            
+
             love.graphics.push()
             love.graphics.translate(obj.x, obj.y)
             love.graphics.rotate(math.rad(angle))
-            
-            self.sprite_loader:drawSprite(
-                object_sprite,
-                -obj.size/2,
-                -obj.size/2,
-                obj.size,
-                obj.size,
-                {1, 1, 1},
-                palette_id
-            )
-            
+
+            -- Try to use loaded sprite for this object
+            local sprite_key = "object_" .. obj.sprite_variant
+            if game.sprites and game.sprites[sprite_key] then
+                -- Use loaded object sprite with palette swapping
+                local sprite = game.sprites[sprite_key]
+                if paletteManager and palette_id then
+                    paletteManager:drawSpriteWithPalette(
+                        sprite,
+                        -obj.size/2,
+                        -obj.size/2,
+                        obj.size,
+                        obj.size,
+                        palette_id,
+                        {1, 1, 1}
+                    )
+                else
+                    -- No palette, just draw normally
+                    love.graphics.setColor(1, 1, 1)
+                    love.graphics.draw(sprite, -obj.size/2, -obj.size/2, 0,
+                        obj.size / sprite:getWidth(), obj.size / sprite:getHeight())
+                end
+            else
+                -- Fallback to icon system
+                self.sprite_loader:drawSprite(
+                    object_sprite_fallback,
+                    -obj.size/2,
+                    -obj.size/2,
+                    obj.size,
+                    obj.size,
+                    {1, 1, 1},
+                    palette_id
+                )
+            end
+
             love.graphics.pop()
         end
     end
@@ -87,6 +113,41 @@ end
 
 function HiddenObjectView:drawBackground()
     local game = self.game
+
+    -- Phase 2.3: Use loaded background sprite if available
+    if game and game.sprites and game.sprites.background then
+        local bg = game.sprites.background
+        local bg_width = bg:getWidth()
+        local bg_height = bg:getHeight()
+
+        -- Apply palette swap
+        local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
+        local paletteManager = self.di and self.di.paletteManager
+
+        -- Scale or tile background to fit game area
+        local scale_x = game.game_width / bg_width
+        local scale_y = game.game_height / bg_height
+
+        if paletteManager and palette_id then
+            paletteManager:drawSpriteWithPalette(
+                bg,
+                0,
+                0,
+                game.game_width,
+                game.game_height,
+                palette_id,
+                {1, 1, 1}
+            )
+        else
+            -- No palette, just draw normally
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.draw(bg, 0, 0, 0, scale_x, scale_y)
+        end
+
+        return -- Don't draw procedural background if we have a sprite
+    end
+
+    -- Fallback: Draw procedural background
     love.graphics.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
     love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
 
