@@ -45,12 +45,19 @@ function GameData:loadBaseGames()
 
     local multipliers = Config.clone_multipliers
 
+    -- Load standalone variant counts (e.g., dodge_variants.json)
+    local standalone_variant_counts = self:loadStandaloneVariantCounts()
+
     for _, base_game_data in ipairs(base_games) do
         -- Validate required fields before processing
         if base_game_data.id and base_game_data.game_class and base_game_data.base_formula_string then
            self:registerGame(base_game_data)
-           -- Generate clones (still hardcoding 40 clones for MVP scope)
-           self:generateClones(base_game_data, 40, multipliers)
+
+           -- Determine number of clones to generate
+           -- Use standalone variant count if available, otherwise default to 40
+           local clone_count = standalone_variant_counts[base_game_data.id] or 40
+
+           self:generateClones(base_game_data, clone_count, multipliers)
         else
             print("Warning: Skipping invalid base game entry in JSON (missing id, game_class, or base_formula_string): ", json.encode(base_game_data))
         end
@@ -62,6 +69,50 @@ function GameData:loadBaseGames()
     print("Loaded " .. count .. " games and variants.")
 end
 
+function GameData:loadStandaloneVariantCounts()
+    -- Scan the variants directory and count variants for each game
+    -- Returns a table mapping base_game_id to variant count
+    -- e.g., { ["dodge_1"] = 52, ["snake_1"] = 30 }
+
+    local variant_counts = {}
+    local variants_dir = Paths.assets.data .. "variants/"
+
+    -- Get list of files in variants directory
+    local files = love.filesystem.getDirectoryItems(variants_dir)
+
+    for _, filename in ipairs(files) do
+        -- Check if it's a JSON file matching the pattern *_variants.json
+        if filename:match("^(.+)_variants%.json$") then
+            local game_name = filename:match("^(.+)_variants%.json$")
+            local file_path = variants_dir .. filename
+
+            -- Try to read and parse the file
+            local read_ok, contents = pcall(love.filesystem.read, file_path)
+            if read_ok and contents then
+                local decode_ok, variant_data = pcall(json.decode, contents)
+                if decode_ok and variant_data and type(variant_data) == "table" then
+                    -- Count the variants (array length)
+                    -- Subtract 1 because the count includes the base game (clone_index 0)
+                    -- but generateClones expects the number of clones to generate
+                    local count = #variant_data
+                    if count > 1 then  -- Must have at least base + 1 clone
+                        local clone_count = count - 1
+                        -- Map to base game ID (e.g., "dodge" -> "dodge_1")
+                        local base_game_id = game_name .. "_1"
+                        variant_counts[base_game_id] = clone_count
+                        print("Found " .. count .. " total variants (" .. clone_count .. " clones) for " .. base_game_id .. " in " .. filename)
+                    end
+                else
+                    print("Warning: Could not decode variant file: " .. filename)
+                end
+            else
+                print("Warning: Could not read variant file: " .. filename)
+            end
+        end
+    end
+
+    return variant_counts
+end
 
 function GameData:createFormulaFunction(formula_string)
     if not formula_string or formula_string == "" then

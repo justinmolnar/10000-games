@@ -48,6 +48,14 @@ function DodgeView:draw()
     local game_width = game.game_width
     local game_height = game.game_height
 
+    -- Apply camera shake
+    g.push()
+    if game.camera_shake_active and game.camera_shake_active > 0 then
+        local shake_x = (math.random() - 0.5) * game.camera_shake_active * 10
+        local shake_y = (math.random() - 0.5) * game.camera_shake_active * 10
+        g.translate(shake_x, shake_y)
+    end
+
     g.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
     g.rectangle('fill', 0, 0, game_width, game_height)
     self:drawBackground(game_width, game_height)
@@ -140,6 +148,21 @@ function DodgeView:draw()
         end
     end
 
+    -- Draw player trail
+    if game.player_trail_buffer and #game.player_trail_buffer > 1 then
+        g.setColor(0.5, 0.7, 1.0, 0.3)
+        g.setLineWidth(3)
+        local points = {}
+        for i, pos in ipairs(game.player_trail_buffer) do
+            table.insert(points, pos.x)
+            table.insert(points, pos.y)
+        end
+        if #points >= 4 then  -- Need at least 2 points
+            g.line(points)
+        end
+        g.setLineWidth(1)
+    end
+
     -- Phase 2.3: Draw player (sprite or fallback to icon)
     local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local paletteManager = self.di and self.di.paletteManager
@@ -148,17 +171,26 @@ function DodgeView:draw()
         -- Use loaded player sprite with palette swapping and rotation
         local sprite = game.sprites.player
         local size = game.player.radius * 2
+        local rotation = game.player.rotation or 0
 
         if paletteManager and palette_id then
+            -- Player position is the CENTER, but paletteManager uses top-left when rotation==0
+            -- Always pass a non-zero rotation to force centering, or adjust position
+            -- Use a tiny rotation value if rotation is 0 to force center-origin rendering
+            local draw_rotation = rotation
+            if math.abs(rotation) < 0.001 then
+                draw_rotation = 0.001  -- Tiny non-zero value to force center origin
+            end
+
             paletteManager:drawSpriteWithPalette(
                 sprite,
-                game.player.x,  -- Draw from center for rotation
+                game.player.x,  -- Always draw at center position
                 game.player.y,
                 size,
                 size,
                 palette_id,
                 {1, 1, 1},
-                game.player.rotation or 0  -- Rotation angle
+                draw_rotation
             )
         else
             -- No palette, just draw normally with rotation
@@ -193,6 +225,15 @@ function DodgeView:draw()
         g.pop()
     end
 
+    -- Draw shield visual
+    if game.player.shield_charges and game.player.shield_charges > 0 then
+        local shield_alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 5)
+        g.setColor(0.3, 0.7, 1.0, shield_alpha)
+        g.setLineWidth(3)
+        g.circle('line', game.player.x, game.player.y, game.player.radius + 5)
+        g.setLineWidth(1)
+    end
+
     g.setColor(0.9, 0.9, 0.3, 0.45)
     local warning_draw_thickness = self.OBJECT_DRAW_SIZE * 1.5
     for _, warning in ipairs(game.warnings) do
@@ -213,6 +254,21 @@ function DodgeView:draw()
 
     -- Phase 2.3: Draw objects/enemies (sprites or fallback to icons)
     for _, obj in ipairs(game.objects) do
+        -- Draw obstacle trail first (behind object)
+        if obj.trail_positions and #obj.trail_positions > 1 then
+            g.setColor(1, 0.4, 0.2, 0.4)
+            g.setLineWidth(2)
+            local points = {}
+            for i, pos in ipairs(obj.trail_positions) do
+                table.insert(points, pos.x)
+                table.insert(points, pos.y)
+            end
+            if #points >= 4 then
+                g.line(points)
+            end
+            g.setLineWidth(1)
+        end
+
         local sprite_img = nil
         local sprite_key = nil
 
@@ -284,16 +340,46 @@ function DodgeView:draw()
     g.print(game.metrics.objects_dodged .. "/" .. game.dodge_target, tx, ry[1], 0, s, s)
     
     local collision_sprite = self.sprite_manager:getMetricSprite(game.data, "collisions") or "msg_error-0"
-    g.print("Hits: ", lx, ry[2], 0, s, s)
+    g.print("Lives: ", lx, ry[2], 0, s, s)
     self.sprite_loader:drawSprite(collision_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    g.print(game.metrics.collisions .. "/" .. game.MAX_COLLISIONS, tx, ry[2], 0, s, s)
-    
+    local lives_remaining = game.lives - game.metrics.collisions
+    g.print(lives_remaining .. "/" .. game.lives, tx, ry[2], 0, s, s)
+
     local perfect_sprite = self.sprite_manager:getMetricSprite(game.data, "perfect_dodges") or "check-0"
     g.print("Perfect: ", lx, ry[3], 0, s, s)
     self.sprite_loader:drawSprite(perfect_sprite, ix, ry[3], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
     g.print(game.metrics.perfect_dodges, tx, ry[3], 0, s, s)
 
-    g.print("Difficulty: " .. game.difficulty_level, lx, ry[4])
+    -- Show shield charges if player has shields
+    if game.player.shield_max and game.player.shield_max > 0 then
+        g.print("Shield: " .. game.player.shield_charges .. "/" .. game.player.shield_max, lx, ry[4], 0, s, s)
+    else
+        g.print("Difficulty: " .. game.difficulty_level, lx, ry[4])
+    end
+
+    -- Fog of war overlay (after all game elements, before closing transform)
+    if game.fog_origin and game.fog_origin ~= "none" and game.fog_radius < 9999 then
+        local fog_x, fog_y
+        if game.fog_origin == "player" then
+            fog_x, fog_y = game.player.x, game.player.y
+        elseif game.fog_origin == "circle_center" and game.safe_zone then
+            fog_x, fog_y = game.safe_zone.x, game.safe_zone.y
+        else
+            fog_x, fog_y = game_width / 2, game_height / 2
+        end
+
+        -- Draw dark overlay with circular cutout using stencil
+        love.graphics.stencil(function()
+            love.graphics.circle("fill", fog_x, fog_y, game.fog_radius)
+        end, "replace", 1)
+        love.graphics.setStencilTest("less", 1)
+        g.setColor(0, 0, 0, 0.8)
+        g.rectangle("fill", 0, 0, game_width, game_height)
+        love.graphics.setStencilTest()
+    end
+
+    -- Close camera shake transform
+    g.pop()
 end
 
 function DodgeView:drawBackground(width, height)

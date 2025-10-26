@@ -516,7 +516,13 @@ local Config = {
                 -- Jump mode physics
                 jump_distance = 80,  -- How far each jump goes (pixels)
                 jump_cooldown = 0.5,  -- Time between jumps (seconds)
-                jump_speed = 800  -- Speed of the jump movement (pixels/sec, 9999 = instant teleport)
+                jump_speed = 800,  -- Speed of the jump movement (pixels/sec, 9999 = instant teleport)
+                -- New variant parameters
+                player_size = 1.0,  -- Multiplier on player hitbox (0.5 = tiny, 2.0 = big target)
+                max_speed = 600,  -- Hard cap on velocity (prevents runaway speed in asteroids mode)
+                lives = 10,  -- Hit count before game over (replaces collisions.max)
+                shield = 0,  -- Number of shield charges (0 = none, integer for charges)
+                shield_recharge_time = 0  -- Time in seconds to recharge shield (0 = never recharges)
             },
             objects = {
                 size = 15,
@@ -553,9 +559,16 @@ local Config = {
                     shard_radius_factor = 0.6,
                     shard_speed_factor = 0.36,
                     spread_deg = 35
-                }
+                },
+                -- New variant parameters
+                tracking = 0.0,  -- Homing strength (0.0 = none, 0.5 = slight, 1.0 = aggressive)
+                speed_variance = 0.0,  -- Random speed variation (0.0 = uniform, 1.0 = very chaotic)
+                spawn_rate_multiplier = 1.0,  -- Multiplier on spawn frequency (0.5 = sparse, 2.0 = bullet hell)
+                spawn_pattern = "random",  -- "random", "waves", "clusters", "spiral", "pulse_with_arena"
+                size_variance = 0.0,  -- Mix of tiny/medium/huge (0.0 = uniform, 1.0 = extreme variance)
+                trails = 0  -- Trail length in segments (0 = none, 5 = short, 20 = long damaging trail)
             },
-            collisions = { max = 10 },
+            collisions = { max = 10 },  -- DEPRECATED: Use player.lives instead
             arena = {
                 width = 400,
                 height = 400,
@@ -575,7 +588,12 @@ local Config = {
                 -- Game over system
                 leaving_area_ends_game = false,  -- If true, leaving safe zone = instant game over
                 holes_type = "none",  -- "circle" (on boundary), "background" (static), "none"
-                holes_count = 0  -- Number of hazard holes (0 = disabled)
+                holes_count = 0,  -- Number of hazard holes (0 = disabled)
+                -- New environment forces
+                gravity = 0.0,  -- Pull toward/away from center in px/sec² (positive = pull in, negative = push out)
+                wind_direction = 0,  -- 0-360 degrees (0 = east, 90 = south), or "random"
+                wind_strength = 0,  -- Force magnitude in px/sec² (0 = no wind)
+                wind_type = "none"  -- "turbulent", "steady", "changing_steady", "changing_turbulent", "none"
             },
             spawn = {
                 warning_chance = 0.7,
@@ -591,10 +609,20 @@ local Config = {
                 accel = { max = 1.0, time = 90 } -- drift velocity scales up to 2x (1+1) over 90s
             },
             warnings = { complexity_threshold = 2 },
+            victory = {
+                condition = "dodge_count",  -- "dodge_count" (default) or "time" (survive X seconds)
+                limit = 30  -- X dodges or X seconds (uses base_target calculation by default)
+            },
             view = {
                 bg_color = {0.08, 0.05, 0.1},
                 starfield = { count = 180, speed_min = 20, speed_max = 100, size_divisor = 60 },
-                hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
+                hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} },
+                -- New visual effects
+                fog_origin = "none",  -- "player", "circle_center", or "none"
+                fog_radius = 9999,  -- Visibility radius in pixels (100 = tight, 9999 = full vision)
+                camera_shake = 0.0,  -- Screen shake intensity (0 = none, 1.0 = moderate, 2.0 = intense)
+                player_trail = 0,  -- Player trail length in segments (0 = none, 10 = short, 50 = long)
+                score_mode = "none"  -- Score multiplier mode: "center", "edge", "speed", or "none"
             }
         },
     hidden_object = {

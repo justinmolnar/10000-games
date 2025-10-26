@@ -60,6 +60,80 @@ All properties can be added to any Dodge variant in `assets/data/variants/dodge_
 
 **background** [starfield_blue]: Background visual theme. Examples: "starfield_blue", "starfield_red", "starfield_purple"
 
+## Per-Variant Modifiers (Player Properties)
+
+**player_size** [1.0]: Multiplier for player sprite size and hitbox radius. 0.5 = tiny, 1.0 = normal, 2.0 = giant. Affects both visual size and collision detection. Range: 0.3-3.0
+
+**max_speed** [600]: Maximum speed cap for player in pixels/second. 0 = no limit. When > 0, velocity is clamped to this value after all forces (input, gravity, wind) are applied. Useful for preventing runaway speed from environmental forces. Range: 0-1200
+
+**lives** [10]: Number of collisions (hits) the player can take before game over. Each obstacle collision consumes 1 life (unless absorbed by shield). Lower = higher difficulty. Range: 1-50
+
+**shield** [0]: Number of shield charges. Each charge absorbs one hit before lives are consumed. Shield recharges over time if shield_recharge_time > 0. Range: 0-10
+
+**shield_recharge_time** [0]: Time in seconds to recharge one shield charge. 0 = shields never recharge. Higher = slower recharge. Shield recharge timer resets after consuming a charge. Range: 0-60
+
+## Per-Variant Modifiers (Obstacle Behavior)
+
+**obstacle_tracking** [0.0]: Homing/tracking strength for obstacles. 0.0 = no tracking (straight line), 0.5 = moderate homing, 1.0 = aggressive homing. Obstacles gradually turn toward player. Range: 0.0-1.0
+
+**obstacle_speed_variance** [0.0]: Random speed variance for spawned obstacles. 0.0 = all obstacles same speed, 0.5 = ±50% variance, 1.0 = ±100% variance. Each obstacle gets a random speed multiplier. Range: 0.0-1.0
+
+**obstacle_spawn_rate** [1.0]: Spawn rate multiplier. 0.5 = half speed, 1.0 = normal, 2.5 = 2.5x spawn rate. Directly multiplies the spawn timer. Range: 0.1-5.0
+
+**obstacle_spawn_pattern** [random]: Spawn pattern behavior. Options:
+  - "random": Traditional random spawns from edges
+  - "waves": Bursts of 6 objects every 0.15s, then 2.5s pause
+  - "clusters": Spawn 3-5 objects at similar angles simultaneously
+  - "spiral": Rotating spawn angle creating spiral pattern
+  - "pulse_with_arena": Spawn from safe zone boundary outward
+
+**obstacle_size_variance** [0.0]: Random size variance for obstacles. 0.0 = all same size, 0.5 = ±50%, 1.0 = ±100%. Range: 0.0-1.0
+
+**obstacle_trails** [0]: Trail length for obstacles. 0 = no trails, 10 = short trail, 30 = long trail. Trails are solid and damage the player on contact. Range: 0-50
+
+## Per-Variant Modifiers (Environmental Forces)
+
+**area_gravity** [0.0]: Gravity force toward/away from safe zone center. Positive = pull toward center (vortex), negative = push away (repel). Applied as constant acceleration. Range: -500 to 500
+
+**wind_direction** [0]: Wind direction in degrees. 0 = right, 90 = down, 180 = left, 270 = up. Only used when wind_type != "none". Range: 0-360
+
+**wind_strength** [0]: Wind force strength in pixels/second². 0 = no wind. Higher = stronger push. Applied as constant acceleration in wind_direction. Range: 0-500
+
+**wind_type** [none]: Wind behavior type. Options:
+  - "none": No wind
+  - "steady": Constant wind in wind_direction
+  - "turbulent": Steady wind with random fluctuations
+  - "changing_steady": Wind changes direction every 3s, smooth transition
+  - "changing_turbulent": Wind changes direction every 3s with turbulence
+
+## Per-Variant Modifiers (Visual Effects)
+
+**fog_of_war_origin** [none]: Fog of war center point. Options:
+  - "none": No fog (full visibility)
+  - "player": Fog centered on player (you can only see nearby)
+  - "circle_center": Fog centered on safe zone center
+  - "screen_center": Fog centered on screen center
+
+**fog_of_war_radius** [9999]: Visibility radius in pixels. Only visible within this radius from fog origin. 9999 = no fog (effectively disabled). Lower = more claustrophobic. Range: 50-9999
+
+**camera_shake_intensity** [0.0]: Camera shake intensity on collision. 0.0 = no shake, 1.0 = moderate shake, 2.0 = heavy shake. Shield hits use 50% intensity. Shake decays exponentially. Range: 0.0-5.0
+
+**player_trail_length** [0]: Player trail length in points. 0 = no trail, 10 = short trail, 30 = long trail. Trail originates from back of sprite and follows movement. Range: 0-50
+
+**score_multiplier_mode** [none]: Score multiplier system based on player behavior. Multiplier applied to final score on victory. Options:
+  - "none": No multiplier (1.0x)
+  - "center": Higher multiplier for staying near safe zone center
+  - "edge": Higher multiplier for staying near safe zone edge (risky play)
+  - "speed": Higher multiplier for maintaining high speed
+
+## Per-Variant Modifiers (Victory Conditions)
+
+**victory_condition** [dodge_count]: Win condition type. Options:
+  - "dodge_count": Win by dodging X objects (set by victory_limit)
+  - "time": Win by surviving X seconds (set by victory_limit)
+
+**victory_limit** [30]: Victory target value. For "dodge_count": number of objects to dodge. For "time": seconds to survive. Range: 1-300
+
 ## Per-Variant Modifiers (Difficulty)
 
 **difficulty_modifier** [1.0]: Overall difficulty multiplier. Scales spawn rate, object speed, etc. Higher = harder. Range: 0.5-3.0
@@ -183,3 +257,85 @@ Feel: Slow turning, slow to start, heavy momentum, soft impacts
 }
 ```
 Feel: Fast, agile, instant acceleration, moderate drift - high skill ceiling
+
+### Fog Runner (Claustrophobic)
+```json
+{
+  "clone_index": 6,
+  "name": "Dodge Fog Runner",
+  "fog_of_war_origin": "player",
+  "fog_of_war_radius": 120,
+  "victory_condition": "time",
+  "victory_limit": 45,
+  "player_trail_length": 20,
+  "sprite_set": "base_1",
+  "palette": "gray"
+}
+```
+Feel: Tense limited visibility, time-based survival, trail helps track movement
+
+### Shield Tank (Defensive)
+```json
+{
+  "clone_index": 7,
+  "name": "Dodge Shield Tank",
+  "lives": 3,
+  "shield": 2,
+  "shield_recharge_time": 12,
+  "player_size": 1.5,
+  "max_speed": 400,
+  "camera_shake_intensity": 1.5,
+  "sprite_set": "base_2",
+  "palette": "blue"
+}
+```
+Feel: Low lives but rechargeable shields, larger slower target, visual feedback on hits
+
+### Gravity Vortex (Environmental)
+```json
+{
+  "clone_index": 8,
+  "name": "Dodge Vortex",
+  "area_gravity": 250,
+  "obstacle_tracking": 0.6,
+  "max_speed": 500,
+  "movement_speed": 400,
+  "sprite_set": "base_1",
+  "palette": "purple"
+}
+```
+Feel: Constant pull toward center, homing obstacles, must fight environment and enemies
+
+### Storm Chaser (Wind + Chaos)
+```json
+{
+  "clone_index": 9,
+  "name": "Dodge Storm",
+  "wind_type": "changing_turbulent",
+  "wind_strength": 200,
+  "wind_direction": 0,
+  "obstacle_spawn_pattern": "waves",
+  "max_speed": 600,
+  "lives": 5,
+  "sprite_set": "base_1",
+  "palette": "yellow"
+}
+```
+Feel: Unpredictable wind forces, burst spawning, must adapt constantly
+
+### Bullet Hell Nano (Extreme)
+```json
+{
+  "clone_index": 10,
+  "name": "Dodge Bullet Hell",
+  "obstacle_spawn_rate": 2.5,
+  "obstacle_trails": 15,
+  "lives": 1,
+  "player_size": 0.6,
+  "max_speed": 700,
+  "victory_limit": 50,
+  "sprite_set": "base_1",
+  "palette": "red"
+}
+```
+Feel: High-intensity bullet hell, one-hit-kill, tiny hitbox, obstacle trails create deadly zones

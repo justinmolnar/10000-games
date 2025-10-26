@@ -136,14 +136,174 @@ function DodgeGame:init(game_data, cheats, di)
         jump_speed = self.variant.jump_speed
     end
 
+    -- New player parameters
+    local player_size = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.player_size) or 1.0
+    if self.variant and self.variant.player_size ~= nil then
+        player_size = self.variant.player_size
+    end
+
+    local max_speed = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.max_speed) or 600
+    if self.variant and self.variant.max_speed ~= nil then
+        max_speed = self.variant.max_speed
+    end
+
+    local lives = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.lives) or 10
+    if self.variant and self.variant.lives ~= nil then
+        lives = self.variant.lives
+    end
+
+    local shield = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.shield) or 0
+    if self.variant and self.variant.shield ~= nil then
+        shield = self.variant.shield
+    end
+
+    local shield_recharge_time = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.shield_recharge_time) or 0
+    if self.variant and self.variant.shield_recharge_time ~= nil then
+        shield_recharge_time = self.variant.shield_recharge_time
+    end
+
+    -- New obstacle parameters
+    local obstacle_tracking = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.tracking) or 0.0
+    if self.variant and self.variant.obstacle_tracking ~= nil then
+        obstacle_tracking = self.variant.obstacle_tracking
+    end
+
+    local obstacle_speed_variance = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.speed_variance) or 0.0
+    if self.variant and self.variant.obstacle_speed_variance ~= nil then
+        obstacle_speed_variance = self.variant.obstacle_speed_variance
+    end
+
+    local obstacle_spawn_rate = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.spawn_rate_multiplier) or 1.0
+    if self.variant and self.variant.obstacle_spawn_rate ~= nil then
+        obstacle_spawn_rate = self.variant.obstacle_spawn_rate
+    end
+
+    local obstacle_spawn_pattern = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.spawn_pattern) or "random"
+    if self.variant and self.variant.obstacle_spawn_pattern then
+        obstacle_spawn_pattern = self.variant.obstacle_spawn_pattern
+    end
+
+    local obstacle_size_variance = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.size_variance) or 0.0
+    if self.variant and self.variant.obstacle_size_variance ~= nil then
+        obstacle_size_variance = self.variant.obstacle_size_variance
+    end
+
+    local obstacle_trails = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.trails) or 0
+    if self.variant and self.variant.obstacle_trails ~= nil then
+        obstacle_trails = self.variant.obstacle_trails
+    end
+
+    -- New environment parameters
+    local area_gravity = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.gravity) or 0.0
+    if self.variant and self.variant.area_gravity ~= nil then
+        area_gravity = self.variant.area_gravity
+    end
+
+    local wind_direction = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.wind_direction) or 0
+    if self.variant and self.variant.wind_direction ~= nil then
+        wind_direction = self.variant.wind_direction
+    end
+
+    local wind_strength = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.wind_strength) or 0
+    if self.variant and self.variant.wind_strength ~= nil then
+        wind_strength = self.variant.wind_strength
+    end
+
+    local wind_type = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.wind_type) or "none"
+    if self.variant and self.variant.wind_type then
+        wind_type = self.variant.wind_type
+    end
+
+    -- New visual parameters
+    local fog_origin = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.fog_origin) or "none"
+    if self.variant and self.variant.fog_of_war_origin then
+        fog_origin = self.variant.fog_of_war_origin
+    end
+
+    local fog_radius = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.fog_radius) or 9999
+    if self.variant and self.variant.fog_of_war_radius ~= nil then
+        fog_radius = self.variant.fog_of_war_radius
+    end
+
+    local camera_shake = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.camera_shake) or 0.0
+    if self.variant and self.variant.camera_shake_intensity ~= nil then
+        camera_shake = self.variant.camera_shake_intensity
+    end
+
+    local player_trail = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.player_trail) or 0
+    if self.variant and self.variant.player_trail_length ~= nil then
+        player_trail = self.variant.player_trail_length
+    end
+
+    local score_mode = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.score_mode) or "none"
+    if self.variant and self.variant.score_multiplier_mode then
+        score_mode = self.variant.score_multiplier_mode
+    end
+
+    -- New victory parameters
+    local victory_condition = (runtimeCfg and runtimeCfg.victory and runtimeCfg.victory.condition) or "dodge_count"
+    if self.variant and self.variant.victory_condition then
+        victory_condition = self.variant.victory_condition
+    end
+
+    local victory_limit = (runtimeCfg and runtimeCfg.victory and runtimeCfg.victory.limit) or BASE_DODGE_TARGET
+    if self.variant and self.variant.victory_limit ~= nil then
+        victory_limit = self.variant.victory_limit
+    end
+
+    -- Store new parameters as instance variables for access throughout the game
+    self.lives = lives
+    self.obstacle_tracking = obstacle_tracking
+    self.obstacle_speed_variance = obstacle_speed_variance
+    self.obstacle_spawn_rate = obstacle_spawn_rate
+    self.obstacle_spawn_pattern = obstacle_spawn_pattern
+    self.obstacle_size_variance = obstacle_size_variance
+    self.obstacle_trails = obstacle_trails
+    self.area_gravity = area_gravity
+    self.wind_direction = wind_direction
+    self.wind_strength = wind_strength
+    self.wind_type = wind_type
+    self.fog_origin = fog_origin
+    self.fog_radius = fog_radius
+    self.camera_shake = camera_shake
+    self.player_trail_length = player_trail
+    self.score_mode = score_mode
+    self.victory_condition = victory_condition
+    self.victory_limit = victory_limit
+
+    -- Initialize wind state
+    self.wind_timer = 0
+    self.wind_current_angle = type(wind_direction) == "number" and math.rad(wind_direction) or math.random() * math.pi * 2
+
+    -- Initialize spawn pattern state
+    self.spawn_pattern_state = {
+        wave_timer = 0,
+        wave_active = false,
+        spiral_angle = 0,
+        cluster_pending = 0
+    }
+
+    -- Initialize player trail buffer
+    self.player_trail_buffer = {}
+
+    -- Initialize camera shake state
+    self.camera_shake_active = 0  -- Current shake intensity
+    self.camera_shake_decay = 0.9  -- Decay rate per frame
+
+    -- Initialize score tracking for multiplier modes
+    self.avg_speed_tracker = { sum = 0, count = 0 }
+    self.center_time_tracker = { total_weighted = 0, total_time = 0 }
+    self.edge_time_tracker = { total_weighted = 0, total_time = 0 }
+
     self.player = {
         x = self.game_width / 2,
         y = self.game_height / 2,
-        size = PLAYER_SIZE,
-        radius = PLAYER_RADIUS,
+        size = PLAYER_SIZE * player_size,  -- Apply size multiplier
+        radius = PLAYER_RADIUS * player_size,  -- Apply size multiplier to radius
         rotation = 0,  -- Current rotation angle in radians (0 = facing right)
         rotation_speed = rotation_speed,  -- Store per-variant rotation speed
         movement_speed = movement_speed,  -- Store per-variant movement speed
+        max_speed = max_speed,  -- Store max speed cap
         movement_type = movement_type,    -- Store per-variant movement type
         accel_friction = accel_friction,  -- Friction when accelerating (1.0 = none, <1.0 = resistance)
         decel_friction = decel_friction,  -- Friction when decelerating/stopping (1.0 = instant stop, <1.0 = drift)
@@ -159,17 +319,29 @@ function DodgeGame:init(game_data, cheats, di)
         jump_dir_x = 0,                   -- Jump mode: normalized direction x
         jump_dir_y = 0,                   -- Jump mode: normalized direction y
         vx = 0,  -- Velocity (used in asteroids mode, and optionally in default mode if friction < 1.0)
-        vy = 0   -- Velocity
+        vy = 0,   -- Velocity
+        -- Shield system
+        shield_charges = shield,  -- Current shield count
+        shield_max = shield,  -- Maximum shield charges
+        shield_recharge_timer = shield_recharge_time,  -- Countdown to next recharge
+        shield_recharge_time = shield_recharge_time  -- Time between recharges
     }
 
     self.objects = {}
     self.warnings = {}
     self.time_elapsed = 0
 
-    self.spawn_rate = (BASE_SPAWN_RATE / self.difficulty_modifiers.count) / variant_difficulty
+    self.spawn_rate = ((BASE_SPAWN_RATE / self.difficulty_modifiers.count) / variant_difficulty) / self.obstacle_spawn_rate
     self.object_speed = ((BASE_OBJECT_SPEED * self.difficulty_modifiers.speed) * speed_modifier) * variant_difficulty
     self.warning_enabled = self.difficulty_modifiers.complexity <= ((DodgeCfg.warnings and DodgeCfg.warnings.complexity_threshold) or 2)
-    self.dodge_target = math.floor(BASE_DODGE_TARGET * self.difficulty_modifiers.complexity * variant_difficulty)
+
+    -- Use victory_limit if condition is dodge_count, otherwise calculate from base_target
+    if self.victory_condition == "dodge_count" then
+        self.dodge_target = math.floor(self.victory_limit)
+    else
+        -- For time-based victory, still track dodges for metrics but no specific target
+        self.dodge_target = 9999
+    end
 
     -- Enemy composition from variant (Phase 1.3)
     -- NOTE: Enemy spawning will be implemented when assets are ready (Phase 2+)
@@ -417,6 +589,10 @@ function DodgeGame:updateGameLogic(dt)
     self.time_elapsed = self.time_elapsed + dt
     self:updateSafeZone(dt)
     self:updateSafeMorph(dt)
+    self:updateShield(dt)
+    self:updatePlayerTrail(dt)
+    self:updateCameraShake(dt)
+    self:updateScoreTracking(dt)
     self:updatePlayer(dt)
 
     self.spawn_timer = self.spawn_timer - dt
@@ -438,6 +614,195 @@ function DodgeGame:draw()
         love.graphics.setColor(1,0,0)
         love.graphics.print("Error: DodgeView not loaded or has no draw function.", 10, 100)
     end
+end
+
+-- New system methods
+
+function DodgeGame:updateShield(dt)
+    if not self.player or self.player.shield_recharge_time <= 0 then
+        return
+    end
+
+    -- Only recharge if below max
+    if self.player.shield_charges < self.player.shield_max then
+        self.player.shield_recharge_timer = self.player.shield_recharge_timer - dt
+        if self.player.shield_recharge_timer <= 0 then
+            self.player.shield_charges = self.player.shield_charges + 1
+            self.player.shield_recharge_timer = self.player.shield_recharge_time
+            -- Play shield recharge sound
+            self:playSound("pickup", 0.7)
+        end
+    end
+end
+
+function DodgeGame:hasActiveShield()
+    return self.player and self.player.shield_charges > 0
+end
+
+function DodgeGame:consumeShield()
+    if self:hasActiveShield() then
+        self.player.shield_charges = self.player.shield_charges - 1
+        self.player.shield_recharge_timer = self.player.shield_recharge_time
+        -- Trigger shake on shield hit
+        self:triggerCameraShake(self.camera_shake * 0.5)
+    end
+end
+
+function DodgeGame:updatePlayerTrail(dt)
+    if self.player_trail_length <= 0 or not self.player then
+        return
+    end
+
+    -- Calculate trail origin from the back of the player sprite
+    -- Sprite faces UP by default, so back is at BOTTOM
+    -- When rotated, the back rotates with it
+    -- Back direction = rotation + 90° (π/2 radians)
+    local rotation = self.player.rotation or 0
+    local back_angle = rotation + math.pi / 2
+    local trail_x = self.player.x + math.cos(back_angle) * self.player.radius
+    local trail_y = self.player.y + math.sin(back_angle) * self.player.radius
+
+    -- Add back position to trail buffer
+    table.insert(self.player_trail_buffer, 1, {x = trail_x, y = trail_y})
+
+    -- Limit trail length
+    while #self.player_trail_buffer > self.player_trail_length do
+        table.remove(self.player_trail_buffer)
+    end
+end
+
+function DodgeGame:updateCameraShake(dt)
+    if self.camera_shake_active > 0 then
+        -- Exponential decay
+        self.camera_shake_active = self.camera_shake_active * self.camera_shake_decay
+        -- Stop shaking when very small
+        if self.camera_shake_active < 0.1 then
+            self.camera_shake_active = 0
+        end
+    end
+end
+
+function DodgeGame:triggerCameraShake(intensity)
+    self.camera_shake_active = math.max(self.camera_shake_active, intensity or self.camera_shake)
+end
+
+function DodgeGame:updateScoreTracking(dt)
+    if not self.player or not self.safe_zone then
+        return
+    end
+
+    -- Track average speed for "speed" mode
+    if self.score_mode == "speed" then
+        local speed = math.sqrt(self.player.vx * self.player.vx + self.player.vy * self.player.vy)
+        self.avg_speed_tracker.sum = self.avg_speed_tracker.sum + speed
+        self.avg_speed_tracker.count = self.avg_speed_tracker.count + 1
+    end
+
+    -- Track position for "center" and "edge" modes
+    if self.score_mode == "center" or self.score_mode == "edge" then
+        local dx = self.player.x - self.safe_zone.x
+        local dy = self.player.y - self.safe_zone.y
+        local dist = math.sqrt(dx*dx + dy*dy)
+        local normalized_dist = dist / math.max(1, self.safe_zone.radius)
+
+        if self.score_mode == "center" then
+            -- Reward being near center (1.0 at center, 0.0 at edge)
+            local center_weight = 1.0 - normalized_dist
+            self.center_time_tracker.total_weighted = self.center_time_tracker.total_weighted + center_weight * dt
+            self.center_time_tracker.total_time = self.center_time_tracker.total_time + dt
+        elseif self.score_mode == "edge" then
+            -- Reward being near edge (0.0 at center, 1.0 at edge)
+            local edge_weight = normalized_dist
+            self.edge_time_tracker.total_weighted = self.edge_time_tracker.total_weighted + edge_weight * dt
+            self.edge_time_tracker.total_time = self.edge_time_tracker.total_time + dt
+        end
+    end
+end
+
+function DodgeGame:getScoreMultiplier()
+    if self.score_mode == "speed" then
+        if self.avg_speed_tracker.count > 0 then
+            local avg_speed = self.avg_speed_tracker.sum / self.avg_speed_tracker.count
+            local speed_ratio = avg_speed / (self.player.max_speed or 600)
+            return 1.0 + speed_ratio * 0.5  -- Up to 1.5x at max speed
+        end
+    elseif self.score_mode == "center" then
+        if self.center_time_tracker.total_time > 0 then
+            local avg_center = self.center_time_tracker.total_weighted / self.center_time_tracker.total_time
+            return 1.0 + avg_center * 0.5  -- Up to 1.5x at perfect center
+        end
+    elseif self.score_mode == "edge" then
+        if self.edge_time_tracker.total_time > 0 then
+            local avg_edge = self.edge_time_tracker.total_weighted / self.edge_time_tracker.total_time
+            return 1.0 + avg_edge * 0.5  -- Up to 1.5x at perfect edge
+        end
+    end
+    return 1.0  -- No multiplier
+end
+
+function DodgeGame:applyEnvironmentForces(dt)
+    if not self.player or not self.safe_zone then
+        return
+    end
+
+    -- Apply gravity (toward or away from center)
+    if self.area_gravity ~= 0 then
+        local dx = self.safe_zone.x - self.player.x
+        local dy = self.safe_zone.y - self.player.y
+        local dist = math.sqrt(dx*dx + dy*dy)
+        if dist > 0 then
+            local gx = (dx / dist) * self.area_gravity * dt
+            local gy = (dy / dist) * self.area_gravity * dt
+            self.player.vx = self.player.vx + gx
+            self.player.vy = self.player.vy + gy
+        end
+    end
+
+    -- Apply wind
+    if self.wind_strength > 0 and self.wind_type ~= "none" then
+        local wx, wy = self:getWindForce(dt)
+        self.player.vx = self.player.vx + wx * dt
+        self.player.vy = self.player.vy + wy * dt
+    end
+
+    -- Apply max speed cap
+    if self.player.max_speed > 0 then
+        local speed = math.sqrt(self.player.vx * self.player.vx + self.player.vy * self.player.vy)
+        if speed > self.player.max_speed then
+            local scale = self.player.max_speed / speed
+            self.player.vx = self.player.vx * scale
+            self.player.vy = self.player.vy * scale
+        end
+    end
+end
+
+function DodgeGame:getWindForce(dt)
+    -- Update wind direction based on type
+    if self.wind_type == "changing_steady" or self.wind_type == "changing_turbulent" then
+        self.wind_timer = self.wind_timer + dt
+        if self.wind_timer >= 3.0 then  -- Change direction every 3 seconds
+            self.wind_timer = 0
+            self.wind_current_angle = self.wind_current_angle + math.rad(30)
+        end
+    end
+
+    local base_angle = self.wind_current_angle
+    local wx, wy
+
+    if self.wind_type == "steady" or self.wind_type == "changing_steady" then
+        -- Constant wind in current direction
+        wx = math.cos(base_angle) * self.wind_strength
+        wy = math.sin(base_angle) * self.wind_strength
+    elseif self.wind_type == "turbulent" or self.wind_type == "changing_turbulent" then
+        -- Add random turbulence to base direction
+        local turbulence_angle = base_angle + (math.random() - 0.5) * math.pi * 0.5
+        wx = math.cos(turbulence_angle) * self.wind_strength
+        wy = math.sin(turbulence_angle) * self.wind_strength
+    else
+        wx, wy = 0, 0
+    end
+
+    return wx, wy
 end
 
 function DodgeGame:updatePlayer(dt)
@@ -524,6 +889,9 @@ function DodgeGame:updatePlayerDefault(dt)
         self.player.x = self.player.x + dx * self.player.movement_speed * dt
         self.player.y = self.player.y + dy * self.player.movement_speed * dt
     end
+
+    -- Apply environment forces (gravity, wind) and max speed cap
+    self:applyEnvironmentForces(dt)
 
     self:clampPlayerPosition()
 
@@ -619,6 +987,9 @@ function DodgeGame:updatePlayerAsteroids(dt)
     -- Update position based on velocity
     self.player.x = self.player.x + self.player.vx * dt
     self.player.y = self.player.y + self.player.vy * dt
+
+    -- Apply environment forces (gravity, wind) and max speed cap
+    self:applyEnvironmentForces(dt)
 
     self:clampPlayerPosition()
 
@@ -822,6 +1193,9 @@ function DodgeGame:updatePlayerJump(dt)
         end
     end
 
+    -- Apply environment forces (gravity, wind) and max speed cap
+    self:applyEnvironmentForces(dt)
+
     -- Clamp to safe zone
     self:clampPlayerPosition()
 
@@ -874,6 +1248,28 @@ function DodgeGame:isPointInHex(px, py, cx, cy, radius)
     -- Check against flat edge of hexagon
     local hex_flat_radius = radius * math.cos(math.pi / 6)
     return math.abs(dx_rot) <= hex_flat_radius
+end
+
+function DodgeGame:checkCircleLineCollision(cx, cy, cr, x1, y1, x2, y2)
+    -- Check if circle (cx, cy, cr) collides with line segment (x1,y1)-(x2,y2)
+    -- Find closest point on line segment to circle center
+    local dx = x2 - x1
+    local dy = y2 - y1
+    local len_sq = dx*dx + dy*dy
+    if len_sq == 0 then
+        -- Degenerate segment (point)
+        local dist_sq = (cx - x1)*(cx - x1) + (cy - y1)*(cy - y1)
+        return dist_sq <= cr*cr
+    end
+
+    -- Project circle center onto line, clamped to segment
+    local t = math.max(0, math.min(1, ((cx - x1)*dx + (cy - y1)*dy) / len_sq))
+    local px = x1 + t * dx
+    local py = y1 + t * dy
+
+    -- Check distance from circle center to closest point
+    local dist_sq = (cx - px)*(cx - px) + (cy - py)*(cy - py)
+    return dist_sq <= cr*cr
 end
 
 function DodgeGame:clampPlayerPosition()
@@ -1060,6 +1456,23 @@ function DodgeGame:updateObjects(dt)
             end
         end
 
+        -- Apply general tracking (if tracking_strength > 0)
+        if obj.tracking_strength and obj.tracking_strength > 0 and self.player then
+            local tx, ty = self.player.x, self.player.y
+            local desired = math.atan2(ty - obj.y, tx - obj.x)
+            local function angdiff(a,b)
+                local d = (a - b + math.pi) % (2*math.pi) - math.pi
+                return d
+            end
+            local diff = angdiff(desired, obj.angle)
+            -- Tracking strength controls turn rate: 1.0 = very aggressive, 0.5 = moderate
+            local max_turn = math.rad(180) * obj.tracking_strength * dt  -- Up to 180 deg/sec at strength 1.0
+            if diff > max_turn then diff = max_turn elseif diff < -max_turn then diff = -max_turn end
+            obj.angle = obj.angle + diff
+            obj.vx = math.cos(obj.angle) * obj.speed
+            obj.vy = math.sin(obj.angle) * obj.speed
+        end
+
         if obj.type == 'seeker' then
             -- Subtle steering toward player: small max turn rate so they still fly past
             local tx, ty = self.player.x, self.player.y
@@ -1101,6 +1514,15 @@ function DodgeGame:updateObjects(dt)
         obj.y = obj.y + obj.vy * dt
         ::post_move::
 
+        -- Update trail positions
+        if obj.trail_positions then
+            table.insert(obj.trail_positions, 1, {x = obj.x, y = obj.y})
+            -- Limit trail length
+            while #obj.trail_positions > self.obstacle_trails do
+                table.remove(obj.trail_positions)
+            end
+        end
+
         -- Mark when an object has actually entered the playable rectangle
         if not obj.entered_play then
             if obj.x > 0 and obj.x < self.game_width and obj.y > 0 and obj.y < self.game_height then
@@ -1124,18 +1546,56 @@ function DodgeGame:updateObjects(dt)
         end
 
         if Collision.checkCircles(self.player.x, self.player.y, self.player.radius, obj.x, obj.y, obj.radius) then
-            -- Count hit, remove (splitter no longer splits here)
+            -- Remove object first
             table.remove(self.objects, i)
-            self.metrics.collisions = self.metrics.collisions + 1
 
-            -- Phase 3.3: Play hit sound
-            self:playSound("hit", 1.0)
+            -- Check shield first
+            if self:hasActiveShield() then
+                -- Shield absorbs hit
+                self:consumeShield()
+                self:playSound("hit", 0.7)  -- Softer hit sound for shield
+            else
+                -- No shield, take damage
+                self.metrics.collisions = self.metrics.collisions + 1
+                self:playSound("hit", 1.0)
+                self:triggerCameraShake()  -- Trigger shake on hit
 
-            if self.metrics.collisions >= self.MAX_COLLISIONS then
-                -- Phase 3.3: Play death sound
-                self:playSound("death", 1.0)
-                self:onComplete()
-                return
+                -- Check if out of lives
+                if self.metrics.collisions >= self.lives then
+                    self:playSound("death", 1.0)
+                    self:onComplete()
+                    return
+                end
+            end
+        -- Check trail collision (if object has trails and player hasn't been hit)
+        elseif obj.trail_positions and #obj.trail_positions > 1 then
+            local hit_trail = false
+            for j = 1, #obj.trail_positions - 1 do
+                local p1 = obj.trail_positions[j]
+                local p2 = obj.trail_positions[j + 1]
+                -- Check if player circle intersects line segment
+                if self:checkCircleLineCollision(self.player.x, self.player.y, self.player.radius, p1.x, p1.y, p2.x, p2.y) then
+                    hit_trail = true
+                    break
+                end
+            end
+
+            if hit_trail then
+                -- Hit trail, treat like object collision
+                table.remove(self.objects, i)
+                if self:hasActiveShield() then
+                    self:consumeShield()
+                    self:playSound("hit", 0.5)
+                else
+                    self.metrics.collisions = self.metrics.collisions + 1
+                    self:playSound("hit", 0.8)
+                    self:triggerCameraShake(self.camera_shake * 0.7)
+                    if self.metrics.collisions >= self.lives then
+                        self:playSound("death", 1.0)
+                        self:onComplete()
+                        return
+                    end
+                end
             end
         elseif self:isObjectOffscreen(obj) then
             table.remove(self.objects, i)
@@ -1169,6 +1629,63 @@ function DodgeGame:spawnObjectOrWarning()
     local accel = 1 + math.min(((DodgeCfg.spawn and DodgeCfg.spawn.accel and DodgeCfg.spawn.accel.max) or 2.0), self.time_elapsed / ((DodgeCfg.spawn and DodgeCfg.spawn.accel and DodgeCfg.spawn.accel.time) or 60))
     self.spawn_rate = (BASE_SPAWN_RATE / self.difficulty_modifiers.count) / accel
 
+    -- Handle spawn patterns
+    if self.obstacle_spawn_pattern == "waves" then
+        self.spawn_pattern_state.wave_timer = self.spawn_pattern_state.wave_timer + self.spawn_rate
+        if self.spawn_pattern_state.wave_active then
+            -- In active wave, spawn burst
+            if self.spawn_pattern_state.wave_timer >= 0.15 then  -- Spawn every 0.15s during wave
+                self.spawn_pattern_state.wave_timer = 0
+                self:spawnSingleObject()
+                self.spawn_pattern_state.wave_count = (self.spawn_pattern_state.wave_count or 0) + 1
+                if self.spawn_pattern_state.wave_count >= 6 then  -- 6 objects per wave
+                    self.spawn_pattern_state.wave_active = false
+                    self.spawn_pattern_state.wave_count = 0
+                end
+            end
+        else
+            -- Between waves, wait
+            if self.spawn_pattern_state.wave_timer >= 2.5 then  -- 2.5s pause
+                self.spawn_pattern_state.wave_active = true
+                self.spawn_pattern_state.wave_timer = 0
+            end
+        end
+    elseif self.obstacle_spawn_pattern == "clusters" then
+        -- Spawn 3-5 objects at similar angles
+        if self.spawn_pattern_state.cluster_pending > 0 then
+            self:spawnSingleObject()
+            self.spawn_pattern_state.cluster_pending = self.spawn_pattern_state.cluster_pending - 1
+        else
+            -- Normal spawn, but trigger cluster
+            self.spawn_pattern_state.cluster_pending = math.random(2, 4)  -- Spawn 3-5 total (including this one)
+            self:spawnSingleObject()
+        end
+    elseif self.obstacle_spawn_pattern == "spiral" then
+        -- Spawn in rotating pattern
+        local sx, sy = self:pickSpawnPointAtAngle(self.spawn_pattern_state.spiral_angle)
+        local tx, ty = self:pickTargetPointOnRing()
+        local angle = math.atan2(ty - sy, tx - sx)
+        angle = self:ensureInboundAngle(sx, sy, angle)
+        self:createObject(sx, sy, angle, false)
+        self.spawn_pattern_state.spiral_angle = self.spawn_pattern_state.spiral_angle + math.rad(30)
+    elseif self.obstacle_spawn_pattern == "pulse_with_arena" then
+        -- Spawn from safe zone boundary outward
+        if self.safe_zone then
+            local spawn_angle = math.random() * math.pi * 2
+            local sx = self.safe_zone.x + math.cos(spawn_angle) * self.safe_zone.radius
+            local sy = self.safe_zone.y + math.sin(spawn_angle) * self.safe_zone.radius
+            local angle = spawn_angle  -- Continue outward
+            self:createObject(sx, sy, angle, false)
+        else
+            self:spawnSingleObject()
+        end
+    else
+        -- Default: random
+        self:spawnSingleObject()
+    end
+end
+
+function DodgeGame:spawnSingleObject()
     -- Phase 1.4: Spawn variant-specific enemies if defined
     if self:hasVariantEnemies() and math.random() < 0.3 then
         -- 30% chance to spawn a variant-specific enemy
@@ -1279,6 +1796,24 @@ function DodgeGame:pickSpawnPoint()
     else return math.random(0, self.game_width), self.game_height + r - inset end
 end
 
+function DodgeGame:pickSpawnPointAtAngle(angle)
+    -- Spawn at a specific angle around the edges
+    -- Map angle to edge position
+    local inset = ((DodgeCfg.arena and DodgeCfg.arena.spawn_inset) or 2)
+    local r = OBJECT_RADIUS
+    local center_x = self.game_width / 2
+    local center_y = self.game_height / 2
+    local dist = math.max(self.game_width, self.game_height)
+    local sx = center_x + math.cos(angle) * dist
+    local sy = center_y + math.sin(angle) * dist
+    -- Clamp to edges
+    if sx < 0 then sx = -r + inset end
+    if sx > self.game_width then sx = self.game_width + r - inset end
+    if sy < 0 then sy = -r + inset end
+    if sy > self.game_height then sy = self.game_height + r - inset end
+    return sx, sy
+end
+
 -- Pick a point on a larger target ring around the safe zone
 function DodgeGame:pickTargetPointOnRing()
     local sz = self.safe_zone
@@ -1349,11 +1884,30 @@ function DodgeGame:createRandomObject(warned_status)
 end
 
 function DodgeGame:createObject(spawn_x, spawn_y, angle, was_warned, kind)
+    -- Base radius with size variance applied
+    local base_radius = OBJECT_RADIUS
+    if self.obstacle_size_variance > 0 then
+        -- Variance creates mix: 0.5x to 1.5x base size
+        local size_mult = 0.5 + math.random() * self.obstacle_size_variance
+        base_radius = OBJECT_RADIUS * size_mult
+    end
+
+    -- Base speed with type multiplier
+    local type_mult = ((DodgeCfg.objects and DodgeCfg.objects.type_speed_multipliers and DodgeCfg.objects.type_speed_multipliers[kind or 'linear']) or (kind == 'seeker' and 0.9 or kind == 'splitter' and 0.8 or kind == 'zigzag' and 1.1 or kind == 'sine' and 1.0 or 1.0))
+    local base_speed = self.object_speed * type_mult
+
+    -- Apply speed variance
+    if self.obstacle_speed_variance > 0 then
+        local speed_var = 1.0 + (math.random() - 0.5) * 2 * self.obstacle_speed_variance
+        base_speed = base_speed * speed_var
+    end
+
     local obj = {
         warned = was_warned,
-        radius = OBJECT_RADIUS,
+        radius = base_radius,
         type = kind or 'linear',
-        speed = self.object_speed * (((DodgeCfg.objects and DodgeCfg.objects.type_speed_multipliers and DodgeCfg.objects.type_speed_multipliers[kind or 'linear']) or (kind == 'seeker' and 0.9 or kind == 'splitter' and 0.8 or kind == 'zigzag' and 1.1 or kind == 'sine' and 1.0 or 1.0)))
+        speed = base_speed,
+        tracking_strength = self.obstacle_tracking or 0  -- Store tracking strength
     }
     obj.x = spawn_x
     obj.y = spawn_y
@@ -1361,6 +1915,11 @@ function DodgeGame:createObject(spawn_x, spawn_y, angle, was_warned, kind)
     obj.angle = angle or 0
     obj.vx = math.cos(obj.angle) * obj.speed
     obj.vy = math.sin(obj.angle) * obj.speed
+
+    -- Initialize trail if enabled
+    if self.obstacle_trails > 0 then
+        obj.trail_positions = {}
+    end
 
     if obj.type == 'zigzag' or obj.type == 'sine' then
         local zig = (DodgeCfg.objects and DodgeCfg.objects.zigzag) or { wave_speed_min = 6, wave_speed_range = 4, wave_amp = 30 }
@@ -1516,13 +2075,41 @@ function DodgeGame:updateSafeMorph(dt)
 end
 
 function DodgeGame:checkComplete()
-    return self.game_over or self.metrics.collisions >= self.MAX_COLLISIONS or self.metrics.objects_dodged >= self.dodge_target
+    -- Check loss conditions
+    if self.game_over or self.metrics.collisions >= self.lives then
+        return true
+    end
+
+    -- Check victory conditions
+    if self.victory_condition == "time" then
+        return self.time_elapsed >= self.victory_limit
+    elseif self.victory_condition == "dodge_count" then
+        return self.metrics.objects_dodged >= self.dodge_target
+    end
+
+    return false
 end
 
 -- Phase 3.3: Override onComplete to play appropriate sound
 function DodgeGame:onComplete()
-    -- Determine if win or loss
-    local is_win = self.metrics.objects_dodged >= self.dodge_target
+    -- Determine if win or loss based on victory condition
+    local is_win = false
+    if self.victory_condition == "time" then
+        is_win = self.time_elapsed >= self.victory_limit
+    elseif self.victory_condition == "dodge_count" then
+        is_win = self.metrics.objects_dodged >= self.dodge_target
+    end
+
+    -- Apply score multiplier to metrics if won
+    if is_win and self.score_mode ~= "none" then
+        local multiplier = self:getScoreMultiplier()
+        if multiplier > 1.0 then
+            print(string.format("[DodgeGame] Score multiplier applied: %.2fx (%s mode)", multiplier, self.score_mode))
+            -- Apply multiplier to key metrics
+            self.metrics.objects_dodged = math.floor(self.metrics.objects_dodged * multiplier)
+            self.metrics.perfect_dodges = math.floor(self.metrics.perfect_dodges * multiplier)
+        end
+    end
 
     -- Play appropriate sound (death sound already played inline at collision)
     if is_win then
@@ -1538,8 +2125,14 @@ end
 
 -- Report progress toward goal for token gating (0..1)
 function DodgeGame:getCompletionRatio()
-    if self.dodge_target and self.dodge_target > 0 then
-        return math.min(1.0, (self.metrics.objects_dodged or 0) / self.dodge_target)
+    if self.victory_condition == "time" then
+        if self.victory_limit and self.victory_limit > 0 then
+            return math.min(1.0, self.time_elapsed / self.victory_limit)
+        end
+    elseif self.victory_condition == "dodge_count" then
+        if self.dodge_target and self.dodge_target > 0 then
+            return math.min(1.0, (self.metrics.objects_dodged or 0) / self.dodge_target)
+        end
     end
     return 1.0
 end
