@@ -1,59 +1,59 @@
 -- src/views/cheat_engine_view.lua
+-- View for dynamic parameter modification UI
 local Object = require('class')
 local UIComponents = require('src.views.ui_components')
-local FormulaRenderer = require('src.views.formula_renderer')
 local CheatEngineView = Object:extend('CheatEngineView')
 
 function CheatEngineView:init(controller, di)
-    self.controller = controller -- This is the cheat_engine_state
+    self.controller = controller
     self.di = di
-    if di and UIComponents and UIComponents.inject then UIComponents.inject(di) end
+
+    if di and UIComponents and UIComponents.inject then
+        UIComponents.inject(di)
+    end
+
     self.sprite_manager = (di and di.spriteManager) or nil
 
-    -- Base Layout (will be adjusted by updateLayout)
+    -- Layout configuration
     local C = (self.di and self.di.config) or {}
     local V = (C.ui and C.ui.views and C.ui.views.cheat_engine) or {}
-    local L = V.list or { x = 10, y = 50, max_w = 300, min_w = 150, item_h = 30 }
-    self.list_x = L.x or 10
-    self.list_y = 80
-    self.list_w = L.max_w or 300
-    self.list_h = 400
-    self.item_h = L.item_h or 30
 
-    self.detail_x = self.list_x + self.list_w + ((V.spacing and V.spacing.panel_gap) or 10)
-    self.detail_y = 80
-    self.detail_w = 300
-    self.detail_h = 400
+    -- Split panel layout
+    self.split_x = 280 -- Divider between game list and parameter panel
+    self.padding = 10
+    self.item_h = 25
 
+    -- Game list panel
+    self.game_list_x = 10
+    self.game_list_y = 60
+    self.game_list_w = self.split_x - 20
+    self.game_list_h = 500
+
+    -- Parameter panel
+    self.param_panel_x = self.split_x + 10
+    self.param_panel_y = 60
+    self.param_panel_w = 700
+    self.param_panel_h = 500
+
+    -- Hover state
     self.hovered_game_id = nil
-    self.hovered_cheat_id = nil
-    self.hovered_button_id = nil -- Includes unlock_ce, purchase_cheat, launch
-    -- Scrollbar interaction state
-    self._sb = { list = { dragging=false }, cheats = { dragging=false } }
+    self.hovered_param_index = nil
+    self.hovered_button = nil -- "launch", "reset_all", "reset_X", "step_1", etc.
 
-    self.formula_renderer = FormulaRenderer:new(di)
+    -- Scrollbar state
+    self._sb = { games = { dragging=false }, params = { dragging=false } }
 end
 
 function CheatEngineView:updateLayout(viewport_width, viewport_height)
-    local C = (self.di and self.di.config) or {}
-    local V = (C.ui and C.ui.views and C.ui.views.cheat_engine) or {}
-    local L = V.list or { x = 10, y = 50, max_w = 300, min_w = 150 }
-    self.list_x = L.x or 10
-    self.list_y = L.y or 50 -- Below header
-    self.list_h = viewport_height - 70 -- Adjust for header/footer
+    self.game_list_h = viewport_height - 80
+    self.param_panel_h = viewport_height - 80
 
-    -- Make list width proportional but capped
-    self.list_w = math.min(L.max_w or 300, math.max(L.min_w or 150, viewport_width * 0.4))
-
-    local gap = (V.spacing and V.spacing.panel_gap) or 10
-    self.detail_x = self.list_x + self.list_w + gap
-    self.detail_y = self.list_y
-    self.detail_w = viewport_width - self.detail_x - gap
-    self.detail_h = self.list_h
+    -- Adjust parameter panel width based on viewport
+    self.param_panel_w = viewport_width - self.split_x - 20
 end
 
-function CheatEngineView:update(dt, games, selected_game_id, available_cheats, viewport_width, viewport_height)
-    -- Get mouse position relative to the controller's viewport
+function CheatEngineView:update(dt, games, selected_game_id, params, modifications, step_size, viewport_width, viewport_height)
+    -- Get mouse position relative to viewport
     local mx, my = love.mouse.getPosition()
     local view_x = self.controller.viewport and self.controller.viewport.x or 0
     local view_y = self.controller.viewport and self.controller.viewport.y or 0
@@ -61,462 +61,436 @@ function CheatEngineView:update(dt, games, selected_game_id, available_cheats, v
     local local_my = my - view_y
 
     self.hovered_game_id = nil
-    self.hovered_cheat_id = nil
-    self.hovered_button_id = nil
+    self.hovered_param_index = nil
+    self.hovered_button = nil
 
-    -- Only check hover if mouse is within viewport bounds
+    -- Check bounds
     if local_mx < 0 or local_mx > viewport_width or local_my < 0 or local_my > viewport_height then
         return
     end
 
     -- Check game list hover
     local visible_games = self:getVisibleGameCount(viewport_height)
-    local start_index = self.controller.scroll_offset or 1
+    local game_scroll = self.controller.game_scroll_offset or 1
 
     for i = 0, visible_games - 1 do
-        local game_index = start_index + i
+        local game_index = game_scroll + i
         if game_index <= #games then
-            local by = self.list_y + i * self.item_h
-            if local_mx >= self.list_x and local_mx <= self.list_x + self.list_w and local_my >= by and local_my <= by + self.item_h then
+            local gy = self.game_list_y + i * self.item_h
+            if local_mx >= self.game_list_x and local_mx <= self.game_list_x + self.game_list_w and
+               local_my >= gy and local_my <= gy + self.item_h then
                 self.hovered_game_id = games[game_index].id
                 break
             end
         end
     end
 
-    -- Check detail panel hover
-    if selected_game_id then
-        local game = self.controller.selected_game
-        if not game then return end
+    -- Check parameter list hover
+    if #params > 0 then
+        local visible_params = self:getVisibleParamCount(viewport_height)
+        local param_scroll = self.controller.param_scroll_offset or 0
+        local param_table_y = self.param_panel_y + 120
 
-        local game_is_unlocked = self.controller.player_data:isGameUnlocked(selected_game_id)
-        local ce_is_unlocked = self.controller.player_data:isCheatEngineUnlocked(selected_game_id)
-
-        if not game_is_unlocked then
-            -- No hover targets
-
-        elseif not ce_is_unlocked then
-            -- Check unlock button hover
-            local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + 100, self.detail_w - 20, 40
-            if local_mx >= btn_x and local_mx <= btn_x + btn_w and local_my >= btn_y and local_my <= btn_y + btn_h then
-                self.hovered_button_id = "unlock_ce"
+        for i = 0, visible_params - 1 do
+            local param_index = param_scroll + i + 1
+            if param_index <= #params then
+                local py = param_table_y + i * self.item_h
+                if local_mx >= self.param_panel_x and local_mx <= self.param_panel_x + self.param_panel_w and
+                   local_my >= py and local_my <= py + self.item_h then
+                    self.hovered_param_index = param_index
+                    break
+                end
             end
-        else
-            -- Check cheat list purchase button hover
-            local available_height_for_cheats = self.detail_h - 160
-            local cheat_item_total_height = self.item_h + 20
-            local visible_cheats = math.floor(available_height_for_cheats / cheat_item_total_height)
-            local cheat_scroll_offset = self.controller.cheat_scroll_offset or 0
-            local cheat_index = 0
+        end
+    end
 
-            for _, cheat in ipairs(available_cheats) do
-                 cheat_index = cheat_index + 1
-                 if cheat_index > cheat_scroll_offset and cheat_index <= cheat_scroll_offset + visible_cheats then
-                    local display_y = self.detail_y + 100 + (cheat_index - 1 - cheat_scroll_offset) * cheat_item_total_height
-                    local btn_x, btn_y, btn_w, btn_h = self.detail_x + self.detail_w - 120, display_y, 110, 30
+    -- Check step size buttons
+    local step_y = self.param_panel_y + 50
+    local step_sizes = {1, 5, 10, 100, "max"}
+    for i, size in ipairs(step_sizes) do
+        local btn_x = self.param_panel_x + 100 + (i - 1) * 50
+        if local_mx >= btn_x and local_mx <= btn_x + 45 and
+           local_my >= step_y and local_my <= step_y + 25 then
+            self.hovered_button = "step_" .. tostring(size)
+        end
+    end
 
-                    if local_mx >= btn_x and local_mx <= btn_x + btn_w and local_my >= btn_y and local_my <= btn_y + btn_h then
-                        self.hovered_cheat_id = cheat.id
-                        self.hovered_button_id = "purchase_cheat"
-                        break
-                    end
-                 end
-            end
+    -- Check launch button
+    local launch_y = viewport_height - 40
+    if selected_game_id and
+       local_mx >= self.param_panel_x and local_mx <= self.param_panel_x + 200 and
+       local_my >= launch_y and local_my <= launch_y + 30 then
+        self.hovered_button = "launch"
+    end
 
-            -- Check launch button hover
-            local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + self.detail_h - 50, self.detail_w - 20, 40
-            if game_is_unlocked and local_mx >= btn_x and local_mx <= btn_x + btn_w and local_my >= btn_y and local_my <= btn_y + btn_h then
-                self.hovered_button_id = "launch"
-            end
+    -- Check reset all button
+    if selected_game_id and next(modifications) then
+        local reset_all_x = self.param_panel_x + 220
+        if local_mx >= reset_all_x and local_mx <= reset_all_x + 150 and
+           local_my >= launch_y and local_my <= launch_y + 30 then
+            self.hovered_button = "reset_all"
         end
     end
 end
 
-function CheatEngineView:drawWindowed(games, selected_game_id, available_cheats, player_data, viewport_width, viewport_height, list_scroll_offset, cheat_scroll_offset_in)
-    -- Ensure scroll offsets are numbers
-    local scroll_offset = list_scroll_offset or 1
-    local cheat_scroll_offset = cheat_scroll_offset_in or 0
-    -- Theme/config for widths used throughout this draw
-    local C = (self.di and self.di.config) or {}
-    local V = (C.ui and C.ui.views and C.ui.views.cheat_engine) or {}
-    -- Lane width from config (track + margin)
-    local lane_w = UIComponents.getScrollbarLaneWidth()
-
-    -- Background within viewport
+function CheatEngineView:drawWindowed(games, selected_game_id, params, modifications, player_data, step_size, selected_param_index, viewport_width, viewport_height, game_scroll, param_scroll)
+    -- Background
     love.graphics.setColor(0, 0, 0)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
 
-    -- Use layout calculated in updateLayout
-
-    -- Title area
+    -- Title
     love.graphics.setColor(0, 1, 0)
-    love.graphics.print("CheatEngine v1.3.3.7 (Cracked by RZR_1911)", 10, 10)
+    love.graphics.print("CheatEngine v2.0.0 (Dynamic Parameter Editor)", 10, 10)
     love.graphics.print("===================================================", 10, 25)
-    UIComponents.drawTokenCounter(viewport_width - 200, 10, player_data.tokens) -- Use component
 
-    -- Panels
-    self:drawPanel(self.list_x, self.list_y, self.list_w, self.list_h, "Process List")
-    self:drawPanel(self.detail_x, self.detail_y, self.detail_w, self.detail_h, "Memory Editor")
+    -- Draw split panels
+    self:drawGameListPanel(games, selected_game_id, viewport_height, game_scroll)
 
-    -- Draw Game List (using layout vars)
-    local visible_games = self:getVisibleGameCount(viewport_height) -- Use helper
-    local start_index = scroll_offset
-    local end_index = math.min(#games, start_index + visible_games - 1)
-
-    for i = start_index, end_index do
-        local game = games[i]
-        local by = self.list_y + (i - start_index) * self.item_h
-        local is_selected = (game.id == selected_game_id)
-        local is_hovered = (game.id == self.hovered_game_id)
-        local is_unlocked = player_data:isGameUnlocked(game.id)
-
-        if is_selected then love.graphics.setColor(0, 0.5, 0)
-        elseif is_hovered then love.graphics.setColor(0.1, 0.1, 0.1)
-        else love.graphics.setColor(0, 0, 0) end
-
-            -- Exclude scrollbar lane
-            love.graphics.rectangle('fill', self.list_x + 2, by, self.list_w - 4 - lane_w, self.item_h)
-
-        if is_unlocked then love.graphics.setColor(0, 1, 0)
-        else love.graphics.setColor(0.3, 0.3, 0.3) end
-        love.graphics.print(game.display_name, self.list_x + 10, by + 8)
-        if not is_unlocked then
-            love.graphics.print("[LOCKED]", self.list_x + self.list_w - 70, by + 8)
-        end
-    end
-     -- Draw List Scrollbar (using UI helper)
-    local L = L_cfg
-    if #games > visible_games then
-        local UI = UIComponents
-        love.graphics.push(); love.graphics.translate(self.list_x, self.list_y)
-        local sb_geom = UI.computeScrollbar({
-            viewport_w = self.list_w,
-            viewport_h = self.list_h,
-            content_h = (#games) * self.item_h,
-            offset = (start_index - 1) * self.item_h,
-            -- width/margin from config defaults
-            track_top = 12,
-            track_bottom = 12,
-            -- min_thumb_h from config defaults
-        })
-        UI.drawScrollbar(sb_geom)
-        self._sb.list.geom = sb_geom
-        love.graphics.pop()
-    end
-
-    -- Draw Detail Panel (using layout vars)
     if selected_game_id then
-        local game = self.controller.selected_game -- Get from controller
-        if not game then -- Guard if game data somehow missing
-             love.graphics.setColor(1,0,0)
-             love.graphics.print("Error: Selected game data not found!", self.detail_x + 10, self.detail_y + 30)
-             return
-        end
-
-        local is_unlocked = player_data:isGameUnlocked(selected_game_id)
-        local ce_is_unlocked = player_data:isCheatEngineUnlocked(selected_game_id)
-
-        love.graphics.setColor(1, 1, 0)
-        love.graphics.print("Selected: " .. game.display_name, self.detail_x + 10, self.detail_y + 30)
-
-        if not is_unlocked then
-            love.graphics.setColor(1, 0.2, 0)
-            love.graphics.printf("Game is [LOCKED]. Purchase from the Game Collection to enable cheats.", self.detail_x + 10, self.detail_y + 70, self.detail_w - 20, "left")
-        elseif not ce_is_unlocked then
-            love.graphics.setColor(0.7, 0.7, 0.7)
-            love.graphics.print("Purchase CheatEngine access for this game:", self.detail_x + 10, self.detail_y + 70)
-
-            local cost = self.controller:getScaledCost(game.cheat_engine_base_cost or 99999)
-            local can_afford = player_data:hasTokens(cost)
-            local is_hovered = (self.hovered_button_id == "unlock_ce")
-
-            UIComponents.drawButton(
-                self.detail_x + 10, self.detail_y + 100, self.detail_w - 20, 40,
-                "Unlock CE (" .. cost .. " tokens)",
-                can_afford,
-                is_hovered
-            )
-        else
-            -- CE is unlocked, draw the cheats
-            love.graphics.setColor(0.7, 0.7, 0.7)
-            love.graphics.print("Available Cheats:", self.detail_x + 10, self.detail_y + 70)
-
-            local cheat_y = self.detail_y + 100
-            local S = V.spacing or { header_h = 70, footer_h = 50, cheat_item_extra_h = 20 }
-            local available_height_for_cheats = self.detail_h - ((S.header_h or 70) + (S.footer_h or 50) + 40) -- include margins
-            local cheat_item_total_height = self.item_h + (S.cheat_item_extra_h or 20)
-            local visible_cheats = math.floor(available_height_for_cheats / cheat_item_total_height)
-            visible_cheats = math.max(1, visible_cheats) -- Ensure at least 1
-
-            local num_cheats = 0
-            if available_cheats then for _ in ipairs(available_cheats) do num_cheats = num_cheats + 1 end end
-
-            local cheat_index = 0
-            -- Use ipairs for potentially ordered available_cheats table
-            for _, cheat in ipairs(available_cheats or {}) do
-                 cheat_index = cheat_index + 1
-                 if cheat_index > cheat_scroll_offset and cheat_index <= cheat_scroll_offset + visible_cheats then
-                    local display_y = self.detail_y + 100 + (cheat_index - 1 - cheat_scroll_offset) * cheat_item_total_height
-
-                    local is_hovered_cheat = (self.hovered_cheat_id == cheat.id)
-                    local at_max_level = (cheat.current_level >= cheat.max_level)
-                    local can_afford = player_data:hasTokens(cheat.cost_for_next)
-
-                    -- Text
-                    if cheat.is_fake then love.graphics.setColor(0.5, 0.5, 0.5)
-                    else love.graphics.setColor(0, 1, 0) end
-
-                    love.graphics.print(cheat.name, self.detail_x + 10, display_y + 2)
-                    love.graphics.print(string.format("LVL: %d / %d", cheat.current_level, cheat.max_level), self.detail_x + 200, display_y + 2)
-
-                    love.graphics.setColor(0.6, 0.6, 0.6)
-                    love.graphics.print(cheat.description, self.detail_x + 10, display_y + 20, 0, 0.8, 0.8)
-
-                    -- Purchase Button
-                    local btn_text = at_max_level and "[MAX]" or ("Buy (" .. cheat.cost_for_next .. ")")
-                    local btn_enabled = (not at_max_level) and can_afford
-
-                    local B = (V.buttons or { small_w = 110, small_h = 30 })
-                    UIComponents.drawButton(
-                        self.detail_x + self.detail_w - ((B.small_w or 110) + 10), display_y, (B.small_w or 110), (B.small_h or 30),
-                        btn_text,
-                        btn_enabled,
-                        is_hovered_cheat and (self.hovered_button_id == "purchase_cheat") -- Check button ID too
-                    )
-                 end
-            end
-             -- Draw Cheat Scrollbar
-                      if num_cheats > visible_cheats then
-                            local UI = UIComponents
-                          love.graphics.push(); love.graphics.translate(self.detail_x, self.detail_y + 100)
-                    local sb_geom = UI.computeScrollbar({
-                                    viewport_w = self.detail_w,
-                                    viewport_h = available_height_for_cheats,
-                              content_h = (num_cheats) * (self.item_h + (V.spacing and V.spacing.cheat_item_extra_h or 20)),
-                              offset = (cheat_scroll_offset or 0) * (self.item_h + (V.spacing and V.spacing.cheat_item_extra_h or 20)),
-                    -- width/margin from config defaults
-                              track_top = 12,
-                              track_bottom = 12,
-                        -- min_thumb_h from config defaults
-                            })
-                            UI.drawScrollbar(sb_geom)
-                          self._sb.cheats.geom = sb_geom
-                            love.graphics.pop()
-                        end
-
-            -- Launch Button (at bottom)
-            local is_hovered_launch = (self.hovered_button_id == "launch")
-            local B = (V.buttons or { wide_h = 40 })
-            UIComponents.drawButton(
-                self.detail_x + 10, self.detail_y + self.detail_h - ((B.wide_h or 40) + 10), self.detail_w - 20, (B.wide_h or 40),
-                "Launch with Cheats",
-                true, -- Always enabled if CE is unlocked
-                is_hovered_launch
-            )
-        end
+        self:drawParameterPanel(params, modifications, player_data, selected_game_id, step_size, selected_param_index, viewport_height, param_scroll)
     else
         love.graphics.setColor(0.5, 0.5, 0.5)
-        love.graphics.printf("Select a process from the list...", self.detail_x + 10, self.detail_y + 70, self.detail_w - 20, "left")
+        love.graphics.printf("No unlocked games available.\n\nUnlock games from the Launcher first.",
+            self.param_panel_x, self.param_panel_y + 100,
+            self.param_panel_w, "center")
     end
 
-    -- Footer / Instructions
+    -- Footer instructions
     love.graphics.setColor(0.4, 0.4, 0.4)
-    love.graphics.print("ESC to close window", 10, viewport_height - 20)
+    love.graphics.print("ESC: Close | ←→: Modify | ↑↓: Navigate | 1-4/M: Step Size | R: Reset | X: Reset All | Enter: Launch",
+        10, viewport_height - 20)
 end
 
-
-function CheatEngineView:drawPanel(x, y, w, h, title)
+function CheatEngineView:drawGameListPanel(games, selected_game_id, viewport_height, game_scroll)
+    -- Panel border
     love.graphics.setColor(0, 1, 0)
     love.graphics.setLineWidth(2)
-    love.graphics.rectangle('line', x, y, w, h)
+    love.graphics.rectangle('line', self.game_list_x, self.game_list_y, self.game_list_w, self.game_list_h)
     love.graphics.setLineWidth(1)
 
+    -- Panel title
     love.graphics.setColor(0.1, 0.1, 0.1)
-    love.graphics.rectangle('fill', x+1, y+1, w-2, 20) -- Title bar background
+    love.graphics.rectangle('fill', self.game_list_x + 1, self.game_list_y + 1, self.game_list_w - 2, 20)
     love.graphics.setColor(0, 1, 0)
-    love.graphics.print(title, x + 5, y + 4)
+    love.graphics.print("Unlocked Games (" .. #games .. ")", self.game_list_x + 5, self.game_list_y + 4)
 
-    -- Inner background for content area
+    -- Panel background
     love.graphics.setColor(0.05, 0.05, 0.05)
-    love.graphics.rectangle('fill', x+1, y+21, w-2, h-22)
+    love.graphics.rectangle('fill', self.game_list_x + 1, self.game_list_y + 21, self.game_list_w - 2, self.game_list_h - 22)
 
-    -- Phase 7.2: Show game's sprite set when game selected
-    if title == "Memory Editor" and self.controller and self.controller.selected_game and self.sprite_manager then
-        self.sprite_manager:ensureLoaded()
-        local game = self.controller.selected_game
-        local palette_id = self.sprite_manager:getPaletteId(game)
-        local icon_sprite = self.sprite_manager:getMetricSprite(game, game.metrics_tracked[1] or "default")
-        if icon_sprite then
-            self.sprite_manager.sprite_loader:drawSprite(icon_sprite, x + w - 50, y + 25, 48, 48, {1,1,1,0.1}, palette_id)
-        end
-    end
-end
-
-function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, available_cheats, viewport_width, viewport_height)
-    -- x, y are LOCAL coords relative to content area (0,0)
-    if button ~= 1 then return nil end
-
-    -- Scrollbar interactions: game list via universal handler
-    if self._sb and self._sb.list and self._sb.list.geom then
-        local g = self._sb.list.geom
-        local lx, ly = x - self.list_x, y - self.list_y
-        local UI = UIComponents
-        local off_px = ((self.controller.scroll_offset or 1) - 1) * self.item_h
-    local res = UI.scrollbarHandlePress(lx, ly, button, g, off_px, nil)
-        if res and res.consumed then
-            if res.new_offset_px ~= nil then
-                local total = #games
-                local visible = self:getVisibleGameCount(viewport_height)
-                local max_index = math.max(1, total - visible + 1)
-                local new_index = math.floor(res.new_offset_px / self.item_h) + 1
-                self.controller.scroll_offset = math.max(1, math.min(max_index, new_index))
-            end
-            if res.drag then
-                self._sb.list.dragging = true
-                self._sb.list.drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
-            end
-            return { name = 'content_interaction' }
-        end
-    end
-
-    -- Check game list (using local coords)
-    local visible_games = self:getVisibleGameCount(viewport_height) -- Use helper
-    local start_index = self.controller.scroll_offset or 1 -- Get from controller
+    -- Game list
+    local visible_games = self:getVisibleGameCount(viewport_height)
+    local start_index = game_scroll or 1
+    local lane_w = UIComponents.getScrollbarLaneWidth()
 
     for i = 0, visible_games - 1 do
         local game_index = start_index + i
         if game_index <= #games then
-            local by = self.list_y + i * self.item_h -- Relative y
-            -- Check using LOCAL x, y
-            if x >= self.list_x and x <= self.list_x + self.list_w and y >= by and y <= by + self.item_h then
+            local game = games[game_index]
+            local gy = self.game_list_y + 21 + i * self.item_h
+            local is_selected = (game.id == selected_game_id)
+            local is_hovered = (game.id == self.hovered_game_id)
+
+            -- Background
+            if is_selected then
+                love.graphics.setColor(0, 0.5, 0)
+            elseif is_hovered then
+                love.graphics.setColor(0.1, 0.1, 0.1)
+            else
+                love.graphics.setColor(0.05, 0.05, 0.05)
+            end
+            love.graphics.rectangle('fill', self.game_list_x + 2, gy, self.game_list_w - 4 - lane_w, self.item_h)
+
+            -- Text
+            love.graphics.setColor(0, 1, 0)
+            love.graphics.print(game.display_name or game.id, self.game_list_x + 8, gy + 5)
+        end
+    end
+
+    -- Scrollbar
+    if #games > visible_games then
+        local UI = UIComponents
+        love.graphics.push()
+        love.graphics.translate(self.game_list_x, self.game_list_y + 21)
+        local sb_geom = UI.computeScrollbar({
+            viewport_w = self.game_list_w,
+            viewport_h = self.game_list_h - 21,
+            content_h = (#games) * self.item_h,
+            offset = (start_index - 1) * self.item_h,
+            track_top = 12,
+            track_bottom = 12,
+        })
+        UI.drawScrollbar(sb_geom)
+        self._sb.games.geom = sb_geom
+        love.graphics.pop()
+    end
+end
+
+function CheatEngineView:drawParameterPanel(params, modifications, player_data, game_id, step_size, selected_param_index, viewport_height, param_scroll)
+    -- Panel border
+    love.graphics.setColor(0, 1, 0)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle('line', self.param_panel_x, self.param_panel_y, self.param_panel_w, self.param_panel_h)
+    love.graphics.setLineWidth(1)
+
+    -- Panel title
+    love.graphics.setColor(0.1, 0.1, 0.1)
+    love.graphics.rectangle('fill', self.param_panel_x + 1, self.param_panel_y + 1, self.param_panel_w - 2, 20)
+    love.graphics.setColor(0, 1, 0)
+    love.graphics.print("Parameter Editor", self.param_panel_x + 5, self.param_panel_y + 4)
+
+    -- Panel background
+    love.graphics.setColor(0.05, 0.05, 0.05)
+    love.graphics.rectangle('fill', self.param_panel_x + 1, self.param_panel_y + 21, self.param_panel_w - 2, self.param_panel_h - 22)
+
+    -- Budget display
+    local budget_total = player_data:getCheatBudget()
+    local budget_spent = player_data:getGameBudgetSpent(game_id)
+    local budget_available = budget_total - budget_spent
+
+    love.graphics.setColor(0.7, 0.7, 0.7)
+    love.graphics.print("Budget:", self.param_panel_x + 10, self.param_panel_y + 30)
+    love.graphics.setColor(1, 1, 0)
+    love.graphics.print(string.format("%d / %d", budget_available, budget_total),
+        self.param_panel_x + 100, self.param_panel_y + 30)
+
+    -- Step size selector
+    love.graphics.setColor(0.7, 0.7, 0.7)
+    love.graphics.print("Step Size:", self.param_panel_x + 10, self.param_panel_y + 55)
+
+    local step_sizes = {1, 5, 10, 100, "max"}
+    for i, size in ipairs(step_sizes) do
+        local btn_x = self.param_panel_x + 100 + (i - 1) * 50
+        local btn_y = self.param_panel_y + 50
+        local is_selected = (step_size == size)
+        local is_hovered = (self.hovered_button == "step_" .. tostring(size))
+
+        UIComponents.drawButton(
+            btn_x, btn_y, 45, 25,
+            tostring(size):upper(),
+            true,
+            is_hovered or is_selected
+        )
+    end
+
+    -- Parameter table
+    if #params == 0 then
+        love.graphics.setColor(0.5, 0.5, 0.5)
+        love.graphics.printf("No parameters available for this game variant.",
+            self.param_panel_x + 10, self.param_panel_y + 120,
+            self.param_panel_w - 20, "center")
+        return
+    end
+
+    local table_y = self.param_panel_y + 100
+    local header_y = table_y + 10
+
+    -- Table headers
+    love.graphics.setColor(0, 1, 0)
+    love.graphics.print("Parameter", self.param_panel_x + 10, header_y)
+    love.graphics.print("Type", self.param_panel_x + 180, header_y)
+    love.graphics.print("Original", self.param_panel_x + 250, header_y)
+    love.graphics.print("Modified", self.param_panel_x + 340, header_y)
+    love.graphics.print("Cost", self.param_panel_x + 430, header_y)
+
+    -- Separator line
+    love.graphics.setColor(0, 0.5, 0)
+    love.graphics.line(
+        self.param_panel_x + 10, header_y + 18,
+        self.param_panel_x + self.param_panel_w - 40, header_y + 18
+    )
+
+    -- Parameter rows
+    local visible_params = self:getVisibleParamCount(viewport_height)
+    local start_index = (param_scroll or 0) + 1
+    local lane_w = UIComponents.getScrollbarLaneWidth()
+
+    for i = 0, visible_params - 1 do
+        local param_index = start_index + i
+        if param_index <= #params then
+            local param = params[param_index]
+            local py = header_y + 25 + i * self.item_h
+            local is_selected = (param_index == selected_param_index)
+            local is_hovered = (param_index == self.hovered_param_index)
+            local is_modified = (param.value ~= param.original)
+
+            -- Row background
+            if is_selected then
+                love.graphics.setColor(0.3, 0.3, 0.5)
+                love.graphics.rectangle('fill', self.param_panel_x + 2, py - 2, self.param_panel_w - 4 - lane_w, self.item_h)
+            elseif is_hovered then
+                love.graphics.setColor(0.15, 0.15, 0.15)
+                love.graphics.rectangle('fill', self.param_panel_x + 2, py - 2, self.param_panel_w - 4 - lane_w, self.item_h)
+            end
+
+            -- Parameter name
+            if is_modified then
+                love.graphics.setColor(0.2, 1.0, 0.2)
+            else
+                love.graphics.setColor(0.7, 0.7, 0.7)
+            end
+            love.graphics.print(param.key, self.param_panel_x + 10, py)
+
+            -- Type
+            love.graphics.setColor(0.5, 0.5, 0.5)
+            love.graphics.print(param.type, self.param_panel_x + 180, py)
+
+            -- Original value
+            love.graphics.setColor(0.6, 0.6, 0.6)
+            local orig_str = self:formatValue(param.original, param.type)
+            love.graphics.print(orig_str, self.param_panel_x + 250, py)
+
+            -- Modified value
+            if is_modified then
+                love.graphics.setColor(1.0, 1.0, 0.2)
+            else
+                love.graphics.setColor(0.6, 0.6, 0.6)
+            end
+            local mod_str = self:formatValue(param.value, param.type)
+            love.graphics.print(mod_str, self.param_panel_x + 340, py)
+
+            -- Cost
+            if is_modified and modifications[param.key] then
+                love.graphics.setColor(1.0, 0.5, 0.0)
+                love.graphics.print(tostring(modifications[param.key].cost_spent), self.param_panel_x + 430, py)
+            end
+        end
+    end
+
+    -- Scrollbar for parameters
+    if #params > visible_params then
+        local UI = UIComponents
+        love.graphics.push()
+        love.graphics.translate(self.param_panel_x, header_y + 25)
+        local sb_geom = UI.computeScrollbar({
+            viewport_w = self.param_panel_w,
+            viewport_h = visible_params * self.item_h,
+            content_h = (#params) * self.item_h,
+            offset = (param_scroll or 0) * self.item_h,
+            track_top = 12,
+            track_bottom = 12,
+        })
+        UI.drawScrollbar(sb_geom)
+        self._sb.params.geom = sb_geom
+        love.graphics.pop()
+    end
+
+    -- Launch button
+    local launch_y = self.param_panel_y + self.param_panel_h - 35
+    local is_launch_hovered = (self.hovered_button == "launch")
+
+    UIComponents.drawButton(
+        self.param_panel_x + 10, launch_y, 200, 30,
+        "Launch Game",
+        true,
+        is_launch_hovered
+    )
+
+    -- Reset all button (only if modifications exist)
+    if next(modifications) then
+        local is_reset_hovered = (self.hovered_button == "reset_all")
+        UIComponents.drawButton(
+            self.param_panel_x + 220, launch_y, 150, 30,
+            "Reset All",
+            true,
+            is_reset_hovered
+        )
+    end
+end
+
+function CheatEngineView:formatValue(value, value_type)
+    if value_type == "boolean" then
+        return value and "true" or "false"
+    elseif value_type == "number" then
+        return tostring(value)
+    elseif value_type == "string" then
+        return "\"" .. tostring(value) .. "\""
+    elseif value_type == "array" or value_type == "table" then
+        return "[" .. #value .. " items]"
+    else
+        return tostring(value)
+    end
+end
+
+function CheatEngineView:getVisibleGameCount(viewport_height)
+    local available_height = self.game_list_h - 21
+    return math.max(1, math.floor(available_height / self.item_h))
+end
+
+function CheatEngineView:getVisibleParamCount(viewport_height)
+    local available_height = self.param_panel_h - 180 -- Account for headers, budget, step size, buttons
+    return math.max(1, math.floor(available_height / self.item_h))
+end
+
+function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, params, modifications, player_data, step_size, selected_param_index, viewport_width, viewport_height)
+    if button ~= 1 then return nil end
+
+    -- Game list clicks
+    local visible_games = self:getVisibleGameCount(viewport_height)
+    local game_scroll = self.controller.game_scroll_offset or 1
+
+    for i = 0, visible_games - 1 do
+        local game_index = game_scroll + i
+        if game_index <= #games then
+            local gy = self.game_list_y + 21 + i * self.item_h
+            if x >= self.game_list_x and x <= self.game_list_x + self.game_list_w and
+               y >= gy and y <= gy + self.item_h then
                 return { name = "select_game", id = games[game_index].id }
             end
         end
     end
 
-    -- Check detail panel (using local coords)
-    if selected_game_id then
-        local game = self.controller.selected_game -- Get from controller
-        if not game then return nil end -- Guard against missing game
+    -- Step size buttons
+    local step_sizes = {1, 5, 10, 100, "max"}
+    for i, size in ipairs(step_sizes) do
+        local btn_x = self.param_panel_x + 100 + (i - 1) * 50
+        local btn_y = self.param_panel_y + 50
+        if x >= btn_x and x <= btn_x + 45 and y >= btn_y and y <= btn_y + 25 then
+            return { name = "set_step_size", value = size }
+        end
+    end
 
-        local game_is_unlocked = self.controller.player_data:isGameUnlocked(selected_game_id)
-        local ce_is_unlocked = self.controller.player_data:isCheatEngineUnlocked(selected_game_id)
+    -- Parameter list clicks
+    if #params > 0 then
+        local visible_params = self:getVisibleParamCount(viewport_height)
+        local param_scroll = self.controller.param_scroll_offset or 0
+        local header_y = self.param_panel_y + 110
 
-        if not game_is_unlocked then
-            return nil -- No buttons active
-
-        elseif not ce_is_unlocked then
-            -- Check unlock button (using local coords)
-            local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + 100, self.detail_w - 20, 40 -- Relative positions
-            -- Check using LOCAL x, y; state validates affordability
-            if x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h then
-                return { name = "unlock_cheat_engine" }
-            end
-        else
-            -- Scrollbar interactions: cheat list via universal handler
-            do
-                local g = self._sb and self._sb.cheats and self._sb.cheats.geom
-                if g then
-                    local UI = UIComponents
-                    local cheat_list_y_start = self.detail_y + 100
-                    local lx, ly = x - self.detail_x, y - cheat_list_y_start
-                    local cheat_item_total_height = self.item_h + 20
-                    local off_px = (self.controller.cheat_scroll_offset or 0) * cheat_item_total_height
-                    local res = UI.scrollbarHandlePress(lx, ly, button, g, off_px, nil)
-                    if res and res.consumed then
-                        if res.new_offset_px ~= nil then
-                            local new_off = math.floor(res.new_offset_px / cheat_item_total_height + 0.0001)
-                            -- Clamp to max
-                            local num_cheats = 0; if available_cheats then for _ in ipairs(available_cheats) do num_cheats = num_cheats + 1 end end
-                            local visible_cheats = math.max(1, math.floor((self.detail_h - 160) / cheat_item_total_height))
-                            local max_off = math.max(0, num_cheats - visible_cheats)
-                            self.controller.cheat_scroll_offset = math.max(0, math.min(max_off, new_off))
-                        end
-                        if res.drag then
-                            self._sb.cheats.dragging = true
-                            self._sb.cheats.drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
-                        end
-                        return { name = 'content_interaction' }
-                    end
+        for i = 0, visible_params - 1 do
+            local param_index = param_scroll + i + 1
+            if param_index <= #params then
+                local py = header_y + 25 + i * self.item_h
+                if x >= self.param_panel_x and x <= self.param_panel_x + self.param_panel_w and
+                   y >= py - 2 and y <= py - 2 + self.item_h then
+                    return { name = "select_param", index = param_index }
                 end
             end
+        end
+    end
 
-            -- Check cheat list purchase buttons (using local coords)
-            local available_height_for_cheats = self.detail_h - 160
-            local cheat_item_total_height = self.item_h + 20
-            local visible_cheats = math.floor(available_height_for_cheats / cheat_item_total_height)
-            visible_cheats = math.max(1, visible_cheats)
-            local cheat_scroll_offset = self.controller.cheat_scroll_offset or 0
-            local cheat_index = 0
+    -- Launch button
+    if selected_game_id then
+        local launch_y = self.param_panel_y + self.param_panel_h - 35
+        if x >= self.param_panel_x + 10 and x <= self.param_panel_x + 210 and
+           y >= launch_y and y <= launch_y + 30 then
+            return { name = "launch_game" }
+        end
 
-            for _, cheat in ipairs(available_cheats or {}) do
-                 cheat_index = cheat_index + 1
-                 if cheat_index > cheat_scroll_offset and cheat_index <= cheat_scroll_offset + visible_cheats then
-                     local display_y = self.detail_y + 100 + (cheat_index - 1 - cheat_scroll_offset) * cheat_item_total_height -- Relative y
-                     local btn_x, btn_y, btn_w, btn_h = self.detail_x + self.detail_w - 120, display_y, 110, 30 -- Relative positions
-
-                     -- Check using LOCAL x, y; state validates constraints
-                     if x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h then
-                         return { name = "purchase_cheat", id = cheat.id }
-                     end
-                 end
-            end
-
-            -- Check launch button (using local coords)
-            local btn_x, btn_y, btn_w, btn_h = self.detail_x + 10, self.detail_y + self.detail_h - 50, self.detail_w - 20, 40 -- Relative positions
-            -- Check using LOCAL x, y
-            if game_is_unlocked and x >= btn_x and x <= btn_x + btn_w and y >= btn_y and y <= btn_y + btn_h then
-                return { name = "launch_game" }
+        -- Reset all button
+        if next(modifications) then
+            if x >= self.param_panel_x + 220 and x <= self.param_panel_x + 370 and
+               y >= launch_y and y <= launch_y + 30 then
+                return { name = "reset_all" }
             end
         end
     end
 
-    return nil -- Clicked on empty space within the view's area
+    return nil
 end
 
-function CheatEngineView:mousemoved(x, y, dx, dy)
-    local UI = UIComponents
-    -- List scrollbar drag via universal handler
-    if self._sb and self._sb.list and self._sb.list.dragging and self._sb.list.geom then
-        local g = self._sb.list.geom
-        local ly = y - self.list_y
-        local res = UI.scrollbarHandleMove(ly, self._sb.list.drag, g)
-        if res and res.consumed and res.new_offset_px ~= nil then
-            local new_index = math.floor(res.new_offset_px / self.item_h) + 1
-            self.controller.scroll_offset = math.max(1, new_index)
-            return { name = 'content_interaction' }
-        end
-    end
-    -- Cheats scrollbar drag via universal handler
-    if self._sb and self._sb.cheats and self._sb.cheats.dragging and self._sb.cheats.geom then
-        local g = self._sb.cheats.geom
-        local cheat_item_total_height = self.item_h + 20
-        local ly = y - (self.detail_y + 100)
-        local res = UI.scrollbarHandleMove(ly, self._sb.cheats.drag, g)
-        if res and res.consumed and res.new_offset_px ~= nil then
-            local new_off = math.floor(res.new_offset_px / cheat_item_total_height + 0.0001)
-            self.controller.cheat_scroll_offset = math.max(0, new_off)
-            return { name = 'content_interaction' }
-        end
-    end
-end
-
-function CheatEngineView:mousereleased(x, y, button)
-    if button == 1 and self._sb then
-        if self._sb.list and self._sb.list.dragging then
-            self._sb.list.dragging = false
-            self._sb.list.drag = nil
-        end
-        if self._sb.cheats and self._sb.cheats.dragging then
-            self._sb.cheats.dragging = false
-            self._sb.cheats.drag = nil
-        end
-    end
-end
-
-function CheatEngineView:wheelmoved(x, y, item_count, viewport_width, viewport_height)
-    local new_list_offset = nil
-    local new_cheat_offset = nil
+function CheatEngineView:wheelmoved(x, y, game_count, param_count, viewport_width, viewport_height)
+    local new_game_offset = nil
+    local new_param_offset = nil
 
     local mx, my = love.mouse.getPosition()
     local view_x = self.controller.viewport and self.controller.viewport.x or 0
@@ -525,52 +499,54 @@ function CheatEngineView:wheelmoved(x, y, item_count, viewport_width, viewport_h
     local local_my = my - view_y
 
     -- Check if scrolling over game list
-    if local_mx >= self.list_x and local_mx <= self.list_x + self.list_w and
-       local_my >= self.list_y and local_my <= self.list_y + self.list_h then
+    if local_mx >= self.game_list_x and local_mx <= self.game_list_x + self.game_list_w and
+       local_my >= self.game_list_y and local_my <= self.game_list_y + self.game_list_h then
 
-        local visible_items = self:getVisibleGameCount(viewport_height)
-        local max_scroll = math.max(0, item_count - visible_items)
-        local current_offset = self.controller.scroll_offset or 1
+        local visible_games = self:getVisibleGameCount(viewport_height)
+        local max_scroll = math.max(0, game_count - visible_games)
+        local current_offset = self.controller.game_scroll_offset or 1
 
         if y > 0 then -- Scroll up
-            new_list_offset = math.max(1, current_offset - 1)
+            new_game_offset = math.max(1, current_offset - 1)
         elseif y < 0 then -- Scroll down
-            new_list_offset = math.min(max_scroll + 1, current_offset + 1)
+            new_game_offset = math.min(max_scroll + 1, current_offset + 1)
         end
     end
 
-    -- Check if scrolling over cheat detail list
-    local cheat_list_y_start = self.detail_y + 100
-    local cheat_list_h = self.detail_h - 160
-    if self.controller.selected_game_id and self.controller.player_data:isCheatEngineUnlocked(self.controller.selected_game_id) and
-       local_mx >= self.detail_x and local_mx <= self.detail_x + self.detail_w and
-       local_my >= cheat_list_y_start and local_my <= cheat_list_y_start + cheat_list_h then
+    -- Check if scrolling over parameter list
+    if local_mx >= self.param_panel_x and local_mx <= self.param_panel_x + self.param_panel_w and
+       local_my >= self.param_panel_y + 100 and local_my <= self.param_panel_y + self.param_panel_h - 50 then
 
-         local num_cheats = 0
-         if self.controller.available_cheats then for _ in ipairs(self.controller.available_cheats) do num_cheats = num_cheats + 1 end end
+        local visible_params = self:getVisibleParamCount(viewport_height)
+        local max_scroll = math.max(0, param_count - visible_params)
+        local current_offset = self.controller.param_scroll_offset or 0
 
-         local cheat_item_total_height = self.item_h + 20
-         local visible_cheats = math.floor(cheat_list_h / cheat_item_total_height)
-         visible_cheats = math.max(1, visible_cheats) -- Ensure at least 1
-         local max_cheat_scroll = math.max(0, num_cheats - visible_cheats)
-         local current_cheat_scroll = self.controller.cheat_scroll_offset or 0
-
-         if y > 0 then -- Scroll up
-              new_cheat_offset = math.max(0, current_cheat_scroll - 1)
-         elseif y < 0 then -- Scroll down
-              new_cheat_offset = math.min(max_cheat_scroll, current_cheat_scroll + 1)
-         end
+        if y > 0 then -- Scroll up
+            new_param_offset = math.max(0, current_offset - 1)
+        elseif y < 0 then -- Scroll down
+            new_param_offset = math.min(max_scroll, current_offset + 1)
+        end
     end
 
-    -- Return offsets so state can update them
-    return new_list_offset, new_cheat_offset
+    return new_game_offset, new_param_offset
 end
 
-
-function CheatEngineView:getVisibleGameCount(viewport_height)
-     local list_h = viewport_height - 70 -- Approximate height available
-     return math.max(1, math.floor(list_h / self.item_h))
+function CheatEngineView:mousemoved(x, y, dx, dy)
+    -- Hover updates handled in update()
+    return { name = 'content_interaction' }
 end
 
+function CheatEngineView:mousereleased(x, y, button)
+    if button == 1 and self._sb then
+        if self._sb.games and self._sb.games.dragging then
+            self._sb.games.dragging = false
+            self._sb.games.drag = nil
+        end
+        if self._sb.params and self._sb.params.dragging then
+            self._sb.params.dragging = false
+            self._sb.params.drag = nil
+        end
+    end
+end
 
 return CheatEngineView
