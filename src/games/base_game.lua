@@ -1,7 +1,7 @@
 local Object = require('class')
 local BaseGame = Object:extend('BaseGame')
 
-function BaseGame:init(game_data, cheats, di)
+function BaseGame:init(game_data, cheats, di, variant_override)
     -- Store game definition
     self.data = game_data
 
@@ -32,9 +32,15 @@ function BaseGame:init(game_data, cheats, di)
     -- Store difficulty level
     self.difficulty_level = self.data.difficulty_level or 1
 
-    -- Load variant data if GameVariantLoader is available
+    -- Load variant data
     self.variant = nil
-    if di and di.gameVariantLoader then
+
+    -- Priority 1: Use variant_override if provided (from CheatEngine)
+    if variant_override then
+        self.variant = variant_override
+        print("[BaseGame] Using variant override from CheatEngine")
+    -- Priority 2: Load from GameVariantLoader if available
+    elseif di and di.gameVariantLoader then
         local variant_data = di.gameVariantLoader:getVariantData(game_data.id)
         if variant_data then
             self.variant = variant_data

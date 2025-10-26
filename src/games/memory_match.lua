@@ -12,8 +12,8 @@ local CARD_ICON_PADDING = (MMCfg.cards and MMCfg.cards.icon_padding) or 10
 local MEMORIZE_TIME_BASE = (MMCfg.timings and MMCfg.timings.memorize_time_base) or 5
 local MATCH_VIEW_TIME = (MMCfg.timings and MMCfg.timings.match_view_time) or 1
 
-function MemoryMatch:init(game_data, cheats, di)
-    MemoryMatch.super.init(self, game_data, cheats, di)
+function MemoryMatch:init(game_data, cheats, di, variant_override)
+    MemoryMatch.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match) or MMCfg
 

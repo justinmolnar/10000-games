@@ -76,7 +76,8 @@ end
 function WindowEventDispatcher:handleLaunchMinigame(event)
     if event.game_data then
         if self.event_bus then
-            self.event_bus:publish('launch_program', "minigame_runner", event.game_data)
+            -- Pass both game_data and optional variant to launch_program
+            self.event_bus:publish('launch_program', "minigame_runner", event.game_data, event.variant)
         end
     else
         print("ERROR: launch_minigame event missing game_data!")

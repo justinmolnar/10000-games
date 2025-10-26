@@ -39,8 +39,12 @@ function MinigameState:setWindowContext(window_id, window_manager)
     self.window_manager = window_manager
 end
 
-function MinigameState:enter(game_data)
+function MinigameState:enter(game_data, variant_override)
     print("[MinigameState] enter() called for game:", game_data and game_data.id or "UNKNOWN")
+    if variant_override then
+        print("[MinigameState] Using modified variant from CheatEngine")
+    end
+
     if not game_data then
         print("[MinigameState] ERROR: No game_data provided to enter()")
         self.current_game = nil
@@ -48,6 +52,7 @@ function MinigameState:enter(game_data)
     end
 
     self.game_data = game_data
+    self.variant_override = variant_override -- Store for restart functionality
     
     local class_name = game_data.game_class
     local logic_file_name = class_name:gsub("(%u)", function(c) return "_" .. c:lower() end):match("^_?(.*)")
@@ -63,8 +68,11 @@ function MinigameState:enter(game_data)
         return { type = "close_window" }
     end
 
-    -- Pass DI (if present) into the game constructor as an optional parameter
-    local instance_ok, game_instance = pcall(GameClass.new, GameClass, game_data, self.active_cheats, self.di)
+    -- Get active cheats from CheatSystem
+    local active_cheats = self.cheat_system:getActiveCheats(game_data.id) or {}
+
+    -- Pass DI (if present) and variant override into the game constructor
+    local instance_ok, game_instance = pcall(GameClass.new, GameClass, game_data, active_cheats, self.di, variant_override)
     if not instance_ok or not game_instance then
         print("[MinigameState] ERROR: Failed to instantiate game class '".. class_name .."': " .. tostring(game_instance))
         self.current_game = nil
@@ -118,7 +126,8 @@ function MinigameState:keypressed(key)
     if self.controller:isOverlayVisible() then
         if key == 'return' then
             if self.game_data then
-                local restart_event = self:enter(self.game_data)
+                -- Pass variant_override through on restart
+                local restart_event = self:enter(self.game_data, self.variant_override)
                 if type(restart_event) == 'table' and restart_event.type == "close_window" then
                      return restart_event
                 end

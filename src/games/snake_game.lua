@@ -10,8 +10,8 @@ local BASE_SPEED = SCfg.base_speed or 8
 local BASE_TARGET_LENGTH = SCfg.base_target_length or 20
 local BASE_OBSTACLE_COUNT = SCfg.base_obstacle_count or 5
 
-function SnakeGame:init(game_data, cheats, di)
-    SnakeGame.super.init(self, game_data, cheats, di)
+function SnakeGame:init(game_data, cheats, di, variant_override)
+    SnakeGame.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.snake) or SCfg
     self.GRID_SIZE = (runtimeCfg and runtimeCfg.grid_size) or GRID_SIZE

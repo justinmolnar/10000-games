@@ -66,8 +66,8 @@ local SPAWN_BASE_RATE = (SCfg.spawn and SCfg.spawn.base_rate) or 1.0
 local BASE_TARGET_KILLS = (SCfg.goals and SCfg.goals.base_target_kills) or 20
 local ZIGZAG_FREQUENCY = (SCfg.movement and SCfg.movement.zigzag_frequency) or 2
 
-function SpaceShooter:init(game_data, cheats, di)
-    SpaceShooter.super.init(self, game_data, cheats, di)
+function SpaceShooter:init(game_data, cheats, di, variant_override)
+    SpaceShooter.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter) or SCfg
 

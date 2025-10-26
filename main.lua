@@ -107,7 +107,7 @@ function love.load()
 
     vm_manager = VMManager:new(di)
     di.vmManager = vm_manager
-    cheat_system = CheatSystem:new()
+    cheat_system = CheatSystem:new(Config)  -- Pass Config for hidden_parameters
     di.cheatSystem = cheat_system
 
     window_manager = WindowManager:new(di)

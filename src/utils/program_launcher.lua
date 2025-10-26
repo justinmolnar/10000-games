@@ -160,7 +160,11 @@ function ProgramLauncher:launchProgram(program_id, ...)
     local enter_args = {}
     local enter_args_config = program.enter_args
     if program_id == "minigame_runner" then
-        if game_data_arg then enter_args = { game_data_arg } end
+        -- Pass both game_data and optional variant_override to MinigameState:enter
+        if game_data_arg then
+            local variant_override = launch_args[2] -- May be nil, that's fine
+            enter_args = { game_data_arg, variant_override }
+        end
     elseif enter_args_config then
         if enter_args_config.type == "first_launch_arg" then enter_args = {launch_args[1] or enter_args_config.default}
         elseif enter_args_config.type == "static" then enter_args = {enter_args_config.value} end

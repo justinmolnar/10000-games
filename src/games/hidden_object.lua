@@ -18,8 +18,8 @@ local POSITION_HASH_Y2 = (HOCfg.background and HOCfg.background.position_hash an
 local BACKGROUND_HASH_1 = (HOCfg.background and HOCfg.background.background_hash and HOCfg.background.background_hash.h1) or 17
 local BACKGROUND_HASH_2 = (HOCfg.background and HOCfg.background.background_hash and HOCfg.background.background_hash.h2) or 3
 
-function HiddenObject:init(game_data, cheats, di)
-    HiddenObject.super.init(self, game_data, cheats, di)
+function HiddenObject:init(game_data, cheats, di, variant_override)
+    HiddenObject.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.hidden_object) or HOCfg
 

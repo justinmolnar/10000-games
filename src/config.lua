@@ -111,11 +111,19 @@ local Config = {
         },
 
         -- Which parameters should be hidden/locked
-        -- For testing: empty (show everything)
-        -- In production, might hide: clone_index, name, sprite_set, etc.
+        -- Hide metadata and non-gameplay parameters
         hidden_parameters = {
-            -- "clone_index", -- Don't allow editing clone_index
-            -- "name", -- Don't allow editing display name
+            "clone_index",      -- Internal identifier
+            "name",             -- Display name
+            "sprite_set",       -- Visual only
+            "palette",          -- Visual only
+            "music_track",      -- Audio only
+            "sfx_pack",         -- Audio only
+            "background",       -- Visual only
+            "flavor_text",      -- Text only
+            "intro_cutscene",   -- Cutscene data
+            "enemies",          -- Complex array structure
+            "movement_type",    -- String enum - would need dropdown
         },
 
         -- Special unlocks (gate certain modifications behind progression)
