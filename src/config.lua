@@ -39,13 +39,103 @@ local Config = {
     save_file_name = "save.json",
     save_version = "1.0",
 
-    -- Cheat Engine
+    -- Cheat Engine (Legacy - old system)
     cheat_costs = {
         speed = 500,       -- Speed Modifiers
         advantage = 1000,  -- Advantage Modifiers
         performance = 2000,  -- Performance Boosters
         aim = 5000,        -- Aim Assist (Fake)
         god = 10000        -- God Mode (Fake)
+    },
+
+    -- CheatEngine (New System - Dynamic Parameter Modification)
+    cheat_engine = {
+        -- Starting budget for testing (set VERY high for testing)
+        -- In production, this would start lower and be upgraded
+        default_budget = 999999999, -- Nearly infinite for testing
+
+        -- Budget upgrades (costs to increase budget cap)
+        -- Not used initially - just for future expansion
+        budget_upgrades = {
+            { cost = 2500, new_cap = 1000 },
+            { cost = 10000, new_cap = 5000 },
+            { cost = 50000, new_cap = 25000 },
+            { cost = 250000, new_cap = 100000 },
+            { cost = 1000000, new_cap = 500000 }
+        },
+
+        -- Parameter modification pricing
+        -- Base cost multipliers by parameter type
+        parameter_costs = {
+            -- Numeric parameters (lives, movement_speed, victory_limit, etc.)
+            numeric = {
+                base_cost = 10,  -- Very cheap for testing (production: 100)
+                exponential_scale = 1.0, -- No scaling for testing (production: 1.5)
+                -- Cost multiplier per step size
+                step_costs = {
+                    [1] = 1.0,    -- +/- 1: normal cost
+                    [5] = 1.0,    -- +/- 5: testing - same cost (production: 0.9)
+                    [10] = 1.0,   -- +/- 10: testing - same cost (production: 0.8)
+                    [100] = 1.0,  -- +/- 100: testing - same cost (production: 0.6)
+                    ["max"] = 1.0 -- Set to max/min: testing - same cost (production: 2.0)
+                }
+            },
+
+            -- Boolean parameters (leaving_area_ends_game, etc.)
+            boolean = {
+                base_cost = 10,  -- Very cheap for testing (production: 500)
+                exponential_scale = 1.0 -- Flat cost
+            },
+
+            -- String/enum parameters (victory_condition, movement_type, etc.)
+            enum = {
+                base_cost = 10,  -- Very cheap for testing (production: 5000)
+                exponential_scale = 1.0 -- Flat cost
+            },
+
+            -- Array parameters (enemies, holes)
+            array = {
+                base_cost = 10,  -- Very cheap for testing (production: 1000)
+                exponential_scale = 1.0  -- Flat for testing (production: 1.3)
+            }
+        },
+
+        -- Parameter-specific overrides (optional)
+        -- Use this to make specific params more/less expensive
+        -- Empty for testing - all use default costs
+        parameter_overrides = {
+            -- Example overrides (commented out for testing):
+            -- victory_condition = { base_cost = 5000 }, -- Expensive to change
+            -- lives = { base_cost = 100 },
+            -- victory_limit = { base_cost = 150 },
+        },
+
+        -- Which parameters should be hidden/locked
+        -- For testing: empty (show everything)
+        -- In production, might hide: clone_index, name, sprite_set, etc.
+        hidden_parameters = {
+            -- "clone_index", -- Don't allow editing clone_index
+            -- "name", -- Don't allow editing display name
+        },
+
+        -- Special unlocks (gate certain modifications behind progression)
+        -- NOTE: Not implemented initially - using existing game unlock system
+        -- Only unlocked games appear in CheatEngine (player_data:isGameUnlocked)
+        unlockable_modifications = {
+            -- Example structure (not used yet):
+            -- {
+            --     id = "dodge_count_multiplier",
+            --     unlock_cost = 50000,
+            --     applies_to = { "dodge" },
+            --     unlocked = true  -- All unlocked for testing
+            -- }
+        },
+
+        -- Refund policy when resetting parameters
+        refund = {
+            percentage = 100,  -- 100% refund for testing (production: 50-75%)
+            min_refund = 0     -- Minimum refund amount
+        }
     },
 
     -- Window/Display

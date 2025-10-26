@@ -19,7 +19,22 @@ function PlayerData:init(statistics_instance, di)
     self.space_defender_level = 1
     self.vm_slots = 1
     self.active_vms = {}
+
+    -- CheatEngine budget (global across all games)
+    self.cheat_budget = (Config.cheat_engine and Config.cheat_engine.default_budget) or 999999999
+
+    -- CheatEngine data structure (new system):
+    -- {
+    --   [game_id] = {
+    --     budget_spent = 0,
+    --     modifications = {
+    --       [param_key] = { original = value, modified = value, cost_spent = number }
+    --     }
+    --   }
+    -- }
+    -- Legacy data (old cheat system) also stored here for compatibility
     self.cheat_engine_data = {}
+
     self.upgrades = { cpu_speed=0, overclock=0, auto_dodge=0 }
 end
 
@@ -221,6 +236,182 @@ function PlayerData:getCheatLevel(game_id, cheat_id)
     return self.cheat_engine_data[game_id].cheats[cheat_id] or 0
 end
 
+-- ============================================================================
+-- NEW: Dynamic Parameter Modification System (CheatEngine)
+-- ============================================================================
+
+-- Get the global cheat budget
+function PlayerData:getCheatBudget()
+    return self.cheat_budget or 999999999
+end
+
+-- Set the global cheat budget (used for upgrades)
+function PlayerData:setCheatBudget(new_budget)
+    self.cheat_budget = new_budget
+end
+
+-- Initialize cheat data for a game (new system structure)
+function PlayerData:initGameCheatData(game_id)
+    if not self.cheat_engine_data[game_id] then
+        self.cheat_engine_data[game_id] = {
+            budget_spent = 0,
+            modifications = {}
+        }
+    end
+    -- Ensure modifications table exists
+    if not self.cheat_engine_data[game_id].modifications then
+        self.cheat_engine_data[game_id].modifications = {}
+    end
+    -- Ensure budget_spent exists
+    if not self.cheat_engine_data[game_id].budget_spent then
+        self.cheat_engine_data[game_id].budget_spent = 0
+    end
+end
+
+-- Get all modifications for a specific game
+-- Returns: { [param_key] = { original = value, modified = value, cost_spent = number }, ... }
+function PlayerData:getGameModifications(game_id)
+    if not self.cheat_engine_data[game_id] then
+        return {}
+    end
+    return self.cheat_engine_data[game_id].modifications or {}
+end
+
+-- Get total budget spent on a specific game
+function PlayerData:getGameBudgetSpent(game_id)
+    if not self.cheat_engine_data[game_id] then
+        return 0
+    end
+    return self.cheat_engine_data[game_id].budget_spent or 0
+end
+
+-- Get available budget for a specific game
+-- (This is global budget minus budget spent on THIS game)
+function PlayerData:getAvailableBudget(game_id)
+    local spent = self:getGameBudgetSpent(game_id)
+    return self.cheat_budget - spent
+end
+
+-- Apply a modification to a game parameter
+-- Returns: true if successful, false otherwise
+function PlayerData:applyCheatModification(game_id, param_key, original_value, new_value, cost)
+    self:initGameCheatData(game_id)
+
+    local game_data = self.cheat_engine_data[game_id]
+
+    -- Check if we're updating an existing modification
+    local old_cost = 0
+    if game_data.modifications[param_key] then
+        old_cost = game_data.modifications[param_key].cost_spent or 0
+    end
+
+    -- Store modification
+    game_data.modifications[param_key] = {
+        original = original_value,
+        modified = new_value,
+        cost_spent = cost
+    }
+
+    -- Update total budget spent for this game
+    -- Remove old cost, add new cost
+    game_data.budget_spent = (game_data.budget_spent or 0) - old_cost + cost
+
+    return true
+end
+
+-- Remove a modification from a game parameter
+-- Returns: refund amount
+function PlayerData:removeCheatModification(game_id, param_key)
+    if not self.cheat_engine_data[game_id] then
+        return 0
+    end
+
+    local game_data = self.cheat_engine_data[game_id]
+    local mod = game_data.modifications[param_key]
+
+    if not mod then
+        return 0
+    end
+
+    local refund = mod.cost_spent or 0
+
+    -- Apply refund percentage from config
+    local refund_config = Config.cheat_engine and Config.cheat_engine.refund
+    if refund_config then
+        local percentage = refund_config.percentage or 100
+        local min_refund = refund_config.min_refund or 0
+        refund = math.max(min_refund, math.floor(refund * (percentage / 100)))
+    end
+
+    -- Remove modification
+    game_data.modifications[param_key] = nil
+
+    -- Update budget spent
+    game_data.budget_spent = (game_data.budget_spent or 0) - refund
+    if game_data.budget_spent < 0 then
+        game_data.budget_spent = 0
+    end
+
+    return refund
+end
+
+-- Reset all modifications for a game
+-- Returns: total refund amount
+function PlayerData:resetAllGameModifications(game_id)
+    if not self.cheat_engine_data[game_id] then
+        return 0
+    end
+
+    local game_data = self.cheat_engine_data[game_id]
+    local total_refund = 0
+
+    -- Calculate total refund
+    for param_key, mod in pairs(game_data.modifications or {}) do
+        total_refund = total_refund + (mod.cost_spent or 0)
+    end
+
+    -- Apply refund percentage from config
+    local refund_config = Config.cheat_engine and Config.cheat_engine.refund
+    if refund_config then
+        local percentage = refund_config.percentage or 100
+        local min_refund = refund_config.min_refund or 0
+        total_refund = math.max(min_refund, math.floor(total_refund * (percentage / 100)))
+    end
+
+    -- Clear all modifications
+    game_data.modifications = {}
+    game_data.budget_spent = 0
+
+    return total_refund
+end
+
+-- Check if a game has any modifications
+function PlayerData:hasGameModifications(game_id)
+    if not self.cheat_engine_data[game_id] then
+        return false
+    end
+
+    local mods = self.cheat_engine_data[game_id].modifications or {}
+    for _ in pairs(mods) do
+        return true  -- Has at least one modification
+    end
+    return false
+end
+
+-- Get count of modifications for a game
+function PlayerData:getGameModificationCount(game_id)
+    if not self.cheat_engine_data[game_id] then
+        return 0
+    end
+
+    local count = 0
+    local mods = self.cheat_engine_data[game_id].modifications or {}
+    for _ in pairs(mods) do
+        count = count + 1
+    end
+    return count
+end
+
 
 function PlayerData:serialize()
     return {
@@ -231,7 +422,8 @@ function PlayerData:serialize()
         space_defender_level = self.space_defender_level,
         vm_slots = self.vm_slots,
         active_vms = self.active_vms,
-        cheat_engine_data = self.cheat_engine_data,
+        cheat_budget = self.cheat_budget,  -- NEW: Save cheat budget
+        cheat_engine_data = self.cheat_engine_data,  -- Contains both old and new cheat data
         upgrades = self.upgrades
     }
 end
