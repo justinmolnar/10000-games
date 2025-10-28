@@ -30,8 +30,23 @@ end
 -- Draw complete window chrome
 function WindowChrome:draw(window, is_focused, sprite_loader)
     self:drawBorder(window, is_focused)
+    self:drawContentBackground(window)
     self:drawTitleBar(window, is_focused, sprite_loader)
     self:drawButtons(window, is_focused)
+end
+
+-- Draw content area background
+function WindowChrome:drawContentBackground(window)
+    local bar_height = self.TITLE_BAR_HEIGHT
+
+    -- Fill entire content area including space under borders (light gray)
+    -- Start at x+1, y+bar+1 to fill under the inner border lines
+    love.graphics.setColor(colors.window_content_bg or {0.9, 0.9, 0.9})
+    love.graphics.rectangle('fill',
+        window.x + 1,
+        window.y + bar_height + 1,
+        window.width - 2,
+        window.height - bar_height - 2)
 end
 
 -- Draw window border

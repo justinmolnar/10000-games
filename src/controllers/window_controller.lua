@@ -276,9 +276,105 @@ function WindowController:handleResize(mouse_x, mouse_y)
         else new_h = min_h; new_y = bounds.y + bounds.height - min_h end
     elseif edge:find("bottom") then new_h = math.max(min_h, bounds.height + dy) end
 
+    -- Aspect ratio locking (for fixed arena + fixed camera)
+    local window_data = self.window_states[self.resizing_window_id]
+    local window_state = window_data and window_data.state
+    local game = window_state and window_state.current_game
+
+    if game and game.lock_aspect_ratio then
+        -- Calculate target aspect ratio from ARENA dimensions (not current window bounds)
+        local arena_width = game.game_width
+        local arena_height = game.game_height
+
+        if not arena_width or not arena_height then
+            print("[WindowController] WARNING: game_width/game_height not available:", arena_width, arena_height)
+        else
+            local target_aspect = arena_width / arena_height
+            local title_bar_height = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome and Config.ui.window.chrome.title_bar_height) or 25
+            local border_width = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome and Config.ui.window.chrome.border_width) or 2
+
+            local is_horizontal = edge:find("left") or edge:find("right")
+            local is_vertical = edge:find("top") or edge:find("bottom")
+            local is_corner = is_horizontal and is_vertical
+
+            -- IMPORTANT: The aspect ratio applies to the VIEWPORT (content area), not the window
+            -- Viewport width = window.width - (border * 2)
+            -- Viewport height = window.height - title_bar_height - (border * 2)
+
+            if is_corner then
+                -- Corner drag: determine which dimension changed more
+                local width_change = math.abs(new_w - bounds.width)
+                local height_change = math.abs(new_h - bounds.height)
+
+                if width_change > height_change then
+                    -- Width changed more, adjust height to match viewport aspect ratio
+                    -- Round viewport dimensions to integers first
+                    local viewport_width = math.floor(new_w - (border_width * 2))
+                    local viewport_height = math.floor(viewport_width / target_aspect)
+                    new_h = viewport_height + title_bar_height + (border_width * 2)
+                    if edge:find("top") then
+                        new_y = bounds.y + bounds.height - new_h
+                    end
+                else
+                    -- Height changed more, adjust width to match viewport aspect ratio
+                    -- Round viewport dimensions to integers first
+                    local viewport_height = math.floor(new_h - title_bar_height - (border_width * 2))
+                    local viewport_width = math.floor(viewport_height * target_aspect)
+                    new_w = viewport_width + (border_width * 2)
+                    if edge:find("left") then
+                        new_x = bounds.x + bounds.width - new_w
+                    end
+                end
+            elseif is_horizontal then
+                -- Dragging left or right edge: adjust window height to maintain viewport aspect ratio
+                -- Round viewport dimensions to integers first
+                local viewport_width = math.floor(new_w - (border_width * 2))
+                local viewport_height = math.floor(viewport_width / target_aspect)
+                new_h = viewport_height + title_bar_height + (border_width * 2)
+            elseif is_vertical then
+                -- Dragging top or bottom edge: adjust window width to maintain viewport aspect ratio
+                -- Round viewport dimensions to integers first
+                local viewport_height = math.floor(new_h - title_bar_height - (border_width * 2))
+                local viewport_width = math.floor(viewport_height * target_aspect)
+                new_w = viewport_width + (border_width * 2)
+            end
+        end
+    end
+
     -- Screen bounds clamping logic
     local screen_w, screen_h = love.graphics.getWidth(), love.graphics.getHeight()
     local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
+
+    -- If aspect ratio is locked, we need to clamp BOTH dimensions proportionally
+    if game and game.lock_aspect_ratio and game.game_width and game.game_height then
+        local target_aspect = game.game_width / game.game_height
+        local title_bar_height = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome and Config.ui.window.chrome.title_bar_height) or 25
+        local border_width = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome and Config.ui.window.chrome.border_width) or 2
+
+        -- Calculate maximum allowed dimensions
+        local max_w = screen_w - new_x
+        local max_h = screen_h - taskbar_h - new_y
+
+        -- If either dimension exceeds max, recalculate both to maintain aspect ratio
+        if new_w > max_w or new_h > max_h then
+            -- Calculate what dimensions would fit for each constraint
+            local viewport_w_for_h = math.floor((max_h - title_bar_height - (border_width * 2)) * target_aspect)
+            local w_if_h_constrained = viewport_w_for_h + (border_width * 2)
+
+            local viewport_h_for_w = math.floor((max_w - (border_width * 2)) / target_aspect)
+            local h_if_w_constrained = viewport_h_for_w + title_bar_height + (border_width * 2)
+
+            -- Use the smaller of the two options to ensure both fit
+            if w_if_h_constrained <= max_w then
+                new_w = w_if_h_constrained
+                new_h = max_h
+            else
+                new_w = max_w
+                new_h = h_if_w_constrained
+            end
+        end
+    end
+
     new_x = math.max(0, math.min(new_x, screen_w - new_w))
     new_y = math.max(0, math.min(new_y, screen_h - taskbar_h - new_h))
     new_w = math.min(new_w, screen_w - new_x)

@@ -192,6 +192,7 @@ function DesktopState:registerWindowState(window_id, state)
          if window then
              -- Use the injected windowChrome instance
              local bounds = self.di.windowChrome:getContentBounds(window)
+
              pcall(state.setViewport, state, bounds.x, bounds.y, bounds.width, bounds.height)
          end
     end

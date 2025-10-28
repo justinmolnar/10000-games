@@ -223,19 +223,68 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
         self.variant.sprite_set = (runtimeCfg and runtimeCfg.sprite_set) or "classic/snake"
     end
 
-    -- Arena size setup (apply arena_size multiplier)
+    -- Determine arena mode: fixed (variant defines size) or dynamic (window defines size)
+    -- If variant explicitly sets arena_size, it's a fixed arena
+    -- If not set, grid dimensions are calculated from window size
+    self.is_fixed_arena = (self.variant and self.variant.arena_size ~= nil)
+
+    -- Base dimensions for fixed arenas
     local base_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (SCfg.arena and SCfg.arena.width) or 800
     local base_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (SCfg.arena and SCfg.arena.height) or 600
-    self.game_width = math.floor(base_width * self.arena_size)
-    self.game_height = math.floor(base_height * self.arena_size)
+
+    if self.is_fixed_arena then
+        -- Fixed arena: dimensions set by arena_size multiplier
+        self.game_width = math.floor(base_width * self.arena_size)
+        self.game_height = math.floor(base_height * self.arena_size)
+        self.grid_width = math.floor(self.game_width / GRID_SIZE)
+        self.grid_height = math.floor(self.game_height / GRID_SIZE)
+        print("[SnakeGame] Fixed arena mode - Grid:", self.grid_width, "x", self.grid_height)
+    else
+        -- Dynamic arena: dimensions will be calculated from viewport in setPlayArea
+        -- Use base dimensions as temporary placeholder
+        self.game_width = base_width
+        self.game_height = base_height
+        self.grid_width = math.floor(self.game_width / (GRID_SIZE * (self.camera_zoom or 1.0)))
+        self.grid_height = math.floor(self.game_height / (GRID_SIZE * (self.camera_zoom or 1.0)))
+        print("[SnakeGame] Dynamic arena mode - Grid will adjust to window size")
+    end
+
+    -- Determine if aspect ratio should be locked
+    -- Lock when: fixed arena + fixed camera mode (shows entire arena at all times)
+    self.lock_aspect_ratio = (self.is_fixed_arena and self.camera_mode == "fixed")
     
-    self.grid_width = math.floor(self.game_width / GRID_SIZE)
-    self.grid_height = math.floor(self.game_height / GRID_SIZE)
-    
-    -- Create main snake
-    self.snake = { {x = math.floor(self.grid_width/2), y = math.floor(self.grid_height/2)} }
-    self.direction = {x = 1, y = 0}
-    self.next_direction = {x = 1, y = 0}
+    -- Create main snake at random position
+    local center_x = math.floor(self.grid_width / 2)
+    local center_y = math.floor(self.grid_height / 2)
+
+    -- Random position within safe bounds (not on edges for dynamic arenas with walls)
+    local safe_min = (not self.is_fixed_arena and (self.wall_mode == "death" or self.wall_mode == "bounce")) and 2 or 1
+    local safe_max_x = self.grid_width - safe_min - 1
+    local safe_max_y = self.grid_height - safe_min - 1
+
+    local spawn_x = math.random(safe_min, safe_max_x)
+    local spawn_y = math.random(safe_min, safe_max_y)
+
+    self.snake = { {x = spawn_x, y = spawn_y} }
+
+    -- Calculate direction toward center
+    local dx = center_x - spawn_x
+    local dy = center_y - spawn_y
+
+    -- Determine primary direction based on which distance is greater
+    if dx == 0 and dy == 0 then
+        -- Spawned exactly at center, pick random direction
+        local dirs = {{x=1,y=0}, {x=-1,y=0}, {x=0,y=1}, {x=0,y=-1}}
+        self.direction = dirs[math.random(#dirs)]
+    elseif math.abs(dx) > math.abs(dy) then
+        -- Move horizontally toward center
+        self.direction = {x = dx > 0 and 1 or -1, y = 0}
+    else
+        -- Move vertically toward center
+        self.direction = {x = 0, y = dy > 0 and 1 or -1}
+    end
+
+    self.next_direction = {x = self.direction.x, y = self.direction.y}
 
     -- Create additional player snakes (for multi-snake control)
     self.player_snakes = {self.snake}  -- Always include main snake
@@ -260,6 +309,12 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
 
     -- Use variant obstacle_count_variant instead of BASE_OBSTACLE_COUNT
     self.obstacles = self:createObstacles()
+
+    -- Add edge obstacles for dynamic arenas
+    local edge_obstacles = self:createEdgeObstacles()
+    for _, edge in ipairs(edge_obstacles) do
+        table.insert(self.obstacles, edge)
+    end
 
     -- Spawn initial food (respects food_count)
     self.foods = {}  -- Changed from single food to array
@@ -377,28 +432,60 @@ function SnakeGame:hasSprite(sprite_key)
 end
 
 function SnakeGame:setPlayArea(width, height)
-    self.game_width = width
-    self.game_height = height
-
-    -- Only recalculate grid if GRID_SIZE is set
-    if self.GRID_SIZE then
-        self.grid_width = math.floor(self.game_width / self.GRID_SIZE)
-        self.grid_height = math.floor(self.game_height / self.GRID_SIZE)
-
-        -- Clamp existing positions
-        for _, segment in ipairs(self.snake or {}) do
-            segment.x = math.max(0, math.min(self.grid_width - 1, segment.x))
-            segment.y = math.max(0, math.min(self.grid_height - 1, segment.y))
-        end
-
-        if self.food then
-            self.food.x = math.max(0, math.min(self.grid_width - 1, self.food.x))
-            self.food.y = math.max(0, math.min(self.grid_height - 1, self.food.y))
-        end
-
-        print("[SnakeGame] Play area updated to:", width, height, "Grid:", self.grid_width, self.grid_height)
+    if self.is_fixed_arena then
+        -- Fixed arena: Store viewport dimensions but DON'T change grid size
+        self.viewport_width = width
+        self.viewport_height = height
+        print("[SnakeGame] Viewport updated to:", width, height, "| Arena remains:", self.game_width, self.game_height, "| Grid:", self.grid_width, self.grid_height)
     else
-        print("[SnakeGame] setPlayArea called before init completed")
+        -- Dynamic arena: Recalculate grid dimensions from window size and zoom
+        self.viewport_width = width
+        self.viewport_height = height
+        self.game_width = width
+        self.game_height = height
+
+        if self.GRID_SIZE then
+            -- Grid dimensions affected by camera zoom
+            local effective_tile_size = self.GRID_SIZE * (self.camera_zoom or 1.0)
+            self.grid_width = math.floor(self.game_width / effective_tile_size)
+            self.grid_height = math.floor(self.game_height / effective_tile_size)
+
+            -- Clamp existing positions to SAFE area (not on edges where obstacles will be)
+            -- For dynamic arenas with edge walls, keep snake away from edge (positions 0 and grid-1)
+            local safe_min_x = (self.wall_mode == "death" or self.wall_mode == "bounce") and 1 or 0
+            local safe_max_x = (self.wall_mode == "death" or self.wall_mode == "bounce") and (self.grid_width - 2) or (self.grid_width - 1)
+            local safe_min_y = (self.wall_mode == "death" or self.wall_mode == "bounce") and 1 or 0
+            local safe_max_y = (self.wall_mode == "death" or self.wall_mode == "bounce") and (self.grid_height - 2) or (self.grid_height - 1)
+
+            for _, segment in ipairs(self.snake or {}) do
+                segment.x = math.max(safe_min_x, math.min(safe_max_x, segment.x))
+                segment.y = math.max(safe_min_y, math.min(safe_max_y, segment.y))
+            end
+
+            -- Clamp all food items to safe area
+            for _, food in ipairs(self.foods or {}) do
+                food.x = math.max(safe_min_x, math.min(safe_max_x, food.x))
+                food.y = math.max(safe_min_y, math.min(safe_max_y, food.y))
+            end
+
+            -- Regenerate edge obstacles (may have changed with new grid size)
+            -- Remove old edge obstacles first
+            local non_edge_obstacles = {}
+            for _, obs in ipairs(self.obstacles or {}) do
+                if obs.type ~= "walls" and obs.type ~= "bounce_wall" then
+                    table.insert(non_edge_obstacles, obs)
+                end
+            end
+            self.obstacles = non_edge_obstacles
+
+            -- Add new edge obstacles
+            local edge_obstacles = self:createEdgeObstacles()
+            for _, edge in ipairs(edge_obstacles) do
+                table.insert(self.obstacles, edge)
+            end
+
+            print("[SnakeGame] Dynamic arena - Grid recalculated:", self.grid_width, self.grid_height, "| Effective tile size:", effective_tile_size)
+        end
     end
 end
 
@@ -1103,6 +1190,67 @@ function SnakeGame:checkSnakeCollisions()
             end
         end
     end
+end
+
+function SnakeGame:createEdgeObstacles()
+    -- Only create edge obstacles for dynamic arenas
+    if self.is_fixed_arena then
+        return {}
+    end
+
+    local edges = {}
+
+    -- Build set of snake positions to avoid placing walls there
+    local snake_positions = {}
+    for _, segment in ipairs(self.snake or {}) do
+        local key = segment.x .. "," .. segment.y
+        snake_positions[key] = true
+    end
+
+    if self.wall_mode == "death" then
+        -- Create wall obstacles around the perimeter (avoid snake positions)
+        -- Top and bottom edges
+        for x = 0, self.grid_width - 1 do
+            if not snake_positions[x .. ",0"] then
+                table.insert(edges, {x = x, y = 0, type = "walls"})
+            end
+            if not snake_positions[x .. "," .. (self.grid_height - 1)] then
+                table.insert(edges, {x = x, y = self.grid_height - 1, type = "walls"})
+            end
+        end
+        -- Left and right edges (excluding corners already added)
+        for y = 1, self.grid_height - 2 do
+            if not snake_positions["0," .. y] then
+                table.insert(edges, {x = 0, y = y, type = "walls"})
+            end
+            if not snake_positions[(self.grid_width - 1) .. "," .. y] then
+                table.insert(edges, {x = self.grid_width - 1, y = y, type = "walls"})
+            end
+        end
+    elseif self.wall_mode == "bounce" then
+        -- Create bounce obstacles around the perimeter (different type for rendering)
+        -- Top and bottom edges
+        for x = 0, self.grid_width - 1 do
+            if not snake_positions[x .. ",0"] then
+                table.insert(edges, {x = x, y = 0, type = "bounce_wall"})
+            end
+            if not snake_positions[x .. "," .. (self.grid_height - 1)] then
+                table.insert(edges, {x = x, y = self.grid_height - 1, type = "bounce_wall"})
+            end
+        end
+        -- Left and right edges
+        for y = 1, self.grid_height - 2 do
+            if not snake_positions["0," .. y] then
+                table.insert(edges, {x = 0, y = y, type = "bounce_wall"})
+            end
+            if not snake_positions[(self.grid_width - 1) .. "," .. y] then
+                table.insert(edges, {x = self.grid_width - 1, y = y, type = "bounce_wall"})
+            end
+        end
+    end
+    -- For "wrap" or "phase" modes, return empty array (no edge obstacles)
+
+    return edges
 end
 
 function SnakeGame:createObstacles()

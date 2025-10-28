@@ -32,9 +32,37 @@ function SnakeView:draw()
     local game = self.game
     local GRID_SIZE = self.GRID_SIZE
 
-    -- Apply camera zoom and camera mode
-    local zoom = game.camera_zoom or 1.0
+    -- Get viewport dimensions
+    local viewport_width = game.viewport_width or game.game_width
+    local viewport_height = game.viewport_height or game.game_height
+
+    -- Calculate zoom based on arena mode and camera mode
+    local zoom
     local camera_mode = game.camera_mode or "follow_head"
+
+    if game.is_fixed_arena then
+        -- Fixed arena: zoom behavior depends on camera mode
+        local arena_pixel_width = game.grid_width * GRID_SIZE
+        local arena_pixel_height = game.grid_height * GRID_SIZE
+
+        local zoom_x = viewport_width / arena_pixel_width
+        local zoom_y = viewport_height / arena_pixel_height
+
+        if camera_mode == "fixed" then
+            -- Fixed camera MUST show entire arena - use MIN zoom (fit both dimensions)
+            -- Ignore variant's camera_zoom - always show entire arena
+            zoom = math.min(zoom_x, zoom_y)
+        else
+            -- Following cameras (follow_head, center_of_mass) - use MAX zoom to fill window
+            -- Respect variant's camera_zoom as minimum
+            local min_zoom = math.max(zoom_x, zoom_y)
+            local requested_zoom = game.camera_zoom or 1.0
+            zoom = math.max(min_zoom, requested_zoom)
+        end
+    else
+        -- Dynamic arena: Grid already adjusted for zoom, so use 1.0 for rendering
+        zoom = 1.0
+    end
 
     love.graphics.push()
 
@@ -61,12 +89,12 @@ function SnakeView:draw()
     -- "fixed" mode: focus stays at arena center (default focus_x/y)
 
     -- Clamp camera focus to prevent showing out of bounds
-    local viewport_center_x = game.game_width / 2
-    local viewport_center_y = game.game_height / 2
+    local viewport_center_x = viewport_width / 2
+    local viewport_center_y = viewport_height / 2
 
-    -- Calculate visible area at current zoom
-    local visible_width = game.game_width / zoom
-    local visible_height = game.game_height / zoom
+    -- Calculate visible area at current zoom (in arena space)
+    local visible_width = viewport_width / zoom
+    local visible_height = viewport_height / zoom
 
     -- Clamp focus to keep view within bounds
     local min_focus_x = visible_width / 2
@@ -415,6 +443,34 @@ function SnakeView:drawArenaBoundaries()
     local game = self.game
     local GRID_SIZE = self.GRID_SIZE
     local arena_shape = game.arena_shape or "rectangle"
+
+    -- For fixed arenas with wall_mode death/bounce, draw edge walls
+    if game.is_fixed_arena and (game.wall_mode == "death" or game.wall_mode == "bounce") and arena_shape == "rectangle" then
+        love.graphics.setColor(0.5, 0.5, 0.5, 1)
+        local wall_thickness = GRID_SIZE - 1
+
+        -- Top wall
+        for x = 0, game.grid_width - 1 do
+            love.graphics.rectangle("fill", x * GRID_SIZE, 0, wall_thickness, wall_thickness)
+        end
+
+        -- Bottom wall
+        for x = 0, game.grid_width - 1 do
+            love.graphics.rectangle("fill", x * GRID_SIZE, (game.grid_height - 1) * GRID_SIZE, wall_thickness, wall_thickness)
+        end
+
+        -- Left wall
+        for y = 1, game.grid_height - 2 do
+            love.graphics.rectangle("fill", 0, y * GRID_SIZE, wall_thickness, wall_thickness)
+        end
+
+        -- Right wall
+        for y = 1, game.grid_height - 2 do
+            love.graphics.rectangle("fill", (game.grid_width - 1) * GRID_SIZE, y * GRID_SIZE, wall_thickness, wall_thickness)
+        end
+
+        love.graphics.setColor(1, 1, 1, 1)
+    end
 
     if arena_shape == "circle" then
         local center_x = (game.grid_width * GRID_SIZE) / 2

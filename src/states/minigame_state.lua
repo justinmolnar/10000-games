@@ -28,7 +28,7 @@ end
 function MinigameState:setViewport(x, y, width, height)
     print(string.format("[MinigameState] setViewport CALLED with x=%.1f, y=%.1f, w=%.1f, h=%.1f", x, y, width, height))
     self.viewport = { x = x, y = y, width = width, height = height }
-    
+
     if self.current_game and self.current_game.setPlayArea then
         self.current_game:setPlayArea(width, height)
     end
@@ -81,6 +81,50 @@ function MinigameState:enter(game_data, variant_override)
         return { type = "close_window" }
     end
     self.current_game = game_instance
+
+    -- Correct aspect ratio if needed BEFORE setting play area
+    if self.current_game.lock_aspect_ratio and self.current_game.game_width and self.current_game.game_height and self.window_manager and self.window_id then
+        local window = self.window_manager:getWindowById(self.window_id)
+        if window then
+            local Config = self.di and self.di.config
+            local title_bar_height = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome and Config.ui.window.chrome.title_bar_height) or 25
+            local border_width = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome and Config.ui.window.chrome.border_width) or 2
+            local target_aspect = self.current_game.game_width / self.current_game.game_height
+
+            -- Get screen bounds
+            local screen_w, screen_h = love.graphics.getWidth(), love.graphics.getHeight()
+            local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
+            local max_window_h = screen_h - taskbar_h - window.y
+            local max_window_w = screen_w - window.x
+
+            -- Calculate what height would be needed for current width
+            local viewport_width = math.floor(window.width - (border_width * 2))
+            local viewport_height = math.floor(viewport_width / target_aspect)
+            local corrected_window_height = viewport_height + title_bar_height + (border_width * 2)
+
+            -- Check if height exceeds screen bounds
+            if corrected_window_height > max_window_h then
+                -- Height too tall - reduce width to fit max height
+                local max_viewport_h = max_window_h - title_bar_height - (border_width * 2)
+                viewport_width = math.floor(max_viewport_h * target_aspect)
+                viewport_height = math.floor(max_viewport_h)
+                local corrected_window_width = viewport_width + (border_width * 2)
+
+                print("[MinigameState] CORRECTING ASPECT RATIO (height constrained) - width:", window.width, "->", corrected_window_width, "height:", window.height, "->", max_window_h)
+                self.window_manager:updateWindowBounds(self.window_id, nil, nil, corrected_window_width, max_window_h)
+            else
+                -- Height fits - just adjust height
+                print("[MinigameState] CORRECTING ASPECT RATIO - window height:", window.height, "->", corrected_window_height)
+                self.window_manager:updateWindowBounds(self.window_id, nil, nil, nil, corrected_window_height)
+            end
+
+            -- Update viewport with corrected dimensions
+            if self.viewport then
+                self.viewport.width = viewport_width
+                self.viewport.height = viewport_height
+            end
+        end
+    end
 
     if self.viewport and self.current_game.setPlayArea then
         print("[MinigameState] Setting initial play area from existing viewport:", self.viewport.width, self.viewport.height)
