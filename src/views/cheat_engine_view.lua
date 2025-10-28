@@ -157,7 +157,7 @@ function CheatEngineView:drawWindowed(games, selected_game_id, params, modificat
 
     -- Footer instructions
     love.graphics.setColor(0.4, 0.4, 0.4)
-    love.graphics.print("ESC: Close | ←→: Modify | ↑↓: Navigate | 1-4/M: Step Size | R: Reset | X: Reset All | Enter: Launch",
+    love.graphics.print("ESC: Close | ←→/AD: Modify | ↑↓/WS: Navigate | 1-4/M: Step Size | R: Reset | X: Reset All | Enter: Launch",
         10, viewport_height - 20)
 end
 

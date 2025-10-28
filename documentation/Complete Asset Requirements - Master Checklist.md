@@ -213,28 +213,30 @@ Each minigame needs **2-5 base sprite sets**. Each base set can be palette-swapp
 
 **Base Sprite Sets Needed**: 2 minimum (1 MVP, 2 ideal)
 
-#### Base Set 1: "Classic" (`snake/classic/`)
+**IMPORTANT**: Snake sprites use **rotation**, not directional variants. Design sprites facing **RIGHT** (0°) - the engine rotates them automatically.
 
-| File | Dimensions | Description | Palette Colors |
-|------|------------|-------------|----------------|
-| `head_up.png` | 20×20 | Snake head facing up | Green primary |
-| `head_down.png` | 20×20 | Snake head facing down | Green primary |
-| `head_left.png` | 20×20 | Snake head facing left | Green primary |
-| `head_right.png` | 20×20 | Snake head facing right | Green primary |
-| `body_horizontal.png` | 20×20 | Body segment (horizontal) | Green |
-| `body_vertical.png` | 20×20 | Body segment (vertical) | Green |
-| `tail_up.png` | 20×20 | Tail pointing up | Green |
-| `tail_down.png` | 20×20 | Tail pointing down | Green |
-| `tail_left.png` | 20×20 | Tail pointing left | Green |
-| `tail_right.png` | 20×20 | Tail pointing right | Green |
-| `food.png` | 20×20 | Food/apple | Red (palette swaps to other fruits) |
-| `background.png` | 800×600+ | Grid background (optional) | Neutral |
+**All sprites go in the same folder per sprite set** - both uniform and segmented styles coexist.
 
-**Total per base set**: 12 files
-**Total for 2 base sets**: 24 files
+#### Sprites Required Per Set
 
-#### Base Set 2: "Modern" (`snake/modern/`)
-- Same structure, different art style (sleeker, more detailed)
+| File | Description | Notes |
+|------|-------------|-------|
+| `segment.png` | Single segment (uniform style) | Design facing RIGHT → |
+| `seg_head.png` | Snake head (segmented style) | Design facing RIGHT → |
+| `seg_body.png` | Body segment (segmented style) | Design facing RIGHT → |
+| `seg_tail.png` | Tail segment (segmented style) | Design facing RIGHT → |
+| `food.png` | Food (palette swapped for bad/golden) | |
+| `obstacle.png` | Obstacle (all types) | |
+
+**Total sprites per set**: 6 files
+**Note**: Sprites auto-scale to grid size - any square dimensions work
+
+**Design Guidelines**:
+- All snake sprites MUST face **right** (→) in the base image
+- Engine rotates sprites automatically based on movement direction
+- Sprites should be **symmetrical vertically** for clean 90° rotation
+- Use simple shapes for best rotation results
+- Any square dimensions work - sprites auto-scale to grid
 
 ### Audio Required
 
@@ -248,7 +250,7 @@ Each minigame needs **2-5 base sprite sets**. Each base set can be palette-swapp
 - `death` - Hit obstacle/self
 - `success` - Reached target length
 
-**Status**: ⚠️ 0 / 24 sprite files | 0 / 3 music tracks
+**Status**: ⚠️ 0 / 6 sprite files | 0 / 3 music tracks
 
 ---
 
@@ -733,7 +735,7 @@ These are used in the launcher. One icon per **base game type**, not per variant
 | - Dodge (3 base sets) | 24 | ⚠️ 0 / 24 |
 | - Hidden Object (5 scenes) | 155 | ⚠️ 0 / 155 |
 | - Memory Match (4 card sets) | 100 | ⚠️ 0 / 100 |
-| - Snake (2 base sets) | 24 | ⚠️ 0 / 24 |
+| - Snake (2 base sets) | 6 | ⚠️ 0 / 6 |
 | - Space Shooter (3 base sets) | 27 | ⚠️ 0 / 27 |
 | **Standalone Games** | | |
 | - Space Defender | 50 | ⚠️ 0 / 50 |
@@ -742,7 +744,7 @@ These are used in the launcher. One icon per **base game type**, not per variant
 | - Window Chrome & UI | 24 | ⚠️ 0 / 24 |
 | - Icons | 32 | ⚠️ 0 / 32 |
 | - Cursors | 9 | ⚠️ 0 / 9 |
-| **TOTAL SPRITES** | **455** | **⚠️ 0 / 455** |
+| **TOTAL SPRITES** | **437** | **⚠️ 0 / 437** |
 
 ### Audio
 
@@ -765,9 +767,9 @@ These are used in the launcher. One icon per **base game type**, not per variant
 
 ---
 
-## GRAND TOTAL: 568 Files Needed
+## GRAND TOTAL: 552 Files Needed
 
-- **455 sprite files**
+- **439 sprite files** (reduced from 455 - snake now uses rotation)
 - **111 audio files**
 - **2 data files** (palettes.json, attribution.json)
 
@@ -800,7 +802,7 @@ These are used in the launcher. One icon per **base game type**, not per variant
 ### Phase 2: Expand to All Minigames (Week 2-3)
 
 1. **Complete remaining minigame sprite sets**:
-   - Snake: 12 files (1 base set) - EASIEST (grid-based)
+   - Snake: 6 files per set - EASIEST (simple rotated sprites, palette-swapped food, auto-scaling)
    - Memory Match: 25 files (1 card set) - EASY (simple icons)
    - Space Shooter: 9 files (1 base set) - MEDIUM
    - Hidden Object: 31 files (1 scene) - HARDEST (complex background)

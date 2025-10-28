@@ -374,8 +374,8 @@ function CheatEngineState:keypressed(key)
     if key == 'escape' then
         result_event = { type = "close_window" }
 
-    -- Game navigation
-    elseif key == 'up' then
+    -- Game navigation (up/down and w/s)
+    elseif key == 'up' or key == 'w' then
         if #self.modifiable_params > 0 then
             -- Navigate parameters
             self.selected_param_index = math.max(1, self.selected_param_index - 1)
@@ -402,7 +402,7 @@ function CheatEngineState:keypressed(key)
             end
         end
 
-    elseif key == 'down' then
+    elseif key == 'down' or key == 's' then
         if #self.modifiable_params > 0 then
             -- Navigate parameters
             self.selected_param_index = math.min(#self.modifiable_params, self.selected_param_index + 1)

@@ -32,6 +32,26 @@
       "modifications": "None",
       "date_added": "2025-10-24",
       "notes": "Created by Microsoft, collected by Alex Meub"
+    },
+        {
+      "asset_path": "assets/sprites/Spaceship Pack/*",
+      "asset_type": "sprite",
+      "author": "Pixel by Pixel",
+      "license": "Free for commercial use",
+      "source_url": "https://pixel-by-pixel.itch.io/alcwilliam-space-ship-pack",
+      "modifications": "None",
+      "date_added": "2025-10-24",
+      "notes": "Space-themed sprites for 2D games"
+    },
+            {
+      "asset_path": "assets/sprites/solitare/*",
+      "asset_type": "sprite",
+      "author": "KereneL",
+      "license": "CC-0",
+      "source_url": "https://kerenel.itch.io/pixelart-cards",
+      "modifications": "None",
+      "date_added": "2025-10-27",
+      "notes": "Pixel art playing cards for solitaire game"
     }
   ],
 

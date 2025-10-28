@@ -123,7 +123,18 @@ local Config = {
             "flavor_text",      -- Text only
             "intro_cutscene",   -- Cutscene data
             "enemies",          -- Complex array structure
-            "movement_type",    -- String enum - would need dropdown
+            "movement_type",    -- String enum - would need dropdown (dodge/snake)
+            "wall_mode",        -- String enum - snake wall behavior
+            "arena_shape",      -- String enum - snake arena shape
+            "food_spawn_pattern",  -- String enum - snake food spawning
+            "food_movement",    -- String enum - snake food behavior
+            "obstacle_type",    -- String enum - snake obstacle type
+            "ai_behavior",      -- String enum - snake AI behavior
+            "snake_collision_mode",  -- String enum - snake collision handling
+            "victory_condition", -- String enum - win condition type
+            "camera_mode",      -- String enum - camera follow mode
+            "fog_of_war",       -- String enum - fog type (could be boolean but treated as enum)
+            "sprite_style",     -- String enum - uniform vs segmented sprites
         },
 
         -- Special unlocks (gate certain modifications behind progression)
@@ -760,6 +771,60 @@ local Config = {
             base_speed = 8,
             base_target_length = 20,
             base_obstacle_count = 5,
+
+            -- Movement defaults
+            movement_type = "grid",  -- "grid" (classic), "smooth" (continuous), "physics" (momentum)
+            snake_speed = 8,
+            speed_increase_per_food = 0,  -- Speed increase per food eaten (0 = constant speed)
+            max_speed_cap = 20,  -- Maximum speed limit
+
+            -- Growth & Body defaults
+            growth_per_food = 1,  -- Segments added per food (1 = classic)
+            shrink_over_time = 0,  -- Segments lost per second (0 = no shrinking)
+            phase_through_tail = false,  -- Can pass through own body
+            max_length_cap = 9999,  -- Maximum snake length
+            girth = 1,  -- Snake thickness (1 = normal, 2+ = thicker)
+            girth_growth = 0,  -- Segments needed to add 1 girth (0 = no growth)
+
+            -- Arena defaults
+            wall_mode = "wrap",  -- "death", "wrap" (Pac-Man), "bounce", "phase"
+            arena_size = 1.0,  -- Multiplier on arena size
+            arena_shape = "rectangle",  -- "rectangle", "circle", "hexagon"
+            shrinking_arena = false,  -- Arena walls close in over time
+            moving_walls = false,  -- Walls shift positions
+
+            -- Food defaults
+            food_count = 1,  -- Number of simultaneous food items
+            food_spawn_pattern = "random",  -- "random", "cluster", "line", "spiral"
+            food_lifetime = 0,  -- Food despawns after X seconds (0 = never)
+            food_movement = "static",  -- "static", "drift", "flee_from_snake", "chase_snake"
+            food_size_variance = 0,  -- Size variation (0 = uniform, 1 = varied)
+            bad_food_chance = 0,  -- Chance of bad food (shrinks snake)
+            golden_food_spawn_rate = 0,  -- Chance of golden food (bonus)
+
+            -- Obstacle defaults
+            obstacle_count = 5,  -- Static obstacles in arena
+            obstacle_type = "walls",  -- "walls", "moving_blocks", "rotating_blades", "teleport_pairs"
+            obstacle_spawn_over_time = 0,  -- New obstacles per second (0 = none)
+
+            -- AI defaults
+            ai_snake_count = 0,  -- Number of AI snakes
+            ai_behavior = "food_focused",  -- "aggressive", "defensive", "food_focused"
+            snake_collision_mode = "both_die",  -- "both_die", "big_eats_small", "phase_through"
+            snake_count = 1,  -- Number of snakes controlled simultaneously
+
+            -- Victory defaults
+            victory_condition = "length",  -- "length" (reach target) or "time" (survive X seconds)
+            victory_limit = 20,  -- Target length or time in seconds
+
+            -- Visual defaults
+            fog_of_war = "none",  -- "player", "center", "none" - limits visibility
+            invisible_tail = false,  -- Can't see own body (memory challenge)
+            camera_mode = "follow_head",  -- "follow_head", "center_of_mass", "fixed"
+            camera_zoom = 1.0,  -- Camera zoom level
+            sprite_style = "uniform",  -- "uniform" (same sprite for all segments) or "segmented" (head/body/tail)
+            sprite_set = "classic/snake",  -- Path to sprite folder from assets/sprites/games/snake/
+
             view = {
                 bg_color = {0.05, 0.1, 0.05},
                 hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }

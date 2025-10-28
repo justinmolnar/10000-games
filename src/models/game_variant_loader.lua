@@ -40,7 +40,8 @@ end
 function GameVariantLoader:loadStandaloneVariants()
     -- Load standalone variant files (e.g., dodge_variants.json, snake_variants.json)
     local variant_files = {
-        { base_id = "dodge_1", file = "variants/dodge_variants.json" }
+        { base_id = "dodge_1", file = "variants/dodge_variants.json" },
+        { base_id = "snake_1", file = "variants/snake_variants.json" }
         -- Add more variant files here as needed
     }
 
