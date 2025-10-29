@@ -110,6 +110,63 @@ local Config = {
             -- victory_limit = { base_cost = 150 },
         },
 
+        -- Parameter ranges for validation
+        -- Defines min/max values for numeric parameters to prevent breaking games
+        parameter_ranges = {
+            -- Snake Game Parameters
+            snake_speed = { min = 1, max = 20 },
+            speed_increase_per_food = { min = 0, max = 5 },
+            max_speed_cap = { min = 0, max = 50 },
+            growth_per_food = { min = 0, max = 10 },
+            shrink_over_time = { min = 0, max = 5 },
+            max_length_cap = { min = 1, max = 9999 },
+            girth = { min = 1, max = 10 },
+            girth_growth = { min = 0, max = 50 },
+            arena_size = { min = 0.3, max = 3.0 },
+            food_count = { min = 1, max = 20 },
+            food_lifetime = { min = 0, max = 60 },
+            food_size_variance = { min = 0, max = 1.0 },
+            bad_food_chance = { min = 0, max = 1.0 },
+            golden_food_spawn_rate = { min = 0, max = 1.0 },
+            obstacle_count = { min = 0, max = 50 },
+            obstacle_spawn_over_time = { min = 0, max = 5 },
+            ai_snake_count = { min = 0, max = 10 },
+            ai_speed = { min = 1, max = 20 },
+            snake_count = { min = 1, max = 5 },
+            victory_limit = { min = 1, max = 200 },
+            camera_zoom = { min = 0.5, max = 2.0 },
+            difficulty_modifier = { min = 0.5, max = 3.0 },
+            turn_speed = { min = 1, max = 360 },
+
+            -- Dodge Game Parameters
+            rotation_speed = { min = 0.5, max = 20 },
+            movement_speed = { min = 50, max = 600 },
+            jump_distance = { min = 20, max = 200 },
+            jump_cooldown = { min = 0.1, max = 2.0 },
+            jump_speed = { min = 200, max = 9999 },
+            accel_friction = { min = 0.0, max = 1.0 },
+            decel_friction = { min = 0.0, max = 1.0 },
+            bounce_damping = { min = 0.0, max = 1.0 },
+            area_size = { min = 0.3, max = 3.0 },
+            area_morph_speed = { min = 0.0, max = 5.0 },
+            area_movement_speed = { min = 0.0, max = 3.0 },
+            area_friction = { min = 0.8, max = 1.0 },
+            holes_count = { min = 0, max = 15 },
+            player_size = { min = 0.3, max = 3.0 },
+            max_speed = { min = 0, max = 1200 },
+            lives = { min = 1, max = 50 },
+            shield = { min = 0, max = 10 },
+            shield_recharge_time = { min = 0, max = 60 },
+            obstacle_tracking = { min = 0.0, max = 1.0 },
+            obstacle_speed_variance = { min = 0.0, max = 1.0 },
+            obstacle_spawn_rate = { min = 0.1, max = 5.0 },
+            obstacle_size_variance = { min = 0.0, max = 1.0 },
+            obstacle_trails = { min = 0, max = 50 },
+            area_gravity = { min = -500, max = 500 },
+            wind_direction = { min = 0, max = 360 },
+            wind_strength = { min = 0, max = 500 },
+        },
+
         -- Which parameters should be hidden/locked
         -- Hide metadata and non-gameplay parameters
         hidden_parameters = {
@@ -773,8 +830,9 @@ local Config = {
             base_obstacle_count = 5,
 
             -- Movement defaults
-            movement_type = "grid",  -- "grid" (classic), "smooth" (continuous), "physics" (momentum)
+            movement_type = "grid",  -- "grid" (classic), "smooth" (analog turning with trail)
             snake_speed = 8,
+            turn_speed = 180,  -- Degrees per second for smooth movement (only used in "smooth" mode)
             speed_increase_per_food = 0,  -- Speed increase per food eaten (0 = constant speed)
             max_speed_cap = 20,  -- Maximum speed limit
 
@@ -787,7 +845,8 @@ local Config = {
             girth_growth = 0,  -- Segments needed to add 1 girth (0 = no growth)
 
             -- Arena defaults
-            wall_mode = "wrap",  -- "death", "wrap" (Pac-Man), "bounce", "phase"
+            wall_mode = "wrap",  -- "wrap" (Pac-Man), "death", "bounce"
+            obstacle_bounce = false,  -- If true, bounce off obstacles (separate from walls)
             arena_size = 1.0,  -- Multiplier on arena size
             arena_shape = "rectangle",  -- "rectangle", "circle", "hexagon"
             shrinking_arena = false,  -- Arena walls close in over time
@@ -798,13 +857,15 @@ local Config = {
             food_spawn_pattern = "random",  -- "random", "cluster", "line", "spiral"
             food_lifetime = 0,  -- Food despawns after X seconds (0 = never)
             food_movement = "static",  -- "static", "drift", "flee_from_snake", "chase_snake"
-            food_size_variance = 0,  -- Size variation (0 = uniform, 1 = varied)
+            food_speed = 3,  -- Food movement speed in moves per second (when food_movement is not "static")
+            food_spawn_mode = "continuous",  -- "continuous" (spawn immediately) or "batch" (spawn all when batch collected)
+            food_size_variance = 0,  -- Size variation affects GROWTH amount only, NOT visual size (0 = uniform, 1 = varied 1-5 segments)
             bad_food_chance = 0,  -- Chance of bad food (shrinks snake)
             golden_food_spawn_rate = 0,  -- Chance of golden food (bonus)
 
             -- Obstacle defaults
             obstacle_count = 5,  -- Static obstacles in arena
-            obstacle_type = "walls",  -- "walls", "moving_blocks", "rotating_blades", "teleport_pairs"
+            obstacle_type = "static_blocks",  -- "static_blocks", "walls", "moving_blocks", "rotating_blades", "teleport_pairs"
             obstacle_spawn_over_time = 0,  -- New obstacles per second (0 = none)
 
             -- AI defaults

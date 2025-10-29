@@ -96,6 +96,7 @@ function CheatSystem:getModifiableParameters(variant_data)
 
     local params = {}
     local hidden = self.cheat_config.hidden_parameters or {}
+    local ranges = self.cheat_config.parameter_ranges or {}
 
     for key, value in pairs(variant_data) do
         -- Skip hidden parameters
@@ -110,12 +111,18 @@ function CheatSystem:getModifiableParameters(variant_data)
         if not is_hidden then
             local param_type = type(value)
             if param_type == "number" then
-                table.insert(params, {
+                local param_def = {
                     key = key,
                     type = "number",
                     value = value,
                     original = value
-                })
+                }
+                -- Add range info if available
+                if ranges[key] then
+                    param_def.min = ranges[key].min
+                    param_def.max = ranges[key].max
+                end
+                table.insert(params, param_def)
             elseif param_type == "boolean" then
                 table.insert(params, {
                     key = key,
@@ -146,6 +153,32 @@ function CheatSystem:getModifiableParameters(variant_data)
     table.sort(params, function(a, b) return a.key < b.key end)
 
     return params
+end
+
+-- Validate and clamp a parameter value to its defined range
+-- Returns: clamped_value, was_clamped
+function CheatSystem:clampParameterValue(param_key, value)
+    local ranges = self.cheat_config.parameter_ranges or {}
+    local range = ranges[param_key]
+
+    if not range or type(value) ~= "number" then
+        return value, false
+    end
+
+    local clamped = value
+    local was_clamped = false
+
+    if range.min and value < range.min then
+        clamped = range.min
+        was_clamped = true
+    end
+
+    if range.max and value > range.max then
+        clamped = range.max
+        was_clamped = true
+    end
+
+    return clamped, was_clamped
 end
 
 -- Calculate cost for a modification

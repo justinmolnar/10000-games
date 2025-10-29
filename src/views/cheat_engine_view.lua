@@ -76,7 +76,7 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
     for i = 0, visible_games - 1 do
         local game_index = game_scroll + i
         if game_index <= #games then
-            local gy = self.game_list_y + i * self.item_h
+            local gy = self.game_list_y + 21 + i * self.item_h
             if local_mx >= self.game_list_x and local_mx <= self.game_list_x + self.game_list_w and
                local_my >= gy and local_my <= gy + self.item_h then
                 self.hovered_game_id = games[game_index].id
@@ -89,12 +89,12 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
     if #params > 0 then
         local visible_params = self:getVisibleParamCount(viewport_height)
         local param_scroll = self.controller.param_scroll_offset or 0
-        local param_table_y = self.param_panel_y + 120
+        local header_y = self.param_panel_y + 110
 
         for i = 0, visible_params - 1 do
             local param_index = param_scroll + i + 1
             if param_index <= #params then
-                local py = param_table_y + i * self.item_h
+                local py = header_y + 25 + i * self.item_h
                 if local_mx >= self.param_panel_x and local_mx <= self.param_panel_x + self.param_panel_w and
                    local_my >= py and local_my <= py + self.item_h then
                     self.hovered_param_index = param_index
@@ -116,9 +116,9 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
     end
 
     -- Check launch button
-    local launch_y = viewport_height - 40
+    local launch_y = self.param_panel_y + self.param_panel_h - 35
     if selected_game_id and
-       local_mx >= self.param_panel_x and local_mx <= self.param_panel_x + 200 and
+       local_mx >= self.param_panel_x + 10 and local_mx <= self.param_panel_x + 210 and
        local_my >= launch_y and local_my <= launch_y + 30 then
         self.hovered_button = "launch"
     end
@@ -335,6 +335,13 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
             love.graphics.setColor(0.5, 0.5, 0.5)
             love.graphics.print(param.type, self.param_panel_x + 180, py)
 
+            -- Range info (if available for numeric types)
+            if param.type == "number" and param.min and param.max then
+                love.graphics.setColor(0.4, 0.4, 0.4)
+                local range_str = string.format("(%s-%s)", tostring(param.min), tostring(param.max))
+                love.graphics.print(range_str, self.param_panel_x + 180, py + 12)
+            end
+
             -- Original value
             love.graphics.setColor(0.6, 0.6, 0.6)
             local orig_str = self:formatValue(param.original, param.type)
@@ -461,7 +468,7 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, par
             if param_index <= #params then
                 local py = header_y + 25 + i * self.item_h
                 if x >= self.param_panel_x and x <= self.param_panel_x + self.param_panel_w and
-                   y >= py - 2 and y <= py - 2 + self.item_h then
+                   y >= py and y <= py + self.item_h then
                     return { name = "select_param", index = param_index }
                 end
             end

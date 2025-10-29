@@ -284,6 +284,9 @@ end
 function love.keyreleased(key)
     -- Consume Windows keys on release as well (prevents stray OS actions while focused)
     if key == 'lgui' or key == 'rgui' then return end
+
+    -- Delegate to the active state via the StateMachine
+    if state_machine then state_machine:keyreleased(key) end
 end
 
 function love.mousepressed(x, y, button, istouch, presses)

@@ -71,19 +71,33 @@ function SnakeView:draw()
 
     if camera_mode == "follow_head" and #game.snake > 0 then
         -- Follow snake head
-        local head = game.snake[1]
-        focus_x = head.x * GRID_SIZE + GRID_SIZE / 2
-        focus_y = head.y * GRID_SIZE + GRID_SIZE / 2
+        if game.movement_type == "smooth" and game.smooth_x then
+            -- Use smooth float position for smooth camera following
+            focus_x = game.smooth_x * GRID_SIZE
+            focus_y = game.smooth_y * GRID_SIZE
+        else
+            -- Use grid position for classic mode
+            local head = game.snake[1]
+            focus_x = head.x * GRID_SIZE + GRID_SIZE / 2
+            focus_y = head.y * GRID_SIZE + GRID_SIZE / 2
+        end
 
     elseif camera_mode == "center_of_mass" and #game.snake > 0 then
         -- Center on snake's center of mass
-        local sum_x, sum_y = 0, 0
-        for _, segment in ipairs(game.snake) do
-            sum_x = sum_x + segment.x
-            sum_y = sum_y + segment.y
+        if game.movement_type == "smooth" and game.smooth_x then
+            -- For smooth mode, just use head position (trail doesn't have discrete segments)
+            focus_x = game.smooth_x * GRID_SIZE
+            focus_y = game.smooth_y * GRID_SIZE
+        else
+            -- Classic mode: average all segment positions
+            local sum_x, sum_y = 0, 0
+            for _, segment in ipairs(game.snake) do
+                sum_x = sum_x + segment.x
+                sum_y = sum_y + segment.y
+            end
+            focus_x = (sum_x / #game.snake) * GRID_SIZE + GRID_SIZE / 2
+            focus_y = (sum_y / #game.snake) * GRID_SIZE + GRID_SIZE / 2
         end
-        focus_x = (sum_x / #game.snake) * GRID_SIZE + GRID_SIZE / 2
-        focus_y = (sum_y / #game.snake) * GRID_SIZE + GRID_SIZE / 2
 
     end
     -- "fixed" mode: focus stays at arena center (default focus_x/y)
@@ -124,6 +138,78 @@ function SnakeView:draw()
     -- Support for girth (thickness) and invisible_tail
     local girth = game.current_girth or 1
     local segment_size = GRID_SIZE - 1
+
+    -- Check for smooth movement mode (analog turning with trail)
+    if game.movement_type == "smooth" then
+        -- Draw trail
+        if #game.smooth_trail > 0 then
+            love.graphics.setColor(0.3, 0.8, 0.3)
+            love.graphics.setLineWidth(segment_size * girth)
+
+            -- Draw trail as connected line segments
+            for i = 1, #game.smooth_trail - 1 do
+                local p1 = game.smooth_trail[i]
+                local p2 = game.smooth_trail[i + 1]
+                love.graphics.line(
+                    p1.x * GRID_SIZE,
+                    p1.y * GRID_SIZE,
+                    p2.x * GRID_SIZE,
+                    p2.y * GRID_SIZE
+                )
+            end
+
+            -- Connect last trail point to head
+            if #game.smooth_trail > 0 then
+                local last = game.smooth_trail[#game.smooth_trail]
+                love.graphics.line(
+                    last.x * GRID_SIZE,
+                    last.y * GRID_SIZE,
+                    game.smooth_x * GRID_SIZE,
+                    game.smooth_y * GRID_SIZE
+                )
+            end
+
+            love.graphics.setLineWidth(1)
+            love.graphics.setColor(1, 1, 1)
+        end
+
+        -- Draw head at smooth position with rotation
+        local head_x = game.smooth_x * GRID_SIZE
+        local head_y = game.smooth_y * GRID_SIZE
+
+        -- Scale head size by girth
+        local head_size = segment_size * girth
+
+        -- Try to get head sprite
+        local sprite = nil
+        local sprite_style = game.sprite_style or "uniform"
+        if game.sprites then
+            if sprite_style == "segmented" then
+                sprite = game.sprites["seg_head"]
+            else
+                sprite = game.sprites["segment"]
+            end
+        end
+
+        if sprite then
+            love.graphics.setColor(1, 1, 1)
+            local sx = head_size / sprite:getWidth()
+            local sy = head_size / sprite:getHeight()
+            love.graphics.draw(sprite, head_x, head_y, game.smooth_angle, sx, sy, sprite:getWidth()/2, sprite:getHeight()/2)
+        else
+            -- Fallback rectangle
+            love.graphics.push()
+            love.graphics.translate(head_x, head_y)
+            love.graphics.rotate(game.smooth_angle)
+            love.graphics.setColor(0.2, 1, 0.2)
+            love.graphics.rectangle("fill", -head_size/2, -head_size/2, head_size, head_size)
+            love.graphics.pop()
+            love.graphics.setColor(1, 1, 1)
+        end
+
+        -- Skip normal snake rendering
+        goto skip_normal_snake
+    end
 
     for i, segment in ipairs(game.snake) do
         -- Skip drawing tail segments if invisible_tail is enabled (except head)
@@ -236,19 +322,67 @@ function SnakeView:draw()
         ::continue::
     end
 
+    ::skip_normal_snake::
+
     -- Draw additional player snakes (multi-snake control)
     if game.player_snakes and #game.player_snakes > 1 then
         for i = 2, #game.player_snakes do
             local psnake = game.player_snakes[i]
             if psnake.alive then
-                for _, segment in ipairs(psnake.body) do
-                    local draw_x = segment.x * GRID_SIZE
-                    local draw_y = segment.y * GRID_SIZE
-                    local segment_size = GRID_SIZE - 1
+                if game.movement_type == "smooth" and psnake.smooth_x then
+                    -- Draw smooth trail
+                    if #psnake.smooth_trail > 0 then
+                        love.graphics.setColor(0.3, 0.3, 1)  -- Blue tint
+                        love.graphics.setLineWidth(segment_size * girth)
 
-                    -- Draw with blue tint
-                    love.graphics.setColor(0.3, 0.3, 1)
-                    love.graphics.rectangle("fill", draw_x, draw_y, segment_size, segment_size)
+                        -- Draw trail
+                        for j = 1, #psnake.smooth_trail - 1 do
+                            local p1 = psnake.smooth_trail[j]
+                            local p2 = psnake.smooth_trail[j + 1]
+                            love.graphics.line(
+                                p1.x * GRID_SIZE,
+                                p1.y * GRID_SIZE,
+                                p2.x * GRID_SIZE,
+                                p2.y * GRID_SIZE
+                            )
+                        end
+
+                        -- Connect last trail point to head
+                        if #psnake.smooth_trail > 0 then
+                            local last = psnake.smooth_trail[#psnake.smooth_trail]
+                            love.graphics.line(
+                                last.x * GRID_SIZE,
+                                last.y * GRID_SIZE,
+                                psnake.smooth_x * GRID_SIZE,
+                                psnake.smooth_y * GRID_SIZE
+                            )
+                        end
+
+                        love.graphics.setLineWidth(1)
+                    end
+
+                    -- Draw smooth head
+                    local head_x = psnake.smooth_x * GRID_SIZE
+                    local head_y = psnake.smooth_y * GRID_SIZE
+                    local head_size = segment_size * girth
+
+                    love.graphics.push()
+                    love.graphics.translate(head_x, head_y)
+                    love.graphics.rotate(psnake.smooth_angle)
+                    love.graphics.setColor(0.3, 0.3, 1)  -- Blue tint
+                    love.graphics.rectangle("fill", -head_size/2, -head_size/2, head_size, head_size)
+                    love.graphics.pop()
+                else
+                    -- Grid-based drawing
+                    for _, segment in ipairs(psnake.body) do
+                        local draw_x = segment.x * GRID_SIZE
+                        local draw_y = segment.y * GRID_SIZE
+                        local segment_size = GRID_SIZE - 1
+
+                        -- Draw with blue tint
+                        love.graphics.setColor(0.3, 0.3, 1)
+                        love.graphics.rectangle("fill", draw_x, draw_y, segment_size, segment_size)
+                    end
                 end
             end
         end
@@ -297,7 +431,8 @@ function SnakeView:draw()
         -- Determine color based on food type (palette swap)
         local food_color = {1, 1, 1}  -- Normal
         local food_icon = "check-0"
-        local food_size = (GRID_SIZE - 1) * (food.size or 1)
+        -- Food visual size is always single tile (collision is single tile)
+        local food_size = (GRID_SIZE - 1)
 
         if food.type == "bad" then
             food_color = {0.8, 0.2, 0.2}  -- Red tint for bad
@@ -315,7 +450,7 @@ function SnakeView:draw()
                 food_size / sprite:getWidth(), food_size / sprite:getHeight())
             love.graphics.setColor(1, 1, 1)
         else
-            -- Fallback to icon
+            -- Fallback to icon - DON'T pass palette_id so tint works
             self.sprite_loader:drawSprite(
                 food_icon,
                 food.x * GRID_SIZE,
@@ -323,7 +458,7 @@ function SnakeView:draw()
                 food_size,
                 food_size,
                 food_color,
-                palette_id
+                nil  -- No palette override, use tint color instead
             )
         end
     end
@@ -355,23 +490,7 @@ function SnakeView:draw()
         end
     end
 
-    -- Draw shrinking arena bounds
-    if game.shrinking_arena then
-        local margin_x = math.floor((game.grid_width - game.arena_current_width) / 2)
-        local margin_y = math.floor((game.grid_height - game.arena_current_height) / 2)
-
-        love.graphics.setColor(1, 0, 0, 0.3)  -- Red transparent
-        love.graphics.setLineWidth(2)
-
-        -- Draw borders at shrunk positions
-        local left = margin_x * GRID_SIZE
-        local top = margin_y * GRID_SIZE
-        local right = (game.grid_width - margin_x) * GRID_SIZE
-        local bottom = (game.grid_height - margin_y) * GRID_SIZE
-
-        love.graphics.rectangle("line", left, top, right - left, bottom - top)
-        love.graphics.setColor(1, 1, 1)
-    end
+    -- Shrinking arena now uses actual wall obstacles instead of visual overlay
 
     -- Draw fog of war effect
     self:drawFogOfWar()
@@ -444,62 +563,45 @@ function SnakeView:drawArenaBoundaries()
     local GRID_SIZE = self.GRID_SIZE
     local arena_shape = game.arena_shape or "rectangle"
 
-    -- For fixed arenas with wall_mode death/bounce, draw edge walls
-    if game.is_fixed_arena and (game.wall_mode == "death" or game.wall_mode == "bounce") and arena_shape == "rectangle" then
+    -- Get moving walls offset
+    local offset_x = (game.moving_walls and game.wall_offset_x) or 0
+    local offset_y = (game.moving_walls and game.wall_offset_y) or 0
+
+    -- For arenas with wall_mode death/bounce, draw edge walls (accounting for moving walls)
+    if (game.wall_mode == "death" or game.wall_mode == "bounce") and arena_shape == "rectangle" then
         love.graphics.setColor(0.5, 0.5, 0.5, 1)
         local wall_thickness = GRID_SIZE - 1
 
+        -- Calculate wall positions (shifted by offsets)
+        local left_wall_x = math.max(0, offset_x)
+        local right_wall_x = game.grid_width - 1 + math.min(0, offset_x)
+        local top_wall_y = math.max(0, offset_y)
+        local bottom_wall_y = game.grid_height - 1 + math.min(0, offset_y)
+
         -- Top wall
         for x = 0, game.grid_width - 1 do
-            love.graphics.rectangle("fill", x * GRID_SIZE, 0, wall_thickness, wall_thickness)
+            love.graphics.rectangle("fill", x * GRID_SIZE, top_wall_y * GRID_SIZE, wall_thickness, wall_thickness)
         end
 
         -- Bottom wall
         for x = 0, game.grid_width - 1 do
-            love.graphics.rectangle("fill", x * GRID_SIZE, (game.grid_height - 1) * GRID_SIZE, wall_thickness, wall_thickness)
+            love.graphics.rectangle("fill", x * GRID_SIZE, bottom_wall_y * GRID_SIZE, wall_thickness, wall_thickness)
         end
 
         -- Left wall
-        for y = 1, game.grid_height - 2 do
-            love.graphics.rectangle("fill", 0, y * GRID_SIZE, wall_thickness, wall_thickness)
+        for y = 0, game.grid_height - 1 do
+            love.graphics.rectangle("fill", left_wall_x * GRID_SIZE, y * GRID_SIZE, wall_thickness, wall_thickness)
         end
 
         -- Right wall
-        for y = 1, game.grid_height - 2 do
-            love.graphics.rectangle("fill", (game.grid_width - 1) * GRID_SIZE, y * GRID_SIZE, wall_thickness, wall_thickness)
+        for y = 0, game.grid_height - 1 do
+            love.graphics.rectangle("fill", right_wall_x * GRID_SIZE, y * GRID_SIZE, wall_thickness, wall_thickness)
         end
 
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    if arena_shape == "circle" then
-        local center_x = (game.grid_width * GRID_SIZE) / 2
-        local center_y = (game.grid_height * GRID_SIZE) / 2
-        local radius = math.min(game.grid_width, game.grid_height) * GRID_SIZE / 2
-
-        love.graphics.setColor(1, 1, 1, 0.3)
-        love.graphics.setLineWidth(2)
-        love.graphics.circle("line", center_x, center_y, radius)
-        love.graphics.setColor(1, 1, 1)
-
-    elseif arena_shape == "hexagon" then
-        local center_x = (game.grid_width * GRID_SIZE) / 2
-        local center_y = (game.grid_height * GRID_SIZE) / 2
-        local size = math.min(game.grid_width, game.grid_height) * GRID_SIZE / 2
-
-        -- Draw hexagon
-        local points = {}
-        for i = 0, 5 do
-            local angle = math.pi / 3 * i
-            table.insert(points, center_x + size * math.cos(angle))
-            table.insert(points, center_y + size * math.sin(angle))
-        end
-
-        love.graphics.setColor(1, 1, 1, 0.3)
-        love.graphics.setLineWidth(2)
-        love.graphics.polygon("line", points)
-        love.graphics.setColor(1, 1, 1)
-    end
+    -- Shaped arenas (circle/hexagon) show their boundaries via wall blocks only
     -- Rectangle: no special boundary (uses screen edges)
 end
 

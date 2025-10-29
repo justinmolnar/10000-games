@@ -136,14 +136,25 @@ function ProgramLauncher:launchProgram(program_id, ...)
 
     if program_id == "minigame_runner" then
         game_data_arg = launch_args[1]
-        if game_data_arg and game_data_arg.display_name then
-            initial_title = (title_prefix ~= "" and (title_prefix .. game_data_arg.display_name)) or game_data_arg.display_name
-            program_for_window = {
-                id = program.id,
-                name = game_data_arg.display_name,
-                icon_sprite = game_data_arg.icon_sprite,
-                window_defaults = program.window_defaults
-            }
+        local variant_arg = launch_args[2]  -- Optional variant override
+        if game_data_arg then
+            -- Prefer variant name if available, otherwise use game display name
+            local display_name = game_data_arg.display_name
+            if variant_arg and variant_arg.name then
+                display_name = variant_arg.name
+            end
+
+            if display_name then
+                initial_title = (title_prefix ~= "" and (title_prefix .. display_name)) or display_name
+                program_for_window = {
+                    id = program.id,
+                    name = display_name,
+                    icon_sprite = game_data_arg.icon_sprite,
+                    window_defaults = program.window_defaults
+                }
+            else
+                initial_title = (title_prefix ~= "" and (title_prefix .. "Minigame")) or "Minigame"
+            end
         else
             initial_title = (title_prefix ~= "" and (title_prefix .. "Minigame")) or "Minigame"
         end

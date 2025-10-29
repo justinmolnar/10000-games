@@ -199,6 +199,24 @@ function MinigameState:keypressed(key)
     return false
 end
 
+function MinigameState:keyreleased(key)
+    if not self.window_manager or self.window_id ~= self.window_manager:getFocusedWindowId() then
+        return false
+    end
+
+    -- Only forward key releases during active gameplay (not when overlay is visible)
+    if not self.controller:isOverlayVisible() then
+        if self.current_game and self.current_game.keyreleased then
+            local success, result = pcall(self.current_game.keyreleased, self.current_game, key)
+            if not success then
+                print("Error in game keyreleased handler:", tostring(result))
+            end
+        end
+    end
+
+    return false
+end
+
 function MinigameState:mousepressed(x, y, button)
     if not self.window_manager or self.window_id ~= self.window_manager:getFocusedWindowId() then
         return false

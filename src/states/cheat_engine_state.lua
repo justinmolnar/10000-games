@@ -49,7 +49,14 @@ function CheatEngineState:enter()
 
     for _, game in ipairs(all_games) do
         if self.player_data:isGameUnlocked(game.id) then
-            table.insert(self.unlocked_games, game)
+            -- Load variant data to get the actual variant name
+            local variant_data = self:loadVariantData(game.id)
+            local game_entry = {
+                id = game.id,
+                display_name = (variant_data and variant_data.name) or game.display_name,
+                icon_sprite = game.icon_sprite
+            }
+            table.insert(self.unlocked_games, game_entry)
         end
     end
 
@@ -192,6 +199,14 @@ function CheatEngineState:modifyParameter(param_key, new_value, step_size)
         return
     end
 
+    -- Clamp value to valid range if applicable
+    local clamped_value, was_clamped = self.cheat_system:clampParameterValue(param_key, new_value)
+    if was_clamped then
+        print(string.format("Value clamped: %s -> %s (range: %s - %s)",
+            tostring(new_value), tostring(clamped_value),
+            tostring(param.min), tostring(param.max)))
+    end
+
     -- Apply modification via CheatSystem
     local result = self.cheat_system:applyModification(
         self.player_data,
@@ -199,12 +214,12 @@ function CheatEngineState:modifyParameter(param_key, new_value, step_size)
         param_key,
         param.type,
         param.original,
-        new_value
+        clamped_value
     )
 
     if result.success then
         -- Update local state
-        param.value = new_value
+        param.value = clamped_value
         self.current_modifications = self.player_data:getGameModifications(self.selected_game_id)
 
         -- Save

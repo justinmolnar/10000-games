@@ -41,6 +41,12 @@ local function StateMachineBuilder(Object)
         end
     end
 
+    function StateMachine:keyreleased(key)
+        if self.current_state and self.current_state.keyreleased then
+            self.current_state:keyreleased(key)
+        end
+    end
+
     function StateMachine:mousepressed(x, y, button)
         if self.current_state and self.current_state.mousepressed then
             self.current_state:mousepressed(x, y, button)

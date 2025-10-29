@@ -11,6 +11,7 @@ function SpriteLoader:init(palette_manager)
     self.loaded = false
     self.aliases = nil
     self.palette_manager = palette_manager -- Injected dependency
+    self._warned_missing = {} -- Track already warned missing sprites to avoid spam
 end
 
 function SpriteLoader:loadAll()

@@ -18,6 +18,54 @@ function LauncherState:init(player_data, game_data, state_machine, save_manager,
     self.filtered_games = {}
 end
 
+function LauncherState:loadVariantData(game_id)
+    -- Parse game_id to determine which variant file and clone_index
+    -- Format: "dodge_1" -> "dodge", clone 0 (0-indexed)
+    local ok_paths, Paths = pcall(require, 'src.paths')
+    if not ok_paths then
+        print("[LauncherState] ERROR: Could not require src.paths")
+        return nil
+    end
+
+    local ok_json, json = pcall(require, 'lib.json')
+    if not ok_json then
+        print("[LauncherState] ERROR: Could not require lib.json")
+        return nil
+    end
+
+    local base_name, clone_number = game_id:match("^(.-)_(%d+)$")
+    if not base_name or not clone_number then
+        return nil
+    end
+
+    local clone_index = tonumber(clone_number) - 1 -- Convert to 0-indexed
+    local variant_file = "variants/" .. base_name .. "_variants.json"
+    local file_path = Paths.assets.data .. variant_file
+
+    -- Read variant file
+    local read_ok, contents = pcall(love.filesystem.read, file_path)
+    if not read_ok or not contents then
+        -- Silently return nil for missing variant files (some games might not have variants yet)
+        return nil
+    end
+
+    -- Parse JSON
+    local decode_ok, variants = pcall(json.decode, contents)
+    if not decode_ok or not variants then
+        print("[LauncherState] ERROR: Failed to decode " .. file_path)
+        return nil
+    end
+
+    -- Find variant with matching clone_index
+    for _, variant in ipairs(variants) do
+        if variant.clone_index == clone_index then
+            return variant
+        end
+    end
+
+    return nil
+end
+
 function LauncherState:enter()
     -- Publish shop_opened event
     if self.event_bus then
@@ -32,7 +80,7 @@ function LauncherState:enter()
         -- Extract base name and number from id
         local a_base, a_num = a.id:match("^(.-)_(%d+)$")
         local b_base, b_num = b.id:match("^(.-)_(%d+)$")
-        
+
         -- If both have numbers, compare base first, then number
         if a_base and b_base and a_num and b_num then
             if a_base == b_base then
@@ -41,11 +89,11 @@ function LauncherState:enter()
                 return a_base < b_base
             end
         end
-        
+
         -- Fallback to regular string comparison
         return a.id < b.id
     end)
-    
+
     -- Apply default filter (which is now stored in the view)
     self:updateFilter(self.view.selected_category)
 end
@@ -187,8 +235,11 @@ function LauncherState:launchGame(game_id)
         -- and might return a launch event if successful.
         return self:showUnlockPrompt(game_data) -- showUnlockPrompt needs modification
     else
-        -- Return an event for DesktopState to handle
-        return { type = "event", name = "launch_minigame", game_data = game_data }
+        -- Load variant data for the game (to get actual variant name)
+        local variant_data = self:loadVariantData(game_id)
+
+        -- Return an event for DesktopState to handle, including variant
+        return { type = "event", name = "launch_minigame", game_data = game_data, variant = variant_data }
     end
 end
 
@@ -244,8 +295,11 @@ function LauncherState:showUnlockPrompt(game_data)
                 self.event_bus:publish('game_unlocked', game_data.id)
             end
 
+            -- Load variant data for the game (to get actual variant name)
+            local variant_data = self:loadVariantData(game_data.id)
+
             -- Return the launch event instead of switching state
-            return { type = "event", name = "launch_minigame", game_data = game_data }
+            return { type = "event", name = "launch_minigame", game_data = game_data, variant = variant_data }
         else
             -- Publish purchase_failed event
             if self.event_bus then

@@ -279,12 +279,13 @@ function WindowController:handleResize(mouse_x, mouse_y)
     -- Aspect ratio locking (for fixed arena + fixed camera)
     local window_data = self.window_states[self.resizing_window_id]
     local window_state = window_data and window_data.state
-    local game = window_state and window_state.current_game
+    -- Check game first (for MinigameState), then state itself (for other windows)
+    local aspect_obj = (window_state and window_state.current_game) or window_state
 
-    if game and game.lock_aspect_ratio then
+    if aspect_obj and aspect_obj.lock_aspect_ratio then
         -- Calculate target aspect ratio from ARENA dimensions (not current window bounds)
-        local arena_width = game.game_width
-        local arena_height = game.game_height
+        local arena_width = aspect_obj.game_width
+        local arena_height = aspect_obj.game_height
 
         if not arena_width or not arena_height then
             print("[WindowController] WARNING: game_width/game_height not available:", arena_width, arena_height)
@@ -346,8 +347,8 @@ function WindowController:handleResize(mouse_x, mouse_y)
     local taskbar_h = (Config and Config.ui and Config.ui.taskbar and Config.ui.taskbar.height) or 40
 
     -- If aspect ratio is locked, we need to clamp BOTH dimensions proportionally
-    if game and game.lock_aspect_ratio and game.game_width and game.game_height then
-        local target_aspect = game.game_width / game.game_height
+    if aspect_obj and aspect_obj.lock_aspect_ratio and aspect_obj.game_width and aspect_obj.game_height then
+        local target_aspect = aspect_obj.game_width / aspect_obj.game_height
         local title_bar_height = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome and Config.ui.window.chrome.title_bar_height) or 25
         local border_width = (Config and Config.ui and Config.ui.window and Config.ui.window.chrome and Config.ui.window.chrome.border_width) or 2
 

@@ -147,6 +147,29 @@ function DesktopState:init(di)
         self.event_bus:subscribe('window_state_event', function(window_id, event)
             self.event_dispatcher:handle(window_id, event, function(wid) self:closeWindowById(wid) end)
         end)
+        -- Subscribe to window move/resize to update viewport coordinates
+        self.event_bus:subscribe('window_moved', function(window_id, new_x, new_y)
+            local window_data = self.window_states[window_id]
+            local window_state = window_data and window_data.state
+            if window_state and window_state.setViewport then
+                local window = self.window_manager:getWindowById(window_id)
+                if window then
+                    local bounds = self.di.windowChrome:getContentBounds(window)
+                    pcall(window_state.setViewport, window_state, bounds.x, bounds.y, bounds.width, bounds.height)
+                end
+            end
+        end)
+        self.event_bus:subscribe('window_resized', function(window_id, new_width, new_height)
+            local window_data = self.window_states[window_id]
+            local window_state = window_data and window_data.state
+            if window_state and window_state.setViewport then
+                local window = self.window_manager:getWindowById(window_id)
+                if window then
+                    local bounds = self.di.windowChrome:getContentBounds(window)
+                    pcall(window_state.setViewport, window_state, bounds.x, bounds.y, bounds.width, bounds.height)
+                end
+            end
+        end)
 
         -- Subscribe to icon events from DesktopIconController
         self.event_bus:subscribe('icon_double_clicked', function(program_id)
@@ -814,6 +837,19 @@ function DesktopState:keypressed(key)
     end
 
     return false -- Key not handled
+end
+
+function DesktopState:keyreleased(key)
+    -- Forward key release to focused window state
+    local focused_id = self.window_manager:getFocusedWindowId()
+    if focused_id then
+        local window_data = self.window_states[focused_id]
+        local window_state = window_data and window_data.state
+
+        if window_state and window_state.keyreleased then
+            pcall(window_state.keyreleased, window_state, key)
+        end
+    end
 end
 
 function DesktopState:toggleStartMenu()
