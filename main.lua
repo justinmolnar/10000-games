@@ -166,6 +166,17 @@ function love.load()
     local audio_manager = AudioManager:new(di)
     di.audioManager = audio_manager
 
+    -- == 5.6. Initialize TTS System ==
+    local TTSManager = require('src.utils.tts_manager')
+    local tts_config = Config.tts or { enabled = true, rate = 0, volume = 80, use_audio_effects = true }
+    local tts_manager = TTSManager:new(tts_config)
+    di.ttsManager = tts_manager
+
+    -- List available voices on startup (optional)
+    if tts_config.enabled then
+        tts_manager:listVoices()
+    end
+
     -- == 6. Initialize State Machine and States ==
     if SettingsManager and SettingsManager.inject then SettingsManager.inject(di) end
 

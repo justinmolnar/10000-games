@@ -228,7 +228,7 @@ This document contains brainstormed variable ideas for creating diverse and inte
 ## Memory Match Variables
 
 ### Grid & Layout (New Ideas)
-- `grid_size` - "4x4", "6x6", "8x8", "irregular" (non-rectangular)
+- `grid_size` - "4x4", "6x6", "8x8"
 - `card_count` - Total cards (always even for pairs)
 - `match_requirement` - Cards needed to match (2 = pairs, 3 = triplets, 4 = quads)
 - `card_layout` - "grid", "circle", "spiral", "scattered"

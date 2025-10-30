@@ -165,6 +165,26 @@ local Config = {
             area_gravity = { min = -500, max = 500 },
             wind_direction = { min = 0, max = 360 },
             wind_strength = { min = 0, max = 500 },
+
+            -- Memory Match Parameters
+            card_count = { min = 4, max = 48 },
+            columns = { min = 0, max = 8 },
+            match_requirement = { min = 2, max = 4 },
+            flip_speed = { min = 0.1, max = 2.0 },
+            reveal_duration = { min = 0.2, max = 5.0 },
+            memorize_time = { min = 0, max = 30 },
+            auto_shuffle_interval = { min = 0, max = 60 },
+            auto_shuffle_count = { min = 0, max = 48 },
+            time_limit = { min = 0, max = 300 },
+            move_limit = { min = 0, max = 200 },
+            mismatch_penalty = { min = 0, max = 50 },
+            combo_multiplier = { min = 0.0, max = 5.0 },
+            speed_bonus = { min = 0, max = 100 },
+            perfect_bonus = { min = 0, max = 50 },
+            fog_of_war = { min = 0, max = 500 },
+            fog_inner_radius = { min = 0.0, max = 1.0 },
+            fog_darkness = { min = 0.0, max = 1.0 },
+            chain_requirement = { min = 0, max = 10 },
         },
 
         -- Which parameters should be hidden/locked
@@ -815,12 +835,43 @@ local Config = {
     memory_match = {
             arena = { width = 800, height = 600 },
             cards = { width = 60, height = 80, spacing = 10, icon_padding = 10 },
-            timings = { memorize_time_base = 5, match_view_time = 1 },
+            timings = { memorize_time_base = 5, match_view_time = 1, flip_speed = 0.3, reveal_duration = 1.0 },
             pairs = { per_complexity = 6 },
             view = {
                 bg_color = {0.05, 0.08, 0.12},
                 hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
-            }
+            },
+
+            -- Grid & Layout defaults
+            card_count = 0,  -- 0 = auto-calculate (pairs * 2), non-zero = explicit count
+            columns = 0,  -- 0 = auto (square grid), non-zero = explicit column count
+            match_requirement = 2,  -- Cards to match at once (2 = pairs, 3 = triplets, 4 = quads)
+
+            -- Timing defaults
+            auto_shuffle_interval = 0,  -- Seconds between shuffles (0 = disabled)
+            auto_shuffle_count = 0,  -- Cards to shuffle per interval (0 = all face-down cards)
+
+            -- Constraints defaults
+            time_limit = 0,  -- Total time limit in seconds (0 = no limit)
+            move_limit = 0,  -- Maximum flips allowed (0 = unlimited)
+
+            -- Scoring defaults
+            mismatch_penalty = 0,  -- Penalty per mismatch
+            combo_multiplier = 0.0,  -- Bonus multiplier for consecutive matches (0 = disabled)
+            speed_bonus = 0,  -- Bonus points per second remaining (requires time_limit)
+            perfect_bonus = 0,  -- Bonus for perfect matches (found on first try)
+
+            -- Visual Effects defaults
+            gravity_enabled = false,  -- Cards fall with gravity
+            card_rotation = false,  -- Cards rotate while face-down
+            spinning_cards = false,  -- Cards spin continuously
+            fog_of_war = 0,  -- Visibility radius around cursor (0 = disabled)
+            fog_inner_radius = 0.6,  -- Percentage of radius that's fully lit (0.0-1.0)
+            fog_darkness = 0.1,  -- How dark obscured areas get (0.0 = pitch black, 1.0 = no obscuring)
+            distraction_elements = false,  -- Spawn visual distractions
+
+            -- Challenge Mode defaults
+            chain_requirement = 0,  -- Forces matching specific sequence (0 = disabled)
         },
     snake = {
             arena = { width = 800, height = 600 },
@@ -1004,7 +1055,27 @@ local Config = {
                 boss_bar = { width = 200, height = 15, offset_y = 20 }
             }
         }
-    }
+    },
+
+    -- === Text-to-Speech Configuration ===
+    tts = {
+        enabled = true,              -- Enable/disable TTS globally
+        rate = 0,                    -- Speech rate: -10 (slow) to 10 (fast), 0 = normal
+        volume = 80,                 -- Volume: 0-100
+        use_audio_effects = false,   -- EXPERIMENTAL: Generate to WAV for pitch shifting (may freeze game briefly)
+        voice_name = nil,            -- Specific SAPI voice name (nil = default) e.g., "Microsoft David Desktop"
+
+        -- Voice presets (weirdness parameter):
+        -- When use_audio_effects = false: only affects speed (rate)
+        -- When use_audio_effects = true: affects speed + pitch
+        -- 0 = Normal
+        -- 1 = Slightly weird
+        -- 2 = Very weird
+        -- 3 = Creepy
+        -- 4 = Robot
+        -- 5 = Demon
+        weirdness = 0,
+    },
 }
 
 return Config

@@ -217,6 +217,27 @@ function MinigameState:keyreleased(key)
     return false
 end
 
+function MinigameState:mousemoved(x, y, dx, dy)
+    if not self.window_manager or self.window_id ~= self.window_manager:getFocusedWindowId() then
+        return false
+    end
+
+    if self.controller:isOverlayVisible() then
+        return false
+    end
+
+    if self.current_game and self.current_game.mousemoved then
+        local success, result = pcall(self.current_game.mousemoved, self.current_game, x, y, dx, dy)
+        if not success then
+             print("Error in game mousemoved handler:", tostring(result))
+             return false
+        end
+        return result
+    end
+
+    return false
+end
+
 function MinigameState:mousepressed(x, y, button)
     if not self.window_manager or self.window_id ~= self.window_manager:getFocusedWindowId() then
         return false
