@@ -103,11 +103,11 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
              print("Calculated initial position and default size:", x, y, w, h)
         end
     elseif remembered and remembered.w and remembered.h and remembered.x and remembered.y then
-        -- If defaults increased, prefer the larger of remembered vs default for debugging/UX
-    w = math.max(remembered.w or 0, default_w or conf_default_w or 0)
-    h = math.max(remembered.h or 0, default_h or conf_default_h or 0)
+        -- Use remembered size exactly - user has resized it before
+        w = remembered.w
+        h = remembered.h
         x, y = remembered.x, remembered.y
-        print("Using remembered position with adjusted size for", program_type, ":", x, y, w, h)
+        print("Using remembered position and size for", program_type, ":", x, y, w, h)
     else
     w = default_w or conf_default_w
     h = default_h or conf_default_h

@@ -345,10 +345,10 @@ function DodgeView:draw()
     local lives_remaining = game.lives - game.metrics.collisions
     g.print(lives_remaining .. "/" .. game.lives, tx, ry[2], 0, s, s)
 
-    local perfect_sprite = self.sprite_manager:getMetricSprite(game.data, "perfect_dodges") or "check-0"
-    g.print("Perfect: ", lx, ry[3], 0, s, s)
-    self.sprite_loader:drawSprite(perfect_sprite, ix, ry[3], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    g.print(game.metrics.perfect_dodges, tx, ry[3], 0, s, s)
+    local combo_sprite = self.sprite_manager:getMetricSprite(game.data, "combo") or "check-0"
+    g.print("Combo: ", lx, ry[3], 0, s, s)
+    self.sprite_loader:drawSprite(combo_sprite, ix, ry[3], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+    g.print(game.metrics.combo, tx, ry[3], 0, s, s)
 
     -- Show shield charges if player has shields
     if game.player.shield_max and game.player.shield_max > 0 then

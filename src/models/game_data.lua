@@ -97,8 +97,12 @@ function GameData:loadStandaloneVariantCounts()
                     local count = #variant_data
                     if count > 1 then  -- Must have at least base + 1 clone
                         local clone_count = count - 1
-                        -- Map to base game ID (e.g., "dodge" -> "dodge_1")
-                        local base_game_id = game_name .. "_1"
+
+                        -- Extract first word before underscore for base game ID
+                        -- e.g., "memory_match" -> "memory", "dodge" -> "dodge"
+                        local base_type = game_name:match("^([^_]+)")
+                        local base_game_id = base_type .. "_1"
+
                         variant_counts[base_game_id] = clone_count
                         print("Found " .. count .. " total variants (" .. clone_count .. " clones) for " .. base_game_id .. " in " .. filename)
                     end
@@ -120,8 +124,9 @@ function GameData:createFormulaFunction(formula_string)
         return function(metrics) return 0 end
     end
 
-    -- Construct the function string - ensure it returns the value
-    local func_body_string = "local metrics = ...; metrics = metrics or {}; local value = (" .. formula_string .. "); return value"
+    -- Inject scaling_constant into the formula environment
+    local scaling_constant = Config.scaling_constant or 1
+    local func_body_string = "local metrics, scaling_constant = ...; metrics = metrics or {}; local value = (" .. formula_string .. "); return value"
     
     -- 1. Load the string into a reusable chunk. 
     -- Provide a name for better error messages.
@@ -138,7 +143,7 @@ function GameData:createFormulaFunction(formula_string)
     -- 2. Return a wrapper that safely executes the chunk with provided metrics
     return function(metrics)
         metrics = metrics or {} -- Ensure metrics table exists
-        
+
         -- Explicitly default expected metrics to 0 *if nil* before calling the chunk
         -- This prevents errors if auto_metrics or runtime metrics are incomplete.
         -- Add ALL possible metrics used across your formulas here.
@@ -154,9 +159,13 @@ function GameData:createFormulaFunction(formula_string)
         metrics.perfect_dodges = metrics.perfect_dodges or 0
         metrics.objects_found = metrics.objects_found or 0
         metrics.time_bonus = metrics.time_bonus or 0
-        
-        -- Execute the loaded chunk safely using pcall
-        local call_ok, result = pcall(formula_chunk, metrics) 
+        metrics.combo = metrics.combo or 0
+
+        -- Get current scaling_constant from config
+        local scaling_constant = Config.scaling_constant or 1
+
+        -- Execute the loaded chunk safely using pcall, passing both metrics and scaling_constant
+        local call_ok, result = pcall(formula_chunk, metrics, scaling_constant) 
 
         if not call_ok then
             -- Error during execution (e.g., division by zero if not handled in formula string)
@@ -217,13 +226,29 @@ function GameData:registerGame(game_data)
 end
 
 function GameData:generateClones(base_game, count)
+    -- Load variant data from JSON if available
+    local game_type = base_game.id:match("^([^_]+)")
+    local variant_file = Paths.assets.data .. "variants/" .. game_type .. "_variants.json"
+    local variants_data = {}
+
+    local read_ok, contents = pcall(love.filesystem.read, variant_file)
+    if read_ok and contents then
+        local decode_ok, variants = pcall(json.decode, contents)
+        if decode_ok and variants then
+            for _, v in ipairs(variants) do
+                variants_data[v.clone_index] = v
+            end
+            print("Loaded variant data for " .. game_type .. " from " .. variant_file)
+        end
+    end
+
     -- Available palettes for variants (cycling through them)
     local available_palettes = {
         "default", "neon_blue", "neon_pink", "neon_green",
         "retro_amber", "retro_green", "pastel_pink", "pastel_blue",
         "pastel_yellow", "military_green", "military_gray", "fire", "ice"
     }
-    
+
     -- Available sprite variations per sprite set
     local sprite_variations = {
         space_set_1 = {"game_mine_1-0", "game_mine_1-1", "game_mine_2-0", "game_mine_2-1"},
@@ -232,7 +257,7 @@ function GameData:generateClones(base_game, count)
         dodge_set_1 = {"game_solitaire-0", "game_solitaire-1", "game_hearts"},
         hidden_set_1 = {"magnifying_glass-0", "magnifying_glass-1", "magnifying_glass_3", "magnifying_glass_4-0"}
     }
-    
+
     for i = 1, count do
         local variant_num = i + 1
         local multiplier = i -- Use the clone index as the base for the multiplier
@@ -247,8 +272,27 @@ function GameData:generateClones(base_game, count)
 
         clone.id = base_game.id:gsub("_1$", "_" .. variant_num)
         if clone.id == base_game.id then clone.id = base_game.id .. "_" .. variant_num end
-        clone.display_name = base_game.display_name:gsub(" 1$", " " .. variant_num)
-        if clone.display_name == base_game.display_name then clone.display_name = base_game.display_name .. " " .. variant_num end
+
+        -- Try to get variant-specific data
+        local variant_data = variants_data[i]  -- clone_index = i
+
+        -- Use variant name if available, otherwise fallback
+        if variant_data and variant_data.name then
+            clone.display_name = variant_data.name
+        else
+            clone.display_name = base_game.display_name:gsub(" 1$", " " .. variant_num)
+            if clone.display_name == base_game.display_name then clone.display_name = base_game.display_name .. " " .. variant_num end
+        end
+
+        -- Apply other variant-specific properties
+        if variant_data then
+            -- Copy all variant properties to the clone
+            for k, v in pairs(variant_data) do
+                if k ~= "clone_index" and k ~= "name" then
+                    clone[k] = v
+                end
+            end
+        end
 
         clone.unlock_cost = cost
         clone.variant_of = base_game.id
@@ -430,12 +474,12 @@ function GameData:calculateTheoreticalMax(game_id)
     -- Define theoretical max values based on actual game parameters
     local max_metrics = {}
 
-    -- Dodge games: use victory_limit (default 30 dodges), perfect = 0 collisions
+    -- Dodge games: use victory_limit (default 30 dodges), perfect = 0 collisions, max combo
     if game.metrics_tracked and game.metrics_tracked[1] == "objects_dodged" then
         local victory_limit = (variant and variant.victory_limit) or 30
         max_metrics.objects_dodged = victory_limit
         max_metrics.collisions = 0
-        max_metrics.perfect_dodges = victory_limit -- All dodges are perfect
+        max_metrics.combo = victory_limit -- Perfect combo = all dodges in a row
 
     -- Snake games: use victory_limit for length, estimate survival time
     elseif game.metrics_tracked and game.metrics_tracked[1] == "snake_length" then

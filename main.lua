@@ -146,6 +146,8 @@ function love.load()
         player_data.active_vms = player_data.active_vms or {}
         player_data.cheat_engine_data = player_data.cheat_engine_data or {}
         player_data.upgrades = player_data.upgrades or { cpu_speed=0, overclock=0, auto_dodge=0 }
+        -- Round tokens to integer for readability
+        player_data.tokens = math.floor(player_data.tokens or 0)
     else
         print("No save found or load failed, starting new game")
         player_data:init(statistics, di)

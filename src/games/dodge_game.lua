@@ -356,7 +356,8 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
 
     self.metrics.objects_dodged = 0
     self.metrics.collisions = 0
-    self.metrics.perfect_dodges = 0
+    self.metrics.combo = 0
+    self.current_combo = 0  -- Track current streak
 
     -- Phase 2.3: Load variant assets (with fallback to icons)
     self:loadAssets()
@@ -1557,6 +1558,7 @@ function DodgeGame:updateObjects(dt)
             else
                 -- No shield, take damage
                 self.metrics.collisions = self.metrics.collisions + 1
+                self.current_combo = 0  -- Reset combo on collision
                 self:playSound("hit", 1.0)
                 self:triggerCameraShake()  -- Trigger shake on hit
 
@@ -1588,6 +1590,7 @@ function DodgeGame:updateObjects(dt)
                     self:playSound("hit", 0.5)
                 else
                     self.metrics.collisions = self.metrics.collisions + 1
+                    self.current_combo = 0  -- Reset combo on collision
                     self:playSound("hit", 0.8)
                     self:triggerCameraShake(self.camera_shake * 0.7)
                     if self.metrics.collisions >= self.lives then
@@ -1604,8 +1607,13 @@ function DodgeGame:updateObjects(dt)
 
                 -- Phase 3.3: Play dodge sound (subtle)
                 self:playSound("dodge", 0.3)
+
+                -- Track combo - every dodge counts
+                self.current_combo = self.current_combo + 1
+                if self.current_combo > self.metrics.combo then
+                    self.metrics.combo = self.current_combo
+                end
             end
-            if obj.warned then self.metrics.perfect_dodges = self.metrics.perfect_dodges + 1 end
         end
         ::continue_obj_loop::
     end
@@ -2107,7 +2115,7 @@ function DodgeGame:onComplete()
             print(string.format("[DodgeGame] Score multiplier applied: %.2fx (%s mode)", multiplier, self.score_mode))
             -- Apply multiplier to key metrics
             self.metrics.objects_dodged = math.floor(self.metrics.objects_dodged * multiplier)
-            self.metrics.perfect_dodges = math.floor(self.metrics.perfect_dodges * multiplier)
+            self.metrics.combo = math.floor(self.metrics.combo * multiplier)
         end
     end
 

@@ -41,9 +41,10 @@ end
 function PlayerData:addTokens(amount)
     if type(amount) ~= "number" or amount <= 0 then return self.tokens end -- Only add positive amounts
     local old_tokens = self.tokens
-    self.tokens = self.tokens + amount
+    -- Round to integer for readability
+    self.tokens = math.floor(self.tokens + amount)
     local new_tokens = self.tokens
-    local delta = amount
+    local delta = math.floor(amount)
 
     -- Update statistics using self.statistics
     if self.statistics and self.statistics.addTokensEarned then

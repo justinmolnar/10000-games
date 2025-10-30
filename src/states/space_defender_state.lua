@@ -96,23 +96,33 @@ function SpaceDefenderState:loadLevelData()
     return true
 end
 
+function SpaceDefenderState:generateWavesForLevel()
+    local scaling = (self._cfg and self._cfg.scaling) or {}
+    local wave_count = math.floor((scaling.wave_count_base or 2) + (self.current_level * (scaling.wave_count_per_level or 3)))
+
+    local waves = {}
+    for i = 1, wave_count do
+        local enemy_count = math.floor((scaling.enemy_count_base or 10) * (self.current_level ^ (scaling.enemy_count_exponent or 1.3)))
+        local spawn_rate = math.max(
+            scaling.spawn_rate_min or 0.1,
+            (scaling.spawn_rate_base or 1.0) - (self.current_level * (scaling.spawn_rate_level_reduction or 0.05))
+        )
+
+        table.insert(waves, {
+            enemy_count = enemy_count,
+            spawn_rate = spawn_rate,
+            patterns = {"straight", "zigzag", "sine"}
+        })
+    end
+
+    return waves
+end
+
 function SpaceDefenderState:enter(level_number)
     self.current_level = level_number or 1
 
-    if not self:loadLevelData() then
-        print("FATAL: Could not load level data. Cannot start Space Defender.")
-        return { type = "close_window" }
-    end
-
-    self.current_level_data = self.all_level_data[self.current_level]
-    if not self.current_level_data then
-        print("ERROR: No data found for level " .. self.current_level .. ". Using level 1 data as fallback.")
-        self.current_level_data = self.all_level_data[1]
-        if not self.current_level_data then
-            print("FATAL: No level 1 data found. Cannot start Space Defender.")
-            return { type = "close_window" }
-        end
-    end
+    self.generated_waves = self:generateWavesForLevel()
+    self.total_waves = #self.generated_waves
 
     self.level_complete = false
     self.game_over = false
@@ -150,7 +160,7 @@ function SpaceDefenderState:enter(level_number)
     self.boss = nil
     self.boss_active = false
 
-    print("Starting Space Defender Level " .. self.current_level)
+    print("Starting Space Defender Level " .. self.current_level .. " with " .. self.total_waves .. " waves")
 end
 
 function SpaceDefenderState:getLevelBonuses()
@@ -223,9 +233,11 @@ function SpaceDefenderState:updateEnemies(dt)
             end
         end
 
-        local offp = (self._cfg and self._cfg.enemy and self._cfg.enemy.offscreen_padding) or 20
-        if enemy.y > self.game_height + offp then
+        -- Enemy reached bottom - take a life and remove enemy
+        if enemy.y > self.game_height then
+            self:takeDamage(1)
             table.remove(self.enemies, i)
+            print("Enemy reached bottom! Player HP: " .. (self.player_ship and self.player_ship.hp or 0))
         end
         ::continue_enemy_loop::
     end
@@ -234,14 +246,31 @@ end
 function SpaceDefenderState:updateBoss(dt)
     local boss = self.boss
     if not boss then return end
-    
-    boss.x = boss.x + boss.vx * dt
-    if boss.x <= boss.width/2 or boss.x >= self.game_width - boss.width/2 then boss.vx = -boss.vx end
+
+    local bmove = self._cfg and self._cfg.boss_movement or {}
+
+    -- Move horizontally
+    boss.x = boss.x + (bmove.side_speed or 100) * boss.vx_dir * dt
+    if boss.x <= boss.width/2 or boss.x >= self.game_width - boss.width/2 then
+        boss.vx_dir = -boss.vx_dir
+    end
+
+    -- Move downward toward player
+    boss.y = boss.y + (bmove.move_down_speed or 15) * dt
+
+    -- Check if boss reached bottom threshold - instant game over
+    local death_threshold = (bmove.death_y_threshold or 0.85) * self.game_height
+    if boss.y >= death_threshold then
+        self.player_ship.hp = 0
+        print("Boss reached bottom! Game Over!")
+    end
+
     boss.attack_timer = boss.attack_timer - dt
     if boss.attack_timer <= 0 then
         self:bossAttack()
         boss.attack_timer = boss.attack_rate
     end
+
     if self.player_ship then
         local p_x1 = self.player_ship.x - self.player_ship.width/2
         local p_y1 = self.player_ship.y - self.player_ship.height/2
@@ -252,8 +281,15 @@ function SpaceDefenderState:updateBoss(dt)
     end
 end
 
+function SpaceDefenderState:calculateBossAttackHP()
+    local scaling = (self._cfg and self._cfg.scaling) or {}
+    local base = scaling.attack_hp_base or 50
+    local exponent = scaling.attack_hp_exponent or 1.5
+    return math.floor(base * (self.current_level ^ exponent))
+end
+
 function SpaceDefenderState:bossAttack()
-if not self.boss or not self.current_level_data or not self.current_level_data.boss then return end
+    if not self.boss then return end
     local orbit = (self._cfg and self._cfg.boss and self._cfg.boss.orbit) or {}
     local count = orbit.count or 3
     local radius_x = orbit.radius_x or 70
@@ -261,7 +297,7 @@ if not self.boss or not self.current_level_data or not self.current_level_data.b
     local rotate_per_level = orbit.rotate_per_level or 0.1
     local speed_base = orbit.spawn_speed_base or 150
     local speed_per_lvl = orbit.spawn_speed_per_level or 5
-    local enemy_hp = (self.current_level_data.boss and self.current_level_data.boss.attack_power) or 50
+    local enemy_hp = self:calculateBossAttackHP()
 
     for i = 1, count do
         local angle = (i / count) * math.pi * 2 + (self.current_level * rotate_per_level)
@@ -273,36 +309,51 @@ if not self.boss or not self.current_level_data or not self.current_level_data.b
     end
 end
 
-function SpaceDefenderState:updateWaveSpawning(dt)
-    if not self.current_level_data or not self.current_level_data.waves then return end
+function SpaceDefenderState:calculateEnemyHP()
+    local scaling = (self._cfg and self._cfg.scaling) or {}
+    local base = scaling.enemy_hp_base or 500
+    local exponent = scaling.enemy_hp_exponent or 1.8
+    return math.floor(base * (self.current_level ^ exponent))
+end
 
-    local waves = self.current_level_data.waves
-    if self.current_wave > #waves then
+function SpaceDefenderState:updateWaveSpawning(dt)
+    if not self.generated_waves then return end
+
+    -- All waves complete - spawn boss
+    if self.current_wave > self.total_waves then
         if not self.boss_active and #self.enemies == 0 then self:spawnBoss() end
         return
     end
 
-    local wave = waves[self.current_wave]
+    local wave = self.generated_waves[self.current_wave]
     if not wave then return end
 
+    -- Spawn enemies for current wave
     if self.wave_enemies_spawned < wave.enemy_count then
         self.wave_spawn_timer = self.wave_spawn_timer - dt
         if self.wave_spawn_timer <= 0 then
             local pattern = wave.patterns[math.random(#wave.patterns)] or "straight"
+            local enemy_hp = self:calculateEnemyHP()
+            local enemy_speed = 100 + (self.current_level * 10)  -- Speed increases with level
+
             self:spawnEnemy(
-                math.random((self._cfg and self._cfg.spawn and self._cfg.spawn.x_inset) or 20, self.game_width - ((self._cfg and self._cfg.spawn and self._cfg.spawn.x_inset) or 20)), (self._cfg and self._cfg.spawn and self._cfg.spawn.y_start) or -20,
-                pattern, wave.enemy_hp, wave.enemy_speed
+                math.random((self._cfg and self._cfg.spawn and self._cfg.spawn.x_inset) or 20, self.game_width - ((self._cfg and self._cfg.spawn and self._cfg.spawn.x_inset) or 20)),
+                (self._cfg and self._cfg.spawn and self._cfg.spawn.y_start) or -20,
+                pattern, enemy_hp, enemy_speed
             )
             self.wave_enemies_spawned = self.wave_enemies_spawned + 1
             self.wave_spawn_timer = wave.spawn_rate
         end
+    -- Wave complete - immediately start next wave (allows blasting through with high power)
     elseif #self.enemies == 0 then
         local old_wave = self.current_wave
         self.current_wave = self.current_wave + 1
         self.wave_enemies_spawned = 0
-        self.wave_spawn_timer = 0
-        if self.current_wave <= #waves then
-           print("Wave " .. old_wave .. " complete!")
+        self.wave_spawn_timer = 0  -- Start spawning immediately
+        if self.current_wave <= self.total_waves then
+           print("Wave " .. old_wave .. " complete! Starting wave " .. self.current_wave)
+        else
+           print("All waves complete! Boss incoming...")
         end
     end
 end
@@ -319,27 +370,31 @@ function SpaceDefenderState:spawnEnemy(x, y, pattern, hp, speed)
     })
 end
 
-function SpaceDefenderState:spawnBoss()
-    if not self.current_level_data or not self.current_level_data.boss then
-        print("ERROR: Cannot spawn boss, data missing for level " .. self.current_level)
-        self:onLevelComplete()
-        return
-    end
+function SpaceDefenderState:calculateBossHP()
+    local scaling = (self._cfg and self._cfg.scaling) or {}
+    local base = scaling.boss_hp_base or 5000
+    local exponent = scaling.boss_hp_exponent or 2.0
+    return math.floor(base * (self.current_level ^ exponent))
+end
 
+function SpaceDefenderState:spawnBoss()
     print("BOSS SPAWNED!")
     self.boss_active = true
-    local boss_data = self.current_level_data.boss
 
+    local boss_hp = self:calculateBossHP()
     local bcfg = self._cfg and self._cfg.boss or {}
+    local bmove = self._cfg and self._cfg.boss_movement or {}
+
     self.boss = {
-        x = self.game_width / 2, y = 100,
-        width = boss_data.width or bcfg.width or 80,
-        height = boss_data.height or bcfg.height or 80,
-        hp = boss_data.hp or bcfg.hp or 5000,
-        max_hp = boss_data.hp or bcfg.hp or 5000,
-        vx = boss_data.vx or bcfg.vx or 100,
-        attack_timer = boss_data.attack_rate or bcfg.attack_rate or 2.0,
-        attack_rate = boss_data.attack_rate or bcfg.attack_rate or 2.0
+        x = self.game_width / 2,
+        y = bmove.min_y or 50,
+        width = bcfg.width or 80,
+        height = bcfg.height or 80,
+        hp = boss_hp,
+        max_hp = boss_hp,
+        vx_dir = 1,  -- Horizontal movement direction
+        attack_timer = bcfg.attack_rate or 2.0,
+        attack_rate = bcfg.attack_rate or 2.0
     }
 end
 
@@ -391,7 +446,7 @@ function SpaceDefenderState:draw()
             boss_active = self.boss_active,
             bullet_system = self.bullet_system,
             current_wave = self.current_wave,
-            total_waves = (self.current_level_data and #self.current_level_data.waves or 0),
+            total_waves = self.total_waves or 0,
             current_level = self.current_level,
             tokens_earned = self.tokens_earned,
             level_complete = self.level_complete and self.current_level ~= FINAL_MVP_LEVEL,

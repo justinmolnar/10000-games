@@ -1,404 +1,980 @@
-# VM Demo Recording & Playback System
+# VM Demo Recording & Playback System (Revised)
 
 ## Overview
 
-Virtual Machines don't use formula simulation - they use **demo recording and playback**. You record your strategy, the VM executes it exactly, and generates tokens based on measured success rate.
+Virtual Machines run **demo recordings** - exact replays of your keypresses. Each VM continuously executes your recorded inputs with random seeds, accumulating tokens based on actual performance per run.
+
+**Core Principle:** VMs don't adapt or use AI. They blindly execute your recorded strategy and hope for the best. Success depends on your demo quality and CheatEngine optimization.
 
 ---
 
-## How Demo Recording Works
+## How It Actually Works
 
-**Recording a demo:**
-1. Play a game normally
-2. Game records: `{ keypresses: [{key: 'w', time: 0.5}, {key: 'a', time: 1.2}, ...], duration: 15.8 }`
-3. Demo saved to that game variant
+### Recording a Demo
+1. Play a minigame normally
+2. System records: `{ inputs: [{key: 'w', state: 'pressed', frame: 31}, ...], total_frames: 948 }`
+3. Demo saved to player data, associated with that game variant
 4. Can re-record anytime to improve strategy
 
 **What gets recorded:**
-- Exact keypresses and release events
-- Timestamp for each input (milliseconds precision)
-- Total duration
-- Game configuration (which variant, current CheatEngine mods)
+- Exact keypresses and releases
+- Frame number for each event (fixed timestep)
+- Total frame count
+- Game variant ID and CheatEngine configuration snapshot
 
-**What doesn't need recording:**
-- RNG seed (demo works across all seeds)
-- Enemy positions (strategy adapts to whatever happens)
-- Game state (VM simulates full game)
+**What doesn't get recorded:**
+- RNG seed (each run uses random seed)
+- Enemy positions (demo is blind to game state)
+- Player position (demo just injects inputs)
 
----
-
-## VM Execution Process
-
-**When you assign a game + demo to a VM:**
-
-1. **Test Phase (runs once, or periodically):**
-   - VM executes demo 10-100 times rapidly
-   - Each run uses different random seed
-   - Records results: completion time, tokens earned, success/fail
-   - Calculates averages:
-     ```
-     Success rate: 87% (87 wins, 13 fails out of 100 runs)
-     Avg completion time: 8.2 seconds
-     Avg tokens per success: 520
-     ```
-
-2. **Generation Phase (continuous):**
-   - VM generates tokens at calculated rate:
-     ```
-     Rate = (avg_tokens × success_rate) / avg_time
-     Rate = (520 × 0.87) / 8.2
-     Rate = 55.12 tokens/sec
-     ```
-   - Every second, adds 55.12 tokens to your balance
-   - No actual game running continuously - just math
-
-3. **Re-testing (periodic):**
-   - Every 5-10 minutes, re-run test phase
-   - Updates success rate in case RNG variance exists
-   - Smooths out any statistical noise
-
-**Visual representation:**
-- UI shows ONE game window running the demo
-- Visual feedback for player
-- Actual calculation happens in background
+**Frame-Based Recording (Not Time-Based):**
+- Demos use fixed timestep recording (e.g., 60 FPS = 1 frame per 1/60 second)
+- Frame numbers ensure perfect determinism
+- Playback is frame-perfect regardless of visual framerate
+- Inspired by Quake's tick-based demo system
+- Prevents floating-point accumulation errors
+- Demo recorded at 144 FPS produces identical results as 30 FPS recording
 
 ---
 
-## Demo Strategy Quality
+### VM Execution Loop (The Real System)
 
-**Why demo quality matters:**
+**When you assign a demo to a VM slot:**
 
-### Bad Demo (Early Game):
+1. **Start Run:**
+   - Initialize game with random seed
+   - Begin demo playback from frame 0
+
+2. **Playback:**
+   - Inject recorded inputs at exact frame numbers
+   - Game simulates with fixed timestep (e.g., 1/60 second per frame)
+   - VM does NOT react to game state - it's blind playback
+
+3. **Run Completes:**
+   - Game ends (victory or death)
+   - Record result: tokens earned, completion status, frames survived
+
+4. **Add Tokens:**
+   - `player_data:addTokens(run_result.tokens)`
+   - Update VM statistics (total runs, successes, failures)
+
+5. **Restart Immediately:**
+   - New random seed
+   - Demo playback starts from frame 0
+   - Repeat forever until VM stopped
+
+**Key Insight:** Each run is independent. Sometimes your demo wins, sometimes it dies early. Token generation varies per run based on RNG luck and demo quality.
+
+**Visual Behavior:**
+- Open VM window → see game playing with your inputs
+- Watch it die (or win)
+- See it immediately restart and try again
+- Different outcome each time (different seed)
+
+**VM Speed System:**
+VMs can be upgraded to run faster, processing more frames per visual update:
+- **Normal Speed (1x):** One fixed update per frame (visual feedback at normal speed)
+- **Multi-Step Mode (2x-100x):** Multiple fixed updates per visual frame (visible speedup, maintains rendering)
+- **Headless Mode (Instant):** No rendering, runs demo to completion as fast as CPU allows (milliseconds)
+
+Speed upgrade progression creates satisfying scaling:
+- Early game: Watch VMs run at 2-4x speed (faster but still visible)
+- Mid game: 10-50x speed (blur of activity, very efficient)
+- Late game: Instant mode (completes full run in milliseconds, pure efficiency)
+
+**Implementation Details:**
+- Visible VMs in VM Manager use multi-step rendering (capped at reasonable visual speed)
+- Background VMs can use headless mode for maximum performance
+- Playback windows always render at 1x for clear visual feedback (regardless of actual VM speed)
+- Speed is per-VM upgrade, allowing mix of slow/fast VMs
+
+---
+
+### Why Demos Succeed or Fail
+
+**Bad Demo (Early Game):**
 ```
-Strategy: "Aggressive dodging, lots of movement"
+Strategy: "Aggressive movement, risky dodges"
 Game: Dodge Master (10 lives, 30 dodges to win)
-Results:
-- 45% success rate (too risky, often dies)
-- 12 sec avg completion
-- 320 tokens per success
-- Rate: (320 × 0.45) / 12 = 12 tokens/sec
+
+Results over 100 runs:
+- 38 victories (38% success rate)
+- 62 deaths (avg 12 dodges before death)
+- Avg tokens per victory: 520
+- Avg tokens per death: 180
+
+Token generation highly variable:
+- Good run: 520 tokens in 15 sec
+- Bad run: 180 tokens in 6 sec
+- Average: ~280 tokens per run
 ```
 
-**Manual play:** You adapt in real-time, probably 70%+ success
-**Verdict:** VMs are worse than you. Manual play is better.
+**Manual play is better** - you adapt in real-time. VM is worse than you.
 
-### Mediocre Demo (Mid Game):
+**Mediocre Demo (Mid Game):**
 ```
-Strategy: "Conservative movement, use edges"
-Game: Dodge Master (20 lives, 20 dodges to win, CheatEngine optimized)
-Results:
-- 85% success rate (more lives = forgiving)
-- 10 sec avg completion
-- 1,200 tokens per success
-- Rate: (1,200 × 0.85) / 10 = 102 tokens/sec
-```
+Strategy: "Conservative movement, use safe zones"
+Game: Dodge Master Optimized (30 lives, 20 dodges to win, CheatEngine tuned)
 
-**Manual play:** You might get 90% success, but takes active attention
-**Verdict:** VMs competitive. Good for passive income.
+Results over 100 runs:
+- 82 victories (82% success rate)
+- 18 deaths (avg 16 dodges before death)
+- Avg tokens per victory: 1,450
+- Avg tokens per death: 950
 
-### Perfect Demo (Late Game):
-```
-Strategy: "Barely move, stay in safe zone center"
-Game: Dodge Master (50 lives, 5 sec victory, tiny obstacles, CheatEngine perfected)
-Results:
-- 99.5% success rate (engineered to be impossible to fail)
-- 5.2 sec avg completion
-- 85,000 tokens per success
-- Rate: (85,000 × 0.995) / 5.2 = 16,274 tokens/sec
+Token generation more consistent:
+- Good run: 1,450 tokens in 12 sec
+- Bad run: 950 tokens in 10 sec
+- Average: ~1,280 tokens per run
 ```
 
-**Manual play:** Might be slightly faster, but requires focus
-**Verdict:** VMs superior. Set it and forget it.
+**VM competitive with manual play** - good for passive income while doing other things.
+
+**Perfect Demo (Late Game):**
+```
+Strategy: "Minimal movement, stay in center"
+Game: Dodge Master Engineered (100 lives, 5 sec victory, obstacles nerfed, CheatEngine maxed)
+
+Results over 100 runs:
+- 99 victories (99% success rate)
+- 1 death (fluke bad seed)
+- Avg tokens per victory: 92,000
+- Avg tokens per death: 85,000 (died near completion)
+
+Token generation extremely consistent:
+- Almost always: 92,000 tokens in 5.2 sec
+- Rate: ~17,700 tokens/sec
+```
+
+**VM superior to manual play** - perfectly engineered for automation. Set and forget.
 
 ---
 
 ## The Optimization Loop
 
-**The cycle:**
-1. Play game, record basic demo
-2. VM tests it: 60% success rate
-3. "This sucks, I need to optimize the game"
-4. Use CheatEngine: add lives, reduce victory condition
-5. Re-record demo with same strategy (or safer strategy)
-6. VM tests new demo: 85% success rate
-7. "Better! But I can push further..."
-8. Max out CheatEngine budget on this game
-9. Record ultra-safe demo: "just stand still"
-10. VM tests: 99% success rate
-11. **Perfect. This game is now an automated money printer.**
+**The progression cycle:**
 
-**Key insight:** You're not optimizing the game for YOU to play, you're optimizing it for a DUMB BOT to execute a pre-recorded strategy flawlessly.
+1. **Initial Demo (Naive Strategy):**
+   - Play game normally, record inputs
+   - Assign to VM
+   - Success rate: 40-60%
+   - "This is unreliable, I'm losing half my runs"
 
----
+2. **CheatEngine Tuning (Make Game Safer):**
+   - Add more lives (10 → 30)
+   - Reduce victory condition (30 dodges → 20 dodges)
+   - Increase player size (harder to hit)
+   - Cost: 5,000 tokens in CheatEngine budget
 
-## Seed Manipulation (Advanced System)
+3. **Re-record Demo (Same or Safer Strategy):**
+   - Use tuned game parameters
+   - Record conservative strategy
+   - Success rate: 75-85%
+   - "Much better! More consistent income"
 
-### Basic Seed Viewing
-**Unlock: "Seed Viewer" (available mid-game)**
-- After completing a game, see the RNG seed used
-- "Dodge Master - 98% performance - Seed: 847291"
-- "Wow, that seed had perfect obstacle patterns!"
+4. **Max Optimization (Engineer Triviality):**
+   - Max lives (100)
+   - Minimal victory condition (5 seconds survival)
+   - Tiny obstacles, massive player hitbox
+   - Cost: 50,000 tokens in CheatEngine budget
 
-### Seed Locking
-**Unlock: "Seed Lock" (available late-game)**
-- Force a specific seed when playing/recording
-- Set seed 847291, replay multiple times to learn it
-- Record perfect demo on that seed
-- "This demo gets 99% on seed 847291 every time"
+5. **Final Demo (Trivial Strategy):**
+   - "Just stand still" or "barely move"
+   - Success rate: 95-99%
+   - **This game is now a money printer**
 
-### Demo + Seed Synergy
-**Without seed lock:**
-- Demo works across random seeds
-- Success rate: 60-90% (depends on RNG)
-- General strategy must handle variance
-
-**With seed lock:**
-- Demo works on ONE perfect seed
-- Success rate: 95-100% (deterministic)
-- Hyper-optimized strategy for that exact pattern
-
-**The progression:**
-1. Record demo, VM runs it: 87% success (works on most seeds)
-2. Notice seed 482910 gets 99% with your demo
-3. Lock that seed, now demo is 99% consistent
-4. **Massive jump in VM efficiency**
-
-**Balance:**
-- Seed lock costs tokens or requires specific unlock
-- Encourages exploration: "Find the god-seed for my demo"
-- Late-game optimization: perfect demo + perfect seed = 100% automation
+**Key Insight:** You're not optimizing the game for YOU, you're optimizing it for a DUMB BOT executing pre-recorded inputs.
 
 ---
 
-## Scaling to Thousands/Millions
+## Scaling to Millions (Future Optimization)
 
-**The problem:**
-"I want to run 10,000 games at once, but can't simulate 10,000 full games"
+**NOTE: This is NOT part of the initial demo system. This is a future performance optimization.**
 
-**The solution:**
-Don't actually run 10,000 games. Run 10-100, extrapolate.
+**The Problem:**
+- Late game, player has millions of VM instances
+- Can't simulate millions of full game runs every second
+- Performance would collapse
 
-### Approach 1: Test-Based Generation
-- VM assigned 10,000 instances of same game
-- Runs 100 test executions
-- Calculates rate: 55 tokens/sec per instance
-- Generates: `55 × 10,000 = 550,000 tokens/sec`
-- Only 100 actual executions, rest is math
+**The Solution (Future Phase):**
+- Run small sample of VMs (10-100 actual executions)
+- Calculate statistical baseline (avg tokens/run, success rate)
+- Extrapolate to millions: `baseline_rate × instance_count`
+- Add minor variance (±5%) for realism
+- Re-sample periodically (every 5-10 minutes)
 
-### Approach 2: Sampling with Variance
-- Run 10 actual executions continuously
-- Add slight variance to each result (±5%)
-- Aggregate: "Based on 10 running instances, generating X tokens/sec"
-- Simulates the "feel" of thousands without overhead
+**Example:**
+```
+Player has 1,000,000 VMs running "Dodge Master Perfect"
+System runs 100 actual simulations
+Results: 99% success, 5.2 sec avg, 92,000 tokens avg
+Calculates: 17,700 tokens/sec per VM
+Generates: 17,700 × 1,000,000 = 17.7 billion tokens/sec
+Only 100 actual game loops running
+```
 
-### Approach 3: Cached Averages
-- Run demo 1,000 times once (takes 2-3 minutes)
-- Cache the average success rate
-- Use cached value for all future calculations
-- Re-test every hour or on demand
-
-**Recommendation:** Approach 1 or 3
-- Simple, clean, mathematically sound
-- No need to pretend about simulation
-- UI shows: "100 VMs active, generating 8.47e11 tokens/min"
+**This is NOT the demo recording system.** This is a scaling trick for when VMs become absurdly numerous.
 
 ---
 
-## UI/UX Considerations
-
-**VM Window Display:**
-```
-[VM-1: ACTIVE]
-Game: Dodge Master (Clone 0)
-Demo: "Safe Strategy v3" (recorded 2024-10-26)
-Status: Running test phase... (47/100 runs complete)
-
-Current Results:
-- Success Rate: 89% (42 wins, 5 fails so far)
-- Avg Completion: 7.8 sec
-- Avg Tokens: 1,250
-
-Estimated Rate: 142.6 tokens/sec
-```
-
-**After test phase completes:**
-```
-[VM-1: GENERATING]
-Game: Dodge Master (Clone 0)
-Demo: "Safe Strategy v3"
-Success Rate: 87% (87/100 runs)
-Generation Rate: 138.4 tokens/sec
-
-Total Earned: 1,247,892 tokens
-Uptime: 2h 30m
-
-[Re-Record Demo] [Change Game] [View Last Run]
-```
-
-**Multiple VMs:**
-```
-VM List (12 active):
-1. Dodge Master - 138.4 t/s - 87% success
-2. Ice Rink - 92.1 t/s - 91% success
-3. Tiny Arena - 203.7 t/s - 95% success
-4. Speed Trial - 1,847.2 t/s - 99% success ⭐
-5. ...
-
-Total Generation: 8,472 tokens/sec
-```
-
----
-
-## Implementation Notes
+## Data Structures
 
 ### Demo File Format (JSON)
 ```json
 {
-  "game_id": "dodge_0",
-  "variant": { ... full variant JSON ... },
-  "cheat_mods": { "lives": 20, "victory_limit": 15 },
+  "game_id": "dodge_1",
+  "variant_config": {
+    "clone_index": 0,
+    "cheat_mods": {
+      "lives": 30,
+      "victory_limit": 20,
+      "player_size": 1.5
+    }
+  },
   "recording": {
     "inputs": [
-      { "key": "w", "state": "pressed", "time": 0.523 },
-      { "key": "w", "state": "released", "time": 1.104 },
-      { "key": "a", "state": "pressed", "time": 1.450 },
-      ...
+      { "key": "w", "state": "pressed", "frame": 31 },
+      { "key": "w", "state": "released", "frame": 66 },
+      { "key": "a", "state": "pressed", "frame": 87 },
+      { "key": "a", "state": "released", "frame": 131 },
+      { "key": "d", "state": "pressed", "frame": 233 }
     ],
-    "duration": 15.847,
-    "recorded_at": "2024-10-26T15:32:10Z"
+    "total_frames": 948,
+    "fixed_dt": 0.016666667,
+    "recorded_at": "2025-10-30T15:32:10Z"
   },
-  "test_results": {
-    "runs": 100,
-    "successes": 87,
-    "avg_time": 8.234,
-    "avg_tokens": 1250,
-    "last_tested": "2024-10-26T15:35:42Z"
+  "metadata": {
+    "demo_name": "Conservative Strategy v3",
+    "description": "Stay near center, avoid edges",
+    "version": 1
   }
 }
 ```
 
-### Demo Playback Logic
-```lua
-function VM:executeDemo(demo, game_instance)
-    local time_elapsed = 0
-    local input_index = 1
-
-    while not game_instance:isComplete() do
-        time_elapsed = time_elapsed + dt
-
-        -- Process any inputs that should happen now
-        while input_index <= #demo.inputs do
-            local input = demo.inputs[input_index]
-            if input.time <= time_elapsed then
-                if input.state == "pressed" then
-                    game_instance:keyPressed(input.key)
-                else
-                    game_instance:keyReleased(input.key)
-                end
-                input_index = input_index + 1
-            else
-                break
-            end
-        end
-
-        game_instance:update(dt)
-    end
-
-    return game_instance:getResults()
-end
-```
-
-### Testing Multiple Runs
-```lua
-function VM:testDemo(demo, num_runs)
-    local results = {
-        successes = 0,
-        total_time = 0,
-        total_tokens = 0
-    }
-
-    for i = 1, num_runs do
-        local game = createGameInstance(demo.game_id, demo.variant, demo.cheat_mods)
-        game:setSeed(math.random(1, 999999)) -- Random seed each run
-
-        local result = self:executeDemo(demo, game)
-
-        if result.completed then
-            results.successes = results.successes + 1
-            results.total_time = results.total_time + result.time
-            results.total_tokens = results.total_tokens + result.tokens
-        end
-    end
-
-    return {
-        success_rate = results.successes / num_runs,
-        avg_time = results.total_time / results.successes,
-        avg_tokens = results.total_tokens / results.successes
-    }
-end
-```
-
----
-
-## Why This System Works
-
-**Solves the automation problem elegantly:**
-- VMs feel earned (you recorded the strategy)
-- Skill expression (better demos = better automation)
-- Natural progression (unreliable → reliable as you optimize)
-- Respects player agency (your strategy, automated)
-
-**Creates meaningful choices:**
-- Which games to optimize for VMs?
-- What demo strategy to use? (risky vs safe)
-- When to re-record demos after CheatEngine upgrades?
-- Which seeds to lock for perfect consistency?
-
-**Fits the idle game progression:**
-- Early: Active play rewarded (VMs suck)
-- Mid: Mixed approach (VMs for passive, manual for active)
-- Late: Full automation (perfectly engineered VM farm)
-
-**Scope-friendly:**
-- Demo recording: Simple input tracking
-- Playback: Just inject inputs at timestamps
-- Testing: Run game loop N times, record results
-- No AI, no complex simulation, just deterministic playback
-
----
-
-## Advanced: Boss Games & Demo Engineering
-
-**Boss Game Example:**
+### VM State (Player Data)
 ```json
 {
-  "name": "Dodge Apocalypse",
-  "victory_condition": "dodge_count",
-  "victory_limit": 10000,
-  "lives": 1,
-  "obstacle_spawn_rate": 5.0,
-  "obstacle_speed_variance": 0.9
+  "vm_slots": 3,
+  "active_vms": {
+    "1": {
+      "game_id": "dodge_1",
+      "demo_id": "demo_dodge_1_v3",
+      "stats": {
+        "total_runs": 1247,
+        "successes": 1089,
+        "failures": 158,
+        "total_tokens": 1402850,
+        "uptime_seconds": 18420,
+        "last_run_tokens": 1450,
+        "last_run_success": true
+      },
+      "current_run_progress": 0.67
+    }
+  },
+  "demos": {
+    "demo_dodge_1_v3": { ... demo JSON ... }
+  }
 }
 ```
 
-**Problem:** Literally impossible to complete manually (10,000 dodges, 1 life, insane spawn rate)
+---
 
-**CheatEngine Solution (100,000 credit budget):**
-1. Unlock "Dodge Count Multiplier" (50,000 credits) → set to 1000×
-2. Now only need 10 actual dodges to win
-3. Lives: 1 → 50 (10,000 credits)
-4. Obstacle spawn rate: 5.0 → 0.3 (25,000 credits)
-5. Player size: 1.0 → 0.3 (15,000 credits)
+## Phased Implementation Plan
 
-**Result:** 8-second trivial game
+### Phase 1: Demo Recording Infrastructure
 
-**Demo Strategy:**
-- "Move randomly for 8 seconds, stay near center"
-- Success rate: 99.8% (impossible to fail with 50 lives and tiny obstacles)
-- **This boss game is now your best idle farm**
+**Goal:** Allow players to record their gameplay inputs.
 
-**Why this is brilliant:**
-- Forces CheatEngine progression (need high budget to unlock multipliers)
-- Creates "taming the beast" satisfaction
-- Boss games become best endgame farms (highest payouts once optimized)
-- Natural gate: "I can't progress until I can afford these unlocks"
+**Components to Create:**
+- **Model: `DemoRecorder`** (`src/models/demo_recorder.lua`)
+  - Initialize recording (start frame counter)
+  - Capture key press/release events with frame numbers
+  - Track fixed timestep updates (frame counter increments)
+  - Finalize recording (total frame count)
+  - Generate demo data structure
+  - Validate recording (minimum frames, has inputs)
+
+- **Data Storage:**
+  - Extend `PlayerData` model to include `demos` table
+  - Demos indexed by ID: `demo_{game_id}_{version}`
+  - SaveManager integration for demo persistence
+
+- **Integration Points:**
+  - MinigameController receives DI reference to DemoRecorder
+  - Add recording mode flag to controller state
+  - Hook keypressed/keyreleased to recorder when active
+  - Stop recording on game complete or explicit cancel
+
+**Architectural Considerations:**
+- DemoRecorder is a model - no rendering, pure data capture
+- Use DI to inject into MinigameController
+- Recording happens during fixed timestep updates (not variable dt updates)
+- Frame counter must be consistent with game's fixed update loop
+- Emit event bus events: `demo_recording_started`, `demo_recording_completed`
+- Store demos in player_data for persistence via SaveManager
+- Handle edge cases: recording cancelled, zero inputs, duplicate recordings
+
+**Fixed Timestep Integration:**
+- Games must use fixed timestep for determinism
+- Recording tracks frame number during fixed updates
+- Example: 60 FPS fixed timestep = 1 frame per 0.01666... seconds
+- Variable visual framerate doesn't affect recording (only fixed updates matter)
+
+**File Changes:**
+- New: `src/models/demo_recorder.lua`
+- Modified: `src/models/player_data.lua` (add demos table)
+- Modified: `src/controllers/minigame_controller.lua` (add recording mode)
+- Modified: `src/utils/save_manager.lua` (persist demos)
+
+---
+
+### Phase 2: Demo Playback Engine
+
+**Goal:** Play back recorded demos in game instances.
+
+**Components to Create:**
+- **Model: `DemoPlayer`** (`src/models/demo_player.lua`)
+  - Load demo data
+  - Track playback frame counter
+  - Inject inputs at precise frame numbers
+  - Handle input queue (upcoming events)
+  - Detect playback completion (frame count exceeded or game complete)
+  - Return result (tokens, success, frames survived)
+
+- **Integration Points:**
+  - Game instances accept playback mode flag
+  - Disable human input during playback
+  - DemoPlayer calls game.keypressed/keyreleased at timestamps
+  - Game runs normally, unaware it's being automated
+
+**Architectural Considerations:**
+- DemoPlayer is a model - contains playback logic only
+- Game instances remain unchanged (just receive different input source)
+- Uses frame counter (not time-based)
+- Handle input timing edge cases (simultaneous presses, rapid sequences)
+- Emit events: `demo_playback_started`, `demo_playback_completed`
+
+**Playback Algorithm (Frame-Based):**
+```
+playback_frame = 0
+input_index = 1
+
+each fixed update:
+    -- Inject all inputs for this frame
+    while input_index <= #demo.inputs:
+        if demo.inputs[input_index].frame == playback_frame:
+            inject_input(demo.inputs[input_index].key, demo.inputs[input_index].state)
+            input_index += 1
+        else:
+            break
+
+    -- Always use fixed timestep
+    game:fixedUpdate(FIXED_DT)
+    playback_frame += 1
+
+    if game:isComplete() or playback_frame > demo.total_frames:
+        return game:getResults()
+```
+
+**Speed Multiplier Support:**
+```
+-- Multi-step mode: run N fixed updates per visual frame
+for step = 1, speed_multiplier do
+    -- Inject inputs for current frame
+    inject_inputs_for_frame(playback_frame)
+
+    -- Run one fixed update
+    game:fixedUpdate(FIXED_DT)
+    playback_frame += 1
+
+    if game:isComplete() then break end
+end
+
+-- Headless mode: run to completion without rendering
+function runHeadless(game, demo)
+    while not game:isComplete() and playback_frame <= demo.total_frames do
+        inject_inputs_for_frame(playback_frame)
+        game:fixedUpdate(FIXED_DT)  -- No rendering!
+        playback_frame += 1
+    end
+    return game:getResults()
+end
+```
+
+**File Changes:**
+- New: `src/models/demo_player.lua`
+- Modified: Game classes (add playback mode flag, support speed multipliers, headless mode)
+- Modified: `src/controllers/minigame_controller.lua` (support playback mode)
+- Modified: Base game classes (add fixed timestep support if not already present)
+
+---
+
+### Phase 3: VM Execution System Refactor
+
+**Goal:** Replace formula-based VMs with demo playback loops.
+
+**Components to Refactor:**
+- **Model: `VMManager`** (heavy refactor of existing file)
+  - Remove formula-based power calculation
+  - Add demo assignment (instead of game ID only)
+  - Track VM run statistics (runs, successes, failures, tokens)
+  - Implement run loop state machine:
+    - IDLE: No demo assigned
+    - RUNNING: Demo executing
+    - RESTARTING: Brief pause between runs
+    - STOPPED: Manually stopped
+  - Calculate tokens per run (not per cycle)
+  - Update statistics after each run
+  - Save/restore VM state with demo references
+
+- **VM Slot Data Structure:**
+```lua
+{
+    slot_index = 1,
+    state = "RUNNING", -- IDLE, RUNNING, RESTARTING, STOPPED
+    assigned_game_id = "dodge_1",
+    assigned_demo_id = "demo_dodge_1_v3",
+    demo_player = DemoPlayer instance,
+    game_instance = Game instance,
+
+    speed_upgrade_level = 0, -- 0 = 1x, 1 = 2x, 2 = 4x, etc., max = instant/headless
+    speed_multiplier = 1, -- Actual multiplier (how many fixed updates per visual frame)
+    headless_mode = false, -- If true, no rendering (instant completion)
+
+    stats = {
+        total_runs = 1247,
+        successes = 1089,
+        failures = 158,
+        total_tokens = 1402850,
+        uptime = 18420, -- seconds
+        tokens_per_minute = 4567, -- calculated average
+    },
+
+    current_run = {
+        start_frame = 0,
+        current_frame = 234,
+        seed = 847291
+    }
+}
+```
+
+**Execution Loop Logic:**
+```
+VM State Machine:
+
+IDLE:
+    - No demo assigned
+    - Wait for assignment
+
+RUNNING:
+    - if headless_mode:
+        - run demo to completion instantly (no rendering)
+        - capture result (tokens, success, frames)
+        - transition to RESTARTING immediately
+    - else (multi-step rendering mode):
+        - for i = 1 to speed_multiplier:
+            - demo_player:fixedUpdate()
+            - game_instance:fixedUpdate(FIXED_DT)
+            - if game complete: break
+        - if demo complete or game complete:
+            - capture result (tokens, success, frames)
+            - update stats
+            - player_data:addTokens(result.tokens)
+            - emit event: vm_run_completed
+            - transition to RESTARTING
+
+RESTARTING:
+    - brief pause (0.1 seconds) for visual feedback
+    - create new game instance with random seed
+    - reset demo_player
+    - transition to RUNNING
+
+STOPPED:
+    - Demo assigned but manually paused
+    - Don't execute, just wait
+```
+
+**Architectural Considerations:**
+- VMManager uses DI to access GameData, PlayerData, EventBus
+- Each VM slot contains its own DemoPlayer and game instance
+- Game instances are lightweight (can run many simultaneously)
+- Use event bus for: `vm_run_completed`, `vm_stats_updated`, `vm_speed_upgraded`
+- Save VM state frequently (after each run completion)
+- Handle edge cases: demo deleted while assigned, game unlocked status changes
+- Speed upgrades modify `speed_multiplier` and `headless_mode` flags
+- Headless VMs complete runs in milliseconds but provide no visual feedback
+- Mixed speeds allowed: some VMs at 1x for watching, others at instant for efficiency
+
+**File Changes:**
+- Modified: `src/models/vm_manager.lua` (major refactor)
+- Modified: `src/models/player_data.lua` (update active_vms structure)
+- Modified: `src/utils/save_manager.lua` (persist new VM state format)
+
+---
+
+### Phase 4: VM Window & Visualization
+
+**Goal:** Create UI for viewing and managing VMs.
+
+**Components to Create:**
+- **Program Definition:** Add VM Manager to `programs.json`
+  - Window defaults (800x600, resizable)
+  - Requirements (none - always available)
+  - Icon and display name
+
+- **View: `VMManagerView`** (`src/views/vm_manager_view.lua`)
+  - Grid of VM slots (similar to current design)
+  - Per-slot display:
+    - Slot number and status (IDLE/RUNNING/STOPPED)
+    - Assigned game name
+    - Demo name and version
+    - Speed indicator (1x, 4x, 10x, INSTANT)
+    - Live stats: runs, success rate, tokens/min
+    - Progress indicator (current run % or "INSTANT" for headless)
+  - Selected slot detail panel:
+    - Full statistics
+    - Assign/Remove/Stop controls
+    - Speed upgrade controls
+    - Re-record button
+  - **Live Playback Window (separate or embedded):**
+    - Shows current run executing
+    - Mini game view with demo playing
+    - Real-time feedback
+
+- **Controller: `VMManagerController`** (extend existing or create new)
+  - Handle slot selection
+  - Process assign demo request
+  - Process remove/stop requests
+  - Process speed upgrade purchases
+  - Provide data to view (slot states, stats, speed levels)
+  - Route to demo recording when requested
+
+**View Architecture:**
+- View is presentational only
+- Returns events: `{action: "assign_demo", slot: 1, game_id: "dodge_1", demo_id: "..."}`
+- Controller validates and calls VMManager model methods
+- Use viewport coordinates (windowed view)
+- No direct model access from view
+
+**Live Playback Options:**
+1. **Embedded in VM Manager window:** Small preview per slot
+2. **Separate window:** "VM Playback" program showing one selected VM
+3. **Modal overlay:** Click slot to watch live in popup
+
+**Recommended:** Option 2 - separate "VM Playback" window
+- Less visual clutter in VM Manager
+- Can resize/position playback window
+- Follows desktop paradigm (multiple windows)
+- **Important:** Playback windows ALWAYS render at 1x speed for visual clarity, regardless of VM's actual speed setting
+
+**File Changes:**
+- New: `src/views/vm_manager_view.lua` (refactor existing or create new)
+- New: `src/controllers/vm_manager_controller.lua`
+- New: `src/views/vm_playback_view.lua` (live game view)
+- Modified: `assets/data/programs.json` (add VM programs)
+
+---
+
+### Phase 5: Demo Management UI
+
+**Goal:** Allow players to view, select, and manage demos.
+
+**Components to Create:**
+- **Modal/Window: Demo Selection**
+  - Lists all demos for a given game
+  - Shows: demo name, success rate (if stats exist), date recorded
+  - Actions: Select, Delete, Re-record, Rename
+  - Filter by game type
+
+- **Integration with Launcher:**
+  - After completing a game, prompt: "Record Demo for VM?"
+  - Button in completion screen to record/re-record
+  - Associate demos with game variants
+
+- **Demo Recording Flow:**
+  1. Complete minigame
+  2. Prompt: "Record this run as a demo?"
+  3. If yes: save recording with auto-generated name
+  4. Allow immediate assignment to VM or save for later
+
+**Architectural Considerations:**
+- Demo list view is presentational (emits selection events)
+- Demo management logic in PlayerData model
+- Use event bus: `demo_selected`, `demo_deleted`, `demo_recorded`
+- Demo names default to: `"{game_name} Strategy v{N}"`
+- Allow player to rename demos (metadata field)
+
+**File Changes:**
+- New: `src/views/demo_selection_view.lua`
+- Modified: `src/states/completion_state.lua` (add demo recording prompt)
+- Modified: `src/models/player_data.lua` (demo CRUD operations)
+
+---
+
+### Phase 6: Live VM Playback Window
+
+**Goal:** Visualize a single VM running in real-time.
+
+**Components to Create:**
+- **Program: "VM Playback"**
+  - Window showing live game execution
+  - HUD overlay with current run stats
+  - Same rendering as normal minigame
+  - Read-only (no input accepted)
+
+- **View: `VMPlaybackView`** (`src/views/vm_playback_view.lua`)
+  - Render game state from VM's game_instance
+  - Draw HUD: run number, tokens this run, frames elapsed
+  - Show demo input visualization (which keys pressed)
+  - Show VM speed indicator (e.g., "VM Running at 10x, Display at 1x")
+  - Victory/Death overlay with brief result display
+
+- **State: `VMPlaybackState`** (`src/states/vm_playback_state.lua`)
+  - References a specific VM slot
+  - Updates game instance visualization
+  - Handles window close (doesn't stop VM)
+
+**Architectural Considerations:**
+- VMPlaybackState receives VM slot reference via DI or parameters
+- Reads game state from VMManager (doesn't own the game)
+- Pure visualization - doesn't affect VM execution
+- Closing window doesn't stop VM
+- Can open multiple playback windows for different slots
+- **Critical:** Playback renders at 1x speed even if VM runs at 10x or instant
+  - Shows "slow motion" replay of what VM is actually doing
+  - Allows watching fast VMs in detail
+  - Headless VMs can't be watched (no game state to render)
+
+**User Flow:**
+1. Open VM Manager
+2. Select a running VM slot
+3. Click "Watch" button
+4. VM Playback window opens
+5. See game playing with demo inputs
+6. Window updates in real-time as VM loops
+
+**File Changes:**
+- New: `src/states/vm_playback_state.lua`
+- New: `src/views/vm_playback_view.lua`
+- Modified: `assets/data/programs.json` (add VM Playback program)
+- Modified: `src/controllers/vm_manager_controller.lua` (launch playback window)
+
+---
+
+### Phase 7: Integration & Polish
+
+**Goal:** Connect all systems and handle edge cases.
+
+**Tasks:**
+- **Event Bus Integration:**
+  - `demo_recording_started` → Show recording indicator in game
+  - `demo_recording_completed` → Prompt for demo assignment
+  - `vm_run_completed` → Update UI stats if VM window open
+  - `demo_deleted` → Remove from assigned VMs, show warning
+  - `game_unlocked` → Enable demo recording for that game
+
+- **Save/Load Robustness:**
+  - Handle missing demos (reference but file gone)
+  - Handle corrupted demo data (validate on load)
+  - Versioning for demo format changes
+  - Migration path if demo structure changes
+
+- **UI Polish:**
+  - Demo recording indicator (red dot in corner)
+  - VM status icons (running/idle/error)
+  - Tooltips explaining success rates
+  - Confirmation dialogs for destructive actions
+  - Help text explaining demo system to new players
+
+- **Edge Cases:**
+  - Demo recorded but game variant changed (CheatEngine mods)
+  - VM running when player closes game (save state, restore)
+  - VM assigned to deleted/locked game
+  - Demo playback desyncs (rare, but handle gracefully)
+  - Zero token runs (game died instantly)
+
+- **Tutorial/Onboarding:**
+  - First time completing a game: tutorial popup
+  - Explain demo recording concept
+  - Guide to first VM assignment
+  - Tips for improving demo quality
+
+**File Changes:**
+- Modified: All integration points (many files)
+- New: `documentation/vm_system_tutorial.md` (player-facing guide)
+- Modified: `src/utils/save_manager.lua` (save format versioning)
+
+---
+
+### Phase 8: Performance & Optimization
+
+**Goal:** Ensure system performs well with many VMs.
+
+**Tasks:**
+- **Simulation Performance:**
+  - Profile game loop performance (target: 100+ VMs at 60 FPS)
+  - Optimize game instances for headless execution (no rendering overhead)
+  - VMs not being watched can use higher speed multipliers
+  - Batch statistics updates (not every frame)
+  - Fixed timestep ensures consistent performance regardless of visual framerate
+
+- **Memory Management:**
+  - Limit total simultaneous game instances
+  - Prioritize visible VMs (full simulation)
+  - Background VMs use reduced simulation
+  - Garbage collection tuning
+
+- **Save Performance:**
+  - Don't save VM state every frame
+  - Batch saves (every 10 runs or 30 seconds)
+  - Incremental saves (only changed data)
+
+- **UI Responsiveness:**
+  - Update VM Manager view at lower frequency (10 FPS)
+  - Use dirty flags for stat updates
+  - Throttle event bus emissions from high-frequency events
+
+**Benchmarking Targets:**
+- 10 VMs at 1x speed: No noticeable performance impact
+- 10 VMs at 10x speed: Slight CPU load, smooth visual framerate
+- 10 VMs at instant/headless: Minimal impact (no rendering)
+- 50 VMs mixed speeds: Acceptable performance on mid-range hardware
+- 100+ VMs (mostly headless): CPU-bound, visual VMs may need speed caps
+- 1000+ VMs: Future optimization phase (statistical sampling)
+
+**File Changes:**
+- Modified: `src/models/vm_manager.lua` (performance tuning, speed management)
+- Modified: All game classes (headless mode flags, fixed timestep if missing)
+- Modified: `src/models/demo_player.lua` (optimize for speed multipliers)
+
+---
+
+### Phase 9: Future Expansion (Statistical Sampling)
+
+**Goal:** Support millions of VMs via statistical extrapolation.
+
+**NOT PART OF INITIAL IMPLEMENTATION. Future phase when player can purchase millions of VMs.**
+
+**Concept:**
+- Player has 1,000,000+ VM instances
+- Can't actually simulate all of them
+- System runs 10-100 actual VMs
+- Calculates statistical baseline (avg tokens/sec)
+- Multiplies by instance count
+- Adds minor variance for realism
+
+**Implementation:**
+- Add VM "pools" (groupings of identical VMs)
+- Pool runs small sample, extrapolates
+- UI shows: "1,000,000 VMs (100 active samples)"
+- Periodically re-sample to update baseline
+
+**Defer until late-game balance requires it.**
+
+---
+
+## Summary of Architecture
+
+**Models (Business Logic):**
+- `DemoRecorder` - Captures input events with timestamps
+- `DemoPlayer` - Plays back demos into game instances
+- `VMManager` - Manages VM slots, execution loops, statistics
+- `PlayerData` - Stores demos and VM state
+
+**Views (Presentation):**
+- `VMManagerView` - Grid of VM slots with stats
+- `VMPlaybackView` - Live game visualization
+- `DemoSelectionView` - List and manage demos
+
+**Controllers/States:**
+- `VMManagerController` - Mediates VM management
+- `VMPlaybackState` - Owns playback window state
+- `MinigameController` - Extended to support recording mode
+
+**Data Files:**
+- Demos stored in player save data (JSON)
+- VM state persisted in save file
+- Demo format versioned for migrations
+
+**Event Bus Events:**
+- `demo_recording_started`, `demo_recording_completed`
+- `demo_playback_started`, `demo_playback_completed`
+- `vm_run_completed`, `vm_stats_updated`
+- `demo_deleted`, `demo_selected`
+
+**Config Values (add to `config.lua`):**
+```lua
+vm_demo = {
+    fixed_dt = 1/60, -- Fixed timestep for recording/playback (60 FPS)
+    restart_delay = 0.1, -- Seconds between runs (visual feedback)
+    max_demo_frames = 18000, -- Max frames (~5 minutes at 60 FPS)
+    min_demo_frames = 60, -- Min frames (~1 second at 60 FPS)
+    stats_update_interval = 1.0, -- Update UI stats every second
+    save_frequency = 30, -- Save VM state every 30 seconds
+
+    -- Speed upgrade system (levels defined in balance, not here)
+    max_visual_speed_multiplier = 100, -- Cap for rendered VMs
+    headless_speed_label = "INSTANT", -- UI label for headless mode
+}
+```
+
+---
+
+## Testing Strategy
+
+**Manual Testing Checklist:**
+
+**Phase 1-2 (Recording & Playback):**
+- [ ] Record demo of dodge game
+- [ ] Verify inputs captured with correct frame numbers
+- [ ] Play back demo at 1x speed, confirm identical movement
+- [ ] Test playback with different random seeds
+- [ ] Verify different outcomes per seed
+- [ ] Test fixed timestep determinism (record at various FPS, playback identical)
+- [ ] Test multi-step playback (2x, 4x, 10x speed multipliers)
+- [ ] Test headless mode (instant completion, no rendering)
+
+**Phase 3-4 (VM Execution):**
+- [ ] Assign demo to VM slot at 1x speed
+- [ ] Verify continuous run loop (watch 10+ runs)
+- [ ] Confirm tokens accumulate correctly
+- [ ] Check statistics accuracy (success rate)
+- [ ] Test speed upgrades (2x, 4x, 10x, instant)
+- [ ] Verify headless mode completes runs in milliseconds
+- [ ] Test mixed speed VMs (some 1x, some instant)
+- [ ] Test VM save/restore with different speed settings
+
+**Phase 5-6 (UI & Management):**
+- [ ] Open VM Manager window
+- [ ] Assign different demos to multiple slots
+- [ ] Purchase speed upgrades for specific VMs
+- [ ] Watch live playback window (renders at 1x regardless of VM speed)
+- [ ] Verify speed indicators display correctly
+- [ ] Verify stats display correctly (tokens/min scales with speed)
+- [ ] Test demo deletion while assigned to VM
+- [ ] Verify playback window shows "slow motion" of fast VM
+
+**Phase 7 (Integration):**
+- [ ] Complete game → record demo → assign to VM flow
+- [ ] Edge case: delete demo while VM running
+- [ ] Edge case: unlock new game during recording
+- [ ] Save/load with active VMs
+
+**Performance Testing:**
+- [ ] Run 10 VMs at 1x speed, check FPS (should be 60)
+- [ ] Run 10 VMs at 10x speed, check FPS (should remain 60)
+- [ ] Run 10 VMs at instant/headless, check completion time (should be milliseconds)
+- [ ] Run 50 VMs mixed speeds, confirm acceptable performance
+- [ ] Profile memory usage over 1 hour of VM operation
+- [ ] Test frame timing accuracy (fixed timestep maintains determinism)
+
+---
+
+## Success Criteria
+
+**Minimum Viable Demo System:**
+1. Player can record demos from completed games (frame-based)
+2. Demos can be assigned to VM slots
+3. VMs execute demos in continuous loop with random seeds
+4. Fixed timestep ensures deterministic playback
+5. Tokens accumulate based on actual run results
+6. VM speed upgrades work (1x → multi-step → instant)
+7. VM Manager window shows live stats and speed indicators
+8. VM Playback window visualizes execution at 1x (regardless of VM speed)
+9. System saves/restores VMs across sessions with speed settings
+
+**Good Demo System:**
+- Demo quality clearly affects VM success rate
+- Players naturally optimize games for VM automation
+- CheatEngine integration creates optimization loop
+- Speed upgrades feel impactful (watching it go faster is satisfying)
+- UI clearly communicates VM performance and speed
+- Multiple VMs running at different speeds feels responsive
+- Instant mode provides late-game efficiency satisfaction
+
+**Great Demo System:**
+- Recording/playback is bug-free and perfectly deterministic (frame-based)
+- VMs provide meaningful progression path (early: unreliable, late: perfect)
+- Speed progression feels good (1x → 10x → instant)
+- Visual feedback is satisfying (watching VMs loop at any speed)
+- Demo management is intuitive
+- System scales to 100+ VMs without performance issues (mix of speeds)
+- Playback window lets you watch fast VMs in slow motion
+
+---
+
+## Known Challenges & Mitigations
+
+**Challenge:** Demo desync (inputs don't produce expected results)
+**Mitigation:** Frame-based recording with fixed timestep ensures perfect determinism. Games must use fixed timestep for all simulation. Test thoroughly with seed reproduction across different visual framerates.
+
+**Challenge:** Performance with many VMs
+**Mitigation:** Phased approach - start with 10-50 VMs, optimize, then scale. Speed upgrade system naturally guides players: early VMs at 1x (watchable), late VMs at instant (headless). Mix of speeds distributes CPU load. Headless mode eliminates rendering overhead entirely.
+
+**Challenge:** Demo quality is hard to understand for players
+**Mitigation:** Clear UI showing success rate. Tutorial explaining concept. In-game feedback during recording.
+
+**Challenge:** Players may not understand why demos fail
+**Mitigation:** Playback window shows what went wrong. Stats clearly display failure reasons (if capturable).
+
+**Challenge:** Save file size with many demos
+**Mitigation:** Demos are small (just inputs + timestamps). Compress if needed. Limit max demos per game.
+
+---
+
+## Open Questions for Implementation
+
+1. **Demo Versioning:** How to handle demos when game balance changes?
+   - Option A: Invalidate old demos (force re-record)
+   - Option B: Version demos with game config snapshot
+   - **Recommended:** Option B - demos store variant config
+
+2. **VM Slot Limits:** How many VMs can player purchase?
+   - Use existing `vm_max_slots` from config (currently 10)
+   - Scale cost exponentially
+   - Consider UI layout constraints
+
+3. **Demo Storage Location:**
+   - Option A: Store in player_data (save file)
+   - Option B: Separate demo files (assets/demos/)
+   - **Recommended:** Option A - simpler, atomic saves
+
+4. **Fixed Timestep Implementation:** How to ensure games use fixed timestep?
+   - Option A: Refactor all games to use accumulator pattern
+   - Option B: Add fixed timestep wrapper to base game class
+   - **Recommended:** Option B - less invasive, centralized implementation
+
+5. **Speed Upgrade Balancing:** How to price/gate speed upgrades?
+   - Defer to balance team (not architectural decision)
+   - System supports arbitrary speed levels and costs
+   - UI must display speed clearly regardless of specific values
+
+6. **Recording Trigger:** How to initiate demo recording?
+   - Option A: Button in minigame HUD (always available)
+   - Option B: Prompt after completing game
+   - Option C: Toggle in VM Manager before launching game
+   - **Recommended:** Combination of A + B
+
+7. **Playback Window Speed Display:** How to show VM is running fast but display is 1x?
+   - Option A: HUD text: "VM: 10x, Display: 1x"
+   - Option B: Visual indicator (speed icon + slowdown icon)
+   - Option C: Tooltip on hover
+   - **Recommended:** Option A - clear and always visible
+
+---
+
+## Conclusion
+
+The VM Demo System transforms VMs from passive formula calculators into active automation tools that require player skill and optimization. By recording and playing back exact keypresses with frame-perfect determinism, players create their own automated strategies and iteratively improve them through CheatEngine optimization.
+
+**Core Loop:**
+Play → Record → Assign to VM → Watch it fail → Optimize game → Re-record → Watch it succeed → Upgrade speed → Profit faster
+
+**Key Technical Decisions:**
+- **Frame-based recording** (not time-based) ensures perfect determinism
+- **Fixed timestep simulation** prevents desync across different framerates
+- **Speed upgrade system** creates natural progression (1x → multi-step → instant)
+- **Hybrid rendering** allows watching fast VMs in slow motion
+- **Headless mode** provides late-game efficiency without visual overhead
+
+This system creates satisfying progression, meaningful player agency, natural integration with CheatEngine, and scalable performance. The phased approach ensures each component can be built, tested, and validated independently before integration.

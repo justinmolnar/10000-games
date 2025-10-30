@@ -121,7 +121,7 @@
     "category": "arcade",
     "unlock_cost": 20,
     "cost_exponent": 1.5,
-    "base_formula_string": "(((metrics.snake_length * 2) * (metrics.snake_length * 2) * 1) / metrics.survival_time)",
+    "base_formula_string": "(((metrics.snake_length * 2) * (metrics.snake_length * 2) * scaling_constant) / metrics.survival_time)",
     "metrics_tracked": ["snake_length", "survival_time"],
     "icon_sprite": "game_spider-0",
     "token_threshold": 0.75,
@@ -219,7 +219,7 @@
     "category": "puzzle",
     "unlock_cost": 20,
     "cost_exponent": 1.2,
-    "base_formula_string": "((metrics.matches * metrics.matches * (metrics.combo + 1) * 2 * 1) / metrics.time)",
+    "base_formula_string": "((metrics.matches * metrics.matches * (metrics.combo + 1) * 2 * scaling_constant) / metrics.time)",
     "metrics_tracked": ["matches", "time", "combo"],
     "icon_sprite": "game_freecell-0",
     "token_threshold": 0.75,
@@ -326,8 +326,8 @@
     "category": "action",
     "unlock_cost": 20,
     "cost_exponent": 1.5,
-    "base_formula_string": "((metrics.objects_dodged * 1) / (metrics.collisions + 1))",
-    "metrics_tracked": ["objects_dodged", "collisions", "perfect_dodges"],
+    "base_formula_string": "((metrics.objects_dodged - metrics.collisions * 3) * (metrics.objects_dodged - metrics.collisions * 3) * 0.03 * (1 + metrics.combo / math.max(1, metrics.objects_dodged) * 0.3) * scaling_constant)",
+    "metrics_tracked": ["objects_dodged", "collisions", "combo"],
     "icon_sprite": "game_solitaire-0",
     "token_threshold": 0.75,
 
@@ -337,12 +337,12 @@
       "metric_sprite_mappings": {
         "objects_dodged": "game_solitaire-0",
         "collisions": "msg_error-0",
-        "perfect_dodges": "check-0"
+        "combo": "check-0"
       },
       "formula_icon_mapping": {
         "objects_dodged": "game_solitaire-0",
         "collisions": "msg_error-0",
-        "perfect_dodges": "check-0",
+        "combo": "check-0",
         "result": "certificate-0"
       }
     },
@@ -380,7 +380,7 @@
     "bullet_sprite": "windows_slanted-1",
     "variant_multiplier": 1,
     "difficulty_level": 1,
-    "auto_play_performance": {"objects_dodged": 15, "collisions": 3, "perfect_dodges": 5},
+    "auto_play_performance": {"objects_dodged": 15, "collisions": 3, "combo": 5},
 
     "clone_variants": [
       {

@@ -22,6 +22,7 @@ local Config = {
     -- Game Cloning
     clone_cost_exponent = 0.8,            -- Cost scales as base_cost * (multiplier ^ cost_exponent)
     clone_difficulty_step = 5, -- Every 5 clones, the difficulty level increases by 1
+    scaling_constant = 1, -- Global scaling modifier applied to ALL game formulas (separate from clone_index multiplier)
     
     -- Auto-Play Performance Scaling (relative to base auto-play performance)
     auto_play_scaling = {
@@ -1021,7 +1022,6 @@ local Config = {
             boss = {
                 width = 80,
                 height = 80,
-                hp = 5000,
                 vx = 100,
                 attack_rate = 2.0,
                 orbit = {
@@ -1032,6 +1032,34 @@ local Config = {
                     spawn_speed_base = 150,
                     spawn_speed_per_level = 5
                 }
+            },
+            scaling = {
+                -- Boss HP formula: boss_hp_base * (level ^ boss_hp_exponent)
+                boss_hp_base = 5000,
+                boss_hp_exponent = 2.0,
+                -- Enemy HP formula: enemy_hp_base * (level ^ enemy_hp_exponent)
+                enemy_hp_base = 500,
+                enemy_hp_exponent = 1.8,
+                -- Boss attack spawn HP formula: attack_hp_base * (level ^ attack_hp_exponent)
+                attack_hp_base = 50,
+                attack_hp_exponent = 1.5,
+                -- Wave count formula: wave_count_base + (level * wave_count_per_level)
+                wave_count_base = 2,
+                wave_count_per_level = 3,
+                -- Enemy count per wave formula: enemy_count_base * (level ^ enemy_count_exponent)
+                enemy_count_base = 10,
+                enemy_count_exponent = 1.3,
+                -- Spawn rate (seconds between spawns, decreases with level)
+                spawn_rate_base = 1.0,
+                spawn_rate_min = 0.1,
+                spawn_rate_level_reduction = 0.05
+            },
+            boss_movement = {
+                -- Boss moves downward toward player
+                move_down_speed = 15,  -- pixels per second downward
+                side_speed = 100,      -- horizontal speed
+                min_y = 50,            -- Start position
+                death_y_threshold = 0.85  -- If boss reaches 85% down screen, player loses a life
             },
             bomb = { enemy_frac = 0.5, enemy_bonus = 50, boss_frac = 0.1, boss_bonus = 500 },
             rewards = { base = 500, per_level_multiplier = 0.5 },
