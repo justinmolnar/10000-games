@@ -16,6 +16,7 @@ function VMManagerState:init(vm_manager, player_data, game_data, state_machine, 
     self.view = VMManagerView:new(self, vm_manager, player_data, game_data, di)
 
     self.filtered_games = {}
+    self.filtered_demos = {}
     self.viewport = nil -- Initialize viewport
 end
 
@@ -23,10 +24,12 @@ function VMManagerState:enter()
     -- Reset view state
     self.view.selected_slot = nil
     self.view.game_selection_open = false
+    self.view.demo_selection_open = false
     self.view.scroll_offset = 0
 
     -- Get all completed games for assignment (state still manages this list)
     self:updateGameList()
+    self:updateDemoList()
 end
 
 function VMManagerState:setViewport(x, y, width, height)
@@ -52,37 +55,8 @@ function VMManagerState:purchaseUpgrade(upgrade_type)
         self.player_data.upgrades[upgrade_type] = current_level + 1
         print("Purchased upgrade: " .. upgrade_type .. " level " .. self.player_data.upgrades[upgrade_type] .. " for " .. cost .. " tokens")
 
-        -- Recalculate VM values without resetting timers
-    local cpu_bonus = 1 + (self.player_data.upgrades.cpu_speed * Config_.vm_cpu_speed_bonus_per_level)
-    local overclock_bonus = 1 + (self.player_data.upgrades.overclock * Config_.vm_overclock_bonus_per_level)
-
-        for _, slot in ipairs(self.vm_manager.vm_slots) do
-            if slot.active and slot.assigned_game_id then
-                local perf = self.player_data:getGamePerformance(slot.assigned_game_id)
-                if perf then
-                    -- Recalculate power with new overclock bonus
-                    slot.auto_play_power = perf.best_score * overclock_bonus
-                    slot.tokens_per_cycle = slot.auto_play_power
-
-                    -- Recalculate cycle time with new CPU bonus
-                    local old_cycle_time = slot.cycle_time -- Store old time for ratio calc
-                    local new_cycle_time = Config_.vm_base_cycle_time / cpu_bonus
-
-                    -- Adjust remaining time proportionally to maintain progress
-                    if old_cycle_time > 0 then
-                        local progress_ratio = (old_cycle_time - slot.time_remaining) / old_cycle_time
-                        slot.time_remaining = new_cycle_time * (1 - progress_ratio)
-                    else
-                        slot.time_remaining = new_cycle_time -- Start fresh if old time was 0
-                    end
-                    -- Clamp remaining time just in case
-                    slot.time_remaining = math.max(0, math.min(slot.time_remaining, new_cycle_time))
-
-                    slot.cycle_time = new_cycle_time
-                end
-            end
-        end
-
+        -- No need to recalculate cycle times anymore - VMs use demo playback
+        -- Just save and recalculate TPM
         self.vm_manager:calculateTokensPerMinute()
         self.save_manager.save(self.player_data)
         return true
@@ -95,21 +69,45 @@ end
 function VMManagerState:updateGameList()
     self.filtered_games = {}
 
-    -- Only show completed games
-    for game_id, perf in pairs(self.player_data.game_performance) do
+    -- Only show completed games (games with at least one demo)
+    local game_ids_with_demos = {}
+    for demo_id, demo in pairs(self.player_data.demos or {}) do
+        game_ids_with_demos[demo.game_id] = true
+    end
+
+    for game_id, _ in pairs(game_ids_with_demos) do
         local game_data = self.game_data:getGame(game_id)
         if game_data then
             table.insert(self.filtered_games, game_data)
         end
     end
 
-    -- Sort by power (descending)
+    -- Sort by name (alphabetical)
     table.sort(self.filtered_games, function(a, b)
-        local perf_a = self.player_data:getGamePerformance(a.id)
-        local perf_b = self.player_data:getGamePerformance(b.id)
-        -- Handle case where performance might be nil briefly during loading
-        return (perf_a and perf_a.best_score or 0) > (perf_b and perf_b.best_score or 0)
+        return a.display_name < b.display_name
     end)
+end
+
+function VMManagerState:updateDemoList(game_id)
+    self.filtered_demos = {}
+
+    -- Use provided game_id or try to get from selected slot
+    local target_game_id = game_id
+    if not target_game_id and self.view.selected_slot then
+        local slot = self.vm_manager:getSlot(self.view.selected_slot)
+        if slot and slot.assigned_game_id then
+            target_game_id = slot.assigned_game_id
+        end
+    end
+
+    if not target_game_id then
+        return
+    end
+
+    -- Get all demos for this game
+    local demos = self.player_data:getDemosForGame(target_game_id)
+    self.filtered_demos = demos or {}
+    print("[VMManagerState] updateDemoList for " .. target_game_id .. ": found " .. #self.filtered_demos .. " demos")
 end
 
 function VMManagerState:update(dt)
@@ -131,8 +129,13 @@ end
 
 function VMManagerState:keypressed(key)
     if key == 'escape' then
-        if self.view.game_selection_open then
-            -- Close modal first
+        if self.view.demo_selection_open then
+            -- Close demo selection modal first
+            self.view.demo_selection_open = false
+            self.view.game_selection_open = true
+            return true -- Handled
+        elseif self.view.game_selection_open then
+            -- Close game selection modal
             self.view.game_selection_open = false
             self.view.selected_slot = nil
             return true -- Handled
@@ -162,9 +165,21 @@ function VMManagerState:mousepressed(x, y, button)
 
     -- Handle view events as before...
     if event.name == "assign_game" then
-        self:assignGameToSlot(event.game_id, event.slot_index)
+        -- Game selected - now show demo selection
+        self.view.game_selection_open = false
+        self.view.demo_selection_open = true
+        self.view.selected_game_id = event.game_id
+        self:updateDemoList(event.game_id)  -- Pass the game_id explicitly
+    elseif event.name == "assign_demo" then
+        self:assignDemoToSlot(event.demo_id, event.slot_index)
     elseif event.name == "remove_game" then
         self:removeGameFromSlot(event.slot_index)
+    elseif event.name == "stop_vm" then
+        self:stopVM(event.slot_index)
+    elseif event.name == "start_vm" then
+        self:startVM(event.slot_index)
+    elseif event.name == "upgrade_speed" then
+        self:upgradeVMSpeed(event.slot_index)
     elseif event.name == "purchase_vm" then
         self:purchaseNewVM()
     elseif event.name == "purchase_upgrade" then
@@ -208,30 +223,40 @@ function VMManagerState:mousereleased(x, y, button)
 end
 
 -- Action handlers called by mousepressed based on view events
-function VMManagerState:assignGameToSlot(game_id, slot_index)
-    local success, err = self.vm_manager:assignGame(
+function VMManagerState:assignDemoToSlot(demo_id, slot_index)
+    local demo = self.player_data:getDemo(demo_id)
+    if not demo then
+        print("Failed to assign demo: demo not found")
+        return
+    end
+
+    local success, err = self.vm_manager:assignDemo(
         slot_index,
-        game_id,
+        demo.game_id,
+        demo_id,
         self.game_data,
         self.player_data
     )
 
     if success then
         self.save_manager.save(self.player_data)
-        -- Recalculate TPM might be needed if assignGame doesn't do it
         self.vm_manager:calculateTokensPerMinute()
+        -- Close modals
+        self.view.demo_selection_open = false
+        self.view.game_selection_open = false
+        self.view.selected_slot = nil
+        self.view.selected_game_id = nil
     else
-        print("Failed to assign game: " .. (err or "unknown error"))
-        -- Maybe show message box? love.window.showMessageBox("Error", "Failed to assign: " .. err, "error")
+        print("Failed to assign demo: " .. (err or "unknown error"))
+        love.window.showMessageBox("Error", "Failed to assign demo: " .. (err or "unknown error"), "error")
     end
 end
 
 function VMManagerState:removeGameFromSlot(slot_index)
-    local success = self.vm_manager:removeGame(slot_index, self.player_data)
+    local success = self.vm_manager:removeDemo(slot_index, self.player_data)
     if success then
         self.save_manager.save(self.player_data)
-        -- TPM recalculation happens in removeGame
-        print("Removed game from VM slot " .. slot_index)
+        print("Removed demo from VM slot " .. slot_index)
     end
 end
 
@@ -247,6 +272,32 @@ function VMManagerState:purchaseNewVM()
     else
         print("Failed to purchase VM: " .. (err or "unknown error"))
         love.window.showMessageBox("Purchase Failed", "Could not purchase VM: " .. (err or "Not enough tokens?"), "warning")
+    end
+end
+
+function VMManagerState:stopVM(slot_index)
+    local success = self.vm_manager:stopVM(slot_index, self.player_data)
+    if success then
+        self.save_manager.save(self.player_data)
+        print("Stopped VM slot " .. slot_index)
+    end
+end
+
+function VMManagerState:startVM(slot_index)
+    local success = self.vm_manager:startVM(slot_index, self.player_data, self.game_data)
+    if success then
+        self.save_manager.save(self.player_data)
+        print("Started VM slot " .. slot_index)
+    end
+end
+
+function VMManagerState:upgradeVMSpeed(slot_index)
+    local success, new_speed = self.vm_manager:upgradeSpeed(slot_index, self.player_data)
+    if success then
+        self.save_manager.save(self.player_data)
+        print("Upgraded VM " .. slot_index .. " speed to " .. new_speed .. "x")
+    else
+        print("Failed to upgrade VM speed (max level reached)")
     end
 end
 

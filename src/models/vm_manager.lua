@@ -1,33 +1,35 @@
--- src/models/vm_manager.lua: Manages virtual machines for automated game playing
+-- src/models/vm_manager.lua: Manages virtual machines for automated demo playback
 
 local Object = require('class')
 local Config = {} -- Will be set from DI in init
 local VMManager = Object:extend('VMManager')
 
 function VMManager:init(di)
+    -- Store DI container
+    self.di = di
+
     -- Optional DI for config
     if di and di.config then Config = di.config end
-    self.event_bus = di and di.eventBus -- Store event bus from DI
+    self.event_bus = di and di.eventBus
+    self.game_data = di and di.gameData
+    self.player_data = di and di.playerData
+
     self.vm_slots = {}
     self.total_tokens_per_minute = 0
-    self.max_slots = Config.vm_max_slots
+    self.max_slots = Config.vm_max_slots or 10
+
+    -- Restart delay between runs
+    self.restart_delay = (Config.vm_demo and Config.vm_demo.restart_delay) or 0.1
 end
 
 function VMManager:initialize(player_data)
     self.vm_slots = {}
+    self.player_data = player_data -- Store reference
 
     -- Create slots based on player's purchased VM count
     for i = 1, player_data.vm_slots do
-        table.insert(self.vm_slots, {
-            slot_index = i,
-            active = false,
-            assigned_game_id = nil,
-            time_remaining = 0,
-            cycle_time = Config.vm_base_cycle_time, -- Use config
-            auto_play_power = 0,
-            tokens_per_cycle = 0,
-            is_auto_completed = false
-        })
+        table.insert(self.vm_slots, self:createEmptySlot(i))
+
         -- Publish vm_created event for initial slots
         if self.event_bus then
             pcall(self.event_bus.publish, self.event_bus, 'vm_created', i)
@@ -38,136 +40,90 @@ function VMManager:initialize(player_data)
 
     -- Restore active VM assignments
     for slot_index_str, vm_data in pairs(player_data.active_vms) do
-         local slot_index = tonumber(slot_index_str) -- Keys from JSON might be strings
-         if slot_index and self.vm_slots[slot_index] and vm_data.game_id then
-            local slot = self.vm_slots[slot_index]
-            slot.active = true
-            slot.assigned_game_id = vm_data.game_id
-            -- Ensure loaded time remaining isn't longer than current cycle time
-            slot.cycle_time = Config.vm_base_cycle_time / (1 + (player_data.upgrades.cpu_speed * Config.vm_cpu_speed_bonus_per_level))
-            slot.time_remaining = math.min(vm_data.time_remaining or slot.cycle_time, slot.cycle_time)
-            -- Power will be recalculated on first update
-            print(string.format("Restored VM %d: %s (%.1fs remaining / %.1fs cycle)", slot_index, vm_data.game_id, slot.time_remaining, slot.cycle_time))
-            -- Publish vm_started event for restored active VMs
-            if self.event_bus then
-                pcall(self.event_bus.publish, self.event_bus, 'vm_started', slot.slot_index, slot.assigned_game_id)
+        local slot_index = tonumber(slot_index_str)
+        if slot_index and self.vm_slots[slot_index] and vm_data.game_id and vm_data.demo_id then
+            local success = self:restoreVMSlot(slot_index, vm_data, player_data)
+            if not success then
+                print("Warning: Could not restore VM slot " .. slot_index)
+                player_data.active_vms[slot_index_str] = nil
             end
         elseif slot_index then
-             print("Warning: Could not restore VM slot " .. slot_index .. ", data missing or invalid.")
-             -- Ensure invalid save data is cleared
-             player_data.active_vms[slot_index_str] = nil
+            print("Warning: Invalid VM save data for slot " .. slot_index)
+            player_data.active_vms[slot_index_str] = nil
         end
     end
 
     print("VM Manager initialized with " .. #self.vm_slots .. " slots")
 end
 
+-- Create an empty VM slot structure
+function VMManager:createEmptySlot(slot_index)
+    return {
+        slot_index = slot_index,
+        state = "IDLE", -- IDLE, RUNNING, RESTARTING, STOPPED
+        assigned_game_id = nil,
+        assigned_demo_id = nil,
+        demo_player = nil,
+        game_instance = nil,
 
-function VMManager:update(dt, player_data, game_data)
-    local tokens_generated = 0
+        speed_upgrade_level = 0,
+        speed_multiplier = 1,
+        headless_mode = false,
 
-    for _, slot in ipairs(self.vm_slots) do
-        if slot.active and slot.assigned_game_id then
-            -- Recalculate power and cycle time using config values if they haven't been set
-            local needs_recalculation = (slot.auto_play_power == 0 or slot.cycle_time == Config.vm_base_cycle_time)
-             -- Also recalculate if upgrades changed
-             local current_cpu_bonus = 1 + (player_data.upgrades.cpu_speed * Config.vm_cpu_speed_bonus_per_level)
-             local current_oc_bonus = 1 + (player_data.upgrades.overclock * Config.vm_overclock_bonus_per_level)
-             local calculated_cycle_time = Config.vm_base_cycle_time / current_cpu_bonus
+        stats = {
+            total_runs = 0,
+            successes = 0,
+            failures = 0,
+            total_tokens = 0,
+            uptime = 0,
+            tokens_per_minute = 0,
+            last_run_tokens = 0,
+            last_run_success = false,
+        },
 
-             if math.abs(slot.cycle_time - calculated_cycle_time) > 0.01 then -- Check if cycle time needs update due to upgrades
-                 needs_recalculation = true
-             end
+        current_run = {
+            start_frame = 0,
+            current_frame = 0,
+            seed = 0,
+            start_time = 0,
+        },
 
-            if needs_recalculation then
-                local perf = player_data:getGamePerformance(slot.assigned_game_id)
-                if perf then
-                    local overclock_bonus = 1 + (player_data.upgrades.overclock * Config.vm_overclock_bonus_per_level)
-                    local cpu_bonus = 1 + (player_data.upgrades.cpu_speed * Config.vm_cpu_speed_bonus_per_level) -- Recalculate here too
-
-                    slot.auto_play_power = perf.best_score * overclock_bonus -- Using best score for now
-                    slot.tokens_per_cycle = slot.auto_play_power
-                    slot.cycle_time = Config.vm_base_cycle_time / cpu_bonus
-                    -- Adjust remaining time proportionally if cycle time changed significantly
-                    -- Example: if old cycle was 60, new is 30, and 15s remained, new remaining should be 7.5s
-                    -- slot.time_remaining = (slot.time_remaining / old_cycle_time) * slot.cycle_time
-                    -- Simpler: just clamp remaining time to new cycle time
-                    slot.time_remaining = math.min(slot.time_remaining, slot.cycle_time)
-                else
-                    print("Warning: Performance data missing for VM game " .. slot.assigned_game_id .. ". Deactivating slot.")
-                    local old_game_id = slot.assigned_game_id
-                    slot.active = false
-                    slot.assigned_game_id = nil
-                    player_data.active_vms[tostring(slot.slot_index)] = nil -- Clear from save (use string key)
-                    -- Publish vm_stopped event when deactivated due to missing data
-                    if self.event_bus then
-                        pcall(self.event_bus.publish, self.event_bus, 'vm_stopped', slot.slot_index, old_game_id, 'missing_data')
-                    end
-                    goto next_slot -- Skip update for this slot
-                end
-            end
-
-            -- Tick down timer
-            slot.time_remaining = slot.time_remaining - dt
-
-            -- Cycle complete
-            if slot.time_remaining <= 0 then
-                tokens_generated = tokens_generated + slot.tokens_per_cycle
-                -- print(string.format("VM %d completed cycle! +%.1f tokens", slot.slot_index, slot.tokens_per_cycle))
-
-                local time_over = -slot.time_remaining
-                slot.time_remaining = slot.cycle_time - time_over
-
-                -- Update save data immediately after cycle completion
-                player_data.active_vms[tostring(slot.slot_index)] = { -- Use string key for JSON compatibility
-                    game_id = slot.assigned_game_id,
-                    time_remaining = slot.time_remaining
-                }
-                -- NOTE: No specific 'vm_cycle_completed' event defined in plan, could add later if needed
-            end
-        end
-        ::next_slot::
-    end
-
-    if tokens_generated > 0 then
-        player_data:addTokens(tokens_generated)
-        -- print(string.format("Total tokens generated this update: %.1f (Total tokens: %d)", tokens_generated, player_data.tokens))
-    end
-
-    self:calculateTokensPerMinute()
+        restart_timer = 0,
+    }
 end
 
-
-function VMManager:assignGame(slot_index, game_id, game_data, player_data)
-    if slot_index < 1 or slot_index > #self.vm_slots then return false, "Invalid slot index" end
-
+-- Restore a VM slot from save data
+function VMManager:restoreVMSlot(slot_index, vm_data, player_data)
     local slot = self.vm_slots[slot_index]
-    local game = game_data:getGame(game_id)
+    if not slot then return false end
 
-    if not game then return false, "Game not found" end
-    if self:isGameAssigned(game_id) then return false, "Game already assigned" end
-    local perf = player_data:getGamePerformance(game_id)
-    if not perf then return false, "Game not completed yet" end
+    -- Verify demo exists
+    local demo = player_data:getDemo(vm_data.demo_id)
+    if not demo then
+        print("Warning: Demo not found: " .. vm_data.demo_id)
+        return false
+    end
 
-    local vm_power = perf.best_score
-    local cpu_bonus = 1 + (player_data.upgrades.cpu_speed * Config.vm_cpu_speed_bonus_per_level)
-    local cycle_time = Config.vm_base_cycle_time / cpu_bonus
-    local overclock_bonus = 1 + (player_data.upgrades.overclock * Config.vm_overclock_bonus_per_level)
-    vm_power = vm_power * overclock_bonus
+    -- Restore slot data
+    slot.assigned_game_id = vm_data.game_id
+    slot.assigned_demo_id = vm_data.demo_id
+    slot.speed_upgrade_level = vm_data.speed_upgrade_level or 0
+    slot.speed_multiplier = vm_data.speed_multiplier or 1
+    slot.headless_mode = vm_data.headless_mode or false
 
-    slot.active = true
-    slot.assigned_game_id = game_id
-    slot.time_remaining = cycle_time
-    slot.cycle_time = cycle_time
-    slot.auto_play_power = vm_power
-    slot.tokens_per_cycle = vm_power
-    slot.is_auto_completed = perf.auto_completed or false
+    -- Restore stats
+    if vm_data.stats then
+        slot.stats.total_runs = vm_data.stats.total_runs or 0
+        slot.stats.successes = vm_data.stats.successes or 0
+        slot.stats.failures = vm_data.stats.failures or 0
+        slot.stats.total_tokens = vm_data.stats.total_tokens or 0
+        slot.stats.uptime = vm_data.stats.uptime or 0
+    end
 
-    if not player_data.active_vms then player_data.active_vms = {} end
-    player_data.active_vms[tostring(slot.slot_index)] = { game_id = game_id, time_remaining = slot.time_remaining } -- Use string key
+    -- Start the VM (will create game instance and demo player)
+    slot.state = "RESTARTING" -- Will transition to RUNNING on next update
+    slot.restart_timer = 0
 
-    print(string.format("Assigned %s to VM slot %d (Power: %.1f, Cycle: %.1fs)",
-        game.display_name, slot_index, vm_power, cycle_time))
 
     -- Publish vm_started event
     if self.event_bus then
@@ -177,58 +133,409 @@ function VMManager:assignGame(slot_index, game_id, game_data, player_data)
     return true
 end
 
+function VMManager:update(dt, player_data, game_data)
+    local tokens_generated = 0
 
-function VMManager:removeGame(slot_index, player_data)
-    if slot_index < 1 or slot_index > #self.vm_slots then return false end
+    for _, slot in ipairs(self.vm_slots) do
+        if slot.state == "IDLE" then
+            -- Do nothing
+
+        elseif slot.state == "RUNNING" then
+            tokens_generated = tokens_generated + self:updateRunningSlot(slot, dt, player_data, game_data)
+
+        elseif slot.state == "RESTARTING" then
+            self:updateRestartingSlot(slot, dt, player_data, game_data)
+
+        elseif slot.state == "STOPPED" then
+            -- Do nothing (manually paused)
+        end
+    end
+
+    if tokens_generated > 0 then
+        player_data:addTokens(tokens_generated)
+    end
+
+    self:calculateTokensPerMinute()
+end
+
+-- Update a running VM slot
+function VMManager:updateRunningSlot(slot, dt, player_data, game_data)
+    local tokens = 0
+
+    -- Update uptime
+    slot.stats.uptime = slot.stats.uptime + dt
+
+    -- Debug: Track update frequency
+    if not slot.debug_frame_count then
+        slot.debug_frame_count = 0
+        slot.debug_start_time = love.timer.getTime()
+        slot.last_step_time = love.timer.getTime()
+    end
+    slot.debug_frame_count = slot.debug_frame_count + 1
+
+
+    if slot.headless_mode then
+        -- Headless: run to completion instantly
+        if slot.demo_player and slot.demo_player:isPlaying() then
+            local result = slot.demo_player:runHeadless()
+            if result then
+                tokens = self:processRunResult(slot, result, player_data)
+                self:transitionToRestarting(slot)
+            end
+        end
+    else
+        -- Multi-step rendering mode
+        if slot.demo_player and slot.demo_player:isPlaying() then
+            slot.demo_player:update(dt)
+
+            -- Check if run completed
+            if slot.demo_player:isComplete() then
+                local result = slot.demo_player:stopPlayback()
+                if result then
+                    tokens = self:processRunResult(slot, result, player_data)
+                    self:transitionToRestarting(slot)
+                end
+            end
+        end
+    end
+
+    return tokens
+end
+
+-- Update a restarting VM slot
+function VMManager:updateRestartingSlot(slot, dt, player_data, game_data)
+    slot.restart_timer = slot.restart_timer + dt
+
+    if slot.restart_timer >= self.restart_delay then
+        -- Create new game instance and start playback
+        local success = self:startNewRun(slot, player_data, game_data)
+        if success then
+            slot.state = "RUNNING"
+            slot.restart_timer = 0
+        else
+            -- Failed to start, go idle
+            print("Warning: Failed to start VM run for slot " .. slot.slot_index)
+            slot.state = "IDLE"
+        end
+    end
+end
+
+-- Start a new demo run
+function VMManager:startNewRun(slot, player_data, game_data)
+    if not slot.assigned_demo_id or not slot.assigned_game_id then
+        return false
+    end
+
+    -- Get demo
+    local demo = player_data:getDemo(slot.assigned_demo_id)
+    if not demo then
+        print("Error: Demo not found: " .. slot.assigned_demo_id)
+        return false
+    end
+
+    -- Debug: Check demo data
+    print("[VMManager] Starting demo playback:")
+    print("  Demo ID: " .. slot.assigned_demo_id)
+    print("  Demo name: " .. (demo.metadata and demo.metadata.demo_name or "unknown"))
+    print("  Total frames: " .. (demo.recording and demo.recording.total_frames or 0))
+    print("  Input count: " .. (demo.recording and demo.recording.inputs and #demo.recording.inputs or 0))
+
+    -- Create game instance
+    local game_instance = self:createGameInstance(slot.assigned_game_id, demo, game_data, player_data, slot.slot_index)
+    if not game_instance then
+        print("Error: Failed to create game instance for " .. slot.assigned_game_id)
+        return false
+    end
+
+    -- Create demo player if needed
+    if not slot.demo_player then
+        local DemoPlayer = require('src.models.demo_player')
+        slot.demo_player = DemoPlayer:new(self.di)
+    end
+
+    -- Start playback
+    local success = slot.demo_player:startPlayback(demo, game_instance, slot.speed_multiplier, slot.headless_mode)
+    if not success then
+        print("Error: Failed to start demo playback")
+        return false
+    end
+
+    slot.game_instance = game_instance
+    slot.current_run.start_frame = 0
+    slot.current_run.current_frame = 0
+    slot.current_run.seed = game_instance.seed or 0
+    slot.current_run.start_time = os.time()
+
+    print(string.format("  Speed multiplier: %dx, Headless: %s, Game completed: %s",
+        slot.speed_multiplier, tostring(slot.headless_mode), tostring(game_instance.completed)))
+
+    return true
+end
+
+-- Create a game instance for demo playback
+function VMManager:createGameInstance(game_id, demo, game_data, player_data, slot_index)
+    local game_def = game_data:getGame(game_id)
+    if not game_def then
+        return nil
+    end
+
+    -- Dynamically load the game class (same pattern as MinigameState)
+    local class_name = game_def.game_class
+    local logic_file_name = class_name:gsub("([a-z])([A-Z])", "%1_%2"):lower()
+    local require_path = 'src.games.' .. logic_file_name
+
+    local require_ok, GameClass = pcall(require, require_path)
+    if not require_ok or not GameClass then
+        print("[VMManager] ERROR: Failed to load game class '" .. require_path .. "': " .. tostring(GameClass))
+        return nil
+    end
+
+    -- Get active cheats for this game
+    local active_cheats = {}
+    if player_data and player_data.cheat_engine_data and player_data.cheat_engine_data[game_id] then
+        active_cheats = player_data.cheat_engine_data[game_id].cheats or {}
+    end
+
+    -- Create game instance with variant config from demo
+    local game_instance = GameClass:new(game_def, active_cheats, self.di, demo.variant_config)
+
+    -- Enable playback mode (blocks human input)
+    if game_instance.setPlaybackMode then
+        game_instance:setPlaybackMode(true)
+    end
+
+    -- Set random seed for this run (use slot_index if provided)
+    math.randomseed(os.time() + (slot_index or 0))
+
+    return game_instance
+end
+
+-- Process run result and update stats
+function VMManager:processRunResult(slot, result, player_data)
+    slot.stats.total_runs = slot.stats.total_runs + 1
+
+    local tokens = result.tokens or 0
+    local success = result.completed or false
+
+    local elapsed_time = love.timer.getTime() - (slot.debug_start_time or 0)
+    local game_fps = (result.frames_played or 0) / elapsed_time
+    local expected_time = (result.frames_played or 0) / 60
+    print(string.format("[VMManager] Run completed - Tokens: %d, Frames: %d | %.1fs real vs %.1fs expected @ 60fps (%.1f actual FPS)",
+        tokens, result.frames_played or 0, elapsed_time, expected_time, game_fps))
+
+    -- Reset debug counters
+    slot.debug_frame_count = nil
+    slot.debug_start_time = nil
+
+    if success then
+        slot.stats.successes = slot.stats.successes + 1
+    else
+        slot.stats.failures = slot.stats.failures + 1
+    end
+
+    slot.stats.total_tokens = slot.stats.total_tokens + tokens
+    slot.stats.last_run_tokens = tokens
+    slot.stats.last_run_success = success
+
+    -- Update tokens per minute
+    if slot.stats.total_runs > 0 and slot.stats.uptime > 0 then
+        slot.stats.tokens_per_minute = (slot.stats.total_tokens / slot.stats.uptime) * 60
+    end
+
+    -- Save VM state
+    self:saveSlotState(slot, player_data)
+
+    -- Emit event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'vm_run_completed',
+            slot.slot_index, slot.assigned_game_id, tokens, success)
+    end
+
+    return tokens
+end
+
+-- Transition slot to RESTARTING state
+function VMManager:transitionToRestarting(slot)
+    slot.state = "RESTARTING"
+    slot.restart_timer = 0
+    slot.game_instance = nil -- Clean up game instance
+end
+
+-- Save VM slot state to player data
+function VMManager:saveSlotState(slot, player_data)
+    if not player_data.active_vms then
+        player_data.active_vms = {}
+    end
+
+    if slot.state == "IDLE" then
+        -- Remove from save
+        player_data.active_vms[tostring(slot.slot_index)] = nil
+    else
+        -- Save current state
+        player_data.active_vms[tostring(slot.slot_index)] = {
+            game_id = slot.assigned_game_id,
+            demo_id = slot.assigned_demo_id,
+            speed_upgrade_level = slot.speed_upgrade_level,
+            speed_multiplier = slot.speed_multiplier,
+            headless_mode = slot.headless_mode,
+            stats = {
+                total_runs = slot.stats.total_runs,
+                successes = slot.stats.successes,
+                failures = slot.stats.failures,
+                total_tokens = slot.stats.total_tokens,
+                uptime = slot.stats.uptime,
+            }
+        }
+    end
+end
+
+-- Assign a demo to a VM slot
+function VMManager:assignDemo(slot_index, game_id, demo_id, game_data, player_data)
+    if slot_index < 1 or slot_index > #self.vm_slots then
+        return false, "Invalid slot index"
+    end
 
     local slot = self.vm_slots[slot_index]
-    local old_game_id = slot.assigned_game_id -- Store before clearing
-    slot.active = false
-    slot.assigned_game_id = nil
-    slot.time_remaining = 0
-    slot.auto_play_power = 0
-    slot.tokens_per_cycle = 0
 
-    -- Remove from player data using string key
-    if player_data.active_vms then
-       player_data.active_vms[tostring(slot_index)] = nil
+    -- Verify game exists
+    local game = game_data:getGame(game_id)
+    if not game then
+        return false, "Game not found"
     end
 
-    print("Removed game from VM slot " .. slot_index)
+    -- Verify demo exists
+    local demo = player_data:getDemo(demo_id)
+    if not demo then
+        return false, "Demo not found"
+    end
+
+    -- Verify demo is for this game
+    if demo.game_id ~= game_id then
+        return false, "Demo does not match game"
+    end
+
+    -- Stop current run if active
+    if slot.state ~= "IDLE" then
+        self:removeDemo(slot_index, player_data)
+    end
+
+    -- Assign demo
+    slot.assigned_game_id = game_id
+    slot.assigned_demo_id = demo_id
+    slot.state = "RESTARTING"
+    slot.restart_timer = 0
+
+    -- Reset stats
+    slot.stats.total_runs = 0
+    slot.stats.successes = 0
+    slot.stats.failures = 0
+    slot.stats.total_tokens = 0
+    slot.stats.uptime = 0
+    slot.stats.tokens_per_minute = 0
+
+    print(string.format("Assigned demo '%s' to VM slot %d for game %s",
+        demo.metadata.demo_name, slot_index, game.display_name))
+
+    -- Save state
+    self:saveSlotState(slot, player_data)
+
+    -- Publish vm_started event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'vm_started', slot.slot_index, slot.assigned_game_id)
+    end
+
+    return true
+end
+
+-- Stop a running VM (keeps assignment, can restart)
+function VMManager:stopVM(slot_index, player_data)
+    if slot_index < 1 or slot_index > #self.vm_slots then
+        return false
+    end
+
+    local slot = self.vm_slots[slot_index]
+
+    if slot.state ~= "RUNNING" and slot.state ~= "RESTARTING" then
+        return false -- Already stopped
+    end
+
+    -- Stop playback
+    if slot.demo_player and slot.demo_player:isPlaying() then
+        slot.demo_player:stopPlayback()
+    end
+
+    -- Transition to IDLE but keep assignment
+    slot.state = "IDLE"
+    slot.game_instance = nil
+
+    -- Save state
+    self:saveSlotState(slot, player_data)
+
+    print("Stopped VM slot " .. slot_index)
 
     -- Publish vm_stopped event
-    if self.event_bus and old_game_id then
-        pcall(self.event_bus.publish, self.event_bus, 'vm_stopped', slot.slot_index, old_game_id, 'user_removed')
+    if self.event_bus and slot.assigned_game_id then
+        pcall(self.event_bus.publish, self.event_bus, 'vm_stopped',
+            slot.slot_index, slot.assigned_game_id, 'user_stopped')
     end
 
-    -- Recalculate TPM after removal
     self:calculateTokensPerMinute()
     return true
 end
 
+-- Remove demo from VM slot
+function VMManager:removeDemo(slot_index, player_data)
+    if slot_index < 1 or slot_index > #self.vm_slots then
+        return false
+    end
 
+    local slot = self.vm_slots[slot_index]
+    local old_game_id = slot.assigned_game_id
+
+    -- Stop playback
+    if slot.demo_player and slot.demo_player:isPlaying() then
+        slot.demo_player:stopPlayback()
+    end
+
+    -- Reset slot
+    slot.state = "IDLE"
+    slot.assigned_game_id = nil
+    slot.assigned_demo_id = nil
+    slot.demo_player = nil
+    slot.game_instance = nil
+
+    -- Save state (will remove from active_vms)
+    self:saveSlotState(slot, player_data)
+
+    print("Removed demo from VM slot " .. slot_index)
+
+    -- Publish vm_stopped event
+    if self.event_bus and old_game_id then
+        pcall(self.event_bus.publish, self.event_bus, 'vm_stopped',
+            slot.slot_index, old_game_id, 'user_removed')
+    end
+
+    self:calculateTokensPerMinute()
+    return true
+end
+
+-- Purchase a new VM slot
 function VMManager:purchaseVM(player_data)
-    if #self.vm_slots >= self.max_slots then return false, "Maximum VM slots reached" end
+    if #self.vm_slots >= self.max_slots then
+        return false, "Maximum VM slots reached"
+    end
 
     local cost = self:getVMCost(#self.vm_slots)
 
-    if not player_data:hasTokens(cost) then return false, "Not enough tokens (" .. cost .. " needed)" end
+    if not player_data:hasTokens(cost) then
+        return false, "Not enough tokens (" .. cost .. " needed)"
+    end
 
     if player_data:spendTokens(cost) then
-        -- Increment player data count *before* adding the slot
         player_data.vm_slots = player_data.vm_slots + 1
-        local new_slot_index = player_data.vm_slots -- Should match the new count
+        local new_slot_index = player_data.vm_slots
 
-        table.insert(self.vm_slots, {
-            slot_index = new_slot_index,
-            active = false,
-            assigned_game_id = nil,
-            time_remaining = 0,
-            cycle_time = Config.vm_base_cycle_time,
-            auto_play_power = 0,
-            tokens_per_cycle = 0,
-            is_auto_completed = false
-        })
+        table.insert(self.vm_slots, self:createEmptySlot(new_slot_index))
 
         print("Purchased VM slot " .. new_slot_index .. " for " .. cost .. " tokens")
 
@@ -236,7 +543,6 @@ function VMManager:purchaseVM(player_data)
         if self.event_bus then
             pcall(self.event_bus.publish, self.event_bus, 'vm_created', new_slot_index)
         end
-        -- Note: vm_destroyed is not needed as VMs aren't currently destroyable
 
         return true
     end
@@ -244,56 +550,72 @@ function VMManager:purchaseVM(player_data)
     return false, "Purchase failed (unknown reason)"
 end
 
-
+-- Get VM purchase cost
 function VMManager:getVMCost(current_count)
-    -- Cost applies to the *next* slot purchase. If count is 1 (base slot), cost is for slot #2.
     local effective_count = math.max(0, current_count - 1)
-    return math.floor(Config.vm_base_cost * math.pow(Config.vm_cost_exponent, effective_count))
+    return math.floor((Config.vm_base_cost or 1000) * math.pow((Config.vm_cost_exponent or 2), effective_count))
 end
 
-
+-- Calculate total tokens per minute across all VMs
 function VMManager:calculateTokensPerMinute()
     local total = 0
     for _, slot in ipairs(self.vm_slots) do
-        if slot.active and slot.cycle_time > 0 then -- Prevent division by zero
-            local cycles_per_minute = 60 / slot.cycle_time
-            total = total + (slot.tokens_per_cycle * cycles_per_minute)
+        if slot.state ~= "IDLE" then
+            total = total + (slot.stats.tokens_per_minute or 0)
         end
     end
     self.total_tokens_per_minute = total
     return total
 end
 
-
-function VMManager:getOptimalGameForVM(game_list, player_data)
-    -- Helper to suggest best *unassigned* completed game for automation
-    local best_game = nil
-    local best_rate = -1 -- Start below 0 in case all games have 0 power
-
-    for _, game in ipairs(game_list) do
-        local perf = player_data:getGamePerformance(game.id)
-        if perf and not self:isGameAssigned(game.id) then
-            -- Calculate potential auto-play power *with* overclock bonus
-            local overclock_bonus = 1 + (player_data.upgrades.overclock * Config.vm_overclock_bonus_per_level)
-            local potential_power = perf.best_score * overclock_bonus
-            -- Calculate potential rate (power / cycle_time * 60)
-             local cpu_bonus = 1 + (player_data.upgrades.cpu_speed * Config.vm_cpu_speed_bonus_per_level)
-             local potential_cycle_time = Config.vm_base_cycle_time / cpu_bonus
-             local potential_rate = potential_power * (60 / potential_cycle_time)
-
-            if potential_rate > best_rate then
-                best_rate = potential_rate
-                best_game = game
-            end
-        end
+-- Upgrade VM speed
+function VMManager:upgradeSpeed(slot_index, new_level, new_multiplier, new_headless)
+    if slot_index < 1 or slot_index > #self.vm_slots then
+        return false
     end
-    return best_game
+
+    local slot = self.vm_slots[slot_index]
+    slot.speed_upgrade_level = new_level
+    slot.speed_multiplier = new_multiplier
+    slot.headless_mode = new_headless
+
+    -- Update demo player if running
+    if slot.demo_player then
+        slot.demo_player.speed_multiplier = new_multiplier
+        slot.demo_player.headless_mode = new_headless
+    end
+
+    print(string.format("VM slot %d upgraded to level %d (speed: %dx, headless: %s)",
+        slot_index, new_level, new_multiplier, tostring(new_headless)))
+
+    -- Emit event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'vm_speed_upgraded',
+            slot_index, new_level, new_multiplier, new_headless)
+    end
+
+    return true
 end
 
+-- Get VM slot data
+function VMManager:getSlot(slot_index)
+    return self.vm_slots[slot_index]
+end
 
+-- Check if a demo is assigned to any VM
+function VMManager:isDemoAssigned(demo_id)
+    for _, slot in ipairs(self.vm_slots) do
+        if slot.assigned_demo_id == demo_id then
+            return true, slot.slot_index
+        end
+    end
+    return false, nil
+end
+
+-- Legacy compatibility: check if game is assigned (now checks demo for that game)
 function VMManager:isGameAssigned(game_id)
     for _, slot in ipairs(self.vm_slots) do
-        if slot.active and slot.assigned_game_id == game_id then
+        if slot.assigned_game_id == game_id then
             return true
         end
     end
@@ -307,7 +629,9 @@ end
 function VMManager:getActiveSlotCount()
     local count = 0
     for _, slot in ipairs(self.vm_slots) do
-        if slot.active then count = count + 1 end
+        if slot.state ~= "IDLE" then
+            count = count + 1
+        end
     end
     return count
 end

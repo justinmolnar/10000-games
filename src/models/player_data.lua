@@ -36,6 +36,17 @@ function PlayerData:init(statistics_instance, di)
     self.cheat_engine_data = {}
 
     self.upgrades = { cpu_speed=0, overclock=0, auto_dodge=0 }
+
+    -- Demo system: stores all recorded demos
+    -- {
+    --   [demo_id] = {
+    --     game_id = "dodge_1",
+    --     variant_config = { ... },
+    --     recording = { inputs = [...], total_frames = N, fixed_dt = 0.016666, recorded_at = "..." },
+    --     metadata = { demo_name = "...", description = "...", version = 1 }
+    --   }
+    -- }
+    self.demos = {}
 end
 
 function PlayerData:addTokens(amount)
@@ -237,6 +248,133 @@ function PlayerData:getCheatLevel(game_id, cheat_id)
     return self.cheat_engine_data[game_id].cheats[cheat_id] or 0
 end
 
+-- === Demo Management Functions ===
+
+-- Save a demo (returns demo_id)
+function PlayerData:saveDemo(demo)
+    if not demo or not demo.game_id or not demo.recording then
+        print("Error: Invalid demo data")
+        return nil
+    end
+
+    -- Generate unique demo ID
+    local demo_id = "demo_" .. demo.game_id .. "_" .. os.time()
+
+    -- Store demo
+    self.demos = self.demos or {}
+    self.demos[demo_id] = demo
+
+    -- Emit event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'demo_saved', demo_id, demo)
+    end
+
+    print("Saved demo: " .. demo_id .. " (" .. demo.metadata.demo_name .. ")")
+    return demo_id
+end
+
+-- Get a specific demo
+function PlayerData:getDemo(demo_id)
+    self.demos = self.demos or {}
+    return self.demos[demo_id]
+end
+
+-- Get all demos for a specific game
+function PlayerData:getDemosForGame(game_id)
+    self.demos = self.demos or {}
+    local game_demos = {}
+
+    for demo_id, demo in pairs(self.demos) do
+        if demo.game_id == game_id then
+            table.insert(game_demos, {
+                demo_id = demo_id,
+                demo = demo
+            })
+        end
+    end
+
+    -- Sort by recorded_at (most recent first)
+    table.sort(game_demos, function(a, b)
+        return (a.demo.recording.recorded_at or "") > (b.demo.recording.recorded_at or "")
+    end)
+
+    return game_demos
+end
+
+-- Get all demos
+function PlayerData:getAllDemos()
+    self.demos = self.demos or {}
+    local all_demos = {}
+
+    for demo_id, demo in pairs(self.demos) do
+        table.insert(all_demos, {
+            demo_id = demo_id,
+            demo = demo
+        })
+    end
+
+    -- Sort by recorded_at (most recent first)
+    table.sort(all_demos, function(a, b)
+        return (a.demo.recording.recorded_at or "") > (b.demo.recording.recorded_at or "")
+    end)
+
+    return all_demos
+end
+
+-- Delete a demo
+function PlayerData:deleteDemo(demo_id)
+    self.demos = self.demos or {}
+
+    if not self.demos[demo_id] then
+        print("Warning: Demo not found: " .. demo_id)
+        return false
+    end
+
+    local demo = self.demos[demo_id]
+    self.demos[demo_id] = nil
+
+    -- Emit event
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'demo_deleted', demo_id, demo.game_id)
+    end
+
+    print("Deleted demo: " .. demo_id)
+    return true
+end
+
+-- Rename a demo
+function PlayerData:renameDemo(demo_id, new_name)
+    self.demos = self.demos or {}
+
+    if not self.demos[demo_id] then
+        print("Warning: Demo not found: " .. demo_id)
+        return false
+    end
+
+    self.demos[demo_id].metadata.demo_name = new_name
+    print("Renamed demo " .. demo_id .. " to: " .. new_name)
+    return true
+end
+
+-- Update demo description
+function PlayerData:updateDemoDescription(demo_id, new_description)
+    self.demos = self.demos or {}
+
+    if not self.demos[demo_id] then
+        print("Warning: Demo not found: " .. demo_id)
+        return false
+    end
+
+    self.demos[demo_id].metadata.description = new_description
+    return true
+end
+
+-- Check if demo exists
+function PlayerData:hasDemo(demo_id)
+    self.demos = self.demos or {}
+    return self.demos[demo_id] ~= nil
+end
+
 -- ============================================================================
 -- NEW: Dynamic Parameter Modification System (CheatEngine)
 -- ============================================================================
@@ -425,7 +563,8 @@ function PlayerData:serialize()
         active_vms = self.active_vms,
         cheat_budget = self.cheat_budget,  -- NEW: Save cheat budget
         cheat_engine_data = self.cheat_engine_data,  -- Contains both old and new cheat data
-        upgrades = self.upgrades
+        upgrades = self.upgrades,
+        demos = self.demos or {}  -- Demo recordings
     }
 end
 

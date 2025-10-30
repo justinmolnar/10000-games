@@ -32,6 +32,14 @@ function BaseGame:init(game_data, cheats, di, variant_override)
     -- Store difficulty level
     self.difficulty_level = self.data.difficulty_level or 1
 
+    -- Fixed timestep support for deterministic demos
+    self.fixed_dt = (di and di.config and di.config.vm_demo and di.config.vm_demo.fixed_dt) or (1/60)
+    self.accumulator = 0
+    self.frame_count = 0
+
+    -- Playback mode (disables human input when true)
+    self.playback_mode = false
+
     -- Load variant data
     self.variant = nil
 
@@ -65,10 +73,11 @@ function BaseGame:init(game_data, cheats, di, variant_override)
     end
 end
 
+-- Variable timestep update (for normal gameplay)
 function BaseGame:updateBase(dt)
     if not self.completed then
         self.time_elapsed = self.time_elapsed + dt
-        
+
         -- Update time_remaining if the game uses it (like HiddenObject)
         if self.time_limit and self.time_remaining then
              self.time_remaining = math.max(0, self.time_limit - self.time_elapsed)
@@ -80,9 +89,45 @@ function BaseGame:updateBase(dt)
     end
 end
 
+-- Fixed timestep update (for deterministic demo recording/playback)
+function BaseGame:updateWithFixedTimestep(dt)
+    if self.completed then
+        return
+    end
+
+    -- Accumulate time
+    self.accumulator = self.accumulator + dt
+
+    -- Run fixed updates
+    while self.accumulator >= self.fixed_dt do
+        self:fixedUpdate(self.fixed_dt)
+        self.accumulator = self.accumulator - self.fixed_dt
+        self.frame_count = self.frame_count + 1
+    end
+end
+
+-- Fixed timestep update (deterministic)
+function BaseGame:fixedUpdate(dt)
+    if not self.completed then
+        self.time_elapsed = self.time_elapsed + dt
+
+        -- Update time_remaining if the game uses it (like HiddenObject)
+        if self.time_limit and self.time_remaining then
+             self.time_remaining = math.max(0, self.time_limit - self.time_elapsed)
+        end
+
+        -- Call game-specific logic
+        self:updateGameLogic(dt)
+
+        if self:checkComplete() then
+            self:onComplete()
+        end
+    end
+end
+
 function BaseGame:updateGameLogic(dt)
     -- Override in subclasses to implement game-specific update logic
-    -- No need to call super.update from subclasses anymore
+    -- This is called from both updateBase (variable dt) and fixedUpdate (fixed dt)
 end
 
 function BaseGame:draw()
@@ -90,11 +135,36 @@ function BaseGame:draw()
 end
 
 function BaseGame:keypressed(key)
+    -- Block human input during demo playback
+    if self.playback_mode then
+        return
+    end
+    -- Override in subclasses
+end
+
+function BaseGame:keyreleased(key)
+    -- Block human input during demo playback
+    if self.playback_mode then
+        return
+    end
     -- Override in subclasses
 end
 
 function BaseGame:mousepressed(x, y, button)
+    -- Block human input during demo playback
+    if self.playback_mode then
+        return
+    end
     -- Override in subclasses
+end
+
+-- Enable/disable playback mode
+function BaseGame:setPlaybackMode(enabled)
+    self.playback_mode = enabled
+end
+
+function BaseGame:isInPlaybackMode()
+    return self.playback_mode
 end
 
 function BaseGame:checkComplete()
@@ -112,9 +182,18 @@ end
 
 function BaseGame:calculatePerformance()
     if not self.completed then return 0 end
-    -- Note: This returns the *base* performance. 
+    -- Note: This returns the *base* performance.
     -- The MinigameState is responsible for applying performance-modifying cheats.
     return self.data.formula_function(self.metrics)
+end
+
+-- Get results for demo playback (used by VMManager)
+function BaseGame:getResults()
+    return {
+        tokens = self:calculatePerformance(),
+        metrics = self:getMetrics(),
+        completed = self.completed
+    }
 end
 
 -- Completion ratio: override in games to report progress toward their core goal (0..1)

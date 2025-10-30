@@ -18,11 +18,14 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data, di)
     self.variant_loader = (di and di.gameVariantLoader) or nil  -- Phase 2.4
 
     self.selected_slot = nil
+    self.selected_game_id = nil
     self.game_selection_open = false
+    self.demo_selection_open = false
     self.scroll_offset = 0
     self.hovered_slot = nil
     self.hovered_upgrade = nil
     self.hovered_purchase_vm = false
+    self.hovered_speed_upgrade = nil
 
         -- Layout constants (read from Config or DI)
         local Config_ = (di and di.config) or Config
@@ -209,9 +212,15 @@ function VMManagerView:drawWindowed(filtered_games, viewport_width, viewport_hei
         self:drawGameSelectionModal(filtered_games, self.scroll_offset, view_context)
     end
 
+    -- Demo selection modal
+    if self.demo_selection_open then
+        local view_context = { game_data = self.game_data, player_data = self.player_data, vm_manager = self.vm_manager }
+        self:drawDemoSelectionModal(self.controller.filtered_demos, self.scroll_offset, view_context)
+    end
+
     -- Instructions (Bottom fixed)
     love.graphics.setColor( (V.colors and V.colors.slot and V.colors.slot.header_text) or {0.7,0.7,0.7} )
-    love.graphics.print(Strings.get('vm.instructions', 'Click empty slot to assign | Click assigned to remove | ESC in modal to cancel'),
+    love.graphics.print(Strings.get('vm.instructions', 'Click empty slot to assign demo | Click buttons to control | ESC in modal to cancel'),
         10, viewport_height - ((V.instructions and V.instructions.bottom_offset) or 25), 0, 0.8, 0.8)
 end
 
@@ -219,14 +228,62 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
     -- x, y are LOCAL coords relative to content area (0,0)
     if button ~= 1 then return nil end
 
-    -- Check game selection modal first (using local coords for checks)
-    if self.game_selection_open then
-        -- Check click relative to modal's position *within the content area*
+    -- Check demo selection modal first
+    if self.demo_selection_open then
         if x >= self.modal_x and x <= self.modal_x + self.modal_w and y >= self.modal_y and y <= self.modal_y + self.modal_h then
-            -- Handle scrollbar interactions first if present
             local list_area_y_start = self.modal_y + 40
             local list_h = self.modal_h - 70
             local visible_items = math.max(1, math.floor(list_h / self.modal_item_height))
+            local demos = self.controller.filtered_demos or {}
+
+            -- Handle scrollbar
+            if self._sb and self._sb.modal and self._sb.modal.geom and #demos > visible_items then
+                local UI = UIComponents
+                local lx = x - self.modal_x
+                local ly = y - list_area_y_start
+                local off_px = (self.scroll_offset or 0) * self.modal_item_height
+                local res = UI.scrollbarHandlePress(lx, ly, button, self._sb.modal.geom, off_px, nil)
+                if res and res.consumed then
+                    if res.new_offset_px ~= nil then
+                        local new_off = math.floor(res.new_offset_px / self.modal_item_height + 0.0001)
+                        local max_off = math.max(0, #demos - visible_items)
+                        self.scroll_offset = math.max(0, math.min(max_off, new_off))
+                    end
+                    if res.drag then
+                        self._sb.modal.dragging = true
+                        self._sb.modal.drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
+                    end
+                    return { name = 'content_interaction' }
+                end
+            end
+
+            -- Check clicked demo
+            local clicked_demo = self:getDemoAtPosition(x, y, demos)
+            if clicked_demo then
+                local slot_to_assign = self.selected_slot
+                self.demo_selection_open = false
+                self.game_selection_open = false
+                self.selected_slot = nil
+                return {name = "assign_demo", slot_index = slot_to_assign, demo_id = clicked_demo.demo_id}
+            else
+                return nil -- Consume click inside modal
+            end
+        else
+            -- Clicked outside modal, go back to game selection
+            self.demo_selection_open = false
+            self.game_selection_open = true
+            return {name="modal_closed"}
+        end
+    end
+
+    -- Check game selection modal
+    if self.game_selection_open then
+        if x >= self.modal_x and x <= self.modal_x + self.modal_w and y >= self.modal_y and y <= self.modal_y + self.modal_h then
+            local list_area_y_start = self.modal_y + 40
+            local list_h = self.modal_h - 70
+            local visible_items = math.max(1, math.floor(list_h / self.modal_item_height))
+
+            -- Handle scrollbar
             if self._sb and self._sb.modal and self._sb.modal.geom and #filtered_games > visible_items then
                 local UI = UIComponents
                 local lx = x - self.modal_x
@@ -246,65 +303,98 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
                     return { name = 'content_interaction' }
                 end
             end
-            local clicked_game = self:getGameAtPosition(x, y, filtered_games, viewport_width, viewport_height) -- Pass local coords
+
+            local clicked_game = self:getGameAtPosition(x, y, filtered_games, viewport_width, viewport_height)
             if clicked_game then
-                self.game_selection_open = false
-                local slot_to_assign = self.selected_slot
-                self.selected_slot = nil
-                return {name = "assign_game", slot_index = slot_to_assign, game_id = clicked_game.id}
+                -- Don't close yet - show demo selection next
+                return {name = "assign_game", slot_index = self.selected_slot, game_id = clicked_game.id}
             else
-                 -- Clicked inside modal but not on a game item or scrollbar etc.
-                 return nil -- Consume click inside modal background
+                return nil -- Consume click inside modal
             end
         else
-            -- Clicked outside the modal, close it
+            -- Clicked outside modal, close it
             self.game_selection_open = false
             self.selected_slot = nil
             return {name="modal_closed"}
-    end
+        end
     end
 
-    -- Check VM slots (using local coords)
-    local clicked_slot_index = self:getSlotAtPosition(x, y, viewport_width, viewport_height) -- Pass local coords
+    -- Check VM slot controls (Stop/Start, Speed Upgrade)
+    local clicked_slot_index = self:getSlotAtPosition(x, y, viewport_width, viewport_height)
     if clicked_slot_index then
         local slot = self.vm_manager.vm_slots[clicked_slot_index]
-        if slot.active then
-            -- Click on active slot removes the assigned game
+        local Config_ = (self.di and self.di.config) or {}
+        local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
+        local G = V.grid or { start_y = 50, left_margin = 10 }
+
+        local col = (clicked_slot_index - 1) % self.slot_cols
+        local row = math.floor((clicked_slot_index - 1) / self.slot_cols)
+        local slot_x = (G.left_margin or 10) + col * (self.slot_width + self.slot_padding)
+        local slot_y = (G.start_y or 50) + row * (self.slot_height + self.slot_padding)
+
+        local local_x = x - slot_x
+        local local_y = y - slot_y
+
+        -- Check if slot is assigned
+        if slot.state ~= "IDLE" then
+            -- Check Stop/Start button
+            local button_y = self.slot_height - 38
+            if local_y >= button_y and local_y <= button_y + 15 then
+                if local_x >= 5 and local_x <= 50 then
+                    -- Stop/Start button clicked
+                    if slot.state == "RUNNING" or slot.state == "RESTARTING" then
+                        return {name = "stop_vm", slot_index = clicked_slot_index}
+                    else
+                        return {name = "start_vm", slot_index = clicked_slot_index}
+                    end
+                elseif local_x >= self.slot_width - 55 and local_x <= self.slot_width - 5 then
+                    -- Speed upgrade button clicked
+                    return {name = "upgrade_speed", slot_index = clicked_slot_index}
+                end
+            end
+
+            -- Click anywhere else on assigned slot - show removal confirmation or context menu
             return {name = "remove_game", slot_index = clicked_slot_index}
         else
+            -- Empty slot - open game selection
             self.selected_slot = clicked_slot_index
             self.game_selection_open = true
+            self.scroll_offset = 0
             return {name = "modal_opened", slot_index = clicked_slot_index}
         end
     end
 
-    -- Check upgrade buttons (using local coords)
+    -- Check upgrade buttons
     local upgrades = {"cpu_speed", "overclock"}
     for i, upgrade_type in ipairs(upgrades) do
         local bx = self.upgrade_x + (i - 1) * (self.upgrade_w + self.upgrade_spacing)
-        local by = self.upgrade_y -- Use layout-calculated y
-        -- Check using LOCAL x, y
+        local by = self.upgrade_y
         if x >= bx and x <= bx + self.upgrade_w and y >= by and y <= by + self.upgrade_h then
-            -- Emit intent; controller/state validates affordability
             return {name = "purchase_upgrade", upgrade_type = upgrade_type}
         end
     end
 
-    -- Check purchase button (using local coords)
-    if self:isPurchaseButtonClicked(x, y, viewport_width, viewport_height) then -- Pass local coords
-        -- Emit intent; controller/state validates affordability and limits
+    -- Check purchase VM button
+    if self:isPurchaseButtonClicked(x, y, viewport_width, viewport_height) then
         return {name = "purchase_vm"}
     end
 
-    return nil -- Clicked nothing interactive
+    return nil
 end
 
 function VMManagerView:wheelmoved(x, y, item_count, viewport_width, viewport_height)
-    if not self.game_selection_open then return 0 end
+    if not (self.game_selection_open or self.demo_selection_open) then return 0 end
+
+    -- Use the appropriate item count
+    local items = item_count
+    if self.demo_selection_open then
+        items = #(self.controller.filtered_demos or {})
+    end
+
     -- Calculate visible items based on modal height
-    local visible_items = math.floor((self.modal_h - 70) / self.modal_item_height) -- Approx header/footer space
-    visible_items = math.max(1, visible_items) -- Ensure at least 1
-    local max_scroll = math.max(0, (item_count or 0) - visible_items)
+    local visible_items = math.floor((self.modal_h - 70) / self.modal_item_height)
+    visible_items = math.max(1, visible_items)
+    local max_scroll = math.max(0, items - visible_items)
 
     if y > 0 then -- Scroll up
         self.scroll_offset = math.max(0, math.min(max_scroll, (self.scroll_offset or 0) - 1))
@@ -380,6 +470,29 @@ function VMManagerView:getGameAtPosition(x, y, filtered_games, viewport_width, v
     return nil
 end
 
+function VMManagerView:getDemoAtPosition(x, y, demos)
+    -- Check bounding box of the modal list area
+    local list_area_y_start = self.modal_y + 40
+    local list_area_y_end = self.modal_y + self.modal_h - 30
+
+    if x < self.modal_x + 10 or x > self.modal_x + self.modal_w - 20 or
+       y < list_area_y_start or y > list_area_y_end then
+        return nil
+    end
+
+    local relative_y = y - list_area_y_start
+    local index_in_view = math.floor(relative_y / self.modal_item_height)
+    local actual_index = index_in_view + 1 + (self.scroll_offset or 0)
+
+    if actual_index >= 1 and actual_index <= #demos then
+        local demo = demos[actual_index]
+        -- Return demo with ID for easy lookup
+        return { demo_id = demo.demo_id, demo = demo }
+    end
+
+    return nil
+end
+
 function VMManagerView:isPurchaseButtonClicked(x, y, viewport_width, viewport_height)
     if #self.vm_manager.vm_slots >= self.vm_manager.max_slots then
         return false
@@ -422,7 +535,10 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
     local vm_prefix = Strings.get('vm.vm_prefix', 'VM')
     love.graphics.print(vm_prefix .. " " .. slot.slot_index, x + 5, y + 5, 0, 0.8, 0.8)
 
-    if slot.active and slot.assigned_game_id then
+    -- Check if slot is assigned (demo-based system)
+    local is_assigned = slot.state ~= "IDLE"
+
+    if is_assigned and slot.assigned_game_id then
         local game = context.game_data:getGame(slot.assigned_game_id)
         if game then
             -- Phase 2.4: Try to load variant-specific launcher icon
@@ -434,54 +550,100 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
             if launcher_icon then
                 -- Draw loaded launcher icon directly
                 love.graphics.setColor(1, 1, 1)
-                love.graphics.draw(launcher_icon, x + 8, y + 35, 0,
-                    48 / launcher_icon:getWidth(), 48 / launcher_icon:getHeight())
+                love.graphics.draw(launcher_icon, x + 8, y + 25, 0,
+                    32 / launcher_icon:getWidth(), 32 / launcher_icon:getHeight())
             else
                 -- Fallback to metric sprite icon
                 local palette_id = self.sprite_manager:getPaletteId(game)
                 local icon_sprite = self.sprite_manager:getMetricSprite(game, game.metrics_tracked[1] or "default")
                 if icon_sprite and self.sprite_manager.sprite_loader then
-                    self.sprite_manager.sprite_loader:drawSprite(icon_sprite, x + 8, y + 35, 48, 48, nil, palette_id)
+                    self.sprite_manager.sprite_loader:drawSprite(icon_sprite, x + 8, y + 25, 32, 32, nil, palette_id)
                 end
             end
 
             love.graphics.setColor(S.name_text or {1,1,1})
-            love.graphics.printf(game.display_name, x + 5, y + 20, w - 10, "center", 0, 0.8, 0.8)
+            love.graphics.printf(game.display_name, x + 45, y + 20, w - 50, "left", 0, 0.7, 0.7)
 
-            -- Phase 7.1: Display formula with icons for tokens/minute
-            love.graphics.setColor(S.power_label or {0,1,1})
-            love.graphics.print(Strings.get('vm.power_label','Power:'), x + 65, y + 45, 0, 0.7, 0.7)
-            self.formula_renderer:draw(game, x + 65, y + 60, w - 70, 14)
-
-
-            local progress = 0
-            if slot.cycle_time and slot.cycle_time > 0 then
-               progress = 1 - (math.max(0, slot.time_remaining or 0) / slot.cycle_time)
+            -- Show demo name if available
+            if slot.assigned_demo_id then
+                local demo = context.player_data:getDemo(slot.assigned_demo_id)
+                if demo and demo.metadata and demo.metadata.demo_name then
+                    love.graphics.setColor(S.demo_text or {0.7, 0.7, 1})
+                    love.graphics.printf(demo.metadata.demo_name, x + 45, y + 33, w - 50, "left", 0, 0.6, 0.6)
+                end
             end
-            love.graphics.setColor(S.progress_bg or {0.3, 0.3, 0.3})
-            love.graphics.rectangle('fill', x + 5, y + h - 25, w - 10, 15)
 
-            -- Phase 7.1: Use game's palette for progress bar
-            -- FIX: Use self.sprite_manager instance
-            local palette = self.sprite_manager.palette_manager:getPalette(palette_id)
-            local progress_color = (palette and palette.colors and palette.colors.primary) or {0, 1, 0}
-            love.graphics.setColor(progress_color)
-            love.graphics.rectangle('fill', x + 5, y + h - 25, (w - 10) * progress, 15)
+            -- Show state indicator
+            love.graphics.setColor(S.state_text or {0, 1, 1})
+            local state_text = slot.state or "IDLE"
+            love.graphics.print(state_text, x + 45, y + 45, 0, 0.6, 0.6)
 
-            love.graphics.setColor(S.time_text or {1,1,1})
-            local time_text = string.format("%.1fs", math.max(0, slot.time_remaining or 0))
-            love.graphics.printf(time_text, x+5, y + h - 23, w - 10, "center", 0, 0.8, 0.8)
-
-            if slot.is_auto_completed then
-                love.graphics.setColor(S.auto_badge or {0.5, 0.5, 1})
-                love.graphics.print(Strings.get('vm.auto_badge','[AUTO]'), x + w - 45, y + 5, 0, 0.7, 0.7)
+            -- Show speed indicator
+            local speed_text = ""
+            if slot.headless_mode then
+                speed_text = Config_.vm_demo and Config_.vm_demo.headless_speed_label or "INSTANT"
+            elseif slot.speed_multiplier and slot.speed_multiplier > 1 then
+                speed_text = slot.speed_multiplier .. "x"
+            else
+                speed_text = "1x"
             end
+            love.graphics.setColor(S.speed_text or {1, 1, 0})
+            love.graphics.print(speed_text, x + w - 35, y + 5, 0, 0.7, 0.7)
+
+            -- Show stats
+            local stats = slot.stats or {}
+            love.graphics.setColor(S.stats_text or {0.8, 0.8, 0.8})
+            love.graphics.print("Runs: " .. (stats.total_runs or 0), x + 5, y + 60, 0, 0.6, 0.6)
+            local success_rate = (stats.total_runs or 0) > 0 and ((stats.successes or 0) / stats.total_runs * 100) or 0
+            love.graphics.print(string.format("Success: %.0f%%", success_rate), x + 5, y + 70, 0, 0.6, 0.6)
+            love.graphics.print(string.format("%.1f tk/min", stats.tokens_per_minute or 0), x + 5, y + 80, 0, 0.6, 0.6)
+
+            -- Show progress bar for current run
+            if slot.demo_player and slot.demo_player.getCurrentFrame then
+                local progress = 0
+                local current_frame = slot.demo_player:getCurrentFrame()
+                local total_frames = slot.demo_player:getTotalFrames()
+                if total_frames > 0 then
+                    progress = current_frame / total_frames
+                end
+
+                love.graphics.setColor(S.progress_bg or {0.3, 0.3, 0.3})
+                love.graphics.rectangle('fill', x + 5, y + h - 20, w - 10, 12)
+
+                local palette_id = self.sprite_manager:getPaletteId(game)
+                local palette = self.sprite_manager.palette_manager:getPalette(palette_id)
+                local progress_color = (palette and palette.colors and palette.colors.primary) or {0, 1, 0}
+                love.graphics.setColor(progress_color)
+                love.graphics.rectangle('fill', x + 5, y + h - 20, (w - 10) * progress, 12)
+
+                love.graphics.setColor(S.time_text or {1,1,1})
+                local frame_text = string.format("%d/%d", current_frame, total_frames)
+                love.graphics.printf(frame_text, x + 5, y + h - 19, w - 10, "center", 0, 0.7, 0.7)
+            end
+
+            -- Control buttons (Stop/Start, Speed Upgrade)
+            local button_y = y + h - 38
+            love.graphics.setColor(0.4, 0.4, 0.4)
+            love.graphics.rectangle('fill', x + 5, button_y, w - 10, 15)
+
+            if slot.state == "RUNNING" or slot.state == "RESTARTING" then
+                love.graphics.setColor(1, 0.3, 0.3)
+                love.graphics.print("STOP", x + 8, button_y + 2, 0, 0.7, 0.7)
+            else
+                love.graphics.setColor(0.3, 1, 0.3)
+                love.graphics.print("START", x + 8, button_y + 2, 0, 0.7, 0.7)
+            end
+
+            -- Speed upgrade button
+            love.graphics.setColor(1, 1, 0.3)
+            love.graphics.print("[SPEED+]", x + w - 55, button_y + 2, 0, 0.6, 0.6)
+
         else
             love.graphics.setColor(S.error_text or {1,0,0})
             love.graphics.print(Strings.get('vm.error_missing_game_data','Error: Missing game data!'), x + 5, y + 25)
         end
     else
-    love.graphics.setColor(S.empty_text or {0.5, 0.5, 0.5})
+        love.graphics.setColor(S.empty_text or {0.5, 0.5, 0.5})
         love.graphics.printf(Strings.get('vm.empty_slot','Empty'), x, y + h/2 - 10, w, "center")
         love.graphics.printf(Strings.get('vm.click_to_assign','Click to assign'), x, y + h/2 + 5, w, "center", 0, 0.8, 0.8)
     end
@@ -580,6 +742,77 @@ function VMManagerView:drawGameSelectionModal(games, scroll_offset, context)
 
     love.graphics.setColor(0.7, 0.7, 0.7)
     love.graphics.print(Strings.get('vm.modal_footer','Click game to assign | Click outside or ESC to cancel'), self.modal_x + 10, self.modal_y + self.modal_h - 25, 0, 0.8, 0.8)
+end
+
+function VMManagerView:drawDemoSelectionModal(demos, scroll_offset, context)
+    -- Dark overlay
+    local Config_ = (self.di and self.di.config) or {}
+    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
+    local overlay_alpha = (V.modal and V.modal.overlay_alpha) or (V.colors and V.colors.modal and V.colors.modal.overlay_alpha) or 0.7
+    love.graphics.setColor(0, 0, 0, overlay_alpha)
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+
+    -- Modal panel
+    local MC = (V.colors and V.colors.modal) or {}
+    UIComponents.drawPanel(self.modal_x, self.modal_y, self.modal_w, self.modal_h, (MC.panel_bg or {0.2, 0.2, 0.2}))
+
+    love.graphics.setColor(MC.item_text or {1,1,1})
+    love.graphics.print(Strings.get('vm.demo_modal_title','Select Demo to Assign'), self.modal_x + 10, self.modal_y + 10, 0, 1.2, 1.2)
+
+    local list_y_start = self.modal_y + 40
+    local list_h = self.modal_h - 70
+    local visible_items = math.floor(list_h / self.modal_item_height)
+    visible_items = math.max(1, visible_items)
+
+    local start_index = scroll_offset + 1
+    local end_index = math.min(#demos, start_index + visible_items - 1)
+
+    if #demos == 0 then
+        love.graphics.setColor(0.7, 0.5, 0.5)
+        love.graphics.printf("No demos available for this game.", self.modal_x + 10, list_y_start + 20, self.modal_w - 20, "center")
+    else
+        for i = start_index, end_index do
+            local demo = demos[i]
+            local item_y = list_y_start + (i - start_index) * self.modal_item_height
+
+            -- Item background
+            love.graphics.setColor(MC.item_bg or {0.25,0.25,0.25})
+            love.graphics.rectangle('fill', self.modal_x + 10, item_y, self.modal_w - 20, self.modal_item_height - 2)
+
+            -- Demo Name
+            love.graphics.setColor(MC.item_text or {1,1,1})
+            local demo_name = (demo.metadata and demo.metadata.demo_name) or "Unnamed Demo"
+            love.graphics.print(demo_name, self.modal_x + 15, item_y + 5)
+
+            -- Demo info
+            if demo.recording then
+                love.graphics.setColor(MC.power_label or {0,1,1})
+                local frame_count = demo.recording.total_frames or 0
+                local duration = frame_count * (demo.recording.fixed_dt or (1/60))
+                love.graphics.print(string.format("Frames: %d (~%.1fs)", frame_count, duration), self.modal_x + 15, item_y + 20, 0, 0.8, 0.8)
+            end
+        end
+
+        -- Scrollbar if needed
+        if #demos > visible_items then
+            local UI = UIComponents
+            love.graphics.push()
+            local sb_geom = UI.calculateScrollbarGeometry({
+                x = self.modal_x + self.modal_w - 20,
+                y = list_y_start,
+                height = list_h,
+                visible_items = visible_items,
+                total_items = #demos,
+                scroll_offset = scroll_offset
+            })
+            UI.drawScrollbar(sb_geom)
+            self._sb.modal.geom = sb_geom
+            love.graphics.pop()
+        end
+    end
+
+    love.graphics.setColor(0.7, 0.7, 0.7)
+    love.graphics.print(Strings.get('vm.demo_modal_footer','Click demo to assign | Click outside or ESC to cancel'), self.modal_x + 10, self.modal_y + self.modal_h - 25, 0, 0.8, 0.8)
 end
 
 function VMManagerView:drawPurchaseVMButton(x, y, cost, can_afford, hovered)

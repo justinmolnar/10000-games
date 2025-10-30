@@ -168,7 +168,26 @@ function MinigameState:keypressed(key)
     end
 
     if self.controller:isOverlayVisible() then
+        -- Handle demo save/discard if prompt is showing
+        if self.controller.show_save_demo_prompt then
+            if key == 's' then
+                if self.controller:saveDemo() then
+                    print("[MinigameState] Demo saved successfully")
+                end
+                return { type = "content_interaction" }
+            elseif key == 'd' then
+                self.controller:discardDemo()
+                print("[MinigameState] Demo discarded")
+                return { type = "content_interaction" }
+            end
+        end
+
         if key == 'return' then
+            -- Discard demo if restarting without saving
+            if self.controller.show_save_demo_prompt then
+                self.controller:discardDemo()
+            end
+
             if self.game_data then
                 -- Pass variant_override through on restart
                 local restart_event = self:enter(self.game_data, self.variant_override)
@@ -178,12 +197,21 @@ function MinigameState:keypressed(key)
             end
             return { type = "content_interaction" }
         elseif key == 'escape' then
+            -- Discard demo if closing without saving
+            if self.controller.show_save_demo_prompt then
+                self.controller:discardDemo()
+            end
             return { type = "close_window" }
         end
     else
         if key == 'escape' then
             return { type = "close_window" }
         else
+            -- Record keypress if demo recording is active
+            if self.controller.is_recording and self.controller.demo_recorder then
+                pcall(self.controller.demo_recorder.recordKeyPressed, self.controller.demo_recorder, key)
+            end
+
             if self.current_game and self.current_game.keypressed then
                 local success, result = pcall(self.current_game.keypressed, self.current_game, key)
                 if success then
@@ -206,6 +234,11 @@ function MinigameState:keyreleased(key)
 
     -- Only forward key releases during active gameplay (not when overlay is visible)
     if not self.controller:isOverlayVisible() then
+        -- Record key release if demo recording is active
+        if self.controller.is_recording and self.controller.demo_recorder then
+            pcall(self.controller.demo_recorder.recordKeyReleased, self.controller.demo_recorder, key)
+        end
+
         if self.current_game and self.current_game.keyreleased then
             local success, result = pcall(self.current_game.keyreleased, self.current_game, key)
             if not success then

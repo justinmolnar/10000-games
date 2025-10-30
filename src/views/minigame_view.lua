@@ -111,6 +111,19 @@ function MinigameView:drawOverlay(viewport, snapshot)
         love.graphics.print("Try again to improve your score!", x, y, 0, text_scale, text_scale)
     end
 
+    -- Save Demo prompt if available
+    if snapshot.show_save_demo_prompt and snapshot.recorded_demo then
+        y = y + line_height * 1.5
+        love.graphics.setColor(0.5, 1, 1)
+        love.graphics.printf("Demo recorded! Save it for VM use?", x, y, vpWidth * 0.8, "center", 0, text_scale * 1.1, text_scale * 1.1)
+        y = y + line_height
+        love.graphics.setColor(0, 1, 0)
+        love.graphics.printf("[S] Save Demo", x, y, vpWidth * 0.4, "right", 0, text_scale, text_scale)
+        love.graphics.setColor(1, 0.5, 0.5)
+        love.graphics.printf("[D] Discard", vpWidth * 0.6, y, vpWidth * 0.4 - x, "left", 0, text_scale, text_scale)
+        y = y + line_height
+    end
+
     love.graphics.setColor(1, 1, 1)
     local instruction_y = vpHeight - line_height * 2.5
     love.graphics.printf("Press ENTER to play again", 0, instruction_y, vpWidth, "center", 0, text_scale, text_scale)

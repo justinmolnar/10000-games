@@ -184,12 +184,10 @@ function GameVariantLoader:getLauncherIcon(game_id, game_class)
 
     if success and image then
         self.launcher_icons[game_id] = image
-        print("[GameVariantLoader] Loaded launcher icon: " .. icon_path)
         return image
     else
         -- Cache nil to avoid repeated load attempts
         self.launcher_icons[game_id] = false
-        print("[GameVariantLoader] No launcher icon at: " .. icon_path .. " (using fallback)")
         return nil
     end
 end

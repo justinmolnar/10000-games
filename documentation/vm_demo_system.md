@@ -328,6 +328,69 @@ Only 100 actual game loops running
 
 ---
 
+### Phase 1 Completion Notes
+
+**What Has Been Implemented:**
+- **Created `src/models/demo_recorder.lua`**: Full demo recording model with frame-based input capture
+  - `startRecording()`, `stopRecording()`, `cancelRecording()` methods
+  - `recordKeyPressed()`, `recordKeyReleased()` methods
+  - `fixedUpdate()` to track frame count
+  - Validation for minimum/maximum frame limits
+  - Event bus integration (`demo_recording_started`, `demo_recording_completed`, `demo_recording_cancelled`)
+
+- **Extended `src/models/player_data.lua`**: Added demo storage and management
+  - Added `demos` table to player data structure
+  - Implemented `saveDemo()`, `getDemo()`, `getDemosForGame()`, `getAllDemos()` methods
+  - Implemented `deleteDemo()`, `renameDemo()`, `updateDemoDescription()`, `hasDemo()` methods
+  - Added demos to `serialize()` for save persistence
+
+- **Added `config.lua` vm_demo section**: Configuration for demo system
+  - `fixed_dt = 1/60` (60 FPS fixed timestep)
+  - `max_demo_frames = 18000` (~5 minutes)
+  - `min_demo_frames = 60` (~1 second)
+  - Speed upgrade configuration placeholders
+
+- **Added fixed timestep to `src/games/base_game.lua`**: Deterministic game updates
+  - Added `fixed_dt`, `accumulator`, `frame_count` to base game initialization
+  - Created `updateWithFixedTimestep(dt)` method (accumulator pattern)
+  - Created `fixedUpdate(dt)` method (deterministic update)
+  - Refactored `updateGameLogic(dt)` to be called from both variable and fixed updates
+
+- **Updated `main.lua`**: Integrated DemoRecorder into DI container
+  - Required `DemoRecorder` module
+  - Instantiated `demo_recorder` with DI
+  - Added `di.demoRecorder` for dependency injection
+
+**What Will Be Noticed In-Game:**
+- **NOTHING YET** - Phase 1 is infrastructure only
+- No UI changes
+- No gameplay changes
+- Demo recording is not yet hooked up to any user-facing functionality
+- SaveManager will persist demos table (but it's empty until Phase 2-5)
+
+**Testing Steps:**
+- [ ] Game launches without errors
+- [ ] Verify DemoRecorder is in DI container (check main.lua initialization)
+- [ ] Verify PlayerData.demos table exists in save file after save
+- [ ] Verify config.vm_demo values are accessible
+- [ ] BaseGame has frame_count and fixed_dt properties (no visual test)
+
+**Known Issues / Future Work:**
+- Demo recording is not yet integrated into MinigameController (deferred to Phase 2)
+- No UI for recording demos yet
+- SaveManager doesn't need explicit changes (demos auto-persist via PlayerData.serialize)
+- Fixed timestep updates are not yet called anywhere (games still use variable dt)
+- Phase 2 will connect recording to actual gameplay
+
+**Architectural Notes:**
+- Demo storage uses timestamp-based IDs: `demo_{game_id}_{timestamp}`
+- Demos stored directly in player save data (not separate files)
+- Fixed timestep is opt-in via `updateWithFixedTimestep()` method
+- Games continue to work normally with variable timestep (`updateBase()`)
+- DemoRecorder is stateless between recordings (can be reused)
+
+---
+
 ### Phase 2: Demo Playback Engine
 
 **Goal:** Play back recorded demos in game instances.
@@ -406,6 +469,66 @@ end
 - Modified: Game classes (add playback mode flag, support speed multipliers, headless mode)
 - Modified: `src/controllers/minigame_controller.lua` (support playback mode)
 - Modified: Base game classes (add fixed timestep support if not already present)
+
+---
+
+### Phase 2 Completion Notes
+
+**What Has Been Implemented:**
+- **Created `src/models/demo_player.lua`**: Full demo playback engine with frame-perfect execution
+  - `startPlayback()`, `stopPlayback()` methods
+  - `update(dt)` for multi-step rendering mode (runs N fixed updates per visual frame)
+  - `stepFrame()` for single frame execution (injects inputs + updates game)
+  - `runHeadless()` for instant completion mode (no rendering)
+  - `injectInput()` to inject recorded keypresses/releases into game
+  - `isComplete()` checks game completion or frame count exceeded
+  - Speed multiplier support (1x to 100x)
+  - Headless mode support (instant execution)
+  - Event bus integration (`demo_playback_started`, `demo_playback_completed`)
+
+- **Added playback mode to `src/games/base_game.lua`**: Prevents human input during playback
+  - Added `playback_mode` flag to game state
+  - Modified `keypressed()`, `keyreleased()`, `mousepressed()` to block input when `playback_mode = true`
+  - Added `setPlaybackMode(enabled)` and `isInPlaybackMode()` methods
+
+- **Updated `main.lua`**: Integrated DemoPlayer into DI container
+  - Required `DemoPlayer` module
+  - Instantiated `demo_player` with DI
+  - Added `di.demoPlayer` for dependency injection
+
+**What Will Be Noticed In-Game:**
+- **STILL NOTHING** - Phase 2 is playback infrastructure only
+- No UI changes
+- No gameplay changes
+- Demo playback is not yet hooked up to any user-facing functionality
+- Games can now block human input during playback (but no playback is triggered yet)
+
+**Testing Steps:**
+- [ ] Game launches without errors
+- [ ] Verify DemoPlayer is in DI container (check main.lua initialization)
+- [ ] Verify BaseGame has `playback_mode` flag and input blocking methods
+- [ ] No functional testing possible yet (no way to trigger playback)
+
+**Known Issues / Future Work:**
+- Demo playback is not yet integrated into any controller or state (deferred to Phase 3)
+- No way for user to trigger demo playback yet
+- MinigameController integration deferred (not needed until Phase 3+ when VMs actually play demos)
+- Speed multiplier and headless mode implemented but not yet tested
+- Phase 3 will use DemoPlayer in VM execution loops
+
+**Architectural Notes:**
+- DemoPlayer maintains single playback instance (one demo at a time)
+- Can be reused for multiple demos (reset on each `startPlayback()`)
+- Speed multiplier: 1 = normal speed, 10 = 10 fixed updates per visual frame, etc.
+- Headless mode bypasses all rendering and runs to completion immediately
+- Game instances must use `fixedUpdate()` for deterministic playback
+- Playback mode blocks human input at BaseGame level (not in individual game implementations)
+
+**How Playback Works:**
+1. Call `startPlayback(demo, game_instance, speed, headless)`
+2. Each frame: inject inputs scheduled for current frame → run `game:fixedUpdate()` → increment frame
+3. Repeat until game completes or frame count exceeds demo length
+4. Call `stopPlayback()` to get results (tokens, completion status, frames played)
 
 ---
 
@@ -512,6 +635,105 @@ STOPPED:
 
 ---
 
+### Phase 3 Completion Notes
+
+**What Has Been Implemented:**
+- **Completely refactored `src/models/vm_manager.lua`**: Replaced formula-based system with demo playback
+  - **New VM slot structure**: Includes state machine, demo references, stats, speed settings
+    - States: IDLE, RUNNING, RESTARTING, STOPPED
+    - Stores `demo_player`, `game_instance`, `assigned_demo_id`
+    - Tracks `total_runs`, `successes`, `failures`, `total_tokens`, `uptime`, `tokens_per_minute`
+    - Supports `speed_multiplier` and `headless_mode`
+
+  - **State machine implementation** in `update()`:
+    - IDLE: Does nothing, waiting for demo assignment
+    - RUNNING: Executes demo playback (headless or multi-step mode)
+    - RESTARTING: Brief delay, then creates new game instance and starts next run
+    - STOPPED: Manually paused (not yet exposed in UI)
+
+  - **New methods**:
+    - `createEmptySlot()`: Creates slot with new structure
+    - `restoreVMSlot()`: Restores from save data, verifies demo exists
+    - `updateRunningSlot()`: Handles demo playback, checks completion
+    - `updateRestartingSlot()`: Manages restart delay, creates new game instance
+    - `startNewRun()`: Creates game instance, initializes DemoPlayer, starts playback
+    - `createGameInstance()`: Instantiates game with variant config from demo
+    - `processRunResult()`: Updates stats, emits events, saves state
+    - `transitionToRestarting()`: Cleans up game instance, resets timer
+    - `saveSlotState()`: Persists VM state to player_data.active_vms
+    - `assignDemo()`: Assigns demo to slot (replaces old `assignGame`)
+    - `removeDemo()`: Stops playback, resets slot (replaces old `removeGame`)
+    - `upgradeSpeed()`: Changes speed settings for a VM
+    - `isDemoAssigned()`: Checks if demo is in use
+
+  - **Removed old formula-based code**:
+    - No more `auto_play_power`, `tokens_per_cycle`, `cycle_time`, `time_remaining`
+    - No more performance formula calculations
+    - No more upgrade bonus calculations (now handled by game instances)
+
+  - **Event bus integration**:
+    - Emits `vm_run_completed` after each demo run (includes tokens, success status)
+    - Emits `vm_speed_upgraded` when speed changes
+    - Maintains existing `vm_started`, `vm_stopped`, `vm_created` events
+
+- **Updated active_vms save format**: Now stores demo_id and stats
+  - Old format: `{game_id, time_remaining}`
+  - New format: `{game_id, demo_id, speed_upgrade_level, speed_multiplier, headless_mode, stats:{...}}`
+  - Backward compatibility: VMs with old format won't restore (intentional breaking change)
+
+**What Will Be Noticed In-Game:**
+- **STILL NOTHING USER-FACING** - VMs are now functional but no way to assign demos yet
+- Existing VM system will break (old saves won't load VMs)
+- No UI changes yet
+- VMs won't appear active because there's no way to record/assign demos via UI
+- **However, if a demo were manually assigned via code**, the VM would:
+  - Execute the demo repeatedly with random seeds
+  - Accumulate tokens based on actual run results
+  - Track success/failure statistics
+  - Support speed multipliers and headless mode
+
+**Testing Steps:**
+- [ ] Game launches without errors
+- [ ] Existing VMs appear idle (old save data incompatible)
+- [ ] Check console for "VM Manager initialized" message
+- [ ] Verify vm_manager uses new slot structure (check createEmptySlot)
+- [ ] No functional testing possible yet (no UI to assign demos)
+
+**Known Issues / Future Work:**
+- **BREAKING CHANGE**: Old VM save data is incompatible (VMs won't restore)
+  - Players will see empty VM slots after update
+  - This is acceptable for Phase 3 (no user-facing demo system yet anyway)
+- No UI to assign demos to VMs (Phase 4-5)
+- No UI to record demos (Phase 5)
+- No UI to view VM stats (Phase 4)
+- Speed upgrade system implemented but no UI to purchase upgrades
+- STOPPED state exists but no pause/resume UI
+- Phase 4 will add VM Manager UI to make this functional
+
+**Architectural Notes:**
+- Each VM slot contains its own DemoPlayer and game instance
+- Game instances are created fresh for each run (prevents state leakage)
+- Random seed changes per run: `math.randomseed(os.time() + slot.slot_index)`
+- Tokens awarded immediately upon run completion (not batched)
+- Stats calculate tokens_per_minute based on actual performance over time
+- Headless mode runs to completion instantly (no frame delay)
+- Multi-step mode processes N fixed updates per visual frame
+- Restart delay (0.1s) provides visual feedback between runs
+
+**How VM Execution Works Now:**
+1. Demo assigned → state = RESTARTING
+2. After restart_delay → create game instance, create DemoPlayer, start playback → state = RUNNING
+3. Each frame: DemoPlayer injects inputs, game updates with fixedUpdate()
+4. Run completes → process result (tokens, stats) → state = RESTARTING
+5. Loop back to step 2 with new random seed
+
+**Legacy Compatibility:**
+- `isGameAssigned()` still works (checks if any demo for that game is assigned)
+- `purchaseVM()`, `getVMCost()`, `getSlotCount()`, `getActiveSlotCount()` unchanged
+- Old `assignGame()` and `removeGame()` methods removed (replaced by `assignDemo()`, `removeDemo()`)
+
+---
+
 ### Phase 4: VM Window & Visualization
 
 **Goal:** Create UI for viewing and managing VMs.
@@ -573,6 +795,147 @@ STOPPED:
 - New: `src/views/vm_playback_view.lua` (live game view)
 - Modified: `assets/data/programs.json` (add VM programs)
 
+### Phase 4 Completion Notes
+
+**What Has Been Implemented:**
+- **Updated `src/states/vm_manager_state.lua`**: Controller now supports demo-based workflow
+  - **New state properties**: `filtered_demos` list for demo selection modal
+  - **Updated `enter()`**: Calls both `updateGameList()` and `updateDemoList()`
+  - **Modified `updateGameList()`**: Only shows games with at least one recorded demo (not just completed games)
+  - **New `updateDemoList()`**: Fetches demos for selected slot's assigned game
+  - **Updated `keypressed()`**: Handles ESC to navigate back from demo selection → game selection → close
+  - **Modified `purchaseUpgrade()`**: Removed old cycle time recalculation (no longer needed with demo playback)
+  - **New event handlers**:
+    - `assign_demo`: Assigns selected demo to VM slot
+    - `stop_vm`: Stops running VM
+    - `start_vm`: Starts stopped VM
+    - `upgrade_speed`: Upgrades VM speed multiplier
+  - **Two-step assignment flow**: Select game → select demo → assign
+  - **New action methods**:
+    - `assignDemoToSlot()`: Validates demo, calls `vm_manager:assignDemo()`, closes modals
+    - `stopVM()`: Calls `vm_manager:stopVM()`, saves state
+    - `startVM()`: Calls `vm_manager:startVM()`, saves state
+    - `upgradeVMSpeed()`: Calls `vm_manager:upgradeSpeed()`, saves state
+
+- **Completely refactored `src/views/vm_manager_view.lua`**: New demo-based UI
+  - **New view state**: `demo_selection_open`, `selected_game_id`, `hovered_speed_upgrade`
+
+  - **Updated `drawVMSlot()`**: Shows demo-based VM information
+    - Displays VM state (IDLE/RUNNING/RESTARTING/STOPPED) instead of cycle timers
+    - Shows assigned demo name below game name
+    - Displays speed indicator (1x, 4x, 10x, INSTANT) in top-right corner
+    - Shows live stats: runs, success rate, tokens/min
+    - Progress bar shows current frame / total frames instead of time remaining
+    - Control buttons: STOP/START button and [SPEED+] button
+    - Game icon resized to 32x32 (was 48x48) to fit more info
+
+  - **New `drawDemoSelectionModal()`**: Second-step modal for choosing demo
+    - Lists all demos for selected game
+    - Shows demo name and metadata (frame count, duration)
+    - "No demos available" message if game has no demos
+    - Scrollbar support for long demo lists
+    - Footer instructions
+
+  - **Updated `drawWindowed()`**: Renders both modals
+    - Game selection modal → Demo selection modal flow
+    - Updated instructions text
+
+  - **Completely rewritten `mousepressed()`**: Handles new interaction flow
+    - **Demo selection modal handling**: Scrollbar, demo clicks, outside clicks go back to game selection
+    - **Game selection modal handling**: Scrollbar, game clicks show demo selection (don't close modal yet)
+    - **VM slot control buttons**: Click regions for STOP/START and SPEED+ buttons
+    - **Empty slot clicks**: Open game selection modal
+    - **Assigned slot clicks**: Remove game (for now - context menu possible later)
+    - Upgrade buttons and purchase VM button unchanged
+
+  - **New `getDemoAtPosition()`**: Helper to detect demo clicks in modal
+
+  - **Updated `wheelmoved()`**: Handles scrolling in both modals
+
+- **No changes to `assets/data/programs.json`**: Existing window defaults (700x500) sufficient for new UI
+
+**What Will Be Noticed In-Game:**
+- **FIRST USER-FACING DEMO SYSTEM FUNCTIONALITY!**
+- **VM Manager window now works** with demo-based system:
+  - Empty VM slots say "Click to assign"
+  - Clicking empty slot opens game selection → demo selection flow
+  - VM slots show:
+    - Game name and demo name
+    - State indicator (RUNNING, RESTARTING, etc.)
+    - Speed indicator (1x, 10x, INSTANT, etc.)
+    - Live statistics (runs, success rate, tokens/min)
+    - Progress bar with frame count
+  - Control buttons visible:
+    - STOP/START button (left side)
+    - [SPEED+] button (right side)
+- **However**: No way to record demos yet (Phase 5), so players can't actually use VMs
+- Players will see "No demos available" message when trying to assign to VM slots
+
+**Testing Steps:**
+- [ ] Launch game, open VM Manager window
+- [ ] Click empty VM slot → game selection modal appears
+- [ ] Only games with recorded demos should appear (if any exist)
+- [ ] Click game → demo selection modal appears
+- [ ] "No demos available" message shows (since no recording UI yet)
+- [ ] ESC navigates back: demo selection → game selection → close window
+- [ ] Existing global upgrades (CPU Speed, Overclock) still appear at bottom
+- [ ] Purchase VM button still works
+- [ ] Window is resizable
+
+**Known Issues / Future Work:**
+- **No demo recording UI yet** - Phase 5 will add MinigameController integration to record demos during gameplay
+- **Can't actually test full VM workflow yet** - need to record a demo first
+- Demo removal UI missing (context menu or confirmation dialog)
+- Speed upgrade button doesn't show cost or max level indication
+- No visual feedback for button clicks (could add hover/press states)
+- No live playback window (deferred to Phase 6)
+- STOPPED state exists but no clear pause/resume distinction in UI
+- Remove game functionality triggers on any assigned slot click (should be dedicated button or context menu)
+- No confirmation dialog when removing assigned demo
+- Stats display could be prettier (currently just text)
+- Progress bar doesn't animate smoothly at high speeds (expected - showing frame count)
+
+**Architectural Notes:**
+- Two-step assignment: game selection → demo selection → assign
+  - Prevents accidental assignments
+  - Allows choosing specific demo if multiple exist
+  - ESC can navigate back through the flow
+- View now checks `slot.state != "IDLE"` instead of `slot.active`
+- Controller fetches filtered demos on-demand via `updateDemoList()`
+- Modal scroll offset resets when opening game selection
+- Control buttons use click regions within slot bounds
+- Speed indicator uses `Config.vm_demo.headless_speed_label` for instant mode
+- View accesses `controller.filtered_demos` directly for demo modal
+- Stats calculate live: success rate = successes / total_runs
+
+**UI Layout Details:**
+- **VM Slot** (180x120px):
+  - Header: "VM N" (top-left), Speed indicator (top-right)
+  - Icon: 32x32px game icon (left side, row 2)
+  - Game name: 0.7 scale (right of icon)
+  - Demo name: 0.6 scale, cyan color (below game name)
+  - State: 0.6 scale, cyan color (below demo name)
+  - Stats: 3 lines of 0.6 scale text
+    - Runs: N
+    - Success: N%
+    - N.N tk/min
+  - Progress bar: 12px height, game's palette color
+  - Control strip: 15px height button bar
+    - STOP/START (left, 5-50px)
+    - [SPEED+] (right, width-55 to width-5px)
+
+- **Demo Selection Modal**:
+  - Header: "Select Demo to Assign"
+  - List area: demo items with name + frame info
+  - Footer: Instructions
+  - Scrollbar if needed
+
+**Integration Points:**
+- Phase 5 will add demo recording in MinigameController → enables full VM workflow
+- Phase 6 could add live playback window (embedded view of game running)
+- Phase 7 could add context menus for additional VM actions
+- Phase 8 will add demo management (rename, delete, export demos)
+
 ---
 
 ### Phase 5: Demo Management UI
@@ -608,6 +971,103 @@ STOPPED:
 - New: `src/views/demo_selection_view.lua`
 - Modified: `src/states/completion_state.lua` (add demo recording prompt)
 - Modified: `src/models/player_data.lua` (demo CRUD operations)
+
+### Phase 5 Completion Notes
+
+**What Has Been Implemented:**
+- **Updated `src/controllers/minigame_controller.lua`**: Integrated demo recording into gameplay
+  - **New dependencies**: `demo_recorder` from DI container
+  - **New state properties**: `is_recording`, `recorded_demo`, `show_save_demo_prompt`
+  - **Modified `begin()`**: Starts demo recording when game begins
+    - Calls `demoRecorder:startRecording(game_id, variant_config)`
+    - Sets `is_recording = true`
+  - **Modified `update()`**: Calls `demoRecorder:fixedUpdate()` every frame to track frame count
+  - **Modified `processCompletion()`**: Stops recording and creates demo data
+    - Calls `demoRecorder:stopRecording(auto_name, description)`
+    - Stores recorded demo in `self.recorded_demo`
+    - Sets `show_save_demo_prompt = true` to trigger UI
+  - **Modified `getSnapshot()`**: Includes `show_save_demo_prompt` and `recorded_demo` for view
+  - **New `saveDemo()`**: Saves recorded demo to player_data, clears prompt
+  - **New `discardDemo()`**: Discards recorded demo, clears prompt
+
+- **Updated `src/states/minigame_state.lua`**: Routes input events to demo recorder
+  - **Modified `keypressed()`**:
+    - Records keypresses during active gameplay via `demoRecorder:recordKeyPressed(key)`
+    - Handles [S] key in overlay to save demo
+    - Handles [D] key in overlay to discard demo
+    - Discards unsaved demo when restarting (ENTER) or closing (ESC)
+  - **Modified `keyreleased()`**: Records key releases via `demoRecorder:recordKeyReleased(key)`
+
+- **Updated `src/views/minigame_view.lua`**: Shows "Save Demo?" prompt on completion overlay
+  - **Modified `drawOverlay()`**: Renders demo save prompt if `snapshot.show_save_demo_prompt`
+    - Displays "Demo recorded! Save it for VM use?"
+    - Shows "[S] Save Demo" and "[D] Discard" options
+    - Cyan highlight for prompt visibility
+
+**What Will Be Noticed In-Game:**
+- **FULL DEMO SYSTEM NOW FUNCTIONAL!**
+- After completing ANY minigame:
+  - Overlay shows "Demo recorded! Save it for VM use?"
+  - Press [S] to save the demo (auto-named "{Game Name} Demo")
+  - Press [D] to discard the demo
+  - Demos automatically discard if you press ENTER (restart) or ESC (close) without saving
+- **Saved demos immediately available** in VM Manager:
+  - Open VM Manager
+  - Click empty slot → game selection appears
+  - Only games with saved demos show up
+  - Select game → demo selection shows your saved demos
+  - Assign demo to VM → VM starts running!
+- **VMs now actually work** - complete gameplay loop functional!
+
+**Testing Steps:**
+- [ ] Launch game, play any minigame to completion
+- [ ] Overlay shows "Demo recorded! Save it for VM use?"
+- [ ] Press [S] → demo saved, message in console
+- [ ] Open VM Manager → game appears in selection
+- [ ] Assign demo to VM slot → VM shows RUNNING state
+- [ ] VM stats update (runs, success rate, tokens/min)
+- [ ] Tokens accumulate from VM runs
+- [ ] Play same game again → Press [D] to discard demo
+- [ ] Restart with ENTER without saving → demo discarded
+- [ ] Close with ESC without saving → demo discarded
+
+**Known Issues / Future Work:**
+- **No way to rename demos yet** - all use auto-generated names ("{Game} Demo")
+- **No demo management UI** - can't view/delete/rename existing demos (Phase 8)
+- **No visual recording indicator** during gameplay - players don't know recording is happening
+- **Demo names not unique** - multiple recordings of same game have identical names
+  - PlayerData generates unique IDs but UI shows generic name
+  - Future: Add timestamp or counter to auto-names, or prompt for custom name
+- **No live playback window** - can't watch VMs executing (Phase 6)
+- **No demo validation** - corrupt/invalid demos might crash VMs
+- **No demo metadata editor** - can't add notes/descriptions after recording
+- **Recording continues even if game crashes** - might create invalid demos
+- **No "record indicator" in UI** - players might not realize they're being recorded
+
+**Architectural Notes:**
+- Recording happens automatically for ALL minigame completions (no opt-in/opt-out)
+- Demo recording uses fixed timestep (60 FPS) via `demoRecorder:fixedUpdate()`
+- Input recording happens at MinigameState level (before passing to game)
+- Controller owns save/discard logic, view only displays prompt
+- Demos auto-named with "{Game Display Name} Demo" format
+- PlayerData:saveDemo() generates unique ID: `"demo_{game_id}_{timestamp}"`
+- Unsaved demos automatically discarded on restart/close (prevents accidental loss of saves)
+- Recording starts in `begin()`, stops in `processCompletion()` (always captures full run)
+- Works with all game types (DodgeGame, SnakeGame, MemoryMatch, HiddenObject)
+
+**Integration Points:**
+- Phase 6 will add live VM playback window (watch demos executing)
+- Phase 7 could add recording indicators during gameplay
+- Phase 8 will add demo management UI (rename, delete, view all demos)
+- Phase 9 could add demo export/import/sharing
+
+**Demo Recording Workflow:**
+1. Game starts → Controller calls `demoRecorder:startRecording()`
+2. Player plays → MinigameState routes inputs to `demoRecorder:recordKeyPressed/Released()`
+3. Every frame → Controller calls `demoRecorder:fixedUpdate()` to track frame count
+4. Game completes → Controller calls `demoRecorder:stopRecording()`, gets demo data
+5. Overlay shows → Player presses [S] to save or [D]/ENTER/ESC to discard
+6. If saved → Demo added to `player_data.demos`, available in VM Manager
 
 ---
 
@@ -960,6 +1420,44 @@ vm_demo = {
    - Option B: Visual indicator (speed icon + slowdown icon)
    - Option C: Tooltip on hover
    - **Recommended:** Option A - clear and always visible
+
+---
+
+## Documentation Rules for AI Assistants
+
+**CRITICAL: After completing each phase, update the phase section with completion notes following this format:**
+
+```markdown
+---
+
+### Phase X Completion Notes
+
+**What Has Been Implemented:**
+- List of all files created/modified
+- List of all features added
+- Any architectural decisions made during implementation
+- Any deviations from the original plan (with justification)
+
+**What Will Be Noticed In-Game:**
+- Player-visible changes
+- New UI elements or behaviors
+- Any changes to existing gameplay
+
+**Testing Steps:**
+- [ ] Specific test case 1
+- [ ] Specific test case 2
+- [ ] Edge case tests
+- [ ] Integration tests with existing systems
+
+**Known Issues / Future Work:**
+- Any bugs or limitations discovered
+- Items deferred to later phases
+- Performance considerations
+
+---
+```
+
+**This format MUST be added to every phase after completion. Do not skip this step.**
 
 ---
 

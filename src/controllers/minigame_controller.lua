@@ -14,6 +14,7 @@ function MinigameController:init(player_data, game_data_model, save_manager, che
     self.cheat_system = cheat_system
     self.di = di
     self.event_bus = di and di.eventBus -- Store event bus from DI
+    self.demo_recorder = di and di.demoRecorder -- Demo recording system
 
     self.game_instance = nil
     self.game_data = nil
@@ -27,6 +28,11 @@ function MinigameController:init(player_data, game_data_model, save_manager, che
     self.auto_completed_games = {}
     self.auto_complete_power = 0
     self.overlay_visible = false
+
+    -- Demo recording state
+    self.is_recording = false
+    self.recorded_demo = nil
+    self.show_save_demo_prompt = false
 end
 
 function MinigameController:begin(game_instance, game_data)
@@ -44,6 +50,18 @@ function MinigameController:begin(game_instance, game_data)
     self.auto_completed_games = {}
     self.auto_complete_power = 0
     self.overlay_visible = false
+
+    -- Reset demo recording state
+    self.is_recording = false
+    self.recorded_demo = nil
+    self.show_save_demo_prompt = false
+
+    -- Start demo recording if DemoRecorder is available
+    if self.demo_recorder then
+        local variant_config = game_instance.variant or {}
+        self.demo_recorder:startRecording(game_data.id, variant_config)
+        self.is_recording = true
+    end
 
     -- Phase 3.3: Start music
     if game_instance.playMusic then
@@ -64,6 +82,11 @@ end
 
 function MinigameController:update(dt)
     if not self.game_instance or self.overlay_visible then return end
+
+    -- Call fixedUpdate on demo recorder if recording
+    if self.is_recording and self.demo_recorder then
+        pcall(self.demo_recorder.fixedUpdate, self.demo_recorder)
+    end
 
     local ok_base, err_base = pcall(self.game_instance.updateBase, self.game_instance, dt)
     if not ok_base then
@@ -148,6 +171,17 @@ function MinigameController:processCompletion()
     local ok_save, err_save = pcall(self.save_manager.save, self.player_data)
     if not ok_save then print("Error saving game data:", err_save) end
 
+    -- Stop demo recording if active
+    if self.is_recording and self.demo_recorder then
+        local auto_name = self.game_data.display_name .. " Demo"
+        local success, demo_or_error = pcall(self.demo_recorder.stopRecording, self.demo_recorder, auto_name, "Auto-recorded gameplay")
+        if success and demo_or_error then
+            self.recorded_demo = demo_or_error
+            self.show_save_demo_prompt = true
+        end
+        self.is_recording = false
+    end
+
     -- Publish game_completed event regardless of new best score (unless it failed earlier)
     if self.event_bus then
         local completion_data = {
@@ -179,7 +213,29 @@ function MinigameController:getSnapshot()
         auto_completed_games = self.auto_completed_games,
         auto_complete_power = self.auto_complete_power,
         metrics = self:getMetrics(),
+        show_save_demo_prompt = self.show_save_demo_prompt,
+        recorded_demo = self.recorded_demo,
     }
+end
+
+function MinigameController:saveDemo()
+    if not self.recorded_demo then
+        return false
+    end
+
+    local demo_id = self.player_data:saveDemo(self.recorded_demo)
+    if demo_id then
+        self.recorded_demo = nil
+        self.show_save_demo_prompt = false
+        return true
+    else
+        return false
+    end
+end
+
+function MinigameController:discardDemo()
+    self.recorded_demo = nil
+    self.show_save_demo_prompt = false
 end
 
 return MinigameController

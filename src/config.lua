@@ -1104,6 +1104,20 @@ local Config = {
         -- 5 = Demon
         weirdness = 0,
     },
+
+    -- === VM Demo Recording & Playback Configuration ===
+    vm_demo = {
+        fixed_dt = 1/60,              -- Fixed timestep for recording/playback (60 FPS)
+        restart_delay = 0.1,          -- Seconds between runs (visual feedback)
+        max_demo_frames = 18000,      -- Max frames (~5 minutes at 60 FPS)
+        min_demo_frames = 60,         -- Min frames (~1 second at 60 FPS)
+        stats_update_interval = 1.0,  -- Update UI stats every second
+        save_frequency = 30,          -- Save VM state every 30 seconds
+
+        -- Speed upgrade system (levels defined in balance, not here)
+        max_visual_speed_multiplier = 100, -- Cap for rendered VMs
+        headless_speed_label = "INSTANT",  -- UI label for headless mode
+    },
 }
 
 return Config

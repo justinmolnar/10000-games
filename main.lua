@@ -25,6 +25,7 @@ local system_cursors = {}
 
 -- Removed per-state-name tracking; state changes are handled by the StateMachine
 
+
 function love.load()
     print("=== Starting love.load() ===")
 
@@ -74,6 +75,8 @@ function love.load()
     local ContextMenuService = require('src.utils.context_menu_service') -- Require ContextMenuService
     local GameVariantLoader = require('src.models.game_variant_loader') -- Require GameVariantLoader
     local AudioManager = require('src.utils.audio_manager') -- Phase 3.2/3.3: Audio system
+    local DemoRecorder = require('src.models.demo_recorder') -- Phase 1: Demo recording system
+    local DemoPlayer = require('src.models.demo_player') -- Phase 2: Demo playback system
 
     -- == 2. Initialize Core Systems & DI Container ==
     local event_bus = EventBus:new()
@@ -169,14 +172,32 @@ function love.load()
     di.audioManager = audio_manager
 
     -- == 5.6. Initialize TTS System ==
-    local TTSManager = require('src.utils.tts_manager')
-    local tts_config = Config.tts or { enabled = true, rate = 0, volume = 80, use_audio_effects = true }
-    local tts_manager = TTSManager:new(tts_config)
-    di.ttsManager = tts_manager
+    -- DISABLED: TTS voice listing breaks console output
+    -- local TTSManager = require('src.utils.tts_manager')
+    -- local tts_config = Config.tts or { enabled = true, rate = 0, volume = 80, use_audio_effects = true }
+    -- local tts_manager = TTSManager:new(tts_config)
+    -- di.ttsManager = tts_manager
 
-    -- List available voices on startup (optional)
-    if tts_config.enabled then
-        tts_manager:listVoices()
+    -- == 5.7. Initialize Demo Recorder (Phase 1) ==
+    print("=== Initializing Demo Recorder ===")
+    local demo_recorder_ok, demo_recorder = pcall(DemoRecorder.new, DemoRecorder, di)
+    if demo_recorder_ok then
+        di.demoRecorder = demo_recorder
+        print("Demo Recorder initialized successfully")
+    else
+        print("ERROR: Failed to initialize Demo Recorder: " .. tostring(demo_recorder))
+        di.demoRecorder = nil
+    end
+
+    -- == 5.8. Initialize Demo Player (Phase 2) ==
+    print("=== Initializing Demo Player ===")
+    local demo_player_ok, demo_player = pcall(DemoPlayer.new, DemoPlayer, di)
+    if demo_player_ok then
+        di.demoPlayer = demo_player
+        print("Demo Player initialized successfully")
+    else
+        print("ERROR: Failed to initialize Demo Player: " .. tostring(demo_player))
+        di.demoPlayer = nil
     end
 
     -- == 6. Initialize State Machine and States ==
@@ -233,7 +254,7 @@ local auto_save_timer = 0
 local AUTO_SAVE_INTERVAL = 30
 
 function love.update(dt)
-    -- Update global systems if they exist
+    -- Update global systems if they exist (dt is now fixed at 1/60 by tick library)
     if statistics then statistics:addPlaytime(dt) end
 
     -- VM Manager needs to run even if DesktopState isn't the active *state machine* state
@@ -363,6 +384,12 @@ end
 function love.errorhandler(msg)
     print("ERROR:", msg)
     print(debug.traceback())
+
+    -- Write error to file
+    local error_log = "ERROR: " .. tostring(msg) .. "\n\n" .. debug.traceback()
+    love.filesystem.write("crash.log", error_log)
+    print("Error written to crash.log in save directory")
+
     -- Attempt a final save, wrapped in pcall in case saving is the problem
     pcall(love.quit)
 
