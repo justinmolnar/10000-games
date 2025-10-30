@@ -645,11 +645,12 @@ function MemoryMatch:updateGameLogic(dt)
                             end
                         end
 
-                        -- Combo system with scoring
+                        -- Combo system - ALWAYS track combo for power formula
+                        self.current_combo = self.current_combo + 1
+                        self.metrics.combo = math.max(self.metrics.combo, self.current_combo)
+
+                        -- Apply combo bonus to score (only if combo_multiplier is set)
                         if self.combo_multiplier > 0 then
-                            self.current_combo = self.current_combo + 1
-                            self.metrics.combo = math.max(self.metrics.combo, self.current_combo)
-                            -- Apply combo bonus
                             local combo_bonus = math.floor(10 * self.combo_multiplier * self.current_combo)
                             self.metrics.score = self.metrics.score + combo_bonus
                         end

@@ -12,7 +12,7 @@ function PlayerData:init(statistics_instance, di)
     self.statistics = statistics_instance -- Store injected instance
     self.event_bus = di and di.eventBus -- Store injected event bus
 
-    self.tokens = 0
+    self.tokens = Config.start_tokens or 500
     self.unlocked_games = {}
     self.completed_games = {}
     self.game_performance = {}

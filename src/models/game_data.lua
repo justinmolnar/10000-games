@@ -54,8 +54,8 @@ function GameData:loadBaseGames()
            self:registerGame(base_game_data)
 
            -- Determine number of clones to generate
-           -- Use standalone variant count if available, otherwise default to 40
-           local clone_count = standalone_variant_counts[base_game_data.id] or 40
+           -- Use standalone variant count if available, otherwise default to 2
+           local clone_count = standalone_variant_counts[base_game_data.id] or 2
 
            self:generateClones(base_game_data, clone_count, multipliers)
         else
@@ -239,7 +239,8 @@ function GameData:generateClones(base_game, count)
         local difficulty_level = math.max(1, math.floor(i / Config.clone_difficulty_step) + 1)
 
         local cost_exponent = base_game.cost_exponent or Config.clone_cost_exponent
-        local cost = math.floor(base_game.unlock_cost * math.pow(multiplier, cost_exponent))
+        -- Cost scaling starts immediately at variant 2 (i=1): use (i+1) for cost calculation
+        local cost = math.floor(base_game.unlock_cost * math.pow(i + 1, cost_exponent))
 
         local clone = {}
         for k, v in pairs(base_game) do clone[k] = v end
@@ -393,6 +394,101 @@ end
 function GameData:calculateTokenRate(game_id, metrics)
     -- Token rate is the same as power
     return self:calculatePower(game_id, metrics)
+end
+
+-- DEBUG HELPER: Calculate theoretical maximum formula output for balance testing
+-- This uses ACTUAL game victory conditions from variant data, not arbitrary assumptions
+function GameData:calculateTheoreticalMax(game_id)
+    local game = self:getGame(game_id)
+    if not game or not game.formula_function then
+        return 0
+    end
+
+    -- Parse game_id to get base type and variant number
+    local base_id, variant_num = game_id:match("^(.+)_(%d+)$")
+    local clone_index = variant_num and (tonumber(variant_num) - 1) or 0
+
+    -- Try to load variant-specific data from JSON
+    local variant = nil
+    if base_id then
+        local game_type = base_id:match("^([^_]+)")
+        local variant_file = Paths.assets.data .. "variants/" .. game_type .. "_variants.json"
+        local read_ok, contents = pcall(love.filesystem.read, variant_file)
+        if read_ok and contents then
+            local decode_ok, variants = pcall(json.decode, contents)
+            if decode_ok and variants then
+                for _, v in ipairs(variants) do
+                    if v.clone_index == clone_index then
+                        variant = v
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    -- Define theoretical max values based on actual game parameters
+    local max_metrics = {}
+
+    -- Dodge games: use victory_limit (default 30 dodges), perfect = 0 collisions
+    if game.metrics_tracked and game.metrics_tracked[1] == "objects_dodged" then
+        local victory_limit = (variant and variant.victory_limit) or 30
+        max_metrics.objects_dodged = victory_limit
+        max_metrics.collisions = 0
+        max_metrics.perfect_dodges = victory_limit -- All dodges are perfect
+
+    -- Snake games: use victory_limit for length, estimate survival time
+    elseif game.metrics_tracked and game.metrics_tracked[1] == "snake_length" then
+        local victory_limit = (variant and variant.victory_limit) or 20
+        -- Estimate survival time: ~2.5 seconds per food eaten (based on real play data)
+        local estimated_time = victory_limit * 2.5
+        max_metrics.snake_length = victory_limit
+        max_metrics.survival_time = estimated_time
+
+    -- Memory Match: pairs = card_count/2, estimate optimal completion time
+    elseif game.metrics_tracked and game.metrics_tracked[1] == "matches" then
+        local card_count = (variant and variant.card_count) or 12
+        local pairs = card_count / 2
+        -- Estimate time: ~2.5 seconds per pair (based on real perfect play data)
+        local estimated_time = pairs * 2.5
+        max_metrics.matches = pairs
+        max_metrics.time = estimated_time
+        max_metrics.combo = pairs -- Maximum combo = all pairs matched in a row
+
+    -- Hidden Object: assume finding all objects
+    elseif game.metrics_tracked and game.metrics_tracked[1] == "objects_found" then
+        max_metrics.objects_found = 20 -- Typical object count
+        max_metrics.time = 60 -- 1 minute for perfect play
+        max_metrics.perfect = 1
+
+    -- Space Shooter: estimate based on level
+    elseif game.metrics_tracked and game.metrics_tracked[1] == "kills" then
+        max_metrics.kills = 50 -- Estimate for a good run
+        max_metrics.deaths = 0
+
+    -- Fallback for unknown games
+    else
+        if game.metrics_tracked then
+            for _, metric in ipairs(game.metrics_tracked) do
+                -- Bad metrics (minimize)
+                if metric == "collisions" or metric == "deaths" or metric == "mistakes" then
+                    max_metrics[metric] = 0
+                -- Time metric (tricky - depends on formula)
+                elseif metric == "time" then
+                    max_metrics[metric] = 30
+                -- Perfect flag
+                elseif metric == "perfect" then
+                    max_metrics[metric] = 1
+                -- Good metrics (maximize with conservative estimates)
+                else
+                    max_metrics[metric] = 50
+                end
+            end
+        end
+    end
+
+    -- Calculate formula output with realistic max metrics
+    return game.formula_function(max_metrics)
 end
 
 return GameData

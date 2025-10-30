@@ -1,0 +1,30 @@
+# Comprehensive Balance Analysis
+
+**Formulas:**
+- Dodge: `(dodges² / (collisions + 1)) × multiplier`
+- Snake: `((length³ × 5) / time) × multiplier`
+- Memory: `((matches² × (combo + 1) × 50) / time) × multiplier`
+
+
+## Dodge Analysis
+
+Base cost: 175, Exponent: 1.5
+
+| Clone | Name | Victory/Cards | Cost | Power | Ratio |
+|-------|------|---------------|------|-------|-------|
+C:\Users\1just\Documents\10000 games\documentation\balance_calculation_script.js:21
+    if (cloneIndex === 0) return baseCost;
+                          ^
+
+ReferenceError: baseCost is not defined
+    at calculateCost (C:\Users\1just\Documents\10000 games\documentation\balance_calculation_script.js:21:27)
+    at analyzeGameType (C:\Users\1just\Documents\10000 games\documentation\balance_calculation_script.js:66:22)
+    at Object.<anonymous> (C:\Users\1just\Documents\10000 games\documentation\balance_calculation_script.js:110:22)
+    at Module._compile (node:internal/modules/cjs/loader:1358:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1416:10)
+    at Module.load (node:internal/modules/cjs/loader:1208:32)
+    at Module._load (node:internal/modules/cjs/loader:1024:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:174:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.15.0

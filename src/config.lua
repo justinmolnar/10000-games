@@ -2,7 +2,7 @@
 
 local Config = {
     -- Player Data
-    start_tokens = 500,
+    start_tokens = 20,
     upgrade_costs = {
         cpu_speed = 500, -- Base cost for level 1
         overclock = 1000,

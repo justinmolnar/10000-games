@@ -4,7 +4,10 @@
       "Bash(mkdir:*)",
       "Bash(tree:*)",
       "Bash(\"C:\\Program Files\\LOVE\\love.exe\" . --console scripts/generate_placeholder_sprites.lua)",
-      "Bash(python scripts/generate_placeholders.py:*)"
+      "Bash(python scripts/generate_placeholders.py:*)",
+      "Bash(lua:*)",
+      "Bash(\"C:\\Program Files\\LOVE\\love.exe\" --version)",
+      "Bash(python documentation/calculate_comprehensive_balance.py:*)"
     ],
     "deny": [],
     "ask": []

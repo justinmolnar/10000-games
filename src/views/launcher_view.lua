@@ -92,7 +92,7 @@ end
 function LauncherView:mousepressed(x, y, button, filtered_games, viewport_width, viewport_height)
     if button ~= 1 then return nil end
 
-    local categories = {"all", "action", "puzzle", "arcade", "locked", "unlocked", "completed", "easy", "medium", "hard"}
+    local categories = {"all", "action", "puzzle", "arcade", "locked", "unlocked", "affordable", "completed", "easy", "medium", "hard"}
     local button_width = 75
     local cat_button_y = 10
     local cat_button_x_start = 10
@@ -292,8 +292,8 @@ function LauncherView:drawCategoryButtons(x, y, selected_category)
     local categories = {
         {id = "all", name = "All"}, {id = "action", name = "Action"}, {id = "puzzle", name = "Puzzle"},
         {id = "arcade", name = "Arcade"}, {id = "locked", name = "Locked"}, {id = "unlocked", name = "Unlocked"},
-        {id = "completed", name = "Completed"}, {id = "easy", name = "Easy"}, {id = "medium", name = "Medium"},
-        {id = "hard", name = "Hard"}
+        {id = "affordable", name = "Affordable"}, {id = "completed", name = "Completed"}, {id = "easy", name = "Easy"},
+        {id = "medium", name = "Medium"}, {id = "hard", name = "Hard"}
     }
     local button_width = 75
     local button_height = self.category_button_height
@@ -702,6 +702,31 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
         return line_y
     end
 
+    local function drawDebugBalanceInfo(line_y)
+        -- DEBUG: Show theoretical max for balance testing
+        line_y = line_y + 10
+        love.graphics.setColor(1, 1, 0, 0.7)
+        love.graphics.print("[DEBUG - Balance Testing]", x + 10, line_y, 0, 0.8, 0.8)
+        line_y = line_y + 15
+
+        local theoretical_max = self.game_data:calculateTheoreticalMax(game_data.id)
+        love.graphics.setColor(0, 1, 0)
+        love.graphics.print("Theoretical Max Power:", x + 10, line_y, 0, 0.85, 0.85)
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.print(math.floor(theoretical_max), x + 10, line_y + 15, 0, 1.1, 1.1)
+        line_y = line_y + 35
+
+        -- Show cost comparison
+        love.graphics.setColor(0.8, 0.8, 0.8)
+        local unlock_cost = game_data.unlock_cost or 0
+        local power_to_cost_ratio = unlock_cost > 0 and (theoretical_max / unlock_cost) or 0
+        love.graphics.print(string.format("Cost: %d | Ratio: %.2f", unlock_cost, power_to_cost_ratio),
+            x + 10, line_y, 0, 0.75, 0.75)
+        line_y = line_y + 15
+
+        return line_y
+    end
+
     local function drawActionButton()
         local button_y = y + h - 45
         local is_unlocked = self.player_data:isGameUnlocked(game_data.id)
@@ -719,6 +744,7 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
     line_y = drawFormula(line_y)
     line_y = drawPerformance(line_y)
     line_y = drawAutoplay(line_y)
+    line_y = drawDebugBalanceInfo(line_y)  -- DEBUG: Show theoretical max for testing
     drawActionButton()
 end
 

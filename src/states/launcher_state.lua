@@ -122,6 +122,10 @@ function LauncherState:updateFilter(category)
         arcade = function(g) return g.category == 'arcade' end,
         locked = function(g) return not self.player_data:isGameUnlocked(g.id) end,
         unlocked = function(g) return self.player_data:isGameUnlocked(g.id) end,
+        affordable = function(g)
+            return self.player_data:isGameUnlocked(g.id) or
+                   (g.unlock_cost and self.player_data.tokens >= g.unlock_cost)
+        end,
         completed = function(g) return self.player_data:getGamePerformance(g.id) ~= nil end,
         easy = function(g) return (g.difficulty_level or 1) <= 3 end,
         medium = function(g) local d = g.difficulty_level or 1; return d > 3 and d <= 6 end,
@@ -188,9 +192,9 @@ function LauncherState:keypressed(key)
             result_event = { type = "close_window" } -- Signal window close
         end
     elseif key >= '1' and key <= '9' or key == '0' then
-        local filters = {"all", "action", "puzzle", "arcade", "locked", "unlocked", "completed", "easy", "medium", "hard"}
+        local filters = {"all", "action", "puzzle", "arcade", "locked", "unlocked", "affordable", "completed", "easy", "medium", "hard"}
         local index = key == '0' and 10 or tonumber(key)
-        if filters[index] then
+        if index <= #filters and filters[index] then
             self:updateFilter(filters[index])
         else
             handled = false

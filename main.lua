@@ -288,6 +288,23 @@ function love.keypressed(key, scancode, isrepeat)
         if active and active.toggleStartMenu then active:toggleStartMenu() end
         return -- Consume; prevents default behavior while game window has focus
     end
+
+    -- DEBUG: Token manipulation hotkeys
+    if key == '=' or key == 'kp+' then
+        if player_data then
+            player_data:addTokens(5000)
+            print("DEBUG: Added 5000 tokens. Total: " .. player_data.tokens)
+        end
+        return
+    end
+    if key == '-' or key == 'kp-' then
+        if player_data then
+            player_data.tokens = math.max(0, player_data.tokens - 5000)
+            print("DEBUG: Removed 5000 tokens. Total: " .. player_data.tokens)
+        end
+        return
+    end
+
     -- Delegate to the active state via the StateMachine
     state_machine:keypressed(key)
 end
