@@ -16,6 +16,16 @@ function LauncherState:init(player_data, game_data, state_machine, save_manager,
 
     self.all_games = {}
     self.filtered_games = {}
+
+    -- Subscribe to token changes to refresh affordability
+    if self.event_bus then
+        self.event_bus:subscribe('tokens_changed', function()
+            -- Re-apply current filter to update affordability
+            if self.view and self.view.selected_category then
+                self:updateFilter(self.view.selected_category)
+            end
+        end)
+    end
 end
 
 function LauncherState:loadVariantData(game_id)

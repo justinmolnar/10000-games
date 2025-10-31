@@ -210,69 +210,72 @@ function MemoryMatchView:draw()
     
     -- HUD with all new parameters
     local hud_icon_size = self.hud.icon_size or 16
-    local s = self.hud.text_scale or 0.85
-    local lx = 10
-    local hud_y = 10
-    love.graphics.setColor(1, 1, 1)
+    -- Draw HUD (skip in VM render mode)
+    if not game.vm_render_mode then
+        local s = self.hud.text_scale or 0.85
+        local lx = 10
+        local hud_y = 10
+        love.graphics.setColor(1, 1, 1)
 
-    if game.memorize_phase then
-        love.graphics.print("Memorize! " .. string.format("%.1f", game.memorize_timer), lx, hud_y, 0, s, s)
-        hud_y = hud_y + 20
-    else
-        -- Score (if any scoring modifiers are enabled)
-        if game.perfect_bonus > 0 or game.combo_multiplier > 0 or game.speed_bonus > 0 then
-            love.graphics.setColor(1, 1, 0.3)
-            love.graphics.print("Score: " .. game.metrics.score, lx, hud_y, 0, s, s)
-            love.graphics.setColor(1, 1, 1)
+        if game.memorize_phase then
+            love.graphics.print("Memorize! " .. string.format("%.1f", game.memorize_timer), lx, hud_y, 0, s, s)
             hud_y = hud_y + 20
-        end
+        else
+            -- Score (if any scoring modifiers are enabled)
+            if game.perfect_bonus > 0 or game.combo_multiplier > 0 or game.speed_bonus > 0 then
+                love.graphics.setColor(1, 1, 0.3)
+                love.graphics.print("Score: " .. game.metrics.score, lx, hud_y, 0, s, s)
+                love.graphics.setColor(1, 1, 1)
+                hud_y = hud_y + 20
+            end
 
-        -- Matches
-        love.graphics.print("Matches: " .. game.metrics.matches .. "/" .. game.total_pairs, lx, hud_y, 0, s, s)
-        hud_y = hud_y + 20
-
-        -- Perfect matches
-        if game.perfect_bonus > 0 then
-            love.graphics.print("Perfect: " .. game.metrics.perfect, lx, hud_y, 0, s, s)
+            -- Matches
+            love.graphics.print("Matches: " .. game.metrics.matches .. "/" .. game.total_pairs, lx, hud_y, 0, s, s)
             hud_y = hud_y + 20
-        end
 
-        -- Time
-        love.graphics.print("Time: " .. string.format("%.1f", game.metrics.time), lx, hud_y, 0, s, s)
-        hud_y = hud_y + 20
+            -- Perfect matches
+            if game.perfect_bonus > 0 then
+                love.graphics.print("Perfect: " .. game.metrics.perfect, lx, hud_y, 0, s, s)
+                hud_y = hud_y + 20
+            end
 
-        -- Time limit (countdown)
-        if game.time_limit > 0 then
-            love.graphics.setColor(game.time_remaining < 10 and {1, 0.3, 0.3} or {1, 1, 0.5})
-            love.graphics.print("Time Left: " .. string.format("%.1f", game.time_remaining), lx, hud_y, 0, s, s)
+            -- Time
+            love.graphics.print("Time: " .. string.format("%.1f", game.metrics.time), lx, hud_y, 0, s, s)
             hud_y = hud_y + 20
-            love.graphics.setColor(1, 1, 1)
-        end
 
-        -- Move limit
-        if game.move_limit > 0 then
-            local moves_left = game.move_limit - game.moves_made
-            love.graphics.setColor(moves_left < 5 and {1, 0.3, 0.3} or {1, 1, 1})
-            love.graphics.print("Moves: " .. game.moves_made .. "/" .. game.move_limit, lx, hud_y, 0, s, s)
-            hud_y = hud_y + 20
-            love.graphics.setColor(1, 1, 1)
-        end
+            -- Time limit (countdown)
+            if game.time_limit > 0 then
+                love.graphics.setColor(game.time_remaining < 10 and {1, 0.3, 0.3} or {1, 1, 0.5})
+                love.graphics.print("Time Left: " .. string.format("%.1f", game.time_remaining), lx, hud_y, 0, s, s)
+                hud_y = hud_y + 20
+                love.graphics.setColor(1, 1, 1)
+            end
 
-        -- Combo counter
-        if game.combo_multiplier > 0 and game.current_combo > 0 then
-            love.graphics.setColor(0.2, 1, 0.2)
-            love.graphics.print("Combo: x" .. game.current_combo, lx, hud_y, 0, s, s)
-            hud_y = hud_y + 20
-            love.graphics.setColor(1, 1, 1)
-        end
+            -- Move limit
+            if game.move_limit > 0 then
+                local moves_left = game.move_limit - game.moves_made
+                love.graphics.setColor(moves_left < 5 and {1, 0.3, 0.3} or {1, 1, 1})
+                love.graphics.print("Moves: " .. game.moves_made .. "/" .. game.move_limit, lx, hud_y, 0, s, s)
+                hud_y = hud_y + 20
+                love.graphics.setColor(1, 1, 1)
+            end
 
-        -- Chain requirement
-        if game.chain_requirement > 0 and game.chain_target then
-            love.graphics.setColor(1, 1, 0.2)
-            love.graphics.print("Find: " .. game.chain_target, lx, hud_y, 0, s, s)
-            love.graphics.print("Chain: " .. game.chain_progress .. "/" .. game.chain_requirement, lx, hud_y + 15, 0, s * 0.8, s * 0.8)
-            hud_y = hud_y + 35
-            love.graphics.setColor(1, 1, 1)
+            -- Combo counter
+            if game.combo_multiplier > 0 and game.current_combo > 0 then
+                love.graphics.setColor(0.2, 1, 0.2)
+                love.graphics.print("Combo: x" .. game.current_combo, lx, hud_y, 0, s, s)
+                hud_y = hud_y + 20
+                love.graphics.setColor(1, 1, 1)
+            end
+
+            -- Chain requirement
+            if game.chain_requirement > 0 and game.chain_target then
+                love.graphics.setColor(1, 1, 0.2)
+                love.graphics.print("Find: " .. game.chain_target, lx, hud_y, 0, s, s)
+                love.graphics.print("Chain: " .. game.chain_progress .. "/" .. game.chain_requirement, lx, hud_y + 15, 0, s * 0.8, s * 0.8)
+                hud_y = hud_y + 35
+                love.graphics.setColor(1, 1, 1)
+            end
         end
     end
 

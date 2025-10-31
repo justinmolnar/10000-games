@@ -173,13 +173,19 @@ function MinigameController:processCompletion()
 
     -- Stop demo recording if active
     if self.is_recording and self.demo_recorder then
+        print("[MinigameController] Stopping demo recording for " .. self.game_data.display_name)
         local auto_name = self.game_data.display_name .. " Demo"
         local success, demo_or_error = pcall(self.demo_recorder.stopRecording, self.demo_recorder, auto_name, "Auto-recorded gameplay")
         if success and demo_or_error then
             self.recorded_demo = demo_or_error
             self.show_save_demo_prompt = true
+            print("[MinigameController] Demo recorded successfully, showing save prompt")
+        else
+            print("[MinigameController] Demo recording FAILED: " .. tostring(demo_or_error))
         end
         self.is_recording = false
+    else
+        print("[MinigameController] NOT recording demo (is_recording=" .. tostring(self.is_recording) .. ", demo_recorder=" .. tostring(self.demo_recorder ~= nil) .. ")")
     end
 
     -- Publish game_completed event regardless of new best score (unless it failed earlier)

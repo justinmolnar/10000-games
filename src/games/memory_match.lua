@@ -873,6 +873,8 @@ function MemoryMatch:onComplete()
 end
 
 function MemoryMatch:keypressed(key)
+    -- Call parent to handle virtual key tracking for demo playback
+    MemoryMatch.super.keypressed(self, key)
     return false
 end
 

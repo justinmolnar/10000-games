@@ -499,22 +499,25 @@ function SnakeView:draw()
     love.graphics.pop()
 
     local hud_icon_size = self.hud.icon_size or 16
-    local s = self.hud.text_scale or 0.85
-    local lx, ix, tx = self.hud.label_x or 10, self.hud.icon_x or 60, self.hud.text_x or 80
-    local ry = self.hud.row_y or {10, 30, 50}
-    love.graphics.setColor(1, 1, 1)
+    -- Draw HUD (skip in VM render mode)
+    if not game.vm_render_mode then
+        local s = self.hud.text_scale or 0.85
+        local lx, ix, tx = self.hud.label_x or 10, self.hud.icon_x or 60, self.hud.text_x or 80
+        local ry = self.hud.row_y or {10, 30, 50}
+        love.graphics.setColor(1, 1, 1)
 
-    local length_sprite = self.sprite_manager:getMetricSprite(game.data, "snake_length") or snake_sprite
-    love.graphics.print("Length: ", lx, ry[1], 0, s, s)
-    self.sprite_loader:drawSprite(length_sprite, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    love.graphics.print(game.metrics.snake_length .. "/" .. game.target_length, tx, ry[1], 0, s, s)
+        local length_sprite = self.sprite_manager:getMetricSprite(game.data, "snake_length") or snake_sprite
+        love.graphics.print("Length: ", lx, ry[1], 0, s, s)
+        self.sprite_loader:drawSprite(length_sprite, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        love.graphics.print(game.metrics.snake_length .. "/" .. game.target_length, tx, ry[1], 0, s, s)
 
-    local time_sprite = self.sprite_manager:getMetricSprite(game.data, "survival_time") or "clock-0"
-    love.graphics.print("Time: ", lx, ry[2], 0, s, s)
-    self.sprite_loader:drawSprite(time_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    love.graphics.print(string.format("%.1f", game.metrics.survival_time), tx, ry[2], 0, s, s)
+        local time_sprite = self.sprite_manager:getMetricSprite(game.data, "survival_time") or "clock-0"
+        love.graphics.print("Time: ", lx, ry[2], 0, s, s)
+        self.sprite_loader:drawSprite(time_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        love.graphics.print(string.format("%.1f", game.metrics.survival_time), tx, ry[2], 0, s, s)
 
-    love.graphics.print("Difficulty: " .. game.difficulty_level, lx, ry[3])
+        love.graphics.print("Difficulty: " .. game.difficulty_level, lx, ry[3])
+    end
 end
 
 function SnakeView:drawBackground()

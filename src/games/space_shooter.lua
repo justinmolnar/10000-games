@@ -242,11 +242,11 @@ function SpaceShooter:updateGameLogic(dt)
 end
 
 function SpaceShooter:updatePlayer(dt)
-    if love.keyboard.isDown('left', 'a') then self.player.x = self.player.x - PLAYER_SPEED * dt end
-    if love.keyboard.isDown('right', 'd') then self.player.x = self.player.x + PLAYER_SPEED * dt end
+    if self:isKeyDown('left', 'a') then self.player.x = self.player.x - PLAYER_SPEED * dt end
+    if self:isKeyDown('right', 'd') then self.player.x = self.player.x + PLAYER_SPEED * dt end
     self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
     if self.player.fire_cooldown > 0 then self.player.fire_cooldown = self.player.fire_cooldown - dt end
-    if love.keyboard.isDown('space') and self.player.fire_cooldown <= 0 then self:playerShoot() end
+    if self:isKeyDown('space') and self.player.fire_cooldown <= 0 then self:playerShoot() end
 end
 
 function SpaceShooter:updateEnemies(dt)
@@ -497,6 +497,8 @@ function SpaceShooter:onComplete()
 end
 
 function SpaceShooter:keypressed(key)
+    -- Call parent to handle virtual key tracking for demo playback
+    SpaceShooter.super.keypressed(self, key)
     return false
 end
 

@@ -164,15 +164,20 @@ end
 
 function MinigameState:keypressed(key)
     if not self.window_manager or self.window_id ~= self.window_manager:getFocusedWindowId() then
+        print("[MinigameState] Keypressed blocked - window not focused")
         return false
     end
 
     if self.controller:isOverlayVisible() then
         -- Handle demo save/discard if prompt is showing
         if self.controller.show_save_demo_prompt then
+            print("[MinigameState] Save demo prompt active, key: " .. tostring(key))
             if key == 's' then
+                print("[MinigameState] Attempting to save demo...")
                 if self.controller:saveDemo() then
                     print("[MinigameState] Demo saved successfully")
+                else
+                    print("[MinigameState] Demo save FAILED")
                 end
                 return { type = "content_interaction" }
             elseif key == 'd' then
@@ -180,6 +185,8 @@ function MinigameState:keypressed(key)
                 print("[MinigameState] Demo discarded")
                 return { type = "content_interaction" }
             end
+        else
+            print("[MinigameState] Overlay visible but no save prompt, key: " .. tostring(key))
         end
 
         if key == 'return' then

@@ -1121,6 +1121,151 @@ STOPPED:
 
 ---
 
+### Phase 6 Completion Notes
+
+**What Has Been Implemented:**
+- **Created `src/views/vm_playback_view.lua`**: View for live VM execution visualization
+  - `init()` with DI container injection
+  - `drawWindowed()` renders game content and HUD overlay
+  - `drawHUD()` displays VM info, state, speed, run stats, and progress
+  - **Handles all VM states**: IDLE (shows "VM is idle"), RESTARTING (shows "restarting"), RUNNING (renders game)
+  - **Headless mode detection**: Shows "HEADLESS mode - no visual output" message if VM is in instant mode
+  - **Game area scissoring**: Uses screen coordinates for proper clipping (viewport.x/y offsets)
+  - **HUD layout**: 60px height at bottom, shows VM slot, state, speed indicators, frame progress, last run result
+  - **Speed indicator display**: Shows "VM Speed: Nx | Display: 1x" to clarify playback is always at 1x regardless of actual VM speed
+  - **Frame counter**: Shows "Frame: X / Y (Z%)" progress for current run
+  - **Last run result**: Displays VICTORY/DEFEAT with token count from previous run
+
+- **Created `src/states/vm_playback_state.lua`**: State controller for playback window
+  - `init()` with DI dependencies (vm_manager, player_data, game_data)
+  - `enter(slot_index)` receives slot to watch as parameter
+  - `setViewport()` and `setWindowContext()` for window integration
+  - `update()` refreshes VM slot reference each frame, closes window if VM goes idle
+  - `draw()` delegates to view with viewport transformation
+  - `keypressed()` handles ESC to close window
+  - **Window title update**: Sets title to "VM N - [Game Name]" on enter
+  - **Auto-close on idle**: Closes playback window if VM slot becomes idle or is removed
+  - **Read-only**: No mouse/keyboard interaction affects VM (pure visualization)
+
+- **Added vm_playback program to `assets/data/programs.json`**:
+  - Program ID: `vm_playback`
+  - State class: `states.vm_playback_state`
+  - Dependencies: vm_manager, player_data, game_data, di
+  - Icon: computer_2-0 (green tint)
+  - Window defaults: 600x500, min 400x300, resizable
+  - **single_instance: false** - allows multiple playback windows (one per VM)
+  - **Not on desktop or start menu** - launched programmatically only
+
+- **Added "WATCH" button to `src/views/vm_manager_view.lua`**:
+  - Button appears between STOP/START and SPEED+ buttons
+  - **Only visible when**: VM is RUNNING or RESTARTING AND not in headless mode
+  - Cyan color (0.3, 0.8, 1) for distinction
+  - Click region: x=50 to x=95 in slot coordinates
+  - Returns `{name = "watch_vm", slot_index = N}` event on click
+
+- **Added watchVM() handler to `src/states/vm_manager_state.lua`**:
+  - Handles "watch_vm" event from view
+  - Publishes `ProgramLaunchRequested` event with program ID "vm_playback" and slot_index
+  - Event bus launches VMPlaybackState with slot_index as enter parameter
+  - Logs success/failure to console
+
+**What Will Be Noticed In-Game:**
+- **"WATCH" button visible on running VM slots** (non-headless only)
+  - Appears next to STOP/START button on bottom control bar
+  - Cyan colored text
+  - Only shows when VM is actively running
+
+- **Click WATCH → Opens live playback window**:
+  - Window title shows "VM N - [Game Name]"
+  - **Top area**: Live game rendering at 1x speed (same as normal minigame view)
+  - **Bottom HUD**: 60px overlay with stats
+    - VM slot number and state (RUNNING/RESTARTING)
+    - Speed indicator: "VM Speed: 10x | Display: 1x" (shows VM is fast but display is normal)
+    - Current run number and frame progress
+    - Last run result (VICTORY/DEFEAT with tokens earned)
+
+- **Headless VMs show info message**: "VM is running in HEADLESS mode - No visual output available"
+
+- **Multiple playback windows supported**: Can watch multiple VMs simultaneously (each opens in separate window)
+
+- **Closing playback window doesn't stop VM**: VM continues running in background, only closes visualization
+
+- **Auto-close on VM stop**: If VM slot is stopped/removed while playback window is open, window automatically closes
+
+**Testing Steps:**
+- [ ] Launch game, play minigame, save demo, assign to VM slot
+- [ ] VM slot shows RUNNING state with WATCH button visible (cyan)
+- [ ] Click WATCH button → VM Playback window opens
+- [ ] Verify window title: "VM 1 - [Game Name]"
+- [ ] Top area shows game rendering (player, obstacles, etc.)
+- [ ] Bottom HUD shows:
+  - [ ] VM slot number and state
+  - [ ] Speed indicator (e.g., "VM Speed: 1x | Display: 1x")
+  - [ ] Run number (e.g., "Run #5")
+  - [ ] Frame progress (e.g., "Frame: 234 / 948 (24.7%)")
+  - [ ] Last run result after first run completes (e.g., "Last: VICTORY (+1450 tk)")
+- [ ] Close playback window → VM continues running in background
+- [ ] Open VM Manager → VM still shows RUNNING state
+- [ ] Click WATCH again → Opens new playback window
+- [ ] Stop VM from VM Manager → Playback window auto-closes
+- [ ] Test with headless VM (if speed upgraded to instant):
+  - [ ] WATCH button does NOT appear on slot
+  - [ ] If manually opened somehow, shows "HEADLESS mode" message
+- [ ] Test multiple VMs running:
+  - [ ] Click WATCH on VM 1 → Window 1 opens
+  - [ ] Click WATCH on VM 2 → Window 2 opens
+  - [ ] Both windows show their respective VMs playing
+- [ ] Test ESC key in playback window → Window closes
+- [ ] Test window resize → Game area scales properly
+
+**Known Issues / Future Work:**
+- **No input visualization**: HUD doesn't show which keys are being pressed (deferred - not critical)
+- **No victory/death overlay**: Game ends are only visible in HUD stats, not in-game visual feedback
+  - Could add brief flash or overlay when run completes
+- **No frame rate indicator**: Can't tell if game is actually rendering at 60 FPS
+- **Multiple playback windows share same viewport reference**: Could cause issues if windows overlap (unlikely edge case)
+- **No "pin on top" option**: Playback windows can be covered by other windows
+- **Game area uses full width**: No padding/margin, content goes edge-to-edge
+- **HUD is fixed 60px**: Doesn't scale with window size (acceptable for now)
+- **No scrolling for long stat text**: If game name is very long in title, it may overflow
+- **Playback window doesn't show VM speed changes in real-time**: Speed indicator is read once on draw, not updated if VM is upgraded while watching
+  - Minor issue - close/reopen window to see updated speed
+- **No error handling if game.draw() crashes**: Shown as red error text in playback window (acceptable)
+
+**Architectural Notes:**
+- **Slot index passed via enter() parameter**: `vm_playback_state:enter(slot_index)` receives which VM to watch
+- **VM slot reference refreshed each frame**: `update()` calls `getSlot()` to ensure up-to-date data
+- **View doesn't own game instance**: Reads from `vm_slot.game_instance` directly (VM Manager owns it)
+- **Pure visualization**: Playback window has no effect on VM execution (read-only)
+- **Closing window doesn't stop VM**: `exit()` doesn't call `stopVM()`, just cleans up view
+- **Headless mode check**: View checks `vm_slot.headless_mode` to show appropriate message
+- **Scissor uses screen coordinates**: `setScissor(screen_x, screen_y + offset, w, h)` for game area clipping
+- **1x display speed**: Game renders at normal framerate regardless of VM speed multiplier
+- **Multiple instances allowed**: `single_instance: false` in programs.json enables multiple playback windows
+- **Event bus launch**: Uses `ProgramLaunchRequested` event to open window (follows desktop paradigm)
+
+**Integration Points:**
+- **Phase 7 enhancements**:
+  - Add input visualization (show which keys are pressed during playback)
+  - Add victory/death overlay (flash or message when run completes)
+  - Add pin-on-top option for playback windows
+  - Add real-time speed indicator updates (subscribe to `vm_speed_upgraded` event)
+- **Phase 8 performance**:
+  - Optimize game rendering in playback windows (don't render if window is minimized/occluded)
+  - Add frame skip option for very fast VMs (show every Nth frame instead of all frames)
+  - Limit number of concurrent playback windows to prevent performance issues
+
+**How Playback Window Works:**
+1. Click WATCH button in VM Manager → `watchVM()` called with slot_index
+2. `watchVM()` publishes `ProgramLaunchRequested` event with "vm_playback" and slot_index
+3. Desktop/Window system launches vm_playback program
+4. `VMPlaybackState:enter(slot_index)` receives slot to watch
+5. Each frame: `update()` refreshes slot reference, `draw()` renders game and HUD
+6. Playback shows game at 1x speed (visual feedback) regardless of actual VM speed
+7. Close window → `exit()` cleans up, VM continues running
+
+---
+
 ### Phase 7: Integration & Polish
 
 **Goal:** Connect all systems and handle edge cases.

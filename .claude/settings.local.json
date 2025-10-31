@@ -7,7 +7,10 @@
       "Bash(python scripts/generate_placeholders.py:*)",
       "Bash(lua:*)",
       "Bash(\"C:\\Program Files\\LOVE\\love.exe\" --version)",
-      "Bash(python documentation/calculate_comprehensive_balance.py:*)"
+      "Bash(python documentation/calculate_comprehensive_balance.py:*)",
+      "Bash(for file in src/games/snake_game.lua src/games/space_shooter.lua src/games/hidden_object.lua src/games/memory_match.lua)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

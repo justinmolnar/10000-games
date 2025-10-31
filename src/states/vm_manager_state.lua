@@ -172,6 +172,8 @@ function VMManagerState:mousepressed(x, y, button)
         self:updateDemoList(event.game_id)  -- Pass the game_id explicitly
     elseif event.name == "assign_demo" then
         self:assignDemoToSlot(event.demo_id, event.slot_index)
+    elseif event.name == "delete_demo" then
+        self:deleteDemo(event.demo_id)
     elseif event.name == "remove_game" then
         self:removeGameFromSlot(event.slot_index)
     elseif event.name == "stop_vm" then
@@ -298,6 +300,22 @@ function VMManagerState:upgradeVMSpeed(slot_index)
         print("Upgraded VM " .. slot_index .. " speed to " .. new_speed .. "x")
     else
         print("Failed to upgrade VM speed (max level reached)")
+    end
+end
+
+function VMManagerState:deleteDemo(demo_id)
+    -- Delete demo from player data
+    local success = self.player_data:deleteDemo(demo_id)
+    if success then
+        self.save_manager.save(self.player_data)
+        print("Deleted demo: " .. demo_id)
+
+        -- Refresh the demo list (stay in demo selection)
+        if self.view.selected_game_id then
+            self:updateDemoList(self.view.selected_game_id)
+        end
+    else
+        print("Failed to delete demo: " .. demo_id)
     end
 end
 

@@ -172,11 +172,19 @@ function love.load()
     di.audioManager = audio_manager
 
     -- == 5.6. Initialize TTS System ==
-    -- DISABLED: TTS voice listing breaks console output
-    -- local TTSManager = require('src.utils.tts_manager')
-    -- local tts_config = Config.tts or { enabled = true, rate = 0, volume = 80, use_audio_effects = true }
-    -- local tts_manager = TTSManager:new(tts_config)
-    -- di.ttsManager = tts_manager
+    local tts_ok, TTSManager = pcall(require, 'src.utils.tts_manager')
+    if tts_ok then
+        local tts_config = Config.tts or { enabled = true, rate = 0, volume = 80, use_audio_effects = true }
+        local tts_init_ok, tts_manager = pcall(TTSManager.new, TTSManager, tts_config)
+        if tts_init_ok then
+            di.ttsManager = tts_manager
+            print("=== TTS Manager initialized ===")
+        else
+            print("=== TTS Manager failed to initialize: " .. tostring(tts_manager) .. " ===")
+        end
+    else
+        print("=== TTS Manager not available ===")
+    end
 
     -- == 5.7. Initialize Demo Recorder (Phase 1) ==
     print("=== Initializing Demo Recorder ===")

@@ -17,7 +17,7 @@ function PlayerData:init(statistics_instance, di)
     self.completed_games = {}
     self.game_performance = {}
     self.space_defender_level = 1
-    self.vm_slots = 1
+    self.vm_slots = 0  -- Start with 0 VMs, must purchase first one
     self.active_vms = {}
 
     -- CheatEngine budget (global across all games)

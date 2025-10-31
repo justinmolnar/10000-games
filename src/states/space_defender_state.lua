@@ -220,6 +220,9 @@ function SpaceDefenderState:updateEnemies(dt)
             enemy.x = enemy.x + math.cos(enemy.y / (s.den or 50)) * (s.amp or 80) * dt
         end
 
+        -- Clamp enemy X position to screen bounds
+        enemy.x = math.max(enemy.width/2, math.min(self.game_width - enemy.width/2, enemy.x))
+
         if self.player_ship then
             local p_x1 = self.player_ship.x - self.player_ship.width/2
             local p_y1 = self.player_ship.y - self.player_ship.height/2
@@ -301,9 +304,17 @@ function SpaceDefenderState:bossAttack()
 
     for i = 1, count do
         local angle = (i / count) * math.pi * 2 + (self.current_level * rotate_per_level)
+        local spawn_x = self.boss.x + math.cos(angle) * radius_x
+        local spawn_y = self.boss.y + math.sin(angle) * radius_y
+
+        -- Clamp spawn position to screen bounds (with enemy width margin)
+        local enemy_size = (self._cfg and self._cfg.enemy and self._cfg.enemy.size) or 20
+        spawn_x = math.max(enemy_size/2, math.min(self.game_width - enemy_size/2, spawn_x))
+        spawn_y = math.max(enemy_size/2, math.min(self.game_height - enemy_size/2, spawn_y))
+
         self:spawnEnemy(
-            self.boss.x + math.cos(angle) * radius_x,
-            self.boss.y + math.sin(angle) * radius_y,
+            spawn_x,
+            spawn_y,
             "straight", enemy_hp, speed_base + self.current_level * speed_per_lvl
         )
     end

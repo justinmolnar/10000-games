@@ -1050,9 +1050,9 @@ local Config = {
                 enemy_count_base = 10,
                 enemy_count_exponent = 1.3,
                 -- Spawn rate (seconds between spawns, decreases with level)
-                spawn_rate_base = 1.0,
-                spawn_rate_min = 0.1,
-                spawn_rate_level_reduction = 0.05
+                spawn_rate_base = 0.15,  -- Much faster spawning (was 1.0)
+                spawn_rate_min = 0.05,   -- Can get very fast at high levels (was 0.1)
+                spawn_rate_level_reduction = 0.01  -- Slower reduction (was 0.05)
             },
             boss_movement = {
                 -- Boss moves downward toward player
@@ -1108,7 +1108,7 @@ local Config = {
     -- === VM Demo Recording & Playback Configuration ===
     vm_demo = {
         fixed_dt = 1/60,              -- Fixed timestep for recording/playback (60 FPS)
-        restart_delay = 0.1,          -- Seconds between runs (visual feedback)
+        restart_delay = 5.0,          -- Seconds between runs (show completion screen, upgradeable later)
         max_demo_frames = 18000,      -- Max frames (~5 minutes at 60 FPS)
         min_demo_frames = 60,         -- Min frames (~1 second at 60 FPS)
         stats_update_interval = 1.0,  -- Update UI stats every second

@@ -282,5 +282,18 @@
     "in_start_menu": true,
     "disabled": false,
     "window_defaults": { "w": 600, "h": 500, "min_w": 500, "min_h": 400, "resizable": true, "single_instance": true }
+  },
+  {
+    "id": "vm_playback",
+    "name": "VM Playback",
+    "executable": "vmplayback.exe",
+    "state_class_path": "states.vm_playback_state",
+    "dependencies": ["vm_manager", "player_data", "game_data", "di"],
+    "icon_sprite": "computer_2-0",
+    "icon_color": [0.3, 1.0, 0.3],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 600, "h": 500, "min_w": 400, "min_h": 300, "resizable": true, "single_instance": false }
   }
 ]

@@ -52,10 +52,9 @@ function DemoRecorder:stopRecording(demo_name, description)
         return nil
     end
 
+    -- Allow demos with no inputs (for testing idle behavior, etc.)
     if #self.inputs == 0 then
-        print("Warning: Demo has no inputs recorded.")
-        self:cancelRecording()
-        return nil
+        print("Info: Demo has no inputs recorded (idle demo)")
     end
 
     -- Build demo data structure

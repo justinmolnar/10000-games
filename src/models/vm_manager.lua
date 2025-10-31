@@ -240,6 +240,11 @@ function VMManager:startNewRun(slot, player_data, game_data)
     print("  Total frames: " .. (demo.recording and demo.recording.total_frames or 0))
     print("  Input count: " .. (demo.recording and demo.recording.inputs and #demo.recording.inputs or 0))
 
+    -- Calculate speed multiplier from cpu_speed upgrade
+    local cpu_level = (player_data.upgrades and player_data.upgrades.cpu_speed) or 0
+    local cpu_bonus_per_level = Config.vm_cpu_speed_bonus_per_level or 0.1
+    slot.speed_multiplier = 1 + (cpu_level * cpu_bonus_per_level)
+
     -- Create game instance
     local game_instance = self:createGameInstance(slot.assigned_game_id, demo, game_data, player_data, slot.slot_index)
     if not game_instance then
@@ -266,8 +271,8 @@ function VMManager:startNewRun(slot, player_data, game_data)
     slot.current_run.seed = game_instance.seed or 0
     slot.current_run.start_time = os.time()
 
-    print(string.format("  Speed multiplier: %dx, Headless: %s, Game completed: %s",
-        slot.speed_multiplier, tostring(slot.headless_mode), tostring(game_instance.completed)))
+    print(string.format("  Speed multiplier: %.1fx (CPU level %d), Headless: %s",
+        slot.speed_multiplier, cpu_level, tostring(slot.headless_mode)))
 
     return true
 end
@@ -304,6 +309,12 @@ function VMManager:createGameInstance(game_id, demo, game_data, player_data, slo
         game_instance:setPlaybackMode(true)
     end
 
+    -- Set play area for games that need it (like snake - spawns food/obstacles)
+    if game_instance.setPlayArea then
+        -- Use standard rendering dimensions (720x400)
+        game_instance:setPlayArea(720, 400)
+    end
+
     -- Set random seed for this run (use slot_index if provided)
     math.randomseed(os.time() + (slot_index or 0))
 
@@ -314,14 +325,20 @@ end
 function VMManager:processRunResult(slot, result, player_data)
     slot.stats.total_runs = slot.stats.total_runs + 1
 
-    local tokens = result.tokens or 0
+    local base_tokens = result.tokens or 0
     local success = result.completed or false
+
+    -- Apply overclock bonus to tokens
+    local overclock_level = (player_data.upgrades and player_data.upgrades.overclock) or 0
+    local overclock_bonus_per_level = Config.vm_overclock_bonus_per_level or 0.05
+    local overclock_multiplier = 1 + (overclock_level * overclock_bonus_per_level)
+    local tokens = math.floor(base_tokens * overclock_multiplier)
 
     local elapsed_time = love.timer.getTime() - (slot.debug_start_time or 0)
     local game_fps = (result.frames_played or 0) / elapsed_time
     local expected_time = (result.frames_played or 0) / 60
-    print(string.format("[VMManager] Run completed - Tokens: %d, Frames: %d | %.1fs real vs %.1fs expected @ 60fps (%.1f actual FPS)",
-        tokens, result.frames_played or 0, elapsed_time, expected_time, game_fps))
+    print(string.format("[VMManager] Run completed - Tokens: %d (base: %d, overclock: %.2fx), Frames: %d | %.1fs real vs %.1fs expected @ 60fps (%.1f actual FPS)",
+        tokens, base_tokens, overclock_multiplier, result.frames_played or 0, elapsed_time, expected_time, game_fps))
 
     -- Reset debug counters
     slot.debug_frame_count = nil
@@ -552,8 +569,8 @@ end
 
 -- Get VM purchase cost
 function VMManager:getVMCost(current_count)
-    local effective_count = math.max(0, current_count - 1)
-    return math.floor((Config.vm_base_cost or 1000) * math.pow((Config.vm_cost_exponent or 2), effective_count))
+    -- No subtraction needed since we start with 0 VMs now
+    return math.floor((Config.vm_base_cost or 1000) * math.pow((Config.vm_cost_exponent or 2), current_count))
 end
 
 -- Calculate total tokens per minute across all VMs

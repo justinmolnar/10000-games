@@ -328,33 +328,36 @@ function DodgeView:draw()
         end
     end
 
-    local hud_icon_size = self.hud.icon_size or 16
-    local s = self.hud.text_scale or 0.85
-    local lx, ix, tx = self.hud.label_x or 10, self.hud.icon_x or 70, self.hud.text_x or 90
-    local ry = self.hud.row_y or {10, 30, 50, 70}
-    g.setColor(1, 1, 1)
+    -- Draw HUD (skip in VM render mode)
+    if not game.vm_render_mode then
+        local hud_icon_size = self.hud.icon_size or 16
+        local s = self.hud.text_scale or 0.85
+        local lx, ix, tx = self.hud.label_x or 10, self.hud.icon_x or 70, self.hud.text_x or 90
+        local ry = self.hud.row_y or {10, 30, 50, 70}
+        g.setColor(1, 1, 1)
 
-    local dodged_sprite = self.sprite_manager:getMetricSprite(game.data, "objects_dodged") or player_sprite
-    g.print("Dodged: ", lx, ry[1], 0, s, s)
-    self.sprite_loader:drawSprite(dodged_sprite, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    g.print(game.metrics.objects_dodged .. "/" .. game.dodge_target, tx, ry[1], 0, s, s)
-    
-    local collision_sprite = self.sprite_manager:getMetricSprite(game.data, "collisions") or "msg_error-0"
-    g.print("Lives: ", lx, ry[2], 0, s, s)
-    self.sprite_loader:drawSprite(collision_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    local lives_remaining = game.lives - game.metrics.collisions
-    g.print(lives_remaining .. "/" .. game.lives, tx, ry[2], 0, s, s)
+        local dodged_sprite = self.sprite_manager:getMetricSprite(game.data, "objects_dodged") or player_sprite
+        g.print("Dodged: ", lx, ry[1], 0, s, s)
+        self.sprite_loader:drawSprite(dodged_sprite, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        g.print(game.metrics.objects_dodged .. "/" .. game.dodge_target, tx, ry[1], 0, s, s)
 
-    local combo_sprite = self.sprite_manager:getMetricSprite(game.data, "combo") or "check-0"
-    g.print("Combo: ", lx, ry[3], 0, s, s)
-    self.sprite_loader:drawSprite(combo_sprite, ix, ry[3], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    g.print(game.metrics.combo, tx, ry[3], 0, s, s)
+        local collision_sprite = self.sprite_manager:getMetricSprite(game.data, "collisions") or "msg_error-0"
+        g.print("Lives: ", lx, ry[2], 0, s, s)
+        self.sprite_loader:drawSprite(collision_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        local lives_remaining = game.lives - game.metrics.collisions
+        g.print(lives_remaining .. "/" .. game.lives, tx, ry[2], 0, s, s)
 
-    -- Show shield charges if player has shields
-    if game.player.shield_max and game.player.shield_max > 0 then
-        g.print("Shield: " .. game.player.shield_charges .. "/" .. game.player.shield_max, lx, ry[4], 0, s, s)
-    else
-        g.print("Difficulty: " .. game.difficulty_level, lx, ry[4])
+        local combo_sprite = self.sprite_manager:getMetricSprite(game.data, "combo") or "check-0"
+        g.print("Combo: ", lx, ry[3], 0, s, s)
+        self.sprite_loader:drawSprite(combo_sprite, ix, ry[3], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        g.print(game.metrics.combo, tx, ry[3], 0, s, s)
+
+        -- Show shield charges if player has shields
+        if game.player.shield_max and game.player.shield_max > 0 then
+            g.print("Shield: " .. game.player.shield_charges .. "/" .. game.player.shield_max, lx, ry[4], 0, s, s)
+        else
+            g.print("Difficulty: " .. game.difficulty_level, lx, ry[4])
+        end
     end
 
     -- Fog of war overlay (after all game elements, before closing transform)

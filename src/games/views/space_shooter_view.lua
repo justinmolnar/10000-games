@@ -176,25 +176,27 @@ function SpaceShooterView:draw()
         end
     end
 
-    -- HUD
-    local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or
-                     (Config and Config.games and Config.games.space_shooter and Config.games.space_shooter.view) or {})
-    local hud = viewcfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
-    local hud_icon_size = hud.icon_size or 16
-    local s = hud.text_scale or 0.85
-    local lx, ix, tx = hud.label_x or 10, hud.icon_x or 60, hud.text_x or 80
-    local ry = hud.row_y or {10, 30, 50}
-    g.setColor(1, 1, 1)
-    g.print("Kills: ", lx, ry[1], 0, s, s)
-    self.sprite_loader:drawSprite(enemy_sprite_fallback, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    g.print(game.metrics.kills .. "/" .. game.target_kills, tx, ry[1], 0, s, s)
+    -- Draw HUD (skip in VM render mode)
+    if not game.vm_render_mode then
+        local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or
+                         (Config and Config.games and Config.games.space_shooter and Config.games.space_shooter.view) or {})
+        local hud = viewcfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
+        local hud_icon_size = hud.icon_size or 16
+        local s = hud.text_scale or 0.85
+        local lx, ix, tx = hud.label_x or 10, hud.icon_x or 60, hud.text_x or 80
+        local ry = hud.row_y or {10, 30, 50}
+        g.setColor(1, 1, 1)
+        g.print("Kills: ", lx, ry[1], 0, s, s)
+        self.sprite_loader:drawSprite(enemy_sprite_fallback, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        g.print(game.metrics.kills .. "/" .. game.target_kills, tx, ry[1], 0, s, s)
 
-    local death_sprite = self.sprite_manager:getMetricSprite(game.data, "deaths") or "msg_error-0"
-    g.print("Deaths: ", lx, ry[2], 0, s, s)
-    self.sprite_loader:drawSprite(death_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-    g.print(game.metrics.deaths .. "/" .. game.PLAYER_MAX_DEATHS, tx, ry[2], 0, s, s)
+        local death_sprite = self.sprite_manager:getMetricSprite(game.data, "deaths") or "msg_error-0"
+        g.print("Deaths: ", lx, ry[2], 0, s, s)
+        self.sprite_loader:drawSprite(death_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        g.print(game.metrics.deaths .. "/" .. game.PLAYER_MAX_DEATHS, tx, ry[2], 0, s, s)
 
-    g.print("Difficulty: " .. game.difficulty_level, lx, ry[3])
+        g.print("Difficulty: " .. game.difficulty_level, lx, ry[3])
+    end
 end
 
 function SpaceShooterView:drawBackground()

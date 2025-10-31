@@ -40,6 +40,12 @@ function BaseGame:init(game_data, cheats, di, variant_override)
     -- Playback mode (disables human input when true)
     self.playback_mode = false
 
+    -- Virtual keyboard state for demo playback
+    self.virtual_keys = {}
+
+    -- VM rendering mode (hides HUD when true)
+    self.vm_render_mode = false
+
     -- Load variant data
     self.variant = nil
 
@@ -135,19 +141,36 @@ function BaseGame:draw()
 end
 
 function BaseGame:keypressed(key)
-    -- Block human input during demo playback
+    -- Track virtual key state for demo playback
     if self.playback_mode then
+        self.virtual_keys[key] = true
+        -- Debug output
+        if not self.debug_vkey_count then self.debug_vkey_count = 0 end
+        if self.debug_vkey_count < 10 then
+            print(string.format("[BaseGame] Virtual key pressed: %s (now tracking: %d keys)", key, self:countActiveKeys()))
+            self.debug_vkey_count = self.debug_vkey_count + 1
+        end
         return
     end
     -- Override in subclasses
 end
 
 function BaseGame:keyreleased(key)
-    -- Block human input during demo playback
+    -- Track virtual key state for demo playback
     if self.playback_mode then
+        self.virtual_keys[key] = false
         return
     end
     -- Override in subclasses
+end
+
+-- Debug helper
+function BaseGame:countActiveKeys()
+    local count = 0
+    for k, v in pairs(self.virtual_keys) do
+        if v then count = count + 1 end
+    end
+    return count
 end
 
 function BaseGame:mousepressed(x, y, button)
@@ -161,10 +184,40 @@ end
 -- Enable/disable playback mode
 function BaseGame:setPlaybackMode(enabled)
     self.playback_mode = enabled
+    -- Clear virtual keys when entering/exiting playback mode
+    if enabled then
+        self.virtual_keys = {}
+    end
 end
 
 function BaseGame:isInPlaybackMode()
     return self.playback_mode
+end
+
+-- Check if key is down (virtual during playback, real otherwise)
+function BaseGame:isKeyDown(...)
+    if self.playback_mode then
+        -- Check multiple keys (any key pressed returns true)
+        for i = 1, select('#', ...) do
+            local key = select(i, ...)
+            if self.virtual_keys[key] then
+                return true
+            end
+        end
+        return false
+    else
+        -- Use real keyboard state
+        return love.keyboard.isDown(...)
+    end
+end
+
+-- Enable/disable VM render mode (hides HUD)
+function BaseGame:setVMRenderMode(enabled)
+    self.vm_render_mode = enabled
+end
+
+function BaseGame:isVMRenderMode()
+    return self.vm_render_mode
 end
 
 function BaseGame:checkComplete()

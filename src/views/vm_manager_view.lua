@@ -257,6 +257,12 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
                 end
             end
 
+            -- Check if delete button was clicked first
+            local delete_demo = self:getDeleteButtonAtPosition(x, y, demos)
+            if delete_demo then
+                return {name = "delete_demo", demo_id = delete_demo.demo_id}
+            end
+
             -- Check clicked demo
             local clicked_demo = self:getDemoAtPosition(x, y, demos)
             if clicked_demo then
@@ -337,23 +343,7 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
 
         -- Check if slot is assigned
         if slot.state ~= "IDLE" then
-            -- Check Stop/Start button
-            local button_y = self.slot_height - 38
-            if local_y >= button_y and local_y <= button_y + 15 then
-                if local_x >= 5 and local_x <= 50 then
-                    -- Stop/Start button clicked
-                    if slot.state == "RUNNING" or slot.state == "RESTARTING" then
-                        return {name = "stop_vm", slot_index = clicked_slot_index}
-                    else
-                        return {name = "start_vm", slot_index = clicked_slot_index}
-                    end
-                elseif local_x >= self.slot_width - 55 and local_x <= self.slot_width - 5 then
-                    -- Speed upgrade button clicked
-                    return {name = "upgrade_speed", slot_index = clicked_slot_index}
-                end
-            end
-
-            -- Click anywhere else on assigned slot - show removal confirmation or context menu
+            -- Click anywhere on assigned slot - remove game (could add confirmation dialog later)
             return {name = "remove_game", slot_index = clicked_slot_index}
         else
             -- Empty slot - open game selection
@@ -493,6 +483,36 @@ function VMManagerView:getDemoAtPosition(x, y, demos)
     return nil
 end
 
+function VMManagerView:getDeleteButtonAtPosition(x, y, demos)
+    local list_area_y_start = self.modal_y + 40
+    local list_area_y_end = self.modal_y + self.modal_h - 30
+
+    if y < list_area_y_start or y > list_area_y_end then
+        return nil
+    end
+
+    local relative_y = y - list_area_y_start
+    local index_in_view = math.floor(relative_y / self.modal_item_height)
+    local actual_index = index_in_view + 1 + (self.scroll_offset or 0)
+
+    if actual_index >= 1 and actual_index <= #demos then
+        local demo = demos[actual_index]
+        local item_y = list_area_y_start + index_in_view * self.modal_item_height
+
+        -- Check if click is on delete button
+        local delete_btn_size = 20
+        local delete_btn_x = self.modal_x + self.modal_w - 35
+        local delete_btn_y = item_y + (self.modal_item_height - delete_btn_size) / 2
+
+        if x >= delete_btn_x and x <= delete_btn_x + delete_btn_size and
+           y >= delete_btn_y and y <= delete_btn_y + delete_btn_size then
+            return { demo_id = demo.demo_id, demo = demo }
+        end
+    end
+
+    return nil
+end
+
 function VMManagerView:isPurchaseButtonClicked(x, y, viewport_width, viewport_height)
     if #self.vm_manager.vm_slots >= self.vm_manager.max_slots then
         return false
@@ -516,136 +536,233 @@ function VMManagerView:drawTokensPerMinute(x, y, rate)
 end
 
 function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
-    -- Ensure sprite_manager is loaded via DI
-    if not self.sprite_manager then
-        error("VMManagerView: sprite_manager not available via DI")
-    end
-    self.sprite_manager:ensureLoaded() -- Ensure dependencies like sprite_loader are ready
-
     local Config_ = (self.di and self.di.config) or {}
     local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
     local S = (V.colors and V.colors.slot) or {}
+
+    -- Border
+    love.graphics.setColor(S.border or {0.5, 0.5, 0.5})
+    love.graphics.rectangle('line', x, y, w, h)
+
+    -- Header bar (20px)
+    local header_h = 20
     if selected then love.graphics.setColor(S.selected_bg or {0.3, 0.3, 0.7})
     elseif hovered then love.graphics.setColor(S.hovered_bg or {0.35, 0.35, 0.35})
     else love.graphics.setColor(S.normal_bg or {0.25, 0.25, 0.25}) end
-    love.graphics.rectangle('fill', x, y, w, h)
-    love.graphics.setColor(S.border or {0.5, 0.5, 0.5})
-    love.graphics.rectangle('line', x, y, w, h)
+    love.graphics.rectangle('fill', x, y, w, header_h)
+
     love.graphics.setColor(S.header_text or {0.7, 0.7, 0.7})
     local vm_prefix = Strings.get('vm.vm_prefix', 'VM')
-    love.graphics.print(vm_prefix .. " " .. slot.slot_index, x + 5, y + 5, 0, 0.8, 0.8)
+    love.graphics.print(vm_prefix .. " " .. slot.slot_index, x + 5, y + 3, 0, 0.7, 0.7)
 
-    -- Check if slot is assigned (demo-based system)
+    -- Speed indicator in header
+    if slot.state ~= "IDLE" then
+        local speed_text = ""
+        if slot.headless_mode then
+            speed_text = Config_.vm_demo and Config_.vm_demo.headless_speed_label or "INSTANT"
+        elseif slot.speed_multiplier and slot.speed_multiplier > 1 then
+            speed_text = slot.speed_multiplier .. "x"
+        else
+            speed_text = "1x"
+        end
+        love.graphics.setColor(S.speed_text or {1, 1, 0})
+        love.graphics.print(speed_text, x + w - 40, y + 3, 0, 0.7, 0.7)
+    end
+
+    -- Content area (game rendering or info)
+    local content_y = y + header_h
+    local content_h = h - header_h
+
+    -- Check if slot is assigned
     local is_assigned = slot.state ~= "IDLE"
 
     if is_assigned and slot.assigned_game_id then
         local game = context.game_data:getGame(slot.assigned_game_id)
-        if game then
-            -- Phase 2.4: Try to load variant-specific launcher icon
-            local launcher_icon = nil
-            if self.variant_loader then
-                launcher_icon = self.variant_loader:getLauncherIcon(game.id, game.game_class)
-            end
 
-            if launcher_icon then
-                -- Draw loaded launcher icon directly
-                love.graphics.setColor(1, 1, 1)
-                love.graphics.draw(launcher_icon, x + 8, y + 25, 0,
-                    32 / launcher_icon:getWidth(), 32 / launcher_icon:getHeight())
+        -- Show completion screen during RESTARTING state
+        if slot.state == "RESTARTING" and game then
+            love.graphics.setColor(S.normal_bg or {0.15, 0.15, 0.15})
+            love.graphics.rectangle('fill', x, content_y, w, content_h)
+
+            local info_y = content_y + content_h / 2 - 40
+
+            -- Show completion message
+            local stats = slot.stats or {}
+            if stats.last_run_success then
+                love.graphics.setColor(0, 1, 0)
+                love.graphics.printf("VICTORY!", x + 5, info_y, w - 10, "center", 0, 1.5, 1.5)
             else
-                -- Fallback to metric sprite icon
-                local palette_id = self.sprite_manager:getPaletteId(game)
-                local icon_sprite = self.sprite_manager:getMetricSprite(game, game.metrics_tracked[1] or "default")
-                if icon_sprite and self.sprite_manager.sprite_loader then
-                    self.sprite_manager.sprite_loader:drawSprite(icon_sprite, x + 8, y + 25, 32, 32, nil, palette_id)
-                end
+                love.graphics.setColor(1, 0.3, 0.3)
+                love.graphics.printf("DEFEAT", x + 5, info_y, w - 10, "center", 0, 1.5, 1.5)
+            end
+            info_y = info_y + 30
+
+            -- Show tokens earned
+            love.graphics.setColor(1, 1, 0)
+            love.graphics.printf("+" .. math.floor(stats.last_run_tokens or 0) .. " tokens", x + 5, info_y, w - 10, "center", 0, 1.0, 1.0)
+            info_y = info_y + 25
+
+            -- Show restart timer
+            love.graphics.setColor(0.7, 0.7, 0.7)
+            local restart_time_left = (context.vm_manager.restart_delay or 5) - (slot.restart_timer or 0)
+            love.graphics.printf(string.format("Next run in %.1fs", restart_time_left), x + 5, info_y, w - 10, "center", 0, 0.8, 0.8)
+
+        elseif game and slot.game_instance and not slot.headless_mode and slot.state == "RUNNING" then
+            -- RENDER THE ACTUAL GAME
+            love.graphics.push()
+            love.graphics.translate(x, content_y)
+
+            -- Get viewport for scissor (screen coordinates)
+            local viewport = self.controller.viewport
+            local screen_x = (viewport and viewport.x or 0) + x
+            local screen_y = (viewport and viewport.y or 0) + content_y
+
+            -- Scissor to content area
+            love.graphics.setScissor(screen_x, screen_y, w, content_h)
+
+            -- Enable VM render mode (hides HUD)
+            if slot.game_instance.setVMRenderMode then
+                slot.game_instance:setVMRenderMode(true)
             end
 
-            love.graphics.setColor(S.name_text or {1,1,1})
-            love.graphics.printf(game.display_name, x + 45, y + 20, w - 50, "left", 0, 0.7, 0.7)
+            -- Determine rendering approach based on game type
+            local render_width, render_height, scale
 
-            -- Show demo name if available
-            if slot.assigned_demo_id then
-                local demo = context.player_data:getDemo(slot.assigned_demo_id)
-                if demo and demo.metadata and demo.metadata.demo_name then
-                    love.graphics.setColor(S.demo_text or {0.7, 0.7, 1})
-                    love.graphics.printf(demo.metadata.demo_name, x + 45, y + 33, w - 50, "left", 0, 0.6, 0.6)
-                end
+            -- Check if game has fixed arena (like snake with is_fixed_arena)
+            if slot.game_instance.is_fixed_arena then
+                -- Fixed arena: zoom out to show whole arena
+                render_width = slot.game_instance.game_width
+                render_height = slot.game_instance.game_height
+
+                -- Scale to fit in slot while maintaining aspect ratio
+                scale_x = w / render_width
+                scale_y = content_h / render_height
+                scale = math.min(scale_x, scale_y)
+            else
+                -- Dynamic/viewport games: render at standard 720x400
+                render_width = 720
+                render_height = 400
+
+                -- Update game dimensions
+                slot.game_instance.game_width = render_width
+                slot.game_instance.game_height = render_height
+
+                -- Scale down to fit in slot
+                scale_x = w / render_width
+                scale_y = content_h / render_height
+                scale = math.min(scale_x, scale_y)
             end
 
-            -- Show state indicator
+            love.graphics.scale(scale, scale)
+
+            -- Draw the game
+            local success, err = pcall(function()
+                slot.game_instance:draw()
+            end)
+
+            if not success then
+                love.graphics.setColor(1, 0, 0)
+                love.graphics.printf("Render error: " .. tostring(err), 0, 200, 400, "center", 0, 0.6, 0.6)
+            end
+
+            -- Disable VM render mode
+            if slot.game_instance.setVMRenderMode then
+                slot.game_instance:setVMRenderMode(false)
+            end
+
+            love.graphics.setScissor()
+            love.graphics.pop()
+
+            -- Draw HUD overlay at bottom (outside transform and scissor)
+            self:drawVMGameHUD(x, y + h - 25, w, 25, slot, game)
+        else
+            -- Show stats / info instead of game rendering
+            love.graphics.setColor(S.normal_bg or {0.15, 0.15, 0.15})
+            love.graphics.rectangle('fill', x, content_y, w, content_h)
+
+            local info_y = content_y + 5
+
+            if game then
+                love.graphics.setColor(S.name_text or {1,1,1})
+                love.graphics.printf(game.display_name, x + 5, info_y, w - 10, "center", 0, 0.7, 0.7)
+                info_y = info_y + 15
+            end
+
+            -- Show state
             love.graphics.setColor(S.state_text or {0, 1, 1})
             local state_text = slot.state or "IDLE"
-            love.graphics.print(state_text, x + 45, y + 45, 0, 0.6, 0.6)
-
-            -- Show speed indicator
-            local speed_text = ""
             if slot.headless_mode then
-                speed_text = Config_.vm_demo and Config_.vm_demo.headless_speed_label or "INSTANT"
-            elseif slot.speed_multiplier and slot.speed_multiplier > 1 then
-                speed_text = slot.speed_multiplier .. "x"
-            else
-                speed_text = "1x"
+                state_text = state_text .. " (HEADLESS)"
             end
-            love.graphics.setColor(S.speed_text or {1, 1, 0})
-            love.graphics.print(speed_text, x + w - 35, y + 5, 0, 0.7, 0.7)
+            love.graphics.printf(state_text, x + 5, info_y, w - 10, "center", 0, 0.6, 0.6)
+            info_y = info_y + 15
 
             -- Show stats
             local stats = slot.stats or {}
             love.graphics.setColor(S.stats_text or {0.8, 0.8, 0.8})
-            love.graphics.print("Runs: " .. (stats.total_runs or 0), x + 5, y + 60, 0, 0.6, 0.6)
+            love.graphics.printf("Runs: " .. (stats.total_runs or 0), x + 5, info_y, w - 10, "center", 0, 0.6, 0.6)
+            info_y = info_y + 12
             local success_rate = (stats.total_runs or 0) > 0 and ((stats.successes or 0) / stats.total_runs * 100) or 0
-            love.graphics.print(string.format("Success: %.0f%%", success_rate), x + 5, y + 70, 0, 0.6, 0.6)
-            love.graphics.print(string.format("%.1f tk/min", stats.tokens_per_minute or 0), x + 5, y + 80, 0, 0.6, 0.6)
-
-            -- Show progress bar for current run
-            if slot.demo_player and slot.demo_player.getCurrentFrame then
-                local progress = 0
-                local current_frame = slot.demo_player:getCurrentFrame()
-                local total_frames = slot.demo_player:getTotalFrames()
-                if total_frames > 0 then
-                    progress = current_frame / total_frames
-                end
-
-                love.graphics.setColor(S.progress_bg or {0.3, 0.3, 0.3})
-                love.graphics.rectangle('fill', x + 5, y + h - 20, w - 10, 12)
-
-                local palette_id = self.sprite_manager:getPaletteId(game)
-                local palette = self.sprite_manager.palette_manager:getPalette(palette_id)
-                local progress_color = (palette and palette.colors and palette.colors.primary) or {0, 1, 0}
-                love.graphics.setColor(progress_color)
-                love.graphics.rectangle('fill', x + 5, y + h - 20, (w - 10) * progress, 12)
-
-                love.graphics.setColor(S.time_text or {1,1,1})
-                local frame_text = string.format("%d/%d", current_frame, total_frames)
-                love.graphics.printf(frame_text, x + 5, y + h - 19, w - 10, "center", 0, 0.7, 0.7)
-            end
-
-            -- Control buttons (Stop/Start, Speed Upgrade)
-            local button_y = y + h - 38
-            love.graphics.setColor(0.4, 0.4, 0.4)
-            love.graphics.rectangle('fill', x + 5, button_y, w - 10, 15)
-
-            if slot.state == "RUNNING" or slot.state == "RESTARTING" then
-                love.graphics.setColor(1, 0.3, 0.3)
-                love.graphics.print("STOP", x + 8, button_y + 2, 0, 0.7, 0.7)
-            else
-                love.graphics.setColor(0.3, 1, 0.3)
-                love.graphics.print("START", x + 8, button_y + 2, 0, 0.7, 0.7)
-            end
-
-            -- Speed upgrade button
-            love.graphics.setColor(1, 1, 0.3)
-            love.graphics.print("[SPEED+]", x + w - 55, button_y + 2, 0, 0.6, 0.6)
-
-        else
-            love.graphics.setColor(S.error_text or {1,0,0})
-            love.graphics.print(Strings.get('vm.error_missing_game_data','Error: Missing game data!'), x + 5, y + 25)
+            love.graphics.printf(string.format("Success: %.0f%%", success_rate), x + 5, info_y, w - 10, "center", 0, 0.6, 0.6)
+            info_y = info_y + 12
+            love.graphics.printf(string.format("%.1f tk/min", stats.tokens_per_minute or 0), x + 5, info_y, w - 10, "center", 0, 0.6, 0.6)
         end
     else
+        -- Empty slot
+        love.graphics.setColor(S.normal_bg or {0.15, 0.15, 0.15})
+        love.graphics.rectangle('fill', x, content_y, w, content_h)
         love.graphics.setColor(S.empty_text or {0.5, 0.5, 0.5})
         love.graphics.printf(Strings.get('vm.empty_slot','Empty'), x, y + h/2 - 10, w, "center")
         love.graphics.printf(Strings.get('vm.click_to_assign','Click to assign'), x, y + h/2 + 5, w, "center", 0, 0.8, 0.8)
+    end
+end
+
+function VMManagerView:drawVMGameHUD(x, y, w, h, slot, game)
+    -- Draw semi-transparent overlay bar at bottom
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle('fill', x, y, w, h)
+
+    love.graphics.setColor(1, 1, 1)
+    local padding = 5
+    local text_y = y + 5
+    local scale = 0.7
+
+    -- Show key game metrics
+    if game and slot.game_instance then
+        local metrics = slot.game_instance.metrics or {}
+        local text = ""
+
+        -- Game-specific metrics (customize per game type)
+        if game.game_class == "DodgeGame" then
+            local dodged = metrics.objects_dodged or 0
+            local target = slot.game_instance.dodge_target or 0
+            local lives = (slot.game_instance.lives or 10) - (metrics.collisions or 0)
+            text = string.format("Dodged: %d/%d  Lives: %d  Combo: %d", dodged, target, lives, metrics.combo or 0)
+        elseif game.game_class == "SnakeGame" then
+            local length = metrics.snake_length or 0
+            local target = slot.game_instance.target_length or 0
+            local time = metrics.survival_time or 0
+            text = string.format("Length: %d/%d  Time: %.1fs", length, target, time)
+        elseif game.game_class == "MemoryMatch" then
+            local matches = metrics.matches or 0
+            local total = slot.game_instance.total_pairs or 0
+            local time = metrics.time or 0
+            text = string.format("Matches: %d/%d  Time: %.1fs", matches, total, time)
+        elseif game.game_class == "HiddenObject" then
+            local found = metrics.objects_found or 0
+            local total = slot.game_instance.target_objects or 0
+            local time = metrics.time or 0
+            text = string.format("Found: %d/%d  Time: %.1fs", found, total, time)
+        elseif game.game_class == "SpaceShooter" then
+            local kills = metrics.enemies_killed or 0
+            local deaths = metrics.deaths or 0
+            text = string.format("Kills: %d  Deaths: %d", kills, deaths)
+        else
+            -- Generic fallback
+            text = "Playing..."
+        end
+
+        love.graphics.printf(text, x + padding, text_y, w - 2 * padding, "left", 0, scale, scale)
     end
 end
 
@@ -791,6 +908,15 @@ function VMManagerView:drawDemoSelectionModal(demos, scroll_offset, context)
                 local duration = frame_count * (demo.recording.fixed_dt or (1/60))
                 love.graphics.print(string.format("Frames: %d (~%.1fs)", frame_count, duration), self.modal_x + 15, item_y + 20, 0, 0.8, 0.8)
             end
+
+            -- Delete button (small red X on right)
+            local delete_btn_size = 20
+            local delete_btn_x = self.modal_x + self.modal_w - 35
+            local delete_btn_y = item_y + (self.modal_item_height - delete_btn_size) / 2
+            love.graphics.setColor(0.8, 0.2, 0.2)
+            love.graphics.rectangle('fill', delete_btn_x, delete_btn_y, delete_btn_size, delete_btn_size)
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.printf("X", delete_btn_x, delete_btn_y + 2, delete_btn_size, "center", 0, 0.9, 0.9)
         end
 
         -- Scrollbar if needed

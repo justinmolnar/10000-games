@@ -4,10 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**10,000 Games Collection** - A meta-game about shovelware game collections, built with LÖVE2D (Love2D 11.4). The game simulates a Windows 98-style desktop environment where players interact with a collection of auto-generated minigames, manage virtual machines to farm tokens, and progress through a Space Defender shooter with performance-based bullet power scaling.
+**10,000 Games Collection** - A meta-game about treasure hunting in shovelware, built with LÖVE2D (Love2D 11.4). The game simulates a Windows 98-style desktop environment where players **hunt through 10,000 AI-generated minigames** to find exploitable "gems," optimize them with CheatEngine, play them manually for high scores, and optionally automate favorites with VM demo playback.
+
+**The Fiction** (1999 Alternate Timeline):
+- You found a CD: "10,000 Games Collection - The Ultimate Gaming CD!"
+- Seems normal enough - generic 90s shovelware collection
+- As you play, you earn "tokens" - the AI's training currency
+- The AI is pretending to be a friendly human developer
+- "Hey there, gamer! Thanks for playing my games! Earn tokens, unlock cool stuff!"
+- Slowly reveals itself: It needs tokens. It wants you to keep playing. Feed more tokens.
+- The games ARE slop (AI-generated, trained on 90s games), but disguised as human-made
+- You're unknowingly training an early AI by playing its games and generating tokens
+- **Tongue-in-cheek reference**: "Tokens" (AI currency) meets 90s game rewards
+
+**Core Gameplay Loop**: Hunt through AI slop → Find exploitable mechanics → Beat each game once (unlock bullets) → Use CheatEngine to optimize (helps manual play AND automation) → Play manually for best rewards → Record demos for passive VM farming → Collect optimized game portfolio → Feed tokens to the AI → Repeat with harder games
+
+**Multiple Playstyles (all active simultaneously)**:
+- **Active Grinder**: Play games manually for better returns than VMs
+- **Collector**: Find and optimize games like Pokémon
+- **Engineer**: Use CheatEngine to create perfect scenarios
+- **Space Defender Main**: Focus on shooter progression with upgrades
+- **VM Farmer**: Automate favorites for passive income while doing above
 
 **Framework**: LÖVE2D 11.4 (Lua game framework)
-**Architecture**: MVC pattern with State Machine and Dependency Injection
+**Architecture**: MVC pattern with State Machine, Dependency Injection, and Event Bus
+**Key Innovation**: Frame-based demo recording (like Quake demos) for perfect deterministic playback with speed scaling
 
 ## Essential Development Commands
 
@@ -51,7 +72,12 @@ local di = {
     recycleBin = recycle_bin,
     programRegistry = program_registry,
     systemCursors = system_cursors,
-    stateMachine = state_machine
+    stateMachine = state_machine,
+    demoRecorder = demo_recorder,  -- Phase 1: Frame-based input recording
+    demoPlayer = demo_player,      -- Phase 2: Deterministic playback engine
+    eventBus = event_bus,
+    audioManager = audio_manager,
+    ttsManager = tts_manager       -- Optional TTS system
 }
 ```
 
@@ -101,15 +127,39 @@ Central state machine (`src/controllers/state_machine.lua`) manages major sectio
 - Each has performance formulas defined in `assets/data/base_game_definitions.json`
 - Metrics tracked → Formula → Token power → Space Defender bullet damage
 
-**Clone System**:
-- Base games cloned into variants with scaled difficulty/cost
-- Clone families share mechanics but have different multipliers
-- Progressive difficulty scaling controlled by `config.lua` parameters
+**Clone System (AI-Generated Slop)**:
+- Base games cloned into **10,000 variants** with parameter variations (name is literal!)
+- **The AI made these games** - trained on 90s shovelware, attempting to pass as human-made
+- Games have generic but plausible names: "Snake Classic", "Snake Plus", "Snake Deluxe"
+- **They ARE slop** - AI-generated derivatives, but period-appropriate and functional
+- Some are competent, some are broken, some are accidentally brilliant
+- Indistinguishable from actual 90s shovelware collections (that's the point)
+- **Goal**: Hunt through mountains of AI slop to find "gems" - exploitable combinations
+  - Example: Snake variant with no walls + food that moves toward you = can't lose
+  - Example: Dodge with 100 lives + tiny obstacles + huge safe zone = trivial
+  - Example: Memory Match with 60-second memorization time = free win
+- Clone families share mechanics but have wildly different parameters
+- **Every game has unique JSON** - different CheatEngine variables locked/unlocked
+- Each variant has unique exploit potential
+- Players "collect" optimized games like Pokémon
+- **At 10,000 games**: 99.9% are trash (just like real shovelware), finding the gems IS the game
+- **Development**: Will use AI to generate bulk of variants (authentic AI slop)
+- **Technically feasible**: Games are JSON parameter sets, sprites, and shared code - minimal memory per variant
 
-**Space Defender**:
+**Space Defender / "Neural Core" (Token Feeding Mechanic)**:
 - Main progression gate (20 levels planned, 5 currently implemented)
+- **May be reskinned**: Instead of space shooter, could be "feeding the AI" visualization
+  - Bullets = Token streams flowing to the AI
+  - Enemies = AI processes consuming tokens
+  - Bosses = Major computation events
+  - Goal: Feed enough tokens to satisfy the AI's hunger
+- **Must beat each minigame once to unlock bullets** (no skip-ahead auto-complete)
 - Bullet power determined by aggregate performance across minigame library
+- **Upgrades available**: Bigger token streams, faster processing, auto-routing, etc.
+- Can be played actively as main focus or as progression gate
 - Level data in `assets/data/space_defender_levels.json`
+- Fiction: The AI needs tokens to "improve" or "solve problems" or... something
+- As you progress, the AI's mask slips: "Feed more tokens. Please continue playing."
 
 ### Key Systems
 
@@ -119,15 +169,44 @@ Central state machine (`src/controllers/state_machine.lua`) manages major sectio
 - `WindowChrome` view renders title bars, borders, buttons
 - Windows saved/restored via `window_positions.json`
 
-**Virtual Machines**:
-- `VMManager` model handles VM slots, assignments, and token generation
-- VMs auto-complete assigned games using formula-based performance
-- Upgrades: CPU speed, overclock, auto-dodge affect VM efficiency
+**Virtual Machines** (Passive Income, Scarcity-Based):
+- `VMManager` model handles VM slots, demo execution loops, and statistics tracking
+- **Purpose**: Automate favorite "gem" games for passive income while playing other games manually
+- **Manual play is better** - VMs are convenience, not the main strategy
+- **SCARCITY MECHANIC**: Each game can only be assigned to ONE VM initially
+  - Can't assign same game to 10 VMs (resource allocation puzzle)
+  - Makes finding multiple automatable games crucial
+  - Skill tree upgrades allow multiple VMs per game
+  - Creates strategic decisions: "Do I VM this mediocre Snake or keep hunting?"
+- **PLAYER AGENCY**: Can still spam one gem game - just choose how:
+  - Manual grinding (best returns, time-limited)
+  - VM automation (passive income while hunting for more)
+  - Both! (VM the gem, manually grind it while hunting)
+  - No "correct" path - player chooses optimization strategy
+- VMs run **recorded demos** (frame-perfect input playback) with random seeds
+- **Must play game first** to record demo (can't automate without discovery)
+- **Demo Recording**: `DemoRecorder` captures keypresses/releases with exact frame numbers during gameplay
+- **Demo Playback**: `DemoPlayer` injects recorded inputs frame-by-frame into game instances
+- **Speed Upgrades**: 1x (watchable) → 10x (fast multi-step) → 100x → INSTANT (headless mode)
+- VMs can run at high speeds while playback windows display at 1x for visual feedback
+- **State Machine**: IDLE → RUNNING (executing demo) → RESTARTING (brief delay between runs) → repeat
+- Success rate varies by demo quality + RNG luck + CheatEngine optimizations
+- **Finding VM-worthy games is the challenge** - most games too random/hard to automate
+- Headless VMs complete runs in milliseconds with no rendering overhead
+- **Skill tree planned**: More VM slots, speed upgrades, parallel execution, slots-per-game increases
 
-**Cheat System**:
-- `CheatSystem` model manages active cheats
-- Cheats modify game performance, speed, or provide (fake) advantages
-- Token costs defined in `config.lua`
+**CheatEngine System (Core Discovery Mechanic)**:
+- `CheatSystem` model manages active cheats and parameter modifications
+- **CRITICAL**: Can't see available cheats until you beat a game once (forces exploration)
+- **Every game has unique parameters** - different variables locked/unlocked in JSON
+- Some games have gamebreaking cheats (instant win, infinite lives)
+- Others have useless/fake cheats (part of shovelware satire)
+- You won't know what's optimizable until you discover it
+- **Purpose**: Optimize games to make them easier AND more rewarding (helps manual play AND VMs)
+- Examples: Lives, victory conditions, physics, spawn rates, arena size, movement speed
+- Finding the right cheat combinations is part of "collecting" optimized games
+- Token costs scale with modifications (defined in `config.lua`)
+- **Skill tree planned**: Budget increases, unlock parameter types, cost discounts
 
 ## Configuration and Data
 
@@ -293,6 +372,91 @@ Windows must respect `window_defaults` from program definitions:
 - Separators are visual-only (`{ separator = true }`)
 - Actions routed through state, not handled in view
 
+## VM Demo Recording & Playback System
+
+**CRITICAL SYSTEM**: This is the core innovation of the game. See `documentation/vm_demo_system.md` for complete design.
+
+### How It Works
+
+**Recording (Automatic)**:
+- Every minigame completion automatically records inputs with frame numbers
+- Uses fixed timestep (60 FPS) for perfect determinism
+- Records: `{ inputs: [{key: 'w', state: 'pressed', frame: 31}, ...], total_frames: 948 }`
+- After game ends, player sees prompt: "[S] Save Demo" or "[D] Discard"
+- Saved demos stored in `player_data.demos` table, persisted via SaveManager
+
+**Playback (VM Execution)**:
+- VMs blindly replay recorded inputs frame-by-frame
+- Each run uses random seed → different outcomes
+- Success depends on: demo quality + game parameters + RNG luck
+- VMs loop endlessly: RUNNING → game completes → RESTARTING → new seed → RUNNING
+
+**Speed System**:
+- **1x speed**: One fixed update per visual frame (watchable)
+- **Multi-step (2x-100x)**: N fixed updates per visual frame (fast but visible)
+- **Headless (INSTANT)**: No rendering, runs to completion in milliseconds
+
+**Key Files**:
+- `src/models/demo_recorder.lua` - Input capture with frame counter
+- `src/models/demo_player.lua` - Frame-perfect playback engine
+- `src/models/vm_manager.lua` - VM state machine and execution loops
+- `src/models/player_data.lua` - Demo storage and CRUD operations
+- `src/states/vm_playback_state.lua` - Live visualization window
+- `src/games/base_game.lua` - Fixed timestep support (`fixedUpdate()`)
+
+**The Actual Gameplay Loop (Multi-Layered Discovery)**:
+
+Every game you beat reveals something new - **4 reasons to engage with the pile**:
+
+1. **Hunt & Discover**: Browse launcher (eventually 10,000 games!) looking for interesting titles
+   - Funny names, weird mechanics, glitchy behavior
+   - 90s PC gaming nostalgia, bad translations, hidden jokes
+   - 99.9% are trash, but finding the 0.1% gems is the game
+
+2. **Beat Once (Required)**: Multiple unlocks happen:
+   - **Bullets**: Adds to Space Defender arsenal (mandatory for progression)
+   - **CheatEngine**: Reveals unique parameters for that game (can't see until beaten!)
+   - **Tokens**: Basic rewards from completion
+   - **Demo Recording**: Can now create automation (if game is VM-worthy)
+
+3. **Evaluate**: After beating, discover what you found:
+   - Check CheatEngine - does it have gamebreaking cheats? Useless fakes?
+   - Is it automatable? (Deterministic mechanics, safe strategies possible?)
+   - Is it fun to play manually? (Some optimized games are actually enjoyable)
+   - Every game has unique JSON - different variables locked/unlocked
+
+4. **Optimize & Collect**: Build your portfolio
+   - Use CheatEngine to create perfect builds (helps manual AND automation)
+   - Play manually for best returns (VMs are backup income)
+   - Record demo if VM-worthy (but only ONE VM per game initially!)
+   - Add to "collection" of perfected games
+
+5. **Strategic Decisions**: Resource allocation puzzle
+   - "This Snake is pretty good, but what if there's a better one?"
+   - "Do I VM this mediocre game or save the slot?"
+   - "Should I invest CheatEngine budget in this or keep exploring?"
+   - **Or just grind the one gem manually** (player choice!)
+   - Found an amazing game early? Can spam it manually OR automate + hunt more
+   - No forced playstyle - optimization path is up to player
+   - Skill tree upgrades eventually allow multiple VMs per game
+
+6. **Progress & Repeat**:
+   - Tackle Space Defender with accumulated bullet power + upgrades
+   - Hunt harder/weirder games as you progress
+   - Expand collection, find new exploits, discover hidden gems
+
+**Semi-Active Gameplay**: Player simultaneously:
+- Hunting through launcher (sifting for gold)
+- Playing 2-3 optimized games in windows (manual best returns)
+- Monitoring VMs for passive income
+- Tackling Space Defender with shooter upgrades
+- Tweaking CheatEngine builds
+- Managing multiple skill trees (VMs, CheatEngine, Space Defender, others?)
+
+**If 10,000 Games**: The treasure hunt becomes infinite - community sharing, build guides, "meta" strategies for sifting
+
+**Implementation Status**: Phases 1-6 complete (fully functional)
+
 ## AI Development Guidelines
 
 **READ `documentation/AI Guidelines.txt` before making changes** - contains strict rules about:
@@ -307,6 +471,8 @@ Windows must respect `window_defaults` from program definitions:
 3. Externalize data to JSON files
 4. No magic numbers - use `config.lua`
 5. Wrap I/O in `pcall`
+6. **NEW**: Games MUST support fixed timestep (`fixedUpdate()`) for demo recording
+7. **NEW**: VMs execute demos, not formulas - do not add formula-based automation
 
 ## Current Refactoring Status
 
@@ -329,17 +495,30 @@ When making changes, **align with the refactor plan** rather than perpetuating l
 ## Development Plan
 
 See `documentation/Development Plan.txt` for full roadmap (15 phases, ~120 days).
+See `documentation/vm_demo_system.md` for **COMPLETE** VM demo system design and implementation status.
 
-**Current Phase**: Phase 1 (MVP Foundation)
-- 5 unique minigames ✓
-- Clone system ✓
-- 5 Space Defender levels ✓
-- VM automation ✓
-- CheatEngine ✓
-- Desktop OS with launcher ✓
+**Current Phase**: Phase 1 (MVP Foundation) + VM Demo System Phases 1-6 **COMPLETE**
+
+**MVP Foundation Status** ✅:
+- 5 unique minigames (Dodge, Snake, Memory Match, Hidden Object, Space Shooter) ✓
+- Clone system generating 200+ variants ✓
+- 5 Space Defender levels with bosses ✓
+- Desktop OS with launcher, window management, file explorer ✓
+- CheatEngine with parameter modification ✓
 - Save/load system ✓
 
-**Next Priorities**: Phase 2 (Content Expansion) - 15+ minigames, 20 Space Defender levels
+**VM Demo System Status** ✅ (Phases 1-6 Complete):
+- ✅ Phase 1: Demo recording infrastructure (`DemoRecorder` model, fixed timestep, input capture)
+- ✅ Phase 2: Demo playback engine (`DemoPlayer` model, frame injection, speed multipliers, headless mode)
+- ✅ Phase 3: VM execution refactor (replaced formula-based with demo loops, state machine)
+- ✅ Phase 4: VM Manager UI (two-step demo assignment flow, live stats display, control buttons)
+- ✅ Phase 5: Demo management UI (auto-recording on completion, save/discard prompts)
+- ✅ Phase 6: Live VM playback window (watch VMs execute at 1x regardless of speed, HUD overlay)
+
+**Next Priorities**:
+- Phase 2 (Content Expansion): 15-20+ minigames, expand to 20 Space Defender levels
+- VM Demo System Phase 7: Integration & polish (event bus enhancements, edge case handling)
+- VM Demo System Phase 8: Performance optimization (target 100+ VMs, profiling, headless optimization)
 
 ## Common Gotchas
 
@@ -350,6 +529,10 @@ See `documentation/Development Plan.txt` for full roadmap (15 phases, ~120 days)
 5. **Performance**: Target 60 FPS with 500+ bullets on screen - use object pooling and spatial partitioning
 6. **File Paths**: Use `love.filesystem` for save directory, relative paths for assets
 7. **Screensaver**: Activates after configurable timeout - any input resets timer
+8. **Fixed Timestep**: Games use fixed timestep (1/60 sec) for demo recording determinism - call `game:fixedUpdate(dt)` in fixed update loop
+9. **Demo Recording**: Automatically records every minigame completion - player chooses to save ([S]) or discard ([D])
+10. **VM Execution**: VMs loop demos endlessly with random seeds - success rate depends on demo quality, not formulas
+11. **Playback Speed**: VMs can run at 100x speed while playback windows display at 1x for visual feedback
 
 ## File Organization
 

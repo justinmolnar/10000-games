@@ -818,10 +818,10 @@ end
 
 function DodgeGame:updatePlayerDefault(dt)
     local dx, dy = 0, 0
-    if love.keyboard.isDown('left', 'a') then dx = dx - 1 end
-    if love.keyboard.isDown('right', 'd') then dx = dx + 1 end
-    if love.keyboard.isDown('up', 'w') then dy = dy - 1 end
-    if love.keyboard.isDown('down', 's') then dy = dy + 1 end
+    if self:isKeyDown('left', 'a') then dx = dx - 1 end
+    if self:isKeyDown('right', 'd') then dx = dx + 1 end
+    if self:isKeyDown('up', 'w') then dy = dy - 1 end
+    if self:isKeyDown('down', 's') then dy = dy + 1 end
 
     -- Update rotation towards movement direction
     if dx ~= 0 or dy ~= 0 then
@@ -920,10 +920,10 @@ function DodgeGame:updatePlayerAsteroids(dt)
     local thrust_accel = (runtimeCfg.player and runtimeCfg.player.thrust_acceleration) or 600
 
     -- Rotation controls (left/right turn the ship)
-    if love.keyboard.isDown('left', 'a') then
+    if self:isKeyDown('left', 'a') then
         self.player.rotation = self.player.rotation - self.player.rotation_speed * dt
     end
-    if love.keyboard.isDown('right', 'd') then
+    if self:isKeyDown('right', 'd') then
         self.player.rotation = self.player.rotation + self.player.rotation_speed * dt
     end
 
@@ -932,7 +932,7 @@ function DodgeGame:updatePlayerAsteroids(dt)
 
     -- Thrust controls (forward accelerates in facing direction)
     local is_thrusting = false
-    if love.keyboard.isDown('up', 'w') then
+    if self:isKeyDown('up', 'w') then
         is_thrusting = true
         -- Calculate thrust direction (sprite faces up by default, so rotation 0 = up)
         local thrust_angle = self.player.rotation - math.pi / 2  -- Subtract π/2 to convert from sprite space to world space
@@ -951,7 +951,7 @@ function DodgeGame:updatePlayerAsteroids(dt)
     end
 
     -- Reverse/brake controls (down key behavior)
-    if love.keyboard.isDown('down', 's') then
+    if self:isKeyDown('down', 's') then
         if self.player.reverse_mode == "thrust" then
             is_thrusting = true
             -- Reverse thrust (accelerate backwards)
@@ -1128,13 +1128,13 @@ function DodgeGame:updatePlayerJump(dt)
         -- Check for directional input (only register one direction per jump)
         local jump_dx, jump_dy = 0, 0
 
-        if love.keyboard.isDown('left', 'a') then
+        if self:isKeyDown('left', 'a') then
             jump_dx = -1
-        elseif love.keyboard.isDown('right', 'd') then
+        elseif self:isKeyDown('right', 'd') then
             jump_dx = 1
-        elseif love.keyboard.isDown('up', 'w') then
+        elseif self:isKeyDown('up', 'w') then
             jump_dy = -1
-        elseif love.keyboard.isDown('down', 's') then
+        elseif self:isKeyDown('down', 's') then
             jump_dy = 1
         end
 
@@ -2121,7 +2121,6 @@ function DodgeGame:onComplete()
 
     -- Play appropriate sound (death sound already played inline at collision)
     if is_win then
-        self:playSound("success", 1.0)
     end
 
     -- Stop music
@@ -2146,6 +2145,8 @@ function DodgeGame:getCompletionRatio()
 end
 
 function DodgeGame:keypressed(key)
+    -- Call parent to handle virtual key tracking for demo playback
+    DodgeGame.super.keypressed(self, key)
     return false
 end
 

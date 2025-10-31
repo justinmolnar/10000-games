@@ -133,16 +133,29 @@ function DemoPlayer:stepFrame()
         return
     end
 
-    -- Inject all inputs scheduled for this frame
+    -- Calculate frame within the demo loop (wraps around)
+    local demo_total_frames = self.demo.recording.total_frames
+    local frame_in_loop = self.playback_frame % demo_total_frames
+
+    -- Inject all inputs scheduled for this frame (within the looped demo)
     while self.input_index <= #self.demo.recording.inputs do
         local input = self.demo.recording.inputs[self.input_index]
 
-        if input.frame == self.playback_frame then
+        if input.frame == frame_in_loop then
             self:injectInput(input)
             self.input_index = self.input_index + 1
-        else
+        elseif input.frame > frame_in_loop then
+            -- Haven't reached this input yet in the current loop
             break
+        else
+            -- This shouldn't happen in a well-ordered input list
+            self.input_index = self.input_index + 1
         end
+    end
+
+    -- If we exhausted all inputs, loop back to the beginning
+    if self.input_index > #self.demo.recording.inputs then
+        self.input_index = 1  -- Restart from first input for next loop
     end
 
     -- Run one fixed update on the game
@@ -172,13 +185,33 @@ function DemoPlayer:injectInput(input)
         return
     end
 
+    -- Debug: Print first 10 inputs
+    if not self.debug_input_count then
+        self.debug_input_count = 0
+    end
+    if self.debug_input_count < 10 then
+        print(string.format("[DemoPlayer] Injecting input at frame %d: key=%s, state=%s",
+            input.frame, input.key, input.state))
+        self.debug_input_count = self.debug_input_count + 1
+    end
+
     if input.state == "pressed" then
         if self.game_instance.keypressed then
-            self.game_instance:keypressed(input.key)
+            local success, err = pcall(self.game_instance.keypressed, self.game_instance, input.key)
+            if not success then
+                print("[DemoPlayer] ERROR calling keypressed: " .. tostring(err))
+            end
+        else
+            print("[DemoPlayer] WARNING: game_instance has no keypressed method!")
         end
     elseif input.state == "released" then
         if self.game_instance.keyreleased then
-            self.game_instance:keyreleased(input.key)
+            local success, err = pcall(self.game_instance.keyreleased, self.game_instance, input.key)
+            if not success then
+                print("[DemoPlayer] ERROR calling keyreleased: " .. tostring(err))
+            end
+        else
+            print("[DemoPlayer] WARNING: game_instance has no keyreleased method!")
         end
     end
 end

@@ -233,6 +233,8 @@ function HiddenObject:checkComplete()
 end
 
 function HiddenObject:keypressed(key)
+    -- Call parent to handle virtual key tracking for demo playback
+    HiddenObject.super.keypressed(self, key)
     return false
 end
 

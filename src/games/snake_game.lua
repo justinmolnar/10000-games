@@ -1608,6 +1608,9 @@ function SnakeGame:draw()
 end
 
 function SnakeGame:keypressed(key)
+    -- Call parent to handle virtual key tracking for demo playback
+    SnakeGame.super.keypressed(self, key)
+
     local handled = false
 
     if self.movement_type == "smooth" then
@@ -1653,6 +1656,9 @@ function SnakeGame:keypressed(key)
 end
 
 function SnakeGame:keyreleased(key)
+    -- Call parent to handle virtual key tracking for demo playback
+    SnakeGame.super.keyreleased(self, key)
+
     if self.movement_type == "smooth" then
         -- Track key release for smooth turning
         if key == 'left' or key == 'a' then
