@@ -336,14 +336,57 @@ function DodgeView:draw()
         local ry = self.hud.row_y or {10, 30, 50, 70}
         g.setColor(1, 1, 1)
 
-        local dodged_sprite = self.sprite_manager:getMetricSprite(game.data, "objects_dodged") or player_sprite
+        -- Dodged: Use first enemy sprite from composition, otherwise fallback to icon
         g.print("Dodged: ", lx, ry[1], 0, s, s)
-        self.sprite_loader:drawSprite(dodged_sprite, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        local enemy_sprite = nil
+        local enemy_fallback = "msg_error-0"  -- Default fallback
+
+        -- Find first enemy type from composition
+        if game.enemy_composition then
+            for enemy_type, _ in pairs(game.enemy_composition) do
+                local sprite_key = "enemy_" .. enemy_type
+                if game.sprites and game.sprites[sprite_key] then
+                    enemy_sprite = game.sprites[sprite_key]
+                    break
+                end
+                -- Set fallback based on enemy type (matching render logic)
+                if enemy_type == 'chaser' then enemy_fallback = "world_lock-0"
+                elseif enemy_type == 'shooter' then enemy_fallback = "world_star-1"
+                end
+                break  -- Use first enemy type
+            end
+        end
+
+        if enemy_sprite then
+            g.setColor(1, 1, 1)
+            g.draw(enemy_sprite, ix, ry[1], 0,
+                hud_icon_size / enemy_sprite:getWidth(),
+                hud_icon_size / enemy_sprite:getHeight())
+        else
+            -- Fallback to icon (use enemy_fallback from type, or metric sprite)
+            local icon = enemy_fallback
+            self.sprite_loader:drawSprite(icon, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        end
         g.print(game.metrics.objects_dodged .. "/" .. game.dodge_target, tx, ry[1], 0, s, s)
 
-        local collision_sprite = self.sprite_manager:getMetricSprite(game.data, "collisions") or "msg_error-0"
+        -- Lives: Use player sprite if available, otherwise fallback to icon
+        local lives_sprite = nil
+        if game.sprites and game.sprites.player then
+            lives_sprite = game.sprites.player
+        end
+
         g.print("Lives: ", lx, ry[2], 0, s, s)
-        self.sprite_loader:drawSprite(collision_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        if lives_sprite then
+            -- Draw actual player sprite
+            g.setColor(1, 1, 1)
+            g.draw(lives_sprite, ix, ry[2], 0,
+                hud_icon_size / lives_sprite:getWidth(),
+                hud_icon_size / lives_sprite:getHeight())
+        else
+            -- Fallback to icon
+            local lives_icon = self.sprite_manager:getMetricSprite(game.data, "objects_dodged") or "game_solitaire-0"
+            self.sprite_loader:drawSprite(lives_icon, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        end
         local lives_remaining = game.lives - game.metrics.collisions
         g.print(lives_remaining .. "/" .. game.lives, tx, ry[2], 0, s, s)
 

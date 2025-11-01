@@ -29,6 +29,8 @@
   {
     "clone_index": 2,
     "name": "Snake Shrinking Terror",
+    "sprite_set": "classic/snake",
+    "sprite_style": "segmented",
     "palette": "purple",
     "music_track": "snake_theme_1",
     "sfx_pack": "retro_beeps",

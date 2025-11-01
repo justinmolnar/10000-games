@@ -49,6 +49,30 @@ love .
 "C:\Program Files\LOVE\love.exe" .
 ```
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 CRITICAL - DO NOT AUTO-RUN THE GAME 🚫
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NEVER execute the game via Bash commands unless the user EXPLICITLY types "run the game" or similar.
+
+WHY:
+- The user is actively playing and testing the game themselves
+- Auto-running interrupts their current game session
+- The user will close your background process and get frustrated
+- Testing happens manually by the user after you finish code changes
+
+WHAT TO DO INSTEAD:
+- Make your code changes
+- Explain what you changed
+- Let the user test it themselves
+
+ONLY run the game if:
+- User explicitly says "run the game" or "launch the game" or "test this"
+- User asks you to verify something requires seeing the game running
+
+This applies to ALL Bash commands that launch the LÖVE executable.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Testing and Development
 - Debug Mode: Press F5 in-game to toggle debug overlay (shows player data, game data, and allows manual saves)
 - Tutorial: Automatically shown on first launch (controlled by tutorial_shown setting)

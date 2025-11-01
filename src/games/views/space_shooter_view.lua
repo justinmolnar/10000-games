@@ -42,34 +42,59 @@ function SpaceShooterView:draw()
 
     -- Draw player (sprite or fallback)
     if game.player then
+        local rotation = game.movement_type == "asteroids" and math.rad(game.player.angle or 0) or 0
+        local center_x = game.player.x
+        local center_y = game.player.y
+
+        -- Draw shield visual indicator (like Dodge)
+        if game.shield_enabled and game.player.shield_active then
+            local shield_alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 5)
+            g.setColor(0.3, 0.7, 1.0, shield_alpha)
+            local shield_radius = math.max(game.player.width, game.player.height) / 2 + 5
+            g.circle("line", center_x, center_y, shield_radius, 32)
+        end
+
         if game.sprites and game.sprites.player then
             local sprite = game.sprites.player
+            local scale_x = game.player.width / sprite:getWidth()
+            local scale_y = game.player.height / sprite:getHeight()
+            local origin_x = sprite:getWidth() / 2
+            local origin_y = sprite:getHeight() / 2
+
             if paletteManager and palette_id then
+                g.push()
+                g.translate(center_x, center_y)
+                g.rotate(rotation)
+                g.translate(-origin_x * scale_x, -origin_y * scale_y)
                 paletteManager:drawSpriteWithPalette(
                     sprite,
-                    game.player.x - game.player.width/2,
-                    game.player.y - game.player.height/2,
+                    0, 0,
                     game.player.width,
                     game.player.height,
                     palette_id,
                     {1, 1, 1}
                 )
+                g.pop()
             else
                 g.setColor(1, 1, 1)
-                g.draw(sprite, game.player.x - game.player.width/2, game.player.y - game.player.height/2, 0,
-                    game.player.width / sprite:getWidth(), game.player.height / sprite:getHeight())
+                g.draw(sprite, center_x, center_y, rotation,
+                    scale_x, scale_y, origin_x, origin_y)
             end
         else
-            -- Fallback to icon
+            -- Fallback to icon (rotation support for sprite_loader drawing would need to be added)
+            g.push()
+            g.translate(center_x, center_y)
+            g.rotate(rotation)
             self.sprite_loader:drawSprite(
                 player_sprite_fallback,
-                game.player.x - game.player.width/2,
-                game.player.y - game.player.height/2,
+                -game.player.width/2,
+                -game.player.height/2,
                 game.player.width,
                 game.player.height,
                 {1, 1, 1},
                 palette_id
             )
+            g.pop()
         end
     end
 
@@ -180,22 +205,43 @@ function SpaceShooterView:draw()
     if not game.vm_render_mode then
         local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or
                          (Config and Config.games and Config.games.space_shooter and Config.games.space_shooter.view) or {})
-        local hud = viewcfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
+        local hud = viewcfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50, 70} }
         local hud_icon_size = hud.icon_size or 16
         local s = hud.text_scale or 0.85
         local lx, ix, tx = hud.label_x or 10, hud.icon_x or 60, hud.text_x or 80
-        local ry = hud.row_y or {10, 30, 50}
+        local ry = hud.row_y or {10, 30, 50, 70}
         g.setColor(1, 1, 1)
         g.print("Kills: ", lx, ry[1], 0, s, s)
         self.sprite_loader:drawSprite(enemy_sprite_fallback, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
         g.print(game.metrics.kills .. "/" .. game.target_kills, tx, ry[1], 0, s, s)
 
-        local death_sprite = self.sprite_manager:getMetricSprite(game.data, "deaths") or "msg_error-0"
-        g.print("Deaths: ", lx, ry[2], 0, s, s)
-        self.sprite_loader:drawSprite(death_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        g.print(game.metrics.deaths .. "/" .. game.PLAYER_MAX_DEATHS, tx, ry[2], 0, s, s)
+        -- Lives: Use player sprite if available, otherwise fallback to icon
+        g.print("Lives: ", lx, ry[2], 0, s, s)
+        if game.sprites and game.sprites.player then
+            -- Draw actual player sprite
+            g.setColor(1, 1, 1)
+            g.draw(game.sprites.player, ix, ry[2], 0,
+                hud_icon_size / game.sprites.player:getWidth(),
+                hud_icon_size / game.sprites.player:getHeight())
+        else
+            -- Fallback to icon
+            local lives_icon = self.sprite_manager:getMetricSprite(game.data, "deaths") or "msg_error-0"
+            self.sprite_loader:drawSprite(lives_icon, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
+        end
+        local lives_remaining = game.PLAYER_MAX_DEATHS - game.metrics.deaths
+        g.print(lives_remaining .. "/" .. game.PLAYER_MAX_DEATHS, tx, ry[2], 0, s, s)
 
-        g.print("Difficulty: " .. game.difficulty_level, lx, ry[3])
+        -- Show shield count if shield is enabled
+        if game.shield_enabled then
+            local shield_color = game.player.shield_active and {0.3, 0.7, 1.0} or {0.5, 0.5, 0.5}
+            g.setColor(shield_color)
+            g.print("Shield: ", lx, ry[3], 0, s, s)
+            self.sprite_loader:drawSprite("msg_information-0", ix, ry[3], hud_icon_size, hud_icon_size, shield_color, palette_id)
+            g.print(game.player.shield_hits_remaining .. "/" .. game.shield_max_hits, tx, ry[3], 0, s, s)
+        end
+
+        g.setColor(1, 1, 1)
+        g.print("Difficulty: " .. game.difficulty_level, lx, ry[4])
     end
 end
 

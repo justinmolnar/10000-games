@@ -506,14 +506,18 @@ end
 function DodgeGame:loadAssets()
     self.sprites = {}  -- Store loaded sprites
 
-    if not self.variant or not self.variant.sprite_set then
-        print("[DodgeGame:loadAssets] No variant sprite_set, using icon fallback")
-        return
-    end
+    -- Get sprite_set from variant, or fall back to default
+    local sprite_set = (self.variant and self.variant.sprite_set) or
+                      (self.data and self.data.visual_identity and self.data.visual_identity.sprite_set_id) or
+                      "base_1"
 
-    local base_path = "assets/sprites/games/dodge/" .. self.variant.sprite_set .. "/"
+    local base_path = "assets/sprites/games/dodge/" .. sprite_set .. "/"
+    local default_sprite_set = self.data and self.data.visual_identity and self.data.visual_identity.sprite_set_id or "base_1"
+    local default_path = "assets/sprites/games/dodge/" .. default_sprite_set .. "/"
 
-    -- Try to load each sprite with fallback
+    print(string.format("[DodgeGame:loadAssets] sprite_set=%s, default=%s", sprite_set, default_sprite_set))
+
+    -- Try to load each sprite with fallback to default sprite_set
     local function tryLoad(filename, sprite_key)
         local filepath = base_path .. filename
         local success, result = pcall(function()
@@ -524,7 +528,18 @@ function DodgeGame:loadAssets()
             self.sprites[sprite_key] = result
             print("[DodgeGame:loadAssets] Loaded: " .. filepath)
         else
-            print("[DodgeGame:loadAssets] Missing: " .. filepath .. " (using fallback)")
+            -- Try default sprite_set
+            local default_filepath = default_path .. filename
+            local default_success, default_result = pcall(function()
+                return love.graphics.newImage(default_filepath)
+            end)
+
+            if default_success then
+                self.sprites[sprite_key] = default_result
+                print("[DodgeGame:loadAssets] Loaded from default: " .. default_filepath)
+            else
+                print("[DodgeGame:loadAssets] Missing: " .. filepath .. " (using fallback)")
+            end
         end
     end
 

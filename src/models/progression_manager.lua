@@ -38,7 +38,8 @@ function ProgressionManager:checkAutoCompletion(game_id, specific_game_data, mai
             if not existing_perf then
                 -- Calculate baseline performance (70% of auto-play baseline)
                 local auto_metrics = variant.auto_play_performance
-                local auto_power = variant.formula_function(auto_metrics)
+                local Config = require('src.config')
+                local auto_power = variant.formula_function(auto_metrics, Config.scaling_constant or 1)
                 
                 -- Store as completed with auto-completion flag
                 player_data:updateGamePerformance(

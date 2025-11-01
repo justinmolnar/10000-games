@@ -42,7 +42,8 @@ function GameVariantLoader:loadStandaloneVariants()
     local variant_files = {
         { base_id = "dodge_1", file = "variants/dodge_variants.json" },
         { base_id = "snake_1", file = "variants/snake_variants.json" },
-        { base_id = "memory_1", file = "variants/memory_match_variants.json" }
+        { base_id = "memory_1", file = "variants/memory_match_variants.json" },
+        { base_id = "space_shooter_1", file = "variants/space_shooter_variants.json" }
         -- Add more variant files here as needed
     }
 

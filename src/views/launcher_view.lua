@@ -401,17 +401,88 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
         -- Fallback to icon sprite system
         local sprite_name = game_data.icon_sprite or "game_freecell-0"
 
-        -- Phase 1.6: Use variant palette if available
-        local palette_id = sprite_manager:getPaletteId(game_data)
-        if self.variant_loader then
-            local variant = self.variant_loader:getVariantData(game_data.id)
-            if variant and variant.palette then
-                palette_id = variant.palette
+        -- If icon_sprite is "player", try to load actual game sprite from game's sprite_set
+        local player_sprite_drawn = false
+        if sprite_name == "player" then
+            -- Get sprite_set from variant, fall back to base definition
+            local sprite_set_id = game_data.visual_identity and game_data.visual_identity.sprite_set_id
+            if self.variant_loader then
+                local variant = self.variant_loader:getVariantData(game_data.id)
+                if variant and variant.sprite_set then
+                    sprite_set_id = variant.sprite_set
+                end
+            end
+
+            if sprite_set_id then
+            local class_to_folder = {
+                DodgeGame = "dodge",
+                SnakeGame = "snake",
+                SpaceShooter = "space_shooter",
+                MemoryMatch = "memory",
+                HiddenObject = "hidden_object"
+            }
+            local game_folder = class_to_folder[game_data.game_class]
+
+            -- Map game class to actual sprite filename
+            local sprite_filename = "player"
+            if game_data.game_class == "SnakeGame" then
+                local sprite_style = game_data.sprite_style or "uniform"
+                sprite_filename = (sprite_style == "segmented") and "seg_head" or "segment"
+            elseif game_data.game_class == "DodgeGame" then
+                sprite_filename = "player"
+            elseif game_data.game_class == "SpaceShooter" then
+                sprite_filename = "player"
+            end
+
+            if game_folder then
+                local sprite_path = string.format("assets/sprites/games/%s/%s/%s.png",
+                    game_folder, sprite_set_id, sprite_filename)
+                local success, player_sprite = pcall(love.graphics.newImage, sprite_path)
+
+                -- If failed, try default sprite_set
+                if not success then
+                    local default_sprite_set = game_data.visual_identity and game_data.visual_identity.sprite_set_id
+                    if default_sprite_set and default_sprite_set ~= sprite_set_id then
+                        local default_path = string.format("assets/sprites/games/%s/%s/%s.png",
+                            game_folder, default_sprite_set, sprite_filename)
+                        success, player_sprite = pcall(love.graphics.newImage, default_path)
+                    end
+                end
+
+                if success then
+                    local tint = is_unlocked and {1, 1, 1} or {0.5, 0.5, 0.5}
+                    love.graphics.setColor(tint[1], tint[2], tint[3])
+                    love.graphics.draw(player_sprite, icon_x, icon_y, 0,
+                        icon_size / player_sprite:getWidth(), icon_size / player_sprite:getHeight())
+                    love.graphics.setColor(1, 1, 1)
+                    player_sprite_drawn = true
+                else
+                    -- Failed to load player sprite, fall back to first metric sprite mapping
+                    if game_data.visual_identity and game_data.visual_identity.metric_sprite_mappings then
+                        local first_metric = game_data.metrics_tracked and game_data.metrics_tracked[1]
+                        if first_metric then
+                            sprite_name = game_data.visual_identity.metric_sprite_mappings[first_metric] or "game_freecell-0"
+                        end
+                    end
+                end
+            end
             end
         end
 
-        local tint = is_unlocked and {1, 1, 1} or {0.5, 0.5, 0.5}
-        sprite_loader:drawSprite(sprite_name, icon_x, icon_y, icon_size, icon_size, tint, palette_id)
+        -- Only draw sprite icon if player sprite wasn't drawn
+        if not player_sprite_drawn then
+            -- Phase 1.6: Use variant palette if available
+            local palette_id = sprite_manager:getPaletteId(game_data)
+            if self.variant_loader then
+                local variant = self.variant_loader:getVariantData(game_data.id)
+                if variant and variant.palette then
+                    palette_id = variant.palette
+                end
+            end
+
+            local tint = is_unlocked and {1, 1, 1} or {0.5, 0.5, 0.5}
+            sprite_loader:drawSprite(sprite_name, icon_x, icon_y, icon_size, icon_size, tint, palette_id)
+        end
     end
     
     local badge_x = icon_x + icon_size - 16
@@ -545,7 +616,77 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
             end
         end
 
-        sprite_loader:drawSprite(sprite_name, preview_x, line_y, preview_size, preview_size, {1, 1, 1}, palette_id)
+        -- If icon_sprite is "player", try to load actual game sprite from game's sprite_set
+        local player_sprite_drawn = false
+        if sprite_name == "player" then
+            -- Get sprite_set from variant, fall back to base definition
+            local sprite_set_id = game_data.visual_identity and game_data.visual_identity.sprite_set_id
+            if self.variant_loader then
+                local variant = self.variant_loader:getVariantData(game_data.id)
+                if variant and variant.sprite_set then
+                    sprite_set_id = variant.sprite_set
+                end
+            end
+
+            if sprite_set_id then
+                local class_to_folder = {
+                    DodgeGame = "dodge",
+                    SnakeGame = "snake",
+                    SpaceShooter = "space_shooter",
+                    MemoryMatch = "memory",
+                    HiddenObject = "hidden_object"
+                }
+                local game_folder = class_to_folder[game_data.game_class]
+
+                -- Map game class to actual sprite filename
+                local sprite_filename = "player"
+                if game_data.game_class == "SnakeGame" then
+                    local sprite_style = game_data.sprite_style or "uniform"
+                    sprite_filename = (sprite_style == "segmented") and "seg_head" or "segment"
+                elseif game_data.game_class == "DodgeGame" then
+                    sprite_filename = "player"
+                elseif game_data.game_class == "SpaceShooter" then
+                    sprite_filename = "player"
+                end
+
+                if game_folder then
+                    local sprite_path = string.format("assets/sprites/games/%s/%s/%s.png",
+                        game_folder, sprite_set_id, sprite_filename)
+                    local success, player_sprite = pcall(love.graphics.newImage, sprite_path)
+
+                    -- If failed, try default sprite_set
+                    if not success then
+                        local default_sprite_set = game_data.visual_identity and game_data.visual_identity.sprite_set_id
+                        if default_sprite_set and default_sprite_set ~= sprite_set_id then
+                            local default_path = string.format("assets/sprites/games/%s/%s/%s.png",
+                                game_folder, default_sprite_set, sprite_filename)
+                            success, player_sprite = pcall(love.graphics.newImage, default_path)
+                        end
+                    end
+
+                    if success then
+                        love.graphics.setColor(1, 1, 1)
+                        love.graphics.draw(player_sprite, preview_x, line_y, 0,
+                            preview_size / player_sprite:getWidth(), preview_size / player_sprite:getHeight())
+                        player_sprite_drawn = true
+                    else
+                        -- Failed to load player sprite, fall back to first metric sprite mapping
+                        if game_data.visual_identity and game_data.visual_identity.metric_sprite_mappings then
+                            local first_metric = game_data.metrics_tracked and game_data.metrics_tracked[1]
+                            if first_metric then
+                                sprite_name = game_data.visual_identity.metric_sprite_mappings[first_metric] or "game_freecell-0"
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Draw sprite if player sprite wasn't drawn
+        if not player_sprite_drawn then
+            sprite_loader:drawSprite(sprite_name, preview_x, line_y, preview_size, preview_size, {1, 1, 1}, palette_id)
+        end
+
         return line_y + preview_size + 15
     end
 

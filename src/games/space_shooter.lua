@@ -97,12 +97,79 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     SPAWN_BASE_RATE = (runtimeCfg.spawn and runtimeCfg.spawn.base_rate) or SPAWN_BASE_RATE
     BASE_TARGET_KILLS = (runtimeCfg.goals and runtimeCfg.goals.base_target_kills) or BASE_TARGET_KILLS
     ZIGZAG_FREQUENCY = (runtimeCfg.movement and runtimeCfg.movement.zigzag_frequency) or ZIGZAG_FREQUENCY
-    
-    local speed_modifier = self.cheats.speed_modifier or 1.0 
+
+    local speed_modifier = self.cheats.speed_modifier or 1.0
     local advantage_modifier = self.cheats.advantage_modifier or {}
     local extra_deaths = advantage_modifier.deaths or 0
-    
-    self.PLAYER_MAX_DEATHS = PLAYER_MAX_DEATHS_BASE + extra_deaths 
+
+    self.PLAYER_MAX_DEATHS = PLAYER_MAX_DEATHS_BASE + extra_deaths
+
+    -- Phase 2: Movement Type System
+    self.movement_type = "default"
+    if self.variant and self.variant.movement_type then
+        self.movement_type = self.variant.movement_type
+    end
+
+    -- Phase 2: Movement parameters with three-tier fallback
+    self.movement_speed = (runtimeCfg.player and runtimeCfg.player.speed) or PLAYER_SPEED
+    if self.variant and self.variant.movement_speed ~= nil then
+        self.movement_speed = self.variant.movement_speed
+    end
+
+    -- Asteroids mode physics
+    self.rotation_speed = (runtimeCfg.player and runtimeCfg.player.rotation_speed) or 5.0
+    if self.variant and self.variant.rotation_speed ~= nil then
+        self.rotation_speed = self.variant.rotation_speed
+    end
+
+    self.accel_friction = (runtimeCfg.player and runtimeCfg.player.accel_friction) or 1.0
+    if self.variant and self.variant.accel_friction ~= nil then
+        self.accel_friction = self.variant.accel_friction
+    end
+
+    self.decel_friction = (runtimeCfg.player and runtimeCfg.player.decel_friction) or 1.0
+    if self.variant and self.variant.decel_friction ~= nil then
+        self.decel_friction = self.variant.decel_friction
+    end
+
+    -- Jump mode parameters (distance as % of screen width)
+    self.jump_distance_percent = (runtimeCfg.player and runtimeCfg.player.jump_distance) or 0.08
+    if self.variant and self.variant.jump_distance ~= nil then
+        self.jump_distance_percent = self.variant.jump_distance
+    end
+
+    self.jump_cooldown = (runtimeCfg.player and runtimeCfg.player.jump_cooldown) or 0.5
+    if self.variant and self.variant.jump_cooldown ~= nil then
+        self.jump_cooldown = self.variant.jump_cooldown
+    end
+
+    self.jump_speed = (runtimeCfg.player and runtimeCfg.player.jump_speed) or 400
+    if self.variant and self.variant.jump_speed ~= nil then
+        self.jump_speed = self.variant.jump_speed
+    end
+
+    -- Phase 2: Lives system (already partially implemented, making explicit)
+    local base_lives = PLAYER_MAX_DEATHS_BASE
+    if self.variant and self.variant.lives_count ~= nil then
+        base_lives = self.variant.lives_count
+    end
+    self.PLAYER_MAX_DEATHS = base_lives + extra_deaths
+
+    -- Phase 2: Shield system
+    self.shield_enabled = (runtimeCfg.shield and runtimeCfg.shield.enabled) or false
+    if self.variant and self.variant.shield ~= nil then
+        self.shield_enabled = self.variant.shield
+    end
+
+    self.shield_regen_time = (runtimeCfg.shield and runtimeCfg.shield.regen_time) or 5.0
+    if self.variant and self.variant.shield_regen_time ~= nil then
+        self.shield_regen_time = self.variant.shield_regen_time
+    end
+
+    self.shield_max_hits = (runtimeCfg.shield and runtimeCfg.shield.max_hits) or 1
+    if self.variant and self.variant.shield_hits ~= nil then
+        self.shield_max_hits = self.variant.shield_hits
+    end 
 
     self.game_width = (SCfg.arena and SCfg.arena.width) or 800
     self.game_height = (SCfg.arena and SCfg.arena.height) or 600
@@ -115,19 +182,46 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
         fire_cooldown = 0
     }
 
+    -- Phase 2: Initialize movement-specific state
+    if self.movement_type == "asteroids" then
+        self.player.angle = 0  -- Sprite faces UP, so 0 = up, 90 = right, 180 = down, 270 = left
+        self.player.vx = 0
+        self.player.vy = 0
+    elseif self.movement_type == "jump" then
+        self.player.jump_timer = 0
+        self.player.is_jumping = false
+        self.player.jump_progress = 0
+        self.player.jump_start_x = 0
+        self.player.jump_start_y = 0
+        self.player.jump_target_x = 0
+        self.player.jump_target_y = 0
+    end
+
+    -- Phase 2: Initialize shield state
+    if self.shield_enabled then
+        self.player.shield_active = true
+        self.player.shield_regen_timer = 0
+        self.player.shield_hits_remaining = self.shield_max_hits
+    end
+
     self.enemies = {}
     self.player_bullets = {}
     self.enemy_bullets = {}
 
     self.metrics.kills = 0
     self.metrics.deaths = 0
+    self.metrics.combo = 0  -- Phase 2: Track combo (kills without deaths)
 
     self.enemy_speed = ((ENEMY_BASE_SPEED * self.difficulty_modifiers.speed) * speed_modifier) * variant_difficulty
     self.spawn_rate = (SPAWN_BASE_RATE / self.difficulty_modifiers.count) / variant_difficulty
     self.spawn_timer = 0
     self.can_shoot_back = self.difficulty_modifiers.complexity > 2
 
-    self.target_kills = math.floor(BASE_TARGET_KILLS * self.difficulty_modifiers.complexity * variant_difficulty)
+    -- Target kills should NOT scale with clone index - stays constant for consistent game length
+    self.target_kills = BASE_TARGET_KILLS
+    if self.variant and self.variant.victory_limit ~= nil then
+        self.target_kills = self.variant.victory_limit
+    end
 
     -- Enemy composition from variant (Phase 1.3)
     -- NOTE: Enemy spawning will be implemented when assets are ready (Phase 2+)
@@ -242,11 +336,142 @@ function SpaceShooter:updateGameLogic(dt)
 end
 
 function SpaceShooter:updatePlayer(dt)
-    if self:isKeyDown('left', 'a') then self.player.x = self.player.x - PLAYER_SPEED * dt end
-    if self:isKeyDown('right', 'd') then self.player.x = self.player.x + PLAYER_SPEED * dt end
-    self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
-    if self.player.fire_cooldown > 0 then self.player.fire_cooldown = self.player.fire_cooldown - dt end
-    if self:isKeyDown('space') and self.player.fire_cooldown <= 0 then self:playerShoot() end
+    -- Phase 2: Movement type system
+    if self.movement_type == "default" then
+        -- Default: WASD free movement
+        if self:isKeyDown('up', 'w') then self.player.y = self.player.y - self.movement_speed * dt end
+        if self:isKeyDown('down', 's') then self.player.y = self.player.y + self.movement_speed * dt end
+        if self:isKeyDown('left', 'a') then self.player.x = self.player.x - self.movement_speed * dt end
+        if self:isKeyDown('right', 'd') then self.player.x = self.player.x + self.movement_speed * dt end
+
+        -- Clamp to screen
+        self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+        self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+
+    elseif self.movement_type == "rail" then
+        -- Rail: Left/right only, vertical fixed
+        if self:isKeyDown('left', 'a') then self.player.x = self.player.x - self.movement_speed * dt end
+        if self:isKeyDown('right', 'd') then self.player.x = self.player.x + self.movement_speed * dt end
+
+        -- Clamp horizontal only
+        self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+
+    elseif self.movement_type == "asteroids" then
+        -- Asteroids: Rotate + thrust physics
+        if self:isKeyDown('left', 'a') then
+            self.player.angle = self.player.angle - self.rotation_speed * dt * 60
+        end
+        if self:isKeyDown('right', 'd') then
+            self.player.angle = self.player.angle + self.rotation_speed * dt * 60
+        end
+
+        -- Thrust (sprite faces UP, angle 0 = UP, 90 = RIGHT, etc.)
+        if self:isKeyDown('up', 'w') then
+            -- Convert from "UP = 0" to radians (need to rotate coordinate system)
+            -- Angle 0 = UP means we need sin for X (sideways) and -cos for Y (vertical)
+            local rad = math.rad(self.player.angle)
+            local thrust = self.movement_speed * 5 * dt  -- Thrust acceleration
+            self.player.vx = self.player.vx + math.sin(rad) * thrust * self.accel_friction
+            self.player.vy = self.player.vy + (-math.cos(rad)) * thrust * self.accel_friction
+        end
+
+        -- Apply deceleration
+        self.player.vx = self.player.vx * (1.0 - (1.0 - self.decel_friction) * dt * 5)
+        self.player.vy = self.player.vy * (1.0 - (1.0 - self.decel_friction) * dt * 5)
+
+        -- Update position
+        self.player.x = self.player.x + self.player.vx * dt
+        self.player.y = self.player.y + self.player.vy * dt
+
+        -- Clamp to bounds
+        self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+        self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+
+    elseif self.movement_type == "jump" then
+        -- Jump/Dash mode: Discrete dashes instead of continuous movement
+        if self.player.jump_timer > 0 then
+            self.player.jump_timer = self.player.jump_timer - dt
+        end
+
+        if not self.player.is_jumping and self.player.jump_timer <= 0 then
+            local jump_dir = nil
+            if self:isKeyDown('left', 'a') then jump_dir = 'left' end
+            if self:isKeyDown('right', 'd') then jump_dir = 'right' end
+            if self:isKeyDown('up', 'w') then jump_dir = 'up' end
+            if self:isKeyDown('down', 's') then jump_dir = 'down' end
+
+            if jump_dir then
+                self:executeJump(jump_dir)
+                self.player.jump_timer = self.jump_cooldown
+            end
+        end
+
+        -- Update jump animation
+        if self.player.is_jumping then
+            local jump_distance = self.game_width * self.jump_distance_percent
+            self.player.jump_progress = self.player.jump_progress + dt / (jump_distance / self.jump_speed)
+
+            if self.player.jump_progress >= 1.0 then
+                self.player.x = self.player.jump_target_x
+                self.player.y = self.player.jump_target_y
+                self.player.is_jumping = false
+            else
+                -- Lerp to target
+                local t = self.player.jump_progress
+                self.player.x = self.player.jump_start_x + (self.player.jump_target_x - self.player.jump_start_x) * t
+                self.player.y = self.player.jump_start_y + (self.player.jump_target_y - self.player.jump_start_y) * t
+            end
+        end
+    end
+
+    -- Phase 2: Shield regeneration (regenerates ONE shield at a time)
+    if self.shield_enabled and self.player.shield_hits_remaining < self.shield_max_hits then
+        self.player.shield_regen_timer = self.player.shield_regen_timer + dt
+        if self.player.shield_regen_timer >= self.shield_regen_time then
+            self.player.shield_hits_remaining = self.player.shield_hits_remaining + 1
+            self.player.shield_regen_timer = 0
+            -- Reactivate shield if it was down
+            if not self.player.shield_active then
+                self.player.shield_active = true
+            end
+        end
+    end
+
+    -- Fire cooldown (all modes)
+    if self.player.fire_cooldown > 0 then
+        self.player.fire_cooldown = self.player.fire_cooldown - dt
+    end
+
+    -- Shooting (handled in all modes)
+    if self:isKeyDown('space') and self.player.fire_cooldown <= 0 then
+        self:playerShoot()
+    end
+end
+
+function SpaceShooter:executeJump(direction)
+    self.player.is_jumping = true
+    self.player.jump_progress = 0
+    self.player.jump_start_x = self.player.x
+    self.player.jump_start_y = self.player.y
+
+    -- Calculate jump distance as % of game window width
+    local jump_distance = self.game_width * self.jump_distance_percent
+
+    -- Calculate target based on direction
+    local target_x = self.player.x
+    local target_y = self.player.y
+
+    if direction == 'left' then target_x = target_x - jump_distance end
+    if direction == 'right' then target_x = target_x + jump_distance end
+    if direction == 'up' then target_y = target_y - jump_distance end
+    if direction == 'down' then target_y = target_y + jump_distance end
+
+    -- Clamp to bounds
+    target_x = math.max(0, math.min(self.game_width - self.player.width, target_x))
+    target_y = math.max(0, math.min(self.game_height - self.player.height, target_y))
+
+    self.player.jump_target_x = target_x
+    self.player.jump_target_y = target_y
 end
 
 function SpaceShooter:updateEnemies(dt)
@@ -265,18 +490,44 @@ function SpaceShooter:updateEnemies(dt)
             enemy.x = enemy.x + math.sin(self.time_elapsed * ZIGZAG_FREQUENCY) * speed * dt
         elseif enemy.movement_pattern == 'dive' then
             -- Phase 1.4: Kamikaze dive toward target
-            local dx = enemy.target_x - enemy.x
-            local dy = enemy.target_y - enemy.y
-            local dist = math.sqrt(dx*dx + dy*dy)
-            if dist > 0 then
-                enemy.x = enemy.x + (dx / dist) * speed * dt
-                enemy.y = enemy.y + (dy / dist) * speed * dt
-            else
-                -- Reached target, continue downward
+            -- Once at or past target Y, just continue downward to prevent getting stuck
+            if enemy.y >= enemy.target_y then
                 enemy.y = enemy.y + speed * dt
+            else
+                local dx = enemy.target_x - enemy.x
+                local dy = enemy.target_y - enemy.y
+                local dist = math.sqrt(dx*dx + dy*dy)
+                if dist > 0 then
+                    enemy.x = enemy.x + (dx / dist) * speed * dt
+                    enemy.y = enemy.y + (dy / dist) * speed * dt
+                else
+                    -- Reached target, continue downward
+                    enemy.y = enemy.y + speed * dt
+                end
             end
         else
             enemy.y = enemy.y + speed * dt
+        end
+
+        -- Check collision with player
+        if self:checkCollision(enemy, self.player) then
+            -- Phase 2: Check shield first
+            if self.shield_enabled and self.player.shield_active then
+                self.player.shield_hits_remaining = self.player.shield_hits_remaining - 1
+                if self.player.shield_hits_remaining <= 0 then
+                    self.player.shield_active = false
+                    self.player.shield_regen_timer = 0
+                end
+                self:playSound("hit", 1.0)
+            else
+                -- No shield or shield is down, take damage
+                self.metrics.deaths = self.metrics.deaths + 1
+                self.metrics.combo = 0  -- Phase 2: Reset combo on death
+                self:playSound("hit", 1.0)
+            end
+            -- Remove enemy on collision
+            table.remove(self.enemies, i)
+            goto continue_enemy_loop
         end
 
         if self.can_shoot_back then
@@ -291,7 +542,8 @@ function SpaceShooter:updateEnemies(dt)
             end
         end
 
-        if enemy.y > self.game_height + 20 then
+        -- Remove enemies that are fully off screen (bottom of enemy past bottom edge)
+        if enemy.y + enemy.height/2 > self.game_height then
             table.remove(self.enemies, i)
         end
         ::continue_enemy_loop::
@@ -302,7 +554,14 @@ function SpaceShooter:updateBullets(dt)
     for i = #self.player_bullets, 1, -1 do
         local bullet = self.player_bullets[i]
         if not bullet then goto next_player_bullet end
-        bullet.y = bullet.y - BULLET_SPEED * dt
+
+        -- Update bullet position (directional or straight up)
+        if bullet.directional then
+            bullet.x = bullet.x + bullet.vx * dt
+            bullet.y = bullet.y + bullet.vy * dt
+        else
+            bullet.y = bullet.y - BULLET_SPEED * dt
+        end
 
         for j = #self.enemies, 1, -1 do
             local enemy = self.enemies[j]
@@ -314,6 +573,7 @@ function SpaceShooter:updateBullets(dt)
                     if enemy.health <= 0 then
                         table.remove(self.enemies, j)
                         self.metrics.kills = self.metrics.kills + 1
+                        self.metrics.combo = self.metrics.combo + 1  -- Phase 2: Increment combo
 
                         -- Phase 3.3: Play enemy explode sound
                         self:playSound("enemy_explode", 1.0)
@@ -321,6 +581,7 @@ function SpaceShooter:updateBullets(dt)
                 else
                     table.remove(self.enemies, j)
                     self.metrics.kills = self.metrics.kills + 1
+                    self.metrics.combo = self.metrics.combo + 1  -- Phase 2: Increment combo
 
                     -- Phase 3.3: Play enemy explode sound
                     self:playSound("enemy_explode", 1.0)
@@ -329,7 +590,17 @@ function SpaceShooter:updateBullets(dt)
             end
         end
 
-        if bullet.y < -BULLET_HEIGHT then table.remove(self.player_bullets, i) end
+        -- Remove bullets that go off screen (any direction)
+        if bullet.directional then
+            if bullet.x < -BULLET_WIDTH or bullet.x > self.game_width or
+               bullet.y < -BULLET_HEIGHT or bullet.y > self.game_height then
+                table.remove(self.player_bullets, i)
+            end
+        else
+            if bullet.y < -BULLET_HEIGHT then
+                table.remove(self.player_bullets, i)
+            end
+        end
         ::next_player_bullet::
     end
 
@@ -340,11 +611,25 @@ function SpaceShooter:updateBullets(dt)
 
         if self:checkCollision(bullet, self.player) then
             table.remove(self.enemy_bullets, i)
-            self.metrics.deaths = self.metrics.deaths + 1
 
-            -- Phase 3.3: Play hit sound
-            self:playSound("hit", 1.0)
-            -- Let checkComplete handle game over
+            -- Phase 2: Check shield first
+            if self.shield_enabled and self.player.shield_active then
+                self.player.shield_hits_remaining = self.player.shield_hits_remaining - 1
+                if self.player.shield_hits_remaining <= 0 then
+                    self.player.shield_active = false
+                    self.player.shield_regen_timer = 0
+                end
+                -- Play shield hit sound (or regular hit)
+                self:playSound("hit", 1.0)
+            else
+                -- No shield or shield is down, take damage
+                self.metrics.deaths = self.metrics.deaths + 1
+                self.metrics.combo = 0  -- Phase 2: Reset combo on death
+
+                -- Phase 3.3: Play hit sound
+                self:playSound("hit", 1.0)
+                -- Let checkComplete handle game over
+            end
         end
 
         if bullet.y > self.game_height + BULLET_HEIGHT then table.remove(self.enemy_bullets, i) end
@@ -361,11 +646,31 @@ function SpaceShooter:draw()
 end
 
 function SpaceShooter:playerShoot()
-    table.insert(self.player_bullets, {
-        x = self.player.x + self.player.width/2 - BULLET_WIDTH/2,
-        y = self.player.y,
-        width = BULLET_WIDTH, height = BULLET_HEIGHT
-    })
+    local bullet = {
+        width = BULLET_WIDTH,
+        height = BULLET_HEIGHT
+    }
+
+    -- For asteroid mode, shoot in direction player is facing from front of ship
+    if self.movement_type == "asteroids" then
+        local rad = math.rad(self.player.angle)
+        -- Offset bullet spawn to front of ship (angle 0 = UP, so front is -height/2 in Y)
+        local offset_distance = self.player.height / 2
+        local offset_x = math.sin(rad) * offset_distance
+        local offset_y = -math.cos(rad) * offset_distance
+
+        bullet.x = self.player.x + offset_x - BULLET_WIDTH/2
+        bullet.y = self.player.y + offset_y - BULLET_HEIGHT/2
+        bullet.vx = math.sin(rad) * 400  -- Bullet speed (angle 0 = UP)
+        bullet.vy = (-math.cos(rad)) * 400
+        bullet.directional = true
+    else
+        -- All other modes: shoot straight up from top-center of sprite
+        bullet.x = self.player.x - BULLET_WIDTH/2
+        bullet.y = self.player.y - self.player.height/2
+    end
+
+    table.insert(self.player_bullets, bullet)
     self.player.fire_cooldown = FIRE_COOLDOWN
 
     -- Phase 3.3: Play shoot sound

@@ -98,10 +98,17 @@ function GameData:loadStandaloneVariantCounts()
                     if count > 1 then  -- Must have at least base + 1 clone
                         local clone_count = count - 1
 
-                        -- Extract first word before underscore for base game ID
-                        -- e.g., "memory_match" -> "memory", "dodge" -> "dodge"
-                        local base_type = game_name:match("^([^_]+)")
-                        local base_game_id = base_type .. "_1"
+                        -- Map variant file names to base game IDs
+                        -- e.g., "memory_match" -> "memory_1", "dodge" -> "dodge_1", "space_shooter" -> "space_shooter_1"
+                        local variant_file_to_base_id = {
+                            memory_match = "memory_1",
+                            dodge = "dodge_1",
+                            snake = "snake_1",
+                            space_shooter = "space_shooter_1",
+                            hidden_object = "hidden_object_1"
+                        }
+
+                        local base_game_id = variant_file_to_base_id[game_name] or (game_name .. "_1")
 
                         variant_counts[base_game_id] = clone_count
                         print("Found " .. count .. " total variants (" .. clone_count .. " clones) for " .. base_game_id .. " in " .. filename)
@@ -227,7 +234,16 @@ end
 
 function GameData:generateClones(base_game, count)
     -- Load variant data from JSON if available
-    local game_type = base_game.id:match("^([^_]+)")
+    -- Map base game IDs to variant file names
+    local id_to_variant_file = {
+        memory_1 = "memory_match",
+        dodge_1 = "dodge",
+        snake_1 = "snake",
+        space_shooter_1 = "space_shooter",
+        hidden_object_1 = "hidden_object"
+    }
+
+    local game_type = id_to_variant_file[base_game.id] or base_game.id:match("^([^_]+)")
     local variant_file = Paths.assets.data .. "variants/" .. game_type .. "_variants.json"
     local variants_data = {}
 
@@ -319,39 +335,9 @@ function GameData:generateClones(base_game, count)
             end
             
             -- Assign visual variation based on variant number
-            if variant_num % 3 == 0 then
-                -- Every 3rd variant: change sprite set
-                local sprite_set_id = clone.visual_identity.sprite_set_id or "space_set_1"
-                local variations = sprite_variations[sprite_set_id] or {"game_mine_1-0"}
-                local sprite_index = ((variant_num - 1) % #variations) + 1
-                clone.icon_sprite = variations[sprite_index]
-                
-                -- Update metric mappings
-                if clone.visual_identity.metric_sprite_mappings then
-                    for metric_name, _ in pairs(clone.visual_identity.metric_sprite_mappings) do
-                        if metric_name == "kills" or metric_name == "objects_dodged" or 
-                           metric_name == "snake_length" or metric_name == "matches" or 
-                           metric_name == "objects_found" then
-                            clone.visual_identity.metric_sprite_mappings[metric_name] = variations[sprite_index]
-                        end
-                    end
-                end
-                
-                -- Update formula icon mappings
-                if clone.visual_identity.formula_icon_mapping then
-                    for key, _ in pairs(clone.visual_identity.formula_icon_mapping) do
-                        if key == "kills" or key == "objects_dodged" or 
-                           key == "snake_length" or key == "matches" or 
-                           key == "objects_found" then
-                            clone.visual_identity.formula_icon_mapping[key] = variations[sprite_index]
-                        end
-                    end
-                end
-            else
-                -- Other variants: change palette only
-                local palette_index = ((variant_num - 1) % #available_palettes) + 1
-                clone.visual_identity.palette_id = available_palettes[palette_index]
-            end
+            -- Cycle through available palettes
+            local palette_index = ((variant_num - 1) % #available_palettes) + 1
+            clone.visual_identity.palette_id = available_palettes[palette_index]
         end
 
         clone.base_formula = base_game.base_formula
@@ -432,7 +418,7 @@ function GameData:calculatePower(game_id, metrics)
         return 0
     end
     -- The formula_function now includes pcall and type checking
-    return game.formula_function(metrics)
+    return game.formula_function(metrics, Config.scaling_constant or 1)
 end
 
 function GameData:calculateTokenRate(game_id, metrics)
@@ -455,8 +441,8 @@ function GameData:calculateTheoreticalMax(game_id)
     -- Try to load variant-specific data from JSON
     local variant = nil
     if base_id then
-        local game_type = base_id:match("^([^_]+)")
-        local variant_file = Paths.assets.data .. "variants/" .. game_type .. "_variants.json"
+        -- Use full base_id (e.g., "space_shooter") not just first word
+        local variant_file = Paths.assets.data .. "variants/" .. base_id .. "_variants.json"
         local read_ok, contents = pcall(love.filesystem.read, variant_file)
         if read_ok and contents then
             local decode_ok, variants = pcall(json.decode, contents)
@@ -505,10 +491,12 @@ function GameData:calculateTheoreticalMax(game_id)
         max_metrics.time = 60 -- 1 minute for perfect play
         max_metrics.perfect = 1
 
-    -- Space Shooter: estimate based on level
+    -- Space Shooter: estimate based on victory_limit
     elseif game.metrics_tracked and game.metrics_tracked[1] == "kills" then
-        max_metrics.kills = 50 -- Estimate for a good run
+        local victory_limit = (variant and variant.victory_limit) or 20
+        max_metrics.kills = victory_limit
         max_metrics.deaths = 0
+        max_metrics.combo = victory_limit -- Perfect combo = all kills without death
 
     -- Fallback for unknown games
     else
@@ -532,7 +520,7 @@ function GameData:calculateTheoreticalMax(game_id)
     end
 
     -- Calculate formula output with realistic max metrics
-    return game.formula_function(max_metrics)
+    return game.formula_function(max_metrics, Config.scaling_constant or 1)
 end
 
 return GameData

@@ -211,6 +211,7 @@ end
 function MinigameController:getSnapshot()
     return {
         game_data = self.game_data,
+        game_instance = self.game_instance, -- Add game instance for variant sprites
         previous_best = self.previous_best,
         base_performance = self.base_performance,
         current_performance = self.current_performance,

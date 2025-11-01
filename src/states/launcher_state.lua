@@ -147,10 +147,10 @@ function LauncherState:updateFilter(category)
         if predicate(g) then table.insert(self.filtered_games, g) end
     end
     
-    -- Reset selection in view
+    -- Preserve selection and scroll position if possible
     self.view.selected_index = math.min(self.view.selected_index, #self.filtered_games)
     if self.view.selected_index < 1 then self.view.selected_index = 1 end
-    self.view.scroll_offset = 1
+    -- Don't reset scroll_offset - preserve user's position in the list
 end
 
 function LauncherState:update(dt)

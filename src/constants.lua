@@ -22,4 +22,45 @@ Constants.paths = {
     }
 }
 
+-- Space Shooter enums (for reference, actual values stored as strings in variants)
+Constants.spaceShooter = {
+    movementType = {
+        DEFAULT = 'default',
+        JUMP = 'jump',
+        RAIL = 'rail',
+        ASTEROIDS = 'asteroids',
+    },
+    fireMode = {
+        MANUAL = 'manual',
+        AUTO = 'auto',
+        CHARGE = 'charge',
+        BURST = 'burst',
+    },
+    bulletPattern = {
+        SINGLE = 'single',
+        DOUBLE = 'double',
+        TRIPLE = 'triple',
+        SPREAD = 'spread',
+        SPIRAL = 'spiral',
+        WAVE = 'wave',
+    },
+    enemyFormation = {
+        SCATTERED = 'scattered',
+        V_FORMATION = 'v_formation',
+        WALL = 'wall',
+        SPIRAL = 'spiral',
+    },
+    victoryCondition = {
+        KILLS = 'kills',
+        TIME = 'time',
+        SURVIVAL = 'survival',
+        BOSS = 'boss',
+    },
+    difficultyCurve = {
+        LINEAR = 'linear',
+        EXPONENTIAL = 'exponential',
+        WAVE = 'wave',
+    },
+}
+
 return Constants

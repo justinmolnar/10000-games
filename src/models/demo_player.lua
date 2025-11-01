@@ -186,15 +186,6 @@ function DemoPlayer:injectInput(input)
     end
 
     -- Debug: Print first 10 inputs
-    if not self.debug_input_count then
-        self.debug_input_count = 0
-    end
-    if self.debug_input_count < 10 then
-        print(string.format("[DemoPlayer] Injecting input at frame %d: key=%s, state=%s",
-            input.frame, input.key, input.state))
-        self.debug_input_count = self.debug_input_count + 1
-    end
-
     if input.state == "pressed" then
         if self.game_instance.keypressed then
             local success, err = pcall(self.game_instance.keypressed, self.game_instance, input.key)

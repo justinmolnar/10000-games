@@ -186,6 +186,51 @@ local Config = {
             fog_inner_radius = { min = 0.0, max = 1.0 },
             fog_darkness = { min = 0.0, max = 1.0 },
             chain_requirement = { min = 0, max = 10 },
+
+            -- Space Shooter Parameters
+            -- Player Movement
+            player_speed = { min = 50, max = 600 },
+            player_rotation_speed = { min = 0.5, max = 20.0 },
+            player_accel_friction = { min = 0.0, max = 1.0 },
+            player_decel_friction = { min = 0.0, max = 1.0 },
+            player_jump_distance = { min = 20, max = 300 },
+            player_jump_cooldown = { min = 0.1, max = 3.0 },
+            player_jump_speed = { min = 100, max = 1000 },
+            player_size_multiplier = { min = 0.3, max = 3.0 },
+            -- Lives & Shield
+            lives_count = { min = 1, max = 50 },
+            shield_hits = { min = 0, max = 10 },
+            shield_regen_time = { min = 0, max = 60 },
+            -- Weapon System
+            fire_rate = { min = 0.1, max = 20.0 },
+            bullet_speed = { min = 50, max = 1000 },
+            bullet_gravity = { min = -500, max = 500 },
+            bullet_lifetime = { min = 1, max = 30 },
+            bullet_damage_multiplier = { min = 0.1, max = 10.0 },
+            homing_strength = { min = 0.0, max = 1.0 },
+            burst_count = { min = 1, max = 10 },
+            burst_delay = { min = 0.05, max = 1.0 },
+            charge_time = { min = 0.1, max = 5.0 },
+            spread_angle = { min = 5, max = 180 },
+            overheat_threshold = { min = 3, max = 100 },
+            overheat_cooldown = { min = 0.5, max = 10.0 },
+            ammo_capacity = { min = 5, max = 500 },
+            ammo_reload_time = { min = 0.5, max = 10.0 },
+            -- Enemy System
+            enemy_spawn_rate = { min = 0.1, max = 10.0 },
+            enemy_speed_multiplier = { min = 0.1, max = 5.0 },
+            enemy_bullet_speed = { min = 50, max = 800 },
+            powerup_spawn_rate = { min = 1, max = 60 },
+            powerup_duration = { min = 1, max = 30 },
+            -- Environment
+            scroll_speed = { min = 0, max = 500 },
+            asteroid_density = { min = 0, max = 10 },
+            meteor_frequency = { min = 0, max = 10 },
+            gravity_wells = { min = 0, max = 10 },
+            gravity_well_strength = { min = 50, max = 1000 },
+            -- Arena
+            arena_width = { min = 400, max = 1200 },
+            blackout_zones = { min = 0, max = 5 },
         },
 
         -- Which parameters should be hidden/locked
@@ -201,7 +246,7 @@ local Config = {
             "flavor_text",      -- Text only
             "intro_cutscene",   -- Cutscene data
             "enemies",          -- Complex array structure
-            "movement_type",    -- String enum - would need dropdown (dodge/snake)
+            "movement_type",    -- String enum - would need dropdown (dodge/snake/space_shooter)
             "wall_mode",        -- String enum - snake wall behavior
             "arena_shape",      -- String enum - snake arena shape
             "food_spawn_pattern",  -- String enum - snake food spawning
@@ -213,6 +258,13 @@ local Config = {
             "camera_mode",      -- String enum - camera follow mode
             "fog_of_war",       -- String enum - fog type (could be boolean but treated as enum)
             "sprite_style",     -- String enum - uniform vs segmented sprites
+            -- Space Shooter enum parameters
+            "fire_mode",        -- String enum - manual, auto, charge, burst
+            "bullet_pattern",   -- String enum - single, double, triple, spread, spiral, wave
+            "enemy_pattern",    -- String enum - spawn pattern type
+            "enemy_formation",  -- String enum - scattered, v_formation, wall, spiral
+            "difficulty_curve", -- String enum - linear, exponential, wave
+            "powerup_types",    -- Array - available power-up types
         },
 
         -- Special unlocks (gate certain modifications behind progression)
@@ -944,16 +996,70 @@ local Config = {
             }
         },
         space_shooter = {
-            arena = { width = 800, height = 600 },
+            arena = {
+                width = 800,
+                height = 600,
+                aspect_ratio_locked = false,  -- If true, locks window aspect ratio like Snake
+                screen_wrap = false,  -- Edges wrap like Asteroids
+                reverse_gravity = false,  -- Player at top, enemies at bottom
+                blackout_zones = 0  -- Number of vision-blocking zones
+            },
+
+            -- Player Movement Defaults
             player = {
                 width = 30,
                 height = 30,
-                speed = 200,
-                start_y_offset = 50,
-                max_deaths_base = 5,
-                fire_cooldown = 0.2
+                speed = 200,  -- Base movement speed (rail/default modes)
+                rotation_speed = 5.0,  -- Asteroids mode rotation (degrees/frame)
+                accel_friction = 1.0,  -- Asteroids mode acceleration responsiveness
+                decel_friction = 1.0,  -- Asteroids mode deceleration
+                start_y_offset = 50,  -- Spawn position from bottom
+                max_deaths_base = 5,  -- Base lives
+                fire_cooldown = 0.2,  -- Seconds between shots
+                jump_distance = 0.08,  -- Jump mode dash distance (% of screen width, 0.08 = 8%)
+                jump_cooldown = 0.5,  -- Jump mode cooldown
+                jump_speed = 400,  -- Jump mode dash speed
+                size_multiplier = 1.0,  -- Hitbox size (0.5 = tiny, 2.0 = huge)
             },
-            bullet = { width = 4, height = 8, speed = 400 },
+
+            -- Shield Defaults
+            shield = {
+                enabled = false,
+                regen_time = 5.0,  -- Seconds to regenerate
+                max_hits = 1,  -- Hits before shield breaks
+            },
+
+            -- Bullet Defaults
+            bullet = {
+                width = 4,
+                height = 8,
+                speed = 400,
+                gravity = 0,  -- Pixels/sec^2 downward pull
+                lifetime = 10,  -- Seconds before despawn
+                piercing = false,
+                homing = false,
+                homing_strength = 0.0,  -- 0-1, how aggressively bullets home
+                damage_multiplier = 1.0,  -- Damage scaling
+            },
+
+            -- Weapon System Defaults
+            weapon = {
+                fire_mode = "manual",  -- manual, auto, charge, burst
+                fire_rate = 1.0,  -- Shots per second (auto mode)
+                burst_count = 3,  -- Bullets per burst (burst mode)
+                burst_delay = 0.1,  -- Seconds between burst shots
+                charge_time = 1.0,  -- Seconds to full charge
+                pattern = "single",  -- single, double, triple, spread, spiral, wave
+                spread_angle = 30,  -- Degrees for spread pattern
+                overheat_enabled = false,
+                overheat_threshold = 10,  -- Shots before overheat
+                overheat_cooldown = 3.0,  -- Seconds to cool down
+                ammo_enabled = false,
+                ammo_capacity = 50,
+                ammo_reload_time = 2.0,
+            },
+
+            -- Enemy Defaults
             enemy = {
                 width = 30,
                 height = 30,
@@ -961,12 +1067,49 @@ local Config = {
                 start_y_offset = -30,
                 base_shoot_rate_min = 1.0,
                 base_shoot_rate_max = 3.0,
-                shoot_rate_complexity_factor = 0.5
+                shoot_rate_complexity_factor = 0.5,
+                spawn_base_rate = 1.0,  -- Seconds between spawns
+                speed_multiplier = 1.0,
+                bullets_enabled = true,
+                bullet_speed = 200,
+                formation = "scattered",  -- scattered, v_formation, wall, spiral
             },
+
+            -- Power-up Defaults
+            powerup = {
+                spawn_rate = 10.0,  -- Seconds between spawns
+                duration = 5.0,  -- Seconds power-up lasts
+                stacking = false,  -- Can stack multiples
+                from_enemies = 0.1,  -- 10% chance on enemy kill
+                types = {  -- Available types
+                    "weapon_upgrade",
+                    "shield",
+                    "speed",
+                }
+            },
+
+            -- Environment Defaults
+            environment = {
+                scroll_speed = 0,  -- Pixels/sec background scroll
+                asteroid_density = 0,  -- Asteroids per second
+                meteor_frequency = 0,  -- Meteor showers per minute
+                gravity_wells = 0,  -- Number of gravity wells
+                gravity_well_strength = 200,  -- Pixels/sec^2 pull
+            },
+
+            -- Victory/Difficulty Defaults
+            goals = {
+                base_target_kills = 20,
+                victory_condition = "kills",  -- kills, time, survival, boss
+                victory_limit = 20,  -- Varies by condition type
+                difficulty_curve = "linear",  -- linear, exponential, wave
+                bullet_hell_mode = false,  -- Tiny hitbox, massive bullet count
+            },
+
             spawn = { base_rate = 1.0 },
-            goals = { base_target_kills = 20 },
             movement = { zigzag_frequency = 2 },
-            view = { 
+
+            view = {
                 bg_color = {0.05, 0.05, 0.15},
                 hud = { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
             }

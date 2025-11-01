@@ -67,7 +67,8 @@ function MinigameView:drawOverlay(viewport, snapshot)
         local formula_renderer = FormulaRenderer:new(self.di)
         love.graphics.push()
         -- Don't call origin() - already in viewport coordinates
-        local formula_end_y = formula_renderer:draw(game_data, x + 20, y, vpWidth * 0.7, 20)
+        -- Pass game_instance from snapshot if available for variant-specific sprites
+        local formula_end_y = formula_renderer:draw(game_data, x + 20, y, vpWidth * 0.7, 20, snapshot.game_instance)
         love.graphics.pop()
         y = formula_end_y + line_height * 0.5
     end

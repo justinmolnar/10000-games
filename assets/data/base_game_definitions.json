@@ -1,15 +1,16 @@
 [
   {
     "id": "space_shooter_1",
-    "display_name": "Space Shooter 1",
+    "display_name": "Space Shooter Alpha",
     "game_class": "SpaceShooter",
     "tier": "trash",
     "category": "action",
-    "unlock_cost": 1000000000,
+    "unlock_cost": 20,
     "cost_exponent": 1.5,
-    "base_formula_string": "(metrics.kills - metrics.deaths)",
-    "metrics_tracked": ["kills", "deaths"],
-    "icon_sprite": "game_mine_1-0",
+    "base_formula_string": "((metrics.kills * metrics.kills * 0.07 * (1 + metrics.combo / math.max(1, metrics.kills) * 0.3) * scaling_constant) - (metrics.deaths * metrics.deaths * 0.3 * scaling_constant))",
+    "display_formula_string": "kills × combo - deaths",
+    "metrics_tracked": ["kills", "deaths", "combo"],
+    "icon_sprite": "player",
     "token_threshold": 0.75,
 
     "visual_identity": {
@@ -17,12 +18,16 @@
       "palette_id": "default",
       "metric_sprite_mappings": {
         "kills": "game_mine_1-0",
-        "deaths": "msg_error-0"
+        "deaths": "msg_error-0",
+        "combo": "check-0",
+        "accuracy": "check-0",
+        "time_survived": "clock-0"
       },
       "formula_icon_mapping": {
         "kills": "game_mine_1-0",
         "deaths": "msg_error-0",
-        "result": "check-0"
+        "combo": "check-0",
+        "result": "certificate-0"
       }
     },
 
@@ -31,27 +36,57 @@
     "available_cheats": [
       {
         "id": "speed_modifier",
+        "display_name": "Cooldown Reduction",
+        "description": "Reduce fire cooldown",
         "base_cost": 500,
-        "max_level": 3,
-        "value_per_level": 0.15
+        "max_level": 5,
+        "value_per_level": 0.1,
+        "affects": ["player.fire_cooldown"]
       },
       {
         "id": "advantage_modifier",
+        "display_name": "Extra Lives",
+        "description": "Increase starting lives",
         "base_cost": 1000,
-        "max_level": 5,
-        "value_per_level": { "deaths": 1 }
+        "max_level": 10,
+        "value_per_level": { "deaths": 1 },
+        "affects": ["lives_count"]
       },
       {
         "id": "performance_modifier",
+        "display_name": "Damage Boost",
+        "description": "Increase bullet damage",
         "base_cost": 2000,
         "max_level": 5,
-        "value_per_level": 0.1
+        "value_per_level": 0.2,
+        "affects": ["bullet_damage_multiplier"]
       },
       {
-        "id": "aim_assist",
+        "id": "bullet_speed_boost",
+        "display_name": "Faster Bullets",
+        "description": "Increase bullet speed",
+        "base_cost": 800,
+        "max_level": 5,
+        "value_per_level": 100,
+        "affects": ["bullet_speed"]
+      },
+      {
+        "id": "shield_upgrade",
+        "display_name": "Shield Generator",
+        "description": "Enable regenerating shield",
         "base_cost": 5000,
         "max_level": 1,
-        "value_per_level": 0
+        "value_per_level": 0,
+        "affects": ["shield_enabled"]
+      },
+      {
+        "id": "piercing_rounds",
+        "display_name": "Piercing Bullets",
+        "description": "Bullets pass through enemies",
+        "base_cost": 3000,
+        "max_level": 1,
+        "value_per_level": 0,
+        "affects": ["bullet_piercing"]
       }
     ],
 
@@ -59,59 +94,7 @@
     "bullet_sprite": "world_star-0",
     "variant_multiplier": 1,
     "difficulty_level": 1,
-    "auto_play_performance": {"kills": 20, "deaths": 2},
-
-    "clone_variants": [
-      {
-        "clone_index": 0,
-        "name": "Space Shooter Alpha",
-        "sprite_set": "fighter_1",
-        "palette": "blue_squadron",
-        "music_track": "space_shooter_theme_1",
-        "sfx_pack": "retro_beeps",
-        "background": "stars_blue",
-        "difficulty_modifier": 1.0,
-        "enemies": [
-          { "type": "basic", "multiplier": 1.0 }
-        ],
-        "flavor_text": "Classic space combat! Blast through enemy waves.",
-        "intro_cutscene": null
-      },
-      {
-        "clone_index": 1,
-        "name": "Space Shooter Beta",
-        "sprite_set": "fighter_1",
-        "palette": "red_squadron",
-        "music_track": "space_shooter_theme_2",
-        "sfx_pack": "retro_beeps",
-        "background": "stars_red",
-        "difficulty_modifier": 1.3,
-        "enemies": [
-          { "type": "basic", "multiplier": 1.0 },
-          { "type": "weaver", "multiplier": 0.5 }
-        ],
-        "flavor_text": "Enemies weave through space! Sharpen your aim.",
-        "intro_cutscene": null
-      },
-      {
-        "clone_index": 2,
-        "name": "Space Shooter Omega",
-        "sprite_set": "fighter_2",
-        "palette": "gold_squadron",
-        "music_track": "space_shooter_theme_3",
-        "sfx_pack": "8bit_arcade",
-        "background": "stars_purple",
-        "difficulty_modifier": 1.6,
-        "enemies": [
-          { "type": "basic", "multiplier": 2.0 },
-          { "type": "weaver", "multiplier": 1.0 },
-          { "type": "bomber", "multiplier": 0.5 },
-          { "type": "kamikaze", "multiplier": 1.0 }
-        ],
-        "flavor_text": "Ultimate space warfare! Multiple enemy tactics!",
-        "intro_cutscene": null
-      }
-    ]
+    "auto_play_performance": {"kills": 20, "deaths": 2}
   },
   {
     "id": "snake_1",
@@ -122,12 +105,13 @@
     "unlock_cost": 20,
     "cost_exponent": 1.5,
     "base_formula_string": "(((metrics.snake_length * 2) * (metrics.snake_length * 2) * scaling_constant) / metrics.survival_time)",
+    "display_formula_string": "snake_length / survival_time",
     "metrics_tracked": ["snake_length", "survival_time"],
-    "icon_sprite": "game_spider-0",
+    "icon_sprite": "player",
     "token_threshold": 0.75,
 
     "visual_identity": {
-      "sprite_set_id": "snake_set_1",
+      "sprite_set_id": "classic/snake",
       "palette_id": "neon_green",
       "metric_sprite_mappings": {
         "snake_length": "game_spider-0",
@@ -136,7 +120,7 @@
       "formula_icon_mapping": {
         "snake_length": "game_spider-0",
         "survival_time": "clock-0",
-        "result": "check-0"
+        "result": "certificate-0"
       }
     },
 
@@ -220,6 +204,7 @@
     "unlock_cost": 20,
     "cost_exponent": 1.2,
     "base_formula_string": "((metrics.matches * metrics.matches * (metrics.combo + 1) * 2 * scaling_constant) / metrics.time)",
+    "display_formula_string": "matches × combo / time",
     "metrics_tracked": ["matches", "time", "combo"],
     "icon_sprite": "game_freecell-0",
     "token_threshold": 0.75,
@@ -327,20 +312,21 @@
     "unlock_cost": 20,
     "cost_exponent": 1.5,
     "base_formula_string": "((metrics.objects_dodged - metrics.collisions * 3) * (metrics.objects_dodged - metrics.collisions * 3) * 0.03 * (1 + metrics.combo / math.max(1, metrics.objects_dodged) * 0.3) * scaling_constant)",
+    "display_formula_string": "objects_dodged - collisions × combo",
     "metrics_tracked": ["objects_dodged", "collisions", "combo"],
-    "icon_sprite": "game_solitaire-0",
+    "icon_sprite": "player",
     "token_threshold": 0.75,
 
     "visual_identity": {
-      "sprite_set_id": "dodge_set_1",
+      "sprite_set_id": "base_1",
       "palette_id": "fire",
       "metric_sprite_mappings": {
-        "objects_dodged": "game_solitaire-0",
+        "objects_dodged": "msg_error-0",
         "collisions": "msg_error-0",
         "combo": "check-0"
       },
       "formula_icon_mapping": {
-        "objects_dodged": "game_solitaire-0",
+        "objects_dodged": "msg_error-0",
         "collisions": "msg_error-0",
         "combo": "check-0",
         "result": "certificate-0"
@@ -459,6 +445,7 @@
     "unlock_cost": 1000000000,
     "cost_exponent": 1.5,
     "base_formula_string": "(metrics.objects_found * metrics.time_bonus)",
+    "display_formula_string": "objects_found × time_bonus",
     "metrics_tracked": ["objects_found", "time_bonus"],
     "icon_sprite": "magnifying_glass-0",
     "token_threshold": 0.75,

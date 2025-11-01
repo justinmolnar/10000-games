@@ -35,87 +35,155 @@ function FormulaRenderer:ensureLoaded()
     end
 end
 
--- Parse formula string into tokens
+-- Parse formula string into tokens (handles UTF-8 properly)
 function FormulaRenderer:parseFormula(formula_string)
     if not formula_string then return {} end
-    
+
     local tokens = {}
     local current_token = ""
-    
-    -- Simple tokenizer - splits on operators and parentheses
-    for i = 1, #formula_string do
-        local char = formula_string:sub(i, i)
-        
-        if char == "+" or char == "-" or char == "*" or char == "/" or 
-           char == "×" or char == "÷" or char == "(" or char == ")" then
+
+    -- UTF-8 aware iteration using pattern matching
+    for char in formula_string:gmatch("([%z\1-\127\194-\244][\128-\191]*)") do
+        if char == "+" or char == "-" or char == "*" or char == "/" or
+           char == "×" or char == "÷" or char == "(" or char == ")" or
+           char == "²" or char == "³" then
             -- Save accumulated token if any
             if current_token ~= "" then
-                table.insert(tokens, {type = "text", value = current_token:match("^%s*(.-)%s*$")})
+                local trimmed = current_token:match("^%s*(.-)%s*$")
+                if trimmed ~= "" then  -- Only add non-empty tokens
+                    table.insert(tokens, {type = "text", value = trimmed})
+                end
                 current_token = ""
             end
-            -- Add operator
-            table.insert(tokens, {type = "operator", value = char})
+            -- Add operator/superscript as token
+            table.insert(tokens, {type = (char == "²" or char == "³") and "superscript" or "operator", value = char})
         else
             current_token = current_token .. char
         end
     end
-    
+
     -- Add final token
     if current_token ~= "" then
-        table.insert(tokens, {type = "text", value = current_token:match("^%s*(.-)%s*$")})
+        local trimmed = current_token:match("^%s*(.-)%s*$")
+        if trimmed ~= "" then  -- Only add non-empty tokens
+            table.insert(tokens, {type = "text", value = trimmed})
+        end
     end
-    
+
     return tokens
 end
 
--- Map token to sprite (returns sprite_name or nil for text-only)
-function FormulaRenderer:getTokenSprite(token, game_data)
-    if token.type == "operator" then
-        return nil -- Draw operators as text
+-- Map token to sprite (returns sprite_name or actual sprite object)
+function FormulaRenderer:getTokenSprite(token, game_data, game_instance)
+    if token.type == "operator" or token.type == "superscript" then
+        return nil -- Draw operators and superscripts as text
     end
-    
+
     if token.type == "text" then
         local text = token.value
-        
-        -- Check if it's "metrics.something"
-        local metric_name = text:match("^metrics%.(.+)$")
-        if metric_name and game_data then
-            return self.sprite_manager:getMetricSprite(game_data, metric_name)
-        end
-        
-        -- Check for literal numbers
+
+        -- Check for literal numbers FIRST - draw as text
         if tonumber(text) then
-            return nil -- Draw numbers as text
+            return nil
+        end
+
+        -- Strip "metrics." prefix if present
+        local metric_name = text:match("^metrics%.(.+)$") or text
+
+        -- Map metric names to sprite file names
+        local metric_to_sprite = {
+            kills = "enemy",
+            deaths = "player",
+            snake_length = "segment",
+            objects_dodged = "enemy",  -- Dodge: enemies dodged
+            collisions = "player",     -- Dodge: player took damage (lives)
+            objects_found = "object",
+            matches = "card"
+        }
+
+        local sprite_key = metric_to_sprite[metric_name]
+
+        -- If game_instance exists, use its loaded sprites
+        if game_instance and game_instance.sprites and game_instance.sprites[sprite_key] then
+            return {type = "game_sprite", sprite = game_instance.sprites[sprite_key]}
+        end
+
+        -- If no game_instance, load sprite from disk based on game_data
+        if sprite_key and game_data and game_data.visual_identity and game_data.visual_identity.sprite_set_id then
+            local sprite_set = game_data.visual_identity.sprite_set_id
+
+            -- Map game_class to sprite folder name
+            local class_to_folder = {
+                DodgeGame = "dodge",
+                SnakeGame = "snake",
+                SpaceShooter = "space_shooter",
+                MemoryMatch = "memory",
+                HiddenObject = "hidden_object"
+            }
+            local game_folder = class_to_folder[game_data.game_class]
+
+            if game_folder then
+                -- Special handling for Snake: check sprite_style to determine which sprite to load
+                if game_data.game_class == "SnakeGame" and metric_name == "snake_length" then
+                    local sprite_style = game_data.sprite_style or "uniform"
+                    if sprite_style == "segmented" then
+                        sprite_key = "seg_head"  -- Use head sprite for segmented snakes
+                    end
+                end
+
+                local sprite_path = string.format("assets/sprites/games/%s/%s/%s.png", game_folder, sprite_set, sprite_key)
+                local success, sprite = pcall(love.graphics.newImage, sprite_path)
+                if success then
+                    return {type = "game_sprite", sprite = sprite}
+                end
+            end
+        end
+
+        -- Fallback: Use generic icon from metric sprite mapping
+        if game_data then
+            local icon_name = self.sprite_manager:getMetricSprite(game_data, metric_name)
+            return {type = "icon", name = icon_name}
         end
     end
-    
+
     return nil
 end
 
 -- Draw formula with icons
-function FormulaRenderer:draw(game_data, x, y, max_width, icon_size)
+function FormulaRenderer:draw(game_data, x, y, max_width, icon_size, game_instance)
     self:ensureLoaded()
-    
+
     if not game_data or not game_data.base_formula_string then
         return
     end
-    
+
     icon_size = icon_size or 20
     local spacing = 5
     local current_x = x
     local current_y = y
-    
-    local tokens = self:parseFormula(game_data.base_formula_string)
-    
+
+    -- Use simplified display formula if available, otherwise fall back to base formula
+    local formula_to_display = game_data.display_formula_string or game_data.base_formula_string
+    local tokens = self:parseFormula(formula_to_display)
+
     for _, token in ipairs(tokens) do
-        local sprite_name = self:getTokenSprite(token, game_data)
+        local sprite_info = self:getTokenSprite(token, game_data, game_instance)
         local item_width = 0
-        
-        if sprite_name then
-            -- Draw as sprite
-            local palette_id = self.sprite_manager:getPaletteId(game_data)
-            self.sprite_loader:drawSprite(sprite_name, current_x, current_y, icon_size, icon_size, {1, 1, 1}, palette_id)
-            item_width = icon_size
+
+        if sprite_info then
+            if sprite_info.type == "game_sprite" then
+                -- Draw actual game sprite (variant-specific)
+                local sprite = sprite_info.sprite
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.draw(sprite, current_x, current_y, 0,
+                    icon_size / sprite:getWidth(), icon_size / sprite:getHeight())
+                item_width = icon_size
+            elseif sprite_info.type == "icon" then
+                -- Draw generic icon sprite
+                local palette_id = self.sprite_manager:getPaletteId(game_data)
+                self.sprite_loader:drawSprite(sprite_info.name, current_x, current_y, icon_size, icon_size, {1, 1, 1}, palette_id)
+                item_width = icon_size
+            end
         else
             -- Draw as text
             love.graphics.setColor(1, 1, 1)
