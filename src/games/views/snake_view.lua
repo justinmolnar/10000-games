@@ -134,6 +134,13 @@ function SnakeView:draw()
     local snake_sprite_fallback = game.data.icon_sprite or "game_spider-0"
     local paletteManager = self.di and self.di.paletteManager
 
+    -- Get tint for this variant based on config
+    local tint = {1, 1, 1}  -- Default: no tint
+    local config = (self.di and self.di.config) or Config
+    if paletteManager and config and config.games and config.games.snake then
+        tint = paletteManager:getTintForVariant(self.variant, "SnakeGame", config.games.snake)
+    end
+
     -- Phase 2.3: Draw snake (sprite or fallback)
     -- Support for girth (thickness) and invisible_tail
     local girth = game.current_girth or 1
@@ -293,18 +300,12 @@ function SnakeView:draw()
 
             -- Draw sprite or fallback
             if sprite then
-                if paletteManager and palette_id then
-                    -- TODO: palette rotation support
-                    love.graphics.setColor(1, 1, 1)
-                    local sx = segment_size / sprite:getWidth()
-                    local sy = segment_size / sprite:getHeight()
-                    love.graphics.draw(sprite, draw_x, draw_y, rotation, sx, sy, sprite:getWidth()/2, sprite:getHeight()/2)
-                else
-                    love.graphics.setColor(1, 1, 1)
-                    local sx = segment_size / sprite:getWidth()
-                    local sy = segment_size / sprite:getHeight()
-                    love.graphics.draw(sprite, draw_x, draw_y, rotation, sx, sy, sprite:getWidth()/2, sprite:getHeight()/2)
-                end
+                -- Apply tint and draw with rotation
+                love.graphics.setColor(tint[1], tint[2], tint[3])
+                local sx = segment_size / sprite:getWidth()
+                local sy = segment_size / sprite:getHeight()
+                love.graphics.draw(sprite, draw_x, draw_y, rotation, sx, sy, sprite:getWidth()/2, sprite:getHeight()/2)
+                love.graphics.setColor(1, 1, 1)  -- Reset color
             else
                 -- Fallback to icon system
                 self.sprite_loader:drawSprite(

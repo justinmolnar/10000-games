@@ -40,6 +40,13 @@ function SpaceShooterView:draw()
     local player_sprite_fallback = game.data.icon_sprite or "game_mine_1-0"
     local paletteManager = self.di and self.di.paletteManager
 
+    -- Get tint for this variant based on config
+    local tint = {1, 1, 1}  -- Default: no tint
+    local config = (self.di and self.di.config) or Config
+    if paletteManager and config and config.games and config.games.space_shooter then
+        tint = paletteManager:getTintForVariant(self.variant, "SpaceShooter", config.games.space_shooter)
+    end
+
     -- Draw player (sprite or fallback)
     if game.player then
         local rotation = game.movement_type == "asteroids" and math.rad(game.player.angle or 0) or 0
@@ -61,25 +68,11 @@ function SpaceShooterView:draw()
             local origin_x = sprite:getWidth() / 2
             local origin_y = sprite:getHeight() / 2
 
-            if paletteManager and palette_id then
-                g.push()
-                g.translate(center_x, center_y)
-                g.rotate(rotation)
-                g.translate(-origin_x * scale_x, -origin_y * scale_y)
-                paletteManager:drawSpriteWithPalette(
-                    sprite,
-                    0, 0,
-                    game.player.width,
-                    game.player.height,
-                    palette_id,
-                    {1, 1, 1}
-                )
-                g.pop()
-            else
-                g.setColor(1, 1, 1)
-                g.draw(sprite, center_x, center_y, rotation,
-                    scale_x, scale_y, origin_x, origin_y)
-            end
+            -- Apply tint when drawing sprite
+            g.setColor(tint[1], tint[2], tint[3])
+            g.draw(sprite, center_x, center_y, rotation,
+                scale_x, scale_y, origin_x, origin_y)
+            g.setColor(1, 1, 1)  -- Reset color
         else
             -- Fallback to icon (rotation support for sprite_loader drawing would need to be added)
             g.push()
@@ -104,21 +97,11 @@ function SpaceShooterView:draw()
         local sprite_key = enemy.type and ("enemy_" .. enemy.type) or nil
         if sprite_key and game.sprites and game.sprites[sprite_key] then
             local sprite = game.sprites[sprite_key]
-            if paletteManager and palette_id then
-                paletteManager:drawSpriteWithPalette(
-                    sprite,
-                    enemy.x - enemy.width/2,
-                    enemy.y - enemy.height/2,
-                    enemy.width,
-                    enemy.height,
-                    palette_id,
-                    {1, 1, 1}
-                )
-            else
-                g.setColor(1, 1, 1)
-                g.draw(sprite, enemy.x - enemy.width/2, enemy.y - enemy.height/2, 0,
-                    enemy.width / sprite:getWidth(), enemy.height / sprite:getHeight())
-            end
+            -- Apply tint when drawing sprite
+            g.setColor(tint[1], tint[2], tint[3])
+            g.draw(sprite, enemy.x - enemy.width/2, enemy.y - enemy.height/2, 0,
+                enemy.width / sprite:getWidth(), enemy.height / sprite:getHeight())
+            g.setColor(1, 1, 1)  -- Reset color
         else
             -- Fallback to icon
             self.sprite_loader:drawSprite(
@@ -138,21 +121,11 @@ function SpaceShooterView:draw()
     for _, bullet in ipairs(game.player_bullets) do
         if game.sprites and game.sprites.bullet_player then
             local sprite = game.sprites.bullet_player
-            if paletteManager and palette_id then
-                paletteManager:drawSpriteWithPalette(
-                    sprite,
-                    bullet.x - bullet.width/2,
-                    bullet.y - bullet.height/2,
-                    bullet.width,
-                    bullet.height,
-                    palette_id,
-                    {1, 1, 1}
-                )
-            else
-                g.setColor(1, 1, 1)
-                g.draw(sprite, bullet.x - bullet.width/2, bullet.y - bullet.height/2, 0,
-                    bullet.width / sprite:getWidth(), bullet.height / sprite:getHeight())
-            end
+            -- Apply tint when drawing sprite
+            g.setColor(tint[1], tint[2], tint[3])
+            g.draw(sprite, bullet.x - bullet.width/2, bullet.y - bullet.height/2, 0,
+                bullet.width / sprite:getWidth(), bullet.height / sprite:getHeight())
+            g.setColor(1, 1, 1)  -- Reset color
         else
             -- Fallback to icon
             self.sprite_loader:drawSprite(
@@ -172,21 +145,11 @@ function SpaceShooterView:draw()
     for _, bullet in ipairs(game.enemy_bullets) do
         if game.sprites and game.sprites.bullet_enemy then
             local sprite = game.sprites.bullet_enemy
-            if paletteManager and palette_id then
-                paletteManager:drawSpriteWithPalette(
-                    sprite,
-                    bullet.x - bullet.width/2,
-                    bullet.y - bullet.height/2,
-                    bullet.width,
-                    bullet.height,
-                    palette_id,
-                    {1, 1, 1}
-                )
-            else
-                g.setColor(1, 1, 1)
-                g.draw(sprite, bullet.x - bullet.width/2, bullet.y - bullet.height/2, 0,
-                    bullet.width / sprite:getWidth(), bullet.height / sprite:getHeight())
-            end
+            -- Apply tint when drawing sprite
+            g.setColor(tint[1], tint[2], tint[3])
+            g.draw(sprite, bullet.x - bullet.width/2, bullet.y - bullet.height/2, 0,
+                bullet.width / sprite:getWidth(), bullet.height / sprite:getHeight())
+            g.setColor(1, 1, 1)  -- Reset color
         else
             -- Fallback to icon
             self.sprite_loader:drawSprite(
@@ -240,8 +203,65 @@ function SpaceShooterView:draw()
             g.print(game.player.shield_hits_remaining .. "/" .. game.shield_max_hits, tx, ry[3], 0, s, s)
         end
 
-        g.setColor(1, 1, 1)
-        g.print("Difficulty: " .. game.difficulty_level, lx, ry[4])
+        -- Phase 4: Ammo display
+        local current_row = 4
+        if game.ammo_enabled then
+            -- Safety check: make sure we have a row available
+            if not ry[current_row] then
+                current_row = #ry  -- Fall back to last available row
+            end
+
+            g.setColor(1, 1, 1)
+            if game.player.is_reloading then
+                local reload_progress = 1 - (game.player.reload_timer / game.ammo_reload_time)
+                g.setColor(1, 1, 0)  -- Yellow during reload
+                g.print("Reloading... ", lx, ry[current_row], 0, s, s)
+                -- Draw reload progress bar
+                local bar_width = 60
+                local bar_x = lx + 80
+                g.rectangle("line", bar_x, ry[current_row] + 2, bar_width, 10)
+                g.rectangle("fill", bar_x, ry[current_row] + 2, bar_width * reload_progress, 10)
+            else
+                g.print("Ammo: ", lx, ry[current_row], 0, s, s)
+                local ammo_color = game.player.ammo < game.ammo_capacity * 0.25 and {1, 0.5, 0} or {1, 1, 1}
+                g.setColor(ammo_color)
+                g.print(game.player.ammo .. "/" .. game.ammo_capacity, lx + 50, ry[current_row], 0, s, s)
+            end
+            current_row = current_row + 1
+        end
+
+        -- Phase 4: Overheat display
+        if game.overheat_enabled then
+            -- Safety check: make sure we have a row available
+            if not ry[current_row] then
+                current_row = #ry  -- Fall back to last available row
+            end
+
+            g.setColor(1, 1, 1)
+            local heat_percent = game.player.heat / game.overheat_threshold
+
+            if game.player.is_overheated then
+                g.setColor(1, 0, 0)  -- Red when overheated
+                local cooldown_progress = 1 - (game.player.overheat_timer / game.overheat_cooldown)
+                g.print("OVERHEAT! ", lx, ry[current_row], 0, s, s)
+                -- Draw cooldown bar
+                local bar_width = 60
+                local bar_x = lx + 80
+                g.setColor(1, 0, 0)
+                g.rectangle("line", bar_x, ry[current_row] + 2, bar_width, 10)
+                g.rectangle("fill", bar_x, ry[current_row] + 2, bar_width * cooldown_progress, 10)
+            else
+                g.print("Heat: ", lx, ry[current_row], 0, s, s)
+                -- Draw heat bar
+                local bar_width = 60
+                local bar_x = lx + 50
+                local bar_color = heat_percent > 0.75 and {1, 0, 0} or (heat_percent > 0.5 and {1, 1, 0} or {0, 1, 0})
+                g.setColor(bar_color)
+                g.rectangle("line", bar_x, ry[current_row] + 2, bar_width, 10)
+                g.rectangle("fill", bar_x, ry[current_row] + 2, bar_width * heat_percent, 10)
+            end
+            current_row = current_row + 1
+        end
     end
 end
 

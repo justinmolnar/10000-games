@@ -169,7 +169,119 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     self.shield_max_hits = (runtimeCfg.shield and runtimeCfg.shield.max_hits) or 1
     if self.variant and self.variant.shield_hits ~= nil then
         self.shield_max_hits = self.variant.shield_hits
-    end 
+    end
+
+    -- Phase 3: Weapon System - Fire Mode
+    self.fire_mode = (runtimeCfg.weapon and runtimeCfg.weapon.fire_mode) or "manual"
+    if self.variant and self.variant.fire_mode then
+        self.fire_mode = self.variant.fire_mode
+    end
+
+    self.fire_rate = (runtimeCfg.weapon and runtimeCfg.weapon.fire_rate) or 1.0
+    if self.variant and self.variant.fire_rate ~= nil then
+        self.fire_rate = self.variant.fire_rate
+    end
+
+    self.burst_count = (runtimeCfg.weapon and runtimeCfg.weapon.burst_count) or 3
+    if self.variant and self.variant.burst_count ~= nil then
+        self.burst_count = self.variant.burst_count
+    end
+
+    self.burst_delay = (runtimeCfg.weapon and runtimeCfg.weapon.burst_delay) or 0.1
+    if self.variant and self.variant.burst_delay ~= nil then
+        self.burst_delay = self.variant.burst_delay
+    end
+
+    self.charge_time = (runtimeCfg.weapon and runtimeCfg.weapon.charge_time) or 1.0
+    if self.variant and self.variant.charge_time ~= nil then
+        self.charge_time = self.variant.charge_time
+    end
+
+    -- Phase 3: Bullet Pattern
+    self.bullet_pattern = (runtimeCfg.weapon and runtimeCfg.weapon.pattern) or "single"
+    if self.variant and self.variant.bullet_pattern then
+        self.bullet_pattern = self.variant.bullet_pattern
+    end
+
+    self.spread_angle = (runtimeCfg.weapon and runtimeCfg.weapon.spread_angle) or 30
+    if self.variant and self.variant.spread_angle ~= nil then
+        self.spread_angle = self.variant.spread_angle
+    end
+
+    -- Phase 3: Bullet Arc and Count
+    self.bullet_arc = (runtimeCfg.weapon and runtimeCfg.weapon.bullet_arc) or 30
+    if self.variant and self.variant.bullet_arc ~= nil then
+        self.bullet_arc = self.variant.bullet_arc
+    end
+
+    self.bullets_per_shot = (runtimeCfg.weapon and runtimeCfg.weapon.bullets_per_shot) or 1
+    if self.variant and self.variant.bullets_per_shot ~= nil then
+        self.bullets_per_shot = self.variant.bullets_per_shot
+    end
+
+    -- Phase 3: Bullet Behavior
+    self.bullet_speed = (runtimeCfg.bullet and runtimeCfg.bullet.speed) or BULLET_SPEED
+    if self.variant and self.variant.bullet_speed ~= nil then
+        self.bullet_speed = self.variant.bullet_speed
+    end
+
+    self.bullet_homing = (runtimeCfg.bullet and runtimeCfg.bullet.homing) or false
+    if self.variant and self.variant.bullet_homing ~= nil then
+        self.bullet_homing = self.variant.bullet_homing
+    end
+
+    self.homing_strength = (runtimeCfg.bullet and runtimeCfg.bullet.homing_strength) or 0.0
+    if self.variant and self.variant.homing_strength ~= nil then
+        self.homing_strength = self.variant.homing_strength
+    end
+
+    self.bullet_piercing = (runtimeCfg.bullet and runtimeCfg.bullet.piercing) or false
+    if self.variant and self.variant.bullet_piercing ~= nil then
+        self.bullet_piercing = self.variant.bullet_piercing
+    end
+
+    -- Phase 2: Bullet Gravity
+    self.bullet_gravity = (runtimeCfg.bullet and runtimeCfg.bullet.gravity) or 0
+    if self.variant and self.variant.bullet_gravity ~= nil then
+        self.bullet_gravity = self.variant.bullet_gravity
+    end
+
+    -- Phase 4: Ammo System
+    self.ammo_enabled = (runtimeCfg.weapon and runtimeCfg.weapon.ammo_enabled) or false
+    if self.variant and self.variant.ammo_enabled ~= nil then
+        self.ammo_enabled = self.variant.ammo_enabled
+    end
+
+    self.ammo_capacity = (runtimeCfg.weapon and runtimeCfg.weapon.ammo_capacity) or 50
+    if self.variant and self.variant.ammo_capacity ~= nil then
+        self.ammo_capacity = self.variant.ammo_capacity
+    end
+
+    self.ammo_reload_time = (runtimeCfg.weapon and runtimeCfg.weapon.ammo_reload_time) or 2.0
+    if self.variant and self.variant.ammo_reload_time ~= nil then
+        self.ammo_reload_time = self.variant.ammo_reload_time
+    end
+
+    -- Phase 4: Overheat System
+    self.overheat_enabled = (runtimeCfg.weapon and runtimeCfg.weapon.overheat_enabled) or false
+    if self.variant and self.variant.overheat_enabled ~= nil then
+        self.overheat_enabled = self.variant.overheat_enabled
+    end
+
+    self.overheat_threshold = (runtimeCfg.weapon and runtimeCfg.weapon.overheat_threshold) or 10
+    if self.variant and self.variant.overheat_threshold ~= nil then
+        self.overheat_threshold = self.variant.overheat_threshold
+    end
+
+    self.overheat_cooldown = (runtimeCfg.weapon and runtimeCfg.weapon.overheat_cooldown) or 3.0
+    if self.variant and self.variant.overheat_cooldown ~= nil then
+        self.overheat_cooldown = self.variant.overheat_cooldown
+    end
+
+    self.overheat_heat_dissipation = (runtimeCfg.weapon and runtimeCfg.weapon.overheat_heat_dissipation) or 2.0
+    if self.variant and self.variant.overheat_heat_dissipation ~= nil then
+        self.overheat_heat_dissipation = self.variant.overheat_heat_dissipation
+    end
 
     self.game_width = (SCfg.arena and SCfg.arena.width) or 800
     self.game_height = (SCfg.arena and SCfg.arena.height) or 600
@@ -179,7 +291,20 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
         y = self.game_height - PLAYER_START_Y_OFFSET,
         width = PLAYER_WIDTH,
         height = PLAYER_HEIGHT,
-        fire_cooldown = 0
+        fire_cooldown = 0,
+        -- Phase 3: Weapon state
+        auto_fire_timer = 0,
+        charge_progress = 0,
+        is_charging = false,
+        burst_remaining = 0,
+        burst_timer = 0,
+        -- Phase 4: Ammo & Overheat state
+        ammo = self.ammo_capacity,
+        reload_timer = 0,
+        is_reloading = false,
+        heat = 0,
+        is_overheated = false,
+        overheat_timer = 0
     }
 
     -- Phase 2: Initialize movement-specific state
@@ -256,8 +381,11 @@ function SpaceShooter:loadAssets()
 
     local game_type = "space_shooter"
     local base_path = "assets/sprites/games/" .. game_type .. "/" .. self.variant.sprite_set .. "/"
+    local fallback_sprite_set = "fighter_1"  -- Config default
+    local fallback_path = "assets/sprites/games/" .. game_type .. "/" .. fallback_sprite_set .. "/"
 
     local function tryLoad(filename, sprite_key)
+        -- Try variant sprite_set first
         local filepath = base_path .. filename
         local success, result = pcall(function()
             return love.graphics.newImage(filepath)
@@ -266,9 +394,24 @@ function SpaceShooter:loadAssets()
         if success then
             self.sprites[sprite_key] = result
             print("[SpaceShooter:loadAssets] Loaded: " .. filepath)
-        else
-            print("[SpaceShooter:loadAssets] Missing: " .. filepath .. " (using fallback)")
+            return
         end
+
+        -- Fall back to default sprite_set (fighter_1)
+        if self.variant.sprite_set ~= fallback_sprite_set then
+            local fallback_filepath = fallback_path .. filename
+            local fallback_success, fallback_result = pcall(function()
+                return love.graphics.newImage(fallback_filepath)
+            end)
+
+            if fallback_success then
+                self.sprites[sprite_key] = fallback_result
+                print("[SpaceShooter:loadAssets] Loaded fallback: " .. fallback_filepath)
+                return
+            end
+        end
+
+        print("[SpaceShooter:loadAssets] Missing: " .. filepath .. " (no fallback available)")
     end
 
     -- Load player ship sprite
@@ -437,14 +580,100 @@ function SpaceShooter:updatePlayer(dt)
         end
     end
 
-    -- Fire cooldown (all modes)
-    if self.player.fire_cooldown > 0 then
-        self.player.fire_cooldown = self.player.fire_cooldown - dt
+    -- Phase 3: Fire Mode Handling
+    if self.fire_mode == "manual" then
+        -- Manual: Press space to fire with cooldown
+        if self.player.fire_cooldown > 0 then
+            self.player.fire_cooldown = self.player.fire_cooldown - dt
+        end
+
+        if self:isKeyDown('space') and self.player.fire_cooldown <= 0 then
+            self:playerShoot()
+            self.player.fire_cooldown = FIRE_COOLDOWN
+        end
+
+    elseif self.fire_mode == "auto" then
+        -- Auto: Hold space, fires automatically at fire_rate
+        if self.player.auto_fire_timer > 0 then
+            self.player.auto_fire_timer = self.player.auto_fire_timer - dt
+        end
+
+        if self:isKeyDown('space') and self.player.auto_fire_timer <= 0 then
+            self:playerShoot()
+            self.player.auto_fire_timer = 1.0 / self.fire_rate
+        end
+
+    elseif self.fire_mode == "charge" then
+        -- Charge: Hold space to charge, release to fire
+        if self:isKeyDown('space') then
+            if not self.player.is_charging then
+                self.player.is_charging = true
+                self.player.charge_progress = 0
+            end
+            self.player.charge_progress = math.min(self.player.charge_progress + dt, self.charge_time)
+        else
+            if self.player.is_charging then
+                -- Released - fire charged shot
+                local charge_multiplier = self.player.charge_progress / self.charge_time
+                self:playerShoot(charge_multiplier)
+                self.player.is_charging = false
+                self.player.charge_progress = 0
+            end
+        end
+
+    elseif self.fire_mode == "burst" then
+        -- Burst: Press space to fire burst_count bullets rapidly
+        if self.player.burst_remaining > 0 then
+            self.player.burst_timer = self.player.burst_timer + dt
+            if self.player.burst_timer >= self.burst_delay then
+                self:playerShoot()
+                self.player.burst_remaining = self.player.burst_remaining - 1
+                self.player.burst_timer = 0
+            end
+        else
+            if self.player.fire_cooldown > 0 then
+                self.player.fire_cooldown = self.player.fire_cooldown - dt
+            end
+
+            if self:isKeyDown('space') and self.player.fire_cooldown <= 0 then
+                self.player.burst_remaining = self.burst_count
+                self.player.burst_timer = 0
+                self.player.fire_cooldown = FIRE_COOLDOWN
+            end
+        end
     end
 
-    -- Shooting (handled in all modes)
-    if self:isKeyDown('space') and self.player.fire_cooldown <= 0 then
-        self:playerShoot()
+    -- Phase 4: Ammo reload system
+    if self.ammo_enabled then
+        if self.player.is_reloading then
+            self.player.reload_timer = self.player.reload_timer - dt
+            if self.player.reload_timer <= 0 then
+                self.player.is_reloading = false
+                self.player.ammo = self.ammo_capacity
+            end
+        end
+
+        -- Check for manual reload (R key)
+        if self:isKeyDown('r') and not self.player.is_reloading and self.player.ammo < self.ammo_capacity then
+            self.player.is_reloading = true
+            self.player.reload_timer = self.ammo_reload_time
+        end
+    end
+
+    -- Phase 4: Overheat cooldown system
+    if self.overheat_enabled then
+        if self.player.is_overheated then
+            self.player.overheat_timer = self.player.overheat_timer - dt
+            if self.player.overheat_timer <= 0 then
+                self.player.is_overheated = false
+                self.player.heat = 0
+            end
+        else
+            -- Passive heat dissipation when not shooting
+            if self.player.heat > 0 then
+                self.player.heat = math.max(0, self.player.heat - dt * self.overheat_heat_dissipation)
+            end
+        end
     end
 end
 
@@ -555,6 +784,74 @@ function SpaceShooter:updateBullets(dt)
         local bullet = self.player_bullets[i]
         if not bullet then goto next_player_bullet end
 
+        -- Phase 3: Homing behavior
+        if bullet.homing and bullet.homing_strength > 0 then
+            local closest_enemy = nil
+            local closest_dist = math.huge
+
+            for _, enemy in ipairs(self.enemies) do
+                local dx = enemy.x - bullet.x
+                local dy = enemy.y - bullet.y
+                local dist = math.sqrt(dx * dx + dy * dy)
+                if dist < closest_dist then
+                    closest_dist = dist
+                    closest_enemy = enemy
+                end
+            end
+
+            if closest_enemy then
+                local dx = closest_enemy.x - bullet.x
+                local dy = closest_enemy.y - bullet.y
+                local target_angle = math.atan2(dx, -dy)
+                local current_angle = math.atan2(bullet.vx, -bullet.vy)
+
+                -- Gradually turn toward target
+                local angle_diff = target_angle - current_angle
+                -- Normalize angle difference to -pi to pi
+                while angle_diff > math.pi do angle_diff = angle_diff - 2 * math.pi end
+                while angle_diff < -math.pi do angle_diff = angle_diff + 2 * math.pi end
+
+                local turn_amount = angle_diff * bullet.homing_strength * dt * 5
+                local new_angle = current_angle + turn_amount
+
+                -- Update velocity direction (maintain speed)
+                local speed = math.sqrt(bullet.vx * bullet.vx + bullet.vy * bullet.vy)
+                bullet.vx = math.sin(new_angle) * speed
+                bullet.vy = -math.cos(new_angle) * speed
+            end
+        end
+
+        -- Phase 3: Wave pattern movement
+        if bullet.wave_type then
+            bullet.wave_time = bullet.wave_time + dt
+            local wave_amplitude = 30
+            local wave_frequency = 3
+
+            if bullet.wave_type == "wave_left" then
+                bullet.x = bullet.x + math.sin(bullet.wave_time * wave_frequency) * wave_amplitude * dt
+            elseif bullet.wave_type == "wave_right" then
+                bullet.x = bullet.x - math.sin(bullet.wave_time * wave_frequency) * wave_amplitude * dt
+            end
+            -- wave_center stays straight
+        end
+
+        -- Phase 2: Apply gravity to bullets (if enabled)
+        if self.bullet_gravity and self.bullet_gravity ~= 0 then
+            if bullet.directional then
+                -- Apply gravity to vy for directional bullets
+                bullet.vy = bullet.vy + self.bullet_gravity * dt
+            else
+                -- For non-directional bullets, need to convert to directional with gravity
+                -- This makes straight-up bullets start arcing
+                if not bullet.vx then
+                    bullet.vx = 0
+                    bullet.vy = -BULLET_SPEED
+                    bullet.directional = true
+                end
+                bullet.vy = bullet.vy + self.bullet_gravity * dt
+            end
+        end
+
         -- Update bullet position (directional or straight up)
         if bullet.directional then
             bullet.x = bullet.x + bullet.vx * dt
@@ -563,10 +860,12 @@ function SpaceShooter:updateBullets(dt)
             bullet.y = bullet.y - BULLET_SPEED * dt
         end
 
+        local bullet_hit = false
         for j = #self.enemies, 1, -1 do
             local enemy = self.enemies[j]
             if enemy and self:checkCollision(bullet, enemy) then
-                table.remove(self.player_bullets, i)
+                bullet_hit = true
+
                 -- Phase 1.4: Handle health for variant enemies
                 if enemy.is_variant_enemy and enemy.health then
                     enemy.health = enemy.health - 1
@@ -586,7 +885,12 @@ function SpaceShooter:updateBullets(dt)
                     -- Phase 3.3: Play enemy explode sound
                     self:playSound("enemy_explode", 1.0)
                 end
-                goto next_player_bullet
+
+                -- Phase 3: Piercing bullets don't get removed on hit
+                if not bullet.piercing then
+                    table.remove(self.player_bullets, i)
+                    goto next_player_bullet
+                end
             end
         end
 
@@ -645,36 +949,144 @@ function SpaceShooter:draw()
     end
 end
 
-function SpaceShooter:playerShoot()
+function SpaceShooter:playerShoot(charge_multiplier)
+    charge_multiplier = charge_multiplier or 1.0
+
+    -- Phase 4: Ammo system check
+    if self.ammo_enabled then
+        if self.player.is_reloading then
+            return -- Can't shoot while reloading
+        end
+
+        if self.player.ammo <= 0 then
+            -- Auto-reload when empty
+            self.player.is_reloading = true
+            self.player.reload_timer = self.ammo_reload_time
+            return
+        end
+
+        -- Consume ammo
+        self.player.ammo = self.player.ammo - 1
+    end
+
+    -- Phase 4: Overheat system check
+    if self.overheat_enabled then
+        if self.player.is_overheated then
+            return -- Can't shoot while overheated
+        end
+
+        -- Increase heat
+        self.player.heat = self.player.heat + 1
+
+        -- Check for overheat
+        if self.player.heat >= self.overheat_threshold then
+            self.player.is_overheated = true
+            self.player.overheat_timer = self.overheat_cooldown
+            self.player.heat = self.overheat_threshold
+        end
+    end
+
+    -- Phase 3: Bullet Pattern Implementation
+    local base_angle = 0  -- Straight up for most modes
+
+    -- For asteroids mode, shoot in direction player is facing
+    if self.movement_type == "asteroids" then
+        base_angle = self.player.angle
+    end
+
+    -- Phase 3: Create bullets based on pattern
+    if self.bullet_pattern == "single" then
+        self:createBullet(base_angle, charge_multiplier)
+
+    elseif self.bullet_pattern == "double" then
+        -- Two bullets parallel, slightly offset left and right
+        local offset = 5
+        self:createBullet(base_angle, charge_multiplier, -offset)
+        self:createBullet(base_angle, charge_multiplier, offset)
+
+    elseif self.bullet_pattern == "triple" then
+        -- Three bullets: center + slight angles
+        self:createBullet(base_angle, charge_multiplier)
+        self:createBullet(base_angle - 10, charge_multiplier)
+        self:createBullet(base_angle + 10, charge_multiplier)
+
+    elseif self.bullet_pattern == "spread" then
+        -- Spread pattern using bullet_arc and bullets_per_shot
+        local num_bullets = self.bullets_per_shot
+        if num_bullets == 1 then num_bullets = 5 end  -- Default to 5 if not specified
+
+        local start_angle = base_angle - self.bullet_arc / 2
+        local angle_step = num_bullets > 1 and (self.bullet_arc / (num_bullets - 1)) or 0
+
+        for i = 0, num_bullets - 1 do
+            self:createBullet(start_angle + angle_step * i, charge_multiplier)
+        end
+
+    elseif self.bullet_pattern == "spiral" then
+        -- Create bullets in a rotating pattern (spiral effect when repeated)
+        local num_bullets = self.bullets_per_shot
+        if num_bullets == 1 then num_bullets = 6 end  -- Default to 6 if not specified
+
+        local angle_step = 360 / num_bullets
+        local spiral_offset = (love.timer.getTime() * 200) % 360  -- Rotating over time
+
+        for i = 0, num_bullets - 1 do
+            self:createBullet(base_angle + (i * angle_step) + spiral_offset, charge_multiplier)
+        end
+
+    elseif self.bullet_pattern == "wave" then
+        -- Three bullets that will move in wave pattern
+        self:createBullet(base_angle, charge_multiplier, 0, "wave_center")
+        self:createBullet(base_angle, charge_multiplier, 0, "wave_left")
+        self:createBullet(base_angle, charge_multiplier, 0, "wave_right")
+    end
+
+    -- Phase 3.3: Play shoot sound
+    self:playSound("shoot", 0.6)
+end
+
+-- Phase 3: Helper to create individual bullets with pattern support
+function SpaceShooter:createBullet(angle, charge_multiplier, x_offset, wave_type)
+    angle = angle or 0
+    charge_multiplier = charge_multiplier or 1.0
+    x_offset = x_offset or 0
+    wave_type = wave_type or nil
+
     local bullet = {
         width = BULLET_WIDTH,
-        height = BULLET_HEIGHT
+        height = BULLET_HEIGHT,
+        charge_multiplier = charge_multiplier,
+        homing = self.bullet_homing,
+        homing_strength = self.homing_strength,
+        piercing = self.bullet_piercing,
+        wave_type = wave_type,
+        wave_time = 0
     }
 
-    -- For asteroid mode, shoot in direction player is facing from front of ship
+    local rad = math.rad(angle)
+
+    -- Calculate spawn position
     if self.movement_type == "asteroids" then
-        local rad = math.rad(self.player.angle)
-        -- Offset bullet spawn to front of ship (angle 0 = UP, so front is -height/2 in Y)
+        -- Offset bullet spawn to front of ship
         local offset_distance = self.player.height / 2
         local offset_x = math.sin(rad) * offset_distance
         local offset_y = -math.cos(rad) * offset_distance
 
-        bullet.x = self.player.x + offset_x - BULLET_WIDTH/2
+        bullet.x = self.player.x + offset_x + x_offset - BULLET_WIDTH/2
         bullet.y = self.player.y + offset_y - BULLET_HEIGHT/2
-        bullet.vx = math.sin(rad) * 400  -- Bullet speed (angle 0 = UP)
-        bullet.vy = (-math.cos(rad)) * 400
-        bullet.directional = true
     else
-        -- All other modes: shoot straight up from top-center of sprite
-        bullet.x = self.player.x - BULLET_WIDTH/2
+        -- All other modes: spawn from top-center
+        bullet.x = self.player.x + x_offset - BULLET_WIDTH/2
         bullet.y = self.player.y - self.player.height/2
     end
 
-    table.insert(self.player_bullets, bullet)
-    self.player.fire_cooldown = FIRE_COOLDOWN
+    -- Calculate velocity
+    local speed = self.bullet_speed * charge_multiplier
+    bullet.vx = math.sin(rad) * speed
+    bullet.vy = -math.cos(rad) * speed
+    bullet.directional = true
 
-    -- Phase 3.3: Play shoot sound
-    self:playSound("shoot", 0.6)
+    table.insert(self.player_bullets, bullet)
 end
 
 function SpaceShooter:enemyShoot(enemy)

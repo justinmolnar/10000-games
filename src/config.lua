@@ -214,6 +214,7 @@ local Config = {
             spread_angle = { min = 5, max = 180 },
             overheat_threshold = { min = 3, max = 100 },
             overheat_cooldown = { min = 0.5, max = 10.0 },
+            overheat_heat_dissipation = { min = 0.1, max = 10.0 },
             ammo_capacity = { min = 5, max = 500 },
             ammo_reload_time = { min = 0.5, max = 10.0 },
             -- Enemy System
@@ -744,6 +745,12 @@ local Config = {
     -- Games configuration
     games = {
         dodge = {
+            -- Tinting Configuration
+            tinting = {
+                enabled = true,  -- Enable random tinting by default
+                sprites = {"player"},  -- Only tint player, not obstacles
+            },
+
             base_target = 30,
             player = {
                 size = 20,
@@ -865,6 +872,12 @@ local Config = {
             }
         },
     hidden_object = {
+            -- Tinting Configuration
+            tinting = {
+                enabled = false,  -- Disable tinting (objects have specific appearances)
+                sprites = {},
+            },
+
             arena = { width = 800, height = 600 },
             time = {
                 base_limit = 60,
@@ -886,6 +899,12 @@ local Config = {
             }
         },
     memory_match = {
+            -- Tinting Configuration
+            tinting = {
+                enabled = false,  -- Disable tinting (flags/cards need specific colors for gameplay)
+                sprites = {},
+            },
+
             arena = { width = 800, height = 600 },
             cards = { width = 60, height = 80, spacing = 10, icon_padding = 10 },
             timings = { memorize_time_base = 5, match_view_time = 1, flip_speed = 0.3, reveal_duration = 1.0 },
@@ -927,6 +946,12 @@ local Config = {
             chain_requirement = 0,  -- Forces matching specific sequence (0 = disabled)
         },
     snake = {
+            -- Tinting Configuration
+            tinting = {
+                enabled = true,  -- Enable random tinting by default
+                sprites = "all",  -- Tint all snake segments
+            },
+
             arena = { width = 800, height = 600 },
             grid_size = 20,
             base_speed = 8,
@@ -996,6 +1021,12 @@ local Config = {
             }
         },
         space_shooter = {
+            -- Tinting Configuration
+            tinting = {
+                enabled = true,  -- Enable random tinting by default
+                sprites = "all",  -- "all" or array of sprite names like {"player", "enemy_*"}
+            },
+
             arena = {
                 width = 800,
                 height = 600,
@@ -1034,7 +1065,7 @@ local Config = {
                 width = 4,
                 height = 8,
                 speed = 400,
-                gravity = 0,  -- Pixels/sec^2 downward pull
+                gravity = 0,  -- Pixels/sec^2 downward pull (0 for none, 500 for strong curve)
                 lifetime = 10,  -- Seconds before despawn
                 piercing = false,
                 homing = false,
@@ -1051,9 +1082,12 @@ local Config = {
                 charge_time = 1.0,  -- Seconds to full charge
                 pattern = "single",  -- single, double, triple, spread, spiral, wave
                 spread_angle = 30,  -- Degrees for spread pattern
+                bullet_arc = 30,  -- Degrees for arc-based patterns (affects spread size, homing count, etc.)
+                bullets_per_shot = 1,  -- Number of bullets per shot (multiplier for patterns)
                 overheat_enabled = false,
                 overheat_threshold = 10,  -- Shots before overheat
                 overheat_cooldown = 3.0,  -- Seconds to cool down
+                overheat_heat_dissipation = 2.0,  -- Heat dissipated per second
                 ammo_enabled = false,
                 ammo_capacity = 50,
                 ammo_reload_time = 2.0,

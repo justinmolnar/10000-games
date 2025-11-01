@@ -61,6 +61,96 @@ function PaletteManager:getPalette(palette_id)
     return self.palettes[palette_id]
 end
 
+-- Generate a seeded random tint based on variant data
+-- Returns {r, g, b} color multiplier (e.g., {1.2, 0.8, 1.0})
+function PaletteManager:generateSeededTint(seed)
+    -- Use seed to generate consistent random values
+    local old_seed = math.random()  -- Save current random state
+    math.randomseed(seed)
+
+    -- Generate RGB multipliers in range 0.6 to 1.4
+    -- This gives nice variation without being too extreme
+    local r = 0.6 + math.random() * 0.8
+    local g = 0.6 + math.random() * 0.8
+    local b = 0.6 + math.random() * 0.8
+
+    math.randomseed(old_seed)  -- Restore random state
+
+    return {r, g, b}
+end
+
+-- Get tint for a variant based on configuration and variant data
+-- Respects per-clone override: variant.tint_enabled and variant.tint
+-- Falls back to game config default
+-- force_enabled: if true, ignores config.tinting.enabled (for launcher icons)
+function PaletteManager:getTintForVariant(variant, game_class, game_config, force_enabled)
+    -- Check for explicit per-clone override
+    if variant then
+        -- If variant explicitly disables tinting
+        if variant.tint_enabled == false then
+            return {1, 1, 1}  -- No tint (white)
+        end
+
+        -- If variant provides explicit tint color
+        if variant.tint and type(variant.tint) == "table" and #variant.tint == 3 then
+            return variant.tint
+        end
+
+        -- If variant enables tinting or uses default
+        if variant.tint_enabled == true or variant.tint_enabled == nil then
+            -- Check game config default (or force_enabled overrides it)
+            local tinting_config = game_config and game_config.tinting
+            if force_enabled or (tinting_config and tinting_config.enabled) then
+                -- Generate seeded tint based on clone_index or name
+                local seed = (variant.clone_index or 0)
+                if seed == 0 and variant.name then
+                    -- Hash the name to get a seed
+                    seed = 0
+                    for i = 1, #variant.name do
+                        seed = seed + string.byte(variant.name, i) * i
+                    end
+                end
+                return self:generateSeededTint(seed)
+            end
+        end
+    end
+
+    -- No tint by default
+    return {1, 1, 1}
+end
+
+-- Check if a specific sprite should be tinted based on config
+function PaletteManager:shouldTintSprite(sprite_name, tinting_config)
+    if not tinting_config or not tinting_config.enabled then
+        return false
+    end
+
+    local sprites_config = tinting_config.sprites
+
+    -- If "all", tint everything
+    if sprites_config == "all" then
+        return true
+    end
+
+    -- If array, check if sprite matches any pattern
+    if type(sprites_config) == "table" then
+        for _, pattern in ipairs(sprites_config) do
+            -- Simple wildcard matching with *
+            if pattern:find("*", 1, true) then
+                -- Convert pattern to Lua pattern (escape special chars except *)
+                local lua_pattern = "^" .. pattern:gsub("([^%w%*])", "%%%1"):gsub("%*", ".*") .. "$"
+                if sprite_name:match(lua_pattern) then
+                    return true
+                end
+            elseif sprite_name == pattern then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
 function PaletteManager:getDefaultSourceColors()
     -- Define the source colors we want to replace in Win98 sprites
     -- These are common Win98 icon colors

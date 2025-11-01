@@ -167,45 +167,32 @@ function DodgeView:draw()
     local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local paletteManager = self.di and self.di.paletteManager
 
+    -- Get tint for this variant based on config
+    local tint = {1, 1, 1}  -- Default: no tint
+    local config = (self.di and self.di.config) or Config
+    if paletteManager and config and config.games and config.games.dodge then
+        tint = paletteManager:getTintForVariant(self.variant, "DodgeGame", config.games.dodge)
+    end
+
     if game.sprites and game.sprites.player then
-        -- Use loaded player sprite with palette swapping and rotation
+        -- Use loaded player sprite with tinting and rotation
         local sprite = game.sprites.player
         local size = game.player.radius * 2
         local rotation = game.player.rotation or 0
 
-        if paletteManager and palette_id then
-            -- Player position is the CENTER, but paletteManager uses top-left when rotation==0
-            -- Always pass a non-zero rotation to force centering, or adjust position
-            -- Use a tiny rotation value if rotation is 0 to force center-origin rendering
-            local draw_rotation = rotation
-            if math.abs(rotation) < 0.001 then
-                draw_rotation = 0.001  -- Tiny non-zero value to force center origin
-            end
-
-            paletteManager:drawSpriteWithPalette(
-                sprite,
-                game.player.x,  -- Always draw at center position
-                game.player.y,
-                size,
-                size,
-                palette_id,
-                {1, 1, 1},
-                draw_rotation
-            )
-        else
-            -- No palette, just draw normally with rotation
-            g.push()
-            g.translate(game.player.x, game.player.y)
-            g.rotate(game.player.rotation or 0)
-            g.setColor(1, 1, 1)
-            g.draw(sprite,
-                -game.player.radius,
-                -game.player.radius,
-                0,
-                size / sprite:getWidth(),
-                size / sprite:getHeight())
-            g.pop()
-        end
+        -- Apply tint and draw with rotation
+        g.push()
+        g.translate(game.player.x, game.player.y)
+        g.rotate(rotation)
+        g.setColor(tint[1], tint[2], tint[3])
+        g.draw(sprite,
+            -game.player.radius,
+            -game.player.radius,
+            0,
+            size / sprite:getWidth(),
+            size / sprite:getHeight())
+        g.setColor(1, 1, 1)  -- Reset color
+        g.pop()
     else
         -- Fallback to icon system with rotation
         local player_sprite = game.data.icon_sprite or "game_solitaire-0"

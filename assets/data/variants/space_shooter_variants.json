@@ -157,11 +157,207 @@
     "rotation_speed": 6.0,
     "accel_friction": 0.9,
     "decel_friction": 0.95,
-    "bullet_gravity": 100,
+    "bullet_gravity": 500,
     "enemies": [
       { "type": "weaver", "multiplier": 1.5 }
     ],
     "flavor_text": "Bullets curve! Navigate gravity wells with asteroids physics!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 8,
+    "name": "Space Shooter: Auto Spread",
+    "sprite_set": "fighter_1",
+    "palette": "orange",
+    "music_track": "space_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "stars_blue",
+    "difficulty_modifier": 1.0,
+    "fire_mode": "auto",
+    "fire_rate": 3.0,
+    "bullet_pattern": "spread",
+    "spread_angle": 45,
+    "bullet_speed": 500,
+    "enemies": [
+      { "type": "basic", "multiplier": 2.0 }
+    ],
+    "flavor_text": "Continuous fan fire! Hold space to spray!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 9,
+    "name": "Space Shooter: Charge Homing",
+    "sprite_set": "fighter_2",
+    "palette": "cyan",
+    "music_track": "space_theme_2",
+    "sfx_pack": "modern_ui",
+    "background": "stars_blue",
+    "difficulty_modifier": 1.2,
+    "fire_mode": "charge",
+    "charge_time": 1.5,
+    "bullet_pattern": "single",
+    "bullet_homing": true,
+    "homing_strength": 2,
+    "bullet_speed": 600,
+    "enemies": [
+      { "type": "weaver", "multiplier": 1.5 },
+      { "type": "basic", "multiplier": 1.0 }
+    ],
+    "flavor_text": "Hold to charge powerful seeking shots!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 10,
+    "name": "Space Shooter: Burst Piercing",
+    "sprite_set": "fighter_1",
+    "palette": "red",
+    "music_track": "space_theme_intense",
+    "sfx_pack": "8bit_arcade",
+    "background": "stars_red",
+    "difficulty_modifier": 1.3,
+    "fire_mode": "burst",
+    "burst_count": 5,
+    "burst_delay": 0.08,
+    "bullet_pattern": "triple",
+    "bullet_piercing": true,
+    "bullet_speed": 600,
+    "enemies": [
+      { "type": "basic", "multiplier": 2.5 },
+      { "type": "bomber", "multiplier": 1.0 }
+    ],
+    "flavor_text": "Rapid bursts pierce through multiple enemies!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 11,
+    "name": "Space Shooter: Wave Pattern",
+    "sprite_set": "fighter_2",
+    "palette": "purple",
+    "music_track": "space_theme_ambient",
+    "sfx_pack": "modern_ui",
+    "background": "stars_purple",
+    "difficulty_modifier": 1.1,
+    "fire_mode": "manual",
+    "bullet_pattern": "wave",
+    "bullet_speed": 400,
+    "enemies": [
+      { "type": "weaver", "multiplier": 1.2 },
+      { "type": "basic", "multiplier": 1.0 }
+    ],
+    "flavor_text": "Unpredictable wave motion confuses enemies!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 12,
+    "name": "Space Shooter: Spiral Madness",
+    "sprite_set": "fighter_1",
+    "palette": "rainbow",
+    "music_track": "space_theme_intense",
+    "sfx_pack": "8bit_arcade",
+    "background": "stars_blue",
+    "difficulty_modifier": 1.4,
+    "fire_mode": "auto",
+    "fire_rate": 5.0,
+    "bullet_pattern": "spiral",
+    "bullet_speed": 450,
+    "enemies": [
+      { "type": "basic", "multiplier": 2.0 },
+      { "type": "weaver", "multiplier": 1.5 }
+    ],
+    "flavor_text": "Rotating spiral barrage - visual spectacle!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 13,
+    "name": "Space Shooter: Ammo Limited",
+    "sprite_set": "fighter_1",
+    "palette": "yellow",
+    "music_track": "space_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "stars_yellow",
+    "difficulty_modifier": 1.2,
+    "ammo_enabled": true,
+    "ammo_capacity": 20,
+    "ammo_reload_time": 3.0,
+    "fire_mode": "manual",
+    "bullet_pattern": "single",
+    "bullet_speed": 400,
+    "enemies": [
+      { "type": "basic", "multiplier": 1.5 }
+    ],
+    "flavor_text": "Limited ammo! Make every shot count!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 14,
+    "name": "Space Shooter: Overheat Challenge",
+    "sprite_set": "fighter_2",
+    "palette": "orange",
+    "music_track": "space_theme_2",
+    "sfx_pack": "modern_ui",
+    "background": "stars_red",
+    "difficulty_modifier": 1.3,
+    "overheat_enabled": true,
+    "overheat_threshold": 5,
+    "overheat_cooldown": 5.0,
+    "fire_mode": "manual",
+    "bullet_pattern": "double",
+    "bullet_speed": 450,
+    "enemies": [
+      { "type": "basic", "multiplier": 1.8 },
+      { "type": "weaver", "multiplier": 0.5 }
+    ],
+    "flavor_text": "Your weapon overheats quickly! Manage your heat!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 15,
+    "name": "Space Shooter: Resource Management",
+    "sprite_set": "fighter_1",
+    "palette": "cyan",
+    "music_track": "space_theme_ambient",
+    "sfx_pack": "8bit_arcade",
+    "background": "stars_blue",
+    "difficulty_modifier": 1.6,
+    "ammo_enabled": true,
+    "ammo_capacity": 30,
+    "ammo_reload_time": 2.5,
+    "overheat_enabled": true,
+    "overheat_threshold": 8,
+    "overheat_cooldown": 3.5,
+    "fire_mode": "auto",
+    "fire_rate": 4.0,
+    "bullet_pattern": "triple",
+    "bullet_speed": 500,
+    "enemies": [
+      { "type": "basic", "multiplier": 2.0 },
+      { "type": "bomber", "multiplier": 0.8 }
+    ],
+    "flavor_text": "Both ammo AND overheat! Ultimate resource management!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 16,
+    "name": "Space Shooter: Unlimited Power",
+    "sprite_set": "fighter_2",
+    "palette": "green",
+    "music_track": "space_theme_intense",
+    "sfx_pack": "retro_beeps",
+    "background": "stars_green",
+    "difficulty_modifier": 0.8,
+    "ammo_enabled": false,
+    "overheat_enabled": false,
+    "fire_mode": "auto",
+    "fire_rate": 5.0,
+    "bullet_pattern": "spread",
+    "spread_angle": 45,
+    "bullet_speed": 600,
+    "bullet_piercing": true,
+    "enemies": [
+      { "type": "basic", "multiplier": 2.5 },
+      { "type": "weaver", "multiplier": 1.0 }
+    ],
+    "flavor_text": "No ammo, no overheat - pure firepower!",
     "intro_cutscene": null
   }
 ]
