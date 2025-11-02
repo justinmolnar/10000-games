@@ -50,6 +50,10 @@ function SpaceShooterView:draw()
     -- Draw player (sprite or fallback)
     if game.player then
         local rotation = game.movement_type == "asteroids" and math.rad(game.player.angle or 0) or 0
+        -- Phase 8: Rotate 180 degrees in reverse gravity mode so player faces downward
+        if game.reverse_gravity then
+            rotation = rotation + math.pi
+        end
         local center_x = game.player.x
         local center_y = game.player.y
 
@@ -164,6 +168,81 @@ function SpaceShooterView:draw()
         end
     end
 
+    -- Phase 6: Draw power-ups
+    for _, powerup in ipairs(game.powerups) do
+        -- Draw power-up based on type (different colors)
+        local color = {1, 1, 1}
+        if powerup.type == "speed" then
+            color = {0, 1, 1}  -- Cyan
+        elseif powerup.type == "rapid_fire" then
+            color = {1, 1, 0}  -- Yellow
+        elseif powerup.type == "pierce" then
+            color = {1, 0, 1}  -- Magenta
+        elseif powerup.type == "shield" then
+            color = {0, 0.5, 1}  -- Blue
+        elseif powerup.type == "triple_shot" then
+            color = {1, 0.5, 0}  -- Orange
+        elseif powerup.type == "spread_shot" then
+            color = {0.5, 1, 0}  -- Green
+        end
+
+        g.setColor(color)
+        g.circle("fill", powerup.x + powerup.width/2, powerup.y + powerup.height/2, powerup.width/2)
+        g.setColor(1, 1, 1)
+        g.circle("line", powerup.x + powerup.width/2, powerup.y + powerup.height/2, powerup.width/2)
+    end
+
+    -- Phase 7: Draw asteroids
+    g.setColor(0.5, 0.5, 0.5)
+    for _, asteroid in ipairs(game.asteroids) do
+        g.push()
+        g.translate(asteroid.x + asteroid.width/2, asteroid.y + asteroid.height/2)
+        g.rotate(asteroid.rotation)
+        g.polygon("fill", {
+            -asteroid.width/2, -asteroid.height/2,
+            asteroid.width/2, -asteroid.height/3,
+            asteroid.width/3, asteroid.height/2,
+            -asteroid.width/3, asteroid.height/3
+        })
+        g.pop()
+    end
+
+    -- Phase 7: Draw meteor warnings
+    g.setColor(1, 0, 0, 0.5)
+    for _, warning in ipairs(game.meteor_warnings) do
+        g.circle("fill", warning.x + 15, 30, 20)
+        g.setColor(1, 1, 0)
+        g.print("!", warning.x + 10, 20, 0, 2, 2)
+        g.setColor(1, 0, 0, 0.5)
+    end
+
+    -- Phase 7: Draw meteors
+    g.setColor(1, 0.3, 0)
+    for _, meteor in ipairs(game.meteors) do
+        g.circle("fill", meteor.x + meteor.width/2, meteor.y + meteor.height/2, meteor.width/2)
+        g.setColor(1, 1, 0)
+        g.circle("line", meteor.x + meteor.width/2, meteor.y + meteor.height/2, meteor.width/2 - 3)
+        g.setColor(1, 0.3, 0)
+    end
+
+    -- Phase 7: Draw gravity wells
+    g.setColor(0.5, 0, 1, 0.3)
+    for _, well in ipairs(game.gravity_wells) do
+        g.circle("fill", well.x, well.y, well.radius)
+        g.setColor(0.7, 0.3, 1)
+        g.circle("line", well.x, well.y, well.radius)
+        g.circle("fill", well.x, well.y, 10)
+        g.setColor(0.5, 0, 1, 0.3)
+    end
+
+    -- Phase 8: Draw blackout zones
+    for _, zone in ipairs(game.blackout_zones) do
+        g.setColor(0, 0, 0, 0.8)  -- Dark opaque circles
+        g.circle("fill", zone.x, zone.y, zone.radius)
+        g.setColor(0.2, 0.2, 0.2, 0.9)  -- Darker outline
+        g.circle("line", zone.x, zone.y, zone.radius)
+    end
+
     -- Draw HUD (skip in VM render mode)
     if not game.vm_render_mode then
         local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or
@@ -261,6 +340,21 @@ function SpaceShooterView:draw()
                 g.rectangle("fill", bar_x, ry[current_row] + 2, bar_width * heat_percent, 10)
             end
             current_row = current_row + 1
+        end
+
+        -- Phase 6: Active power-ups display
+        if next(game.active_powerups) then
+            for powerup_type, effect in pairs(game.active_powerups) do
+                if not ry[current_row] then
+                    current_row = #ry
+                end
+
+                local name = powerup_type:gsub("_", " "):upper()
+                local time_left = math.ceil(effect.duration_remaining)
+                g.setColor(0, 1, 0)  -- Green for active powerup
+                g.print(name .. ": " .. time_left .. "s", lx, ry[current_row], 0, s * 0.8, s * 0.8)
+                current_row = current_row + 1
+            end
         end
     end
 end

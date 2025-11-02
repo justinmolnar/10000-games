@@ -283,12 +283,247 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
         self.overheat_heat_dissipation = self.variant.overheat_heat_dissipation
     end
 
+    -- Phase 5: Enemy spawn patterns
+    self.enemy_spawn_pattern = (runtimeCfg.enemy and runtimeCfg.enemy.spawn_pattern) or "continuous"
+    if self.variant and self.variant.enemy_spawn_pattern ~= nil then
+        self.enemy_spawn_pattern = self.variant.enemy_spawn_pattern
+    end
+
+    self.enemy_spawn_rate_multiplier = (runtimeCfg.enemy and runtimeCfg.enemy.spawn_rate_multiplier) or 1.0
+    if self.variant and self.variant.enemy_spawn_rate_multiplier ~= nil then
+        self.enemy_spawn_rate_multiplier = self.variant.enemy_spawn_rate_multiplier
+    end
+
+    self.enemy_speed_multiplier = (runtimeCfg.enemy and runtimeCfg.enemy.speed_multiplier) or 1.0
+    if self.variant and self.variant.enemy_speed_multiplier ~= nil then
+        self.enemy_speed_multiplier = self.variant.enemy_speed_multiplier
+    end
+
+    -- Phase 5: Enemy formations
+    self.enemy_formation = (runtimeCfg.enemy and runtimeCfg.enemy.formation) or "scattered"
+    if self.variant and self.variant.enemy_formation ~= nil then
+        self.enemy_formation = self.variant.enemy_formation
+    end
+
+    -- Phase 5: Enemy bullet system
+    self.enemy_bullets_enabled = (runtimeCfg.enemy and runtimeCfg.enemy.bullets_enabled) or false
+    if self.variant and self.variant.enemy_bullets_enabled ~= nil then
+        self.enemy_bullets_enabled = self.variant.enemy_bullets_enabled
+    end
+
+    self.enemy_bullet_speed = (runtimeCfg.enemy and runtimeCfg.enemy.bullet_speed) or 200
+    if self.variant and self.variant.enemy_bullet_speed ~= nil then
+        self.enemy_bullet_speed = self.variant.enemy_bullet_speed
+    end
+
+    self.enemy_fire_rate = (runtimeCfg.enemy and runtimeCfg.enemy.fire_rate) or 2.0
+    if self.variant and self.variant.enemy_fire_rate ~= nil then
+        self.enemy_fire_rate = self.variant.enemy_fire_rate
+    end
+
+    -- Phase 5: Enemy bullet patterns (for bullet hell)
+    self.enemy_bullet_pattern = (runtimeCfg.enemy and runtimeCfg.enemy.bullet_pattern) or "single"
+    if self.variant and self.variant.enemy_bullet_pattern ~= nil then
+        self.enemy_bullet_pattern = self.variant.enemy_bullet_pattern
+    end
+
+    self.enemy_bullets_per_shot = (runtimeCfg.enemy and runtimeCfg.enemy.bullets_per_shot) or 1
+    if self.variant and self.variant.enemy_bullets_per_shot ~= nil then
+        self.enemy_bullets_per_shot = self.variant.enemy_bullets_per_shot
+    end
+
+    self.enemy_bullet_spread_angle = (runtimeCfg.enemy and runtimeCfg.enemy.bullet_spread_angle) or 30
+    if self.variant and self.variant.enemy_bullet_spread_angle ~= nil then
+        self.enemy_bullet_spread_angle = self.variant.enemy_bullet_spread_angle
+    end
+
+    -- Phase 5: Wave spawn parameters
+    self.wave_enemies_per_wave = (runtimeCfg.enemy and runtimeCfg.enemy.wave_enemies_per_wave) or 5
+    if self.variant and self.variant.wave_enemies_per_wave ~= nil then
+        self.wave_enemies_per_wave = self.variant.wave_enemies_per_wave
+    end
+
+    self.wave_pause_duration = (runtimeCfg.enemy and runtimeCfg.enemy.wave_pause_duration) or 3.0
+    if self.variant and self.variant.wave_pause_duration ~= nil then
+        self.wave_pause_duration = self.variant.wave_pause_duration
+    end
+
+    -- Phase 5: Difficulty scaling
+    self.difficulty_curve = (runtimeCfg.difficulty and runtimeCfg.difficulty.curve) or "linear"
+    if self.variant and self.variant.difficulty_curve ~= nil then
+        self.difficulty_curve = self.variant.difficulty_curve
+    end
+
+    self.difficulty_scaling_rate = (runtimeCfg.difficulty and runtimeCfg.difficulty.scaling_rate) or 0.1
+    if self.variant and self.variant.difficulty_scaling_rate ~= nil then
+        self.difficulty_scaling_rate = self.variant.difficulty_scaling_rate
+    end
+
+    -- Phase 6: Power-up system
+    self.powerup_enabled = (runtimeCfg.powerup and runtimeCfg.powerup.enabled) or false
+    if self.variant and self.variant.powerup_enabled ~= nil then
+        self.powerup_enabled = self.variant.powerup_enabled
+    end
+
+    self.powerup_spawn_rate = (runtimeCfg.powerup and runtimeCfg.powerup.spawn_rate) or 15.0
+    if self.variant and self.variant.powerup_spawn_rate ~= nil then
+        self.powerup_spawn_rate = self.variant.powerup_spawn_rate
+    end
+
+    self.powerup_duration = (runtimeCfg.powerup and runtimeCfg.powerup.duration) or 8.0
+    if self.variant and self.variant.powerup_duration ~= nil then
+        self.powerup_duration = self.variant.powerup_duration
+    end
+
+    self.powerup_types = (runtimeCfg.powerup and runtimeCfg.powerup.types) or {"speed", "rapid_fire", "pierce", "shield"}
+    if self.variant and self.variant.powerup_types ~= nil then
+        self.powerup_types = self.variant.powerup_types
+    end
+
+    self.powerup_drop_speed = (runtimeCfg.powerup and runtimeCfg.powerup.drop_speed) or 150
+    if self.variant and self.variant.powerup_drop_speed ~= nil then
+        self.powerup_drop_speed = self.variant.powerup_drop_speed
+    end
+
+    self.powerup_size = (runtimeCfg.powerup and runtimeCfg.powerup.size) or 20
+    if self.variant and self.variant.powerup_size ~= nil then
+        self.powerup_size = self.variant.powerup_size
+    end
+
+    self.powerup_speed_multiplier = (runtimeCfg.powerup and runtimeCfg.powerup.speed_multiplier) or 1.5
+    if self.variant and self.variant.powerup_speed_multiplier ~= nil then
+        self.powerup_speed_multiplier = self.variant.powerup_speed_multiplier
+    end
+
+    self.powerup_rapid_fire_multiplier = (runtimeCfg.powerup and runtimeCfg.powerup.rapid_fire_multiplier) or 0.5
+    if self.variant and self.variant.powerup_rapid_fire_multiplier ~= nil then
+        self.powerup_rapid_fire_multiplier = self.variant.powerup_rapid_fire_multiplier
+    end
+
+    -- Phase 7: Environmental hazards
+    self.asteroid_density = (runtimeCfg.environment and runtimeCfg.environment.asteroid_density) or 0
+    if self.variant and self.variant.asteroid_density ~= nil then
+        self.asteroid_density = self.variant.asteroid_density
+    end
+
+    self.asteroid_speed = (runtimeCfg.environment and runtimeCfg.environment.asteroid_speed) or 100
+    if self.variant and self.variant.asteroid_speed ~= nil then
+        self.asteroid_speed = self.variant.asteroid_speed
+    end
+
+    self.asteroid_size_min = (runtimeCfg.environment and runtimeCfg.environment.asteroid_size_min) or 20
+    if self.variant and self.variant.asteroid_size_min ~= nil then
+        self.asteroid_size_min = self.variant.asteroid_size_min
+    end
+
+    self.asteroid_size_max = (runtimeCfg.environment and runtimeCfg.environment.asteroid_size_max) or 50
+    if self.variant and self.variant.asteroid_size_max ~= nil then
+        self.asteroid_size_max = self.variant.asteroid_size_max
+    end
+
+    self.asteroids_can_be_destroyed = (runtimeCfg.environment and runtimeCfg.environment.asteroids_can_be_destroyed) or true
+    if self.variant and self.variant.asteroids_can_be_destroyed ~= nil then
+        self.asteroids_can_be_destroyed = self.variant.asteroids_can_be_destroyed
+    end
+
+    self.meteor_frequency = (runtimeCfg.environment and runtimeCfg.environment.meteor_frequency) or 0
+    if self.variant and self.variant.meteor_frequency ~= nil then
+        self.meteor_frequency = self.variant.meteor_frequency
+    end
+
+    self.meteor_speed = (runtimeCfg.environment and runtimeCfg.environment.meteor_speed) or 400
+    if self.variant and self.variant.meteor_speed ~= nil then
+        self.meteor_speed = self.variant.meteor_speed
+    end
+
+    self.meteor_warning_time = (runtimeCfg.environment and runtimeCfg.environment.meteor_warning_time) or 1.0
+    if self.variant and self.variant.meteor_warning_time ~= nil then
+        self.meteor_warning_time = self.variant.meteor_warning_time
+    end
+
+    self.gravity_wells_count = (runtimeCfg.environment and runtimeCfg.environment.gravity_wells) or 0
+    if self.variant and self.variant.gravity_wells_count ~= nil then
+        self.gravity_wells_count = self.variant.gravity_wells_count
+    end
+
+    self.gravity_well_strength = (runtimeCfg.environment and runtimeCfg.environment.gravity_well_strength) or 400
+    if self.variant and self.variant.gravity_well_strength ~= nil then
+        self.gravity_well_strength = self.variant.gravity_well_strength
+    end
+
+    self.gravity_well_radius = (runtimeCfg.environment and runtimeCfg.environment.gravity_well_radius) or 150
+    if self.variant and self.variant.gravity_well_radius ~= nil then
+        self.gravity_well_radius = self.variant.gravity_well_radius
+    end
+
+    self.scroll_speed = (runtimeCfg.environment and runtimeCfg.environment.scroll_speed) or 0
+    if self.variant and self.variant.scroll_speed ~= nil then
+        self.scroll_speed = self.variant.scroll_speed
+    end
+
+    -- Phase 8: Special mechanics
+    self.screen_wrap = (runtimeCfg.arena and runtimeCfg.arena.screen_wrap) or false
+    if self.variant and self.variant.screen_wrap ~= nil then
+        self.screen_wrap = self.variant.screen_wrap
+    end
+
+    self.screen_wrap_bullets = (runtimeCfg.arena and runtimeCfg.arena.screen_wrap_bullets) or false
+    if self.variant and self.variant.screen_wrap_bullets ~= nil then
+        self.screen_wrap_bullets = self.variant.screen_wrap_bullets
+    end
+
+    self.screen_wrap_enemies = (runtimeCfg.arena and runtimeCfg.arena.screen_wrap_enemies) or false
+    if self.variant and self.variant.screen_wrap_enemies ~= nil then
+        self.screen_wrap_enemies = self.variant.screen_wrap_enemies
+    end
+
+    self.bullet_max_wraps = (runtimeCfg.arena and runtimeCfg.arena.bullet_max_wraps) or 2
+    if self.variant and self.variant.bullet_max_wraps ~= nil then
+        self.bullet_max_wraps = self.variant.bullet_max_wraps
+    end
+
+    self.reverse_gravity = (runtimeCfg.arena and runtimeCfg.arena.reverse_gravity) or false
+    if self.variant and self.variant.reverse_gravity ~= nil then
+        self.reverse_gravity = self.variant.reverse_gravity
+    end
+
+    self.blackout_zones_count = (runtimeCfg.arena and runtimeCfg.arena.blackout_zones) or 0
+    if self.variant and self.variant.blackout_zones_count ~= nil then
+        self.blackout_zones_count = self.variant.blackout_zones_count
+    end
+
+    self.blackout_zone_radius = (runtimeCfg.arena and runtimeCfg.arena.blackout_zone_radius) or 100
+    if self.variant and self.variant.blackout_zone_radius ~= nil then
+        self.blackout_zone_radius = self.variant.blackout_zone_radius
+    end
+
+    self.blackout_zones_move = (runtimeCfg.arena and runtimeCfg.arena.blackout_zones_move) or false
+    if self.variant and self.variant.blackout_zones_move ~= nil then
+        self.blackout_zones_move = self.variant.blackout_zones_move
+    end
+
+    -- Phase 8: Victory conditions
+    self.victory_condition = (runtimeCfg.victory and runtimeCfg.victory.condition) or "kills"
+    if self.variant and self.variant.victory_condition ~= nil then
+        self.victory_condition = self.variant.victory_condition
+    end
+
+    self.victory_limit = (runtimeCfg.victory and runtimeCfg.victory.limit) or 20
+    if self.variant and self.variant.victory_limit ~= nil then
+        self.victory_limit = self.variant.victory_limit
+    end
+
     self.game_width = (SCfg.arena and SCfg.arena.width) or 800
     self.game_height = (SCfg.arena and SCfg.arena.height) or 600
 
+    -- Phase 8: Adjust player spawn based on reverse gravity
+    -- Normal: player at bottom (game_height - offset)
+    -- Reverse: player at top (offset)
+    local player_y = self.reverse_gravity and PLAYER_START_Y_OFFSET or (self.game_height - PLAYER_START_Y_OFFSET)
+
     self.player = {
         x = self.game_width / 2,
-        y = self.game_height - PLAYER_START_Y_OFFSET,
+        y = player_y,
         width = PLAYER_WIDTH,
         height = PLAYER_HEIGHT,
         fire_cooldown = 0,
@@ -333,9 +568,60 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     self.player_bullets = {}
     self.enemy_bullets = {}
 
+    -- Phase 6: Power-up system
+    self.powerups = {}  -- Power-ups on screen
+    self.active_powerups = {}  -- Active effects on player
+    self.powerup_spawn_timer = self.powerup_spawn_rate  -- Countdown to next spawn
+
+    -- Phase 7: Environmental hazards
+    self.asteroids = {}  -- Asteroids on screen
+    self.asteroid_spawn_timer = 0  -- Countdown to next asteroid spawn
+    self.meteors = {}  -- Active meteors
+    self.meteor_warnings = {}  -- Meteor warnings before impact
+    self.meteor_timer = self.meteor_frequency > 0 and (60 / self.meteor_frequency) or 0  -- Countdown to next meteor wave
+    self.gravity_wells = {}  -- Gravity well positions
+    self.scroll_offset = 0  -- Current scroll offset for vertical scrolling
+
+    -- Phase 8: Special mechanics state
+    self.blackout_zones = {}  -- Blackout zone positions
+    self.survival_time = 0  -- Time survived for time/survival victory conditions
+
+    -- Phase 5: Wave spawn state
+    self.wave_state = {
+        active = false,  -- Is a wave currently spawning
+        enemies_remaining = 0,  -- Enemies left to spawn in current wave
+        pause_timer = 0,  -- Time before next wave
+        enemies_per_wave = self.wave_enemies_per_wave,
+        pause_duration = self.wave_pause_duration
+    }
+
+    -- Phase 5: Difficulty scaling state
+    self.difficulty_scale = 1.0  -- Current difficulty multiplier
+
     self.metrics.kills = 0
     self.metrics.deaths = 0
     self.metrics.combo = 0  -- Phase 2: Track combo (kills without deaths)
+
+    -- Phase 7: Initialize gravity wells
+    for i = 1, self.gravity_wells_count do
+        table.insert(self.gravity_wells, {
+            x = math.random(50, self.game_width - 50),
+            y = math.random(50, self.game_height - 50),
+            radius = self.gravity_well_radius,
+            strength = self.gravity_well_strength
+        })
+    end
+
+    -- Phase 8: Initialize blackout zones
+    for i = 1, self.blackout_zones_count do
+        table.insert(self.blackout_zones, {
+            x = math.random(self.blackout_zone_radius, self.game_width - self.blackout_zone_radius),
+            y = math.random(self.blackout_zone_radius, self.game_height - self.blackout_zone_radius),
+            radius = self.blackout_zone_radius,
+            vx = self.blackout_zones_move and (math.random() - 0.5) * 50 or 0,  -- Random velocity if moving
+            vy = self.blackout_zones_move and (math.random() - 0.5) * 50 or 0
+        })
+    end
 
     self.enemy_speed = ((ENEMY_BASE_SPEED * self.difficulty_modifiers.speed) * speed_modifier) * variant_difficulty
     self.spawn_rate = (SPAWN_BASE_RATE / self.difficulty_modifiers.count) / variant_difficulty
@@ -460,7 +746,8 @@ function SpaceShooter:setPlayArea(width, height)
     -- Only update player position if player exists
     if self.player then
         self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
-        self.player.y = self.game_height - PLAYER_START_Y_OFFSET
+        -- Phase 8: Respect reverse gravity when resetting player position
+        self.player.y = self.reverse_gravity and PLAYER_START_Y_OFFSET or (self.game_height - PLAYER_START_Y_OFFSET)
         print("[SpaceShooter] Play area updated to:", width, height)
     else
         print("[SpaceShooter] setPlayArea called before init completed")
@@ -469,13 +756,62 @@ end
 
 function SpaceShooter:updateGameLogic(dt)
     self:updatePlayer(dt)
-    self.spawn_timer = self.spawn_timer - dt
-    if self.spawn_timer <= 0 then
-        self:spawnEnemy()
-        self.spawn_timer = self.spawn_rate
+
+    -- Phase 8: Track survival time for victory conditions
+    self.survival_time = self.survival_time + dt
+
+    -- Phase 5: Update difficulty scaling
+    self:updateDifficulty(dt)
+
+    -- Phase 5: Enemy spawning based on pattern
+    if self.enemy_spawn_pattern == "waves" then
+        self:updateWaveSpawning(dt)
+    elseif self.enemy_spawn_pattern == "continuous" then
+        -- Apply spawn rate multiplier and difficulty scaling
+        local adjusted_spawn_rate = self.spawn_rate / (self.enemy_spawn_rate_multiplier * self.difficulty_scale)
+        self.spawn_timer = self.spawn_timer - dt
+        if self.spawn_timer <= 0 then
+            self:spawnEnemy()
+            self.spawn_timer = adjusted_spawn_rate
+        end
+    elseif self.enemy_spawn_pattern == "clusters" then
+        self.spawn_timer = self.spawn_timer - dt
+        if self.spawn_timer <= 0 then
+            -- Spawn a cluster of 3-5 enemies
+            local cluster_size = math.random(3, 5)
+            for i = 1, cluster_size do
+                self:spawnEnemy()
+            end
+            self.spawn_timer = (self.spawn_rate * 2) / self.enemy_spawn_rate_multiplier  -- Longer delay between clusters
+        end
     end
+
     self:updateEnemies(dt)
     self:updateBullets(dt)
+
+    -- Phase 6: Power-up spawning and updates
+    if self.powerup_enabled then
+        self:updatePowerups(dt)
+    end
+
+    -- Phase 7: Environmental hazards
+    if self.asteroid_density > 0 then
+        self:updateAsteroids(dt)
+    end
+    if self.meteor_frequency > 0 then
+        self:updateMeteors(dt)
+    end
+    if #self.gravity_wells > 0 then
+        self:applyGravityWells(dt)
+    end
+    if self.scroll_speed > 0 then
+        self:updateScrolling(dt)
+    end
+
+    -- Phase 8: Update blackout zones
+    if #self.blackout_zones > 0 and self.blackout_zones_move then
+        self:updateBlackoutZones(dt)
+    end
 end
 
 function SpaceShooter:updatePlayer(dt)
@@ -487,9 +823,13 @@ function SpaceShooter:updatePlayer(dt)
         if self:isKeyDown('left', 'a') then self.player.x = self.player.x - self.movement_speed * dt end
         if self:isKeyDown('right', 'd') then self.player.x = self.player.x + self.movement_speed * dt end
 
-        -- Clamp to screen
-        self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
-        self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+        -- Phase 8: Screen wrap or clamp
+        if self.screen_wrap then
+            self:applyScreenWrap(self.player)
+        else
+            self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+            self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+        end
 
     elseif self.movement_type == "rail" then
         -- Rail: Left/right only, vertical fixed
@@ -708,11 +1048,13 @@ function SpaceShooter:updateEnemies(dt)
         local enemy = self.enemies[i]
         if not enemy then goto continue_enemy_loop end
 
-        -- Phase 1.4: Apply speed multiplier for variant enemies
-        local speed = self.enemy_speed
+        -- Phase 1.4 & 5: Apply speed multiplier for variant enemies and speed_override
+        local speed = enemy.speed_override or self.enemy_speed
         if enemy.is_variant_enemy and enemy.speed_multiplier then
             speed = speed * enemy.speed_multiplier
         end
+        -- Phase 5: Apply variant's global enemy speed multiplier
+        speed = speed * self.enemy_speed_multiplier
 
         if enemy.movement_pattern == 'zigzag' then
             enemy.y = enemy.y + speed * dt
@@ -759,20 +1101,19 @@ function SpaceShooter:updateEnemies(dt)
             goto continue_enemy_loop
         end
 
-        if self.can_shoot_back then
-            -- Phase 1.4: Don't shoot if shoot_rate_multiplier is 0 (kamikaze)
-            local shoot_multiplier = enemy.shoot_rate_multiplier or 1.0
-            if shoot_multiplier > 0 then
-                enemy.shoot_timer = enemy.shoot_timer - dt
-                if enemy.shoot_timer <= 0 then
-                    self:enemyShoot(enemy)
-                    enemy.shoot_timer = enemy.shoot_rate
-                end
+        -- Phase 5: Enemy bullets
+        if self.enemy_bullets_enabled or (self.can_shoot_back and (enemy.shoot_rate_multiplier or 1.0) > 0) then
+            enemy.shoot_timer = enemy.shoot_timer - dt
+            if enemy.shoot_timer <= 0 then
+                self:enemyShoot(enemy)
+                enemy.shoot_timer = enemy.shoot_rate
             end
         end
 
-        -- Remove enemies that are fully off screen (bottom of enemy past bottom edge)
-        if enemy.y + enemy.height/2 > self.game_height then
+        -- Remove enemies that are fully off screen
+        -- Phase 8: In reverse gravity, remove when going off top; otherwise remove when going off bottom
+        local off_screen = self.reverse_gravity and (enemy.y + enemy.height < 0) or (enemy.y > self.game_height)
+        if off_screen then
             table.remove(self.enemies, i)
         end
         ::continue_enemy_loop::
@@ -894,15 +1235,23 @@ function SpaceShooter:updateBullets(dt)
             end
         end
 
-        -- Remove bullets that go off screen (any direction)
-        if bullet.directional then
-            if bullet.x < -BULLET_WIDTH or bullet.x > self.game_width or
-               bullet.y < -BULLET_HEIGHT or bullet.y > self.game_height then
+        -- Phase 8: Screen wrap or remove bullets that go off screen
+        if self.screen_wrap_bullets then
+            local should_destroy = self:applyScreenWrap(bullet, self.bullet_max_wraps)
+            if should_destroy then
                 table.remove(self.player_bullets, i)
             end
         else
-            if bullet.y < -BULLET_HEIGHT then
-                table.remove(self.player_bullets, i)
+            -- Remove bullets that go off screen (any direction)
+            if bullet.directional then
+                if bullet.x < -BULLET_WIDTH or bullet.x > self.game_width or
+                   bullet.y < -BULLET_HEIGHT or bullet.y > self.game_height then
+                    table.remove(self.player_bullets, i)
+                end
+            else
+                if bullet.y < -BULLET_HEIGHT then
+                    table.remove(self.player_bullets, i)
+                end
             end
         end
         ::next_player_bullet::
@@ -911,7 +1260,16 @@ function SpaceShooter:updateBullets(dt)
     for i = #self.enemy_bullets, 1, -1 do
         local bullet = self.enemy_bullets[i]
         if not bullet then goto next_enemy_bullet end
-        bullet.y = bullet.y + BULLET_SPEED * dt
+        -- Phase 5: Use bullet's custom speed or default
+        local speed = bullet.speed or BULLET_SPEED
+
+        -- Phase 5: Directional bullets (for patterns)
+        if bullet.directional and bullet.vx and bullet.vy then
+            bullet.x = bullet.x + bullet.vx * dt
+            bullet.y = bullet.y + bullet.vy * dt
+        else
+            bullet.y = bullet.y + speed * dt
+        end
 
         if self:checkCollision(bullet, self.player) then
             table.remove(self.enemy_bullets, i)
@@ -936,7 +1294,17 @@ function SpaceShooter:updateBullets(dt)
             end
         end
 
-        if bullet.y > self.game_height + BULLET_HEIGHT then table.remove(self.enemy_bullets, i) end
+        -- Remove bullets off screen (any direction for directional bullets)
+        if bullet.directional then
+            if bullet.x < -BULLET_WIDTH or bullet.x > self.game_width or
+               bullet.y < -BULLET_HEIGHT or bullet.y > self.game_height then
+                table.remove(self.enemy_bullets, i)
+            end
+        else
+            if bullet.y > self.game_height + BULLET_HEIGHT then
+                table.remove(self.enemy_bullets, i)
+            end
+        end
         ::next_enemy_bullet::
     end
 end
@@ -1060,7 +1428,8 @@ function SpaceShooter:createBullet(angle, charge_multiplier, x_offset, wave_type
         homing_strength = self.homing_strength,
         piercing = self.bullet_piercing,
         wave_type = wave_type,
-        wave_time = 0
+        wave_time = 0,
+        wrap_count = 0  -- Phase 8: Track how many times bullet has wrapped
     }
 
     local rad = math.rad(angle)
@@ -1075,26 +1444,94 @@ function SpaceShooter:createBullet(angle, charge_multiplier, x_offset, wave_type
         bullet.x = self.player.x + offset_x + x_offset - BULLET_WIDTH/2
         bullet.y = self.player.y + offset_y - BULLET_HEIGHT/2
     else
-        -- All other modes: spawn from top-center
+        -- All other modes: spawn from top-center (or bottom-center if reverse gravity)
         bullet.x = self.player.x + x_offset - BULLET_WIDTH/2
-        bullet.y = self.player.y - self.player.height/2
+        if self.reverse_gravity then
+            bullet.y = self.player.y + self.player.height/2  -- Spawn from bottom
+        else
+            bullet.y = self.player.y - self.player.height/2  -- Spawn from top
+        end
     end
 
-    -- Calculate velocity
+    -- Calculate velocity (Phase 8: reverse if reverse_gravity)
     local speed = self.bullet_speed * charge_multiplier
+    local direction_multiplier = self.reverse_gravity and 1 or -1  -- Reverse Y direction
     bullet.vx = math.sin(rad) * speed
-    bullet.vy = -math.cos(rad) * speed
+    bullet.vy = math.cos(rad) * speed * direction_multiplier
     bullet.directional = true
 
     table.insert(self.player_bullets, bullet)
 end
 
 function SpaceShooter:enemyShoot(enemy)
-    table.insert(self.enemy_bullets, {
-        x = enemy.x + enemy.width/2 - BULLET_WIDTH/2,
-        y = enemy.y + enemy.height,
-        width = BULLET_WIDTH, height = BULLET_HEIGHT
-    })
+    -- Phase 5: Enemy bullet patterns for bullet hell
+    local center_x = enemy.x + enemy.width/2
+    local center_y = enemy.y + enemy.height
+
+    -- Phase 8: In reverse gravity, bullets shoot upward (negative direction)
+    local direction_multiplier = self.reverse_gravity and -1 or 1
+
+    if self.enemy_bullet_pattern == "spread" then
+        -- Spread pattern: multiple bullets in arc
+        local count = self.enemy_bullets_per_shot
+        local angle_step = self.enemy_bullet_spread_angle / (count - 1)
+        local start_angle = -self.enemy_bullet_spread_angle / 2
+
+        for i = 1, count do
+            local angle = math.rad(start_angle + (i - 1) * angle_step)
+            table.insert(self.enemy_bullets, {
+                x = center_x - BULLET_WIDTH/2,
+                y = center_y,
+                width = BULLET_WIDTH,
+                height = BULLET_HEIGHT,
+                speed = self.enemy_bullet_speed,
+                vx = math.sin(angle) * self.enemy_bullet_speed,
+                vy = math.cos(angle) * self.enemy_bullet_speed * direction_multiplier,
+                directional = true
+            })
+        end
+    elseif self.enemy_bullet_pattern == "spray" then
+        -- Spray: many bullets in wide arc (true bullet hell)
+        for i = 1, self.enemy_bullets_per_shot do
+            local angle = math.rad(math.random(-self.enemy_bullet_spread_angle, self.enemy_bullet_spread_angle))
+            table.insert(self.enemy_bullets, {
+                x = center_x - BULLET_WIDTH/2,
+                y = center_y,
+                width = BULLET_WIDTH,
+                height = BULLET_HEIGHT,
+                speed = self.enemy_bullet_speed,
+                vx = math.sin(angle) * self.enemy_bullet_speed,
+                vy = math.cos(angle) * self.enemy_bullet_speed * direction_multiplier,
+                directional = true
+            })
+        end
+    elseif self.enemy_bullet_pattern == "ring" then
+        -- Ring: bullets in all directions (360 spray)
+        local count = self.enemy_bullets_per_shot
+        local angle_step = 360 / count
+        for i = 1, count do
+            local angle = math.rad(i * angle_step)
+            table.insert(self.enemy_bullets, {
+                x = center_x - BULLET_WIDTH/2,
+                y = center_y,
+                width = BULLET_WIDTH,
+                height = BULLET_HEIGHT,
+                speed = self.enemy_bullet_speed,
+                vx = math.cos(angle) * self.enemy_bullet_speed,
+                vy = math.sin(angle) * self.enemy_bullet_speed * direction_multiplier,
+                directional = true
+            })
+        end
+    else
+        -- Single bullet (default)
+        table.insert(self.enemy_bullets, {
+            x = center_x - BULLET_WIDTH/2,
+            y = center_y,
+            width = BULLET_WIDTH,
+            height = BULLET_HEIGHT,
+            speed = self.enemy_bullet_speed * direction_multiplier
+        })
+    end
 end
 
 function SpaceShooter:spawnEnemy()
@@ -1104,18 +1541,36 @@ function SpaceShooter:spawnEnemy()
         return self:spawnVariantEnemy()
     end
 
-    -- Default enemy spawning (for base game)
+    -- Phase 5: Formation-based spawning
+    if self.enemy_formation == "v_formation" then
+        return self:spawnFormation("v")
+    elseif self.enemy_formation == "wall" then
+        return self:spawnFormation("wall")
+    elseif self.enemy_formation == "spiral" then
+        return self:spawnFormation("spiral")
+    end
+
+    -- Default enemy spawning (scattered)
     local movement = 'straight'
     if self.difficulty_modifiers.complexity >= 2 then
         movement = math.random() > 0.5 and 'zigzag' or 'straight'
     end
+
+    -- Phase 5: Apply speed multiplier and difficulty scaling
+    local adjusted_speed = self.enemy_speed * self.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
+
+    -- Phase 8: Reverse gravity - spawn at bottom, move up
+    local spawn_y = self.reverse_gravity and self.game_height or ENEMY_START_Y_OFFSET
+    local speed_direction = self.reverse_gravity and -1 or 1
+
     local enemy = {
         x = math.random(0, self.game_width - ENEMY_WIDTH),
-        y = ENEMY_START_Y_OFFSET,
+        y = spawn_y,
         width = ENEMY_WIDTH, height = ENEMY_HEIGHT,
         movement_pattern = movement,
+        speed_override = adjusted_speed * speed_direction,  -- Phase 8: Reverse direction if needed
         shoot_timer = math.random() * (ENEMY_BASE_SHOOT_RATE_MAX - ENEMY_BASE_SHOOT_RATE_MIN) + ENEMY_BASE_SHOOT_RATE_MIN,
-        shoot_rate = math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR)),
+        shoot_rate = math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR)) / self.enemy_fire_rate,
         health = 1
     }
     table.insert(self.enemies, enemy)
@@ -1157,9 +1612,13 @@ function SpaceShooter:spawnVariantEnemy()
     end
 
     -- Create enemy based on definition
+    -- Phase 8: Respect reverse gravity
+    local spawn_y = self.reverse_gravity and self.game_height or ENEMY_START_Y_OFFSET
+    local speed_multiplier = self.reverse_gravity and -1 or 1
+
     local enemy = {
         x = math.random(0, self.game_width - ENEMY_WIDTH),
-        y = ENEMY_START_Y_OFFSET,
+        y = spawn_y,
         width = ENEMY_WIDTH,
         height = ENEMY_HEIGHT,
         movement_pattern = enemy_def.movement_pattern,
@@ -1167,7 +1626,7 @@ function SpaceShooter:spawnVariantEnemy()
         is_variant_enemy = true,
         health = enemy_def.health or 1,
         max_health = enemy_def.health or 1,
-        speed_multiplier = enemy_def.speed_multiplier or 1.0,
+        speed_multiplier = (enemy_def.speed_multiplier or 1.0) * speed_multiplier,  -- Phase 8: Apply reverse gravity
         shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0
     }
 
@@ -1191,13 +1650,41 @@ function SpaceShooter:checkCollision(a, b)
 end
 
 function SpaceShooter:checkComplete()
-    return self.metrics.deaths >= self.PLAYER_MAX_DEATHS or self.metrics.kills >= self.target_kills
+    -- Check death condition first (always applies)
+    if self.metrics.deaths >= self.PLAYER_MAX_DEATHS then
+        return true
+    end
+
+    -- Phase 8: Check victory condition
+    if self.victory_condition == "kills" then
+        return self.metrics.kills >= self.victory_limit
+    elseif self.victory_condition == "time" then
+        return self.survival_time >= self.victory_limit
+    elseif self.victory_condition == "survival" then
+        return false  -- Never complete (endless mode)
+    elseif self.victory_condition == "score" then
+        return self.score >= self.victory_limit
+    end
+
+    -- Default fallback
+    return self.metrics.kills >= self.target_kills
 end
 
 -- Phase 3.3: Override onComplete to play success sound and stop music
 function SpaceShooter:onComplete()
-    -- Determine if win (reached target kills) or loss (max deaths)
-    local is_win = self.metrics.kills >= self.target_kills
+    -- Phase 8: Determine if win based on victory condition
+    local is_win = false
+    if self.metrics.deaths >= self.PLAYER_MAX_DEATHS then
+        is_win = false  -- Lost due to deaths
+    elseif self.victory_condition == "kills" then
+        is_win = self.metrics.kills >= self.victory_limit
+    elseif self.victory_condition == "time" then
+        is_win = self.survival_time >= self.victory_limit
+    elseif self.victory_condition == "score" then
+        is_win = self.score >= self.victory_limit
+    else
+        is_win = self.metrics.kills >= self.target_kills  -- Default
+    end
 
     if is_win then
         self:playSound("success", 1.0)
@@ -1217,6 +1704,486 @@ function SpaceShooter:keypressed(key)
     -- Call parent to handle virtual key tracking for demo playback
     SpaceShooter.super.keypressed(self, key)
     return false
+end
+
+-- Phase 6: Power-up system
+function SpaceShooter:updatePowerups(dt)
+    -- Spawn power-ups at intervals
+    self.powerup_spawn_timer = self.powerup_spawn_timer - dt
+    if self.powerup_spawn_timer <= 0 then
+        self:spawnPowerup()
+        self.powerup_spawn_timer = self.powerup_spawn_rate
+    end
+
+    -- Update power-ups on screen
+    for i = #self.powerups, 1, -1 do
+        local powerup = self.powerups[i]
+        -- Phase 8: Respect reverse gravity for powerup movement
+        local speed_direction = self.reverse_gravity and -1 or 1
+        powerup.y = powerup.y + self.powerup_drop_speed * speed_direction * dt
+
+        -- Check collection
+        if self:checkCollision(powerup, self.player) then
+            self:collectPowerup(powerup)
+            table.remove(self.powerups, i)
+        -- Remove if off screen
+        elseif (self.reverse_gravity and powerup.y + powerup.height < 0) or (not self.reverse_gravity and powerup.y > self.game_height) then
+            table.remove(self.powerups, i)
+        end
+    end
+
+    -- Update active power-up durations
+    for powerup_type, effect in pairs(self.active_powerups) do
+        effect.duration_remaining = effect.duration_remaining - dt
+        if effect.duration_remaining <= 0 then
+            self:removePowerupEffect(powerup_type)
+        end
+    end
+end
+
+function SpaceShooter:spawnPowerup()
+    -- Pick random type from available types
+    local powerup_type = self.powerup_types[math.random(#self.powerup_types)]
+
+    -- Phase 8: Respect reverse gravity for powerup spawning
+    local spawn_y = self.reverse_gravity and self.game_height or -self.powerup_size
+
+    table.insert(self.powerups, {
+        x = math.random(0, self.game_width - self.powerup_size),
+        y = spawn_y,
+        width = self.powerup_size,
+        height = self.powerup_size,
+        type = powerup_type
+    })
+end
+
+function SpaceShooter:collectPowerup(powerup)
+    local powerup_type = powerup.type
+
+    -- Remove existing effect of same type (refresh duration)
+    if self.active_powerups[powerup_type] then
+        self:removePowerupEffect(powerup_type)
+    end
+
+    -- Apply new effect
+    local effect = {
+        duration_remaining = self.powerup_duration
+    }
+
+    if powerup_type == "speed" then
+        effect.original_speed = PLAYER_SPEED
+        PLAYER_SPEED = PLAYER_SPEED * self.powerup_speed_multiplier
+    elseif powerup_type == "rapid_fire" then
+        effect.original_cooldown = FIRE_COOLDOWN
+        FIRE_COOLDOWN = FIRE_COOLDOWN * self.powerup_rapid_fire_multiplier
+    elseif powerup_type == "pierce" then
+        effect.original_piercing = self.bullet_piercing
+        self.bullet_piercing = true
+    elseif powerup_type == "shield" then
+        if self.shield_enabled then
+            self.player.shield_active = true
+            self.player.shield_hits_remaining = self.shield_max_hits
+        end
+    elseif powerup_type == "triple_shot" then
+        effect.original_pattern = self.bullet_pattern
+        self.bullet_pattern = "triple"
+    elseif powerup_type == "spread_shot" then
+        effect.original_pattern = self.bullet_pattern
+        self.bullet_pattern = "spread"
+    end
+
+    self.active_powerups[powerup_type] = effect
+    self:playSound("powerup", 1.0)  -- Play collection sound
+end
+
+function SpaceShooter:removePowerupEffect(powerup_type)
+    local effect = self.active_powerups[powerup_type]
+    if not effect then return end
+
+    -- Restore original values
+    if powerup_type == "speed" and effect.original_speed then
+        PLAYER_SPEED = effect.original_speed
+    elseif powerup_type == "rapid_fire" and effect.original_cooldown then
+        FIRE_COOLDOWN = effect.original_cooldown
+    elseif powerup_type == "pierce" and effect.original_piercing ~= nil then
+        self.bullet_piercing = effect.original_piercing
+    elseif powerup_type == "triple_shot" and effect.original_pattern then
+        self.bullet_pattern = effect.original_pattern
+    elseif powerup_type == "spread_shot" and effect.original_pattern then
+        self.bullet_pattern = effect.original_pattern
+    end
+
+    self.active_powerups[powerup_type] = nil
+end
+
+-- Phase 5: Formation spawning
+function SpaceShooter:spawnFormation(formation_type)
+    local adjusted_speed = self.enemy_speed * self.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
+    local base_shoot_rate = math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR)) / self.enemy_fire_rate
+
+    -- Phase 8: Respect reverse gravity
+    local spawn_y_base = self.reverse_gravity and self.game_height or ENEMY_START_Y_OFFSET
+    local speed_multiplier = self.reverse_gravity and -1 or 1
+
+    if formation_type == "v" then
+        -- V-formation: 5 enemies in V shape
+        local center_x = self.game_width / 2
+        local spacing = 60
+        for i = 1, 5 do
+            local offset = (i - 3) * spacing  -- -2, -1, 0, 1, 2
+            local y_offset = math.abs(offset) * 0.5
+            local enemy = {
+                x = center_x + offset - ENEMY_WIDTH/2,
+                y = self.reverse_gravity and (spawn_y_base + y_offset) or (spawn_y_base - y_offset),  -- V shape
+                width = ENEMY_WIDTH, height = ENEMY_HEIGHT,
+                movement_pattern = 'straight',
+                speed_override = adjusted_speed * speed_multiplier,
+                shoot_timer = math.random() * 2.0,
+                shoot_rate = base_shoot_rate,
+                health = 1
+            }
+            table.insert(self.enemies, enemy)
+        end
+    elseif formation_type == "wall" then
+        -- Wall: 6 enemies in a horizontal line
+        local num_enemies = 6
+        local spacing = self.game_width / (num_enemies + 1)
+        for i = 1, num_enemies do
+            local enemy = {
+                x = spacing * i - ENEMY_WIDTH/2,
+                y = spawn_y_base,
+                width = ENEMY_WIDTH, height = ENEMY_HEIGHT,
+                movement_pattern = 'straight',
+                speed_override = adjusted_speed * speed_multiplier,
+                shoot_timer = i * 0.2,  -- Staggered shooting
+                shoot_rate = base_shoot_rate,
+                health = 1
+            }
+            table.insert(self.enemies, enemy)
+        end
+    elseif formation_type == "spiral" then
+        -- Spiral: 8 enemies in circular pattern
+        local num_enemies = 8
+        local center_x = self.game_width / 2
+        local radius = 100
+        for i = 1, num_enemies do
+            local angle = (i / num_enemies) * math.pi * 2
+            local y_offset = math.sin(angle) * radius * 0.3
+            local enemy = {
+                x = center_x + math.cos(angle) * radius - ENEMY_WIDTH/2,
+                y = self.reverse_gravity and (spawn_y_base + y_offset) or (spawn_y_base + y_offset),
+                width = ENEMY_WIDTH, height = ENEMY_HEIGHT,
+                movement_pattern = 'straight',
+                speed_override = adjusted_speed * speed_multiplier,
+                shoot_timer = i * 0.15,
+                shoot_rate = base_shoot_rate,
+                health = 1
+            }
+            table.insert(self.enemies, enemy)
+        end
+    end
+end
+
+-- Phase 5: Wave spawning logic
+function SpaceShooter:updateWaveSpawning(dt)
+    if self.wave_state.active then
+        -- Spawn enemies in current wave
+        self.spawn_timer = self.spawn_timer - dt
+        if self.spawn_timer <= 0 and self.wave_state.enemies_remaining > 0 then
+            self:spawnEnemy()
+            self.wave_state.enemies_remaining = self.wave_state.enemies_remaining - 1
+            self.spawn_timer = 0.3  -- Quick spawn within wave
+
+            if self.wave_state.enemies_remaining <= 0 then
+                -- Wave complete, start pause
+                self.wave_state.active = false
+                self.wave_state.pause_timer = self.wave_state.pause_duration
+            end
+        end
+    else
+        -- In pause between waves
+        self.wave_state.pause_timer = self.wave_state.pause_timer - dt
+        if self.wave_state.pause_timer <= 0 then
+            -- Start new wave
+            self.wave_state.active = true
+            self.wave_state.enemies_remaining = math.floor(self.wave_state.enemies_per_wave * self.difficulty_scale)
+            self.spawn_timer = 0  -- Spawn immediately
+        end
+    end
+end
+
+-- Phase 5: Difficulty scaling
+function SpaceShooter:updateDifficulty(dt)
+    local scaling_factor = self.difficulty_scaling_rate * dt
+
+    if self.difficulty_curve == "linear" then
+        -- Steady linear increase
+        self.difficulty_scale = self.difficulty_scale + scaling_factor
+    elseif self.difficulty_curve == "exponential" then
+        -- Exponential growth (multiplicative)
+        self.difficulty_scale = self.difficulty_scale * (1 + scaling_factor)
+    elseif self.difficulty_curve == "wave" then
+        -- Sine wave difficulty (alternating hard/easy)
+        local time_factor = self.time_elapsed * 0.5
+        self.difficulty_scale = 1.0 + math.sin(time_factor) * 0.5
+    end
+
+    -- Cap difficulty scale to reasonable values
+    self.difficulty_scale = math.min(self.difficulty_scale, 5.0)
+end
+
+-- Phase 7: Asteroid system
+function SpaceShooter:updateAsteroids(dt)
+    -- Spawn asteroids based on density
+    self.asteroid_spawn_timer = self.asteroid_spawn_timer - dt
+    local spawn_interval = 1.0 / self.asteroid_density  -- Higher density = more frequent spawns
+    if self.asteroid_spawn_timer <= 0 then
+        self:spawnAsteroid()
+        self.asteroid_spawn_timer = spawn_interval
+    end
+
+    -- Update existing asteroids
+    for i = #self.asteroids, 1, -1 do
+        local asteroid = self.asteroids[i]
+        -- Phase 8: Respect reverse gravity for asteroid movement
+        local speed_direction = self.reverse_gravity and -1 or 1
+        asteroid.y = asteroid.y + (self.asteroid_speed + self.scroll_speed) * speed_direction * dt
+        asteroid.rotation = asteroid.rotation + asteroid.rotation_speed * dt
+
+        -- Check collision with player
+        if self:checkCollision(asteroid, self.player) then
+            self:handlePlayerDamage()
+            table.remove(self.asteroids, i)
+            goto continue_asteroid
+        end
+
+        -- Check collision with player bullets (if destructible)
+        if self.asteroids_can_be_destroyed then
+            for j = #self.player_bullets, 1, -1 do
+                local bullet = self.player_bullets[j]
+                if self:checkCollision(asteroid, bullet) then
+                    table.remove(self.asteroids, i)
+                    if not self.bullet_piercing then
+                        table.remove(self.player_bullets, j)
+                    end
+                    goto continue_asteroid
+                end
+            end
+        end
+
+        -- Check collision with enemies
+        for j = #self.enemies, 1, -1 do
+            local enemy = self.enemies[j]
+            if self:checkCollision(asteroid, enemy) then
+                table.remove(self.enemies, j)
+                table.remove(self.asteroids, i)
+                goto continue_asteroid
+            end
+        end
+
+        -- Remove if off screen
+        -- Phase 8: In reverse gravity, remove when going off top; otherwise remove when going off bottom
+        local off_screen = self.reverse_gravity and (asteroid.y + asteroid.height < 0) or (asteroid.y > self.game_height + asteroid.height)
+        if off_screen then
+            table.remove(self.asteroids, i)
+        end
+
+        ::continue_asteroid::
+    end
+end
+
+function SpaceShooter:spawnAsteroid()
+    local size = math.random(self.asteroid_size_min, self.asteroid_size_max)
+    -- Phase 8: Respect reverse gravity for asteroid spawning
+    local spawn_y = self.reverse_gravity and self.game_height or -size
+    table.insert(self.asteroids, {
+        x = math.random(0, self.game_width - size),
+        y = spawn_y,
+        width = size,
+        height = size,
+        rotation = math.random() * math.pi * 2,
+        rotation_speed = (math.random() - 0.5) * 2  -- Random spin
+    })
+end
+
+-- Phase 7: Meteor shower system
+function SpaceShooter:updateMeteors(dt)
+    -- Countdown to next meteor wave
+    self.meteor_timer = self.meteor_timer - dt
+    if self.meteor_timer <= 0 then
+        self:spawnMeteorWave()
+        self.meteor_timer = 60 / self.meteor_frequency  -- Convert frequency to interval
+    end
+
+    -- Update meteor warnings
+    for i = #self.meteor_warnings, 1, -1 do
+        local warning = self.meteor_warnings[i]
+        warning.time_remaining = warning.time_remaining - dt
+        if warning.time_remaining <= 0 then
+            -- Phase 8: Respect reverse gravity for meteor spawning
+            local spawn_y = self.reverse_gravity and self.game_height or -30
+            -- Spawn actual meteor
+            table.insert(self.meteors, {
+                x = warning.x,
+                y = spawn_y,
+                width = 30,
+                height = 30,
+                speed = self.meteor_speed
+            })
+            table.remove(self.meteor_warnings, i)
+        end
+    end
+
+    -- Update active meteors
+    for i = #self.meteors, 1, -1 do
+        local meteor = self.meteors[i]
+        -- Phase 8: Respect reverse gravity for meteor movement
+        local speed_direction = self.reverse_gravity and -1 or 1
+        meteor.y = meteor.y + (meteor.speed + self.scroll_speed) * speed_direction * dt
+
+        -- Check collision with player
+        if self:checkCollision(meteor, self.player) then
+            self:handlePlayerDamage()
+            table.remove(self.meteors, i)
+            goto continue_meteor
+        end
+
+        -- Check collision with player bullets
+        for j = #self.player_bullets, 1, -1 do
+            local bullet = self.player_bullets[j]
+            if self:checkCollision(meteor, bullet) then
+                table.remove(self.meteors, i)
+                if not self.bullet_piercing then
+                    table.remove(self.player_bullets, j)
+                end
+                goto continue_meteor
+            end
+        end
+
+        -- Remove if off screen
+        -- Phase 8: In reverse gravity, remove when going off top; otherwise remove when going off bottom
+        local off_screen = self.reverse_gravity and (meteor.y + meteor.height < 0) or (meteor.y > self.game_height + meteor.height)
+        if off_screen then
+            table.remove(self.meteors, i)
+        end
+
+        ::continue_meteor::
+    end
+end
+
+function SpaceShooter:spawnMeteorWave()
+    -- Spawn 3-5 meteor warnings
+    local count = math.random(3, 5)
+    for i = 1, count do
+        table.insert(self.meteor_warnings, {
+            x = math.random(0, self.game_width - 30),
+            time_remaining = self.meteor_warning_time
+        })
+    end
+end
+
+-- Phase 7: Gravity well system
+function SpaceShooter:applyGravityWells(dt)
+    -- Apply gravity to player
+    for _, well in ipairs(self.gravity_wells) do
+        local dx = well.x - (self.player.x + self.player.width / 2)
+        local dy = well.y - (self.player.y + self.player.height / 2)
+        local distance = math.sqrt(dx * dx + dy * dy)
+
+        if distance < well.radius and distance > 0 then
+            -- Calculate pull strength (inverse square law, clamped)
+            local pull_factor = math.min(1.0, well.radius / distance)
+            local pull = well.strength * pull_factor * dt
+
+            -- Apply pull to player position
+            local angle = math.atan2(dy, dx)
+            self.player.x = self.player.x + math.cos(angle) * pull * dt
+            self.player.y = self.player.y + math.sin(angle) * pull * dt
+
+            -- Keep player in bounds
+            self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+            self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+        end
+    end
+
+    -- Apply gravity to player bullets
+    for _, bullet in ipairs(self.player_bullets) do
+        for _, well in ipairs(self.gravity_wells) do
+            local dx = well.x - bullet.x
+            local dy = well.y - bullet.y
+            local distance = math.sqrt(dx * dx + dy * dy)
+
+            if distance < well.radius and distance > 0 then
+                local pull_factor = math.min(1.0, well.radius / distance)
+                local pull = well.strength * pull_factor * dt * 0.7  -- Slightly weaker effect on bullets
+
+                local angle = math.atan2(dy, dx)
+                bullet.x = bullet.x + math.cos(angle) * pull
+                bullet.y = bullet.y + math.sin(angle) * pull
+            end
+        end
+    end
+end
+
+-- Phase 7: Vertical scrolling
+function SpaceShooter:updateScrolling(dt)
+    self.scroll_offset = self.scroll_offset + self.scroll_speed * dt
+
+    -- Scroll effect already applied in enemy/asteroid movement
+    -- This function can be extended for visual background scrolling
+end
+
+-- Phase 8: Screen wrap helper
+-- Returns true if object should be destroyed (exceeded max wraps)
+function SpaceShooter:applyScreenWrap(obj, max_wraps)
+    if not self.screen_wrap then return false end
+
+    local wrapped = false
+    max_wraps = max_wraps or 999  -- Default to effectively unlimited
+
+    if obj.x < -obj.width then
+        obj.x = self.game_width
+        wrapped = true
+    elseif obj.x > self.game_width then
+        obj.x = -obj.width
+        wrapped = true
+    end
+
+    if obj.y < -obj.height then
+        obj.y = self.game_height
+        wrapped = true
+    elseif obj.y > self.game_height then
+        obj.y = -obj.height
+        wrapped = true
+    end
+
+    -- Increment wrap count if object wrapped
+    if wrapped and obj.wrap_count ~= nil then
+        obj.wrap_count = obj.wrap_count + 1
+        if obj.wrap_count > max_wraps then
+            return true  -- Should be destroyed
+        end
+    end
+
+    return false  -- Keep alive
+end
+
+-- Phase 8: Blackout zones movement
+function SpaceShooter:updateBlackoutZones(dt)
+    for _, zone in ipairs(self.blackout_zones) do
+        zone.x = zone.x + zone.vx * dt
+        zone.y = zone.y + zone.vy * dt
+
+        -- Bounce off walls
+        if zone.x < zone.radius or zone.x > self.game_width - zone.radius then
+            zone.vx = -zone.vx
+            zone.x = math.max(zone.radius, math.min(self.game_width - zone.radius, zone.x))
+        end
+        if zone.y < zone.radius or zone.y > self.game_height - zone.radius then
+            zone.vy = -zone.vy
+            zone.y = math.max(zone.radius, math.min(self.game_height - zone.radius, zone.y))
+        end
+    end
 end
 
 return SpaceShooter

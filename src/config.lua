@@ -217,21 +217,42 @@ local Config = {
             overheat_heat_dissipation = { min = 0.1, max = 10.0 },
             ammo_capacity = { min = 5, max = 500 },
             ammo_reload_time = { min = 0.5, max = 10.0 },
-            -- Enemy System
-            enemy_spawn_rate = { min = 0.1, max = 10.0 },
+            -- Enemy System (Phase 5)
+            enemy_spawn_rate_multiplier = { min = 0.1, max = 10.0 },
             enemy_speed_multiplier = { min = 0.1, max = 5.0 },
             enemy_bullet_speed = { min = 50, max = 800 },
-            powerup_spawn_rate = { min = 1, max = 60 },
-            powerup_duration = { min = 1, max = 30 },
-            -- Environment
+            enemy_fire_rate = { min = 0.5, max = 10.0 },
+            enemy_bullets_per_shot = { min = 1, max = 20 },
+            enemy_bullet_spread_angle = { min = 10, max = 180 },
+            wave_enemies_per_wave = { min = 1, max = 20 },
+            wave_pause_duration = { min = 0.5, max = 10.0 },
+            difficulty_scaling_rate = { min = 0.0, max = 1.0 },
+            -- Power-Up System (Phase 6)
+            powerup_spawn_rate = { min = 1.0, max = 60.0 },
+            powerup_duration = { min = 1.0, max = 30.0 },
+            powerup_drop_speed = { min = 10, max = 400 },
+            powerup_size = { min = 10, max = 50 },
+            powerup_speed_multiplier = { min = 1.1, max = 3.0 },
+            powerup_rapid_fire_multiplier = { min = 0.1, max = 0.9 },
+            -- Environment (Phase 7)
             scroll_speed = { min = 0, max = 500 },
             asteroid_density = { min = 0, max = 10 },
+            asteroid_speed = { min = 20, max = 400 },
+            asteroid_size_min = { min = 10, max = 40 },
+            asteroid_size_max = { min = 30, max = 100 },
             meteor_frequency = { min = 0, max = 10 },
-            gravity_wells = { min = 0, max = 10 },
-            gravity_well_strength = { min = 50, max = 1000 },
-            -- Arena
+            meteor_speed = { min = 100, max = 800 },
+            meteor_warning_time = { min = 0.1, max = 3.0 },
+            gravity_wells_count = { min = 0, max = 10 },
+            gravity_well_strength = { min = 50, max = 500 },
+            gravity_well_radius = { min = 50, max = 300 },
+            -- Arena (Phase 8)
             arena_width = { min = 400, max = 1200 },
-            blackout_zones = { min = 0, max = 5 },
+            blackout_zones_count = { min = 0, max = 5 },
+            blackout_zone_radius = { min = 50, max = 200 },
+            bullet_max_wraps = { min = 1, max = 10 },
+            -- Victory Conditions (Phase 8)
+            victory_limit = { min = 1, max = 1000 },
         },
 
         -- Which parameters should be hidden/locked
@@ -262,10 +283,11 @@ local Config = {
             -- Space Shooter enum parameters
             "fire_mode",        -- String enum - manual, auto, charge, burst
             "bullet_pattern",   -- String enum - single, double, triple, spread, spiral, wave
-            "enemy_pattern",    -- String enum - spawn pattern type
+            "enemy_spawn_pattern",  -- String enum - continuous, waves, clusters
             "enemy_formation",  -- String enum - scattered, v_formation, wall, spiral
+            "enemy_bullet_pattern",  -- String enum - single, spread, spray, ring
             "difficulty_curve", -- String enum - linear, exponential, wave
-            "powerup_types",    -- Array - available power-up types
+            "powerup_types",    -- Array - available power-up types (Phase 6)
         },
 
         -- Special unlocks (gate certain modifications behind progression)
@@ -1093,8 +1115,27 @@ local Config = {
                 ammo_reload_time = 2.0,
             },
 
-            -- Enemy Defaults
+            -- Enemy Defaults (Phase 5)
             enemy = {
+                -- Phase 5: Spawn patterns
+                spawn_pattern = "continuous",  -- continuous, waves, clusters
+                spawn_rate_multiplier = 1.0,  -- Multiplier on spawn frequency
+                speed_multiplier = 1.0,  -- Multiplier on all enemy speeds
+                formation = "scattered",  -- scattered, v_formation, wall, spiral
+                -- Phase 5: Wave parameters
+                wave_enemies_per_wave = 5,  -- Enemies per wave
+                wave_pause_duration = 3.0,  -- Seconds between waves
+                -- Phase 5: Enemy bullets
+                bullets_enabled = false,
+                bullet_speed = 200,
+                fire_rate = 2.0,  -- Shots per second
+                bullet_pattern = "single",  -- single, spread, spray, ring
+                bullets_per_shot = 1,  -- Bullets per enemy shot
+                bullet_spread_angle = 30,  -- Degrees for spread patterns
+            },
+
+            -- Old Enemy Defaults (legacy, keeping for compatibility)
+            enemy_legacy = {
                 width = 30,
                 height = 30,
                 base_speed = 100,
@@ -1122,22 +1163,56 @@ local Config = {
                 }
             },
 
-            -- Environment Defaults
+            -- Environment Defaults (Phase 7)
             environment = {
                 scroll_speed = 0,  -- Pixels/sec background scroll
-                asteroid_density = 0,  -- Asteroids per second
-                meteor_frequency = 0,  -- Meteor showers per minute
-                gravity_wells = 0,  -- Number of gravity wells
-                gravity_well_strength = 200,  -- Pixels/sec^2 pull
+                asteroid_density = 0,  -- Asteroids per second (0 = disabled)
+                asteroid_speed = 100,  -- Pixels/sec asteroid fall speed
+                asteroid_size_min = 20,  -- Min asteroid size in pixels
+                asteroid_size_max = 50,  -- Max asteroid size in pixels
+                asteroids_can_be_destroyed = true,  -- Can bullets destroy asteroids
+                meteor_frequency = 0,  -- Meteor showers per minute (0 = disabled)
+                meteor_speed = 400,  -- Pixels/sec meteor fall speed
+                meteor_warning_time = 1.0,  -- Seconds of warning before meteor
+                gravity_wells = 0,  -- Number of gravity wells (0 = disabled)
+                gravity_well_strength = 400,  -- Pull strength in pixels/sec (increased from 200)
+                gravity_well_radius = 150,  -- Effect radius in pixels
             },
 
-            -- Victory/Difficulty Defaults
+            -- Power-Up Defaults (Phase 6)
+            powerup = {
+                enabled = false,
+                spawn_rate = 15.0,  -- Seconds between spawns
+                duration = 8.0,  -- Power-up effect duration
+                types = {"speed", "rapid_fire", "pierce", "shield"},  -- Available types
+                drop_speed = 150,  -- Pixels per second
+                size = 20,  -- Hitbox size in pixels
+                speed_multiplier = 1.5,  -- Speed boost strength (1.5x)
+                rapid_fire_multiplier = 0.5,  -- Fire cooldown reduction (0.5x)
+            },
+
+            -- Victory/Difficulty Defaults (Phase 5 & 8)
             goals = {
                 base_target_kills = 20,
-                victory_condition = "kills",  -- kills, time, survival, boss
+                victory_condition = "kills",  -- Phase 8: kills, time, survival, score
                 victory_limit = 20,  -- Varies by condition type
                 difficulty_curve = "linear",  -- linear, exponential, wave
+                difficulty_scaling_rate = 0.1,  -- Rate of difficulty increase
                 bullet_hell_mode = false,  -- Tiny hitbox, massive bullet count
+            },
+
+            -- Arena Defaults (Phase 8)
+            arena = {
+                width = 800,
+                height = 600,
+                screen_wrap = false,  -- Asteroids-style screen wrap
+                screen_wrap_bullets = false,  -- Bullets wrap
+                screen_wrap_enemies = false,  -- Enemies wrap
+                bullet_max_wraps = 2,  -- Max times a bullet can wrap before destroyed
+                reverse_gravity = false,  -- Flip play space upside down
+                blackout_zones = 0,  -- Number of dark zones (0 = disabled)
+                blackout_zone_radius = 100,  -- Radius of blackout zones
+                blackout_zones_move = false,  -- Do zones drift around
             },
 
             spawn = { base_rate = 1.0 },

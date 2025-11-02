@@ -100,6 +100,149 @@ Hidden parameter (requires dropdown).
 
 **bullet_piercing** [false]: If true, bullets pass through enemies instead of disappearing.
 
+## Per-Variant Modifiers (Enemy Systems - Phase 5)
+
+**enemy_spawn_pattern** [continuous]: Enemy spawn behavior. Options:
+  - "continuous": Steady spawn rate (default)
+  - "waves": Groups of enemies with pauses between
+  - "clusters": Spawn 3-5 enemies at once with longer delays
+
+Hidden parameter (requires dropdown).
+
+**enemy_spawn_rate_multiplier** [1.0]: Multiplier on enemy spawn frequency. Higher = more enemies. Range: 0.1-10.0
+
+**enemy_speed_multiplier** [1.0]: Multiplier on all enemy speeds. Higher = faster enemies. Range: 0.1-5.0
+
+**enemy_formation** [scattered]: Formation pattern for enemy spawning. Options:
+  - "scattered": Random positioning (default)
+  - "v_formation": 5 enemies in V shape
+  - "wall": 6 enemies in horizontal line
+  - "spiral": 8 enemies in circular pattern
+
+Hidden parameter (requires dropdown).
+
+**enemy_bullets_enabled** [false]: If true, enables enemies to shoot bullets at player.
+
+**enemy_bullet_speed** [200]: Speed of enemy bullets in pixels/second. Range: 50-800
+
+**enemy_fire_rate** [2.0]: Enemy shots per second. Higher = more bullets. Range: 0.5-10.0
+
+**enemy_bullet_pattern** [single]: Enemy bullet firing pattern. Options:
+  - "single": One bullet straight down (default)
+  - "spread": Multiple bullets in arc pattern
+  - "spray": Many bullets randomly spread (true bullet hell)
+  - "ring": Bullets in all directions (360° spray)
+
+Hidden parameter (requires dropdown).
+
+**enemy_bullets_per_shot** [1]: Number of bullets per enemy shot. Used with spread/spray/ring patterns. Range: 1-20
+
+**enemy_bullet_spread_angle** [30]: Degrees of arc for spread-based patterns. Larger = wider spread. Range: 10-180
+
+**wave_enemies_per_wave** [5]: Number of enemies spawned per wave (when using wave spawn pattern). Range: 1-20
+
+**wave_pause_duration** [3.0]: Seconds of pause between waves. Range: 0.5-10.0
+
+**difficulty_curve** [linear]: How difficulty scales over time. Options:
+  - "linear": Steady increase
+  - "exponential": Rapid ramp-up
+  - "wave": Alternating hard/easy periods
+
+Hidden parameter (requires dropdown).
+
+**difficulty_scaling_rate** [0.1]: Rate of difficulty increase. Higher = faster scaling. Range: 0.0-1.0
+
+## Per-Variant Modifiers (Power-Up System - Phase 6)
+
+**powerup_enabled** [false]: If true, enables power-up spawning system.
+
+**powerup_spawn_rate** [15.0]: Seconds between power-up spawns. Lower = more frequent. Range: 1.0-60.0
+
+**powerup_duration** [8.0]: Duration of power-up effects in seconds. Range: 1.0-30.0
+
+**powerup_types** [array]: Array of power-up type strings. Available types:
+  - "speed": Movement speed boost (configurable multiplier)
+  - "rapid_fire": Fire rate boost (configurable cooldown multiplier)
+  - "pierce": Bullets pierce through enemies
+  - "shield": Instant shield refresh
+  - "triple_shot": Temporary triple shot pattern
+  - "spread_shot": Temporary spread shot pattern
+
+Hidden parameter (array of strings).
+
+Example:
+```json
+"powerup_types": ["speed", "rapid_fire", "pierce"]
+```
+
+**powerup_drop_speed** [150]: How fast power-ups fall in pixels/second. Higher = harder to catch. Range: 10-400
+
+**powerup_size** [20]: Hitbox size of power-ups in pixels. Larger = easier to collect. Range: 10-50
+
+**powerup_speed_multiplier** [1.5]: Multiplier for speed boost power-up. Higher = faster movement. Range: 1.1-3.0
+
+**powerup_rapid_fire_multiplier** [0.5]: Cooldown multiplier for rapid fire power-up. Lower = faster shooting. Range: 0.1-0.9
+
+## Per-Variant Modifiers (Environmental Hazards - Phase 7)
+
+**asteroid_density** [0]: Asteroids spawned per second. 0 = disabled, 5 = moderate, 10 = dense field. Range: 0-10
+
+**asteroid_speed** [100]: How fast asteroids fall in pixels/second. Range: 20-400
+
+**asteroid_size_min** [20]: Minimum asteroid size in pixels. Range: 10-40
+
+**asteroid_size_max** [50]: Maximum asteroid size in pixels. Range: 30-100
+
+**asteroids_can_be_destroyed** [true]: If true, player bullets can destroy asteroids. If false, asteroids are indestructible.
+
+**meteor_frequency** [0]: Meteor waves per minute. 0 = disabled, higher = more frequent waves. Range: 0-10
+
+**meteor_speed** [400]: How fast meteors fall in pixels/second. Faster than asteroids. Range: 100-800
+
+**meteor_warning_time** [1.0]: Seconds of warning indicator before meteor appears. Range: 0.1-3.0
+
+**gravity_wells_count** [0]: Number of gravity wells spawned. 0 = disabled. Range: 0-10
+
+Hidden parameter (would show as "gravity_wells" in CheatEngine).
+
+**gravity_well_strength** [400]: Pull strength of gravity wells in pixels/second. Higher = stronger pull. Range: 50-500
+
+**gravity_well_radius** [150]: Effect radius of gravity wells in pixels. Larger = wider area of influence. Range: 50-300
+
+**scroll_speed** [0]: Vertical scrolling speed in pixels/second. Creates vertical shooter feel. 0 = disabled. Range: 0-500
+
+## Per-Variant Modifiers (Special Mechanics - Phase 8)
+
+**screen_wrap** [false]: Enable Asteroids-style screen wrapping for player. Reaching edge wraps to opposite side.
+
+**screen_wrap_bullets** [false]: Enable screen wrapping for player bullets.
+
+**bullet_max_wraps** [2]: Maximum times a bullet can wrap before being destroyed. Prevents infinite bullets. Range: 1-10
+
+**screen_wrap_enemies** [false]: Enable screen wrapping for enemies.
+
+**reverse_gravity** [false]: Completely flip the play space upside down. Player spawns at top instead of bottom, enemies spawn at bottom and move upward, bullets travel downward instead of upward.
+
+**blackout_zones_count** [0]: Number of dark circular zones with reduced visibility. 0 = disabled. Range: 0-5
+
+Hidden parameter (would show as "blackout_zones" in CheatEngine).
+
+**blackout_zone_radius** [100]: Radius of blackout zones in pixels. Range: 50-200
+
+**blackout_zones_move** [false]: If true, blackout zones drift around the arena bouncing off walls.
+
+## Per-Variant Modifiers (Victory Conditions - Phase 8)
+
+**victory_condition** [kills]: Type of victory condition. Options:
+  - "kills": Destroy X enemies (default)
+  - "time": Survive for X seconds
+  - "survival": Endless mode - never complete
+  - "score": Reach X score points
+
+Hidden parameter (requires dropdown).
+
+**victory_limit** [20]: Victory threshold based on condition type. For kills: enemy count. For time: seconds. For score: points. Range: 1-1000
+
 ## Per-Variant Modifiers (Enemy Composition)
 
 **enemies** [array]: Array of enemy type objects with multipliers. Each object has:
@@ -160,15 +303,39 @@ If not specified, uses default balanced mix.
 - HUD displays: Ammo counter, reload progress bar, heat bar, overheat warning
 - Test variants: Ammo Limited, Overheat Challenge, Resource Management, Unlimited Power
 
-⏳ **Phase 5 Pending** - Enemy Systems
+✅ **Phase 5 Complete** - Enemy Systems
+- Spawn patterns: continuous, waves, clusters
+- Formations: scattered, v_formation, wall, spiral
+- Enemy bullets: configurable speed and fire rate
+- Difficulty scaling: linear, exponential, wave curves
+- Speed multipliers: spawn rate and enemy speed
+- Test variants: Wave Assault, Bullet Hell, V-Formation, Exponential Chaos
 
-⏳ **Phase 5 Pending** - Environmental Hazards
+✅ **Phase 6 Complete** - Power-Up System
+- Power-up spawning with configurable rate and duration
+- Six power-up types: speed, rapid_fire, pierce, shield, triple_shot, spread_shot
+- Active power-up HUD display with countdown timers
+- Visual indicators: colored orbs drift downward
+- Configurable drop speed, size, and effect multipliers
+- Test variants: Power-Up Heaven, Speed Demon, Weapon Festival
 
-⏳ **Phase 6 Pending** - Victory Conditions & Time Limits
+✅ **Phase 7 Complete** - Environmental Hazards
+- Asteroid field system: density, speed, size range, destructibility
+- Meteor shower system: frequency, speed, warning indicators
+- Gravity wells: count, strength, radius, affects player and bullets
+- Vertical scrolling speed for scrolling shooter feel
+- Test variants: Asteroid Belt, Meteor Storm, Gravity Chaos, Speed Scroller
 
-⏳ **Phase 7 Pending** - Arena Modifiers
+✅ **Phase 8 Complete** - Special Mechanics & Victory Conditions
+- Screen wrap: player, bullets, enemies (Asteroids-style)
+- Reverse gravity: flips play space upside down
+- Blackout zones: dark areas with reduced visibility, optional movement
+- Victory conditions: kills, time, survival (endless), score
+- Test variants: Wraparound, Upside Down, Fog of War, Speed Run
 
-⏳ **Phase 8 Pending** - Polish & Edge Cases
+⏳ **Phase 9 Pending** - CheatEngine Integration & Polish
+
+⏳ **Phase 10 Pending** - Final Testing & Balance
 
 ## Notes
 

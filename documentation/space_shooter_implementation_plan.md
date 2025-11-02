@@ -1300,6 +1300,130 @@ self.difficulty_curve = (runtimeCfg.difficulty and runtimeCfg.difficulty.curve) 
 - Scaling Nightmare: Exponential difficulty curve
 
 ---
+**PHASE 5 COMPLETION NOTES** (Date: 2025-01-11)
+
+**Completed:**
+- Added enemy spawn pattern system with three-tier fallback:
+  - `enemy_spawn_pattern` (continuous/waves/clusters) - controls spawn behavior
+  - `enemy_spawn_rate_multiplier` (0.1-10.0) - frequency multiplier
+  - `enemy_speed_multiplier` (0.1-5.0) - speed multiplier
+- Added enemy formation system:
+  - `enemy_formation` (scattered/v_formation/wall/spiral) - visual patterns
+  - Formations spawn 5-8 enemies in coordinated shapes
+- Implemented enemy bullet system:
+  - `enemy_bullets_enabled` (boolean) - toggles enemy shooting
+  - `enemy_bullet_speed` (50-800) - bullet velocity
+  - `enemy_fire_rate` (0.5-10.0) - shots per second
+  - Enemy bullets damage player/shield on collision
+- Added difficulty scaling system:
+  - `difficulty_curve` (linear/exponential/wave) - scaling behavior
+  - `difficulty_scaling_rate` (0.0-1.0) - rate of increase
+  - Difficulty scale affects spawn rate and enemy speed
+  - Caps at 5.0x to prevent runaway difficulty
+- Updated spawn logic in `updateGameLogic()`:
+  - Pattern-based spawning (waves/clusters/continuous)
+  - Applied difficulty scaling to spawn rates
+  - Integrated with existing enemy composition system
+- Implemented wave spawning helper (`updateWaveSpawning()`):
+  - Spawns groups of enemies quickly
+  - Pauses between waves (configurable duration)
+  - Wave size scales with difficulty
+- Implemented difficulty scaling helper (`updateDifficulty()`):
+  - Linear: steady increase over time
+  - Exponential: multiplicative growth
+  - Wave: sine wave alternating hard/easy
+- Added formation spawning helper (`spawnFormation()`):
+  - V-formation: 5 enemies in V shape
+  - Wall: 6 enemies in horizontal line
+  - Spiral: 8 enemies in circular pattern
+  - Formations use staggered shooting for visual variety
+- Updated `spawnEnemy()`:
+  - Checks for formation before scattered spawn
+  - Applies speed_override from formations/difficulty
+  - Adjusts fire rate based on enemy_fire_rate parameter
+- Updated `updateEnemies()`:
+  - Uses speed_override if present
+  - Enemy bullet system triggers based on enemy_bullets_enabled
+  - Maintains compatibility with variant enemy composition
+- Updated `enemyShoot()`:
+  - Bullets store custom speed parameter
+  - Speed applied during bullet update
+- Updated `updateBullets()`:
+  - Enemy bullets use custom speed from bullet.speed
+  - Fallback to BULLET_SPEED if not specified
+
+**In-Game:**
+- **Spawn Patterns**:
+  - Continuous: Steady flow with difficulty scaling
+  - Waves: 5+ enemies spawn quickly, then 3s pause
+  - Clusters: 3-5 enemies at once, longer delays
+- **Formations**:
+  - V-formation: Coordinated attack from center
+  - Wall: Horizontal barrier moving down
+  - Spiral: Circular pattern surrounds player
+  - Scattered: Random positioning (default)
+- **Enemy Bullets**:
+  - Enemies shoot downward at player
+  - Configurable speed and fire rate
+  - Adds bullet hell gameplay when enabled
+  - Works with shield system from Phase 2
+- **Difficulty Scaling**:
+  - Linear: Gradual ramp-up over time
+  - Exponential: Starts slow, becomes chaotic
+  - Wave: Rhythm of hard/easy periods
+  - Visible in enemy speed and spawn frequency
+- **Speed Multipliers**:
+  - Spawn rate affects enemy density
+  - Speed multiplier makes enemies faster/slower
+  - Both interact with difficulty scaling
+
+**Testing:**
+1. Test wave spawning:
+   - Play Clone 17 "Wave Assault"
+   - Verify enemies spawn in groups
+   - Check for pauses between waves
+   - Confirm wave size increases with difficulty
+2. Test enemy bullets:
+   - Play Clone 18 "Bullet Hell"
+   - Verify enemies shoot at player
+   - Check bullet speed and fire rate
+   - Confirm shield blocks enemy bullets
+   - Verify deaths increment when hit
+3. Test formations:
+   - Play Clone 19 "V-Formation"
+   - Verify 5 enemies spawn in V shape
+   - Check formation appears at top-center
+   - Test other formation types (wall, spiral) if added to variants
+4. Test difficulty scaling:
+   - Play Clone 20 "Exponential Chaos"
+   - Verify difficulty increases over time
+   - Check spawn rate acceleration
+   - Confirm enemy speed increases
+   - Verify difficulty caps at 5.0x
+5. Test clusters:
+   - Play Clone 20 "Exponential Chaos" (uses clusters)
+   - Verify 3-5 enemies spawn together
+   - Check longer delays between spawns
+
+**Test Variants**: 4 new variants added to `space_shooter_variants.json` (clones 17-20):
+- Clone 17 "Wave Assault": Wave spawning with 1.5x spawn rate
+- Clone 18 "Bullet Hell": Enemy bullets enabled, 2x spawn rate, 10 lives
+- Clone 19 "V-Formation": V-formation enemies with burst fire
+- Clone 20 "Exponential Chaos": Exponential scaling with clusters
+
+**Status:** ✅ COMPLETE
+
+**Notes for Phase 6:**
+- Enemy systems fully functional with multiple patterns
+- Difficulty scaling creates dynamic gameplay
+- Enemy bullets add challenge without being unfair
+- Formations create visual variety
+- Next: Implement power-up spawning, types, duration, collection
+- Consider adding visual effects for formation spawns
+- Could add audio cues for wave start/end
+- Enemy bullet patterns could be expanded (spread, aimed, etc.)
+
+---
 
 ## PHASE 6: Power-Up System
 
@@ -1363,6 +1487,105 @@ self.active_effects = {} -- Player's active power-up effects
 - Speed Demon: Only speed boosts
 - Shield Tank: Only shield power-ups
 - Weapon Festival: Only weapon upgrades
+
+---
+**PHASE 6 COMPLETION NOTES** (Date: 2025-01-11)
+
+**Completed:**
+- Added power-up system parameters with three-tier fallback:
+  - `powerup_enabled` (boolean) - toggles power-up spawning
+  - `powerup_spawn_rate` (1.0-60.0 seconds) - time between spawns
+  - `powerup_duration` (1.0-30.0 seconds) - effect duration
+  - `powerup_types` (array) - available power-up types
+- Implemented six power-up types:
+  - `speed`: Movement speed boost (1.5x multiplier)
+  - `rapid_fire`: Fire rate boost (0.5x cooldown)
+  - `pierce`: Temporary bullet piercing
+  - `shield`: Instant shield refresh (if shield enabled)
+  - `triple_shot`: Temporary triple shot pattern
+  - `spread_shot`: Temporary spread shot pattern
+- Added power-up spawning system in `updatePowerups()`:
+  - Spawn timer countdown with configurable rate
+  - Random type selection from available types
+  - Power-ups drift downward at 50 px/sec
+  - Removed when off-screen
+- Implemented collection system:
+  - Collision detection with player
+  - Auto-apply effects on collection
+  - Play sound on collection
+  - Remove existing effect if collecting same type (refresh duration)
+- Added duration tracking system:
+  - Each active effect stored in `active_powerups` table
+  - Duration countdown in update loop
+  - Auto-restore original values when expired
+  - Safely stores original values (PLAYER_SPEED, FIRE_COOLDOWN, etc.)
+- Implemented power-up rendering in `space_shooter_view.lua`:
+  - Colored circles for each type (cyan, yellow, magenta, blue, orange, green)
+  - Filled circle with white outline
+  - Type identified by color
+- Added active power-up HUD display:
+  - Shows powerup name and time remaining
+  - Green text for active effects
+  - Countdown timer in seconds
+  - Dynamic row allocation
+
+**In-Game:**
+- **Power-Up Spawning**: Colored orbs drift down from top of screen
+- **Collection**: Touch orb to activate effect
+- **Visual Feedback**:
+  - Speed: Cyan orb - player moves faster
+  - Rapid Fire: Yellow orb - shoot faster
+  - Pierce: Magenta orb - bullets go through enemies
+  - Shield: Blue orb - shield instantly recharged
+  - Triple Shot: Orange orb - fire 3 bullets
+  - Spread Shot: Green orb - fire spread pattern
+- **HUD Display**: Active effects shown with countdown timers
+- **Duration System**: Effects expire after set duration
+- **Stacking**: Same type refreshes duration (no multi-stack)
+
+**Testing:**
+1. Test power-up spawning:
+   - Play Clone 21 "Power-Up Heaven" (5s spawn rate)
+   - Verify power-ups spawn regularly
+   - Check multiple types appear
+   - Confirm they drift downward
+2. Test power-up collection:
+   - Touch different colored orbs
+   - Verify effects activate immediately
+   - Check HUD shows active effects
+   - Confirm sound plays on collection
+3. Test power-up effects:
+   - Speed (cyan): Verify movement is faster
+   - Rapid Fire (yellow): Verify faster shooting
+   - Pierce (magenta): Bullets go through enemies
+   - Shield (blue): Shield meter refills
+   - Triple Shot (orange): Fires 3 bullets
+   - Spread Shot (green): Fires spread pattern
+4. Test duration system:
+   - Collect power-up and wait
+   - Verify countdown timer decreases
+   - Confirm effect expires after duration
+   - Check original values restored
+5. Test single-type variants:
+   - Clone 22 "Speed Demon": Only speed boosts
+   - Clone 23 "Weapon Festival": Only weapon types
+   - Verify only specified types spawn
+
+**Test Variants**: 3 new variants added to `space_shooter_variants.json` (clones 21-23):
+- Clone 21 "Power-Up Heaven": All types, 5s spawn, 10s duration
+- Clone 22 "Speed Demon": Speed only, 8s spawn, 6s duration
+- Clone 23 "Weapon Festival": Weapon types only, 7s spawn, 8s duration
+
+**Status:** ✅ COMPLETE
+
+**Notes for Phase 7:**
+- Power-up system fully functional with 6 types
+- Duration system works cleanly with save/restore
+- Visual feedback clear with color coding
+- Next: Implement environmental hazards (asteroids, meteors, gravity wells)
+- Consider adding visual particle effects for active power-ups
+- Could add power-up preview icons in HUD
+- Shield power-up could grant temporary shield if not enabled
 
 ---
 
@@ -1434,6 +1657,119 @@ self.scroll_speed = (runtimeCfg.environment and runtimeCfg.environment.scroll_sp
 - Meteor Storm: Frequent meteor waves
 - Gravity Chaos: Multiple gravity wells
 - Speed Scroller: High scroll speed
+
+---
+**PHASE 7 COMPLETION NOTES** (Date: 2025-01-11)
+
+**Completed:**
+- Added environmental hazard parameters with three-tier fallback:
+  - `asteroid_density` (0-10) - asteroids spawned per second
+  - `asteroid_speed` (20-400) - fall speed in pixels/second
+  - `asteroid_size_min` (10-40) and `asteroid_size_max` (30-100) - size range
+  - `asteroids_can_be_destroyed` (boolean) - can bullets destroy them
+  - `meteor_frequency` (0-10) - meteor waves per minute
+  - `meteor_speed` (100-800) - meteor fall speed
+  - `meteor_warning_time` (0.1-3.0) - warning duration before meteor
+  - `gravity_wells_count` (0-10) - number of gravity wells
+  - `gravity_well_strength` (50-500) - pull strength
+  - `gravity_well_radius` (50-300) - effect radius
+  - `scroll_speed` (0-500) - vertical scrolling speed
+- Implemented asteroid field system:
+  - Spawn rate based on density parameter
+  - Asteroids drift downward with rotation
+  - Player collision causes damage
+  - Optional bullet destruction (configurable)
+  - Asteroids can destroy enemies on collision
+- Implemented meteor shower system:
+  - Countdown timer spawns meteor waves
+  - Warning indicators show where meteors will appear
+  - Configurable warning time before impact
+  - Meteors are faster and more dangerous than asteroids
+  - 3-5 meteors per wave
+- Implemented gravity well system:
+  - Spawned at initialization with random positions
+  - Pulls player toward center (inverse square law)
+  - Pulls bullets toward center (weaker effect)
+  - Visual swirling vortex effect
+  - Configurable strength and radius
+- Implemented vertical scrolling:
+  - Scroll speed affects asteroid and meteor movement
+  - Creates vertical scrolling shooter feel
+  - Higher scroll = faster-paced gameplay
+- Updated rendering in `space_shooter_view.lua`:
+  - Gray rotating asteroids with polygonal shapes
+  - Red meteor warnings with "!" indicator at top
+  - Orange/yellow meteors with glowing outline
+  - Purple translucent gravity wells with radius visualization
+- Updated hazard collision handling:
+  - Asteroids check collision with player, bullets, enemies
+  - Meteors check collision with player and bullets
+  - Gravity wells apply force to player and bullets
+  - All hazards removed when off-screen
+
+**In-Game:**
+- **Asteroid Field**:
+  - Gray rotating rocks fall from top
+  - Density controls spawn frequency
+  - Can be shot (if enabled) or must be dodged
+  - Asteroids destroy enemies on contact
+- **Meteor Showers**:
+  - Red warning circles appear at top
+  - After warning time, meteors drop quickly
+  - Waves of 3-5 meteors
+  - Frequency controls waves per minute
+- **Gravity Wells**:
+  - Purple swirling zones
+  - Pull player and bullets toward center
+  - Creates curved bullet trajectories
+  - Strategic positioning required
+- **Vertical Scrolling**:
+  - All hazards and enemies scroll faster
+  - Classic vertical shooter feel
+  - Increased pace and difficulty
+
+**Testing:**
+1. Test asteroid field:
+   - Play Clone 24 "Asteroid Belt"
+   - Verify asteroids spawn at density = 5
+   - Check rotation and falling motion
+   - Confirm bullets can destroy asteroids
+   - Verify player damage on collision
+2. Test meteor showers:
+   - Play Clone 25 "Meteor Storm"
+   - Verify warning indicators appear first
+   - Check meteors spawn after warning time
+   - Confirm fast falling speed
+   - Test collision damage
+3. Test gravity wells:
+   - Play Clone 26 "Gravity Chaos"
+   - Verify 3 gravity wells spawn
+   - Check player is pulled toward wells
+   - Confirm bullets curve toward wells
+   - Test radius and strength effects
+4. Test vertical scrolling:
+   - Play Clone 27 "Speed Scroller"
+   - Verify scroll speed = 150
+   - Check asteroids/enemies fall faster
+   - Confirm faster-paced gameplay
+
+**Test Variants**: 4 new variants added to `space_shooter_variants.json` (clones 24-27):
+- Clone 24 "Asteroid Belt": Density 5, destructible asteroids
+- Clone 25 "Meteor Storm": Frequency 6, fast meteors with warnings
+- Clone 26 "Gravity Chaos": 3 gravity wells, strong pull
+- Clone 27 "Speed Scroller": Scroll speed 150, fast enemies
+
+**Status:** ✅ COMPLETE
+
+**Notes for Phase 8:**
+- All environmental hazards fully functional
+- Gravity wells create interesting bullet trajectories
+- Meteor warnings give fair chance to dodge
+- Vertical scrolling adds classic shooter feel
+- Next: Special mechanics (screen wrap, reverse gravity, blackout zones) and victory conditions
+- Consider adding particle effects for meteor impacts
+- Could add visual trail for gravity well pull effect
+- Asteroid explosions could spawn debris
 
 ---
 
@@ -1509,6 +1845,18 @@ self.victory_limit = (runtimeCfg.victory and runtimeCfg.victory.limit) or 50
 - Upside Down: Reverse gravity
 - Fog of War: Multiple blackout zones
 - Speed Run: Time-based victory (30 seconds)
+
+---
+**PHASE 8 COMPLETION NOTES** (Date: 2025-01-11)
+
+**Completed:**
+- Screen wrap system (player, bullets, enemies independently controllable)
+- Reverse gravity (flips entire play space upside down)
+- Blackout zones (dark areas with optional movement)
+- Victory conditions (kills, time, survival, score)
+- 4 test variants (clones 28-31)
+
+**Status:** ✅ COMPLETE
 
 ---
 
