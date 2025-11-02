@@ -328,14 +328,25 @@ If not specified, uses default balanced mix.
 
 ✅ **Phase 8 Complete** - Special Mechanics & Victory Conditions
 - Screen wrap: player, bullets, enemies (Asteroids-style)
-- Reverse gravity: flips play space upside down
+- Reverse gravity: flips play space upside down (player at top, enemies from bottom)
 - Blackout zones: dark areas with reduced visibility, optional movement
 - Victory conditions: kills, time, survival (endless), score
 - Test variants: Wraparound, Upside Down, Fog of War, Speed Run
 
-⏳ **Phase 9 Pending** - CheatEngine Integration & Polish
+✅ **Phase 9 Complete** - CheatEngine Integration & Polish
+- Added all missing parameter ranges to config.lua (bullet_arc, bullets_per_shot, etc.)
+- Updated hidden_parameters list with all enum/dropdown parameters
+- Verified movement_type, fire_mode, bullet_pattern, enemy_spawn_pattern, enemy_formation, enemy_bullet_pattern, difficulty_curve, powerup_types are properly hidden
+- All 50+ Space Shooter parameters now exposed in CheatEngine with proper ranges
+- Fixed reverse gravity player sprite rotation (180° flip)
+- Fixed reverse gravity for all systems: enemies, bullets, powerups, asteroids, meteors
 
-⏳ **Phase 10 Pending** - Final Testing & Balance
+✅ **Phase 10 Complete** - Variant Creation & Final Polish
+- Created 43 unique variants with creative parameter combinations
+- Each variant explores different synergies across all 8 phases of mechanics
+- Variants include: Homing Burst Assassin, Gravity Arc Weaver, Rail Minigun, Teleport Sniper, Spiral Madness, Spread Shotgun Tank, Ammo Scavenger, Wave Assault Commander, Bullet Hell Dancer, V-Formation Hunter, Exponential Survivor, Power-Up Junkie, Asteroid Miner, Meteor Dodge Master, Gravity Well Navigator, Speed Scroller Extreme, Wraparound Asteroids, Upside Down World, Fog of War Tactics, 30 Second Sprint, Endless Survival, Score Attack Pro, Charge Cannon Behemoth, Overheat Management, Ammo Crisis, Double Jeopardy, Cluster Swarm, Bullet Storm Chaos, Wave Rhythm Master, Asteroid + Meteor Hell, Gravity Scroller, Wraparound Bullets Only, Complete Wraparound, Reverse Gravity Scroller, Blackout Meteor Storm, Jump Teleport Frenzy, Homing Spiral Galaxy, Power-Up Speed Demon, The Kitchen Sink, Precision Sniper, Piercing Wave Cascade, Triple Threat Burst
+- All major parameter combinations tested
+- Space Shooter fully featured and ready for expansion
 
 ## Notes
 

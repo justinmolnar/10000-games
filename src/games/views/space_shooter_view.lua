@@ -63,6 +63,7 @@ function SpaceShooterView:draw()
             g.setColor(0.3, 0.7, 1.0, shield_alpha)
             local shield_radius = math.max(game.player.width, game.player.height) / 2 + 5
             g.circle("line", center_x, center_y, shield_radius, 32)
+            g.setColor(1, 1, 1)  -- Reset color after shield
         end
 
         if game.sprites and game.sprites.player then

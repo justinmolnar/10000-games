@@ -660,14 +660,13 @@ end
 function SpaceShooter:loadAssets()
     self.sprites = {}
 
-    if not self.variant or not self.variant.sprite_set then
-        print("[SpaceShooter:loadAssets] No variant sprite_set, using fallback rendering")
-        return
-    end
-
     local game_type = "space_shooter"
-    local base_path = "assets/sprites/games/" .. game_type .. "/" .. self.variant.sprite_set .. "/"
     local fallback_sprite_set = "fighter_1"  -- Config default
+
+    -- Use variant sprite_set or fall back to config default
+    local sprite_set = (self.variant and self.variant.sprite_set) or fallback_sprite_set
+
+    local base_path = "assets/sprites/games/" .. game_type .. "/" .. sprite_set .. "/"
     local fallback_path = "assets/sprites/games/" .. game_type .. "/" .. fallback_sprite_set .. "/"
 
     local function tryLoad(filename, sprite_key)
@@ -683,8 +682,8 @@ function SpaceShooter:loadAssets()
             return
         end
 
-        -- Fall back to default sprite_set (fighter_1)
-        if self.variant.sprite_set ~= fallback_sprite_set then
+        -- Fall back to default sprite_set (fighter_1) if not already using it
+        if sprite_set ~= fallback_sprite_set then
             local fallback_filepath = fallback_path .. filename
             local fallback_success, fallback_result = pcall(function()
                 return love.graphics.newImage(fallback_filepath)
@@ -836,8 +835,12 @@ function SpaceShooter:updatePlayer(dt)
         if self:isKeyDown('left', 'a') then self.player.x = self.player.x - self.movement_speed * dt end
         if self:isKeyDown('right', 'd') then self.player.x = self.player.x + self.movement_speed * dt end
 
-        -- Clamp horizontal only
-        self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+        -- Phase 8: Screen wrap or clamp horizontal only
+        if self.screen_wrap then
+            self:applyScreenWrap(self.player)
+        else
+            self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+        end
 
     elseif self.movement_type == "asteroids" then
         -- Asteroids: Rotate + thrust physics
@@ -866,9 +869,13 @@ function SpaceShooter:updatePlayer(dt)
         self.player.x = self.player.x + self.player.vx * dt
         self.player.y = self.player.y + self.player.vy * dt
 
-        -- Clamp to bounds
-        self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
-        self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+        -- Phase 8: Screen wrap or clamp to bounds
+        if self.screen_wrap then
+            self:applyScreenWrap(self.player)
+        else
+            self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+            self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+        end
 
     elseif self.movement_type == "jump" then
         -- Jump/Dash mode: Discrete dashes instead of continuous movement
@@ -1035,9 +1042,24 @@ function SpaceShooter:executeJump(direction)
     if direction == 'up' then target_y = target_y - jump_distance end
     if direction == 'down' then target_y = target_y + jump_distance end
 
-    -- Clamp to bounds
-    target_x = math.max(0, math.min(self.game_width - self.player.width, target_x))
-    target_y = math.max(0, math.min(self.game_height - self.player.height, target_y))
+    -- Phase 8: Screen wrap or clamp to bounds
+    if self.screen_wrap then
+        -- Wrap target coordinates
+        if target_x < -self.player.width then
+            target_x = self.game_width
+        elseif target_x > self.game_width then
+            target_x = -self.player.width
+        end
+        if target_y < -self.player.height then
+            target_y = self.game_height
+        elseif target_y > self.game_height then
+            target_y = -self.player.height
+        end
+    else
+        -- Clamp to bounds
+        target_x = math.max(0, math.min(self.game_width - self.player.width, target_x))
+        target_y = math.max(0, math.min(self.game_height - self.player.height, target_y))
+    end
 
     self.player.jump_target_x = target_x
     self.player.jump_target_y = target_y
@@ -1471,6 +1493,9 @@ function SpaceShooter:enemyShoot(enemy)
     -- Phase 8: In reverse gravity, bullets shoot upward (negative direction)
     local direction_multiplier = self.reverse_gravity and -1 or 1
 
+    -- Enemy bullets are larger and more visible (8x8 instead of 4x8)
+    local enemy_bullet_size = 8
+
     if self.enemy_bullet_pattern == "spread" then
         -- Spread pattern: multiple bullets in arc
         local count = self.enemy_bullets_per_shot
@@ -1480,10 +1505,10 @@ function SpaceShooter:enemyShoot(enemy)
         for i = 1, count do
             local angle = math.rad(start_angle + (i - 1) * angle_step)
             table.insert(self.enemy_bullets, {
-                x = center_x - BULLET_WIDTH/2,
+                x = center_x - enemy_bullet_size/2,
                 y = center_y,
-                width = BULLET_WIDTH,
-                height = BULLET_HEIGHT,
+                width = enemy_bullet_size,
+                height = enemy_bullet_size,
                 speed = self.enemy_bullet_speed,
                 vx = math.sin(angle) * self.enemy_bullet_speed,
                 vy = math.cos(angle) * self.enemy_bullet_speed * direction_multiplier,
@@ -1495,10 +1520,10 @@ function SpaceShooter:enemyShoot(enemy)
         for i = 1, self.enemy_bullets_per_shot do
             local angle = math.rad(math.random(-self.enemy_bullet_spread_angle, self.enemy_bullet_spread_angle))
             table.insert(self.enemy_bullets, {
-                x = center_x - BULLET_WIDTH/2,
+                x = center_x - enemy_bullet_size/2,
                 y = center_y,
-                width = BULLET_WIDTH,
-                height = BULLET_HEIGHT,
+                width = enemy_bullet_size,
+                height = enemy_bullet_size,
                 speed = self.enemy_bullet_speed,
                 vx = math.sin(angle) * self.enemy_bullet_speed,
                 vy = math.cos(angle) * self.enemy_bullet_speed * direction_multiplier,
@@ -1512,10 +1537,10 @@ function SpaceShooter:enemyShoot(enemy)
         for i = 1, count do
             local angle = math.rad(i * angle_step)
             table.insert(self.enemy_bullets, {
-                x = center_x - BULLET_WIDTH/2,
+                x = center_x - enemy_bullet_size/2,
                 y = center_y,
-                width = BULLET_WIDTH,
-                height = BULLET_HEIGHT,
+                width = enemy_bullet_size,
+                height = enemy_bullet_size,
                 speed = self.enemy_bullet_speed,
                 vx = math.cos(angle) * self.enemy_bullet_speed,
                 vy = math.sin(angle) * self.enemy_bullet_speed * direction_multiplier,
@@ -1525,10 +1550,10 @@ function SpaceShooter:enemyShoot(enemy)
     else
         -- Single bullet (default)
         table.insert(self.enemy_bullets, {
-            x = center_x - BULLET_WIDTH/2,
+            x = center_x - enemy_bullet_size/2,
             y = center_y,
-            width = BULLET_WIDTH,
-            height = BULLET_HEIGHT,
+            width = enemy_bullet_size,
+            height = enemy_bullet_size,
             speed = self.enemy_bullet_speed * direction_multiplier
         })
     end
@@ -1662,8 +1687,6 @@ function SpaceShooter:checkComplete()
         return self.survival_time >= self.victory_limit
     elseif self.victory_condition == "survival" then
         return false  -- Never complete (endless mode)
-    elseif self.victory_condition == "score" then
-        return self.score >= self.victory_limit
     end
 
     -- Default fallback
@@ -1680,8 +1703,6 @@ function SpaceShooter:onComplete()
         is_win = self.metrics.kills >= self.victory_limit
     elseif self.victory_condition == "time" then
         is_win = self.survival_time >= self.victory_limit
-    elseif self.victory_condition == "score" then
-        is_win = self.score >= self.victory_limit
     else
         is_win = self.metrics.kills >= self.target_kills  -- Default
     end
@@ -2136,8 +2157,6 @@ end
 -- Phase 8: Screen wrap helper
 -- Returns true if object should be destroyed (exceeded max wraps)
 function SpaceShooter:applyScreenWrap(obj, max_wraps)
-    if not self.screen_wrap then return false end
-
     local wrapped = false
     max_wraps = max_wraps or 999  -- Default to effectively unlimited
 

@@ -201,17 +201,19 @@ local Config = {
             lives_count = { min = 1, max = 50 },
             shield_hits = { min = 0, max = 10 },
             shield_regen_time = { min = 0, max = 60 },
-            -- Weapon System
+            -- Weapon System (Phase 3 & 4)
             fire_rate = { min = 0.1, max = 20.0 },
             bullet_speed = { min = 50, max = 1000 },
             bullet_gravity = { min = -500, max = 500 },
             bullet_lifetime = { min = 1, max = 30 },
             bullet_damage_multiplier = { min = 0.1, max = 10.0 },
-            homing_strength = { min = 0.0, max = 1.0 },
-            burst_count = { min = 1, max = 10 },
-            burst_delay = { min = 0.05, max = 1.0 },
-            charge_time = { min = 0.1, max = 5.0 },
+            homing_strength = { min = 0.0, max = 2.0 },
+            burst_count = { min = 2, max = 10 },
+            burst_delay = { min = 0.05, max = 0.5 },
+            charge_time = { min = 0.3, max = 3.0 },
             spread_angle = { min = 5, max = 180 },
+            bullet_arc = { min = 15, max = 90 },
+            bullets_per_shot = { min = 1, max = 12 },
             overheat_threshold = { min = 3, max = 100 },
             overheat_cooldown = { min = 0.5, max = 10.0 },
             overheat_heat_dissipation = { min = 0.1, max = 10.0 },
@@ -280,14 +282,17 @@ local Config = {
             "camera_mode",      -- String enum - camera follow mode
             "fog_of_war",       -- String enum - fog type (could be boolean but treated as enum)
             "sprite_style",     -- String enum - uniform vs segmented sprites
-            -- Space Shooter enum parameters
-            "fire_mode",        -- String enum - manual, auto, charge, burst
-            "bullet_pattern",   -- String enum - single, double, triple, spread, spiral, wave
-            "enemy_spawn_pattern",  -- String enum - continuous, waves, clusters
-            "enemy_formation",  -- String enum - scattered, v_formation, wall, spiral
-            "enemy_bullet_pattern",  -- String enum - single, spread, spray, ring
-            "difficulty_curve", -- String enum - linear, exponential, wave
+            -- Space Shooter enum parameters (Phases 1-8)
+            "movement_type",    -- String enum - default, rail, asteroids, jump (Phase 1)
+            "fire_mode",        -- String enum - manual, auto, charge, burst (Phase 3)
+            "bullet_pattern",   -- String enum - single, double, triple, spread, spiral, wave (Phase 3)
+            "enemy_spawn_pattern",  -- String enum - continuous, waves, clusters (Phase 5)
+            "enemy_formation",  -- String enum - scattered, v_formation, wall, spiral (Phase 5)
+            "enemy_bullet_pattern",  -- String enum - single, spread, spray, ring (Phase 5)
+            "difficulty_curve", -- String enum - linear, exponential, wave (Phase 5)
             "powerup_types",    -- Array - available power-up types (Phase 6)
+            "gravity_wells_count",  -- Would show as "gravity_wells" in CheatEngine (Phase 7)
+            "blackout_zones_count", -- Would show as "blackout_zones" in CheatEngine (Phase 8)
         },
 
         -- Special unlocks (gate certain modifications behind progression)
