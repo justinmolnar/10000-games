@@ -55,7 +55,7 @@ function WindowManager:setScreenSize(w, h)
 end
 
 -- Create a new window
-function WindowManager:createWindow(program, title, content_state, default_w, default_h)
+function WindowManager:createWindow(program, title, content_state, default_w, default_h, variant_id)
     if not program or not program.id then
         print("ERROR: createWindow called without valid program definition.")
         return nil
@@ -74,8 +74,16 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
     local window_id = self.next_window_id
     self.next_window_id = self.next_window_id + 1
 
+    -- Determine position key: variant_id if provided (for per-clone tracking), otherwise program_type
+    local position_key = variant_id or program_type
+
     local x, y, w, h
-    local remembered = self.window_positions[program_type]
+    -- Try variant-specific position first, fall back to program_type position
+    local remembered = self.window_positions[position_key]
+    if not remembered and variant_id then
+        -- Fallback: use last position for this program type if variant has no saved position
+        remembered = self.window_positions[program_type]
+    end
 
     if not is_resizable then
         print("Program", program_type, "is not resizable. Forcing default size.")
