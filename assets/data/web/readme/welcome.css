@@ -1,0 +1,23 @@
+body {
+    background-color: #CCCCFF;
+    font-family: Arial;
+    margin: 20px;
+}
+
+h1 {
+    background-color: #000080;
+    color: #FFFFFF;
+    padding: 15px;
+    text-align: center;
+}
+
+h2 {
+    color: #000080;
+}
+
+.box {
+    background-color: #FFFFFF;
+    border: 2px solid #000080;
+    padding: 15px;
+    margin: 15px 0;
+}

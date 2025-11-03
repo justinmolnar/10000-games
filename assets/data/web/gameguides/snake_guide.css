@@ -1,0 +1,22 @@
+body {
+    background-color: #FFFFFF;
+    font-family: Arial;
+    margin: 20px;
+}
+
+h1 {
+    color: #008800;
+    text-align: center;
+    border-bottom: 3px solid #008800;
+}
+
+h2 {
+    color: #006600;
+}
+
+.section {
+    background-color: #EEFFEE;
+    border: 1px solid #88CC88;
+    padding: 10px;
+    margin: 10px 0;
+}

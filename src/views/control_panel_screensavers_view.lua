@@ -3,6 +3,7 @@ local UI = require('src.views.ui_components')
 local json = require('json')
 local Strings = require('src.utils.strings')
 local Paths = require('src.paths')
+local ScrollbarController = require('src.controllers.scrollbar_controller')
 -- Config is accessed via self.di.config when available
 
 local View = Object:extend('ControlPanelScreensaversView')
@@ -15,7 +16,13 @@ function View:init(controller, di)
     self.preview = { canvas = nil, saver = nil, last_key = nil }
     self.schema = self:_loadSchema(Paths.data.control_panels .. 'screensavers.json')
     self.layout_cache = {} -- id -> {rect, el}
-    self.scroll = { offset = 0, dragging = false, drag_start_y = 0, drag_offset_start = 0, content_h = 0 }
+    self.scroll = { offset = 0, content_h = 0 }
+
+    -- Create scrollbar controller for this panel
+    self.scrollbar = ScrollbarController:new({
+        unit_size = 1, -- Pixel-based scrolling
+        step_units = 30
+    })
 end
 
 function View:updateLayout(w, h)
@@ -500,19 +507,14 @@ function View:drawWindowed(w, h, settings, pending)
     if (self.scroll.offset or 0) > max_offset then self.scroll.offset = max_offset end
     if self.scroll.offset < 0 then self.scroll.offset = 0 end
 
-    -- Draw scrollbar if needed (using shared helper)
+    -- Draw scrollbar (using ScrollbarController)
     if max_offset > 0 then
-        local sb_geom = UI.computeScrollbar({
-            viewport_w = w, viewport_h = h,
-            content_h = self.scroll.content_h, offset = self.scroll.offset,
-            -- width/margin/min_thumb from config defaults
-            track_top = 20, track_bottom = 20
-        })
-        UI.drawScrollbar(sb_geom)
-        -- Store full geom for universal handlers
-        self._scrollbar_geom = sb_geom
-    else
-        self._scrollbar_geom = nil
+        self.scrollbar:setPosition(0, 0)
+        local geom = self.scrollbar:compute(w, h, self.scroll.content_h, self.scroll.offset, max_offset)
+
+        if geom then
+            UI.drawScrollbar(geom)
+        end
     end
 end
 
@@ -549,18 +551,14 @@ function View:mousepressed(x, y, button, settings, pending)
             return nil
         end
     end
-    -- Scrollbar interactions via universal handler (local coords already)
-    if self._scrollbar_geom then
-        local off_px = self.scroll.offset or 0
-        local res = UI.scrollbarHandlePress(x, y, button, self._scrollbar_geom, off_px, nil)
-        if res and res.consumed then
-            if res.new_offset_px ~= nil then self.scroll.offset = res.new_offset_px end
-            if res.drag then
-                self.scroll.dragging = true
-                self._scrollbar_drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
-            end
-            return { name='content_interaction' }
+    -- Scrollbar interactions (using ScrollbarController)
+    local scroll_event = self.scrollbar:mousepressed(x, y, button, self.scroll.offset or 0)
+    if scroll_event then
+        if scroll_event.scrolled then
+            local max_offset = math.max(0, (self.scroll.content_h or 0) - (self.h or 0))
+            self.scroll.offset = math.max(0, math.min(scroll_event.new_offset, max_offset))
         end
+        return { name='content_interaction' }
     end
     -- Schema-driven sliders and checkboxes
     for id,entry in pairs(self.layout_cache) do
@@ -603,20 +601,21 @@ function View:mousemoved(x, y, dx, dy, settings, pending)
         if el.step and el.step < 1 then val = tonumber(string.format('%.2f', val)) end
         return { name='set_pending', id=self.dragging, value=val }
     end
-    if self.scroll.dragging and self._scrollbar_geom and self._scrollbar_drag then
-        local res = UI.scrollbarHandleMove(y, self._scrollbar_drag, self._scrollbar_geom)
-        if res and res.consumed and res.new_offset_px ~= nil then
-            self.scroll.offset = res.new_offset_px
-            return { name='content_interaction' }
-        end
+    -- Handle scrollbar dragging (using ScrollbarController)
+    local scroll_event = self.scrollbar:mousemoved(x, y, dx, dy)
+    if scroll_event and scroll_event.scrolled then
+        local max_offset = math.max(0, (self.scroll.content_h or 0) - (self.h or 0))
+        self.scroll.offset = math.max(0, math.min(scroll_event.new_offset, max_offset))
+        return { name='content_interaction' }
     end
 end
 
 function View:mousereleased(x, y, button, settings, pending)
     if button == 1 then
         self.dragging = nil
-        self.scroll.dragging = false
-        self._scrollbar_drag = nil
+
+        -- End scrollbar dragging (using ScrollbarController)
+        self.scrollbar:mousereleased(x, y, button)
     end
 end
 

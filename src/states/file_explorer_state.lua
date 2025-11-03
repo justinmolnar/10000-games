@@ -4,6 +4,7 @@
 local Object = require('class')
 local FileExplorerView = require('src.views.file_explorer_view')
 local Strings = require('src.utils.strings')
+local ScrollbarController = require('src.controllers.scrollbar_controller')
 
 local FileExplorerState = Object:extend('FileExplorerState')
 
@@ -16,6 +17,12 @@ function FileExplorerState:init(file_system, program_registry, desktop_icons, re
     -- Capture DI if provided by DesktopState dependency_provider
     self.di = di
     self.view = FileExplorerView:new(self, di)
+
+    -- Create scrollbar controller (unit_size = item height)
+    self.scrollbar = ScrollbarController:new({
+        unit_size = 30, -- Default item height
+        step_units = 1
+    })
 
     -- Navigation state
     self.current_path = "/"
@@ -140,8 +147,19 @@ function FileExplorerState:mousepressed(x, y, button)
         return false
     end
 
-    local current_view_items = self:getCurrentViewContents() -- Use helper
+    -- Handle scrollbar first
+    local scroll_event = self.scrollbar:mousepressed(x, y, button, self.view.scroll_offset or 0)
+    if scroll_event then
+        if scroll_event.scrolled then
+            local current_view_items = self:getCurrentViewContents()
+            local visible_count = self.view:getVisibleItemCount(self.viewport.height)
+            local max_offset = math.max(0, #current_view_items - visible_count)
+            self.view.scroll_offset = math.max(0, math.min(math.floor(scroll_event.new_offset), max_offset))
+        end
+        return { type = "content_interaction" }
+    end
 
+    local current_view_items = self:getCurrentViewContents() -- Use helper
 
     -- Delegate directly to view with the LOCAL coordinates
     local view_event = self.view:mousepressed(x, y, button, current_view_items, self.viewport.width, self.viewport.height)
@@ -295,8 +313,19 @@ end
 -- No modal-specific mousemoved needed
 
 function FileExplorerState:mousemoved(x, y, dx, dy)
-    -- delegate to view/app-specific if in Control Panel applet
     if not self.viewport then return end
+
+    -- Handle scrollbar dragging
+    local scroll_event = self.scrollbar:mousemoved(x, y, dx, dy)
+    if scroll_event and scroll_event.scrolled then
+        local current_view_items = self:getCurrentViewContents()
+        local visible_count = self.view:getVisibleItemCount(self.viewport.height)
+        local max_offset = math.max(0, #current_view_items - visible_count)
+        self.view.scroll_offset = math.max(0, math.min(math.floor(scroll_event.new_offset), max_offset))
+        return { type = "content_interaction" }
+    end
+
+    -- delegate to view/app-specific if in Control Panel applet
     local item = self.file_system:getItem(self.current_path)
     if item and item.type == 'special' and (item.special_type == 'control_panel_general' or item.special_type == 'control_panel_desktop' or item.special_type == 'control_panel_screensavers') then
         local content_y = self.view.toolbar_height + self.view.address_bar_height
@@ -313,7 +342,7 @@ function FileExplorerState:mousemoved(x, y, dx, dy)
             end
         end
     end
-    -- Always forward to the view for generic interactions (e.g., scrollbar drags)
+    -- Always forward to the view for generic interactions
     if self.view and self.view.mousemoved then
         pcall(self.view.mousemoved, self.view, x, y, dx, dy, self.viewport.width, self.viewport.height, false)
     end
@@ -321,6 +350,12 @@ end
 
 function FileExplorerState:mousereleased(x, y, button)
     if not self.viewport then return end
+
+    -- End scrollbar dragging
+    if self.scrollbar:mousereleased(x, y, button) then
+        return { type = "content_interaction" }
+    end
+
     if self.view and self.view.mousereleased then
         pcall(self.view.mousereleased, self.view, x, y, button)
         return { type = 'content_interaction' }

@@ -102,7 +102,14 @@ Hidden parameter (requires dropdown).
 
 ## Per-Variant Modifiers (Enemy Systems - Phase 5)
 
-**enemy_spawn_pattern** [continuous]: Enemy spawn behavior. Options:
+**enemy_behavior** [default]: Overall enemy behavior pattern. Options:
+  - "default": Standard spawning and movement (uses spawn_pattern below)
+  - "space_invaders": Grid formation that moves side-to-side and descends
+  - "galaga": Formation parking with dive attacks and entrance swoops
+
+Hidden parameter (requires dropdown).
+
+**enemy_spawn_pattern** [continuous]: Enemy spawn behavior (only used with default behavior). Options:
   - "continuous": Steady spawn rate (default)
   - "waves": Groups of enemies with pauses between
   - "clusters": Spawn 3-5 enemies at once with longer delays
@@ -112,6 +119,45 @@ Hidden parameter (requires dropdown).
 **enemy_spawn_rate_multiplier** [1.0]: Multiplier on enemy spawn frequency. Higher = more enemies. Range: 0.1-10.0
 
 **enemy_speed_multiplier** [1.0]: Multiplier on all enemy speeds. Higher = faster enemies. Range: 0.1-5.0
+
+**enemy_health** [1]: Hits required to destroy each enemy. Higher = tankier enemies. Range: 1-10
+
+**waves_enabled** [false]: Enable wave system for space_invaders/galaga behaviors. When enabled, enemies respawn in waves after all are destroyed.
+
+**wave_difficulty_increase** [0.1]: Difficulty increase per wave (0.1 = 10% harder each wave). Affects enemy count, speed, health, and dive frequency. Range: 0.0-1.0
+
+**wave_random_variance** [0.0]: Random variance in wave parameters (0-1). 0 = consistent waves, 0.5 = ±50% random variation per wave. Adds unpredictability. Range: 0.0-1.0
+
+**enemy_density** [1.0]: Spacing multiplier for enemy formations. 0.5 = tight formation, 2.0 = loose/spread out. Range: 0.3-3.0
+
+### Space Invaders Parameters (only used when enemy_behavior = "space_invaders")
+
+**grid_rows** [4]: Number of rows in the grid formation. Range: 1-10
+
+**grid_columns** [8]: Number of columns in the grid formation. Range: 2-16
+
+**grid_speed** [50]: Base movement speed of the grid in pixels/second. Speed increases as enemies die. Range: 10-200
+
+**grid_descent** [20]: Pixels to drop when grid reverses direction at screen edge. Range: 5-50
+
+### Galaga Parameters (only used when enemy_behavior = "galaga")
+
+**formation_size** [24]: Total number of formation slots (enemies per wave). Automatically wraps to screen width. Range: 8-48
+
+**initial_spawn_count** [8]: Number of enemies that spawn immediately when wave starts. Remaining enemies spawn gradually. Range: 1-24
+
+**spawn_interval** [0.5]: Seconds between gradual enemy spawns after initial batch. Lower = faster formation filling. Range: 0.1-2.0
+
+**dive_frequency** [3.0]: Seconds between dive attacks. Lower = more frequent dives. Range: 0.5-10.0
+
+**max_diving_enemies** [1]: Maximum number of enemies diving simultaneously. Range: 1-5
+
+**entrance_pattern** [swoop]: Entrance swoop pattern for enemies joining formation. Options:
+  - "swoop": Swoop down then up to formation position
+  - "loop": Loop around to formation
+  - "arc": Simple arc to formation
+
+Hidden parameter (requires dropdown).
 
 **enemy_formation** [scattered]: Formation pattern for enemy spawning. Options:
   - "scattered": Random positioning (default)

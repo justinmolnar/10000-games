@@ -389,6 +389,17 @@ function PlayerData:setCheatBudget(new_budget)
     self.cheat_budget = new_budget
 end
 
+-- Get current CPU speed multiplier (used for page loading, etc.)
+function PlayerData:getCPUSpeed()
+    local cpu_level = self.upgrades.cpu_speed or 0
+    local base_speed = Config.cpu and Config.cpu.starting_speed or 0.3
+    local speed_per_level = Config.cpu and Config.cpu.speed_per_upgrade or 0.5
+    local max_speed = Config.cpu and Config.cpu.max_speed or 10.0
+
+    local cpu_speed = base_speed + (cpu_level * speed_per_level)
+    return math.min(cpu_speed, max_speed)
+end
+
 -- Initialize cheat data for a game (new system structure)
 function PlayerData:initGameCheatData(game_id)
     if not self.cheat_engine_data[game_id] then

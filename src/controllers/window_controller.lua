@@ -539,6 +539,18 @@ function WindowController:getCursorType(x, y, window_chrome)
                     if edge == "top_left" or edge == "bottom_right" then return "sizenwse" end
                     if edge == "top_right" or edge == "bottom_left" then return "sizenesw" end
                 end
+
+                -- Check if window state has custom cursor type
+                local state = self.window_states[window.id]
+                if state and state.getCursorType then
+                    local local_x = x - window.x
+                    local local_y = y - window.y
+                    local custom_cursor = state:getCursorType(local_x, local_y)
+                    if custom_cursor then
+                        return custom_cursor
+                    end
+                end
+
                 -- If inside window but not on edge, stop checking lower windows and return arrow
                 return "arrow"
             end

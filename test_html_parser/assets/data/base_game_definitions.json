@@ -1,0 +1,558 @@
+[
+  {
+    "id": "space_shooter_1",
+    "display_name": "Space Shooter Alpha",
+    "game_class": "SpaceShooter",
+    "tier": "trash",
+    "category": "action",
+    "unlock_cost": 20,
+    "cost_exponent": 1.5,
+    "base_formula_string": "((metrics.kills * metrics.kills * 0.07 * (1 + metrics.combo / math.max(1, metrics.kills) * 0.3) * scaling_constant) - (metrics.deaths * metrics.deaths * 0.3 * scaling_constant))",
+    "display_formula_string": "kills × combo - deaths",
+    "metrics_tracked": ["kills", "deaths", "combo"],
+    "icon_sprite": "player",
+    "token_threshold": 0.75,
+
+    "visual_identity": {
+      "sprite_set_id": "space_set_1",
+      "palette_id": "default",
+      "metric_sprite_mappings": {
+        "kills": "game_mine_1-0",
+        "deaths": "msg_error-0",
+        "combo": "check-0",
+        "accuracy": "check-0",
+        "time_survived": "clock-0"
+      },
+      "formula_icon_mapping": {
+        "kills": "game_mine_1-0",
+        "deaths": "msg_error-0",
+        "combo": "check-0",
+        "result": "certificate-0"
+      }
+    },
+
+    "cheat_engine_base_cost": 1000,
+    "cheat_cost_exponent": 1.15,
+    "available_cheats": [
+      {
+        "id": "speed_modifier",
+        "display_name": "Cooldown Reduction",
+        "description": "Reduce fire cooldown",
+        "base_cost": 500,
+        "max_level": 5,
+        "value_per_level": 0.1,
+        "affects": ["player.fire_cooldown"]
+      },
+      {
+        "id": "advantage_modifier",
+        "display_name": "Extra Lives",
+        "description": "Increase starting lives",
+        "base_cost": 1000,
+        "max_level": 10,
+        "value_per_level": { "deaths": 1 },
+        "affects": ["lives_count"]
+      },
+      {
+        "id": "performance_modifier",
+        "display_name": "Damage Boost",
+        "description": "Increase bullet damage",
+        "base_cost": 2000,
+        "max_level": 5,
+        "value_per_level": 0.2,
+        "affects": ["bullet_damage_multiplier"]
+      },
+      {
+        "id": "bullet_speed_boost",
+        "display_name": "Faster Bullets",
+        "description": "Increase bullet speed",
+        "base_cost": 800,
+        "max_level": 5,
+        "value_per_level": 100,
+        "affects": ["bullet_speed"]
+      },
+      {
+        "id": "shield_upgrade",
+        "display_name": "Shield Generator",
+        "description": "Enable regenerating shield",
+        "base_cost": 5000,
+        "max_level": 1,
+        "value_per_level": 0,
+        "affects": ["shield_enabled"]
+      },
+      {
+        "id": "piercing_rounds",
+        "display_name": "Piercing Bullets",
+        "description": "Bullets pass through enemies",
+        "base_cost": 3000,
+        "max_level": 1,
+        "value_per_level": 0,
+        "affects": ["bullet_piercing"]
+      }
+    ],
+
+    "bullet_fire_rate": 1,
+    "bullet_sprite": "world_star-0",
+    "variant_multiplier": 1,
+    "difficulty_level": 1,
+    "auto_play_performance": {"kills": 20, "deaths": 2}
+  },
+  {
+    "id": "snake_1",
+    "display_name": "Snake Classic 1",
+    "game_class": "SnakeGame",
+    "tier": "trash",
+    "category": "arcade",
+    "unlock_cost": 20,
+    "cost_exponent": 1.5,
+    "base_formula_string": "(((metrics.snake_length * 2) * (metrics.snake_length * 2) * scaling_constant) / metrics.survival_time)",
+    "display_formula_string": "snake_length / survival_time",
+    "metrics_tracked": ["snake_length", "survival_time"],
+    "icon_sprite": "player",
+    "token_threshold": 0.75,
+
+    "visual_identity": {
+      "sprite_set_id": "classic/snake",
+      "palette_id": "neon_green",
+      "metric_sprite_mappings": {
+        "snake_length": "game_spider-0",
+        "survival_time": "clock-0"
+      },
+      "formula_icon_mapping": {
+        "snake_length": "game_spider-0",
+        "survival_time": "clock-0",
+        "result": "certificate-0"
+      }
+    },
+
+    "cheat_engine_base_cost": 800,
+    "cheat_cost_exponent": 1.15,
+    "available_cheats": [
+      {
+        "id": "speed_modifier",
+        "base_cost": 700,
+        "max_level": 5,
+        "value_per_level": 0.1
+      },
+      {
+        "id": "performance_modifier",
+        "base_cost": 2000,
+        "max_level": 3,
+        "value_per_level": 0.2
+      },
+      {
+        "id": "god_mode",
+        "base_cost": 10000,
+        "max_level": 1,
+        "value_per_level": 0
+      }
+    ],
+
+    "bullet_fire_rate": 0.8,
+    "bullet_sprite": "joystick_alt-1",
+    "variant_multiplier": 1,
+    "difficulty_level": 1,
+    "auto_play_performance": {"snake_length": 10, "survival_time": 30},
+
+    "clone_variants": [
+      {
+        "clone_index": 0,
+        "name": "Snake Classic",
+        "sprite_set": "classic",
+        "palette": "neon_green",
+        "music_track": "snake_theme_retro",
+        "sfx_pack": "retro_beeps",
+        "background": "grid_classic",
+        "difficulty_modifier": 1.0,
+        "enemies": [],
+        "flavor_text": "The timeless classic! Grow your snake and survive.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 1,
+        "name": "Snake Neon",
+        "sprite_set": "classic",
+        "palette": "neon_pink",
+        "music_track": "snake_theme_electronic",
+        "sfx_pack": "8bit_arcade",
+        "background": "grid_neon",
+        "difficulty_modifier": 1.3,
+        "enemies": [],
+        "flavor_text": "Neon vibes! Navigate the glowing grid.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 2,
+        "name": "Snake Modern",
+        "sprite_set": "modern",
+        "palette": "cyber_blue",
+        "music_track": "snake_theme_techno",
+        "sfx_pack": "8bit_arcade",
+        "background": "grid_modern",
+        "difficulty_modifier": 1.6,
+        "enemies": [],
+        "flavor_text": "Sleek modern design meets classic gameplay!",
+        "intro_cutscene": null
+      }
+    ]
+  },
+  {
+    "id": "memory_1",
+    "display_name": "Memory Match 1",
+    "game_class": "MemoryMatch",
+    "tier": "trash",
+    "category": "puzzle",
+    "unlock_cost": 20,
+    "cost_exponent": 1.2,
+    "base_formula_string": "((metrics.matches * metrics.matches * (metrics.combo + 1) * 2 * scaling_constant) / metrics.time)",
+    "display_formula_string": "matches × combo / time",
+    "metrics_tracked": ["matches", "time", "combo"],
+    "icon_sprite": "game_freecell-0",
+    "token_threshold": 0.75,
+
+    "visual_identity": {
+      "sprite_set_id": "memory_set_1",
+      "palette_id": "pastel_blue",
+      "metric_sprite_mappings": {
+        "matches": "game_freecell-0",
+        "time": "clock-0",
+        "combo": "check-0"
+      },
+      "formula_icon_mapping": {
+        "matches": "game_freecell-0",
+        "time": "clock-0",
+        "combo": "check-0",
+        "result": "certificate-0"
+      }
+    },
+
+    "cheat_engine_base_cost": 500,
+    "cheat_cost_exponent": 1.1,
+    "available_cheats": [
+      {
+        "id": "speed_modifier",
+        "base_cost": 400,
+        "max_level": 5,
+        "value_per_level": 0.2
+      },
+      {
+        "id": "performance_modifier",
+        "base_cost": 3000,
+        "max_level": 2,
+        "value_per_level": 0.5
+      }
+    ],
+
+    "bullet_fire_rate": 1.2,
+    "bullet_sprite": "xml_gear-0",
+    "variant_multiplier": 1,
+    "difficulty_level": 1,
+    "auto_play_performance": {"matches": 8, "time": 40, "perfect": 2},
+
+    "clone_variants": [
+      {
+        "clone_index": 0,
+        "name": "Memory Match Classic",
+        "sprite_set": "icons_1",
+        "palette": "pastel_blue",
+        "music_track": "memory_theme_calm",
+        "sfx_pack": "retro_beeps",
+        "background": "felt_blue",
+        "difficulty_modifier": 1.0,
+        "enemies": [],
+        "flavor_text": "Classic memory matching! Test your recall skills.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 1,
+        "name": "Memory Match Animals",
+        "sprite_set": "icons_2",
+        "palette": "nature_green",
+        "music_track": "memory_theme_playful",
+        "sfx_pack": "retro_beeps",
+        "background": "felt_green",
+        "difficulty_modifier": 1.2,
+        "enemies": [],
+        "flavor_text": "Match adorable animals in this memory challenge!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 2,
+        "name": "Memory Match Gems",
+        "sprite_set": "icons_3",
+        "palette": "rainbow",
+        "music_track": "memory_theme_sparkle",
+        "sfx_pack": "8bit_arcade",
+        "background": "felt_purple",
+        "difficulty_modifier": 1.4,
+        "enemies": [],
+        "flavor_text": "Match glittering gems and test your memory!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 3,
+        "name": "Memory Match Tech",
+        "sprite_set": "icons_4",
+        "palette": "tech_cyan",
+        "music_track": "memory_theme_electronic",
+        "sfx_pack": "8bit_arcade",
+        "background": "felt_black",
+        "difficulty_modifier": 1.6,
+        "enemies": [],
+        "flavor_text": "High-tech icons for the digital memory master!",
+        "intro_cutscene": null
+      }
+    ]
+  },
+  {
+    "id": "dodge_1",
+    "display_name": "Dodge Master 1",
+    "game_class": "DodgeGame",
+    "tier": "trash",
+    "category": "action",
+    "unlock_cost": 20,
+    "cost_exponent": 1.5,
+    "base_formula_string": "((metrics.objects_dodged - metrics.collisions * 3) * (metrics.objects_dodged - metrics.collisions * 3) * 0.03 * (1 + metrics.combo / math.max(1, metrics.objects_dodged) * 0.3) * scaling_constant)",
+    "display_formula_string": "objects_dodged - collisions × combo",
+    "metrics_tracked": ["objects_dodged", "collisions", "combo"],
+    "icon_sprite": "player",
+    "token_threshold": 0.75,
+
+    "visual_identity": {
+      "sprite_set_id": "base_1",
+      "palette_id": "fire",
+      "metric_sprite_mappings": {
+        "objects_dodged": "msg_error-0",
+        "collisions": "msg_error-0",
+        "combo": "check-0"
+      },
+      "formula_icon_mapping": {
+        "objects_dodged": "msg_error-0",
+        "collisions": "msg_error-0",
+        "combo": "check-0",
+        "result": "certificate-0"
+      }
+    },
+
+    "cheat_engine_base_cost": 1200,
+    "cheat_cost_exponent": 1.2,
+    "available_cheats": [
+      {
+        "id": "speed_modifier",
+        "base_cost": 600,
+        "max_level": 4,
+        "value_per_level": 0.1
+      },
+      {
+        "id": "advantage_modifier",
+        "base_cost": 800,
+        "max_level": 5,
+        "value_per_level": { "collisions": 2 }
+      },
+      {
+        "id": "performance_modifier",
+        "base_cost": 2500,
+        "max_level": 3,
+        "value_per_level": 0.2
+      },
+      {
+        "id": "god_mode",
+        "base_cost": 20000,
+        "max_level": 1,
+        "value_per_level": 0
+      }
+    ],
+
+    "bullet_fire_rate": 0.9,
+    "bullet_sprite": "windows_slanted-1",
+    "variant_multiplier": 1,
+    "difficulty_level": 1,
+    "auto_play_performance": {"objects_dodged": 15, "collisions": 3, "combo": 5},
+
+    "clone_variants": [
+      {
+        "clone_index": 0,
+        "name": "Dodge Master",
+        "sprite_set": "base_1",
+        "palette": "blue",
+        "music_track": "dodge_theme_1",
+        "sfx_pack": "retro_beeps",
+        "background": "starfield_blue",
+        "difficulty_modifier": 1.0,
+        "movement_speed": 600,
+        "enemies": [],
+        "flavor_text": "Classic obstacle avoidance! Master the art of dodging.",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 1,
+        "name": "Dodge Deluxe",
+        "sprite_set": "base_1",
+        "palette": "red",
+        "music_track": "dodge_theme_2",
+        "sfx_pack": "retro_beeps",
+        "background": "starfield_red",
+        "difficulty_modifier": 1.2,
+        "movement_speed": 100,
+        "enemies": [
+          { "type": "chaser", "multiplier": 1.0 },
+          { "type": "shooter", "multiplier": 0.5 }
+        ],
+        "flavor_text": "Now with aggressive enemies! Can you handle the heat?",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 2,
+        "name": "Dodge Chaos",
+        "movement_type": "asteroids",
+        "sprite_set": "base_1",
+        "palette": "purple",
+        "music_track": "dodge_theme_3",
+        "sfx_pack": "retro_beeps",
+        "background": "starfield_purple",
+        "difficulty_modifier": 1.5,
+        "enemies": [
+          { "type": "chaser", "multiplier": 3.0 },
+          { "type": "shooter", "multiplier": 1.0 },
+          { "type": "bouncer", "multiplier": 2.0 },
+          { "type": "zigzag", "multiplier": 1.5 }
+        ],
+        "flavor_text": "Absolute mayhem! Multiple enemy types swarm you!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 3,
+        "name": "Dodge Elite",
+        "sprite_set": "base_2",
+        "palette": "green",
+        "music_track": "dodge_theme_1",
+        "sfx_pack": "8bit_arcade",
+        "background": "starfield_green",
+        "difficulty_modifier": 1.8,
+        "enemies": [
+          { "type": "teleporter", "multiplier": 2.0 }
+        ],
+        "flavor_text": "They teleport now?! Only the elite can survive.",
+        "intro_cutscene": null
+      }
+    ]
+  },
+  {
+    "id": "hidden_1",
+    "display_name": "Hidden Treasures 1",
+    "game_class": "HiddenObject",
+    "tier": "trash",
+    "category": "puzzle",
+    "unlock_cost": 1000000000,
+    "cost_exponent": 1.5,
+    "base_formula_string": "(metrics.objects_found * metrics.time_bonus)",
+    "display_formula_string": "objects_found × time_bonus",
+    "metrics_tracked": ["objects_found", "time_bonus"],
+    "icon_sprite": "magnifying_glass-0",
+    "token_threshold": 0.75,
+
+    "visual_identity": {
+      "sprite_set_id": "hidden_set_1",
+      "palette_id": "retro_amber",
+      "metric_sprite_mappings": {
+        "objects_found": "magnifying_glass-0",
+        "time_bonus": "clock-0"
+      },
+      "formula_icon_mapping": {
+        "objects_found": "magnifying_glass-0",
+        "time_bonus": "clock-0",
+        "result": "certificate-0"
+      }
+    },
+
+    "cheat_engine_base_cost": 400,
+    "cheat_cost_exponent": 1.1,
+    "available_cheats": [
+      {
+        "id": "speed_modifier",
+        "base_cost": 300,
+        "max_level": 5,
+        "value_per_level": 0.2
+      },
+      {
+        "id": "performance_modifier",
+        "base_cost": 2000,
+        "max_level": 3,
+        "value_per_level": 0.3
+      }
+    ],
+
+    "bullet_fire_rate": 1.1,
+    "bullet_sprite": "wm_file-0",
+    "variant_multiplier": 1,
+    "difficulty_level": 1,
+    "auto_play_performance": {"objects_found": 8, "time_bonus": 3},
+
+    "clone_variants": [
+      {
+        "clone_index": 0,
+        "name": "Hidden Treasures",
+        "sprite_set": "forest",
+        "palette": "natural_green",
+        "music_track": "hidden_object_ambient_forest",
+        "sfx_pack": "retro_beeps",
+        "background": "forest_scene",
+        "difficulty_modifier": 1.0,
+        "enemies": [],
+        "flavor_text": "Search the enchanted forest for hidden treasures!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 1,
+        "name": "Mansion Mysteries",
+        "sprite_set": "mansion",
+        "palette": "gothic_purple",
+        "music_track": "hidden_object_ambient_mansion",
+        "sfx_pack": "retro_beeps",
+        "background": "mansion_interior",
+        "difficulty_modifier": 1.2,
+        "enemies": [],
+        "flavor_text": "Uncover secrets in the mysterious old mansion!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 2,
+        "name": "Beach Bonanza",
+        "sprite_set": "beach",
+        "palette": "sunny_yellow",
+        "music_track": "hidden_object_ambient_beach",
+        "sfx_pack": "retro_beeps",
+        "background": "beach_scene",
+        "difficulty_modifier": 1.4,
+        "enemies": [],
+        "flavor_text": "Find lost items among the sandy shores!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 3,
+        "name": "Space Station Seek",
+        "sprite_set": "space_station",
+        "palette": "tech_blue",
+        "music_track": "hidden_object_ambient_scifi",
+        "sfx_pack": "8bit_arcade",
+        "background": "space_station_interior",
+        "difficulty_modifier": 1.6,
+        "enemies": [],
+        "flavor_text": "Locate equipment in the abandoned space station!",
+        "intro_cutscene": null
+      },
+      {
+        "clone_index": 4,
+        "name": "Haunted Library",
+        "sprite_set": "library",
+        "palette": "dusty_brown",
+        "music_track": "hidden_object_ambient_library",
+        "sfx_pack": "retro_beeps",
+        "background": "library_scene",
+        "difficulty_modifier": 1.8,
+        "enemies": [],
+        "flavor_text": "Search for lost tomes in the spectral library!",
+        "intro_cutscene": null
+      }
+    ]
+  }
+]

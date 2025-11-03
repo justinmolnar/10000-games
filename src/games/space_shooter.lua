@@ -321,6 +321,113 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
         self.enemy_fire_rate = self.variant.enemy_fire_rate
     end
 
+    -- Enemy health system
+    self.enemy_health = (runtimeCfg.enemy and runtimeCfg.enemy.health) or 1
+    if self.variant and self.variant.enemy_health ~= nil then
+        self.enemy_health = self.variant.enemy_health
+    end
+
+    self.enemy_health_variance = (runtimeCfg.enemy and runtimeCfg.enemy.health_variance) or 0.0
+    if self.variant and self.variant.enemy_health_variance ~= nil then
+        self.enemy_health_variance = self.variant.enemy_health_variance
+    end
+
+    self.enemy_health_min = (runtimeCfg.enemy and runtimeCfg.enemy.health_min) or 1
+    if self.variant and self.variant.enemy_health_min ~= nil then
+        self.enemy_health_min = self.variant.enemy_health_min
+    end
+
+    self.enemy_health_max = (runtimeCfg.enemy and runtimeCfg.enemy.health_max) or 1
+    if self.variant and self.variant.enemy_health_max ~= nil then
+        self.enemy_health_max = self.variant.enemy_health_max
+    end
+
+    self.use_health_range = (runtimeCfg.enemy and runtimeCfg.enemy.use_health_range) or false
+    if self.variant and self.variant.use_health_range ~= nil then
+        self.use_health_range = self.variant.use_health_range
+    end
+
+    -- Enemy behavior system (default, space_invaders, galaga)
+    self.enemy_behavior = (runtimeCfg.enemy and runtimeCfg.enemy.behavior) or "default"
+    if self.variant and self.variant.enemy_behavior ~= nil then
+        self.enemy_behavior = self.variant.enemy_behavior
+    end
+
+    -- Wave system for special behaviors
+    self.waves_enabled = (runtimeCfg.enemy and runtimeCfg.enemy.waves_enabled) or false
+    if self.variant and self.variant.waves_enabled ~= nil then
+        self.waves_enabled = self.variant.waves_enabled
+    end
+
+    -- Wave progression parameters
+    self.wave_difficulty_increase = (runtimeCfg.enemy and runtimeCfg.enemy.wave_difficulty_increase) or 0.1
+    if self.variant and self.variant.wave_difficulty_increase ~= nil then
+        self.wave_difficulty_increase = self.variant.wave_difficulty_increase
+    end
+
+    self.wave_random_variance = (runtimeCfg.enemy and runtimeCfg.enemy.wave_random_variance) or 0.0
+    if self.variant and self.variant.wave_random_variance ~= nil then
+        self.wave_random_variance = self.variant.wave_random_variance
+    end
+
+    -- Enemy density (spacing multiplier)
+    self.enemy_density = (runtimeCfg.enemy and runtimeCfg.enemy.enemy_density) or 1.0
+    if self.variant and self.variant.enemy_density ~= nil then
+        self.enemy_density = self.variant.enemy_density
+    end
+
+    -- Space Invaders grid parameters
+    self.grid_rows = (runtimeCfg.enemy and runtimeCfg.enemy.grid_rows) or 4
+    if self.variant and self.variant.grid_rows ~= nil then
+        self.grid_rows = self.variant.grid_rows
+    end
+
+    self.grid_columns = (runtimeCfg.enemy and runtimeCfg.enemy.grid_columns) or 8
+    if self.variant and self.variant.grid_columns ~= nil then
+        self.grid_columns = self.variant.grid_columns
+    end
+
+    self.grid_speed = (runtimeCfg.enemy and runtimeCfg.enemy.grid_speed) or 50
+    if self.variant and self.variant.grid_speed ~= nil then
+        self.grid_speed = self.variant.grid_speed
+    end
+
+    self.grid_descent = (runtimeCfg.enemy and runtimeCfg.enemy.grid_descent) or 20
+    if self.variant and self.variant.grid_descent ~= nil then
+        self.grid_descent = self.variant.grid_descent
+    end
+
+    -- Galaga dive parameters
+    self.dive_frequency = (runtimeCfg.enemy and runtimeCfg.enemy.dive_frequency) or 3.0
+    if self.variant and self.variant.dive_frequency ~= nil then
+        self.dive_frequency = self.variant.dive_frequency
+    end
+
+    self.max_diving_enemies = (runtimeCfg.enemy and runtimeCfg.enemy.max_diving_enemies) or 1
+    if self.variant and self.variant.max_diving_enemies ~= nil then
+        self.max_diving_enemies = self.variant.max_diving_enemies
+    end
+
+    self.entrance_pattern = (runtimeCfg.enemy and runtimeCfg.enemy.entrance_pattern) or "swoop"
+    if self.variant and self.variant.entrance_pattern ~= nil then
+        self.entrance_pattern = self.variant.entrance_pattern
+    end
+
+    self.formation_size = (runtimeCfg.enemy and runtimeCfg.enemy.formation_size) or 24
+    if self.variant and self.variant.formation_size ~= nil then
+        self.formation_size = self.variant.formation_size
+    end
+
+    self.initial_spawn_count = (runtimeCfg.enemy and runtimeCfg.enemy.initial_spawn_count) or 8
+    if self.variant and self.variant.initial_spawn_count ~= nil then
+        self.initial_spawn_count = self.variant.initial_spawn_count
+    end
+
+    self.galaga_spawn_interval = (runtimeCfg.enemy and runtimeCfg.enemy.spawn_interval) or 0.5
+    if self.variant and self.variant.spawn_interval ~= nil then
+        self.galaga_spawn_interval = self.variant.spawn_interval
+    end
+
     -- Phase 5: Enemy bullet patterns (for bullet hell)
     self.enemy_bullet_pattern = (runtimeCfg.enemy and runtimeCfg.enemy.bullet_pattern) or "single"
     if self.variant and self.variant.enemy_bullet_pattern ~= nil then
@@ -598,6 +705,34 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     -- Phase 5: Difficulty scaling state
     self.difficulty_scale = 1.0  -- Current difficulty multiplier
 
+    -- Space Invaders grid state
+    self.grid_state = {
+        x = 0,  -- Current grid x position
+        y = 50,  -- Current grid y position
+        direction = 1,  -- 1 = right, -1 = left
+        speed_multiplier = 1.0,  -- Increases as enemies die
+        initialized = false,  -- Has grid been spawned
+        wave_active = false,  -- Is wave currently active
+        wave_pause_timer = 0,  -- Time before next wave
+        initial_enemy_count = 0,  -- Enemies spawned in current wave
+        wave_number = 0  -- Current wave number (for progression)
+    }
+
+    -- Galaga formation state
+    self.galaga_state = {
+        formation_positions = {},  -- Array of formation slots
+        dive_timer = self.dive_frequency,  -- Countdown to next dive
+        diving_count = 0,  -- Current number of enemies diving
+        entrance_queue = {},  -- Enemies waiting to enter formation
+        wave_active = false,  -- Is wave currently active
+        wave_pause_timer = 0,  -- Time before next wave
+        initial_enemy_count = 0,  -- Enemies spawned in current wave
+        wave_number = 0,  -- Current wave number (for progression)
+        spawn_timer = 0.0,  -- Timer for gradual enemy spawning
+        spawned_count = 0,  -- How many enemies have been spawned so far
+        wave_modifiers = {}  -- Store modifiers for current wave
+    }
+
     self.metrics.kills = 0
     self.metrics.deaths = 0
     self.metrics.combo = 0  -- Phase 2: Track combo (kills without deaths)
@@ -741,7 +876,7 @@ end
 function SpaceShooter:setPlayArea(width, height)
     self.game_width = width
     self.game_height = height
-    
+
     -- Only update player position if player exists
     if self.player then
         self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
@@ -750,6 +885,25 @@ function SpaceShooter:setPlayArea(width, height)
         print("[SpaceShooter] Play area updated to:", width, height)
     else
         print("[SpaceShooter] setPlayArea called before init completed")
+    end
+
+    -- Recalculate Galaga formation if using Galaga behavior
+    if self.enemy_behavior == "galaga" and #self.galaga_state.formation_positions > 0 then
+        -- Store which slots were occupied
+        local occupied_slots = {}
+        for i, slot in ipairs(self.galaga_state.formation_positions) do
+            occupied_slots[i] = slot.occupied
+        end
+
+        -- Recalculate formation positions with new screen size
+        self:initGalagaFormation()
+
+        -- Restore occupied status (existing enemies stay where they are)
+        for i, slot in ipairs(self.galaga_state.formation_positions) do
+            if occupied_slots[i] then
+                slot.occupied = occupied_slots[i]
+            end
+        end
     end
 end
 
@@ -762,26 +916,33 @@ function SpaceShooter:updateGameLogic(dt)
     -- Phase 5: Update difficulty scaling
     self:updateDifficulty(dt)
 
-    -- Phase 5: Enemy spawning based on pattern
-    if self.enemy_spawn_pattern == "waves" then
-        self:updateWaveSpawning(dt)
-    elseif self.enemy_spawn_pattern == "continuous" then
-        -- Apply spawn rate multiplier and difficulty scaling
-        local adjusted_spawn_rate = self.spawn_rate / (self.enemy_spawn_rate_multiplier * self.difficulty_scale)
-        self.spawn_timer = self.spawn_timer - dt
-        if self.spawn_timer <= 0 then
-            self:spawnEnemy()
-            self.spawn_timer = adjusted_spawn_rate
-        end
-    elseif self.enemy_spawn_pattern == "clusters" then
-        self.spawn_timer = self.spawn_timer - dt
-        if self.spawn_timer <= 0 then
-            -- Spawn a cluster of 3-5 enemies
-            local cluster_size = math.random(3, 5)
-            for i = 1, cluster_size do
+    -- Enemy behavior: Space Invaders, Galaga, or Default
+    if self.enemy_behavior == "space_invaders" then
+        self:updateSpaceInvadersGrid(dt)
+    elseif self.enemy_behavior == "galaga" then
+        self:updateGalagaFormation(dt)
+    else
+        -- Default behavior: Phase 5 enemy spawning based on pattern
+        if self.enemy_spawn_pattern == "waves" then
+            self:updateWaveSpawning(dt)
+        elseif self.enemy_spawn_pattern == "continuous" then
+            -- Apply spawn rate multiplier and difficulty scaling
+            local adjusted_spawn_rate = self.spawn_rate / (self.enemy_spawn_rate_multiplier * self.difficulty_scale)
+            self.spawn_timer = self.spawn_timer - dt
+            if self.spawn_timer <= 0 then
                 self:spawnEnemy()
+                self.spawn_timer = adjusted_spawn_rate
             end
-            self.spawn_timer = (self.spawn_rate * 2) / self.enemy_spawn_rate_multiplier  -- Longer delay between clusters
+        elseif self.enemy_spawn_pattern == "clusters" then
+            self.spawn_timer = self.spawn_timer - dt
+            if self.spawn_timer <= 0 then
+                -- Spawn a cluster of 3-5 enemies
+                local cluster_size = math.random(3, 5)
+                for i = 1, cluster_size do
+                    self:spawnEnemy()
+                end
+                self.spawn_timer = (self.spawn_rate * 2) / self.enemy_spawn_rate_multiplier  -- Longer delay between clusters
+            end
         end
     end
 
@@ -1070,36 +1231,39 @@ function SpaceShooter:updateEnemies(dt)
         local enemy = self.enemies[i]
         if not enemy then goto continue_enemy_loop end
 
-        -- Phase 1.4 & 5: Apply speed multiplier for variant enemies and speed_override
-        local speed = enemy.speed_override or self.enemy_speed
-        if enemy.is_variant_enemy and enemy.speed_multiplier then
-            speed = speed * enemy.speed_multiplier
-        end
-        -- Phase 5: Apply variant's global enemy speed multiplier
-        speed = speed * self.enemy_speed_multiplier
-
-        if enemy.movement_pattern == 'zigzag' then
-            enemy.y = enemy.y + speed * dt
-            enemy.x = enemy.x + math.sin(self.time_elapsed * ZIGZAG_FREQUENCY) * speed * dt
-        elseif enemy.movement_pattern == 'dive' then
-            -- Phase 1.4: Kamikaze dive toward target
-            -- Once at or past target Y, just continue downward to prevent getting stuck
-            if enemy.y >= enemy.target_y then
-                enemy.y = enemy.y + speed * dt
-            else
-                local dx = enemy.target_x - enemy.x
-                local dy = enemy.target_y - enemy.y
-                local dist = math.sqrt(dx*dx + dy*dy)
-                if dist > 0 then
-                    enemy.x = enemy.x + (dx / dist) * speed * dt
-                    enemy.y = enemy.y + (dy / dist) * speed * dt
-                else
-                    -- Reached target, continue downward
-                    enemy.y = enemy.y + speed * dt
-                end
+        -- Handle default movement (skip for special behavior patterns)
+        if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'galaga_entering' and enemy.movement_pattern ~= 'formation' then
+            -- Phase 1.4 & 5: Apply speed multiplier for variant enemies and speed_override
+            local speed = enemy.speed_override or self.enemy_speed
+            if enemy.is_variant_enemy and enemy.speed_multiplier then
+                speed = speed * enemy.speed_multiplier
             end
-        else
-            enemy.y = enemy.y + speed * dt
+            -- Phase 5: Apply variant's global enemy speed multiplier
+            speed = speed * self.enemy_speed_multiplier
+
+            if enemy.movement_pattern == 'zigzag' then
+                enemy.y = enemy.y + speed * dt
+                enemy.x = enemy.x + math.sin(self.time_elapsed * ZIGZAG_FREQUENCY) * speed * dt
+            elseif enemy.movement_pattern == 'dive' then
+                -- Phase 1.4: Kamikaze dive toward target
+                -- Once at or past target Y, just continue downward to prevent getting stuck
+                if enemy.y >= enemy.target_y then
+                    enemy.y = enemy.y + speed * dt
+                else
+                    local dx = enemy.target_x - enemy.x
+                    local dy = enemy.target_y - enemy.y
+                    local dist = math.sqrt(dx*dx + dy*dy)
+                    if dist > 0 then
+                        enemy.x = enemy.x + (dx / dist) * speed * dt
+                        enemy.y = enemy.y + (dy / dist) * speed * dt
+                    else
+                        -- Reached target, continue downward
+                        enemy.y = enemy.y + speed * dt
+                    end
+                end
+            else
+                enemy.y = enemy.y + speed * dt
+            end
         end
 
         -- Check collision with player
@@ -1133,10 +1297,13 @@ function SpaceShooter:updateEnemies(dt)
         end
 
         -- Remove enemies that are fully off screen
-        -- Phase 8: In reverse gravity, remove when going off top; otherwise remove when going off bottom
-        local off_screen = self.reverse_gravity and (enemy.y + enemy.height < 0) or (enemy.y > self.game_height)
-        if off_screen then
-            table.remove(self.enemies, i)
+        -- Skip off-screen removal for special behaviors (they manage their own lifecycle)
+        if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'galaga_entering' and enemy.movement_pattern ~= 'formation' then
+            -- Phase 8: In reverse gravity, remove when going off top; otherwise remove when going off bottom
+            local off_screen = self.reverse_gravity and (enemy.y + enemy.height < 0) or (enemy.y > self.game_height)
+            if off_screen then
+                table.remove(self.enemies, i)
+            end
         end
         ::continue_enemy_loop::
     end
@@ -1229,18 +1396,9 @@ function SpaceShooter:updateBullets(dt)
             if enemy and self:checkCollision(bullet, enemy) then
                 bullet_hit = true
 
-                -- Phase 1.4: Handle health for variant enemies
-                if enemy.is_variant_enemy and enemy.health then
-                    enemy.health = enemy.health - 1
-                    if enemy.health <= 0 then
-                        table.remove(self.enemies, j)
-                        self.metrics.kills = self.metrics.kills + 1
-                        self.metrics.combo = self.metrics.combo + 1  -- Phase 2: Increment combo
-
-                        -- Phase 3.3: Play enemy explode sound
-                        self:playSound("enemy_explode", 1.0)
-                    end
-                else
+                -- All enemies now have health (default 1, configurable via enemy_health parameter)
+                enemy.health = enemy.health - 1
+                if enemy.health <= 0 then
                     table.remove(self.enemies, j)
                     self.metrics.kills = self.metrics.kills + 1
                     self.metrics.combo = self.metrics.combo + 1  -- Phase 2: Increment combo
@@ -1559,6 +1717,33 @@ function SpaceShooter:enemyShoot(enemy)
     end
 end
 
+-- Calculate enemy health with variance/range support
+function SpaceShooter:calculateEnemyHealth(base_health, enemy_type_health_multiplier)
+    base_health = base_health or self.enemy_health
+    enemy_type_health_multiplier = enemy_type_health_multiplier or 1
+
+    local final_health
+
+    if self.use_health_range then
+        -- Use random range (min to max)
+        final_health = math.random(self.enemy_health_min, self.enemy_health_max)
+    else
+        -- Use base health with optional variance
+        if self.enemy_health_variance > 0 then
+            local variance_factor = 1.0 + ((math.random() - 0.5) * 2 * self.enemy_health_variance)
+            final_health = base_health * variance_factor
+        else
+            final_health = base_health
+        end
+    end
+
+    -- Apply enemy type multiplier (e.g., bomber has 2x health)
+    final_health = final_health * enemy_type_health_multiplier
+
+    -- Ensure at least 1 health
+    return math.max(1, math.floor(final_health + 0.5))
+end
+
 function SpaceShooter:spawnEnemy()
     -- Phase 1.4: Check if variant has enemy composition
     if self:hasVariantEnemies() and math.random() < 0.5 then
@@ -1596,7 +1781,7 @@ function SpaceShooter:spawnEnemy()
         speed_override = adjusted_speed * speed_direction,  -- Phase 8: Reverse direction if needed
         shoot_timer = math.random() * (ENEMY_BASE_SHOOT_RATE_MAX - ENEMY_BASE_SHOOT_RATE_MIN) + ENEMY_BASE_SHOOT_RATE_MIN,
         shoot_rate = math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR)) / self.enemy_fire_rate,
-        health = 1
+        health = self:calculateEnemyHealth()
     }
     table.insert(self.enemies, enemy)
 end
@@ -1641,6 +1826,10 @@ function SpaceShooter:spawnVariantEnemy()
     local spawn_y = self.reverse_gravity and self.game_height or ENEMY_START_Y_OFFSET
     local speed_multiplier = self.reverse_gravity and -1 or 1
 
+    -- Calculate health using enemy type's base health multiplier
+    local enemy_type_multiplier = enemy_def.health or 1
+    local final_health = self:calculateEnemyHealth(nil, enemy_type_multiplier)
+
     local enemy = {
         x = math.random(0, self.game_width - ENEMY_WIDTH),
         y = spawn_y,
@@ -1649,8 +1838,8 @@ function SpaceShooter:spawnVariantEnemy()
         movement_pattern = enemy_def.movement_pattern,
         enemy_type = enemy_def.name,
         is_variant_enemy = true,
-        health = enemy_def.health or 1,
-        max_health = enemy_def.health or 1,
+        health = final_health,
+        max_health = final_health,
         speed_multiplier = (enemy_def.speed_multiplier or 1.0) * speed_multiplier,  -- Phase 8: Apply reverse gravity
         shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0
     }
@@ -1861,7 +2050,7 @@ function SpaceShooter:spawnFormation(formation_type)
                 speed_override = adjusted_speed * speed_multiplier,
                 shoot_timer = math.random() * 2.0,
                 shoot_rate = base_shoot_rate,
-                health = 1
+                health = self.enemy_health
             }
             table.insert(self.enemies, enemy)
         end
@@ -1878,7 +2067,7 @@ function SpaceShooter:spawnFormation(formation_type)
                 speed_override = adjusted_speed * speed_multiplier,
                 shoot_timer = i * 0.2,  -- Staggered shooting
                 shoot_rate = base_shoot_rate,
-                health = 1
+                health = self.enemy_health
             }
             table.insert(self.enemies, enemy)
         end
@@ -1898,9 +2087,430 @@ function SpaceShooter:spawnFormation(formation_type)
                 speed_override = adjusted_speed * speed_multiplier,
                 shoot_timer = i * 0.15,
                 shoot_rate = base_shoot_rate,
-                health = 1
+                health = self.enemy_health
             }
             table.insert(self.enemies, enemy)
+        end
+    end
+end
+
+-- Space Invaders: Initialize grid
+function SpaceShooter:initSpaceInvadersGrid()
+    -- Calculate wave modifiers
+    local wave_multiplier = 1.0 + (self.grid_state.wave_number * self.wave_difficulty_increase)
+
+    -- Apply random variance if enabled
+    local variance = self.wave_random_variance
+    local random_factor = 1.0
+    if variance > 0 then
+        random_factor = 1.0 + ((math.random() - 0.5) * 2 * variance)  -- ±variance
+    end
+
+    -- Calculate modified parameters
+    local wave_rows = math.max(1, math.floor(self.grid_rows * wave_multiplier * random_factor + 0.5))
+    local wave_columns = math.max(2, math.floor(self.grid_columns * wave_multiplier * random_factor + 0.5))
+    local wave_speed = self.grid_speed * wave_multiplier * random_factor
+    local wave_health = math.max(1, math.floor(self.enemy_health * wave_multiplier + 0.5))
+
+    local spacing_x = (self.game_width / (wave_columns + 1)) * self.enemy_density
+    local spacing_y = 50 * self.enemy_density
+    local start_y = 80
+
+    for row = 1, wave_rows do
+        for col = 1, wave_columns do
+            local enemy = {
+                x = spacing_x * col,
+                y = start_y + (row - 1) * spacing_y,
+                width = ENEMY_WIDTH,
+                height = ENEMY_HEIGHT,
+                movement_pattern = 'grid',  -- Special pattern for grid movement
+                grid_row = row,
+                grid_col = col,
+                shoot_timer = math.random() * 3.0,
+                shoot_rate = 2.0,
+                health = wave_health,
+                wave_speed = wave_speed  -- Store wave-specific speed
+            }
+            table.insert(self.enemies, enemy)
+        end
+    end
+
+    self.grid_state.initialized = true
+    self.grid_state.initial_enemy_count = wave_rows * wave_columns
+    self.grid_state.wave_active = true
+    self.grid_state.wave_number = self.grid_state.wave_number + 1
+end
+
+-- Space Invaders: Update grid movement
+function SpaceShooter:updateSpaceInvadersGrid(dt)
+    -- Wave system: Check if we need to start a new wave
+    if self.waves_enabled then
+        if self.grid_state.wave_active then
+            -- Check if all grid enemies are dead
+            local grid_enemies_alive = false
+            for _, enemy in ipairs(self.enemies) do
+                if enemy.movement_pattern == 'grid' then
+                    grid_enemies_alive = true
+                    break
+                end
+            end
+
+            if not grid_enemies_alive and self.grid_state.initialized then
+                -- Wave complete, start pause
+                self.grid_state.wave_active = false
+                self.grid_state.wave_pause_timer = self.wave_pause_duration
+                self.grid_state.initialized = false  -- Reset for next wave
+            end
+        else
+            -- In pause between waves
+            self.grid_state.wave_pause_timer = self.grid_state.wave_pause_timer - dt
+            if self.grid_state.wave_pause_timer <= 0 then
+                -- Start new wave
+                self:initSpaceInvadersGrid()
+            end
+            return  -- Don't update grid during pause
+        end
+    end
+
+    -- Initialize grid if not yet done (first spawn or new wave)
+    if not self.grid_state.initialized then
+        self:initSpaceInvadersGrid()
+    end
+
+    -- Calculate speed multiplier based on remaining enemies
+    local initial_count = self.grid_state.initial_enemy_count
+    local current_count = 0
+    for _, enemy in ipairs(self.enemies) do
+        if enemy.movement_pattern == 'grid' then
+            current_count = current_count + 1
+        end
+    end
+
+    if current_count > 0 and initial_count > 0 then
+        -- Speed increases as enemies die (fewer enemies = faster movement)
+        self.grid_state.speed_multiplier = 1 + (1 - (current_count / initial_count)) * 2
+    end
+
+    -- Move the entire grid (use wave-specific speed if available)
+    local base_speed = self.grid_speed
+    -- Check if any enemy has wave_speed (they all should if from same wave)
+    for _, enemy in ipairs(self.enemies) do
+        if enemy.movement_pattern == 'grid' and enemy.wave_speed then
+            base_speed = enemy.wave_speed
+            break
+        end
+    end
+
+    local move_speed = base_speed * self.grid_state.speed_multiplier * dt
+    local grid_moved = false
+
+    for _, enemy in ipairs(self.enemies) do
+        if enemy.movement_pattern == 'grid' then
+            enemy.x = enemy.x + (move_speed * self.grid_state.direction)
+            grid_moved = true
+        end
+    end
+
+    if not grid_moved then return end
+
+    -- Check if grid hit edge
+    local hit_edge = false
+    for _, enemy in ipairs(self.enemies) do
+        if enemy.movement_pattern == 'grid' then
+            if self.grid_state.direction > 0 and enemy.x + ENEMY_WIDTH >= self.game_width then
+                hit_edge = true
+                break
+            elseif self.grid_state.direction < 0 and enemy.x <= 0 then
+                hit_edge = true
+                break
+            end
+        end
+    end
+
+    -- Reverse direction and descend if hit edge
+    if hit_edge then
+        self.grid_state.direction = -self.grid_state.direction
+        for _, enemy in ipairs(self.enemies) do
+            if enemy.movement_pattern == 'grid' then
+                enemy.y = enemy.y + self.grid_descent
+            end
+        end
+    end
+end
+
+-- Galaga: Initialize formation positions
+function SpaceShooter:initGalagaFormation()
+    -- Create formation grid at top of screen with proper wrapping
+    local base_spacing_x = 60  -- Base horizontal spacing between enemies
+    local spacing_x = base_spacing_x * self.enemy_density
+    local spacing_y = 40 * self.enemy_density
+    local start_x = 50  -- Left margin
+    local start_y = 60
+    local margin_right = 50  -- Right margin
+
+    self.galaga_state.formation_positions = {}  -- Clear existing positions
+
+    -- Calculate how many columns fit on screen
+    local available_width = self.game_width - start_x - margin_right
+    local max_cols_per_row = math.floor(available_width / spacing_x)
+    if max_cols_per_row < 1 then max_cols_per_row = 1 end
+
+    -- Create formation with automatic row wrapping
+    local total_slots = self.formation_size
+    local current_row = 0
+    local current_col = 0
+
+    for i = 1, total_slots do
+        -- Wrap to next row if we've filled this row
+        if current_col >= max_cols_per_row then
+            current_col = 0
+            current_row = current_row + 1
+        end
+
+        table.insert(self.galaga_state.formation_positions, {
+            x = start_x + (current_col * spacing_x),
+            y = start_y + (current_row * spacing_y),
+            occupied = false,
+            enemy_id = nil
+        })
+
+        current_col = current_col + 1
+    end
+
+    self.galaga_state.initial_enemy_count = total_slots
+    self.galaga_state.wave_active = true
+end
+
+-- Galaga: Spawn enemy with entrance pattern
+function SpaceShooter:spawnGalagaEnemy(formation_slot, wave_modifiers)
+    wave_modifiers = wave_modifiers or {}
+    local wave_health = wave_modifiers.health or self.enemy_health
+    local wave_dive_frequency = wave_modifiers.dive_frequency or self.dive_frequency
+
+    -- Find entrance point off-screen
+    local entrance_side = math.random() > 0.5 and "left" or "right"
+    local start_x = entrance_side == "left" and -50 or (self.game_width + 50)
+    local start_y = -50
+
+    local enemy = {
+        x = start_x,
+        y = start_y,
+        width = ENEMY_WIDTH,
+        height = ENEMY_HEIGHT,
+        movement_pattern = 'galaga_entering',
+        galaga_state = 'entering',  -- entering, in_formation, diving
+        formation_slot = formation_slot,
+        formation_x = formation_slot.x,
+        formation_y = formation_slot.y,
+        entrance_t = 0,  -- Progress along entrance path (0-1)
+        entrance_duration = 2.0,  -- Seconds to complete entrance
+        shoot_timer = math.random() * 3.0,
+        shoot_rate = 2.5,
+        health = wave_health,
+        wave_dive_frequency = wave_dive_frequency  -- Store wave-specific dive frequency
+    }
+
+    -- Create entrance path using bezier curve
+    if self.entrance_pattern == "swoop" then
+        -- Swoop down then up to formation
+        enemy.entrance_path = {
+            {x = start_x, y = start_y},
+            {x = self.game_width / 2, y = self.game_height * 0.6},  -- Control point (swoop down)
+            {x = formation_slot.x, y = formation_slot.y}
+        }
+    elseif self.entrance_pattern == "loop" then
+        -- Loop around to formation
+        local mid_x = entrance_side == "left" and self.game_width * 0.3 or self.game_width * 0.7
+        enemy.entrance_path = {
+            {x = start_x, y = start_y},
+            {x = mid_x, y = self.game_height * 0.5},  -- Control point (loop)
+            {x = formation_slot.x, y = formation_slot.y}
+        }
+    else -- "arc"
+        -- Simple arc to formation
+        enemy.entrance_path = {
+            {x = start_x, y = start_y},
+            {x = (start_x + formation_slot.x) / 2, y = self.game_height * 0.3},  -- Control point
+            {x = formation_slot.x, y = formation_slot.y}
+        }
+    end
+
+    formation_slot.occupied = true
+    formation_slot.enemy_id = #self.enemies + 1
+
+    table.insert(self.enemies, enemy)
+end
+
+-- Galaga: Update formation and dive mechanics
+function SpaceShooter:updateGalagaFormation(dt)
+    -- Wave system: Check if we need to start a new wave
+    if self.waves_enabled then
+        if self.galaga_state.wave_active then
+            -- Check if all galaga enemies are dead
+            local galaga_enemies_alive = false
+            for _, enemy in ipairs(self.enemies) do
+                if enemy.galaga_state then
+                    galaga_enemies_alive = true
+                    break
+                end
+            end
+
+            if not galaga_enemies_alive and #self.galaga_state.formation_positions > 0 then
+                -- Wave complete, start pause
+                self.galaga_state.wave_active = false
+                self.galaga_state.wave_pause_timer = self.wave_pause_duration
+                -- Clear formation for next wave
+                self.galaga_state.formation_positions = {}
+            end
+        else
+            -- In pause between waves
+            self.galaga_state.wave_pause_timer = self.galaga_state.wave_pause_timer - dt
+            if self.galaga_state.wave_pause_timer <= 0 then
+                -- Calculate wave modifiers for new wave
+                local wave_multiplier = 1.0 + (self.galaga_state.wave_number * self.wave_difficulty_increase)
+                local variance = self.wave_random_variance
+                local random_factor = 1.0
+                if variance > 0 then
+                    random_factor = 1.0 + ((math.random() - 0.5) * 2 * variance)
+                end
+
+                local wave_modifiers = {
+                    health = math.max(1, math.floor(self.enemy_health * wave_multiplier + 0.5)),
+                    dive_frequency = self.dive_frequency / (wave_multiplier * random_factor)  -- Faster dives = harder
+                }
+
+                -- Start new wave
+                self:initGalagaFormation()
+                self.galaga_state.wave_number = self.galaga_state.wave_number + 1
+                self.galaga_state.spawned_count = 0
+                self.galaga_state.spawn_timer = 0
+                self.galaga_state.wave_modifiers = wave_modifiers  -- Store for gradual spawning
+
+                -- Spawn initial batch of enemies with modifiers
+                local initial_count = math.min(self.initial_spawn_count, #self.galaga_state.formation_positions)
+                for i = 1, initial_count do
+                    local slot = self.galaga_state.formation_positions[i]
+                    self:spawnGalagaEnemy(slot, wave_modifiers)
+                    self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
+                end
+            end
+            return  -- Don't update formation during pause
+        end
+    end
+
+    -- Initialize formation if needed (first spawn)
+    if #self.galaga_state.formation_positions == 0 then
+        self:initGalagaFormation()
+        self.galaga_state.spawned_count = 0
+        self.galaga_state.spawn_timer = 0
+        self.galaga_state.wave_modifiers = {}  -- No modifiers for first wave
+
+        -- Spawn initial batch of enemies
+        local initial_count = math.min(self.initial_spawn_count, #self.galaga_state.formation_positions)
+        for i = 1, initial_count do
+            local slot = self.galaga_state.formation_positions[i]
+            self:spawnGalagaEnemy(slot, self.galaga_state.wave_modifiers)
+            self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
+        end
+    end
+
+    -- Gradual enemy spawning until formation is full
+    local unoccupied_slots = {}
+    for _, slot in ipairs(self.galaga_state.formation_positions) do
+        if not slot.occupied then
+            table.insert(unoccupied_slots, slot)
+        end
+    end
+
+    if #unoccupied_slots > 0 and self.galaga_state.spawned_count < self.formation_size then
+        self.galaga_state.spawn_timer = self.galaga_state.spawn_timer - dt
+        if self.galaga_state.spawn_timer <= 0 then
+            -- Spawn one enemy into a random unoccupied slot
+            local slot = unoccupied_slots[math.random(1, #unoccupied_slots)]
+            self:spawnGalagaEnemy(slot, self.galaga_state.wave_modifiers)
+            self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
+            self.galaga_state.spawn_timer = self.galaga_spawn_interval
+        end
+    end
+
+    -- Update dive timer
+    self.galaga_state.dive_timer = self.galaga_state.dive_timer - dt
+    if self.galaga_state.dive_timer <= 0 and self.galaga_state.diving_count < self.max_diving_enemies then
+        -- Pick a random enemy in formation to dive
+        local candidates = {}
+        for _, enemy in ipairs(self.enemies) do
+            if enemy.galaga_state == 'in_formation' then
+                table.insert(candidates, enemy)
+            end
+        end
+
+        if #candidates > 0 then
+            local diver = candidates[math.random(1, #candidates)]
+            diver.galaga_state = 'diving'
+            diver.dive_t = 0
+            diver.dive_duration = 3.0
+            -- Create dive path (swoop down toward player, then off-screen)
+            diver.dive_path = {
+                {x = diver.x, y = diver.y},
+                {x = self.player.x, y = self.player.y},  -- Dive toward player
+                {x = diver.x, y = self.game_height + 50}  -- Exit off bottom
+            }
+            self.galaga_state.diving_count = self.galaga_state.diving_count + 1
+        end
+
+        self.galaga_state.dive_timer = self.dive_frequency
+    end
+
+    -- Update enemy positions based on state
+    for i = #self.enemies, 1, -1 do
+        local enemy = self.enemies[i]
+
+        if enemy.galaga_state == 'entering' then
+            -- Move along entrance path
+            enemy.entrance_t = enemy.entrance_t + (dt / enemy.entrance_duration)
+            if enemy.entrance_t >= 1.0 then
+                -- Reached formation
+                enemy.galaga_state = 'in_formation'
+                enemy.x = enemy.formation_x
+                enemy.y = enemy.formation_y
+                enemy.movement_pattern = 'formation'
+            else
+                -- Quadratic bezier interpolation
+                local t = enemy.entrance_t
+                local p0 = enemy.entrance_path[1]
+                local p1 = enemy.entrance_path[2]
+                local p2 = enemy.entrance_path[3]
+                enemy.x = (1-t)*(1-t)*p0.x + 2*(1-t)*t*p1.x + t*t*p2.x
+                enemy.y = (1-t)*(1-t)*p0.y + 2*(1-t)*t*p1.y + t*t*p2.y
+            end
+
+        elseif enemy.galaga_state == 'in_formation' then
+            -- Stay at formation position
+            enemy.x = enemy.formation_x
+            enemy.y = enemy.formation_y
+
+        elseif enemy.galaga_state == 'diving' then
+            -- Move along dive path
+            enemy.dive_t = enemy.dive_t + (dt / enemy.dive_duration)
+            if enemy.dive_t >= 1.0 then
+                -- Dive complete - respawn with new entrance
+                table.remove(self.enemies, i)
+                self.galaga_state.diving_count = self.galaga_state.diving_count - 1
+                -- Mark formation slot as unoccupied
+                if enemy.formation_slot then
+                    enemy.formation_slot.occupied = false
+                    -- Respawn enemy after a delay (handled by checking unoccupied slots)
+                    self:spawnGalagaEnemy(enemy.formation_slot, self.galaga_state.wave_modifiers)
+                end
+            else
+                -- Quadratic bezier interpolation
+                local t = enemy.dive_t
+                local p0 = enemy.dive_path[1]
+                local p1 = enemy.dive_path[2]
+                local p2 = enemy.dive_path[3]
+                enemy.x = (1-t)*(1-t)*p0.x + 2*(1-t)*t*p1.x + t*t*p2.x
+                enemy.y = (1-t)*(1-t)*p0.y + 2*(1-t)*t*p1.y + t*t*p2.y
+            end
         end
     end
 end

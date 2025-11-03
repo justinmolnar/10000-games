@@ -2,6 +2,7 @@
 
 local Object = require('class')
 local VMManagerView = require('views.vm_manager_view')
+local ScrollbarController = require('src.controllers.scrollbar_controller')
 local VMManagerState = Object:extend('VMManagerState')
 
 function VMManagerState:init(vm_manager, player_data, game_data, state_machine, save_manager, di)
@@ -15,6 +16,18 @@ function VMManagerState:init(vm_manager, player_data, game_data, state_machine, 
     -- Create the view instance
     self.view = VMManagerView:new(self, vm_manager, player_data, game_data, di)
 
+    -- Create scrollbar controller for modal lists
+    self.modal_scrollbar = ScrollbarController:new({
+        unit_size = 35, -- modal_item_height
+        step_units = 1
+    })
+
+    -- Create scrollbar controller for main VM slots grid
+    self.grid_scrollbar = ScrollbarController:new({
+        unit_size = 1, -- Pixel-based scrolling for grid
+        step_units = 100 -- Scroll by roughly one row at a time
+    })
+
     self.filtered_games = {}
     self.filtered_demos = {}
     self.viewport = nil -- Initialize viewport
@@ -25,7 +38,8 @@ function VMManagerState:enter()
     self.view.selected_slot = nil
     self.view.game_selection_open = false
     self.view.demo_selection_open = false
-    self.view.scroll_offset = 0
+    self.view.scroll_offset = 0 -- Modal scroll
+    self.view.grid_scroll_offset = 0 -- Main grid scroll
 
     -- Get all completed games for assignment (state still manages this list)
     self:updateGameList()
@@ -158,6 +172,36 @@ function VMManagerState:mousepressed(x, y, button)
         return false
     end
 
+    -- Handle modal scrollbar first (when modal is open)
+    if self.view.game_selection_open or self.view.demo_selection_open then
+        local scroll_event = self.modal_scrollbar:mousepressed(x, y, button, self.view.scroll_offset or 0)
+        if scroll_event then
+            if scroll_event.scrolled then
+                -- Determine max scroll based on which modal is open
+                local items_count = 0
+                if self.view.game_selection_open then
+                    items_count = #self.filtered_games
+                elseif self.view.demo_selection_open then
+                    items_count = #self.filtered_demos
+                end
+
+                local visible_items = 10 -- Default visible items in modal
+                local max_offset = math.max(0, items_count - visible_items)
+                self.view.scroll_offset = math.max(0, math.min(math.floor(scroll_event.new_offset), max_offset))
+            end
+            return { type = "content_interaction" }
+        end
+    else
+        -- Handle main grid scrollbar (when no modal is open)
+        local scroll_event = self.grid_scrollbar:mousepressed(x, y, button, self.view.grid_scroll_offset or 0)
+        if scroll_event then
+            if scroll_event.scrolled then
+                self.view.grid_scroll_offset = math.max(0, scroll_event.new_offset)
+            end
+            return { type = "content_interaction" }
+        end
+    end
+
     -- Delegate directly to view with the LOCAL coordinates
     local event = self.view:mousepressed(x, y, button, self.filtered_games, self.viewport.width, self.viewport.height)
 
@@ -204,13 +248,59 @@ function VMManagerState:wheelmoved(x, y)
     -- Check if mouse is within this window's viewport before delegating
     if mx >= self.viewport.x and mx <= self.viewport.x + self.viewport.width and
        my >= self.viewport.y and my <= self.viewport.y + self.viewport.height then
-        -- Delegate scrolling to the view
-        self.view:wheelmoved(x, y, #self.filtered_games, self.viewport.width, self.viewport.height)
+
+        -- If modal is open, delegate to view for modal scrolling
+        if self.view.game_selection_open or self.view.demo_selection_open then
+            self.view:wheelmoved(x, y, #self.filtered_games, self.viewport.width, self.viewport.height)
+        else
+            -- Scroll the main grid
+            local scroll_amount = y * 100 -- Scroll 100 pixels per wheel notch
+            local new_offset = (self.view.grid_scroll_offset or 0) - scroll_amount
+
+            -- Calculate max scroll based on grid size
+            local slots = self.vm_manager.vm_slots
+            local total_rows = math.ceil(#slots / self.view.slot_cols)
+            local grid_start_y = 50
+            local grid_area_height = self.viewport.height - grid_start_y - 70
+            local total_grid_height = total_rows * (self.view.slot_height + self.view.slot_padding)
+            local max_scroll = math.max(0, total_grid_height - grid_area_height)
+
+            self.view.grid_scroll_offset = math.max(0, math.min(new_offset, max_scroll))
+
+            return { type = "content_interaction" }
+        end
     end
 end
 
 function VMManagerState:mousemoved(x, y, dx, dy)
     if not self.viewport then return end
+
+    -- Handle modal scrollbar dragging
+    if self.view.game_selection_open or self.view.demo_selection_open then
+        local scroll_event = self.modal_scrollbar:mousemoved(x, y, dx, dy)
+        if scroll_event and scroll_event.scrolled then
+            -- Determine max scroll based on which modal is open
+            local items_count = 0
+            if self.view.game_selection_open then
+                items_count = #self.filtered_games
+            elseif self.view.demo_selection_open then
+                items_count = #self.filtered_demos
+            end
+
+            local visible_items = 10 -- Default visible items in modal
+            local max_offset = math.max(0, items_count - visible_items)
+            self.view.scroll_offset = math.max(0, math.min(math.floor(scroll_event.new_offset), max_offset))
+            return { type = "content_interaction" }
+        end
+    else
+        -- Handle main grid scrollbar dragging
+        local scroll_event = self.grid_scrollbar:mousemoved(x, y, dx, dy)
+        if scroll_event and scroll_event.scrolled then
+            self.view.grid_scroll_offset = math.max(0, scroll_event.new_offset)
+            return { type = "content_interaction" }
+        end
+    end
+
     if x < 0 or y < 0 or x > self.viewport.width or y > self.viewport.height then return end
     if self.view and self.view.mousemoved then
         return self.view:mousemoved(x, y, dx, dy, self.filtered_games, self.viewport.width, self.viewport.height)
@@ -219,6 +309,12 @@ end
 
 function VMManagerState:mousereleased(x, y, button)
     if not self.viewport then return end
+
+    -- End scrollbar dragging (both modal and grid)
+    if self.modal_scrollbar:mousereleased(x, y, button) or self.grid_scrollbar:mousereleased(x, y, button) then
+        return { type = "content_interaction" }
+    end
+
     if self.view and self.view.mousereleased then
         return self.view:mousereleased(x, y, button)
     end

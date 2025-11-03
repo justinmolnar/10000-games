@@ -1,0 +1,81 @@
+{
+  "$schema_description": "Asset Attribution Database - Track all external assets used in the project",
+  "$documentation": "See documentation/Asset Attribution System.md for usage instructions",
+
+  "attributions": [
+    {
+      "asset_path": "lib/class.lua",
+      "asset_type": "code",
+      "author": "rxi",
+      "license": "MIT",
+      "source_url": "https://github.com/rxi/classic",
+      "modifications": "None",
+      "date_added": "2025-10-23",
+      "notes": "Lightweight OOP class implementation for Lua"
+    },
+    {
+      "asset_path": "lib/json.lua",
+      "asset_type": "code",
+      "author": "rxi",
+      "license": "MIT",
+      "source_url": "https://github.com/rxi/json.lua",
+      "modifications": "None",
+      "date_added": "2025-10-23",
+      "notes": "JSON encoding/decoding library"
+    },
+    {
+      "asset_path": "assets/sprites/win98/*",
+      "asset_type": "sprite",
+      "author": "Alex Meub, Microsoft",
+      "license": "Unsure",
+      "source_url": "https://alexmeub.com/old-windows-icons/",
+      "modifications": "None",
+      "date_added": "2025-10-24",
+      "notes": "Created by Microsoft, collected by Alex Meub"
+    },
+        {
+      "asset_path": "assets/sprites/Spaceship Pack/*",
+      "asset_type": "sprite",
+      "author": "Pixel by Pixel",
+      "license": "Free for commercial use",
+      "source_url": "https://pixel-by-pixel.itch.io/alcwilliam-space-ship-pack",
+      "modifications": "None",
+      "date_added": "2025-10-24",
+      "notes": "Space-themed sprites for 2D games"
+    },
+            {
+      "asset_path": "assets/sprites/solitare/*",
+      "asset_type": "sprite",
+      "author": "KereneL",
+      "license": "CC-0",
+      "source_url": "https://kerenel.itch.io/pixelart-cards",
+      "modifications": "None",
+      "date_added": "2025-10-27",
+      "notes": "Pixel art playing cards for solitaire game"
+    }
+  ],
+
+  "$wildcard_examples": [
+    {
+      "$comment": "Use wildcards for entire asset packs",
+      "asset_path": "assets/sprites/games/dodge/base_1/*",
+      "asset_type": "sprite",
+      "author": "Kenney",
+      "license": "CC0",
+      "source_url": "https://kenney.nl/assets/space-shooter-redux",
+      "modifications": "Recolored from original",
+      "date_added": "2025-10-23"
+    }
+  ],
+
+  "$field_definitions": {
+    "asset_path": "Relative path from project root. Use * for wildcards (e.g., 'assets/audio/music/*')",
+    "asset_type": "Type: sprite, music, sfx, font, code, shader, or other",
+    "author": "Creator name or username",
+    "license": "License identifier (CC0, CC-BY, CC-BY-SA, MIT, etc.)",
+    "source_url": "URL where asset was obtained",
+    "modifications": "Describe any changes made, or 'None'",
+    "date_added": "Date added in YYYY-MM-DD format",
+    "notes": "Optional additional context"
+  }
+}

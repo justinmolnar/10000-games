@@ -36,8 +36,7 @@ function FileExplorerView:init(controller, di)
     self.last_click_time = 0
 
     -- No modal rendering here; Control Panel applets launch as separate windows
-    -- Scrollbar interaction state
-    self._sb = { list = { dragging = false, geom = nil, drag = nil } }
+    -- Scrollbar is now handled by ScrollbarController in the state
 end
 
 function FileExplorerView:updateLayout(width, height)
@@ -236,23 +235,21 @@ function FileExplorerView:drawItemList(x, y, width, height, contents, selected_i
         self:drawItem(x, item_y, width, self.item_height, item, is_selected, is_hovered)
     end
 
-    -- Draw scrollbar if needed (using shared UI helper)
+    -- Draw scrollbar (using state's ScrollbarController)
     if #contents > visible_items then
-        local UI = UIComponents
-        local item_h = self.item_height
-        -- Translate to the list's local origin so helper can compute at (0,0)
-        love.graphics.push()
-        love.graphics.translate(x, y)
-        local sb_geom = UI.computeScrollbar({
-            viewport_w = width,
-            viewport_h = height,
-            content_h = (#contents) * item_h,
-            offset = (self.scroll_offset or 0) * item_h,
-            -- width/margin/arrow heights/min thumb from config defaults
-        })
-        UI.drawScrollbar(sb_geom)
-        self._sb.list.geom = sb_geom
-        love.graphics.pop()
+        local scrollbar = self.controller.scrollbar
+        if scrollbar then
+            scrollbar:setPosition(x, y)
+            local max_scroll = math.max(0, #contents - visible_items)
+            local geom = scrollbar:compute(width, height, #contents * self.item_height, self.scroll_offset or 0, max_scroll)
+
+            if geom then
+                love.graphics.push()
+                love.graphics.translate(x, y)
+                UIComponents.drawScrollbar(geom)
+                love.graphics.pop()
+            end
+        end
     end
 end
 
@@ -476,30 +473,7 @@ function FileExplorerView:mousepressed(x, y, button, contents, viewport_width, v
         local content_y = self.toolbar_height + self.address_bar_height -- Relative y start
         local content_h = viewport_height - content_y - self.status_bar_height
 
-        -- Scrollbar interactions (compute local coords relative to list origin)
-        if self._sb and self._sb.list and self._sb.list.geom then
-            local g = self._sb.list.geom
-            local lx, ly = x - 0, y - content_y
-            if ly >= 0 and ly <= content_h then
-                local UI = UIComponents
-                local off_px = (self.scroll_offset or 0) * self.item_height
-                local res = UI.scrollbarHandlePress(lx, ly, button, g, off_px, nil)
-                if res and res.consumed then
-                    if res.new_offset_px ~= nil then
-                        local contents_count = #contents
-                        local visible_items = math.max(1, math.floor(content_h / self.item_height))
-                        local max_off = math.max(0, contents_count - visible_items)
-                        local new_idx = math.floor((res.new_offset_px / self.item_height) + 0.0001)
-                        self.scroll_offset = math.max(0, math.min(max_off, new_idx))
-                    end
-                    if res.drag then
-                        self._sb.list.dragging = true
-                        self._sb.list.drag = { start_y = res.drag.start_y, offset_start_px = res.drag.offset_start_px }
-                    end
-                    return { name = 'noop' }
-                end
-            end
-        end
+        -- Scrollbar is now handled by ScrollbarController in the state, not the view
 
         local clicked_item = self:getItemAtPosition(x, y, contents, content_y, content_h, viewport_width) -- Pass local coords
 
@@ -548,35 +522,13 @@ function FileExplorerView:wheelmoved(x, y, viewport_width, viewport_height)
 end
 
 function FileExplorerView:mousemoved(x, y, dx, dy, viewport_width, viewport_height, is_modal)
-    local content_y = self.toolbar_height + self.address_bar_height
-    local content_h = viewport_height - content_y - self.status_bar_height
-    if self._sb and self._sb.list and self._sb.list.dragging and self._sb.list.geom then
-        local g = self._sb.list.geom
-        local lx, ly = x - 0, y - content_y
-        if ly >= -50 and ly <= content_h + 50 then -- allow slight out-of-bounds drags
-            local UI = UIComponents
-            local res = UI.scrollbarHandleMove(ly, self._sb.list.drag, g)
-            if res and res.consumed and res.new_offset_px ~= nil then
-                local contents = self.controller:getCurrentViewContents()
-                local contents_count = (type(contents) == 'table') and #contents or 0
-                local visible_items = math.max(1, math.floor(content_h / self.item_height))
-                local max_off = math.max(0, contents_count - visible_items)
-                local new_idx = math.floor((res.new_offset_px / self.item_height) + 0.0001)
-                self.scroll_offset = math.max(0, math.min(max_off, new_idx))
-                return { name = 'noop' }
-            end
-        end
-    end
+    -- Scrollbar dragging is now handled by ScrollbarController in the state
+    return nil
 end
 
 function FileExplorerView:mousereleased(x, y, button)
-    if button == 1 and self._sb and self._sb.list then
-        if self._sb.list.dragging then
-            self._sb.list.dragging = false
-            self._sb.list.drag = nil
-            return { name = 'noop' }
-        end
-    end
+    -- Scrollbar dragging is now handled by ScrollbarController in the state
+    return nil
 end
 
 function FileExplorerView:getButtonAtPosition(x, y, is_recycle_bin)

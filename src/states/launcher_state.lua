@@ -1,6 +1,7 @@
 local Object = require('class')
 local Strings = require('src.utils.strings')
 local LauncherView = require('src.views.launcher_view')
+local ScrollbarController = require('src.controllers.scrollbar_controller')
 local LauncherState = Object:extend('LauncherState')
 
 function LauncherState:init(player_data, game_data, state_machine, save_manager, di)
@@ -13,6 +14,12 @@ function LauncherState:init(player_data, game_data, state_machine, save_manager,
 
     -- Create the view instance, passing a reference to this state (as controller)
     self.view = LauncherView:new(self, player_data, game_data)
+
+    -- Create scrollbar controller (unit_size = item height + padding)
+    self.scrollbar = ScrollbarController:new({
+        unit_size = 42, -- button_height (40) + button_padding (2)
+        step_units = 1
+    })
 
     self.all_games = {}
     self.filtered_games = {}
@@ -344,6 +351,15 @@ function LauncherState:mousepressed(x, y, button)
         return false
     end
 
+    -- Handle scrollbar first (pass current offset - 1 because scroll_offset is 1-indexed)
+    local scroll_event = self.scrollbar:mousepressed(x, y, button, (self.view.scroll_offset or 1) - 1)
+    if scroll_event then
+        if scroll_event.scrolled then
+            self.view.scroll_offset = math.floor(scroll_event.new_offset) + 1
+        end
+        return { type = "content_interaction" }
+    end
+
     -- Delegate directly to view with the LOCAL coordinates
     local view_event = self.view:mousepressed(x, y, button, self.filtered_games, self.viewport.width, self.viewport.height)
 
@@ -364,33 +380,29 @@ function LauncherState:mousepressed(x, y, button)
 end
 
 function LauncherState:mousemoved(x, y, dx, dy)
-    if not self.viewport then return end
-    if self.view and self.view.mousemoved then
-        return self.view:mousemoved(x, y, dx, dy)
+    if not self.viewport then return false end
+
+    -- Handle scrollbar dragging
+    local scroll_event = self.scrollbar:mousemoved(x, y, dx, dy)
+    if scroll_event then
+        if scroll_event.scrolled then
+            self.view.scroll_offset = math.floor(scroll_event.new_offset) + 1
+        end
+        return { type = "content_interaction" }
     end
+
+    return false
 end
 
 function LauncherState:mousereleased(x, y, button)
-    if not self.viewport then return end
-    if self.view and self.view.mousereleased then
-        return self.view:mousereleased(x, y, button)
-    end
-end
+    if not self.viewport then return false end
 
-function LauncherState:mousemoved(x, y, dx, dy)
-    if not self.viewport then return end
-    if self.view and self.view.mousemoved then
-        local ok = pcall(self.view.mousemoved, self.view, x, y, dx, dy)
-        if not ok then return end
+    -- End scrollbar dragging
+    if self.scrollbar:mousereleased(x, y, button) then
+        return { type = "content_interaction" }
     end
-end
 
-function LauncherState:mousereleased(x, y, button)
-    if not self.viewport then return end
-    if self.view and self.view.mousereleased then
-        pcall(self.view.mousereleased, self.view, x, y, button)
-        return { type = 'content_interaction' }
-    end
+    return false
 end
 
 function LauncherState:launchSpaceDefender()

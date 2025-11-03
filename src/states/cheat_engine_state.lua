@@ -5,6 +5,7 @@ local Strings = require('src.utils.strings')
 local Paths = require('src.paths')
 local json = require('lib.json')
 local CheatEngineView = require('src.views.cheat_engine_view')
+local ScrollbarController = require('src.controllers.scrollbar_controller')
 local CheatEngineState = Object:extend('CheatEngineState')
 
 function CheatEngineState:init(player_data, game_data, state_machine, save_manager, cheat_system, di)
@@ -17,6 +18,16 @@ function CheatEngineState:init(player_data, game_data, state_machine, save_manag
     self.event_bus = di and di.eventBus
 
     self.view = CheatEngineView:new(self, di)
+
+    -- Create two scrollbar controllers (one for game list, one for parameter list)
+    self.game_scrollbar = ScrollbarController:new({
+        unit_size = 50, -- item height
+        step_units = 1
+    })
+    self.param_scrollbar = ScrollbarController:new({
+        unit_size = 50, -- item height
+        step_units = 1
+    })
 
     -- Game selection
     self.unlocked_games = {} -- Only show unlocked games
@@ -510,6 +521,24 @@ function CheatEngineState:mousepressed(x, y, button)
         return false
     end
 
+    -- Handle game list scrollbar first
+    local game_scroll_event = self.game_scrollbar:mousepressed(x, y, button, (self.game_scroll_offset or 1) - 1)
+    if game_scroll_event then
+        if game_scroll_event.scrolled then
+            self.game_scroll_offset = math.max(1, math.min(math.floor(game_scroll_event.new_offset) + 1, math.max(1, #self.unlocked_games)))
+        end
+        return { type = "content_interaction" }
+    end
+
+    -- Handle parameter list scrollbar
+    local param_scroll_event = self.param_scrollbar:mousepressed(x, y, button, self.param_scroll_offset or 0)
+    if param_scroll_event then
+        if param_scroll_event.scrolled then
+            self.param_scroll_offset = math.max(0, math.floor(param_scroll_event.new_offset))
+        end
+        return { type = "content_interaction" }
+    end
+
     -- Delegate to view
     local event = self.view:mousepressed(
         x, y, button,
@@ -578,29 +607,49 @@ function CheatEngineState:mousepressed(x, y, button)
 
     elseif event.name == "launch_game" then
         result_event = self:launchGame()
+
+    elseif event.name == "content_interaction" then
+        -- Scrollbar interaction without scroll change (e.g., started dragging)
+        result_event = { type = "content_interaction" }
     end
 
     return result_event
 end
 
 function CheatEngineState:mousemoved(x, y, dx, dy)
-    if not self.viewport then return end
+    if not self.viewport then return false end
 
-    if self.view and self.view.mousemoved then
-        local ok, ev = pcall(self.view.mousemoved, self.view, x, y, dx, dy)
-        if ok and ev and ev.name == 'content_interaction' then
-            return { type = 'content_interaction' }
-        end
+    -- Handle game list scrollbar dragging
+    local game_scroll_event = self.game_scrollbar:mousemoved(x, y, dx, dy)
+    if game_scroll_event and game_scroll_event.scrolled then
+        self.game_scroll_offset = math.max(1, math.min(math.floor(game_scroll_event.new_offset) + 1, math.max(1, #self.unlocked_games)))
+        return { type = 'content_interaction' }
     end
+
+    -- Handle parameter list scrollbar dragging
+    local param_scroll_event = self.param_scrollbar:mousemoved(x, y, dx, dy)
+    if param_scroll_event and param_scroll_event.scrolled then
+        self.param_scroll_offset = math.max(0, math.floor(param_scroll_event.new_offset))
+        return { type = 'content_interaction' }
+    end
+
+    return false
 end
 
 function CheatEngineState:mousereleased(x, y, button)
-    if not self.viewport then return end
+    if not self.viewport then return false end
 
-    if self.view and self.view.mousereleased then
-        pcall(self.view.mousereleased, self.view, x, y, button)
+    -- End game list scrollbar dragging
+    if self.game_scrollbar:mousereleased(x, y, button) then
         return { type = 'content_interaction' }
     end
+
+    -- End parameter list scrollbar dragging
+    if self.param_scrollbar:mousereleased(x, y, button) then
+        return { type = 'content_interaction' }
+    end
+
+    return false
 end
 
 function CheatEngineState:wheelmoved(x, y)

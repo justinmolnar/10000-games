@@ -1,0 +1,31 @@
+body {
+    background-color: #FFEEAA;
+    font-family: Arial;
+    margin: 20px;
+}
+
+h1 {
+    background-color: #CC9900;
+    color: #FFFFFF;
+    padding: 10px;
+    text-align: center;
+}
+
+h2 {
+    color: #AA7700;
+}
+
+.formula {
+    background-color: #FFFFFF;
+    border: 2px solid #CC9900;
+    padding: 10px;
+    margin: 10px 0;
+    font-family: monospace;
+}
+
+.tip {
+    background-color: #FFFFCC;
+    border-left: 4px solid #FFAA00;
+    padding: 10px;
+    margin: 10px 0;
+}

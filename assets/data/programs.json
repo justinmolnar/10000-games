@@ -295,5 +295,18 @@
     "in_start_menu": false,
     "disabled": false,
     "window_defaults": { "w": 600, "h": 500, "min_w": 400, "min_h": 300, "resizable": true, "single_instance": false }
+  },
+  {
+    "id": "web_browser",
+    "name": "Browser",
+    "executable": "browser.exe",
+    "state_class_path": "states.web_browser_state",
+    "dependencies": ["file_system", "di"],
+    "icon_sprite": "connected_world-0",
+    "icon_color": [0.3, 0.6, 1.0],
+    "on_desktop": true,
+    "in_start_menu": true,
+    "disabled": false,
+    "window_defaults": { "w": 800, "h": 600, "min_w": 640, "min_h": 480, "resizable": true, "single_instance": false }
   }
 ]

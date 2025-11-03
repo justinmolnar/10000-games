@@ -10,7 +10,13 @@
       "Bash(python documentation/calculate_comprehensive_balance.py:*)",
       "Bash(for file in src/games/snake_game.lua src/games/space_shooter.lua src/games/hidden_object.lua src/games/memory_match.lua)",
       "Bash(do echo \"=== $file ===\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(for dir in assets/data/web/*/)",
+      "Bash(ls:*)",
+      "Bash(for file in assets/data/web/megagames/*.css)",
+      "Bash(head:*)",
+      "Bash(for file in assets/data/web/megagames/{about,community,shop,support,tips,updates}.html)",
+      "Bash(do)"
     ],
     "deny": [],
     "ask": []

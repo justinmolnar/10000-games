@@ -6,8 +6,28 @@ local Config = {
     upgrade_costs = {
         cpu_speed = 500, -- Base cost for level 1
         overclock = 1000,
-        auto_dodge = 2000 
+        auto_dodge = 2000
         -- Cost multiplier per level: base_cost * (current_level + 1)
+    },
+
+    -- CPU Speed System (affects page loading, window limits, etc.)
+    cpu = {
+        starting_speed = 0.1,          -- Starting CPU multiplier (VERY slow for testing)
+        max_speed = 10.0,              -- Fully upgraded (modern instant)
+        speed_per_upgrade = 0.5,       -- Increase per upgrade level
+
+        -- Web browser loading times (base ms, divided by cpu_speed)
+        page_load = {
+            element_base = 500,           -- Base elements (SLOW for testing)
+            text_per_char = 2,            -- Additional time per character in text nodes
+            image_base = 1000,            -- Base image load time (SLOW)
+            image_per_pixel = 0.002,      -- Time per pixel (width * height)
+            gif_base = 1500,              -- Base GIF load time (SLOW)
+            gif_per_frame = 50,           -- Additional time per frame
+            table_base = 800,             -- Tables take a bit longer
+            table_per_cell = 50,          -- Additional time per cell
+            image_scanline_height = 3,    -- Pixels per update for scanline loading effect
+        },
     },
 
     -- VM Manager
@@ -222,6 +242,10 @@ local Config = {
             -- Enemy System (Phase 5)
             enemy_spawn_rate_multiplier = { min = 0.1, max = 10.0 },
             enemy_speed_multiplier = { min = 0.1, max = 5.0 },
+            enemy_health = { min = 1, max = 10 },
+            enemy_health_variance = { min = 0.0, max = 1.0 },
+            enemy_health_min = { min = 1, max = 20 },
+            enemy_health_max = { min = 1, max = 20 },
             enemy_bullet_speed = { min = 50, max = 800 },
             enemy_fire_rate = { min = 0.5, max = 10.0 },
             enemy_bullets_per_shot = { min = 1, max = 20 },
@@ -229,6 +253,19 @@ local Config = {
             wave_enemies_per_wave = { min = 1, max = 20 },
             wave_pause_duration = { min = 0.5, max = 10.0 },
             difficulty_scaling_rate = { min = 0.0, max = 1.0 },
+            -- Space Invaders / Galaga behavior parameters
+            wave_difficulty_increase = { min = 0.0, max = 1.0 },
+            wave_random_variance = { min = 0.0, max = 1.0 },
+            grid_rows = { min = 1, max = 10 },
+            grid_columns = { min = 2, max = 16 },
+            grid_speed = { min = 10, max = 200 },
+            grid_descent = { min = 5, max = 50 },
+            enemy_density = { min = 0.3, max = 3.0 },
+            dive_frequency = { min = 0.5, max = 10.0 },
+            max_diving_enemies = { min = 1, max = 5 },
+            formation_size = { min = 4, max = 50 },
+            initial_spawn_count = { min = 1, max = 30 },
+            spawn_interval = { min = 0.1, max = 3.0 },
             -- Power-Up System (Phase 6)
             powerup_spawn_rate = { min = 1.0, max = 60.0 },
             powerup_duration = { min = 1.0, max = 30.0 },
@@ -293,6 +330,8 @@ local Config = {
             "powerup_types",    -- Array - available power-up types (Phase 6)
             "gravity_wells_count",  -- Would show as "gravity_wells" in CheatEngine (Phase 7)
             "blackout_zones_count", -- Would show as "blackout_zones" in CheatEngine (Phase 8)
+            "enemy_behavior",   -- String enum - default, space_invaders, galaga
+            "entrance_pattern", -- String enum - swoop, loop, arc (galaga)
         },
 
         -- Special unlocks (gate certain modifications behind progression)
@@ -1137,6 +1176,31 @@ local Config = {
                 bullet_pattern = "single",  -- single, spread, spray, ring
                 bullets_per_shot = 1,  -- Bullets per enemy shot
                 bullet_spread_angle = 30,  -- Degrees for spread patterns
+                -- Enemy health
+                health = 1,  -- Hits required to destroy enemy (1-10)
+                health_variance = 0.0,  -- Random variance (0-1, e.g., 0.3 = ±30% random health)
+                health_min = 1,  -- Minimum health when using random range
+                health_max = 1,  -- Maximum health when using random range
+                use_health_range = false,  -- If true, use min/max range instead of base health
+                -- Enemy behavior patterns
+                behavior = "default",  -- default, space_invaders, galaga
+                -- Wave system (works with all behaviors)
+                waves_enabled = false,  -- Enable wave system for space_invaders/galaga
+                wave_difficulty_increase = 0.1,  -- Difficulty increase per wave (0.1 = 10% harder each wave)
+                wave_random_variance = 0.0,  -- Random variance in wave parameters (0-1, 0 = none, 0.5 = ±50%)
+                -- Space Invaders parameters
+                grid_rows = 4,
+                grid_columns = 8,
+                grid_speed = 50,  -- Pixels per second
+                grid_descent = 20,  -- Pixels to drop when reversing
+                enemy_density = 1.0,  -- Spacing multiplier (0.5 = tight, 2.0 = loose)
+                -- Galaga parameters
+                dive_frequency = 3.0,  -- Seconds between dive attacks
+                max_diving_enemies = 1,  -- Max enemies diving at once
+                entrance_pattern = "swoop",  -- swoop, loop, arc
+                formation_size = 24,  -- Total formation slots
+                initial_spawn_count = 8,  -- Enemies to spawn at wave start
+                spawn_interval = 0.5,  -- Seconds between spawning new enemies
             },
 
             -- Old Enemy Defaults (legacy, keeping for compatibility)

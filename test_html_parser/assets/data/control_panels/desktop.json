@@ -1,0 +1,21 @@
+{
+  "icon_sprite": "monitor_tweakui-0",
+  "elements": [
+    { "type": "section", "label": "Desktop Options" },
+    { "type": "dropdown", "id": "desktop_bg_type", "label": "Background Type", "choices": [
+      {"label": "Color", "value": "color"},
+      {"label": "Image", "value": "image"}
+    ]},
+    { "type": "dropdown", "id": "desktop_bg_scale_mode", "label": "Image Scaling", "choices": [
+      {"label": "Fill (cover)", "value": "fill"},
+      {"label": "Fit (contain)", "value": "fit"},
+      {"label": "Stretch", "value": "stretch"},
+      {"label": "Center", "value": "center"},
+      {"label": "Tile", "value": "tile"}
+    ], "when": { "desktop_bg_type": "image" } },
+    { "type": "slider", "id": "desktop_bg_r", "label": "Background Red", "min": 0, "max": 1, "step": 0.01 },
+    { "type": "slider", "id": "desktop_bg_g", "label": "Background Green", "min": 0, "max": 1, "step": 0.01 },
+    { "type": "slider", "id": "desktop_bg_b", "label": "Background Blue", "min": 0, "max": 1, "step": 0.01 },
+    { "type": "checkbox", "id": "desktop_icon_snap", "label": "Snap icons to grid" }
+  ]
+}

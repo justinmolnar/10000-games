@@ -1,0 +1,25 @@
+body {
+    background-color: #000080;
+    color: #FFFFFF;
+    font-family: Arial;
+    margin: 20px;
+}
+
+h1 {
+    color: #FFFF00;
+    text-align: center;
+}
+
+h2 {
+    color: #00FFFF;
+}
+
+a {
+    color: #00FF00;
+}
+
+.content {
+    background-color: #000000;
+    padding: 15px;
+    margin: 10px 0;
+}

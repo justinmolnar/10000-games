@@ -1,0 +1,43 @@
+/* Shared styles for all megagames.com pages */
+
+body {
+    background-color: #CCCCCC;
+    font-family: Arial;
+    margin: 20px;
+}
+
+h1 {
+    color: #0000AA;
+    text-align: center;
+}
+
+h2 {
+    color: #AA0000;
+}
+
+p {
+    margin: 10px 0;
+}
+
+a {
+    color: #0000FF;
+}
+
+hr {
+    margin: 10px 0;
+}
+
+.header {
+    background-color: #0000AA;
+    color: #FFFFFF;
+    padding: 10px;
+    text-align: center;
+}
+
+.footer {
+    background-color: #666666;
+    color: #FFFFFF;
+    padding: 10px;
+    text-align: center;
+    margin: 20px 0 0 0;
+}

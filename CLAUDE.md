@@ -343,6 +343,121 @@ When origin() IS correct:
 - Screensavers (fullscreen rendering)
 - Drawing to canvases (canvases have their own coordinate space)
 
+Scrollbar System (ScrollbarController)
+
+CRITICAL: ALWAYS use ScrollbarController - NEVER create custom scrollbars!
+
+The game has a ScrollbarController (src/controllers/scrollbar_controller.lua) that encapsulates:
+- Scrollbar state (dragging, position, geometry)
+- All interaction logic (mousepressed, mousemoved, mousereleased)
+- Integration with UIComponents for rendering
+
+Rules for scrollbars in windowed views:
+
+1. NEVER create a custom scrollbar - use ScrollbarController
+2. State creates and owns ScrollbarController instance(s)
+3. View calls compute() and draws using UIComponents.drawScrollbar()
+4. State handles all mouse events through controller methods
+
+Pattern for scrollbar in states:
+
+```lua
+-- In State:init()
+local ScrollbarController = require('src.controllers.scrollbar_controller')
+
+-- Create scrollbar controller
+self.scrollbar = ScrollbarController:new({
+    unit_size = 30,     -- Size of one scrollable unit (item height or 1 for pixels)
+    step_units = 1      -- How many units to scroll per arrow click
+})
+
+-- In State:mousepressed(x, y, button)
+-- Handle scrollbar FIRST before other interactions
+local scroll_event = self.scrollbar:mousepressed(x, y, button, self.scroll_offset)
+if scroll_event then
+    if scroll_event.scrolled then
+        -- Update scroll offset with clamping
+        local max_offset = math.max(0, total_items - visible_items)
+        self.scroll_offset = math.max(0, math.min(scroll_event.new_offset, max_offset))
+    end
+    return true  -- Consumed the click
+end
+
+-- In State:mousemoved(x, y, dx, dy)
+-- Handle scrollbar dragging
+local scroll_event = self.scrollbar:mousemoved(x, y, dx, dy)
+if scroll_event then
+    if scroll_event.scrolled then
+        local max_offset = math.max(0, total_items - visible_items)
+        self.scroll_offset = math.max(0, math.min(scroll_event.new_offset, max_offset))
+    end
+    return true
+end
+
+-- In State:mousereleased(x, y, button)
+-- End scrollbar dragging
+if self.scrollbar:mousereleased(x, y, button) then
+    return true
+end
+```
+
+Pattern for scrollbar in views:
+
+```lua
+-- In View:drawWindowed()
+if max_scroll > 0 then
+    local scrollbar = self.controller.scrollbar
+
+    -- Set scrollbar position (where it's drawn on screen)
+    scrollbar:setPosition(0, content_y)
+
+    -- Compute geometry (returns nil if scrollbar not needed)
+    local geom = scrollbar:compute(
+        viewport_width,    -- Viewport width
+        content_height,    -- Visible area height
+        total_height,      -- Total content height
+        scroll_offset,     -- Current scroll position
+        max_scroll         -- Maximum scroll value
+    )
+
+    if geom then
+        -- Draw scrollbar (already positioned via setPosition)
+        love.graphics.push()
+        love.graphics.translate(0, content_y)
+        UIComponents.drawScrollbar(geom)
+        love.graphics.pop()
+    end
+end
+```
+
+Multiple Scrollbars (e.g., VM Manager):
+
+```lua
+-- In State:init() - Create multiple controllers for different contexts
+self.modal_scrollbar = ScrollbarController:new({unit_size = 35, step_units = 1})  -- For modals
+self.grid_scrollbar = ScrollbarController:new({unit_size = 1, step_units = 100})  -- For main grid
+
+-- In State:mousepressed() - Use correct controller based on context
+if self.view.modal_open then
+    local scroll_event = self.modal_scrollbar:mousepressed(x, y, button, self.modal_scroll)
+    -- Handle modal scrolling
+else
+    local scroll_event = self.grid_scrollbar:mousepressed(x, y, button, self.grid_scroll)
+    -- Handle grid scrolling
+end
+```
+
+Key points:
+- ScrollbarController encapsulates ALL state and interaction logic
+- States own controller instances (one or more depending on UI needs)
+- Views only call compute() and draw - NO interaction handling in views
+- Mouse coordinates in state handlers are LOCAL to window (not screen coords)
+- unit_size = 1 for pixel-based scrolling, item height for item-based scrolling
+- Always handle mousepressed, mousemoved, and mousereleased for full functionality
+- For integer item scrolling, use math.floor() on new_offset
+
+Examples: See web_browser_state.lua, cheat_engine_state.lua, launcher_state.lua, vm_manager_state.lua
+
 Require Statements
 - All require calls at top of file (file scope)
 - Exception: Dynamic game class loading based on type

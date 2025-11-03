@@ -1,0 +1,20 @@
+body {
+    background-color: #E8E8E8;
+}
+
+h1 {
+    color: #006600;
+}
+
+.mission {
+    background-color: #FFFFFF;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #006600;
+}
+
+.history {
+    font-style: italic;
+    color: #333333;
+    line-height: 1.6;
+}

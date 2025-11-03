@@ -204,7 +204,8 @@ end
 -- Compute scrollbar geometry for a vertical scrollbar
 -- params: {
 --   viewport_w, viewport_h, content_h, offset,
---   width=10, margin_right=4, track_top=20, track_bottom=20, min_thumb_h=24
+--   width=10, margin_right=4, track_top=20, track_bottom=20, min_thumb_h=24,
+--   alwaysVisible=false (show scrollbar even when content doesn't require scrolling)
 -- }
 function UIComponents.computeScrollbar(params)
     local Config_ = UIComponents._config or {}
@@ -218,9 +219,10 @@ function UIComponents.computeScrollbar(params)
     local track_top = (params.track_top ~= nil) and params.track_top or (S.arrow_height or 12)
     local track_bottom = (params.track_bottom ~= nil) and params.track_bottom or (S.arrow_height or 12)
     local min_thumb_h = (params.min_thumb_h ~= nil) and params.min_thumb_h or (S.min_thumb_h or 20)
+    local always_visible = params.alwaysVisible or false
 
     local max_offset = math.max(0, ch - vh)
-    if max_offset <= 0 then return nil end -- No scrollbar needed
+    if max_offset <= 0 and not always_visible then return nil end -- No scrollbar needed
 
     local sb_x = vw - sb_w - margin_r
     local track_y = track_top
@@ -228,7 +230,11 @@ function UIComponents.computeScrollbar(params)
 
     local ratio = vh / ch
     local thumb_h = math.max(min_thumb_h, track_h * ratio)
-    local thumb_y = track_y + (track_h - thumb_h) * (off / max_offset)
+    -- Prevent division by zero when max_offset is 0 (always visible but no scroll)
+    local thumb_y = track_y
+    if max_offset > 0 then
+        thumb_y = track_y + (track_h - thumb_h) * (off / max_offset)
+    end
 
     return {
         -- Overall scrollbar bounds

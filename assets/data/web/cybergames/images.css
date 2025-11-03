@@ -1,0 +1,32 @@
+/* Page-specific styles for images test page */
+
+body {
+    background-color: #F5F5F5;
+    background-image: url(China.png);
+    background-repeat: repeat;
+}
+
+h2 {
+    color: #CC0000;
+    margin-top: 30px;
+}
+
+.tiled-bg {
+    background-color: #FFFFFF;
+    background-image: url(Italy.png);
+    background-repeat: repeat;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #008000;
+    min-height: 150px;
+}
+
+.no-repeat-bg {
+    background-color: #FFFFCC;
+    background-image: url(Spain.png);
+    background-repeat: no-repeat;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #CC0000;
+    min-height: 150px;
+}

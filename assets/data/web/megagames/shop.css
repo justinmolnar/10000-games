@@ -1,0 +1,18 @@
+.item {
+    background-color: #FFFFFF;
+    border: 2px solid #000000;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.price {
+    color: #00AA00;
+    font-weight: bold;
+}
+
+.balance {
+    background-color: #FFFF00;
+    padding: 10px;
+    text-align: center;
+    margin: 10px 0;
+}

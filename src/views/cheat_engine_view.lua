@@ -39,9 +39,6 @@ function CheatEngineView:init(controller, di)
     self.hovered_game_id = nil
     self.hovered_param_index = nil
     self.hovered_button = nil -- "launch", "reset_all", "reset_X", "step_1", etc.
-
-    -- Scrollbar state
-    self._sb = { games = { dragging=false }, params = { dragging=false } }
 end
 
 function CheatEngineView:updateLayout(viewport_width, viewport_height)
@@ -207,22 +204,21 @@ function CheatEngineView:drawGameListPanel(games, selected_game_id, viewport_hei
         end
     end
 
-    -- Scrollbar
+    -- Scrollbar (using state's ScrollbarController)
     if #games > visible_games then
-        local UI = UIComponents
-        love.graphics.push()
-        love.graphics.translate(self.game_list_x, self.game_list_y + 21)
-        local sb_geom = UI.computeScrollbar({
-            viewport_w = self.game_list_w,
-            viewport_h = self.game_list_h - 21,
-            content_h = (#games) * self.item_h,
-            offset = (start_index - 1) * self.item_h,
-            track_top = 12,
-            track_bottom = 12,
-        })
-        UI.drawScrollbar(sb_geom)
-        self._sb.games.geom = sb_geom
-        love.graphics.pop()
+        local scrollbar = self.controller.game_scrollbar
+        if scrollbar then
+            scrollbar:setPosition(self.game_list_x, self.game_list_y + 21)
+            local max_scroll = math.max(0, #games - visible_games)
+            local geom = scrollbar:compute(self.game_list_w, self.game_list_h - 21, #games * self.item_h, start_index - 1, max_scroll)
+
+            if geom then
+                love.graphics.push()
+                love.graphics.translate(self.game_list_x, self.game_list_y + 21)
+                UIComponents.drawScrollbar(geom)
+                love.graphics.pop()
+            end
+        end
     end
 end
 
@@ -364,22 +360,21 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
         end
     end
 
-    -- Scrollbar for parameters
+    -- Scrollbar for parameters (using state's ScrollbarController)
     if #params > visible_params then
-        local UI = UIComponents
-        love.graphics.push()
-        love.graphics.translate(self.param_panel_x, header_y + 25)
-        local sb_geom = UI.computeScrollbar({
-            viewport_w = self.param_panel_w,
-            viewport_h = visible_params * self.item_h,
-            content_h = (#params) * self.item_h,
-            offset = (param_scroll or 0) * self.item_h,
-            track_top = 12,
-            track_bottom = 12,
-        })
-        UI.drawScrollbar(sb_geom)
-        self._sb.params.geom = sb_geom
-        love.graphics.pop()
+        local scrollbar = self.controller.param_scrollbar
+        if scrollbar then
+            scrollbar:setPosition(self.param_panel_x, header_y + 25)
+            local max_scroll = math.max(0, #params - visible_params)
+            local geom = scrollbar:compute(self.param_panel_w, visible_params * self.item_h, #params * self.item_h, param_scroll or 0, max_scroll)
+
+            if geom then
+                love.graphics.push()
+                love.graphics.translate(self.param_panel_x, header_y + 25)
+                UIComponents.drawScrollbar(geom)
+                love.graphics.pop()
+            end
+        end
     end
 
     -- Launch button
@@ -431,6 +426,8 @@ end
 
 function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, params, modifications, player_data, step_size, selected_param_index, viewport_width, viewport_height)
     if button ~= 1 then return nil end
+
+    -- Scrollbars are now handled by ScrollbarController in the state, not the view
 
     -- Game list clicks
     local visible_games = self:getVisibleGameCount(viewport_height)

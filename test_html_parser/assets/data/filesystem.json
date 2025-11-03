@@ -1,0 +1,126 @@
+{
+  "/": {
+    "type": "folder",
+    "children": ["My Computer", "Control Panel", "Recycle Bin"]
+  },
+  "/My Computer": {
+    "type": "folder",
+    "children": ["C:", "D:", "Desktop", "Recycle Bin", "My Documents"]
+  },
+  "/My Computer/Recycle Bin": {
+    "type": "special",
+    "special_type": "recycle_bin"
+  },
+  "/My Computer/My Documents": {
+    "type": "special",
+    "special_type": "my_documents"
+  },
+  "/My Computer/Desktop": {
+    "type": "special",
+    "special_type": "desktop_view"
+  },
+  "/My Computer/C:": {
+    "type": "folder",
+    "children": ["Windows", "Program Files", "Documents"]
+  },
+  "/My Computer/C:/Windows": {
+    "type": "folder",
+    "children": ["System32", "readme.txt"]
+  },
+  "/My Computer/C:/Windows/readme.txt": {
+    "type": "file",
+    "content": "Welcome to 10,000 Games Collection!\n\nThis is a simulated Windows 98 environment.\nAll files and folders are virtual.\n\nExplore and have fun!"
+  },
+  "/My Computer/C:/Windows/System32": {
+    "type": "folder",
+    "children": ["config.sys", "autoexec.bat"]
+  },
+  "/My Computer/C:/Windows/System32/config.sys": {
+    "type": "file",
+    "content": "[System Configuration]\nDOS=HIGH,UMB\nFILES=50\nBUFFERS=40"
+  },
+  "/My Computer/C:/Windows/System32/autoexec.bat": {
+    "type": "file",
+    "content": "@ECHO OFF\nPATH C:\\WINDOWS;C:\\WINDOWS\\SYSTEM32\nSET TEMP=C:\\TEMP"
+  },
+  "/My Computer/C:/Program Files": {
+    "type": "folder",
+    "children": ["Game Collection", "VM Manager", "CheatEngine"]
+  },
+  "/My Computer/C:/Program Files/Game Collection": {
+    "type": "folder",
+    "children": ["gamecollection.exe", "readme.txt"]
+  },
+  "/My Computer/C:/Program Files/Game Collection/gamecollection.exe": {
+    "type": "executable",
+    "program_id": "launcher"
+  },
+  "/My Computer/C:/Program Files/Game Collection/readme.txt": {
+    "type": "file",
+    "content": "Game Collection v1.0\n\nBrowse and play thousands of games!\nYour performance determines bullet power.\n\nDouble-click to launch."
+  },
+  "/My Computer/C:/Program Files/VM Manager": {
+    "type": "folder",
+    "children": ["vmmanager.exe"]
+  },
+  "/My Computer/C:/Program Files/VM Manager/vmmanager.exe": {
+    "type": "executable",
+    "program_id": "vm_manager"
+  },
+  "/My Computer/C:/Program Files/CheatEngine": {
+    "type": "folder",
+    "children": ["cheatengine.exe", "cracked_by.txt"]
+  },
+  "/My Computer/C:/Program Files/CheatEngine/cheatengine.exe": {
+    "type": "executable",
+    "program_id": "cheat_engine"
+  },
+  "/My Computer/C:/Program Files/CheatEngine/cracked_by.txt": {
+    "type": "file",
+    "content": "CheatEngine v1.3.3.7\nCracked by: RZR_1911\n\n[This is a joke file - the cheat engine is a legit game feature!]"
+  },
+  "/My Computer/C:/Documents": {
+    "type": "folder",
+    "children": ["notes.txt", "strategy.txt", "secrets.txt"]
+  },
+  "/My Computer/C:/Documents/notes.txt": {
+    "type": "file",
+    "content": "My Gaming Notes:\n\n- Check VM Manager regularly for passive income\n- Optimize game performance for better bullets\n- CheatEngine helps with difficult variants\n- Formula system rewards skill improvement"
+  },
+  "/My Computer/C:/Documents/strategy.txt": {
+    "type": "file",
+    "content": "Progression Strategy:\n\n1. Unlock trash tier games first (cheap)\n2. Play each to learn mechanics\n3. Focus on games you're good at\n4. Automate completed games in VMs\n5. Use tokens to unlock higher tiers\n6. Replay for better performance scores"
+  },
+  "/My Computer/C:/Documents/secrets.txt": {
+    "type": "file",
+    "content": "Easter Eggs & Secrets:\n\n- Try the Konami code on desktop (hint: arrow keys)\n- Check the Recycle Bin for deleted items\n- Some files contain hidden developer notes\n- Complete all levels for special surprise\n- Look for hidden files in Windows folder"
+  },
+  "/My Computer/D:": {
+    "type": "folder",
+    "children": ["empty.txt"]
+  },
+  "/My Computer/D:/empty.txt": {
+    "type": "file",
+    "content": "This drive is empty.\n\n[Future DLC content will appear here]"
+  },
+  "/Recycle Bin": {
+    "type": "special",
+    "special_type": "recycle_bin"
+  },
+  "/Control Panel": {
+    "type": "folder",
+    "children": ["General", "Desktop", "Screensavers"]
+  },
+  "/Control Panel/General": {
+    "type": "executable",
+    "program_id": "control_panel_general"
+  },
+  "/Control Panel/Desktop": {
+    "type": "executable",
+    "program_id": "control_panel_desktop"
+  },
+  "/Control Panel/Screensavers": {
+    "type": "executable",
+    "program_id": "control_panel_screensavers"
+  }
+}

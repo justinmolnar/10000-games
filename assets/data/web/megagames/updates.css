@@ -1,0 +1,11 @@
+.update {
+    background-color: #FFFFFF;
+    border: 2px solid #000000;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.date {
+    color: #666666;
+    font-style: italic;
+}

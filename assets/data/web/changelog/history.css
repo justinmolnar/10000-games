@@ -1,0 +1,23 @@
+body {
+    background-color: #F0F0F0;
+    font-family: monospace;
+    margin: 20px;
+}
+
+h1 {
+    background-color: #333333;
+    color: #00FF00;
+    padding: 10px;
+}
+
+.version {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.date {
+    color: #0000AA;
+    font-weight: bold;
+}
