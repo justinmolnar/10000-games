@@ -55,7 +55,21 @@ function MinigameState:enter(game_data, variant_override)
     self.variant_override = variant_override -- Store for restart functionality
     
     local class_name = game_data.game_class
-    local logic_file_name = class_name:gsub("(%u)", function(c) return "_" .. c:lower() end):match("^_?(.*)")
+
+    -- Special case mappings for acronyms and edge cases
+    local class_to_file = {
+        RPS = "rps",
+        -- Add more special cases here as needed
+    }
+
+    local logic_file_name
+    if class_to_file[class_name] then
+        logic_file_name = class_to_file[class_name]
+    else
+        -- Default: convert CamelCase to snake_case
+        logic_file_name = class_name:gsub("(%u)", function(c) return "_" .. c:lower() end):match("^_?(.*)")
+    end
+
     local require_path = 'src.games.' .. logic_file_name
     print("[MinigameState] Attempting to require game class:", require_path)
 

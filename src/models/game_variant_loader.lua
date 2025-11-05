@@ -43,7 +43,10 @@ function GameVariantLoader:loadStandaloneVariants()
         { base_id = "dodge_1", file = "variants/dodge_variants.json" },
         { base_id = "snake_1", file = "variants/snake_variants.json" },
         { base_id = "memory_1", file = "variants/memory_match_variants.json" },
-        { base_id = "space_shooter_1", file = "variants/space_shooter_variants.json" }
+        { base_id = "space_shooter_1", file = "variants/space_shooter_variants.json" },
+        { base_id = "breakout_1", file = "variants/breakout_variants.json" },
+        { base_id = "coin_flip_1", file = "variants/coin_flip_variants.json" },
+        { base_id = "rps_1", file = "variants/rps_variants.json" }
         -- Add more variant files here as needed
     }
 
@@ -200,7 +203,10 @@ function GameVariantLoader:getGameTypeFromClass(game_class)
         SnakeGame = "snake",
         MemoryMatch = "memory_match",
         HiddenObject = "hidden_object",
-        DodgeGame = "dodge"
+        DodgeGame = "dodge",
+        Breakout = "breakout",
+        CoinFlip = "coin_flip",
+        RPS = "rps"
     }
     return class_to_folder[game_class]
 end

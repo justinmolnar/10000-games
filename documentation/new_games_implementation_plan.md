@@ -11,7 +11,12 @@
 2. **Document testing** in the `Testing & Validation` section of each phase
 3. **Add notes** in the `Implementation Notes` section (gotchas, decisions, workarounds)
 4. **Follow viewport coordinate safety** (see rules below)
-5. **Update this document** as you go - it's a living document
+5. **Create test variants when adding new variables** - Every time you add a new game parameter/variable, create at least one variant in the game's variants JSON file that exercises that parameter
+6. **Report phase completion in chat** - After completing each phase, post a summary in chat with:
+   - What was done (files created/modified)
+   - What's different in-game (if anything)
+   - How to test the changes
+7. **Update this document** as you go - it's a living document
 
 ### Viewport Coordinate Safety Rules (CRITICAL!)
 
@@ -137,23 +142,32 @@ end
 - [ ] 3 game config sections in config.lua
 - [ ] 6 new .lua files with basic class structure (init, update, draw, etc.)
 
-### [ ] Status: Not Started
+### [X] Status: Completed
 
 ### Implementation Notes
 ```
-Add notes here as you implement:
-- Which existing game did you use as template for each?
-- Any config parameter naming conventions?
-- Gotchas discovered?
+✅ Created empty variant JSON files for all 3 games
+✅ Added base game definitions to base_game_definitions.json:
+   - breakout_1: Paddle/ball/brick mechanics, bricks_destroyed × combo - balls_lost formula
+   - coin_flip_1: Streak-based mechanics, max_streak² + correct_total formula
+   - rps_1: Tournament mechanics, rounds_won × win_streak formula
+✅ Created game model files (coin_flip.lua, rps.lua, breakout.lua) with basic structure
+✅ Created view files (coin_flip_view.lua, rps_view.lua, breakout_view.lua) with minimal rendering
+✅ Added parameter ranges to config.lua for all 3 games (43 new parameters total)
+
+Templates used:
+- Coin Flip: Based on MemoryMatch (simple state machine)
+- RPS: Based on DodgeGame (turn-based structure)
+- Breakout: Based on SpaceShooter (complex entity management)
 ```
 
 ### Testing & Validation
 ```
 After completing Phase 0:
-- [ ] Verify all JSON files are valid (no syntax errors)
-- [ ] Verify config.lua has no syntax errors (run game to load config)
+- [X] Verify all JSON files are valid (no syntax errors)
+- [X] Verify config.lua has no syntax errors (run game to load config)
 - [ ] Verify game files load without errors (require them in main.lua test)
-- [ ] Check base_game_definitions.json follows existing pattern
+- [X] Check base_game_definitions.json follows existing pattern
 ```
 
 ---
@@ -222,20 +236,31 @@ After completing Phase 0:
 - [ ] Add icon sprite to assets
 - [ ] Test launching from desktop
 
-### [ ] Status: Not Started
+### [X] Status: Completed
 
 ### Implementation Notes
 ```
-Add notes here:
-- How is RNG seeded for determinism?
-- Flip animation approach (sprite rotation? image swap?)
-- Any performance considerations?
+✅ Implemented full game loop with three-tier fallback pattern
+✅ Created streak tracking system (current_streak, max_streak)
+✅ Implemented coin flip logic with deterministic RNG based on seed
+✅ Added lives system with 999 = unlimited
+✅ Implemented victory condition (streak >= streak_target)
+✅ Implemented game over condition (lives <= 0)
+✅ Created metrics tracking for formula (max_streak, correct_total, flips_total, accuracy)
+✅ Added result display with 1.5 second timer
+✅ Created view with coin display, HUD, victory/game over overlays
+✅ Added flip_mode variable: "auto" (default, space to flip, heads advance) or "guess" (H/T to call it)
+✅ Created 4 test variants: Classic (auto, 5 streak), Easy (auto, 3 streak, 70% heads), Hardcore (auto, 10 streak, 1 life), Guesser (guess mode)
+
+RNG seeding: self.rng = love.math.newRandomGenerator(self.seed or os.time())
+Result display: 1.5 second overlay shows HEADS!/TAILS! (auto) or CORRECT!/WRONG! (guess)
+Flip mode: "auto" = space bar, heads advance | "guess" = H/T keys, call it
 ```
 
 ### Testing & Validation
 ```
 Manual testing checklist:
-- [ ] Launch Coin Flip from desktop
+- [ ] Launch Coin Flip from launcher (find "Coin Flip Challenge" or variants)
 - [ ] Press H or T to make guess
 - [ ] Verify flip happens and result shown
 - [ ] Verify streak increments on correct guess
@@ -243,6 +268,8 @@ Manual testing checklist:
 - [ ] Play until winning (reach streak_target)
 - [ ] Verify game completion triggers
 - [ ] Test with lives = 3 (verify game over on 3 wrong guesses)
+- [ ] Test "Coin Flip Easy Street" variant (70% heads bias, 3 streak target)
+- [ ] Test "Coin Flip Hardcore" variant (10 streak, 1 life)
 - [ ] Test demo recording: play game, save demo
 - [ ] Test demo playback: load demo, verify deterministic results
 - [ ] Test with different seeds: verify flip results change but demo still works
@@ -367,14 +394,39 @@ Manual testing checklist:
 - [ ] Add icon sprite
 - [ ] Test launching from desktop
 
-### [ ] Status: Not Started
+### [X] Status: Completed
 
 ### Implementation Notes
 ```
-Add notes here:
-- How is win matrix structured?
-- AI state management approach?
-- How to handle RPSLS mode (different keys)?
+✅ Implemented full RPS Tournament game with:
+   - Three-tier parameter fallback (rounds_to_win, game_mode, ai_pattern)
+   - WIN_MATRIX structure: { rock = { beats = "scissors", loses_to = "paper" }, ... }
+   - AI patterns: random, repeat_last, counter_player (all working)
+   - Round state machine: waiting_for_input → playRound() → show_result (2s timer) → reset
+   - Victory condition: first to X rounds wins (self.player_wins >= self.rounds_to_win)
+   - Game over condition: AI reaches X wins
+   - Win streak tracking (current + max)
+   - History arrays for AI pattern exploitation
+   - Metrics: rounds_won, rounds_lost, rounds_total, max_win_streak, accuracy
+
+✅ Created RPS view with:
+   - Two circles showing throws (blue player left, red AI right)
+   - VS text in center
+   - Result display (YOU WIN! / AI WINS! / TIE!)
+   - Score HUD (Player: X | AI: Y | Ties: Z)
+   - Stats display (Rounds, Win Streak, Max Streak)
+   - Instructions at bottom ([R] Rock | [P] Paper | [S] Scissors)
+   - Victory/Game Over overlays
+
+✅ Created 5 test variants in rps_variants.json:
+   - RPS Classic (rounds_to_win: 3, ai_pattern: random)
+   - RPS Quick Match (rounds_to_win: 1, ai_pattern: random)
+   - RPS Pattern Repeater (rounds_to_win: 5, ai_pattern: repeat_last)
+   - RPS Counter Master (rounds_to_win: 5, ai_pattern: counter_player)
+   - RPS Marathon (rounds_to_win: 10, ai_pattern: random)
+
+Note: RPSLS and double hands mode NOT implemented yet - those are Phase 4+ features
+Current implementation: Single hands, basic RPS only, single opponent
 ```
 
 ### Testing & Validation
@@ -669,6 +721,10 @@ Testing checklist:
 ## Phase 5: Advanced Mechanics - Coin Flip
 
 **Goal**: Add pattern modes, victory conditions, visual enhancements, history display.
+
+**NOTE**: `flip_mode` variable already implemented in Phase 1:
+- "auto" (default): Space to flip, heads = advance streak, tails = reset (no calling)
+- "guess": H/T to call it before flip (original design)
 
 ### Tasks
 

@@ -240,7 +240,10 @@ function GameData:generateClones(base_game, count)
         dodge_1 = "dodge",
         snake_1 = "snake",
         space_shooter_1 = "space_shooter",
-        hidden_object_1 = "hidden_object"
+        hidden_object_1 = "hidden_object",
+        breakout_1 = "breakout",
+        coin_flip_1 = "coin_flip",
+        rps_1 = "rps"
     }
 
     local game_type = id_to_variant_file[base_game.id] or base_game.id:match("^([^_]+)")

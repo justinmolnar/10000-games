@@ -1,0 +1,63 @@
+[
+  {
+    "clone_index": 0,
+    "name": "RPS Classic",
+    "palette": "blue",
+    "music_track": "rps_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "arena_blue",
+    "difficulty_modifier": 1.0,
+    "flavor_text": "First to 3 wins! Fair random AI opponent",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 1,
+    "name": "RPS Quick Match",
+    "palette": "green",
+    "music_track": "rps_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "arena_green",
+    "difficulty_modifier": 0.8,
+    "rounds_to_win": 1,
+    "flavor_text": "Single round showdown! Fast wins",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 2,
+    "name": "RPS Pattern Repeater",
+    "palette": "purple",
+    "music_track": "rps_theme_2",
+    "sfx_pack": "8bit_arcade",
+    "background": "arena_purple",
+    "difficulty_modifier": 0.9,
+    "rounds_to_win": 5,
+    "ai_pattern": "repeat_last",
+    "flavor_text": "AI repeats its last throw. Exploit the pattern!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 3,
+    "name": "RPS Counter Master",
+    "palette": "red",
+    "music_track": "rps_theme_2",
+    "sfx_pack": "8bit_arcade",
+    "background": "arena_red",
+    "difficulty_modifier": 1.3,
+    "rounds_to_win": 5,
+    "ai_pattern": "counter_player",
+    "flavor_text": "AI counters your last throw. Don't be predictable!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 4,
+    "name": "RPS Marathon",
+    "palette": "gold",
+    "music_track": "rps_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "arena_gold",
+    "difficulty_modifier": 1.2,
+    "rounds_to_win": 10,
+    "flavor_text": "Long tournament - first to 10 wins takes it all",
+    "intro_cutscene": null
+  }
+]

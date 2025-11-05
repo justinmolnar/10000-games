@@ -118,7 +118,10 @@ function FormulaRenderer:getTokenSprite(token, game_data, game_instance)
                 SnakeGame = "snake",
                 SpaceShooter = "space_shooter",
                 MemoryMatch = "memory",
-                HiddenObject = "hidden_object"
+                HiddenObject = "hidden_object",
+                Breakout = "breakout",
+                CoinFlip = "coin_flip",
+                RPS = "rps"
             }
             local game_folder = class_to_folder[game_data.game_class]
 

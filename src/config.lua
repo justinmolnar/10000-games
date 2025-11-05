@@ -292,6 +292,50 @@ local Config = {
             bullet_max_wraps = { min = 1, max = 10 },
             -- Victory Conditions (Phase 8)
             victory_limit = { min = 1, max = 1000 },
+
+            -- Breakout Parameters
+            paddle_width = { min = 30, max = 300 },
+            paddle_speed = { min = 100, max = 1000 },
+            paddle_friction = { min = 0, max = 1.0 },
+            ball_count = { min = 1, max = 10 },
+            ball_speed = { min = 50, max = 800 },
+            ball_speed_increase_per_bounce = { min = 0, max = 50 },
+            ball_max_speed = { min = 100, max = 2000 },
+            ball_size = { min = 4, max = 30 },
+            ball_gravity = { min = 0, max = 1000 },
+            brick_rows = { min = 1, max = 20 },
+            brick_columns = { min = 1, max = 20 },
+            brick_health = { min = 1, max = 10 },
+            lives = { min = 1, max = 99 },
+            arena_width = { min = 400, max = 1200 },
+            arena_height = { min = 300, max = 900 },
+            powerup_duration = { min = 1, max = 30 },
+            powerup_fall_speed = { min = 50, max = 300 },
+
+            -- Coin Flip Parameters
+            streak_target = { min = 1, max = 50 },
+            coin_bias = { min = 0.0, max = 1.0 },
+            time_per_flip = { min = 0, max = 30 },
+            auto_flip_interval = { min = 0, max = 10 },
+            pattern_history_length = { min = 0, max = 20 },
+            total_correct_target = { min = 1, max = 100 },
+            ratio_target = { min = 0.1, max = 1.0 },
+            ratio_flip_count = { min = 5, max = 100 },
+            time_limit = { min = 10, max = 600 },
+
+            -- RPS Parameters
+            rounds_to_win = { min = 1, max = 50 },
+            total_rounds_limit = { min = 3, max = 200 },
+            opponent_count = { min = 1, max = 10 },
+            ai_bias_strength = { min = 0.0, max = 1.0 },
+            ai_pattern_delay = { min = 0, max = 20 },
+            time_per_round = { min = 0, max = 30 },
+            time_per_removal = { min = 0, max = 30 },
+            round_result_display_time = { min = 0.5, max = 10 },
+            history_length = { min = 0, max = 50 },
+            first_to_target = { min = 1, max = 50 },
+            total_wins_target = { min = 1, max = 100 },
+            lives_count = { min = 1, max = 99 },
         },
 
         -- Which parameters should be hidden/locked

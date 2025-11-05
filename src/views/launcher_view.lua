@@ -368,7 +368,10 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
                 SnakeGame = "snake",
                 SpaceShooter = "space_shooter",
                 MemoryMatch = "memory",
-                HiddenObject = "hidden_object"
+                HiddenObject = "hidden_object",
+                Breakout = "breakout",
+                CoinFlip = "coin_flip",
+                RPS = "rps"
             }
             local game_folder = class_to_folder[game_data.game_class]
 
@@ -628,7 +631,10 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
                     SnakeGame = "snake",
                     SpaceShooter = "space_shooter",
                     MemoryMatch = "memory",
-                    HiddenObject = "hidden_object"
+                    HiddenObject = "hidden_object",
+                    Breakout = "breakout",
+                    CoinFlip = "coin_flip",
+                    RPS = "rps"
                 }
                 local game_folder = class_to_folder[game_data.game_class]
 

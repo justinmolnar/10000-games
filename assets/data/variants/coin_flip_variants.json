@@ -1,0 +1,62 @@
+[
+  {
+    "clone_index": 0,
+    "name": "Coin Flip Classic",
+    "palette": "gold",
+    "music_track": "coin_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "felt_blue",
+    "difficulty_modifier": 1.0,
+    "streak_target": 5,
+    "coin_bias": 0.5,
+    "lives": 3,
+    "flip_mode": "auto",
+    "flavor_text": "Get 5 heads in a row! Fair 50/50 coin",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 1,
+    "name": "Coin Flip Easy Street",
+    "palette": "green",
+    "music_track": "coin_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "felt_green",
+    "difficulty_modifier": 0.8,
+    "streak_target": 3,
+    "coin_bias": 0.7,
+    "lives": 5,
+    "flip_mode": "auto",
+    "flavor_text": "Only need 3 heads in a row! Biased coin (70% heads)",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 2,
+    "name": "Coin Flip Hardcore",
+    "palette": "red",
+    "music_track": "coin_theme_2",
+    "sfx_pack": "8bit_arcade",
+    "background": "felt_red",
+    "difficulty_modifier": 1.5,
+    "streak_target": 10,
+    "coin_bias": 0.5,
+    "lives": 1,
+    "flip_mode": "auto",
+    "flavor_text": "10 heads in a row, one life only. Hardcore mode!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 3,
+    "name": "Coin Flip Guesser",
+    "palette": "purple",
+    "music_track": "coin_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "felt_purple",
+    "difficulty_modifier": 1.2,
+    "streak_target": 5,
+    "coin_bias": 0.5,
+    "lives": 3,
+    "flip_mode": "guess",
+    "flavor_text": "Call heads or tails! 5 correct in a row to win",
+    "intro_cutscene": null
+  }
+]
