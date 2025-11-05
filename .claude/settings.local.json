@@ -16,7 +16,10 @@
       "Bash(for file in assets/data/web/megagames/*.css)",
       "Bash(head:*)",
       "Bash(for file in assets/data/web/megagames/{about,community,shop,support,tips,updates}.html)",
-      "Bash(do)"
+      "Bash(do)",
+      "WebSearch",
+      "WebFetch(domain:love2d.org)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

@@ -160,8 +160,14 @@ function ProgramLauncher:launchProgram(program_id, ...)
         end
     end
 
+    -- Determine variant_id for per-variant position tracking
+    local variant_id = nil
+    if program_id == "minigame_runner" and game_data_arg and game_data_arg.id then
+        variant_id = game_data_arg.id  -- Use game_id (e.g., "dodge_5") for per-clone position tracking
+    end
+
     -- Create window via WindowManager (it publishes window_opened)
-    local window_id = self.di.windowManager:createWindow( program_for_window, initial_title, new_state, default_w, default_h )
+    local window_id = self.di.windowManager:createWindow( program_for_window, initial_title, new_state, default_w, default_h, variant_id )
     if not window_id then print("ERROR: WindowManager failed to create window for " .. program_id); return end
 
     -- Register the state instance with DesktopState

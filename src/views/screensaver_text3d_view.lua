@@ -1,25 +1,36 @@
+--[[
+    3D Text Screensaver View (Real 3D Rendering)
+
+    Renders true 3D extruded text using CPU-based 3D rendering pipeline.
+    Follows the pattern from screensaver_model_view.lua.
+]]
+
 local Object = require('class')
+local Math3D = require('src.utils.math3d')
+local Text3DGeometry = require('src.utils.text3d_geometry')
 
 local Text3DView = Object:extend('ScreensaverText3DView')
+
+-- ============================================================================
+-- Initialization
+-- ============================================================================
 
 function Text3DView:init(opts)
     opts = opts or {}
     self.di = opts.di
-    
+
     -- Get defaults from config
     local C = (self.di and self.di.config) or {}
     local d = (C and C.screensavers and C.screensavers.defaults and C.screensavers.defaults.text3d) or {}
-    
+
     -- Text settings
     self.text = opts.text or d.text or 'good?'
     self.use_time = opts.use_time or d.use_time or false
     self.font_size = opts.font_size or d.font_size or 96
-    self.extrude_layers = opts.extrude_layers or d.extrude_layers or 12
+    self.extrude_depth = (opts.extrude_layers or d.extrude_layers or 12) / 100.0  -- Convert layers to depth
 
     -- Camera/projection
     self.fov = opts.fov or d.fov or 400
-    self.distance = opts.distance or d.distance or 10
-    -- Unified size (dimensionless scale multiplier)
     self.size = opts.size or d.size or 1.0
 
     -- Color settings
@@ -30,35 +41,59 @@ function Text3DView:init(opts)
     self.color_s = opts.color_s or d.color_s or 1.0
     self.color_v = opts.color_v or d.color_v or 1.0
 
-    -- Rotation (degrees per second) and current angles
-    -- Non-negative spin magnitudes
-    self.spin_x = math.max(0, opts.spin_x or d.spin_x or 0.0)
-    self.spin_y = math.max(0, opts.spin_y or d.spin_y or 0.8)
-    self.spin_z = math.max(0, opts.spin_z or d.spin_z or 0.1)
-    self.angle_x, self.angle_y, self.angle_z = 0, 0, 0
+    -- Rotation speed (degrees per second converted to radians)
+    self.spin_x = math.max(0, opts.spin_x or d.spin_x or 0.0) * (math.pi / 180)
+    self.spin_y = math.max(0, opts.spin_y or d.spin_y or 0.8) * (math.pi / 180)
+    self.spin_z = math.max(0, opts.spin_z or d.spin_z or 0.1) * (math.pi / 180)
+    self.rotation = { x = 0, y = 0, z = 0 }  -- Current angles in radians
 
-    -- Movement settings/state
+    -- Rotation modes ('continuous' or 'oscillate')
+    self.rotation_mode_x = opts.rotation_mode_x or d.rotation_mode_x or 'continuous'
+    self.rotation_mode_y = opts.rotation_mode_y or d.rotation_mode_y or 'continuous'
+    self.rotation_mode_z = opts.rotation_mode_z or d.rotation_mode_z or 'continuous'
+
+    -- Rotation ranges for oscillate mode (degrees converted to radians)
+    self.rotation_range_x = (opts.rotation_range_x or d.rotation_range_x or 45) * (math.pi / 180)
+    self.rotation_range_y = (opts.rotation_range_y or d.rotation_range_y or 45) * (math.pi / 180)
+    self.rotation_range_z = (opts.rotation_range_z or d.rotation_range_z or 45) * (math.pi / 180)
+
+    -- Rotation direction (for oscillate mode)
+    self.rotation_dir = { x = 1, y = 1, z = 1 }
+
+    -- Movement settings (DVD-style bouncing)
     self.move_enabled = (opts.move_enabled ~= nil) and opts.move_enabled or (d.move_enabled ~= false)
-    self.move_mode = opts.move_mode or d.move_mode or 'bounce'
-    self.move_speed = opts.move_speed or d.move_speed or 0.25
-    self.move_radius = opts.move_radius or d.move_radius or 120
+    self.move_speed = opts.move_speed or d.move_speed or 1.0
     self.bounce_speed_x = opts.bounce_speed_x or d.bounce_speed_x or 100
     self.bounce_speed_y = opts.bounce_speed_y or d.bounce_speed_y or 80
-    self.move_time = 0
-    self.bounce_pos = { x = 0, y = 0 }
-    self.bounce_vel = { x = self.bounce_speed_x, y = self.bounce_speed_y }
+    self.position = { x = 0, y = 0 }  -- Screen-space position
+    self.velocity = {
+        x = self.bounce_speed_x,
+        y = self.bounce_speed_y
+    }
 
-    -- Pulse/scale animation
+    -- Depth (Z distance from camera)
+    self.depth_base = opts.distance or d.distance or 10
+    if self.depth_base < 1 then self.depth_base = 10 end
+    self.depth = self.depth_base  -- Current depth (may oscillate)
+
+    -- Z-axis oscillation settings
+    self.depth_oscillate = opts.depth_oscillate or d.depth_oscillate or false
+    self.depth_speed = opts.depth_speed or d.depth_speed or 0.5
+    self.depth_min = opts.depth_min or d.depth_min or 5
+    self.depth_max = opts.depth_max or d.depth_max or 15
+    self.depth_time = 0  -- Oscillation phase
+
+    -- Pulse animation (optional, kept from original)
     self.pulse_enabled = opts.pulse_enabled or d.pulse_enabled or false
     self.pulse_amp = opts.pulse_amp or d.pulse_amp or 0.25
     self.pulse_speed = opts.pulse_speed or d.pulse_speed or 0.8
     self.pulse_time = 0
 
-    -- Effects
-    self.wavy_baseline = opts.wavy_baseline or d.wavy_baseline or false
-    self.specular = opts.specular or d.specular or 0.0
+    -- Lighting
+    self.lighting_ambient = 0.3
+    self.lighting_diffuse = 0.7
 
-    -- Optional background color for consistent preview/full-screen clear
+    -- Background color
     self.bg_color = opts.bg_color
 
     -- Create font
@@ -66,19 +101,119 @@ function Text3DView:init(opts)
 
     -- Viewport
     self:setViewport(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+
+    -- Clear geometry cache to ensure fresh generation
+    Text3DGeometry.clearCache()
+
+    -- Generate initial 3D mesh
+    self.mesh_cache_text = nil
+    self.mesh = nil
+    self:regenerateMesh()
 end
 
 function Text3DView:setViewport(x, y, w, h)
     self.viewport = { x = x, y = y, width = w, height = h }
 end
+
 function Text3DView:destroy()
     if self.font then
         self.font:release()
         self.font = nil
     end
+    -- Clear geometry cache
+    Text3DGeometry.clearCache()
 end
 
--- HSV to RGB conversion
+-- ============================================================================
+-- Mesh Generation
+-- ============================================================================
+
+function Text3DView:regenerateMesh()
+    local display_text = self.use_time and os.date('%H:%M:%S') or self.text
+
+    -- Only regenerate if text changed
+    if self.mesh_cache_text == display_text then
+        return
+    end
+
+    self.mesh_cache_text = display_text
+    self.mesh = Text3DGeometry.generate(display_text, self.font, self.extrude_depth)
+end
+
+-- ============================================================================
+-- Update
+-- ============================================================================
+
+function Text3DView:update(dt)
+    -- Regenerate mesh if using time (text changes every second)
+    if self.use_time then
+        self:regenerateMesh()
+    end
+
+    -- Update rotation angles with mode support
+    self:updateRotation('x', dt)
+    self:updateRotation('y', dt)
+    self:updateRotation('z', dt)
+
+    -- Update depth oscillation
+    if self.depth_oscillate then
+        self.depth_time = self.depth_time + dt * self.depth_speed
+        -- Sine wave oscillation between min and max
+        local t = math.sin(self.depth_time * math.pi * 2) * 0.5 + 0.5  -- 0 to 1
+        self.depth = self.depth_min + (self.depth_max - self.depth_min) * t
+    else
+        self.depth = self.depth_base
+    end
+
+    -- Update pulse animation
+    if self.pulse_enabled then
+        self.pulse_time = self.pulse_time + dt * self.pulse_speed
+    end
+
+    -- Update movement (DVD-style bouncing)
+    if self.move_enabled then
+        -- Apply movement speed multiplier
+        local vx = self.velocity.x * self.move_speed
+        local vy = self.velocity.y * self.move_speed
+
+        self.position.x = self.position.x + vx * dt
+        self.position.y = self.position.y + vy * dt
+
+        -- Bounce collision will be calculated in draw() after we know projected bounds
+    end
+end
+
+-- Helper function to update rotation for a single axis
+function Text3DView:updateRotation(axis, dt)
+    local mode = self['rotation_mode_' .. axis]
+    local speed = self['spin_' .. axis]
+    local range = self['rotation_range_' .. axis]
+
+    if mode == 'continuous' then
+        -- Unrestricted continuous rotation
+        self.rotation[axis] = self.rotation[axis] + speed * dt
+        -- Wrap to prevent overflow
+        self.rotation[axis] = self.rotation[axis] % (2 * math.pi)
+    elseif mode == 'oscillate' then
+        -- Oscillate within range
+        self.rotation[axis] = self.rotation[axis] + speed * self.rotation_dir[axis] * dt
+
+        -- Clamp and reverse direction at boundaries
+        if self.rotation[axis] > range then
+            self.rotation[axis] = range
+            self.rotation_dir[axis] = -1
+        elseif self.rotation[axis] < -range then
+            self.rotation[axis] = -range
+            self.rotation_dir[axis] = 1
+        end
+    end
+end
+
+-- ============================================================================
+-- Rendering
+-- ============================================================================
+
+-- HSV to RGB conversion (kept from original)
 local function hsv_to_rgb(h, s, v)
     local r, g, b
     local i = math.floor(h * 6)
@@ -97,260 +232,201 @@ local function hsv_to_rgb(h, s, v)
     return r, g, b
 end
 
-function Text3DView:update(dt)
-    -- Update rotation angles - but keep them constrained
-    self.angle_x = self.angle_x + self.spin_x * dt
-    self.angle_y = self.angle_y + self.spin_y * dt
-    self.angle_z = self.angle_z + self.spin_z * dt
-
-    -- Constrain pitch to prevent upside-down text (±60 degrees max)
-    local max_pitch = math.pi / 3
-    if self.angle_x > max_pitch then self.angle_x = max_pitch end
-    if self.angle_x < -max_pitch then self.angle_x = -max_pitch end
-
-    -- Constrain yaw to prevent text from showing backwards (±70 degrees max)
-    local max_yaw = math.pi * 0.388
-    if self.angle_y > max_yaw then self.angle_y = max_yaw end
-    if self.angle_y < -max_yaw then self.angle_y = -max_yaw end
-
-    -- Roll can wrap around
-    self.angle_z = self.angle_z % (2 * math.pi)
-
-    -- Update movement with accurate bounds and unified speed
-    if self.move_enabled then
-        self.move_time = self.move_time + dt * self.move_speed
-
-        local w, h = self.viewport.width, self.viewport.height
-        local display_text = self.use_time and os.date('%H:%M:%S') or self.text
-        local text_width = self.font and self.font:getWidth(display_text) or 0
-        local text_height = self.font and self.font:getHeight() or 0
-
-        local viewport_scale = math.min(w, h) / 600
-        local base_scale = viewport_scale * (self.size or 1.0)
-        if self.pulse_enabled then
-            base_scale = base_scale * (1.0 + math.sin(self.pulse_time * math.pi * 2) * self.pulse_amp)
-        end
-        local depth = self.distance
-        if depth < 0.01 then depth = 0.01 end
-        local perspective_scale = (self.fov or 400) / (depth * 100)
-        local final_scale = base_scale * perspective_scale
-
-        -- Compute precise AABB over all layers with rotation + shear
-        local layers_to_draw = math.max(3, math.floor(self.extrude_layers * viewport_scale))
-        local roll = math.sin(self.angle_z) * 0.05
-        local cr, sr = math.abs(math.cos(roll)), math.abs(math.sin(roll))
-        local half_w, half_h = 0, 0
-        for layer = 0, layers_to_draw do
-            local z_offset = -layer * 2
-            local layer_depth = self.distance - z_offset / 50
-            local layer_scale = (self.fov or 400) / (layer_depth * 100)
-            local layer_final = base_scale * layer_scale
-            local lw = (text_width * layer_final)
-            local lh = (text_height * layer_final)
-            local rot_w = lw * cr + lh * sr
-            local rot_h = lh * cr + lw * sr
-            local shear_x = math.abs(math.sin(self.angle_y) * z_offset * 0.5 * viewport_scale)
-            local shear_y = math.abs(math.sin(self.angle_x) * z_offset * 0.5 * viewport_scale)
-            local cand_w = shear_x + rot_w * 0.5
-            local cand_h = shear_y + rot_h * 0.5
-            if cand_w > half_w then half_w = cand_w end
-            if cand_h > half_h then half_h = cand_h end
-        end
-        local wave_h = (self.wavy_baseline and (10 * base_scale)) or 0
-        half_h = half_h + wave_h
-        local min_x = -w * 0.5 + half_w
-        local max_x =  w * 0.5 - half_w
-        local min_y = -h * 0.5 + half_h
-        local max_y =  h * 0.5 - half_h
-
-    local speed_scale = math.max(0, self.move_speed or 0)
-    -- Scale speed with viewport so time-to-edge is consistent across preview vs full-screen
-    local dim_scale = math.max(0.01, math.min(w, h) / 600)
-    local base_vx = (self.bounce_speed_x or 100) * speed_scale * dim_scale
-    local base_vy = (self.bounce_speed_y or 80) * speed_scale * dim_scale
-        local dir_x = (self.bounce_vel.x or 1) >= 0 and 1 or -1
-        local dir_y = (self.bounce_vel.y or 1) >= 0 and 1 or -1
-        local eff_vx = dir_x * base_vx
-        local eff_vy = dir_y * base_vy
-
-        self.bounce_pos.x = self.bounce_pos.x + eff_vx * dt
-        self.bounce_pos.y = self.bounce_pos.y + eff_vy * dt
-
-        if self.bounce_pos.x > max_x then
-            self.bounce_pos.x = max_x
-            self.bounce_vel.x = -math.abs(self.bounce_vel.x or 1)
-        elseif self.bounce_pos.x < min_x then
-            self.bounce_pos.x = min_x
-            self.bounce_vel.x = math.abs(self.bounce_vel.x or 1)
-        end
-
-        if self.bounce_pos.y > max_y then
-            self.bounce_pos.y = max_y
-            self.bounce_vel.y = -math.abs(self.bounce_vel.y or 1)
-        elseif self.bounce_pos.y < min_y then
-            self.bounce_pos.y = min_y
-            self.bounce_vel.y = math.abs(self.bounce_vel.y or 1)
-        end
-    end
-
-    if self.pulse_enabled then
-        self.pulse_time = self.pulse_time + dt * self.pulse_speed
-    end
-end
-
 function Text3DView:draw()
-    -- Save graphics state that we might alter
-    local old_canvas = love.graphics.getCanvas()
-    local old_scissor = { love.graphics.getScissor() }
-    local old_font = love.graphics.getFont()
-    local old_shader = love.graphics.getShader()
-    local old_blend_mode, old_alpha_mode = love.graphics.getBlendMode()
-    local old_r, old_g, old_b, old_a = love.graphics.getColor()
+    if not self.mesh or not self.mesh.vertices or #self.mesh.vertices == 0 then
+        return
+    end
+
+    -- Save graphics state
     love.graphics.push()
-    love.graphics.origin()
+    love.graphics.origin()  -- Correct for fullscreen screensaver
+
     local w, h = self.viewport.width, self.viewport.height
     local cx, cy = w / 2, h / 2
-    
-    -- Get current text
-    local display_text = self.text
-    if self.use_time then
-        display_text = os.date('%H:%M:%S')
+
+    -- Clear background
+    if self.bg_color then
+        love.graphics.clear(self.bg_color[1], self.bg_color[2], self.bg_color[3], 1)
+    else
+        local br, bg, bb = love.graphics.getBackgroundColor()
+        love.graphics.clear(br or 0, bg or 0, bb or 0, 1)
     end
-    
-    -- Scale everything based on viewport size (for preview compatibility)
+
+    -- Calculate viewport scale
     local viewport_scale = math.min(w, h) / 600
-    
-    -- Calculate base scale with pulse
-    local base_scale = viewport_scale * (self.size or 1.0)
+
+    -- Calculate size with pulse
+    -- Note: Mesh vertices are normalized to unit space, scale up for rendering
+    local base_scale = viewport_scale * self.size * 100
     if self.pulse_enabled then
         base_scale = base_scale * (1.0 + math.sin(self.pulse_time * math.pi * 2) * self.pulse_amp)
     end
-    
-    -- Calculate position offset (scaled to viewport)
-    local offset_x, offset_y = 0, 0
+
+    -- Build rotation matrix
+    local R = Math3D.buildRotationMatrix(self.rotation.x, self.rotation.y, self.rotation.z)
+
+    -- Transform and project vertices
+    local transformed = {}
+    local projected = {}
+
+    for i, v in ipairs(self.mesh.vertices) do
+        -- Apply rotation
+        local rotated = Math3D.matMulVec(R, {v[1] * base_scale, v[2] * base_scale, v[3] * base_scale})
+
+        -- Apply translation (position offset)
+        local world_x = rotated[1] + self.position.x
+        local world_y = rotated[2] + self.position.y
+        local world_z = rotated[3] + self.depth * 100  -- Push into positive Z
+
+        transformed[i] = {world_x, world_y, world_z}
+
+        -- Perspective projection
+        local depth_z = world_z
+        if depth_z < 0.1 then depth_z = 0.1 end  -- Clamp near plane
+
+        local k = self.fov / depth_z
+        local screen_x = cx + world_x * k
+        local screen_y = cy + world_y * k
+
+        projected[i] = {screen_x, screen_y, depth = world_z}
+    end
+
+    -- Calculate projected bounds for bounce collision
     if self.move_enabled then
-        -- Always use bounce-style motion for clarity and to match DVD-style behavior
-        offset_x = self.bounce_pos.x
-        offset_y = self.bounce_pos.y
+        local min_x, max_x = math.huge, -math.huge
+        local min_y, max_y = math.huge, -math.huge
+
+        for _, p in ipairs(projected) do
+            min_x = math.min(min_x, p[1])
+            max_x = math.max(max_x, p[1])
+            min_y = math.min(min_y, p[2])
+            max_y = math.max(max_y, p[2])
+        end
+
+        local half_width = (max_x - min_x) / 2
+        local half_height = (max_y - min_y) / 2
+
+        -- Bounce off screen edges
+        if self.position.x - half_width < -cx then
+            self.position.x = -cx + half_width
+            self.velocity.x = math.abs(self.velocity.x)
+        elseif self.position.x + half_width > cx then
+            self.position.x = cx - half_width
+            self.velocity.x = -math.abs(self.velocity.x)
+        end
+
+        if self.position.y - half_height < -cy then
+            self.position.y = -cy + half_height
+            self.velocity.y = math.abs(self.velocity.y)
+        elseif self.position.y + half_height > cy then
+            self.position.y = cy - half_height
+            self.velocity.y = -math.abs(self.velocity.y)
+        end
     end
-    
-    -- Clear to configured background (desktop color) for both preview and full-screen
-    do
-        local r,g,b = 0,0,0
-        if self.bg_color and self.bg_color[1] then
-            r,g,b = self.bg_color[1], self.bg_color[2], self.bg_color[3]
-        else
-            local br,bg,bb = love.graphics.getBackgroundColor()
-            r,g,b = br or 0, bg or 0, bb or 0
-        end
-        love.graphics.clear(r, g, b, 1)
-    end
-    
-    -- Set font
-    if self.font then love.graphics.setFont(self.font) end
-    
-    -- Get text dimensions
-    local text_width = self.font:getWidth(display_text)
-    local text_height = self.font:getHeight()
-    
-    -- Calculate number of layers to draw based on viewport size
-    local layers_to_draw = math.max(3, math.floor(self.extrude_layers * viewport_scale))
-    
-    -- Draw extruded layers (back to front)
-    for layer = layers_to_draw, 0, -1 do
-        -- Calculate 3D position for this layer
-        local z_offset = -layer * 2  -- depth per layer
-        
-        -- Calculate perspective scale based on distance (adjusted for viewport)
-        local depth = self.distance - z_offset / 50
-    local perspective_scale = (self.fov or 400) / (depth * 100)
-        
-        -- Apply rotations to create 3D effect on the offset
-        -- But keep the text itself always readable
-        local rx = math.cos(self.angle_x)
-        local ry = math.cos(self.angle_y)
-        local rz = math.cos(self.angle_z)
-        
-        -- Calculate shear/offset based on rotation to simulate 3D
-        local shear_x = math.sin(self.angle_y) * z_offset * 0.5 * viewport_scale
-        local shear_y = math.sin(self.angle_x) * z_offset * 0.5 * viewport_scale
-        
-        -- Position on screen
-        local screen_x = cx + offset_x + shear_x
-        local screen_y = cy + offset_y + shear_y
-        
-        -- Calculate shade (darker for back layers)
-        local depth_factor = layer / math.max(1, layers_to_draw)
-        local base_brightness = 1.0 - depth_factor * 0.7
-        
-        -- Add specular highlight to front layers
-        if layer <= 2 and self.specular > 0 then
-            base_brightness = base_brightness + self.specular * (1 - depth_factor)
-        end
-        
-        -- Get color for this layer
-        local r, g, b
-        if self.color_mode == 'rainbow' then
-            local hue = (layer / math.max(1, layers_to_draw) + (self.move_time or 0) * 0.1) % 1.0
-            r, g, b = hsv_to_rgb(hue, 0.8, 1.0)
-        elseif self.use_hsv then
-            r, g, b = hsv_to_rgb(self.color_h, self.color_s, self.color_v)
-        else
-            r, g, b = self.color[1], self.color[2], self.color[3]
-        end
-        
-        -- Apply shading
-        r = r * base_brightness
-        g = g * base_brightness
-        b = b * base_brightness
-        
-        love.graphics.setColor(r or 1, g or 1, b or 1, 1)
-        
-        -- Calculate final scale
-        local final_scale = base_scale * perspective_scale
-        
-        -- Draw each character separately if wavy baseline is enabled
-        if self.wavy_baseline and layer == 0 then
-            local x_pos = screen_x - (text_width * final_scale) / 2
-            for i = 1, #display_text do
-                local char = display_text:sub(i, i)
-                local char_width = self.font:getWidth(char)
-                local wave_offset = math.sin(self.move_time * 3 + i * 0.5) * 10 * final_scale
-                
-                love.graphics.print(
-                    char,
-                    x_pos,
-                    screen_y + wave_offset - (text_height * final_scale) / 2,
-                    math.sin(self.angle_z) * 0.05,  -- slight roll effect (reduced)
-                    final_scale,
-                    final_scale
-                )
-                x_pos = x_pos + char_width * final_scale
-            end
-        else
-            -- Draw the whole text (make sure it stays within bounds)
-            if final_scale > 0 and final_scale < 10 then  -- sanity check
-                love.graphics.print(
-                    display_text,
-                    screen_x,
-                    screen_y,
-                    math.sin(self.angle_z) * 0.05,  -- slight roll effect (reduced)
-                    final_scale,
-                    final_scale,
-                    text_width / 2,
-                    text_height / 2
-                )
+
+    -- Process faces with depth and lighting
+    local faces_to_draw = {}
+
+    -- DEBUG: Count faces that pass culling
+    local total_faces = #self.mesh.faces
+    local culled_faces = 0
+
+    for _, face in ipairs(self.mesh.faces) do
+        local v1 = transformed[face[1]]
+        local v2 = transformed[face[2]]
+        local v3 = transformed[face[3]]
+
+        if v1 and v2 and v3 then
+            -- Calculate face normal in world space
+            local normal = Math3D.calculateFaceNormal(v1, v2, v3)
+            local normal_len = Math3D.vecLen(normal)
+
+            if normal_len > 0.0001 then
+                normal = Math3D.vecNormalize(normal)
+
+                -- Backface culling: Calculate view direction from face to camera
+                -- Camera is at origin (0,0,0), face center is at average of vertices
+                local face_center = {
+                    (v1[1] + v2[1] + v3[1]) / 3,
+                    (v1[2] + v2[2] + v3[2]) / 3,
+                    (v1[3] + v2[3] + v3[3]) / 3
+                }
+                -- View direction points from face toward camera (negative of face position)
+                local view_dir = {-face_center[1], -face_center[2], -face_center[3]}
+                local view_dot = Math3D.vecDot(normal, view_dir)
+
+                -- Only draw if normal points toward viewer (positive dot product)
+                if view_dot > 0 then
+                    -- Calculate average depth for sorting
+                    local avg_depth = (v1[3] + v2[3] + v3[3]) / 3
+
+                    -- Calculate lighting (simple directional light from camera)
+                    local light_dir = {0, 0, 1}  -- Light coming from viewer
+                    local n_dot_l = Math3D.vecDot(normal, light_dir)
+                    local shade = self.lighting_ambient + self.lighting_diffuse * math.max(0, n_dot_l)
+
+                    table.insert(faces_to_draw, {
+                        indices = face,
+                        depth = avg_depth,
+                        shade = shade
+                    })
+                else
+                    culled_faces = culled_faces + 1
+                end
             end
         end
     end
-    -- Restore graphics state (balance our push and revert any changes)
+
+    -- DEBUG: Print culling stats once every 60 frames
+    if not self.debug_frame_count then self.debug_frame_count = 0 end
+    self.debug_frame_count = self.debug_frame_count + 1
+    if self.debug_frame_count >= 60 then
+        print(string.format("[3DText] Total faces: %d, Culled: %d, Rendered: %d",
+            total_faces, culled_faces, #faces_to_draw))
+        self.debug_frame_count = 0
+    end
+
+    -- Sort faces back-to-front (painter's algorithm)
+    table.sort(faces_to_draw, function(a, b) return a.depth > b.depth end)
+
+    -- Draw faces
+    for _, face_data in ipairs(faces_to_draw) do
+        local face = face_data.indices
+        local shade = face_data.shade
+
+        -- Get projected vertices
+        local p1 = projected[face[1]]
+        local p2 = projected[face[2]]
+        local p3 = projected[face[3]]
+
+        if p1 and p2 and p3 then
+            -- Get color
+            local r, g, b
+            if self.color_mode == 'rainbow' then
+                local hue = (face_data.depth / 1000 + self.pulse_time * 0.1) % 1.0
+                r, g, b = hsv_to_rgb(hue, 0.8, 1.0)
+            elseif self.use_hsv then
+                r, g, b = hsv_to_rgb(self.color_h, self.color_s, self.color_v)
+            else
+                r, g, b = self.color[1], self.color[2], self.color[3]
+            end
+
+            -- Apply shading
+            r = r * shade
+            g = g * shade
+            b = b * shade
+
+            love.graphics.setColor(r, g, b, 1)
+            love.graphics.polygon('fill',
+                p1[1], p1[2],
+                p2[1], p2[2],
+                p3[1], p3[2]
+            )
+        end
+    end
+
+    -- Restore graphics state
     love.graphics.pop()
-    -- We didn't change canvas here, but reset scissor/shader/blend/color/font to be safe
-    if old_scissor[1] then love.graphics.setScissor(old_scissor[1], old_scissor[2], old_scissor[3], old_scissor[4]) else love.graphics.setScissor() end
-    if old_shader ~= love.graphics.getShader() then love.graphics.setShader(old_shader) end
-    love.graphics.setBlendMode(old_blend_mode, old_alpha_mode)
-    if old_font then love.graphics.setFont(old_font) end
-    if old_r and old_g and old_b and old_a then love.graphics.setColor(old_r, old_g, old_b, old_a) end
 end
 
 return Text3DView

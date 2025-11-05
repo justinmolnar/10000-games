@@ -111,11 +111,20 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
              print("Calculated initial position and default size:", x, y, w, h)
         end
     elseif remembered and remembered.w and remembered.h and remembered.x and remembered.y then
-        -- Use remembered size exactly - user has resized it before
-        w = remembered.w
-        h = remembered.h
-        x, y = remembered.x, remembered.y
-        print("Using remembered position and size for", program_type, ":", x, y, w, h)
+        -- For minigame_runner, only restore position (not size) to preserve aspect ratios
+        -- Games with lock_aspect_ratio will correct themselves after instantiation
+        if program_type == "minigame_runner" then
+            w = default_w or conf_default_w
+            h = default_h or conf_default_h
+            x, y = remembered.x, remembered.y
+            print("Using remembered position with default size for", program_type, "(variant:", variant_id or "N/A", "):", x, y, w, h)
+        else
+            -- Use remembered size exactly - user has resized it before
+            w = remembered.w
+            h = remembered.h
+            x, y = remembered.x, remembered.y
+            print("Using remembered position and size for", program_type, ":", x, y, w, h)
+        end
     else
     w = default_w or conf_default_w
     h = default_h or conf_default_h
@@ -156,6 +165,7 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
     local window = {
         id = window_id,
         program_type = program_type,
+        position_key = position_key,  -- Store position key for per-variant tracking
         title = title,
         icon_sprite = program.icon_sprite,
         content_state = content_state,
@@ -319,7 +329,8 @@ function WindowManager:restoreWindow(window_id)
 
     -- Restore from maximized
     if window.is_maximized then
-        local bounds_to_restore = window.pre_maximize_bounds or self.window_positions[window.program_type]
+        local position_key = window.position_key or window.program_type
+        local bounds_to_restore = window.pre_maximize_bounds or self.window_positions[position_key]
         if bounds_to_restore then
             -- Clamp to per-window minimums and screen bounds when restoring
             local screen_w = self.screen_w or (Config.ui and Config.ui.screen and Config.ui.screen.width) or love.graphics.getWidth() or 1024
@@ -492,16 +503,17 @@ function WindowManager:isProgramOpen(program_type)
     return nil -- Not open
 end
 
--- Remember window position for program type (only non-maximized)
+-- Remember window position for program type or variant (only non-maximized)
 function WindowManager:rememberWindowPosition(window)
     if not window or window.is_maximized then return end -- Don't save maximized state as default position
-    self.window_positions[window.program_type] = {
+    local key = window.position_key or window.program_type  -- Use position_key if available, fallback to program_type
+    self.window_positions[key] = {
         x = window.x,
         y = window.y,
         w = window.width,
         h = window.height
     }
-    -- print("Remembered position for", window.program_type, ":", window.x, window.y, window.width, window.height)
+    -- print("Remembered position for", key, ":", window.x, window.y, window.width, window.height)
 end
 
 -- Save window positions to file

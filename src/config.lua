@@ -804,6 +804,53 @@ local Config = {
                 grid_lon = 48,
                 morph_speed = 0.3,
                 two_sided = false
+            },
+            text3d = {
+                text = 'good?',
+                use_time = false,
+                font_size = 96,
+                size = 1.0,
+                fov = 400,
+                distance = 10,
+                extrude_layers = 12,
+                color_mode = 'solid',
+                use_hsv = false,
+                color_r = 1.0,
+                color_g = 1.0,
+                color_b = 1.0,
+                color_h = 0.15,
+                color_s = 1.0,
+                color_v = 1.0,
+                -- Rotation settings (degrees per second)
+                spin_x = 0.0,
+                spin_y = 0.8,
+                spin_z = 0.1,
+                -- Rotation modes: 'continuous' (no limits), 'oscillate' (swing back and forth)
+                rotation_mode_x = 'continuous',
+                rotation_mode_y = 'continuous',
+                rotation_mode_z = 'continuous',
+                -- Rotation ranges for oscillate mode (degrees, ±range from center)
+                rotation_range_x = 45,
+                rotation_range_y = 45,
+                rotation_range_z = 45,
+                -- Movement settings
+                move_enabled = true,
+                move_mode = 'bounce',  -- 'bounce' or 'orbit'
+                move_speed = 0.25,
+                move_radius = 120,  -- For orbit mode
+                bounce_speed_x = 100,
+                bounce_speed_y = 80,
+                -- Z-axis movement (forward/back oscillation)
+                depth_oscillate = false,  -- Enable depth oscillation
+                depth_speed = 0.5,  -- Oscillation speed (cycles per second)
+                depth_min = 5,  -- Minimum depth (closest to camera)
+                depth_max = 15,  -- Maximum depth (farthest from camera)
+                -- Animation effects
+                pulse_enabled = false,
+                pulse_amp = 0.25,
+                pulse_speed = 0.8,
+                wavy_baseline = false,
+                specular = 0.0
             }
         }
     },

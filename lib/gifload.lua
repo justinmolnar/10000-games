@@ -502,7 +502,7 @@ local function gifnew(retver)
     height = false;
     imgs = {};
     nimages = 0;
-    ncomplete = 0;
+    ncomplete = 0;D
     buffer = bytearray(65536);
     buflen = 0;
     ptr = 0;

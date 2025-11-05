@@ -92,9 +92,23 @@
     { "type": "slider", "id": "screensaver_text3d_color_h", "label": "Hue", "min": 0, "max": 1, "step": 0.001, "format": "%.3f", "when": { "screensaver_type": "text3d", "screensaver_text3d_use_hsv": true } },
     { "type": "slider", "id": "screensaver_text3d_color_s", "label": "Sat", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d", "screensaver_text3d_use_hsv": true } },
     { "type": "slider", "id": "screensaver_text3d_color_v", "label": "Val", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d", "screensaver_text3d_use_hsv": true } },
-    { "type": "slider", "id": "screensaver_text3d_spin_x", "label": "Spin X", "min": 0, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
-    { "type": "slider", "id": "screensaver_text3d_spin_y", "label": "Spin Y", "min": 0, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
-    { "type": "slider", "id": "screensaver_text3d_spin_z", "label": "Spin Z", "min": 0, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_spin_x", "label": "Spin X (deg/s)", "min": 0, "max": 90, "step": 0.1, "format": "%.1f", "when": { "screensaver_type": "text3d" } },
+    { "type": "dropdown", "id": "screensaver_text3d_rotation_mode_x", "label": "X Mode", "choices": [
+      {"label":"Continuous","value":"continuous"}, {"label":"Oscillate","value":"oscillate"}
+    ], "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_rotation_range_x", "label": "X Range (deg)", "min": 0, "max": 180, "step": 1, "format": "%d°", "when": { "screensaver_type": "text3d", "screensaver_text3d_rotation_mode_x": "oscillate" } },
+
+    { "type": "slider", "id": "screensaver_text3d_spin_y", "label": "Spin Y (deg/s)", "min": 0, "max": 90, "step": 0.1, "format": "%.1f", "when": { "screensaver_type": "text3d" } },
+    { "type": "dropdown", "id": "screensaver_text3d_rotation_mode_y", "label": "Y Mode", "choices": [
+      {"label":"Continuous","value":"continuous"}, {"label":"Oscillate","value":"oscillate"}
+    ], "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_rotation_range_y", "label": "Y Range (deg)", "min": 0, "max": 180, "step": 1, "format": "%d°", "when": { "screensaver_type": "text3d", "screensaver_text3d_rotation_mode_y": "oscillate" } },
+
+    { "type": "slider", "id": "screensaver_text3d_spin_z", "label": "Spin Z (deg/s)", "min": 0, "max": 90, "step": 0.1, "format": "%.1f", "when": { "screensaver_type": "text3d" } },
+    { "type": "dropdown", "id": "screensaver_text3d_rotation_mode_z", "label": "Z Mode", "choices": [
+      {"label":"Continuous","value":"continuous"}, {"label":"Oscillate","value":"oscillate"}
+    ], "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_rotation_range_z", "label": "Z Range (deg)", "min": 0, "max": 180, "step": 1, "format": "%d°", "when": { "screensaver_type": "text3d", "screensaver_text3d_rotation_mode_z": "oscillate" } },
     { "type": "checkbox", "id": "screensaver_text3d_move_enabled", "label": "Move around", "when": { "screensaver_type": "text3d" } },
     { "type": "dropdown", "id": "screensaver_text3d_move_mode", "label": "Move mode", "choices": [
       {"label":"Orbit","value":"orbit"}, {"label":"Bounce","value":"bounce"}
@@ -103,10 +117,17 @@
     { "type": "slider", "id": "screensaver_text3d_move_speed", "label": "Move speed", "min": 0, "max": 2, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
     { "type": "slider", "id": "screensaver_text3d_bounce_speed_x", "label": "Bounce speed X", "min": 0, "max": 400, "step": 1, "when": { "screensaver_type": "text3d", "screensaver_text3d_move_mode": "bounce" } },
     { "type": "slider", "id": "screensaver_text3d_bounce_speed_y", "label": "Bounce speed Y", "min": 0, "max": 400, "step": 1, "when": { "screensaver_type": "text3d", "screensaver_text3d_move_mode": "bounce" } },
+
+    { "type": "checkbox", "id": "screensaver_text3d_depth_oscillate", "label": "Depth oscillation", "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_depth_speed", "label": "Depth speed", "min": 0, "max": 3, "step": 0.1, "format": "%.1f", "when": { "screensaver_type": "text3d", "screensaver_text3d_depth_oscillate": true } },
+    { "type": "slider", "id": "screensaver_text3d_depth_min", "label": "Depth min", "min": 1, "max": 20, "step": 1, "when": { "screensaver_type": "text3d", "screensaver_text3d_depth_oscillate": true } },
+    { "type": "slider", "id": "screensaver_text3d_depth_max", "label": "Depth max", "min": 1, "max": 30, "step": 1, "when": { "screensaver_type": "text3d", "screensaver_text3d_depth_oscillate": true } },
+
     { "type": "checkbox", "id": "screensaver_text3d_pulse_enabled", "label": "Pulse size", "when": { "screensaver_type": "text3d" } },
-    { "type": "slider", "id": "screensaver_text3d_pulse_amp", "label": "Pulse amount", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
-  { "type": "slider", "id": "screensaver_text3d_pulse_speed", "label": "Pulse speed", "min": 0, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } },
-  { "type": "checkbox", "id": "screensaver_text3d_wavy_baseline", "label": "Wavy baseline", "when": { "screensaver_type": "text3d" } },
-  { "type": "slider", "id": "screensaver_text3d_specular", "label": "Specular", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d" } }
+    { "type": "slider", "id": "screensaver_text3d_pulse_amp", "label": "Pulse amount", "min": 0, "max": 1, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d", "screensaver_text3d_pulse_enabled": true } },
+    { "type": "slider", "id": "screensaver_text3d_pulse_speed", "label": "Pulse speed", "min": 0, "max": 3, "step": 0.01, "format": "%.2f", "when": { "screensaver_type": "text3d", "screensaver_text3d_pulse_enabled": true } },
+
+    { "type": "slider", "id": "screensaver_text3d_fov", "label": "FOV", "min": 100, "max": 800, "step": 10, "when": { "screensaver_type": "text3d" } },
+    { "type": "slider", "id": "screensaver_text3d_distance", "label": "Distance", "min": 1, "max": 30, "step": 1, "when": { "screensaver_type": "text3d" } }
   ]
 }
