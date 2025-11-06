@@ -1,45 +1,30 @@
-[
+{
+  "game_class": "Breakout",
+  "sprite_folder": "breakout",
+  "default_sprite_set": "breakout_base",
+  "category": "arcade",
+  "tier": "trash",
+
+  "variants": [
   {
     "clone_index": 0,
     "name": "Breakout Classic",
-    "palette": "blue",
-    "music_track": "breakout_theme_1",
-    "sfx_pack": "retro_beeps",
-    "background": "grid_blue",
-    "difficulty_modifier": 1.0,
-    "paddle_width": 100,
-    "ball_speed": 300,
-    "brick_rows": 5,
-    "brick_columns": 10,
-    "brick_health": 1,
-    "lives": 3,
-    "flavor_text": "Classic brick-breaking action! Clear all bricks to win",
-    "intro_cutscene": null
+    "flavor_text": "Break all the bricks! Classic paddle and ball action"
   },
   {
     "clone_index": 1,
     "name": "Breakout Easy Mode",
-    "palette": "green",
-    "music_track": "breakout_theme_1",
-    "sfx_pack": "retro_beeps",
-    "background": "grid_green",
     "difficulty_modifier": 0.7,
     "paddle_width": 150,
     "ball_speed": 250,
     "brick_rows": 4,
     "brick_columns": 8,
-    "brick_health": 1,
     "lives": 5,
-    "flavor_text": "Bigger paddle, slower ball, more lives - perfect for beginners",
-    "intro_cutscene": null
+    "flavor_text": "Wide paddle, slow ball, fewer bricks - perfect for beginners"
   },
   {
     "clone_index": 2,
     "name": "Breakout Hardcore",
-    "palette": "red",
-    "music_track": "breakout_theme_2",
-    "sfx_pack": "8bit_arcade",
-    "background": "grid_red",
     "difficulty_modifier": 1.5,
     "paddle_width": 80,
     "ball_speed": 400,
@@ -47,42 +32,76 @@
     "brick_columns": 12,
     "brick_health": 2,
     "lives": 2,
-    "flavor_text": "Small paddle, fast ball, armored bricks - extreme challenge!",
-    "intro_cutscene": null
+    "flavor_text": "Tiny paddle, fast ball, reinforced bricks. Good luck."
   },
   {
     "clone_index": 3,
     "name": "Breakout Multi-Ball Madness",
-    "palette": "purple",
-    "music_track": "breakout_theme_2",
-    "sfx_pack": "8bit_arcade",
-    "background": "grid_purple",
     "difficulty_modifier": 1.2,
-    "paddle_width": 100,
-    "ball_speed": 300,
     "ball_count": 3,
-    "brick_rows": 5,
-    "brick_columns": 10,
-    "brick_health": 1,
-    "lives": 3,
-    "flavor_text": "Three balls at once - chaos mode!",
-    "intro_cutscene": null
+    "flavor_text": "Three balls at once! Track them all or lose them all"
   },
   {
     "clone_index": 4,
     "name": "Breakout Tower",
-    "palette": "gold",
-    "music_track": "breakout_theme_1",
-    "sfx_pack": "retro_beeps",
-    "background": "grid_gold",
     "difficulty_modifier": 1.3,
-    "paddle_width": 100,
-    "ball_speed": 300,
     "brick_rows": 8,
-    "brick_columns": 8,
-    "brick_health": 1,
     "lives": 4,
-    "flavor_text": "Tall tower of bricks - can you reach the top?",
-    "intro_cutscene": null
+    "flavor_text": "Towering wall of 8 rows. Clear it brick by brick"
+  },
+  {
+    "clone_index": 5,
+    "name": "Breakout Gravity Falls",
+    "difficulty_modifier": 1.4,
+    "ball_gravity": 200,
+    "ball_speed": 350,
+    "lives": 4,
+    "flavor_text": "Ball falls like it's real! Master the arcing physics"
+  },
+  {
+    "clone_index": 6,
+    "name": "Breakout Side Gravity",
+    "difficulty_modifier": 1.5,
+    "ball_gravity": 150,
+    "ball_gravity_direction": 0,
+    "lives": 4,
+    "flavor_text": "Gravity pulls sideways! Ball curves right constantly"
+  },
+  {
+    "clone_index": 7,
+    "name": "Breakout Homing Missile",
+    "difficulty_modifier": 1.2,
+    "ball_homing_strength": 0.8,
+    "ball_speed": 250,
+    "lives": 3,
+    "flavor_text": "Ball homes in on bricks! Watch it curve toward targets"
+  },
+  {
+    "clone_index": 8,
+    "name": "Breakout Phase Blast",
+    "difficulty_modifier": 1.3,
+    "ball_phase_through_bricks": 3,
+    "brick_rows": 8,
+    "lives": 3,
+    "flavor_text": "Ball pierces 3 bricks before bouncing! Clear clusters fast"
+  },
+  {
+    "clone_index": 9,
+    "name": "Breakout Speed Demon",
+    "difficulty_modifier": 1.6,
+    "ball_speed": 200,
+    "ball_speed_increase_per_bounce": 20,
+    "ball_max_speed": 800,
+    "lives": 5,
+    "flavor_text": "Ball accelerates +20 per brick! Gets insanely fast"
+  },
+  {
+    "clone_index": 10,
+    "name": "Breakout Ice Rink",
+    "difficulty_modifier": 1.1,
+    "paddle_friction": 0.85,
+    "lives": 4,
+    "flavor_text": "Slippery paddle slides on ice! Master the momentum"
   }
 ]
+}

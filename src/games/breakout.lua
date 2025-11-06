@@ -8,126 +8,195 @@ local Breakout = BaseGame:extend('Breakout')
 local BCfg = (Config and Config.games and Config.games.breakout) or {}
 
 -- Paddle defaults
-local PADDLE_WIDTH = (BCfg.paddle and BCfg.paddle.width) or 100
-local PADDLE_HEIGHT = (BCfg.paddle and BCfg.paddle.height) or 20
-local PADDLE_SPEED = (BCfg.paddle and BCfg.paddle.speed) or 400
-local PADDLE_FRICTION = (BCfg.paddle and BCfg.paddle.friction) or 0.92
+local DEFAULT_PADDLE_WIDTH = 100
+local DEFAULT_PADDLE_HEIGHT = 20
+local DEFAULT_PADDLE_SPEED = 600  -- Increased from 400 for smoother feel
+local DEFAULT_PADDLE_FRICTION = 1.0  -- Changed to match DodgeGame (1.0 = instant response, no drift)
+local DEFAULT_MOVEMENT_TYPE = "direct"  -- "direct", "velocity", "rail", "asteroids", "jump"
+local DEFAULT_ROTATION_SPEED = 5.0  -- For asteroids mode
+local DEFAULT_JUMP_DISTANCE = 150  -- For jump mode
+local DEFAULT_JUMP_COOLDOWN = 0.5  -- For jump mode
 
 -- Ball defaults
-local BALL_RADIUS = (BCfg.ball and BCfg.ball.radius) or 8
-local BALL_SPEED = (BCfg.ball and BCfg.ball.speed) or 300
-local BALL_MAX_SPEED = (BCfg.ball and BCfg.ball.max_speed) or 600
+local DEFAULT_BALL_RADIUS = 8
+local DEFAULT_BALL_SPEED = 300
+local DEFAULT_BALL_MAX_SPEED = 600
+local DEFAULT_BALL_COUNT = 1
+local DEFAULT_BALL_GRAVITY = 0  -- 0 = no gravity
+local DEFAULT_BALL_GRAVITY_DIRECTION = 270  -- 270 = down, 90 = up, 0 = right, 180 = left
+local DEFAULT_BALL_SPEED_INCREASE_PER_BOUNCE = 0  -- Speed increase per brick hit
+local DEFAULT_BALL_HOMING_STRENGTH = 0.0  -- 0.0 = none, 1.0 = strong
+local DEFAULT_BALL_PHASE_THROUGH_BRICKS = 0  -- Number of bricks to pierce before bouncing
 
 -- Brick defaults
-local BRICK_WIDTH = (BCfg.brick and BCfg.brick.width) or 60
-local BRICK_HEIGHT = (BCfg.brick and BCfg.brick.height) or 20
-local BRICK_ROWS = (BCfg.brick and BCfg.brick.rows) or 5
-local BRICK_COLUMNS = (BCfg.brick and BCfg.brick.columns) or 10
-local BRICK_HEALTH = (BCfg.brick and BCfg.brick.health) or 1
-local BRICK_PADDING = (BCfg.brick and BCfg.brick.padding) or 5
+local DEFAULT_BRICK_WIDTH = 60
+local DEFAULT_BRICK_HEIGHT = 20
+local DEFAULT_BRICK_ROWS = 5
+local DEFAULT_BRICK_COLUMNS = 10
+local DEFAULT_BRICK_HEALTH = 1
+local DEFAULT_BRICK_PADDING = 5
+local DEFAULT_BRICK_LAYOUT = "grid"
 
 -- Game defaults
-local LIVES = (BCfg.game and BCfg.game.lives) or 3
+local DEFAULT_LIVES = 3
+local DEFAULT_VICTORY_CONDITION = "clear_bricks"
+
+-- Legacy compatibility
+local PADDLE_WIDTH = (BCfg.paddle and BCfg.paddle.width) or DEFAULT_PADDLE_WIDTH
+local PADDLE_HEIGHT = (BCfg.paddle and BCfg.paddle.height) or DEFAULT_PADDLE_HEIGHT
+local PADDLE_SPEED = (BCfg.paddle and BCfg.paddle.speed) or DEFAULT_PADDLE_SPEED
+local PADDLE_FRICTION = (BCfg.paddle and BCfg.paddle.friction) or DEFAULT_PADDLE_FRICTION
+
+local BALL_RADIUS = (BCfg.ball and BCfg.ball.radius) or DEFAULT_BALL_RADIUS
+local BALL_SPEED = (BCfg.ball and BCfg.ball.speed) or DEFAULT_BALL_SPEED
+local BALL_MAX_SPEED = (BCfg.ball and BCfg.ball.max_speed) or DEFAULT_BALL_MAX_SPEED
+
+local BRICK_WIDTH = (BCfg.brick and BCfg.brick.width) or DEFAULT_BRICK_WIDTH
+local BRICK_HEIGHT = (BCfg.brick and BCfg.brick.height) or DEFAULT_BRICK_HEIGHT
+local BRICK_ROWS = (BCfg.brick and BCfg.brick.rows) or DEFAULT_BRICK_ROWS
+local BRICK_COLUMNS = (BCfg.brick and BCfg.brick.columns) or DEFAULT_BRICK_COLUMNS
+local BRICK_HEALTH = (BCfg.brick and BCfg.brick.health) or DEFAULT_BRICK_HEALTH
+local BRICK_PADDING = (BCfg.brick and BCfg.brick.padding) or DEFAULT_BRICK_PADDING
+
+local LIVES = (BCfg.game and BCfg.game.lives) or DEFAULT_LIVES
 
 function Breakout:init(game_data, cheats, di, variant_override)
     Breakout.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
-    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.breakout) or BCfg
+    self.cheats = cheats or {}
 
-    -- Apply variant difficulty modifier
-    local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
+    -- Three-tier fallback: runtimeCfg → variant → DEFAULT
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.breakout)
 
-    -- Override file-scope constants with DI values when present
-    PADDLE_WIDTH = (runtimeCfg.paddle and runtimeCfg.paddle.width) or PADDLE_WIDTH
-    PADDLE_HEIGHT = (runtimeCfg.paddle and runtimeCfg.paddle.height) or PADDLE_HEIGHT
-    PADDLE_SPEED = (runtimeCfg.paddle and runtimeCfg.paddle.speed) or PADDLE_SPEED
-    PADDLE_FRICTION = (runtimeCfg.paddle and runtimeCfg.paddle.friction) or PADDLE_FRICTION
+    -- Paddle Parameters
+    self.movement_type = (runtimeCfg and runtimeCfg.movement_type) or DEFAULT_MOVEMENT_TYPE
+    if self.variant and self.variant.movement_type ~= nil then
+        self.movement_type = self.variant.movement_type
+    end
 
-    BALL_RADIUS = (runtimeCfg.ball and runtimeCfg.ball.radius) or BALL_RADIUS
-    BALL_SPEED = (runtimeCfg.ball and runtimeCfg.ball.speed) or BALL_SPEED
-    BALL_MAX_SPEED = (runtimeCfg.ball and runtimeCfg.ball.max_speed) or BALL_MAX_SPEED
-
-    BRICK_WIDTH = (runtimeCfg.brick and runtimeCfg.brick.width) or BRICK_WIDTH
-    BRICK_HEIGHT = (runtimeCfg.brick and runtimeCfg.brick.height) or BRICK_HEIGHT
-    BRICK_ROWS = (runtimeCfg.brick and runtimeCfg.brick.rows) or BRICK_ROWS
-    BRICK_COLUMNS = (runtimeCfg.brick and runtimeCfg.brick.columns) or BRICK_COLUMNS
-    BRICK_HEALTH = (runtimeCfg.brick and runtimeCfg.brick.health) or BRICK_HEALTH
-    BRICK_PADDING = (runtimeCfg.brick and runtimeCfg.brick.padding) or BRICK_PADDING
-
-    LIVES = (runtimeCfg.game and runtimeCfg.game.lives) or LIVES
-
-    -- Load variant parameters with three-tier fallback
-    -- Paddle parameters
-    self.paddle_width = PADDLE_WIDTH
+    self.paddle_width = (runtimeCfg and runtimeCfg.paddle_width) or DEFAULT_PADDLE_WIDTH
     if self.variant and self.variant.paddle_width ~= nil then
         self.paddle_width = self.variant.paddle_width
     end
 
-    self.paddle_speed = PADDLE_SPEED
+    self.paddle_speed = (runtimeCfg and runtimeCfg.paddle_speed) or DEFAULT_PADDLE_SPEED
     if self.variant and self.variant.paddle_speed ~= nil then
         self.paddle_speed = self.variant.paddle_speed
     end
 
-    self.paddle_friction = PADDLE_FRICTION
+    self.paddle_friction = (runtimeCfg and runtimeCfg.paddle_friction) or DEFAULT_PADDLE_FRICTION
     if self.variant and self.variant.paddle_friction ~= nil then
         self.paddle_friction = self.variant.paddle_friction
     end
 
-    -- Ball parameters
-    self.ball_speed = BALL_SPEED
-    if self.variant and self.variant.ball_speed ~= nil then
-        self.ball_speed = self.variant.ball_speed
+    self.rotation_speed = (runtimeCfg and runtimeCfg.rotation_speed) or DEFAULT_ROTATION_SPEED
+    if self.variant and self.variant.rotation_speed ~= nil then
+        self.rotation_speed = self.variant.rotation_speed
     end
 
-    self.ball_max_speed = BALL_MAX_SPEED
-    if self.variant and self.variant.ball_max_speed ~= nil then
-        self.ball_max_speed = self.variant.ball_max_speed
+    self.jump_distance = (runtimeCfg and runtimeCfg.jump_distance) or DEFAULT_JUMP_DISTANCE
+    if self.variant and self.variant.jump_distance ~= nil then
+        self.jump_distance = self.variant.jump_distance
     end
 
-    self.ball_count = 1
+    self.jump_cooldown = (runtimeCfg and runtimeCfg.jump_cooldown) or DEFAULT_JUMP_COOLDOWN
+    if self.variant and self.variant.jump_cooldown ~= nil then
+        self.jump_cooldown = self.variant.jump_cooldown
+    end
+
+    -- Ball Parameters
+    self.ball_count = (runtimeCfg and runtimeCfg.ball_count) or DEFAULT_BALL_COUNT
     if self.variant and self.variant.ball_count ~= nil then
         self.ball_count = self.variant.ball_count
     end
 
-    -- Brick parameters
-    self.brick_rows = BRICK_ROWS
+    self.ball_speed = (runtimeCfg and runtimeCfg.ball_speed) or DEFAULT_BALL_SPEED
+    if self.variant and self.variant.ball_speed ~= nil then
+        self.ball_speed = self.variant.ball_speed
+    end
+
+    self.ball_max_speed = (runtimeCfg and runtimeCfg.ball_max_speed) or DEFAULT_BALL_MAX_SPEED
+    if self.variant and self.variant.ball_max_speed ~= nil then
+        self.ball_max_speed = self.variant.ball_max_speed
+    end
+
+    self.ball_gravity = (runtimeCfg and runtimeCfg.ball_gravity) or DEFAULT_BALL_GRAVITY
+    if self.variant and self.variant.ball_gravity ~= nil then
+        self.ball_gravity = self.variant.ball_gravity
+    end
+
+    self.ball_gravity_direction = (runtimeCfg and runtimeCfg.ball_gravity_direction) or DEFAULT_BALL_GRAVITY_DIRECTION
+    if self.variant and self.variant.ball_gravity_direction ~= nil then
+        self.ball_gravity_direction = self.variant.ball_gravity_direction
+    end
+
+    self.ball_speed_increase_per_bounce = (runtimeCfg and runtimeCfg.ball_speed_increase_per_bounce) or DEFAULT_BALL_SPEED_INCREASE_PER_BOUNCE
+    if self.variant and self.variant.ball_speed_increase_per_bounce ~= nil then
+        self.ball_speed_increase_per_bounce = self.variant.ball_speed_increase_per_bounce
+    end
+
+    self.ball_homing_strength = (runtimeCfg and runtimeCfg.ball_homing_strength) or DEFAULT_BALL_HOMING_STRENGTH
+    if self.variant and self.variant.ball_homing_strength ~= nil then
+        self.ball_homing_strength = self.variant.ball_homing_strength
+    end
+
+    self.ball_phase_through_bricks = (runtimeCfg and runtimeCfg.ball_phase_through_bricks) or DEFAULT_BALL_PHASE_THROUGH_BRICKS
+    if self.variant and self.variant.ball_phase_through_bricks ~= nil then
+        self.ball_phase_through_bricks = self.variant.ball_phase_through_bricks
+    end
+
+    -- Brick Parameters
+    self.brick_rows = (runtimeCfg and runtimeCfg.brick_rows) or DEFAULT_BRICK_ROWS
     if self.variant and self.variant.brick_rows ~= nil then
         self.brick_rows = self.variant.brick_rows
     end
 
-    self.brick_columns = BRICK_COLUMNS
+    self.brick_columns = (runtimeCfg and runtimeCfg.brick_columns) or DEFAULT_BRICK_COLUMNS
     if self.variant and self.variant.brick_columns ~= nil then
         self.brick_columns = self.variant.brick_columns
     end
 
-    self.brick_health = BRICK_HEALTH
-    if self.variant and self.variant.brick_health ~= nil then
-        self.brick_health = self.variant.brick_health
-    end
-
-    self.brick_layout = "grid"
+    self.brick_layout = (runtimeCfg and runtimeCfg.brick_layout) or DEFAULT_BRICK_LAYOUT
     if self.variant and self.variant.brick_layout ~= nil then
         self.brick_layout = self.variant.brick_layout
     end
 
-    -- Lives
-    self.lives = LIVES
+    self.brick_health = (runtimeCfg and runtimeCfg.brick_health) or DEFAULT_BRICK_HEALTH
+    if self.variant and self.variant.brick_health ~= nil then
+        self.brick_health = self.variant.brick_health
+    end
+
+    -- Game Parameters
+    self.lives = (runtimeCfg and runtimeCfg.lives) or DEFAULT_LIVES
     if self.variant and self.variant.lives ~= nil then
         self.lives = self.variant.lives
     end
 
-    -- Apply CheatEngine modifications
-    local speed_modifier = self.cheats.speed_modifier or 1.0
-    local advantage_modifier = self.cheats.advantage_modifier or {}
-    local extra_lives = advantage_modifier.lives or 0
-
-    self.paddle_speed = self.paddle_speed * speed_modifier
-    self.lives = self.lives + extra_lives
-
-    -- Victory condition
-    self.victory_condition = "clear_bricks"
+    self.victory_condition = (runtimeCfg and runtimeCfg.victory_condition) or DEFAULT_VICTORY_CONDITION
     if self.variant and self.variant.victory_condition ~= nil then
         self.victory_condition = self.variant.victory_condition
+    end
+
+    -- Apply difficulty_modifier from variant
+    if self.variant and self.variant.difficulty_modifier then
+        self.ball_speed = self.ball_speed * self.variant.difficulty_modifier
+        self.ball_max_speed = self.ball_max_speed * self.variant.difficulty_modifier
+        self.paddle_speed = self.paddle_speed * self.variant.difficulty_modifier
+    end
+
+    -- Apply CheatEngine modifications
+    if self.cheats.speed_modifier then
+        self.paddle_speed = self.paddle_speed * self.cheats.speed_modifier
+        self.ball_speed = self.ball_speed * self.cheats.speed_modifier
+        self.ball_max_speed = self.ball_max_speed * self.cheats.speed_modifier
+    end
+    if self.cheats.advantage_modifier then
+        self.lives = self.lives + math.floor(self.cheats.advantage_modifier or 0)
+        self.paddle_width = self.paddle_width * (1 + (self.cheats.advantage_modifier or 0) * 0.1)
+    end
+    if self.cheats.performance_modifier then
+        -- Increase ball count for better performance
+        self.ball_count = self.ball_count + math.floor((self.cheats.performance_modifier or 0) / 3)
     end
 
     -- Initialize RNG with seed
@@ -150,8 +219,13 @@ function Breakout:init(game_data, cheats, di, variant_override)
         y = self.arena_height - 50,
         width = self.paddle_width,
         height = PADDLE_HEIGHT,
-        vx = 0
+        vx = 0,
+        vy = 0,  -- For asteroids mode
+        angle = 0,  -- For asteroids mode
+        jump_cooldown_timer = 0  -- For jump mode
     }
+
+    print("DEBUG BREAKOUT INIT: paddle_friction=" .. tostring(self.paddle_friction) .. ", paddle_speed=" .. tostring(self.paddle_speed) .. ", movement_type=" .. tostring(self.movement_type))
 
     -- Initialize ball(s)
     self.balls = {}
@@ -183,7 +257,8 @@ function Breakout:spawnBall()
         radius = BALL_RADIUS,
         vx = math.cos(angle) * self.ball_speed,
         vy = math.sin(angle) * self.ball_speed,
-        active = true
+        active = true,
+        pierce_count = self.ball_phase_through_bricks  -- For phase-through bricks
     }
     table.insert(self.balls, ball)
 end
@@ -271,8 +346,24 @@ function Breakout:updateGameLogic(dt)
 end
 
 function Breakout:updatePaddle(dt)
-    -- Apply friction
-    self.paddle.vx = self.paddle.vx * self.paddle_friction
+    local move_dir = 0
+    if love.keyboard.isDown('a') or love.keyboard.isDown('left') then
+        move_dir = -1
+    end
+    if love.keyboard.isDown('d') or love.keyboard.isDown('right') then
+        move_dir = move_dir + 1
+    end
+
+    -- Target velocity based on input
+    local target_velocity = move_dir * self.paddle_speed
+
+    -- Simple exponential smoothing toward target
+    -- Lower friction = slower response (more "slip")
+    local smoothing = 1 - self.paddle_friction
+    self.paddle.vx = self.paddle.vx * smoothing + target_velocity * (1 - smoothing)
+
+    -- Update position
+    self.paddle.x = self.paddle.x + self.paddle.vx * dt
 
     -- Clamp to arena bounds
     if self.paddle.x - self.paddle.width / 2 < 0 then
@@ -282,12 +373,32 @@ function Breakout:updatePaddle(dt)
         self.paddle.x = self.arena_width - self.paddle.width / 2
         self.paddle.vx = 0
     end
-
-    -- Update position
-    self.paddle.x = self.paddle.x + self.paddle.vx * dt
 end
 
 function Breakout:updateBall(ball, dt)
+    -- Apply directional gravity if enabled
+    if self.ball_gravity ~= 0 then
+        local gravity_rad = math.rad(self.ball_gravity_direction)
+        ball.vx = ball.vx + math.cos(gravity_rad) * self.ball_gravity * dt
+        ball.vy = ball.vy + math.sin(gravity_rad) * self.ball_gravity * dt
+    end
+
+    -- Apply homing toward nearest brick
+    if self.ball_homing_strength > 0 then
+        local nearest_brick = self:findNearestBrick(ball.x, ball.y)
+        if nearest_brick then
+            local dx = nearest_brick.x - ball.x
+            local dy = nearest_brick.y - ball.y
+            local dist = math.sqrt(dx * dx + dy * dy)
+            if dist > 0 then
+                -- Apply homing force
+                local homing_force = self.ball_homing_strength * 50
+                ball.vx = ball.vx + (dx / dist) * homing_force * dt
+                ball.vy = ball.vy + (dy / dist) * homing_force * dt
+            end
+        end
+    end
+
     -- Update position
     ball.x = ball.x + ball.vx * dt
     ball.y = ball.y + ball.vy * dt
@@ -349,20 +460,58 @@ function Breakout:updateBall(ball, dt)
                 self.score = self.score + 100 * (1 + self.combo * 0.1)
             end
 
-            -- Bounce ball
-            -- Simple bounce (reverse y velocity)
-            ball.vy = -ball.vy
-
-            -- Move ball out of brick
-            if ball.vy < 0 then
-                ball.y = brick.y - ball.radius - brick.height / 2
+            -- Check if ball should phase through or bounce
+            if ball.pierce_count and ball.pierce_count > 0 then
+                -- Phase through - reduce pierce count but don't bounce
+                ball.pierce_count = ball.pierce_count - 1
             else
-                ball.y = brick.y + ball.radius + brick.height / 2
+                -- Normal bounce
+                ball.vy = -ball.vy
+
+                -- Move ball out of brick
+                if ball.vy < 0 then
+                    ball.y = brick.y - ball.radius - brick.height / 2
+                else
+                    ball.y = brick.y + ball.radius + brick.height / 2
+                end
             end
 
-            break
+            -- Increase ball speed if enabled
+            if self.ball_speed_increase_per_bounce > 0 then
+                local current_speed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
+                local new_speed = math.min(current_speed + self.ball_speed_increase_per_bounce, self.ball_max_speed)
+                if current_speed > 0 then
+                    local scale = new_speed / current_speed
+                    ball.vx = ball.vx * scale
+                    ball.vy = ball.vy * scale
+                end
+            end
+
+            -- Only process one brick collision per frame
+            if not (ball.pierce_count and ball.pierce_count > 0) then
+                break
+            end
         end
     end
+end
+
+function Breakout:findNearestBrick(x, y)
+    local nearest = nil
+    local min_dist = math.huge
+
+    for _, brick in ipairs(self.bricks) do
+        if brick.alive then
+            local dx = brick.x - x
+            local dy = brick.y - y
+            local dist = math.sqrt(dx * dx + dy * dy)
+            if dist < min_dist then
+                min_dist = dist
+                nearest = brick
+            end
+        end
+    end
+
+    return nearest
 end
 
 function Breakout:checkBallPaddleCollision(ball)

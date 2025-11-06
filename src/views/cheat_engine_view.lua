@@ -366,7 +366,11 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
         if scrollbar then
             scrollbar:setPosition(self.param_panel_x, header_y + 25)
             local max_scroll = math.max(0, #params - visible_params)
-            local geom = scrollbar:compute(self.param_panel_w, visible_params * self.item_h, #params * self.item_h, param_scroll or 0, max_scroll)
+            -- Viewport height: from row start (header_y + 25) to launch buttons (param_panel_h - 35)
+            -- header_y = param_panel_y + 110, so row start = param_panel_y + 135
+            -- Available = (param_panel_y + param_panel_h - 35) - (param_panel_y + 135) = param_panel_h - 170
+            local available_height = self.param_panel_h - 170
+            local geom = scrollbar:compute(self.param_panel_w, available_height, #params * self.item_h, param_scroll or 0, max_scroll)
 
             if geom then
                 love.graphics.push()
@@ -420,7 +424,7 @@ function CheatEngineView:getVisibleGameCount(viewport_height)
 end
 
 function CheatEngineView:getVisibleParamCount(viewport_height)
-    local available_height = self.param_panel_h - 180 -- Account for headers, budget, step size, buttons
+    local available_height = self.param_panel_h - 170 -- Account for headers (135px) + launch buttons (35px)
     return math.max(1, math.floor(available_height / self.item_h))
 end
 

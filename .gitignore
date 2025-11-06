@@ -27,3 +27,6 @@ Thumbs.db
 
 /assets/sprites/
 /assets/wallpaper/
+
+# Ignore documentation folder
+/documentation/

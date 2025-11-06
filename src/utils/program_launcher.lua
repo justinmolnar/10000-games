@@ -146,10 +146,15 @@ function ProgramLauncher:launchProgram(program_id, ...)
 
             if display_name then
                 initial_title = (title_prefix ~= "" and (title_prefix .. display_name)) or display_name
+                -- Use generic game icon for taskbar (game sprites are loaded via GameSpriteHelper, not sprite_loader)
+                local taskbar_icon = "joystick_alt-0"  -- Generic gamepad icon
+                if game_data_arg.icon_sprite and game_data_arg.icon_sprite ~= "player" then
+                    taskbar_icon = game_data_arg.icon_sprite  -- Use non-player icons directly
+                end
                 program_for_window = {
                     id = program.id,
                     name = display_name,
-                    icon_sprite = game_data_arg.icon_sprite,
+                    icon_sprite = taskbar_icon,
                     window_defaults = program.window_defaults
                 }
             else

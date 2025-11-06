@@ -1,144 +1,33 @@
 local Object = require('class')
 local json = require('json')
 local Paths = require('src.paths')
+local GameRegistry = require('src.models.game_registry')
 local GameVariantLoader = Object:extend('GameVariantLoader')
 
 function GameVariantLoader:init()
-    self.base_game_definitions = {}
-    self.standalone_variants = {}  -- Variants loaded from separate files (e.g., dodge_variants.json)
-    self.launcher_icons = {}  -- Phase 2.4: Cache for loaded launcher icons
-    self:loadBaseGameDefinitions()
-    self:loadStandaloneVariants()
+    self.launcher_icons = {}  -- Cache for loaded launcher icons
+    -- Use GameRegistry for auto-discovery (Phase 3 refactor)
+    self.game_registry = GameRegistry:new()
 end
 
-function GameVariantLoader:loadBaseGameDefinitions()
-    local file_path = Paths.assets.data .. "base_game_definitions.json"
-    local read_ok, contents = pcall(love.filesystem.read, file_path)
-
-    if not read_ok or not contents then
-        print("ERROR: GameVariantLoader could not read " .. file_path .. " - " .. tostring(contents))
-        return
-    end
-
-    local decode_ok, base_games = pcall(json.decode, contents)
-
-    if not decode_ok then
-        print("ERROR: GameVariantLoader failed to decode " .. file_path .. " - " .. tostring(base_games))
-        return
-    end
-
-    -- Index base game definitions by their base ID for quick lookup
-    for _, base_game in ipairs(base_games) do
-        if base_game.id and base_game.clone_variants then
-            self.base_game_definitions[base_game.id] = base_game
-        end
-    end
-
-    print("GameVariantLoader: Loaded " .. #base_games .. " base game definitions")
-end
-
-function GameVariantLoader:loadStandaloneVariants()
-    -- Load standalone variant files (e.g., dodge_variants.json, snake_variants.json)
-    local variant_files = {
-        { base_id = "dodge_1", file = "variants/dodge_variants.json" },
-        { base_id = "snake_1", file = "variants/snake_variants.json" },
-        { base_id = "memory_1", file = "variants/memory_match_variants.json" },
-        { base_id = "space_shooter_1", file = "variants/space_shooter_variants.json" },
-        { base_id = "breakout_1", file = "variants/breakout_variants.json" },
-        { base_id = "coin_flip_1", file = "variants/coin_flip_variants.json" },
-        { base_id = "rps_1", file = "variants/rps_variants.json" }
-        -- Add more variant files here as needed
-    }
-
-    for _, variant_file in ipairs(variant_files) do
-        local file_path = Paths.assets.data .. variant_file.file
-        local read_ok, contents = pcall(love.filesystem.read, file_path)
-
-        if read_ok and contents then
-            local decode_ok, variants = pcall(json.decode, contents)
-
-            if decode_ok and variants then
-                self.standalone_variants[variant_file.base_id] = variants
-                print("========================================")
-                print("GameVariantLoader: Successfully loaded " .. #variants .. " variants from " .. variant_file.file)
-                print("Variant examples: " .. (variants[1] and variants[1].name or "nil") .. ", " .. (variants[5] and variants[5].name or "nil") .. ", " .. (variants[10] and variants[10].name or "nil"))
-                print("========================================")
-            else
-                print("ERROR: GameVariantLoader: Failed to decode " .. file_path .. " - " .. tostring(variants))
-            end
-        else
-            print("GameVariantLoader: Could not read " .. file_path .. " (file may not exist)")
-        end
-    end
-end
+-- DELETED: loadBaseGameDefinitions() - replaced by GameRegistry (Phase 3)
+-- DELETED: loadStandaloneVariants() - replaced by GameRegistry (Phase 3)
+-- DELETED: variant_files mapping table - replaced by auto-discovery (Phase 3)
 
 function GameVariantLoader:getVariantData(game_id)
     if not game_id then
         return self:getDefaultVariant()
     end
 
-    -- Parse game_id to extract base type and clone index
-    -- Format: "dodge_1" (base), "dodge_2" (clone 1), "dodge_3" (clone 2), etc.
-    local base_id, variant_num = game_id:match("^(.+)_(%d+)$")
+    -- Use GameRegistry to get game data (Phase 3 refactor)
+    local game_data = self.game_registry:getGameByID(game_id)
 
-    if not base_id or not variant_num then
-        print("GameVariantLoader: Could not parse game_id: " .. game_id)
-        return self:getDefaultVariant()
-    end
-
-    -- Reconstruct the base game ID (always ends with _1)
-    local base_game_id = base_id .. "_1"
-
-    -- Convert variant_num to clone_index (0-based)
-    -- dodge_1 = clone_index 0, dodge_2 = clone_index 1, etc.
-    local clone_index = tonumber(variant_num) - 1
-
-    -- FIRST: Check if there's a standalone variants file for this game
-    if self.standalone_variants[base_game_id] then
-        local variants = self.standalone_variants[base_game_id]
-
-        -- Find the variant with matching clone_index
-        for _, v in ipairs(variants) do
-            if v.clone_index == clone_index then
-                return v
-            end
-        end
-
-        -- If no exact match, cycle through available variants
-        local variant_index = (clone_index % #variants) + 1
-        print("GameVariantLoader: No variant for clone_index " .. clone_index .. ", using cycled variant " .. variant_index)
-        return variants[variant_index]
-    end
-
-    -- FALLBACK: Check base_game_definitions for clone_variants array
-    local base_game = self.base_game_definitions[base_game_id]
-
-    if not base_game then
-        print("GameVariantLoader: No base game found for: " .. base_game_id)
-        return self:getDefaultVariant()
-    end
-
-    if not base_game.clone_variants or #base_game.clone_variants == 0 then
-        print("GameVariantLoader: No clone_variants defined for: " .. base_game_id)
-        return self:getDefaultVariant()
-    end
-
-    -- Find the variant with matching clone_index
-    local variant = nil
-    for _, v in ipairs(base_game.clone_variants) do
-        if v.clone_index == clone_index then
-            variant = v
-            break
-        end
-    end
-
-    if variant then
-        return variant
+    if game_data then
+        -- Return the variant data (already merged by GameRegistry)
+        return game_data
     else
-        -- If no exact match, cycle through available variants
-        local variant_index = (clone_index % #base_game.clone_variants) + 1
-        print("GameVariantLoader: No variant for clone_index " .. clone_index .. ", using cycled variant " .. variant_index)
-        return base_game.clone_variants[variant_index]
+        print("GameVariantLoader: No game found for ID: " .. tostring(game_id))
+        return self:getDefaultVariant()
     end
 end
 
@@ -197,18 +86,21 @@ function GameVariantLoader:getLauncherIcon(game_id, game_class)
 end
 
 function GameVariantLoader:getGameTypeFromClass(game_class)
-    -- Map game class names to folder names
-    local class_to_folder = {
-        SpaceShooter = "space_shooter",
-        SnakeGame = "snake",
-        MemoryMatch = "memory_match",
-        HiddenObject = "hidden_object",
-        DodgeGame = "dodge",
-        Breakout = "breakout",
-        CoinFlip = "coin_flip",
-        RPS = "rps"
-    }
-    return class_to_folder[game_class]
+    -- Use sprite_folder from variant data instead of hardcoded mapping (Phase 3)
+    -- Fallback: convert CamelCase to snake_case
+    if not game_class then return nil end
+
+    -- Try to get sprite_folder from GameRegistry
+    local all_games = self.game_registry:getAllGames()
+    for _, game in ipairs(all_games) do
+        if game.game_class == game_class and game.sprite_folder then
+            return game.sprite_folder
+        end
+    end
+
+    -- Fallback: Auto-convert CamelCase to snake_case
+    local folder = game_class:gsub("(%u)", function(c) return "_" .. c:lower() end):match("^_?(.*)")
+    return folder
 end
 
 return GameVariantLoader

@@ -1,0 +1,65 @@
+{
+  "sprite_sets": [
+    {
+      "id": "dodge_base",
+      "sprites": {
+        "player": "assets/sprites/games/dodge/base_1/player.png",
+        "enemy": "assets/sprites/games/dodge/base_1/enemy.png",
+        "background": "assets/sprites/games/dodge/base_1/background.png"
+      }
+    },
+    {
+      "id": "snake_base",
+      "sprites": {
+        "segment": "assets/sprites/games/snake/classic/snake/segment.png",
+        "seg_head": "assets/sprites/games/snake/classic/snake/seg_head.png",
+        "food": "assets/sprites/games/snake/classic/snake/food.png"
+      }
+    },
+    {
+      "id": "memory_icons_1",
+      "sprites": {
+        "card_back": "assets/sprites/games/memory/icons_1/card_back.png",
+        "card_front": "assets/sprites/games/memory/icons_1/card_front.png"
+      }
+    },
+    {
+      "id": "space_shooter_base",
+      "sprites": {
+        "player": "assets/sprites/games/space_shooter/fighter_1/player.png",
+        "enemy": "assets/sprites/games/space_shooter/fighter_1/enemy.png",
+        "bullet": "assets/sprites/games/space_shooter/fighter_1/bullet.png"
+      }
+    },
+    {
+      "id": "hidden_object_base",
+      "sprites": {
+        "background": "assets/sprites/games/hidden_object/base/background.png",
+        "object_highlight": "assets/sprites/games/hidden_object/base/highlight.png"
+      }
+    },
+    {
+      "id": "breakout_base",
+      "sprites": {
+        "paddle": "assets/sprites/games/breakout/base/paddle.png",
+        "ball": "assets/sprites/games/breakout/base/ball.png",
+        "brick": "assets/sprites/games/breakout/base/brick.png"
+      }
+    },
+    {
+      "id": "coin_flip_base",
+      "sprites": {
+        "coin_heads": "assets/sprites/games/coin_flip/base/coin_heads.png",
+        "coin_tails": "assets/sprites/games/coin_flip/base/coin_tails.png"
+      }
+    },
+    {
+      "id": "rps_base",
+      "sprites": {
+        "rock": "assets/sprites/games/rps/base/rock.png",
+        "paper": "assets/sprites/games/rps/base/paper.png",
+        "scissors": "assets/sprites/games/rps/base/scissors.png"
+      }
+    }
+  ]
+}

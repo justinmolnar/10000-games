@@ -17,7 +17,7 @@ function LauncherState:init(player_data, game_data, state_machine, save_manager,
 
     -- Create scrollbar controller (unit_size = item height + padding)
     self.scrollbar = ScrollbarController:new({
-        unit_size = 42, -- button_height (40) + button_padding (2)
+        unit_size = 85, -- button_height (80) + button_padding (5)
         step_units = 1
     })
 

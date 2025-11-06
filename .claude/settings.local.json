@@ -19,7 +19,10 @@
       "Bash(do)",
       "WebSearch",
       "WebFetch(domain:love2d.org)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(/tmp/dodge_backup.json)",
+      "Bash(for game in space_shooter dodge snake memory hidden_object breakout coin_flip rps)",
+      "Bash(do echo \"=== $game ===\")"
     ],
     "deny": [],
     "ask": []

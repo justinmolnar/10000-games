@@ -1,3 +1,11 @@
+{
+  "game_class": "DodgeGame",
+  "sprite_folder": "dodge",
+  "default_sprite_set": "dodge_base",
+  "category": "action",
+  "tier": "trash",
+
+  "variants":
 [
   {
     "clone_index": 0,
@@ -1045,3 +1053,4 @@
     "intro_cutscene": null
   }
 ]
+}

@@ -112,18 +112,8 @@ function FormulaRenderer:getTokenSprite(token, game_data, game_instance)
         if sprite_key and game_data and game_data.visual_identity and game_data.visual_identity.sprite_set_id then
             local sprite_set = game_data.visual_identity.sprite_set_id
 
-            -- Map game_class to sprite folder name
-            local class_to_folder = {
-                DodgeGame = "dodge",
-                SnakeGame = "snake",
-                SpaceShooter = "space_shooter",
-                MemoryMatch = "memory",
-                HiddenObject = "hidden_object",
-                Breakout = "breakout",
-                CoinFlip = "coin_flip",
-                RPS = "rps"
-            }
-            local game_folder = class_to_folder[game_data.game_class]
+            -- Get game folder from sprite_folder field (set by GameRegistry)
+            local game_folder = game_data.sprite_folder
 
             if game_folder then
                 -- Special handling for Snake: check sprite_style to determine which sprite to load

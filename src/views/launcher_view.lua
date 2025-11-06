@@ -4,6 +4,7 @@ local Object = require('class')
 local UIComponents = require('src.views.ui_components')
 local FormulaRenderer = require('src.views.formula_renderer')
 local MetricLegend = require('src.views.metric_legend')
+local GameSpriteHelper = require('src.utils.game_sprite_helper')  -- Phase 4
 local LauncherView = Object:extend('LauncherView')
 
 function LauncherView:init(controller, player_data, game_data)
@@ -15,6 +16,7 @@ function LauncherView:init(controller, player_data, game_data)
     self.sprite_loader = (di and di.spriteLoader) or nil
     self.sprite_manager = (di and di.spriteManager) or nil
     self.variant_loader = (di and di.gameVariantLoader) or nil  -- Phase 1.5
+    self.sprite_set_loader = (di and di.spriteSetLoader) or nil  -- Phase 4
 
     self.selected_category = "all"
     self.selected_index = 1
@@ -350,119 +352,56 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
         -- Fallback to icon sprite system
         local sprite_name = game_data.icon_sprite or "game_freecell-0"
 
-        -- If icon_sprite is "player", try to load actual game sprite from game's sprite_set
+        -- Phase 4: Use GameSpriteHelper for player sprite loading
         local player_sprite_drawn = false
-        if sprite_name == "player" then
-            -- Get sprite_set from variant, fall back to base definition
-            local sprite_set_id = game_data.visual_identity and game_data.visual_identity.sprite_set_id
-            if self.variant_loader then
-                local variant = self.variant_loader:getVariantData(game_data.id)
-                if variant and variant.sprite_set then
-                    sprite_set_id = variant.sprite_set
-                end
-            end
+        if sprite_name == "player" and self.sprite_set_loader then
+            local player_sprite = GameSpriteHelper.loadPlayerSprite(game_data, self.sprite_set_loader, icon_size)
 
-            if sprite_set_id then
-            local class_to_folder = {
-                DodgeGame = "dodge",
-                SnakeGame = "snake",
-                SpaceShooter = "space_shooter",
-                MemoryMatch = "memory",
-                HiddenObject = "hidden_object",
-                Breakout = "breakout",
-                CoinFlip = "coin_flip",
-                RPS = "rps"
-            }
-            local game_folder = class_to_folder[game_data.game_class]
+            if player_sprite then
+                -- Get variant-specific tint from PaletteManager
+                local color_tint = {1, 1, 1}
+                local palette_manager = self.di and self.di.paletteManager
+                local config = self.di and self.di.config
+                if palette_manager and config and config.games and self.variant_loader then
+                    local variant = self.variant_loader:getVariantData(game_data.id)
 
-            -- Map game class to actual sprite filename
-            local sprite_filename = "player"
-            if game_data.game_class == "SnakeGame" then
-                local sprite_style = game_data.sprite_style or "uniform"
-                sprite_filename = (sprite_style == "segmented") and "seg_head" or "segment"
-            elseif game_data.game_class == "DodgeGame" then
-                sprite_filename = "player"
-            elseif game_data.game_class == "SpaceShooter" then
-                sprite_filename = "player"
-            end
+                    -- Map class name to config key
+                    local class_to_config = {
+                        DodgeGame = "dodge",
+                        SnakeGame = "snake",
+                        MemoryMatch = "memory_match",
+                        HiddenObject = "hidden_object",
+                        SpaceShooter = "space_shooter",
+                        Breakout = "breakout",
+                        CoinFlip = "coin_flip",
+                        RPS = "rps"
+                    }
+                    local config_key = class_to_config[game_data.game_class]
+                    local game_config = config_key and config.games[config_key]
 
-            if game_folder then
-                local sprite_path = string.format("assets/sprites/games/%s/%s/%s.png",
-                    game_folder, sprite_set_id, sprite_filename)
-                local success, player_sprite = pcall(love.graphics.newImage, sprite_path)
-
-                -- If failed, try default sprite_set from visual_identity
-                if not success then
-                    local default_sprite_set = game_data.visual_identity and game_data.visual_identity.sprite_set_id
-                    if default_sprite_set and default_sprite_set ~= sprite_set_id then
-                        local default_path = string.format("assets/sprites/games/%s/%s/%s.png",
-                            game_folder, default_sprite_set, sprite_filename)
-                        success, player_sprite = pcall(love.graphics.newImage, default_path)
+                    if variant and game_config then
+                        -- Force tinting in launcher even if disabled in-game
+                        color_tint = palette_manager:getTintForVariant(variant, game_data.game_class, game_config, true)
                     end
                 end
 
-                -- If still failed, try hardcoded fallback based on game class
-                if not success then
-                    local fallback_sprite_set = nil
-                    if game_data.game_class == "SpaceShooter" then
-                        fallback_sprite_set = "fighter_1"
-                    elseif game_data.game_class == "DodgeGame" then
-                        fallback_sprite_set = "player_1"
-                    elseif game_data.game_class == "SnakeGame" then
-                        fallback_sprite_set = "snake_1"
-                    end
+                -- Combine with locked/unlocked tint
+                local unlock_mult = is_unlocked and 1.0 or 0.5
+                local final_tint = {color_tint[1] * unlock_mult, color_tint[2] * unlock_mult, color_tint[3] * unlock_mult}
 
-                    if fallback_sprite_set and fallback_sprite_set ~= sprite_set_id then
-                        local fallback_path = string.format("assets/sprites/games/%s/%s/%s.png",
-                            game_folder, fallback_sprite_set, sprite_filename)
-                        success, player_sprite = pcall(love.graphics.newImage, fallback_path)
-                    end
-                end
-
-                if success then
-                    -- Get variant-specific tint from PaletteManager
-                    local color_tint = {1, 1, 1}
-                    local palette_manager = self.di and self.di.paletteManager
-                    local config = self.di and self.di.config
-                    if palette_manager and config and config.games and self.variant_loader then
-                        local variant = self.variant_loader:getVariantData(game_data.id)
-
-                        -- Map class name to config key
-                        local class_to_config = {
-                            DodgeGame = "dodge",
-                            SnakeGame = "snake",
-                            MemoryMatch = "memory_match",
-                            HiddenObject = "hidden_object",
-                            SpaceShooter = "space_shooter"
-                        }
-                        local config_key = class_to_config[game_data.game_class]
-                        local game_config = config_key and config.games[config_key]
-
-                        if variant and game_config then
-                            -- Force tinting in launcher even if disabled in-game
-                            color_tint = palette_manager:getTintForVariant(variant, game_data.game_class, game_config, true)
-                        end
-                    end
-
-                    -- Combine with locked/unlocked tint
-                    local unlock_mult = is_unlocked and 1.0 or 0.5
-                    local final_tint = {color_tint[1] * unlock_mult, color_tint[2] * unlock_mult, color_tint[3] * unlock_mult}
-
-                    love.graphics.setColor(final_tint[1], final_tint[2], final_tint[3])
-                    love.graphics.draw(player_sprite, icon_x, icon_y, 0,
-                        icon_size / player_sprite:getWidth(), icon_size / player_sprite:getHeight())
-                    love.graphics.setColor(1, 1, 1)
-                    player_sprite_drawn = true
-                else
-                    -- Failed to load player sprite, fall back to first metric sprite mapping
-                    if game_data.visual_identity and game_data.visual_identity.metric_sprite_mappings then
-                        local first_metric = game_data.metrics_tracked and game_data.metrics_tracked[1]
-                        if first_metric then
-                            sprite_name = game_data.visual_identity.metric_sprite_mappings[first_metric] or "game_freecell-0"
-                        end
+                love.graphics.setColor(final_tint[1], final_tint[2], final_tint[3])
+                love.graphics.draw(player_sprite, icon_x, icon_y, 0,
+                    icon_size / player_sprite:getWidth(), icon_size / player_sprite:getHeight())
+                love.graphics.setColor(1, 1, 1)
+                player_sprite_drawn = true
+            else
+                -- Failed to load player sprite, fall back to first metric sprite mapping
+                if game_data.visual_identity and game_data.visual_identity.metric_sprite_mappings then
+                    local first_metric = game_data.metrics_tracked and game_data.metrics_tracked[1]
+                    if first_metric then
+                        sprite_name = game_data.visual_identity.metric_sprite_mappings[first_metric] or "game_freecell-0"
                     end
                 end
-            end
             end
         end
 
@@ -613,113 +552,50 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
             end
         end
 
-        -- If icon_sprite is "player", try to load actual game sprite from game's sprite_set
+        -- Phase 4: Use GameSpriteHelper for player sprite loading
         local player_sprite_drawn = false
-        if sprite_name == "player" then
-            -- Get sprite_set from variant, fall back to base definition
-            local sprite_set_id = game_data.visual_identity and game_data.visual_identity.sprite_set_id
-            if self.variant_loader then
-                local variant = self.variant_loader:getVariantData(game_data.id)
-                if variant and variant.sprite_set then
-                    sprite_set_id = variant.sprite_set
-                end
-            end
+        if sprite_name == "player" and self.sprite_set_loader then
+            local player_sprite = GameSpriteHelper.loadPlayerSprite(game_data, self.sprite_set_loader, preview_size)
 
-            if sprite_set_id then
-                local class_to_folder = {
-                    DodgeGame = "dodge",
-                    SnakeGame = "snake",
-                    SpaceShooter = "space_shooter",
-                    MemoryMatch = "memory",
-                    HiddenObject = "hidden_object",
-                    Breakout = "breakout",
-                    CoinFlip = "coin_flip",
-                    RPS = "rps"
-                }
-                local game_folder = class_to_folder[game_data.game_class]
+            if player_sprite then
+                -- Get variant-specific tint from PaletteManager
+                local color_tint = {1, 1, 1}
+                local palette_manager = self.di and self.di.paletteManager
+                local config = self.di and self.di.config
+                if palette_manager and config and config.games and self.variant_loader then
+                    local variant = self.variant_loader:getVariantData(game_data.id)
 
-                -- Map game class to actual sprite filename
-                local sprite_filename = "player"
-                if game_data.game_class == "SnakeGame" then
-                    local sprite_style = game_data.sprite_style or "uniform"
-                    sprite_filename = (sprite_style == "segmented") and "seg_head" or "segment"
-                elseif game_data.game_class == "DodgeGame" then
-                    sprite_filename = "player"
-                elseif game_data.game_class == "SpaceShooter" then
-                    sprite_filename = "player"
+                    -- Map class name to config key
+                    local class_to_config = {
+                        DodgeGame = "dodge",
+                        SnakeGame = "snake",
+                        MemoryMatch = "memory_match",
+                        HiddenObject = "hidden_object",
+                        SpaceShooter = "space_shooter",
+                        Breakout = "breakout",
+                        CoinFlip = "coin_flip",
+                        RPS = "rps"
+                    }
+                    local config_key = class_to_config[game_data.game_class]
+                    local game_config = config_key and config.games[config_key]
+
+                    if variant and game_config then
+                        -- Force tinting in launcher even if disabled in-game
+                        color_tint = palette_manager:getTintForVariant(variant, game_data.game_class, game_config, true)
+                    end
                 end
 
-                if game_folder then
-                    local sprite_path = string.format("assets/sprites/games/%s/%s/%s.png",
-                        game_folder, sprite_set_id, sprite_filename)
-                    local success, player_sprite = pcall(love.graphics.newImage, sprite_path)
-
-                    -- If failed, try default sprite_set from visual_identity
-                    if not success then
-                        local default_sprite_set = game_data.visual_identity and game_data.visual_identity.sprite_set_id
-                        if default_sprite_set and default_sprite_set ~= sprite_set_id then
-                            local default_path = string.format("assets/sprites/games/%s/%s/%s.png",
-                                game_folder, default_sprite_set, sprite_filename)
-                            success, player_sprite = pcall(love.graphics.newImage, default_path)
-                        end
-                    end
-
-                    -- If still failed, try hardcoded fallback based on game class
-                    if not success then
-                        local fallback_sprite_set = nil
-                        if game_data.game_class == "SpaceShooter" then
-                            fallback_sprite_set = "fighter_1"
-                        elseif game_data.game_class == "DodgeGame" then
-                            fallback_sprite_set = "player_1"
-                        elseif game_data.game_class == "SnakeGame" then
-                            fallback_sprite_set = "snake_1"
-                        end
-
-                        if fallback_sprite_set and fallback_sprite_set ~= sprite_set_id then
-                            local fallback_path = string.format("assets/sprites/games/%s/%s/%s.png",
-                                game_folder, fallback_sprite_set, sprite_filename)
-                            success, player_sprite = pcall(love.graphics.newImage, fallback_path)
-                        end
-                    end
-
-                    if success then
-                        -- Get variant-specific tint from PaletteManager
-                        local color_tint = {1, 1, 1}
-                        local palette_manager = self.di and self.di.paletteManager
-                        local config = self.di and self.di.config
-                        if palette_manager and config and config.games and self.variant_loader then
-                            local variant = self.variant_loader:getVariantData(game_data.id)
-
-                            -- Map class name to config key
-                            local class_to_config = {
-                                DodgeGame = "dodge",
-                                SnakeGame = "snake",
-                                MemoryMatch = "memory_match",
-                                HiddenObject = "hidden_object",
-                                SpaceShooter = "space_shooter"
-                            }
-                            local config_key = class_to_config[game_data.game_class]
-                            local game_config = config_key and config.games[config_key]
-
-                            if variant and game_config then
-                                -- Force tinting in launcher even if disabled in-game
-                                color_tint = palette_manager:getTintForVariant(variant, game_data.game_class, game_config, true)
-                            end
-                        end
-
-                        love.graphics.setColor(color_tint[1], color_tint[2], color_tint[3])
-                        love.graphics.draw(player_sprite, preview_x, line_y, 0,
-                            preview_size / player_sprite:getWidth(), preview_size / player_sprite:getHeight())
-                        love.graphics.setColor(1, 1, 1)  -- Reset color
-                        player_sprite_drawn = true
-                    else
-                        -- Failed to load player sprite, fall back to first metric sprite mapping
-                        if game_data.visual_identity and game_data.visual_identity.metric_sprite_mappings then
-                            local first_metric = game_data.metrics_tracked and game_data.metrics_tracked[1]
-                            if first_metric then
-                                sprite_name = game_data.visual_identity.metric_sprite_mappings[first_metric] or "game_freecell-0"
-                            end
-                        end
+                love.graphics.setColor(color_tint[1], color_tint[2], color_tint[3])
+                love.graphics.draw(player_sprite, preview_x, line_y, 0,
+                    preview_size / player_sprite:getWidth(), preview_size / player_sprite:getHeight())
+                love.graphics.setColor(1, 1, 1)  -- Reset color
+                player_sprite_drawn = true
+            else
+                -- Failed to load player sprite, fall back to first metric sprite mapping
+                if game_data.visual_identity and game_data.visual_identity.metric_sprite_mappings then
+                    local first_metric = game_data.metrics_tracked and game_data.metrics_tracked[1]
+                    if first_metric then
+                        sprite_name = game_data.visual_identity.metric_sprite_mappings[first_metric] or "game_freecell-0"
                     end
                 end
             end

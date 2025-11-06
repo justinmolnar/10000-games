@@ -1,3 +1,11 @@
+{
+  "game_class": "SpaceShooter",
+  "sprite_folder": "space_shooter",
+  "default_sprite_set": "space_shooter_base",
+  "category": "action",
+  "tier": "trash",
+
+  "variants":
 [
   {
     "clone_index": 0,
@@ -696,3 +704,4 @@
     "flavor_text": "Formation fighters - waves get tougher with more health and faster dives!"
   }
 ]
+}

@@ -1530,6 +1530,549 @@ local Config = {
         max_visual_speed_multiplier = 100, -- Cap for rendered VMs
         headless_speed_label = "INSTANT",  -- UI label for headless mode
     },
+
+    -- === Game-Specific Defaults (Phase 4/5 Refactor) ===
+    -- Technical defaults and CheatEngine definitions per game class
+    -- NOTE: Will be expanded with full gameplay defaults in Phase 5
+    game_defaults = {
+        SpaceShooter = {
+            -- Unlock and progression
+            unlock_cost = 20,
+            cost_exponent = 1.5,
+
+            -- Formula and metrics
+            base_formula_string = "((metrics.kills * metrics.kills * 0.07 * (1 + metrics.combo / math.max(1, metrics.kills) * 0.3) * scaling_constant) - (metrics.deaths * metrics.deaths * 0.3 * scaling_constant))",
+            display_formula_string = "kills × combo - deaths",
+            metrics_tracked = {"kills", "deaths", "combo"},
+
+            -- Visual identity
+            icon_sprite = "player",
+            visual_identity = {
+                sprite_set_id = "space_set_1",
+                palette_id = "default",
+                metric_sprite_mappings = {
+                    kills = "game_mine_1-0",
+                    deaths = "msg_error-0",
+                    combo = "check-0",
+                    accuracy = "check-0",
+                    time_survived = "clock-0"
+                },
+                formula_icon_mapping = {
+                    kills = "game_mine_1-0",
+                    deaths = "msg_error-0",
+                    combo = "check-0",
+                    result = "certificate-0"
+                }
+            },
+
+            -- Auto-play and bullet data
+            auto_play_performance = {kills = 20, deaths = 2},
+            bullet_fire_rate = 1,
+            bullet_sprite = "world_star-0",
+            token_threshold = 0.75,
+
+            -- CheatEngine
+            cheat_engine_base_cost = 1000,
+            cheat_cost_exponent = 1.15,
+            available_cheats = {
+                {
+                    id = "speed_modifier",
+                    display_name = "Cooldown Reduction",
+                    description = "Reduce fire cooldown",
+                    base_cost = 500,
+                    max_level = 5,
+                    value_per_level = 0.1,
+                    affects = {"player.fire_cooldown"}
+                },
+                {
+                    id = "advantage_modifier",
+                    display_name = "Extra Lives",
+                    description = "Increase starting lives",
+                    base_cost = 1000,
+                    max_level = 10,
+                    value_per_level = {deaths = 1},
+                    affects = {"lives_count"}
+                },
+                {
+                    id = "performance_modifier",
+                    display_name = "Damage Boost",
+                    description = "Increase bullet damage",
+                    base_cost = 2000,
+                    max_level = 5,
+                    value_per_level = 0.2,
+                    affects = {"bullet_damage_multiplier"}
+                },
+                {
+                    id = "bullet_speed_boost",
+                    display_name = "Faster Bullets",
+                    description = "Increase bullet speed",
+                    base_cost = 800,
+                    max_level = 5,
+                    value_per_level = 100,
+                    affects = {"bullet_speed"}
+                },
+                {
+                    id = "shield_upgrade",
+                    display_name = "Shield Generator",
+                    description = "Enable regenerating shield",
+                    base_cost = 5000,
+                    max_level = 1,
+                    value_per_level = 0,
+                    affects = {"shield_enabled"}
+                },
+                {
+                    id = "piercing_rounds",
+                    display_name = "Piercing Bullets",
+                    description = "Bullets pass through enemies",
+                    base_cost = 3000,
+                    max_level = 1,
+                    value_per_level = 0,
+                    affects = {"bullet_piercing"}
+                }
+            }
+        },
+
+        SnakeGame = {
+            -- Unlock and progression
+            unlock_cost = 20,
+            cost_exponent = 1.5,
+
+            -- Formula and metrics
+            base_formula_string = "(((metrics.snake_length * 2) * (metrics.snake_length * 2) * scaling_constant) / metrics.survival_time)",
+            display_formula_string = "snake_length / survival_time",
+            metrics_tracked = {"snake_length", "survival_time"},
+
+            -- Visual identity
+            icon_sprite = "player",
+            visual_identity = {
+                sprite_set_id = "classic/snake",
+                palette_id = "neon_green",
+                metric_sprite_mappings = {
+                    snake_length = "game_spider-0",
+                    survival_time = "clock-0"
+                },
+                formula_icon_mapping = {
+                    snake_length = "game_spider-0",
+                    survival_time = "clock-0",
+                    result = "certificate-0"
+                }
+            },
+
+            -- Auto-play and bullet data
+            auto_play_performance = {snake_length = 10, survival_time = 30},
+            bullet_fire_rate = 0.8,
+            bullet_sprite = "joystick_alt-1",
+            token_threshold = 0.75,
+
+            -- CheatEngine
+            cheat_engine_base_cost = 800,
+            cheat_cost_exponent = 1.15,
+            available_cheats = {
+                {
+                    id = "speed_modifier",
+                    base_cost = 700,
+                    max_level = 5,
+                    value_per_level = 0.1
+                },
+                {
+                    id = "performance_modifier",
+                    base_cost = 2000,
+                    max_level = 3,
+                    value_per_level = 0.2
+                },
+                {
+                    id = "god_mode",
+                    base_cost = 10000,
+                    max_level = 1,
+                    value_per_level = 0
+                }
+            }
+        },
+
+        DodgeGame = {
+            -- Unlock and progression
+            unlock_cost = 20,
+            cost_exponent = 1.5,
+
+            -- Formula and metrics
+            base_formula_string = "((metrics.objects_dodged - metrics.collisions * 3) * (metrics.objects_dodged - metrics.collisions * 3) * 0.03 * (1 + metrics.combo / math.max(1, metrics.objects_dodged) * 0.3) * scaling_constant)",
+            display_formula_string = "objects_dodged - collisions × combo",
+            metrics_tracked = {"objects_dodged", "collisions", "combo"},
+
+            -- Visual identity
+            icon_sprite = "player",
+            visual_identity = {
+                sprite_set_id = "base_1",
+                palette_id = "fire",
+                metric_sprite_mappings = {
+                    objects_dodged = "msg_error-0",
+                    collisions = "msg_error-0",
+                    combo = "check-0"
+                },
+                formula_icon_mapping = {
+                    objects_dodged = "msg_error-0",
+                    collisions = "msg_error-0",
+                    combo = "check-0",
+                    result = "certificate-0"
+                }
+            },
+
+            -- Auto-play and bullet data
+            auto_play_performance = {objects_dodged = 15, collisions = 3, combo = 5},
+            bullet_fire_rate = 0.9,
+            bullet_sprite = "windows_slanted-1",
+            token_threshold = 0.75,
+
+            -- CheatEngine
+            cheat_engine_base_cost = 1200,
+            cheat_cost_exponent = 1.2,
+            available_cheats = {
+                {
+                    id = "speed_modifier",
+                    base_cost = 600,
+                    max_level = 4,
+                    value_per_level = 0.1
+                },
+                {
+                    id = "advantage_modifier",
+                    base_cost = 800,
+                    max_level = 5,
+                    value_per_level = {collisions = 2}
+                },
+                {
+                    id = "performance_modifier",
+                    base_cost = 2500,
+                    max_level = 3,
+                    value_per_level = 0.2
+                },
+                {
+                    id = "god_mode",
+                    base_cost = 20000,
+                    max_level = 1,
+                    value_per_level = 0
+                }
+            }
+        },
+
+        MemoryMatch = {
+            -- Unlock and progression
+            unlock_cost = 20,
+            cost_exponent = 1.2,
+
+            -- Formula and metrics
+            base_formula_string = "((metrics.matches * metrics.matches * (metrics.combo + 1) * 2 * scaling_constant) / metrics.time)",
+            display_formula_string = "matches × combo / time",
+            metrics_tracked = {"matches", "time", "combo"},
+
+            -- Visual identity
+            icon_sprite = "game_freecell-0",
+            visual_identity = {
+                sprite_set_id = "memory_set_1",
+                palette_id = "pastel_blue",
+                metric_sprite_mappings = {
+                    matches = "game_freecell-0",
+                    time = "clock-0",
+                    combo = "check-0"
+                },
+                formula_icon_mapping = {
+                    matches = "game_freecell-0",
+                    time = "clock-0",
+                    combo = "check-0",
+                    result = "certificate-0"
+                }
+            },
+
+            -- Auto-play and bullet data
+            auto_play_performance = {matches = 8, time = 40, perfect = 2},
+            bullet_fire_rate = 1.2,
+            bullet_sprite = "xml_gear-0",
+            token_threshold = 0.75,
+
+            -- CheatEngine
+            cheat_engine_base_cost = 500,
+            cheat_cost_exponent = 1.1,
+            available_cheats = {
+                {
+                    id = "speed_modifier",
+                    base_cost = 400,
+                    max_level = 5,
+                    value_per_level = 0.2
+                },
+                {
+                    id = "performance_modifier",
+                    base_cost = 3000,
+                    max_level = 2,
+                    value_per_level = 0.5
+                }
+            }
+        },
+
+        HiddenObject = {
+            -- Unlock and progression
+            unlock_cost = 1000000000,
+            cost_exponent = 1.5,
+
+            -- Formula and metrics
+            base_formula_string = "(metrics.objects_found * metrics.time_bonus)",
+            display_formula_string = "objects_found × time_bonus",
+            metrics_tracked = {"objects_found", "time_bonus"},
+
+            -- Visual identity
+            icon_sprite = "magnifying_glass-0",
+            visual_identity = {
+                sprite_set_id = "hidden_set_1",
+                palette_id = "retro_amber",
+                metric_sprite_mappings = {
+                    objects_found = "magnifying_glass-0",
+                    time_bonus = "clock-0"
+                },
+                formula_icon_mapping = {
+                    objects_found = "magnifying_glass-0",
+                    time_bonus = "clock-0",
+                    result = "certificate-0"
+                }
+            },
+
+            -- Auto-play and bullet data
+            auto_play_performance = {objects_found = 8, time_bonus = 3},
+            bullet_fire_rate = 1.1,
+            bullet_sprite = "wm_file-0",
+            token_threshold = 0.75,
+
+            -- CheatEngine
+            cheat_engine_base_cost = 400,
+            cheat_cost_exponent = 1.1,
+            available_cheats = {
+                {
+                    id = "speed_modifier",
+                    base_cost = 300,
+                    max_level = 5,
+                    value_per_level = 0.2
+                },
+                {
+                    id = "performance_modifier",
+                    base_cost = 2000,
+                    max_level = 3,
+                    value_per_level = 0.3
+                }
+            }
+        },
+
+        Breakout = {
+            -- Unlock and progression
+            unlock_cost = 20,
+            cost_exponent = 1.5,
+
+            -- Formula and metrics
+            base_formula_string = "((metrics.bricks_destroyed * metrics.bricks_destroyed * 0.5 * (1 + metrics.max_combo / math.max(1, metrics.bricks_destroyed) * 0.4) * scaling_constant) - (metrics.balls_lost * metrics.balls_lost * 2 * scaling_constant))",
+            display_formula_string = "bricks_destroyed × combo - balls_lost",
+            metrics_tracked = {"bricks_destroyed", "balls_lost", "max_combo", "score"},
+
+            -- Visual identity
+            icon_sprite = "game_block-0",
+            visual_identity = {
+                sprite_set_id = "breakout_set_1",
+                palette_id = "arcade_blue",
+                metric_sprite_mappings = {
+                    bricks_destroyed = "game_block-0",
+                    balls_lost = "msg_error-0",
+                    max_combo = "check-0",
+                    score = "certificate-0"
+                },
+                formula_icon_mapping = {
+                    bricks_destroyed = "game_block-0",
+                    balls_lost = "msg_error-0",
+                    max_combo = "check-0",
+                    result = "certificate-0"
+                }
+            },
+
+            -- Auto-play and bullet data
+            auto_play_performance = {bricks_destroyed = 20, balls_lost = 2, max_combo = 5},
+            bullet_fire_rate = 1.0,
+            bullet_sprite = "world_star-0",
+            token_threshold = 0.75,
+
+            -- CheatEngine
+            cheat_engine_base_cost = 1000,
+            cheat_cost_exponent = 1.15,
+            available_cheats = {
+                {
+                    id = "paddle_size",
+                    display_name = "Wider Paddle",
+                    description = "Increase paddle width",
+                    base_cost = 500,
+                    max_level = 5,
+                    value_per_level = 20,
+                    affects = {"paddle_width"}
+                },
+                {
+                    id = "extra_lives",
+                    display_name = "Extra Lives",
+                    description = "Increase starting lives",
+                    base_cost = 1000,
+                    max_level = 10,
+                    value_per_level = 1,
+                    affects = {"lives"}
+                },
+                {
+                    id = "ball_speed_reduction",
+                    display_name = "Slower Ball",
+                    description = "Reduce ball speed",
+                    base_cost = 800,
+                    max_level = 5,
+                    value_per_level = -50,
+                    affects = {"ball_speed"}
+                },
+                {
+                    id = "multi_ball",
+                    display_name = "Multi-Ball",
+                    description = "Start with multiple balls",
+                    base_cost = 2000,
+                    max_level = 4,
+                    value_per_level = 1,
+                    affects = {"ball_count"}
+                }
+            }
+        },
+
+        CoinFlip = {
+            -- Unlock and progression
+            unlock_cost = 20,
+            cost_exponent = 1.3,
+
+            -- Formula and metrics
+            base_formula_string = "((metrics.max_streak * metrics.max_streak * 10 * scaling_constant) + (metrics.correct_total * 5 * scaling_constant))",
+            display_formula_string = "max_streak² + correct_total",
+            metrics_tracked = {"max_streak", "correct_total", "flips_total", "accuracy"},
+
+            -- Visual identity
+            icon_sprite = "xml_gear-0",
+            visual_identity = {
+                sprite_set_id = "coin_set_1",
+                palette_id = "gold",
+                metric_sprite_mappings = {
+                    max_streak = "check-0",
+                    correct_total = "check-0",
+                    flips_total = "clock-0",
+                    accuracy = "certificate-0"
+                },
+                formula_icon_mapping = {
+                    max_streak = "check-0",
+                    correct_total = "check-0",
+                    result = "certificate-0"
+                }
+            },
+
+            -- Auto-play and bullet data
+            auto_play_performance = {max_streak = 5, correct_total = 10, accuracy = 0.5},
+            bullet_fire_rate = 1.2,
+            bullet_sprite = "xml_gear-0",
+            token_threshold = 0.75,
+
+            -- CheatEngine
+            cheat_engine_base_cost = 500,
+            cheat_cost_exponent = 1.1,
+            available_cheats = {
+                {
+                    id = "coin_bias",
+                    display_name = "Biased Coin",
+                    description = "Increase heads probability",
+                    base_cost = 1000,
+                    max_level = 5,
+                    value_per_level = 0.05,
+                    affects = {"coin_bias"}
+                },
+                {
+                    id = "extra_lives",
+                    display_name = "Extra Chances",
+                    description = "More wrong guesses allowed",
+                    base_cost = 800,
+                    max_level = 10,
+                    value_per_level = 1,
+                    affects = {"lives"}
+                },
+                {
+                    id = "lower_streak",
+                    display_name = "Easier Target",
+                    description = "Reduce streak target",
+                    base_cost = 1500,
+                    max_level = 5,
+                    value_per_level = -1,
+                    affects = {"streak_target"}
+                }
+            }
+        },
+
+        RPS = {
+            -- Unlock and progression
+            unlock_cost = 20,
+            cost_exponent = 1.4,
+
+            -- Formula and metrics
+            base_formula_string = "((metrics.rounds_won * metrics.rounds_won * 8 * (1 + metrics.max_win_streak / math.max(1, metrics.rounds_won) * 0.5) * scaling_constant))",
+            display_formula_string = "rounds_won × win_streak",
+            metrics_tracked = {"rounds_won", "rounds_lost", "rounds_total", "max_win_streak", "accuracy"},
+
+            -- Visual identity
+            icon_sprite = "joystick_alt-1",
+            visual_identity = {
+                sprite_set_id = "rps_set_1",
+                palette_id = "classic_red",
+                metric_sprite_mappings = {
+                    rounds_won = "check-0",
+                    rounds_lost = "msg_error-0",
+                    rounds_total = "clock-0",
+                    max_win_streak = "check-0",
+                    accuracy = "certificate-0"
+                },
+                formula_icon_mapping = {
+                    rounds_won = "check-0",
+                    max_win_streak = "check-0",
+                    result = "certificate-0"
+                }
+            },
+
+            -- Auto-play and bullet data
+            auto_play_performance = {rounds_won = 5, rounds_lost = 5, max_win_streak = 2, accuracy = 0.33},
+            bullet_fire_rate = 0.9,
+            bullet_sprite = "joystick_alt-1",
+            token_threshold = 0.75,
+
+            -- CheatEngine
+            cheat_engine_base_cost = 800,
+            cheat_cost_exponent = 1.2,
+            available_cheats = {
+                {
+                    id = "ai_pattern_hint",
+                    display_name = "Pattern Detector",
+                    description = "Show AI pattern hints",
+                    base_cost = 1200,
+                    max_level = 1,
+                    value_per_level = 0,
+                    affects = {"show_ai_pattern_hint"}
+                },
+                {
+                    id = "easier_ai",
+                    display_name = "Weaker AI",
+                    description = "AI plays more randomly",
+                    base_cost = 2000,
+                    max_level = 5,
+                    value_per_level = 0.1,
+                    affects = {"ai_bias_strength"}
+                },
+                {
+                    id = "fewer_rounds",
+                    display_name = "Quick Match",
+                    description = "Reduce rounds to win",
+                    base_cost = 1500,
+                    max_level = 3,
+                    value_per_level = -1,
+                    affects = {"rounds_to_win"}
+                }
+            }
+        }
+    },
 }
 
 return Config

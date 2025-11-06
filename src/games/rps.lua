@@ -7,12 +7,34 @@ local RPS = BaseGame:extend('RPS')
 local DEFAULT_ROUNDS_TO_WIN = 3
 local DEFAULT_GAME_MODE = "rps"
 local DEFAULT_AI_PATTERN = "random"
+local DEFAULT_AI_BIAS = 0.33  -- Equal probability for all choices
+local DEFAULT_AI_BIAS_STRENGTH = 0.5  -- How much bias affects AI
+local DEFAULT_TIME_PER_ROUND = 0  -- Unlimited
+local DEFAULT_ROUND_RESULT_DISPLAY_TIME = 2.0
+local DEFAULT_SHOW_AI_PATTERN_HINT = false
+local DEFAULT_SHOW_PLAYER_HISTORY = true
 
--- Win matrix for RPS
-local WIN_MATRIX = {
-    rock = { beats = "scissors", loses_to = "paper" },
-    paper = { beats = "rock", loses_to = "scissors" },
-    scissors = { beats = "paper", loses_to = "rock" }
+-- Win matrices for different game modes
+local WIN_MATRICES = {
+    rps = {
+        rock = { beats = {"scissors"}, loses_to = {"paper"} },
+        paper = { beats = {"rock"}, loses_to = {"scissors"} },
+        scissors = { beats = {"paper"}, loses_to = {"rock"} }
+    },
+    rpsls = {
+        rock = { beats = {"scissors", "lizard"}, loses_to = {"paper", "spock"} },
+        paper = { beats = {"rock", "spock"}, loses_to = {"scissors", "lizard"} },
+        scissors = { beats = {"paper", "lizard"}, loses_to = {"rock", "spock"} },
+        lizard = { beats = {"paper", "spock"}, loses_to = {"rock", "scissors"} },
+        spock = { beats = {"rock", "scissors"}, loses_to = {"paper", "lizard"} }
+    },
+    rpsfb = {
+        rock = { beats = {"scissors"}, loses_to = {"paper", "water"} },
+        paper = { beats = {"rock"}, loses_to = {"scissors", "fire"} },
+        scissors = { beats = {"paper"}, loses_to = {"rock", "water"} },
+        fire = { beats = {"paper", "scissors"}, loses_to = {"water", "rock"} },
+        water = { beats = {"fire", "rock"}, loses_to = {"paper", "scissors"} }
+    }
 }
 
 function RPS:init(game_data, cheats, di, variant_override)
@@ -36,6 +58,59 @@ function RPS:init(game_data, cheats, di, variant_override)
     self.ai_pattern = (runtimeCfg and runtimeCfg.ai_pattern) or DEFAULT_AI_PATTERN
     if self.variant and self.variant.ai_pattern ~= nil then
         self.ai_pattern = self.variant.ai_pattern
+    end
+
+    -- AI Behavior Parameters
+    self.ai_bias = (runtimeCfg and runtimeCfg.ai_bias) or DEFAULT_AI_BIAS
+    if self.variant and self.variant.ai_bias ~= nil then
+        self.ai_bias = self.variant.ai_bias
+    end
+
+    self.ai_bias_strength = (runtimeCfg and runtimeCfg.ai_bias_strength) or DEFAULT_AI_BIAS_STRENGTH
+    if self.variant and self.variant.ai_bias_strength ~= nil then
+        self.ai_bias_strength = self.variant.ai_bias_strength
+    end
+
+    -- Timing Parameters
+    self.time_per_round = (runtimeCfg and runtimeCfg.time_per_round) or DEFAULT_TIME_PER_ROUND
+    if self.variant and self.variant.time_per_round ~= nil then
+        self.time_per_round = self.variant.time_per_round
+    end
+
+    self.round_result_display_time = (runtimeCfg and runtimeCfg.round_result_display_time) or DEFAULT_ROUND_RESULT_DISPLAY_TIME
+    if self.variant and self.variant.round_result_display_time ~= nil then
+        self.round_result_display_time = self.variant.round_result_display_time
+    end
+
+    -- Display Parameters
+    self.show_ai_pattern_hint = (runtimeCfg and runtimeCfg.show_ai_pattern_hint) or DEFAULT_SHOW_AI_PATTERN_HINT
+    if self.variant and self.variant.show_ai_pattern_hint ~= nil then
+        self.show_ai_pattern_hint = self.variant.show_ai_pattern_hint
+    end
+
+    self.show_player_history = (runtimeCfg and runtimeCfg.show_player_history) or DEFAULT_SHOW_PLAYER_HISTORY
+    if self.variant and self.variant.show_player_history ~= nil then
+        self.show_player_history = self.variant.show_player_history
+    end
+
+    -- Apply difficulty_modifier from variant
+    if self.variant and self.variant.difficulty_modifier then
+        self.time_per_round = self.time_per_round * self.variant.difficulty_modifier
+        self.round_result_display_time = self.round_result_display_time * self.variant.difficulty_modifier
+    end
+
+    -- Apply CheatEngine modifications
+    if self.cheats.speed_modifier then
+        self.round_result_display_time = self.round_result_display_time * self.cheats.speed_modifier
+        self.time_per_round = self.time_per_round * self.cheats.speed_modifier
+    end
+    if self.cheats.advantage_modifier then
+        self.rounds_to_win = math.max(1, self.rounds_to_win - math.floor((self.cheats.advantage_modifier or 0) / 2))
+    end
+    if self.cheats.performance_modifier then
+        -- Show hints when performance modifier is active
+        self.show_ai_pattern_hint = true
+        self.show_player_history = true
     end
 
     -- Initialize game state
@@ -80,7 +155,7 @@ function RPS:updateGameLogic(dt)
     -- Handle result display timer
     if self.show_result and not self.game_over and not self.victory then
         self.result_display_time = self.result_display_time + dt
-        if self.result_display_time >= 2.0 then
+        if self.result_display_time >= self.round_result_display_time then
             self.show_result = false
             self.result_display_time = 0
             self.waiting_for_input = true
@@ -93,14 +168,34 @@ function RPS:keypressed(key)
         return
     end
 
-    -- Handle throw input (only basic RPS for now)
+    -- Handle throw input based on game_mode
     local choice = nil
+
+    -- Basic RPS keys (all modes)
     if key == 'r' then
         choice = 'rock'
     elseif key == 'p' then
         choice = 'paper'
     elseif key == 's' then
         choice = 'scissors'
+    end
+
+    -- Extended RPSLS keys
+    if self.game_mode == "rpsls" then
+        if key == 'l' then
+            choice = 'lizard'
+        elseif key == 'v' then
+            choice = 'spock'
+        end
+    end
+
+    -- Extended RPSFB keys
+    if self.game_mode == "rpsfb" then
+        if key == 'f' then
+            choice = 'fire'
+        elseif key == 'w' then
+            choice = 'water'
+        end
     end
 
     if choice then
@@ -164,21 +259,54 @@ function RPS:playRound(player_choice)
 end
 
 function RPS:generateAIChoice()
-    -- For now, implement basic patterns
+    -- Get available choices for current game mode
+    local choices = self:getAvailableChoices()
+
     if self.ai_pattern == "random" then
-        local choices = {"rock", "paper", "scissors"}
-        return choices[self.rng:random(1, 3)]
+        return choices[self.rng:random(1, #choices)]
+
     elseif self.ai_pattern == "repeat_last" and #self.ai_history > 0 then
         return self.ai_history[#self.ai_history]
+
     elseif self.ai_pattern == "counter_player" and #self.player_history > 0 then
         -- Throw what beats player's last choice
         local last_player = self.player_history[#self.player_history]
-        local counters = { rock = "paper", paper = "scissors", scissors = "rock" }
-        return counters[last_player] or "rock"
+        local win_matrix = WIN_MATRICES[self.game_mode]
+        if win_matrix and win_matrix[last_player] and win_matrix[last_player].loses_to then
+            -- Pick randomly from options that beat the player's last choice
+            local counters = win_matrix[last_player].loses_to
+            return counters[self.rng:random(1, #counters)]
+        end
+        return choices[self.rng:random(1, #choices)]
+
+    elseif self.ai_pattern == "pattern_cycle" then
+        -- Cycle through choices in order
+        local cycle_index = (#self.ai_history % #choices) + 1
+        return choices[cycle_index]
+
+    elseif self.ai_pattern == "mimic_player" and #self.player_history > 0 then
+        -- Copy player's previous choice
+        return self.player_history[#self.player_history]
+
+    elseif self.ai_pattern == "anti_player" and #self.player_history >= 2 then
+        -- Throw what player threw 2 rounds ago
+        return self.player_history[#self.player_history - 1]
+
     else
         -- Default to random
-        local choices = {"rock", "paper", "scissors"}
-        return choices[self.rng:random(1, 3)]
+        return choices[self.rng:random(1, #choices)]
+    end
+end
+
+function RPS:getAvailableChoices()
+    -- Return available choices based on game mode
+    if self.game_mode == "rpsls" then
+        return {"rock", "paper", "scissors", "lizard", "spock"}
+    elseif self.game_mode == "rpsfb" then
+        return {"rock", "paper", "scissors", "fire", "water"}
+    else
+        -- Default RPS
+        return {"rock", "paper", "scissors"}
     end
 end
 
@@ -187,11 +315,21 @@ function RPS:determineWinner(player, ai)
         return "tie"
     end
 
-    if WIN_MATRIX[player] and WIN_MATRIX[player].beats == ai then
-        return "win"
-    else
-        return "lose"
+    -- Get win matrix for current game mode
+    local win_matrix = WIN_MATRICES[self.game_mode]
+    if not win_matrix or not win_matrix[player] then
+        return "tie"  -- Safety fallback
     end
+
+    -- Check if player's choice beats AI's choice
+    local beats_list = win_matrix[player].beats
+    for _, beaten in ipairs(beats_list) do
+        if beaten == ai then
+            return "win"
+        end
+    end
+
+    return "lose"
 end
 
 function RPS:checkComplete()

@@ -1,3 +1,11 @@
+{
+  "game_class": "MemoryMatch",
+  "sprite_folder": "memory_match",
+  "default_sprite_set": "memory_base",
+  "category": "puzzle",
+  "tier": "trash",
+
+  "variants":
 [
   {
     "clone_index": 0,
@@ -324,3 +332,4 @@
     "perfect_bonus": 40
   }
 ]
+}

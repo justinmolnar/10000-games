@@ -163,9 +163,15 @@ function love.load()
     local sprite_loader = SpriteLoader:new(palette_manager)
     sprite_loader:loadAll()
     local sprite_manager = SpriteManager:new(sprite_loader, palette_manager)
+
+    -- Phase 4: Initialize SpriteSetLoader for variant sprite loading
+    local SpriteSetLoader = require('src.utils.sprite_set_loader')
+    local sprite_set_loader = SpriteSetLoader:new()
+
     di.paletteManager = palette_manager
     di.spriteLoader = sprite_loader
     di.spriteManager = sprite_manager
+    di.spriteSetLoader = sprite_set_loader
 
     -- == 5.5. Initialize Audio System (Phase 3.2/3.3) ==
     local audio_manager = AudioManager:new(di)

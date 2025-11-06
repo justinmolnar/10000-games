@@ -21,11 +21,11 @@ function CheatEngineState:init(player_data, game_data, state_machine, save_manag
 
     -- Create two scrollbar controllers (one for game list, one for parameter list)
     self.game_scrollbar = ScrollbarController:new({
-        unit_size = 50, -- item height
+        unit_size = 25, -- item height (matches CheatEngineView.item_h)
         step_units = 1
     })
     self.param_scrollbar = ScrollbarController:new({
-        unit_size = 50, -- item height
+        unit_size = 25, -- item height (matches CheatEngineView.item_h)
         step_units = 1
     })
 
@@ -173,14 +173,21 @@ function CheatEngineState:loadVariantData(game_id)
     end
 
     -- Parse JSON
-    local decode_ok, variants = pcall(json.decode, contents)
-    if not decode_ok or not variants then
+    local decode_ok, variant_file_data = pcall(json.decode, contents)
+    if not decode_ok or not variant_file_data then
         print("Error: Could not decode " .. file_path)
         return {}
     end
 
+    -- Phase 3: Variant files now have wrapper with metadata
+    local variants_array = variant_file_data.variants or variant_file_data
+    if not variants_array then
+        print("Error: No variants array in " .. file_path)
+        return {}
+    end
+
     -- Find variant with matching clone_index
-    for _, variant in ipairs(variants) do
+    for _, variant in ipairs(variants_array) do
         if variant.clone_index == clone_index then
             return variant
         end

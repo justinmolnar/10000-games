@@ -1,0 +1,14 @@
+{
+  "game_class": "HiddenObject",
+  "sprite_folder": "hidden_object",
+  "default_sprite_set": "hidden_object_base",
+  "category": "puzzle",
+  "tier": "trash",
+
+  "variants": [
+    {
+      "clone_index": 0,
+      "name": "Hidden Object Classic"
+    }
+  ]
+}

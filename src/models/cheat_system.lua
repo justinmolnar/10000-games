@@ -14,7 +14,7 @@ function CheatSystem:init(config)
     -- ========================================================================
 
     -- This now just defines the *names* and *descriptions*
-    -- The costs and levels are in base_game_definitions.json
+    -- The costs and levels are in config.lua game_defaults
     self.cheat_definitions = {
         speed_modifier = {
             id = "speed_modifier",

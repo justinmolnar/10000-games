@@ -2,6 +2,7 @@ local Object = require('class')
 local json = require('json')
 local Paths = require('src.paths')
 local Config = rawget(_G, 'DI_CONFIG') or {}
+local GameRegistry = require('src.models.game_registry')
 local GameData = Object:extend('GameData')
 
 -- Constants for game categories and tiers
@@ -22,108 +23,39 @@ function GameData:init(di)
     -- Optional DI for config
     if di and di.config then Config = di.config end
     self.games = {}
+    self.game_registry = GameRegistry:new(Config)
     self:loadBaseGames()
 end
 
 function GameData:loadBaseGames()
-    local file_path = Paths.assets.data .. "base_game_definitions.json"
-    local read_ok, contents = pcall(love.filesystem.read, file_path)
+    -- Get all games from GameRegistry (auto-discovered from variant files)
+    -- GameRegistry already merges config.game_defaults → file_data → variant
+    local discovered_games = self.game_registry:getAllGames()
 
-    if not read_ok or not contents then
-        print("ERROR: Could not read " .. file_path .. " - " .. tostring(contents))
-        self.games = {} -- Fallback: no games loaded
-        return
-    end
+    -- Register each discovered game (already fully merged by GameRegistry)
+    for _, discovered_game in ipairs(discovered_games) do
+        -- Calculate variant multiplier from clone_index
+        -- clone_index 0 & 1 = multiplier 1, clone_index 2 = multiplier 2, etc.
+        -- (matches old system where base and first clone both had multiplier 1)
+        discovered_game.variant_multiplier = math.max(1, discovered_game.clone_index or 0)
 
-    local decode_ok, base_games = pcall(json.decode, contents)
-
-    if not decode_ok then
-        print("ERROR: Failed to decode " .. file_path .. " - " .. tostring(base_games))
-        self.games = {} -- Fallback: no games loaded
-        return
-    end
-
-    local multipliers = Config.clone_multipliers
-
-    -- Load standalone variant counts (e.g., dodge_variants.json)
-    local standalone_variant_counts = self:loadStandaloneVariantCounts()
-
-    for _, base_game_data in ipairs(base_games) do
-        -- Validate required fields before processing
-        if base_game_data.id and base_game_data.game_class and base_game_data.base_formula_string then
-           self:registerGame(base_game_data)
-
-           -- Determine number of clones to generate
-           -- Use standalone variant count if available, otherwise default to 2
-           local clone_count = standalone_variant_counts[base_game_data.id] or 2
-
-           self:generateClones(base_game_data, clone_count, multipliers)
-        else
-            print("Warning: Skipping invalid base game entry in JSON (missing id, game_class, or base_formula_string): ", json.encode(base_game_data))
+        -- Map variant "name" to "display_name" for UI compatibility
+        -- Variant name always overrides base display_name
+        if discovered_game.name then
+            discovered_game.display_name = discovered_game.name
         end
+
+        -- Register the game (creates formula functions, difficulty modifiers, etc.)
+        self:registerGame(discovered_game)
     end
 
     -- Count actual games loaded
     local count = 0
     for _ in pairs(self.games) do count = count + 1 end
-    print("Loaded " .. count .. " games and variants.")
+    print("[GameData] Loaded " .. count .. " games and variants using GameRegistry.")
 end
 
-function GameData:loadStandaloneVariantCounts()
-    -- Scan the variants directory and count variants for each game
-    -- Returns a table mapping base_game_id to variant count
-    -- e.g., { ["dodge_1"] = 52, ["snake_1"] = 30 }
-
-    local variant_counts = {}
-    local variants_dir = Paths.assets.data .. "variants/"
-
-    -- Get list of files in variants directory
-    local files = love.filesystem.getDirectoryItems(variants_dir)
-
-    for _, filename in ipairs(files) do
-        -- Check if it's a JSON file matching the pattern *_variants.json
-        if filename:match("^(.+)_variants%.json$") then
-            local game_name = filename:match("^(.+)_variants%.json$")
-            local file_path = variants_dir .. filename
-
-            -- Try to read and parse the file
-            local read_ok, contents = pcall(love.filesystem.read, file_path)
-            if read_ok and contents then
-                local decode_ok, variant_data = pcall(json.decode, contents)
-                if decode_ok and variant_data and type(variant_data) == "table" then
-                    -- Count the variants (array length)
-                    -- Subtract 1 because the count includes the base game (clone_index 0)
-                    -- but generateClones expects the number of clones to generate
-                    local count = #variant_data
-                    if count > 1 then  -- Must have at least base + 1 clone
-                        local clone_count = count - 1
-
-                        -- Map variant file names to base game IDs
-                        -- e.g., "memory_match" -> "memory_1", "dodge" -> "dodge_1", "space_shooter" -> "space_shooter_1"
-                        local variant_file_to_base_id = {
-                            memory_match = "memory_1",
-                            dodge = "dodge_1",
-                            snake = "snake_1",
-                            space_shooter = "space_shooter_1",
-                            hidden_object = "hidden_object_1"
-                        }
-
-                        local base_game_id = variant_file_to_base_id[game_name] or (game_name .. "_1")
-
-                        variant_counts[base_game_id] = clone_count
-                        print("Found " .. count .. " total variants (" .. clone_count .. " clones) for " .. base_game_id .. " in " .. filename)
-                    end
-                else
-                    print("Warning: Could not decode variant file: " .. filename)
-                end
-            else
-                print("Warning: Could not read variant file: " .. filename)
-            end
-        end
-    end
-
-    return variant_counts
-end
+-- loadStandaloneVariantCounts() - DELETED (Phase 3: replaced by GameRegistry)
 
 function GameData:createFormulaFunction(formula_string)
     if not formula_string or formula_string == "" then
@@ -232,122 +164,7 @@ function GameData:registerGame(game_data)
     self.games[game_data.id] = game_data
 end
 
-function GameData:generateClones(base_game, count)
-    -- Load variant data from JSON if available
-    -- Map base game IDs to variant file names
-    local id_to_variant_file = {
-        memory_1 = "memory_match",
-        dodge_1 = "dodge",
-        snake_1 = "snake",
-        space_shooter_1 = "space_shooter",
-        hidden_object_1 = "hidden_object",
-        breakout_1 = "breakout",
-        coin_flip_1 = "coin_flip",
-        rps_1 = "rps"
-    }
-
-    local game_type = id_to_variant_file[base_game.id] or base_game.id:match("^([^_]+)")
-    local variant_file = Paths.assets.data .. "variants/" .. game_type .. "_variants.json"
-    local variants_data = {}
-
-    local read_ok, contents = pcall(love.filesystem.read, variant_file)
-    if read_ok and contents then
-        local decode_ok, variants = pcall(json.decode, contents)
-        if decode_ok and variants then
-            for _, v in ipairs(variants) do
-                variants_data[v.clone_index] = v
-            end
-            print("Loaded variant data for " .. game_type .. " from " .. variant_file)
-        end
-    end
-
-    -- Available palettes for variants (cycling through them)
-    local available_palettes = {
-        "default", "neon_blue", "neon_pink", "neon_green",
-        "retro_amber", "retro_green", "pastel_pink", "pastel_blue",
-        "pastel_yellow", "military_green", "military_gray", "fire", "ice"
-    }
-
-    -- Available sprite variations per sprite set
-    local sprite_variations = {
-        space_set_1 = {"game_mine_1-0", "game_mine_1-1", "game_mine_2-0", "game_mine_2-1"},
-        snake_set_1 = {"game_spider-0", "game_spider-1", "game_spider-2", "game_spider-3"},
-        memory_set_1 = {"game_freecell-0", "game_freecell-1", "game_freecell-2", "game_solitaire-0"},
-        dodge_set_1 = {"game_solitaire-0", "game_solitaire-1", "game_hearts"},
-        hidden_set_1 = {"magnifying_glass-0", "magnifying_glass-1", "magnifying_glass_3", "magnifying_glass_4-0"}
-    }
-
-    for i = 1, count do
-        local variant_num = i + 1
-        local multiplier = i -- Use the clone index as the base for the multiplier
-        local difficulty_level = math.max(1, math.floor(i / Config.clone_difficulty_step) + 1)
-
-        local cost_exponent = base_game.cost_exponent or Config.clone_cost_exponent
-        -- Cost scaling starts immediately at variant 2 (i=1): use (i+1) for cost calculation
-        local cost = math.floor(base_game.unlock_cost * math.pow(i + 1, cost_exponent))
-
-        local clone = {}
-        for k, v in pairs(base_game) do clone[k] = v end
-
-        clone.id = base_game.id:gsub("_1$", "_" .. variant_num)
-        if clone.id == base_game.id then clone.id = base_game.id .. "_" .. variant_num end
-
-        -- Try to get variant-specific data
-        local variant_data = variants_data[i]  -- clone_index = i
-
-        -- Use variant name if available, otherwise fallback
-        if variant_data and variant_data.name then
-            clone.display_name = variant_data.name
-        else
-            clone.display_name = base_game.display_name:gsub(" 1$", " " .. variant_num)
-            if clone.display_name == base_game.display_name then clone.display_name = base_game.display_name .. " " .. variant_num end
-        end
-
-        -- Apply other variant-specific properties
-        if variant_data then
-            -- Copy all variant properties to the clone
-            for k, v in pairs(variant_data) do
-                if k ~= "clone_index" and k ~= "name" then
-                    clone[k] = v
-                end
-            end
-        end
-
-        clone.unlock_cost = cost
-        clone.variant_of = base_game.id
-        clone.variant_multiplier = multiplier
-        clone.difficulty_level = difficulty_level
-        clone.auto_play_performance = self:scaleAutoPlayPerformance(
-            base_game.auto_play_performance,
-            difficulty_level
-        )
-        clone.difficulty_modifiers = nil
-
-        -- Deep copy visual_identity if it exists
-        if base_game.visual_identity then
-            clone.visual_identity = {}
-            for k, v in pairs(base_game.visual_identity) do
-                if type(v) == "table" then
-                    clone.visual_identity[k] = {}
-                    for k2, v2 in pairs(v) do
-                        clone.visual_identity[k][k2] = v2
-                    end
-                else
-                    clone.visual_identity[k] = v
-                end
-            end
-            
-            -- Assign visual variation based on variant number
-            -- Cycle through available palettes
-            local palette_index = ((variant_num - 1) % #available_palettes) + 1
-            clone.visual_identity.palette_id = available_palettes[palette_index]
-        end
-
-        clone.base_formula = base_game.base_formula
-
-        self:registerGame(clone)
-    end
-end
+-- generateClones() - DELETED (Phase 3: replaced by GameRegistry auto-discovery)
 
 function GameData:scaleAutoPlayPerformance(base_performance, difficulty_level)
     local scaling = Config.auto_play_scaling
