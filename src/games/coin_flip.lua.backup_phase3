@@ -2,7 +2,7 @@ local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local CoinFlipView = require('src.games.views.coin_flip_view')
 local ScorePopup = require('src.games.score_popup')
-local VisualEffects = require('src.utils.game_components.visual_effects')
+local ParticleSystem = require('src.utils.particle_system')
 local CoinFlip = BaseGame:extend('CoinFlip')
 
 -- Config-driven defaults with safe fallbacks
@@ -225,22 +225,18 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
         self.celebration_on_streak = self.variant.celebration_on_streak
     end
 
-    local screen_flash_enabled = true
+    self.screen_flash_enabled = true
     if self.variant and self.variant.screen_flash_enabled ~= nil then
-        screen_flash_enabled = self.variant.screen_flash_enabled
+        self.screen_flash_enabled = self.variant.screen_flash_enabled
     end
 
-    -- Phase 3: Initialize VisualEffects component (screen flash + particles)
-    self.visual_effects = VisualEffects:new({
-        camera_shake_enabled = false,  -- Coin Flip doesn't use camera shake
-        screen_flash_enabled = screen_flash_enabled,
-        particle_effects_enabled = true
-    })
-
-    -- Animation state
+    -- Visual effects state (Phase 11)
+    self.particle_system = ParticleSystem:new()
     self.flip_animation_rotation = 0  -- Current rotation of coin during flip
     self.is_flipping = false
     self.flip_timer = 0
+    self.screen_flash_color = nil  -- {r, g, b, a} for screen flash
+    self.screen_flash_timer = 0
 
     -- Create view
     self.view = CoinFlipView:new(self)
@@ -265,6 +261,9 @@ function CoinFlip:updateGameLogic(dt)
         end
     end
 
+    -- Update visual effects (Phase 11)
+    self.particle_system:update(dt)
+
     -- Update flip animation (Phase 11)
     if self.is_flipping then
         self.flip_timer = self.flip_timer + dt
@@ -278,8 +277,18 @@ function CoinFlip:updateGameLogic(dt)
         end
     end
 
-    -- Update visual effects (Phase 3 - VisualEffects component)
-    self.visual_effects:update(dt)
+    -- Update screen flash (Phase 11)
+    if self.screen_flash_timer > 0 then
+        self.screen_flash_timer = self.screen_flash_timer - dt
+        if self.screen_flash_timer <= 0 then
+            self.screen_flash_color = nil
+        else
+            -- Fade out alpha
+            if self.screen_flash_color then
+                self.screen_flash_color[4] = self.screen_flash_timer / 0.2
+            end
+        end
+    end
 
     -- Update score popups
     for i = #self.score_popups, 1, -1 do
@@ -459,11 +468,16 @@ function CoinFlip:flipCoin()
             self.max_streak = self.current_streak
         end
 
-        -- Visual effects: screen flash + confetti (Phase 3 - VisualEffects component)
-        self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")  -- Green flash
+        -- Visual effects: screen flash (green for correct) - Phase 11
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {0, 1, 0, 0.3}  -- Green flash
+            self.screen_flash_timer = 0.2
+        end
+
+        -- Visual effects: celebration on streak milestones - Phase 11
         if self.celebration_on_streak and (self.current_streak % 5 == 0) then
             local w, h = love.graphics.getDimensions()
-            self.visual_effects:emitConfetti(w / 2, h / 2, 15)
+            self.particle_system:emitConfetti(w / 2, h / 2, 15)
         end
 
         -- TTS announcement (Phase 5 completion)
@@ -492,8 +506,11 @@ function CoinFlip:flipCoin()
         self.perfect_streak = false  -- Mark that we've made a mistake
         self.current_streak = 0  -- Reset streak
 
-        -- Visual effects: screen flash (Phase 3 - VisualEffects component)
-        self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")  -- Red flash
+        -- Visual effects: screen flash (red for wrong) - Phase 11
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {1, 0, 0, 0.3}  -- Red flash
+            self.screen_flash_timer = 0.2
+        end
 
         -- TTS announcement (Phase 5 completion)
         if (self.result_announce_mode == "voice" or self.result_announce_mode == "both") and self.di and self.di.ttsManager then
@@ -577,11 +594,16 @@ function CoinFlip:makeGuess(guess)
             self.max_streak = self.current_streak
         end
 
-        -- Visual effects: screen flash + confetti (Phase 3 - VisualEffects component)
-        self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")  -- Green flash
+        -- Visual effects: screen flash (green for correct) - Phase 11
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {0, 1, 0, 0.3}  -- Green flash
+            self.screen_flash_timer = 0.2
+        end
+
+        -- Visual effects: celebration on streak milestones - Phase 11
         if self.celebration_on_streak and (self.current_streak % 5 == 0) then
             local w, h = love.graphics.getDimensions()
-            self.visual_effects:emitConfetti(w / 2, h / 2, 15)
+            self.particle_system:emitConfetti(w / 2, h / 2, 15)
         end
 
         -- TTS announcement (Phase 5 completion)
@@ -611,8 +633,11 @@ function CoinFlip:makeGuess(guess)
         self.current_streak = 0  -- Reset streak
         table.insert(self.flip_history, 0)  -- Track for ratio victory condition
 
-        -- Visual effects: screen flash (Phase 3 - VisualEffects component)
-        self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")  -- Red flash
+        -- Visual effects: screen flash (red for wrong) - Phase 11
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {1, 0, 0, 0.3}  -- Red flash
+            self.screen_flash_timer = 0.2
+        end
 
         -- TTS announcement (Phase 5 completion)
         if (self.result_announce_mode == "voice" or self.result_announce_mode == "both") and self.di and self.di.ttsManager then

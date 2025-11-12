@@ -4,7 +4,6 @@ local Collision = require('src.utils.collision')
 local DodgeView = require('src.games.views.dodge_view')
 local MovementController = require('src.utils.game_components.movement_controller')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
-local VisualEffects = require('src.utils.game_components.visual_effects')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -305,15 +304,6 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
         opacity = 0.8
     })
 
-    -- Phase 3: Initialize VisualEffects component (camera shake)
-    self.visual_effects = VisualEffects:new({
-        camera_shake_enabled = camera_shake > 0,
-        screen_flash_enabled = false,
-        particle_effects_enabled = false,
-        shake_mode = "exponential",  -- Dodge uses exponential decay
-        shake_decay = 0.9
-    })
-
     -- Initialize wind state
     self.wind_timer = 0
     self.wind_current_angle = type(wind_direction) == "number" and math.rad(wind_direction) or math.random() * math.pi * 2
@@ -328,6 +318,10 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
 
     -- Initialize player trail buffer
     self.player_trail_buffer = {}
+
+    -- Initialize camera shake state
+    self.camera_shake_active = 0  -- Current shake intensity
+    self.camera_shake_decay = 0.9  -- Decay rate per frame
 
     -- Initialize score tracking for multiplier modes
     self.avg_speed_tracker = { sum = 0, count = 0 }
@@ -769,13 +763,18 @@ function DodgeGame:updatePlayerTrail(dt)
 end
 
 function DodgeGame:updateCameraShake(dt)
-    -- Phase 3: Camera shake now handled by VisualEffects component
-    self.visual_effects:update(dt)
+    if self.camera_shake_active > 0 then
+        -- Exponential decay
+        self.camera_shake_active = self.camera_shake_active * self.camera_shake_decay
+        -- Stop shaking when very small
+        if self.camera_shake_active < 0.1 then
+            self.camera_shake_active = 0
+        end
+    end
 end
 
 function DodgeGame:triggerCameraShake(intensity)
-    -- Phase 3: Trigger shake via VisualEffects component
-    self.visual_effects:shake(nil, intensity or self.camera_shake, "exponential")
+    self.camera_shake_active = math.max(self.camera_shake_active, intensity or self.camera_shake)
 end
 
 function DodgeGame:updateScoreTracking(dt)

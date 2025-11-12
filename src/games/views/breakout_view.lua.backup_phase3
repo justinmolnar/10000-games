@@ -8,8 +8,10 @@ end
 function BreakoutView:draw()
     love.graphics.push()
 
-    -- Apply camera shake (Phase 11 - VisualEffects component)
-    self.game.visual_effects:applyCameraShake()
+    -- Apply camera shake (Phase 11)
+    if self.game.camera_shake_enabled then
+        love.graphics.translate(self.game.camera_shake_x, self.game.camera_shake_y)
+    end
 
     love.graphics.setColor(0.1, 0.1, 0.15)
     love.graphics.rectangle('fill', 0, 0, self.game.arena_width, self.game.arena_height)
@@ -196,8 +198,10 @@ function BreakoutView:draw()
         popup:draw()
     end
 
-    -- Draw particles (Phase 11 - VisualEffects component)
-    self.game.visual_effects:drawParticles()
+    -- Draw particles (Phase 11)
+    if self.game.particle_effects_enabled then
+        self.game.particle_system:draw()
+    end
 
     -- Draw fog of war (Phase 11) - uses stencil, not canvases
     if _G.DEBUG_FOG then

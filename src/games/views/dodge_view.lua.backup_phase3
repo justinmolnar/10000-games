@@ -48,9 +48,13 @@ function DodgeView:draw()
     local game_width = game.game_width
     local game_height = game.game_height
 
-    -- Apply camera shake (Phase 3 - VisualEffects component)
+    -- Apply camera shake
     g.push()
-    game.visual_effects:applyCameraShake()
+    if game.camera_shake_active and game.camera_shake_active > 0 then
+        local shake_x = (math.random() - 0.5) * game.camera_shake_active * 10
+        local shake_y = (math.random() - 0.5) * game.camera_shake_active * 10
+        g.translate(shake_x, shake_y)
+    end
 
     g.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
     g.rectangle('fill', 0, 0, game_width, game_height)

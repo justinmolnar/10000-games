@@ -14,16 +14,19 @@ function RPSView:draw()
     love.graphics.setColor(0.15, 0.1, 0.15)
     love.graphics.rectangle('fill', 0, 0, w, h)
 
-    -- Visual effects: screen flash + particles (Phase 3 - VisualEffects component)
-    self.game.visual_effects:drawScreenFlash(w, h)
+    -- Screen flash overlay (Phase 11)
+    if self.game.screen_flash_color then
+        love.graphics.setColor(self.game.screen_flash_color)
+        love.graphics.rectangle('fill', 0, 0, w, h)
+    end
 
     -- Draw score popups
     for _, popup in ipairs(self.game.score_popups) do
         popup:draw()
     end
 
-    -- Draw particles (Phase 3 - VisualEffects component)
-    self.game.visual_effects:drawParticles()
+    -- Draw particles (Phase 11)
+    self.game.particle_system:draw()
 
     -- Title
     love.graphics.setColor(1, 1, 1)

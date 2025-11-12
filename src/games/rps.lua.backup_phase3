@@ -2,7 +2,7 @@ local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local RPSView = require('src.games.views.rps_view')
 local ScorePopup = require('src.games.score_popup')
-local VisualEffects = require('src.utils.game_components.visual_effects')
+local ParticleSystem = require('src.utils.particle_system')
 local RPS = BaseGame:extend('RPS')
 
 -- Config-driven defaults with safe fallbacks
@@ -372,9 +372,9 @@ function RPS:init(game_data, cheats, di, variant_override)
         self.animation_speed = self.variant.animation_speed
     end
 
-    local screen_flash_enabled = true
+    self.screen_flash_enabled = true
     if self.variant and self.variant.screen_flash_enabled ~= nil then
-        screen_flash_enabled = self.variant.screen_flash_enabled
+        self.screen_flash_enabled = self.variant.screen_flash_enabled
     end
 
     self.celebration_on_perfect = true
@@ -382,16 +382,12 @@ function RPS:init(game_data, cheats, di, variant_override)
         self.celebration_on_perfect = self.variant.celebration_on_perfect
     end
 
-    -- Phase 3: Initialize VisualEffects component (screen flash + particles)
-    self.visual_effects = VisualEffects:new({
-        camera_shake_enabled = false,  -- RPS doesn't use camera shake
-        screen_flash_enabled = screen_flash_enabled,
-        particle_effects_enabled = true
-    })
-
-    -- Animation state
+    -- Visual effects state (Phase 11)
+    self.particle_system = ParticleSystem:new()
     self.throw_animation_timer = 0
     self.is_animating = false
+    self.screen_flash_color = nil
+    self.screen_flash_timer = 0
 
     -- Create view
     self.view = RPSView:new(self)
@@ -448,6 +444,9 @@ function RPS:updateGameLogic(dt)
         end
     end
 
+    -- Update visual effects (Phase 11)
+    self.particle_system:update(dt)
+
     -- Update throw animation (Phase 11)
     if self.is_animating then
         self.throw_animation_timer = self.throw_animation_timer + dt
@@ -457,8 +456,17 @@ function RPS:updateGameLogic(dt)
         end
     end
 
-    -- Update visual effects (Phase 3 - VisualEffects component)
-    self.visual_effects:update(dt)
+    -- Update screen flash (Phase 11)
+    if self.screen_flash_timer > 0 then
+        self.screen_flash_timer = self.screen_flash_timer - dt
+        if self.screen_flash_timer <= 0 then
+            self.screen_flash_color = nil
+        else
+            if self.screen_flash_color then
+                self.screen_flash_color[4] = self.screen_flash_timer / 0.2
+            end
+        end
+    end
 
     -- Update score popups
     for i = #self.score_popups, 1, -1 do
@@ -741,7 +749,10 @@ function RPS:playRound(player_choice)
         end
 
         -- Visual effects: screen flash (green for win) - Phase 11
-        self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")  -- Green flash
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {0, 1, 0, 0.3}  -- Green flash
+            self.screen_flash_timer = 0.2
+        end
 
         -- Phase 6 completion: Sudden death special round - instant victory
         if self.current_special_round == "sudden_death" then
@@ -763,7 +774,7 @@ function RPS:playRound(player_choice)
                 -- Visual effects: celebration on perfect game - Phase 11
                 if self.celebration_on_perfect then
                     local w, h = love.graphics.getDimensions()
-                    self.visual_effects:emitConfetti(w / 2, h / 2, 30)
+                    self.particle_system:emitConfetti(w / 2, h / 2, 30)
                 end
             end
         end
@@ -782,7 +793,10 @@ function RPS:playRound(player_choice)
         end
 
         -- Visual effects: screen flash (red for loss) - Phase 11
-        self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")  -- Red flash
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {1, 0, 0, 0.3}  -- Red flash
+            self.screen_flash_timer = 0.2
+        end
 
         -- Phase 6 completion: Lives system - lose life on loss
         if self.lives < 999 and (self.lose_life_on == "loss" or self.lose_life_on == "both") then

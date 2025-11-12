@@ -3,10 +3,10 @@ local Config = rawget(_G, 'DI_CONFIG') or {}
 local Collision = require('src.utils.collision')
 local BreakoutView = require('src.games.views.breakout_view')
 local ScorePopup = require('src.games.score_popup')
+local ParticleSystem = require('src.utils.particle_system')
 local PNGCollision = require('src.utils.png_collision')
 local MovementController = require('src.utils.game_components.movement_controller')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
-local VisualEffects = require('src.utils.game_components.visual_effects')
 local Breakout = BaseGame:extend('Breakout')
 
 -- Config-driven defaults with safe fallbacks
@@ -563,14 +563,14 @@ function Breakout:init(game_data, cheats, di, variant_override)
     self.score_popups = {}
 
     -- Visual effects parameters (Phase 11)
-    local particle_effects_enabled = true
+    self.particle_effects_enabled = true
     if self.variant and self.variant.particle_effects_enabled ~= nil then
-        particle_effects_enabled = self.variant.particle_effects_enabled
+        self.particle_effects_enabled = self.variant.particle_effects_enabled
     end
 
-    local camera_shake_enabled = true
+    self.camera_shake_enabled = true
     if self.variant and self.variant.camera_shake_enabled ~= nil then
-        camera_shake_enabled = self.variant.camera_shake_enabled
+        self.camera_shake_enabled = self.variant.camera_shake_enabled
     end
 
     self.camera_shake_intensity = 5.0  -- Default shake intensity
@@ -609,15 +609,11 @@ function Breakout:init(game_data, cheats, di, variant_override)
         print(string.format("[Breakout] fog_controller created: %s", tostring(self.fog_controller ~= nil)))
     end
 
-    -- Initialize VisualEffects component (camera shake + particles)
-    self.visual_effects = VisualEffects:new({
-        camera_shake_enabled = camera_shake_enabled,
-        particle_effects_enabled = particle_effects_enabled,
-        screen_flash_enabled = false,  -- Breakout doesn't use screen flash
-        shake_mode = "timer",  -- Breakout uses timer-based shake
-        shake_decay = 0.9
-    })
-
+    -- Visual effects state
+    self.particle_system = ParticleSystem:new()
+    self.camera_shake_x = 0
+    self.camera_shake_y = 0
+    self.camera_shake_timer = 0
     self.brick_flash_map = {}  -- Track which bricks are flashing
 
     -- Create view
@@ -1056,8 +1052,24 @@ function Breakout:updateGameLogic(dt)
     -- Update power-ups (Phase 13)
     self:updatePowerups(dt)
 
-    -- Update visual effects (Phase 11 - now using VisualEffects component)
-    self.visual_effects:update(dt)
+    -- Update visual effects (Phase 11)
+    if self.particle_effects_enabled then
+        self.particle_system:update(dt)
+    end
+
+    -- Update camera shake (Phase 11)
+    if self.camera_shake_timer > 0 then
+        self.camera_shake_timer = self.camera_shake_timer - dt
+        if self.camera_shake_timer <= 0 then
+            self.camera_shake_x = 0
+            self.camera_shake_y = 0
+        else
+            -- Exponential decay
+            local shake_strength = self.camera_shake_timer * self.camera_shake_intensity
+            self.camera_shake_x = (math.random() - 0.5) * shake_strength
+            self.camera_shake_y = (math.random() - 0.5) * shake_strength
+        end
+    end
 
     -- Update brick flash map (Phase 11)
     for brick, flash_timer in pairs(self.brick_flash_map) do
@@ -1100,8 +1112,10 @@ function Breakout:updateGameLogic(dt)
     for i = #self.balls, 1, -1 do
         local ball = self.balls[i]
         if ball.active then
-            -- Emit ball trail particles (Phase 11 - VisualEffects component)
-            self.visual_effects:emitBallTrail(ball.x, ball.y, ball.vx, ball.vy)
+            -- Emit ball trail particles (Phase 11)
+            if self.particle_effects_enabled then
+                self.particle_system:emitBallTrail(ball.x, ball.y, ball.vx, ball.vy)
+            end
 
             self:updateBall(ball, dt)
         end
@@ -1384,10 +1398,17 @@ function Breakout:updateBall(ball, dt)
                 -- Spawn power-up (Phase 13)
                 self:spawnPowerup(brick.x + brick.width / 2, brick.y + brick.height / 2)
 
-                -- Visual effects: brick destruction particles + camera shake (Phase 11 - VisualEffects component)
-                local brick_color = {1, 0.5 + (brick.max_health - 1) * 0.1, 0}
-                self.visual_effects:emitBrickDestruction(brick.x + brick.width / 2, brick.y + brick.height / 2, brick_color)
-                self.visual_effects:shake(0.15, self.camera_shake_intensity, "timer")
+                -- Visual effects: brick destruction particles (Phase 11)
+                if self.particle_effects_enabled then
+                    -- Get brick color (health-based gradient from red to yellow)
+                    local brick_color = {1, 0.5 + (brick.max_health - 1) * 0.1, 0}
+                    self.particle_system:emitBrickDestruction(brick.x + brick.width / 2, brick.y + brick.height / 2, brick_color)
+                end
+
+                -- Visual effects: camera shake on brick destruction (Phase 11)
+                if self.camera_shake_enabled then
+                    self.camera_shake_timer = 0.15  -- 150ms shake duration
+                end
 
                 -- Award score with combo multiplier (Phase 10)
                 self.combo = self.combo + 1
