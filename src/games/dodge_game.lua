@@ -3,6 +3,7 @@ local Config = require('src.config')
 local Collision = require('src.utils.collision')
 local DodgeView = require('src.games.views.dodge_view')
 local MovementController = require('src.utils.game_components.movement_controller')
+local FogOfWar = require('src.utils.game_components.fog_of_war')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -295,6 +296,13 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     self.score_mode = score_mode
     self.victory_condition = victory_condition
     self.victory_limit = victory_limit
+
+    -- Phase 2: Initialize FogOfWar component (stencil mode)
+    self.fog_controller = FogOfWar:new({
+        enabled = fog_origin ~= "none" and fog_radius < 9999,
+        mode = "stencil",
+        opacity = 0.8
+    })
 
     -- Initialize wind state
     self.wind_timer = 0

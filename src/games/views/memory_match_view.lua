@@ -107,25 +107,12 @@ function MemoryMatchView:draw()
         end
 
         -- Fog of war: Calculate alpha for ALL cards based on distance from spotlight
+        -- Calculate fog alpha using FogOfWar component
         local fog_alpha = 1.0
-        if game.fog_of_war > 0 and not game.memorize_phase then
+        if not game.memorize_phase and game.fog_controller then
             local card_center_x = draw_x + game.CARD_WIDTH / 2
             local card_center_y = draw_y + game.CARD_HEIGHT / 2
-            local dist = math.sqrt((mouse_x - card_center_x)^2 + (mouse_y - card_center_y)^2)
-
-            -- Use variant-configurable inner radius and darkness
-            local inner_radius = game.fog_of_war * game.fog_inner_radius
-            local outer_radius = game.fog_of_war
-
-            if dist < inner_radius then
-                fog_alpha = 1.0  -- Fully visible
-            elseif dist > outer_radius then
-                fog_alpha = game.fog_darkness  -- Configurable darkness (0.0 = pitch black, 1.0 = fully visible)
-            else
-                -- Smooth gradient from 1.0 to fog_darkness
-                local t = (dist - inner_radius) / (outer_radius - inner_radius)
-                fog_alpha = 1.0 - (t * (1.0 - game.fog_darkness))
-            end
+            fog_alpha = game.fog_controller:calculateAlpha(card_center_x, card_center_y, mouse_x, mouse_y)
         end
 
         love.graphics.push()

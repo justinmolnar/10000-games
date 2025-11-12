@@ -32,6 +32,7 @@ function love.load()
     -- Debug flags for sprite system
     _G.DEBUG_ENEMY_SPAWN = false  -- Set to true to debug enemy spawning
     _G.DEBUG_SPRITES = false       -- Set to true to debug sprite loading
+    _G.DEBUG_FOG = true            -- Set to true to debug fog of war rendering
 
     -- Create standard system cursors
     local cursor_types = {"arrow", "ibeam", "wait", "crosshair", "waitarrow", "sizenwse", "sizenesw", "sizewe", "sizens", "sizeall", "no", "hand"}

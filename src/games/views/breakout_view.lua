@@ -204,6 +204,10 @@ function BreakoutView:draw()
     end
 
     -- Draw fog of war (Phase 11) - uses stencil, not canvases
+    if _G.DEBUG_FOG then
+        print(string.format("[BreakoutView] fog_of_war_enabled=%s, fog_controller=%s",
+            tostring(self.game.fog_of_war_enabled), tostring(self.game.fog_controller ~= nil)))
+    end
     if self.game.fog_of_war_enabled then
         self:drawFogOfWar()
     end
@@ -282,31 +286,35 @@ function BreakoutView:draw()
 end
 
 function BreakoutView:drawFogOfWar()
-    -- Stencil-based fog of war (same approach as Snake game)
-    -- Create visibility circles around balls and paddle
-    local function stencil_visibility()
-        -- Draw circles for each active ball
-        for _, ball in ipairs(self.game.balls) do
-            if ball.active then
-                love.graphics.circle("fill", ball.x, ball.y, self.game.fog_of_war_radius)
-            end
+    -- Use FogOfWar component (stencil mode)
+    local fog = self.game.fog_controller
+    if _G.DEBUG_FOG then
+        print(string.format("[BreakoutView] drawFogOfWar() called, fog_controller=%s", tostring(fog ~= nil)))
+        if fog then
+            print(string.format("[BreakoutView] fog.enabled=%s, fog.mode=%s", tostring(fog.enabled), tostring(fog.mode)))
         end
-
-        -- Draw circle around paddle
-        love.graphics.circle("fill", self.game.paddle.x, self.game.paddle.y, self.game.fog_of_war_radius)
     end
 
-    -- Use stencil to create visibility mask
-    love.graphics.stencil(stencil_visibility, "replace", 1)
-    love.graphics.setStencilTest("equal", 0)
+    if not fog then return end
 
-    -- Draw dark overlay everywhere except visible areas
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle("fill", 0, 0, self.game.arena_width, self.game.arena_height)
+    fog:clearSources()
 
-    -- Clear stencil
-    love.graphics.setStencilTest()
-    love.graphics.setColor(1, 1, 1)
+    -- Add visibility around each ball
+    for _, ball in ipairs(self.game.balls) do
+        if ball.active then
+            fog:addVisibilitySource(ball.x, ball.y, self.game.fog_of_war_radius)
+        end
+    end
+
+    -- Add visibility around paddle
+    fog:addVisibilitySource(self.game.paddle.x, self.game.paddle.y, self.game.fog_of_war_radius)
+
+    if _G.DEBUG_FOG then
+        print(string.format("[BreakoutView] About to call fog:render() with %d sources", #fog.visibility_sources))
+    end
+
+    -- Render fog
+    fog:render(self.game.arena_width, self.game.arena_height)
 end
 
 return BreakoutView

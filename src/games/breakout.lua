@@ -6,6 +6,7 @@ local ScorePopup = require('src.games.score_popup')
 local ParticleSystem = require('src.utils.particle_system')
 local PNGCollision = require('src.utils.png_collision')
 local MovementController = require('src.utils.game_components.movement_controller')
+local FogOfWar = require('src.utils.game_components.fog_of_war')
 local Breakout = BaseGame:extend('Breakout')
 
 -- Config-driven defaults with safe fallbacks
@@ -590,6 +591,22 @@ function Breakout:init(game_data, cheats, di, variant_override)
     self.fog_of_war_radius = 150  -- Default radius
     if self.variant and self.variant.fog_of_war_radius ~= nil then
         self.fog_of_war_radius = self.variant.fog_of_war_radius
+    end
+
+    if _G.DEBUG_FOG then
+        print(string.format("[Breakout] About to create fog_controller: fog_of_war_enabled=%s, FogOfWar=%s",
+            tostring(self.fog_of_war_enabled), tostring(FogOfWar)))
+    end
+
+    -- Initialize FogOfWar component (stencil mode)
+    self.fog_controller = FogOfWar:new({
+        enabled = self.fog_of_war_enabled,
+        mode = "stencil",
+        opacity = 0.8
+    })
+
+    if _G.DEBUG_FOG then
+        print(string.format("[Breakout] fog_controller created: %s", tostring(self.fog_controller ~= nil)))
     end
 
     -- Visual effects state

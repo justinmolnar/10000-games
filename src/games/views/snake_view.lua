@@ -611,50 +611,31 @@ end
 
 function SnakeView:drawFogOfWar()
     local game = self.game
-    local fog_mode = game.fog_of_war or "none"
+    local fog = game.fog_controller
+    if not fog then return end
 
+    local fog_mode = game.fog_of_war or "none"
     if fog_mode == "none" then
-        return -- No fog, full visibility
+        return
     end
+
+    fog:clearSources()
 
     local GRID_SIZE = self.GRID_SIZE
-    local fog_radius = 150  -- Visibility radius in pixels
-
-    -- Determine fog center position
-    local fog_center_x, fog_center_y
+    local fog_radius = 150
 
     if fog_mode == "player" then
-        -- Center on snake head
         local head = game.snake[1]
         if head then
-            fog_center_x = head.x * GRID_SIZE + GRID_SIZE / 2
-            fog_center_y = head.y * GRID_SIZE + GRID_SIZE / 2
-        else
-            return -- No snake, no fog
+            local head_x = head.x * GRID_SIZE + GRID_SIZE / 2
+            local head_y = head.y * GRID_SIZE + GRID_SIZE / 2
+            fog:addVisibilitySource(head_x, head_y, fog_radius)
         end
     elseif fog_mode == "center" then
-        -- Center on arena center
-        fog_center_x = game.game_width / 2
-        fog_center_y = game.game_height / 2
-    else
-        return -- Unknown mode
+        fog:addVisibilitySource(game.game_width / 2, game.game_height / 2, fog_radius)
     end
 
-    -- Use stencil to create circular visibility
-    local function stencil_circle()
-        love.graphics.circle("fill", fog_center_x, fog_center_y, fog_radius)
-    end
-
-    -- Draw fog overlay with stencil cutout
-    love.graphics.stencil(stencil_circle, "replace", 1)
-    love.graphics.setStencilTest("equal", 0)
-
-    -- Draw dark overlay everywhere except the visible circle
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle("fill", 0, 0, game.game_width, game.game_height)
-
-    love.graphics.setStencilTest()
-    love.graphics.setColor(1, 1, 1)
+    fog:render(game.game_width, game.game_height)
 end
 
 return SnakeView

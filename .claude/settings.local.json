@@ -34,7 +34,8 @@
       "Bash(python:*)",
       "Bash(test:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(luac:*)"
     ],
     "deny": [],
     "ask": []

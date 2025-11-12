@@ -452,24 +452,23 @@ function DodgeView:draw()
     end
 
     -- Fog of war overlay (after all game elements, before closing transform)
-    if game.fog_origin and game.fog_origin ~= "none" and game.fog_radius < 9999 then
-        local fog_x, fog_y
-        if game.fog_origin == "player" then
-            fog_x, fog_y = game.player.x, game.player.y
-        elseif game.fog_origin == "circle_center" and game.safe_zone then
-            fog_x, fog_y = game.safe_zone.x, game.safe_zone.y
-        else
-            fog_x, fog_y = game_width / 2, game_height / 2
-        end
+    if game.fog_controller then
+        local fog = game.fog_controller
+        fog:clearSources()
 
-        -- Draw dark overlay with circular cutout using stencil
-        love.graphics.stencil(function()
-            love.graphics.circle("fill", fog_x, fog_y, game.fog_radius)
-        end, "replace", 1)
-        love.graphics.setStencilTest("less", 1)
-        g.setColor(0, 0, 0, 0.8)
-        g.rectangle("fill", 0, 0, game_width, game_height)
-        love.graphics.setStencilTest()
+        if game.fog_origin and game.fog_origin ~= "none" and game.fog_radius < 9999 then
+            local fog_x, fog_y
+            if game.fog_origin == "player" then
+                fog_x, fog_y = game.player.x, game.player.y
+            elseif game.fog_origin == "circle_center" and game.safe_zone then
+                fog_x, fog_y = game.safe_zone.x, game.safe_zone.y
+            else
+                fog_x, fog_y = game_width / 2, game_height / 2
+            end
+
+            fog:addVisibilitySource(fog_x, fog_y, game.fog_radius)
+            fog:render(game_width, game_height)
+        end
     end
 
     -- Close camera shake transform

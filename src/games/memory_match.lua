@@ -1,6 +1,7 @@
 local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local MemoryMatchView = require('src.games.views.memory_match_view')
+local FogOfWar = require('src.utils.game_components.fog_of_war')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
 -- Config-driven defaults with safe fallbacks
@@ -207,6 +208,15 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     if self.variant and self.variant.fog_darkness ~= nil then
         self.fog_darkness = self.variant.fog_darkness
     end
+
+    -- Initialize FogOfWar component (alpha mode for per-card fog)
+    self.fog_controller = FogOfWar:new({
+        enabled = self.fog_of_war > 0,
+        mode = "alpha",
+        opacity = self.fog_darkness,
+        inner_radius_multiplier = self.fog_inner_radius,
+        outer_radius = self.fog_of_war
+    })
 
     self.distraction_elements = (runtimeCfg and runtimeCfg.distraction_elements) or false
     if self.variant and self.variant.distraction_elements ~= nil then
