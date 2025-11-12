@@ -9,6 +9,7 @@ local MovementController = require('src.utils.game_components.movement_controlle
 local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local VariantLoader = require('src.utils.game_components.variant_loader')
+local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local Breakout = BaseGame:extend('Breakout')
 
 -- Config-driven defaults with safe fallbacks
@@ -498,6 +499,14 @@ function Breakout:init(game_data, cheats, di, variant_override)
     })
 
     self.brick_flash_map = {}  -- Track which bricks are flashing
+
+    -- Standard HUD (Phase 8)
+    self.hud = HUDRenderer:new({
+        primary = {label = "Score", key = "score"},
+        secondary = {label = "Bricks", key = "bricks_left"},
+        lives = {key = "lives", max = self.lives, style = "hearts"}
+    })
+    self.hud.game = self
 
     -- Create view
     self.view = BreakoutView:new(self)

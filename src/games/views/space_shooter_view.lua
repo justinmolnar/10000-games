@@ -244,118 +244,87 @@ function SpaceShooterView:draw()
         g.circle("line", zone.x, zone.y, zone.radius)
     end
 
-    -- Draw HUD (skip in VM render mode)
+    -- Standard HUD (Phase 8)
+    game.hud:draw(game.game_width, game.game_height)
+
+    -- Additional game-specific stats (below standard HUD)
     if not game.vm_render_mode then
-        local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or
-                         (Config and Config.games and Config.games.space_shooter and Config.games.space_shooter.view) or {})
-        local hud = viewcfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50, 70} }
-        local hud_icon_size = hud.icon_size or 16
-        local s = hud.text_scale or 0.85
-        local lx, ix, tx = hud.label_x or 10, hud.icon_x or 60, hud.text_x or 80
-        local ry = hud.row_y or {10, 30, 50, 70}
+        local s = 0.85
+        local lx = 10
+        local hud_y = 90  -- Start below standard HUD
+
         g.setColor(1, 1, 1)
-        g.print("Kills: ", lx, ry[1], 0, s, s)
-        self.sprite_loader:drawSprite(enemy_sprite_fallback, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        g.print(game.metrics.kills .. "/" .. game.target_kills, tx, ry[1], 0, s, s)
 
-        -- Lives: Use player sprite if available, otherwise fallback to icon
-        g.print("Lives: ", lx, ry[2], 0, s, s)
-        if game.sprites and game.sprites.player then
-            -- Draw actual player sprite
-            g.setColor(1, 1, 1)
-            g.draw(game.sprites.player, ix, ry[2], 0,
-                hud_icon_size / game.sprites.player:getWidth(),
-                hud_icon_size / game.sprites.player:getHeight())
-        else
-            -- Fallback to icon
-            local lives_icon = self.sprite_manager:getMetricSprite(game.data, "deaths") or "msg_error-0"
-            self.sprite_loader:drawSprite(lives_icon, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        end
-        local lives_remaining = game.PLAYER_MAX_DEATHS - game.metrics.deaths
-        g.print(lives_remaining .. "/" .. game.PLAYER_MAX_DEATHS, tx, ry[2], 0, s, s)
+        -- Kills progress
+        g.print("Kills: " .. game.metrics.kills .. "/" .. game.target_kills, lx, hud_y, 0, s, s)
+        hud_y = hud_y + 18
 
-        -- Show shield count if shield is enabled
+        -- Shield (if enabled)
         if game.shield_enabled then
             local shield_color = game.player.shield_active and {0.3, 0.7, 1.0} or {0.5, 0.5, 0.5}
             g.setColor(shield_color)
-            g.print("Shield: ", lx, ry[3], 0, s, s)
-            self.sprite_loader:drawSprite("msg_information-0", ix, ry[3], hud_icon_size, hud_icon_size, shield_color, palette_id)
-            g.print(game.player.shield_hits_remaining .. "/" .. game.shield_max_hits, tx, ry[3], 0, s, s)
+            g.print("Shield: " .. game.player.shield_hits_remaining .. "/" .. game.shield_max_hits, lx, hud_y, 0, s, s)
+            hud_y = hud_y + 18
+            g.setColor(1, 1, 1)
         end
 
-        -- Phase 4: Ammo display
-        local current_row = 4
+        -- Ammo display
         if game.ammo_enabled then
-            -- Safety check: make sure we have a row available
-            if not ry[current_row] then
-                current_row = #ry  -- Fall back to last available row
-            end
-
-            g.setColor(1, 1, 1)
             if game.player.is_reloading then
                 local reload_progress = 1 - (game.player.reload_timer / game.ammo_reload_time)
                 g.setColor(1, 1, 0)  -- Yellow during reload
-                g.print("Reloading... ", lx, ry[current_row], 0, s, s)
+                g.print("Reloading...", lx, hud_y, 0, s, s)
                 -- Draw reload progress bar
                 local bar_width = 60
                 local bar_x = lx + 80
-                g.rectangle("line", bar_x, ry[current_row] + 2, bar_width, 10)
-                g.rectangle("fill", bar_x, ry[current_row] + 2, bar_width * reload_progress, 10)
+                g.rectangle("line", bar_x, hud_y + 2, bar_width, 10)
+                g.rectangle("fill", bar_x, hud_y + 2, bar_width * reload_progress, 10)
             else
-                g.print("Ammo: ", lx, ry[current_row], 0, s, s)
                 local ammo_color = game.player.ammo < game.ammo_capacity * 0.25 and {1, 0.5, 0} or {1, 1, 1}
                 g.setColor(ammo_color)
-                g.print(game.player.ammo .. "/" .. game.ammo_capacity, lx + 50, ry[current_row], 0, s, s)
+                g.print("Ammo: " .. game.player.ammo .. "/" .. game.ammo_capacity, lx, hud_y, 0, s, s)
             end
-            current_row = current_row + 1
+            hud_y = hud_y + 18
+            g.setColor(1, 1, 1)
         end
 
-        -- Phase 4: Overheat display
+        -- Overheat display
         if game.overheat_enabled then
-            -- Safety check: make sure we have a row available
-            if not ry[current_row] then
-                current_row = #ry  -- Fall back to last available row
-            end
-
-            g.setColor(1, 1, 1)
             local heat_percent = game.player.heat / game.overheat_threshold
 
             if game.player.is_overheated then
                 g.setColor(1, 0, 0)  -- Red when overheated
                 local cooldown_progress = 1 - (game.player.overheat_timer / game.overheat_cooldown)
-                g.print("OVERHEAT! ", lx, ry[current_row], 0, s, s)
+                g.print("OVERHEAT!", lx, hud_y, 0, s, s)
                 -- Draw cooldown bar
                 local bar_width = 60
                 local bar_x = lx + 80
-                g.setColor(1, 0, 0)
-                g.rectangle("line", bar_x, ry[current_row] + 2, bar_width, 10)
-                g.rectangle("fill", bar_x, ry[current_row] + 2, bar_width * cooldown_progress, 10)
+                g.rectangle("line", bar_x, hud_y + 2, bar_width, 10)
+                g.rectangle("fill", bar_x, hud_y + 2, bar_width * cooldown_progress, 10)
             else
-                g.print("Heat: ", lx, ry[current_row], 0, s, s)
+                g.print("Heat:", lx, hud_y, 0, s, s)
                 -- Draw heat bar
                 local bar_width = 60
                 local bar_x = lx + 50
                 local bar_color = heat_percent > 0.75 and {1, 0, 0} or (heat_percent > 0.5 and {1, 1, 0} or {0, 1, 0})
                 g.setColor(bar_color)
-                g.rectangle("line", bar_x, ry[current_row] + 2, bar_width, 10)
-                g.rectangle("fill", bar_x, ry[current_row] + 2, bar_width * heat_percent, 10)
+                g.rectangle("line", bar_x, hud_y + 2, bar_width, 10)
+                g.rectangle("fill", bar_x, hud_y + 2, bar_width * heat_percent, 10)
             end
-            current_row = current_row + 1
+            hud_y = hud_y + 18
+            g.setColor(1, 1, 1)
         end
 
-        -- Phase 6: Active power-ups display
+        -- Active power-ups display
         if next(game.active_powerups) then
             for powerup_type, effect in pairs(game.active_powerups) do
-                if not ry[current_row] then
-                    current_row = #ry
-                end
-
                 local name = powerup_type:gsub("_", " "):upper()
                 local time_left = math.ceil(effect.duration_remaining)
                 g.setColor(0, 1, 0)  -- Green for active powerup
-                g.print(name .. ": " .. time_left .. "s", lx, ry[current_row], 0, s * 0.8, s * 0.8)
-                current_row = current_row + 1
+                g.print(name .. ": " .. time_left .. "s", lx, hud_y, 0, s * 0.8, s * 0.8)
+                hud_y = hud_y + 18
             end
+            g.setColor(1, 1, 1)
         end
     end
 end

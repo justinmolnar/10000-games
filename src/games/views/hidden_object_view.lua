@@ -89,27 +89,17 @@ function HiddenObjectView:draw()
         end
     end
 
-    -- Draw HUD (skip in VM render mode)
+    -- Standard HUD (Phase 8)
+    game.hud:draw(game.game_width, game.game_height)
+
+    -- Additional game-specific stats (below standard HUD)
     if not game.vm_render_mode then
-        local hud_icon_size = self.hud.icon_size or 16
-        local s = self.hud.text_scale or 0.85
-        local lx, ix, tx = self.hud.label_x or 10, self.hud.icon_x or 60, self.hud.text_x or 80
-        local ry = self.hud.row_y or {10, 30, 50, 70}
         love.graphics.setColor(1, 1, 1)
 
-        local found_sprite = self.sprite_manager:getMetricSprite(game.data, "objects_found") or object_sprite
-        love.graphics.print("Found: ", lx, ry[1], 0, s, s)
-        self.sprite_loader:drawSprite(found_sprite, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        love.graphics.print(game.objects_found .. "/" .. game.total_objects, tx, ry[1], 0, s, s)
-
-        local time_sprite = self.sprite_manager:getMetricSprite(game.data, "time_bonus") or "clock-0"
-        love.graphics.print("Time: ", lx, ry[2], 0, s, s)
-        self.sprite_loader:drawSprite(time_sprite, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        love.graphics.print(string.format("%.1f", game.time_remaining), tx, ry[2], 0, s, s)
-
-        love.graphics.print("Difficulty: " .. game.difficulty_level, lx, ry[3])
+        -- Time bonus (if completed)
         if game.completed and game.metrics.time_bonus > 0 then
-            love.graphics.print("Time Bonus: " .. game.metrics.time_bonus, lx, ry[4])
+            love.graphics.setColor(0.5, 1, 0.5)
+            love.graphics.print("Time Bonus: " .. game.metrics.time_bonus, 10, 90, 0, 0.85, 0.85)
         end
     end
 end

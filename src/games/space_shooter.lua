@@ -4,6 +4,7 @@ local Collision = require('src.utils.collision')
 local MovementController = require('src.utils.game_components.movement_controller')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local VariantLoader = require('src.utils.game_components.variant_loader')
+local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
@@ -552,6 +553,14 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     -- NOTE: Asset loading will be implemented in Phase 2-3
     -- Ship sprites will be loaded from variant.sprite_set
     -- e.g., "fighter_1" (blue squadron), "fighter_2" (gold squadron)
+
+    -- Standard HUD (Phase 8)
+    self.hud = HUDRenderer:new({
+        primary = {label = "Score", key = "score"},
+        secondary = {label = "Wave", key = "wave"},
+        lives = {key = "lives", max = self.lives, style = "hearts"}
+    })
+    self.hud.game = self
 
     self.view = SpaceShooterView:new(self, self.variant)
     print("[SpaceShooter:init] Initialized with default game dimensions:", self.game_width, self.game_height)

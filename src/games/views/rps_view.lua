@@ -23,45 +23,43 @@ function RPSView:draw()
     -- Draw particles (Phase 3 - VisualEffects component)
     self.game.visual_effects:drawParticles()
 
+    -- Standard HUD (Phase 8)
+    self.game.hud:draw(w, h)
+
     -- Title
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("RPS TOURNAMENT", 20, 20, 0, 2, 2)
+    love.graphics.print("RPS TOURNAMENT", 20, 50, 0, 2, 2)
 
-    -- Score
-    love.graphics.print("First to " .. self.game.rounds_to_win .. " wins", 20, 60)
+    -- Additional game info
+    love.graphics.print("First to " .. self.game.rounds_to_win .. " wins", 20, 90)
     love.graphics.setColor(0.5, 1, 0.5)
-    love.graphics.print("Player: " .. self.game.player_wins, 20, 90)
+    love.graphics.print("Player: " .. self.game.player_wins, 20, 110)
 
     -- Phase 6 completion: Multiple opponents display
     if self.game.num_opponents > 1 then
         love.graphics.setColor(1, 0.5, 0.5)
-        love.graphics.print("Opponents:", 20, 110)
+        love.graphics.print("Opponents:", 20, 130)
         local active_count = 0
         for i, opp in ipairs(self.game.opponents) do
             if not opp.eliminated then
                 active_count = active_count + 1
                 love.graphics.setColor(0.8, 0.5, 0.5)
-                love.graphics.print("  #" .. i .. ": " .. opp.wins .. " wins", 20, 110 + (active_count * 18), 0, 0.8, 0.8)
+                love.graphics.print("  #" .. i .. ": " .. opp.wins .. " wins", 20, 130 + (active_count * 18), 0, 0.8, 0.8)
             end
         end
         love.graphics.setColor(0.8, 0.8, 0.8)
-        love.graphics.print("Ties: " .. self.game.ties, 20, 130 + (active_count * 18))
+        love.graphics.print("Ties: " .. self.game.ties, 20, 150 + (active_count * 18))
     else
         love.graphics.setColor(1, 0.5, 0.5)
-        love.graphics.print("AI: " .. self.game.ai_wins, 20, 110)
+        love.graphics.print("AI: " .. self.game.ai_wins, 20, 130)
         love.graphics.setColor(0.8, 0.8, 0.8)
-        love.graphics.print("Ties: " .. self.game.ties, 20, 130)
+        love.graphics.print("Ties: " .. self.game.ties, 20, 150)
     end
-
-    -- Score (prominent display)
-    love.graphics.setColor(1, 1, 0)  -- Yellow for score
-    love.graphics.print("SCORE: " .. self.game.score, 20, 160, 0, 1.5, 1.5)
 
     -- Stats
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Rounds: " .. self.game.rounds_played, 20, 200)
-    love.graphics.print("Win Streak: " .. self.game.current_win_streak, 20, 220)
-    love.graphics.print("Max Streak: " .. self.game.max_win_streak, 20, 240)
+    love.graphics.print("Rounds: " .. self.game.rounds_played, 20, 180)
+    love.graphics.print("Max Streak: " .. self.game.max_win_streak, 20, 200)
 
     -- Phase 6 completion: Lives display
     local y_offset = 260

@@ -23,33 +23,24 @@ function CoinFlipView:draw()
     -- Draw particles (Phase 3 - VisualEffects component)
     self.game.visual_effects:drawParticles()
 
+    -- Standard HUD (Phase 8)
+    self.game.hud:draw(w, h)
+
     -- Title
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("COIN FLIP CHALLENGE", 20, 20, 0, 2, 2)
+    love.graphics.print("COIN FLIP CHALLENGE", 20, 50, 0, 2, 2)
 
-    -- HUD - Target and Progress
-    love.graphics.print("Target Streak: " .. self.game.streak_target, 20, 60)
-    love.graphics.print("Current Streak: " .. self.game.current_streak, 20, 80)
-    love.graphics.print("Max Streak: " .. self.game.max_streak, 20, 100)
-
-    -- Lives (if not unlimited)
-    if self.game.lives < 999 then
-        love.graphics.print("Lives: " .. self.game.lives, 20, 120)
-    end
-
-    -- Score (prominent display)
-    love.graphics.setColor(1, 1, 0)  -- Yellow for score
-    love.graphics.print("SCORE: " .. self.game.score, 20, 150, 0, 1.5, 1.5)
-
-    -- Stats
-    love.graphics.setColor(1, 1, 1)  -- Back to white
-    love.graphics.print("Total Flips: " .. self.game.flips_total, 20, 190)
-    love.graphics.print("Correct: " .. self.game.correct_total, 20, 210)
-    love.graphics.print("Wrong: " .. self.game.incorrect_total, 20, 230)
+    -- Additional stats (below HUD standard elements)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print("Target Streak: " .. self.game.streak_target, 20, 90)
+    love.graphics.print("Max Streak: " .. self.game.max_streak, 20, 110)
+    love.graphics.print("Total Flips: " .. self.game.flips_total, 20, 130)
+    love.graphics.print("Correct: " .. self.game.correct_total, 20, 150)
+    love.graphics.print("Wrong: " .. self.game.incorrect_total, 20, 170)
 
     if self.game.flips_total > 0 then
         local accuracy = math.floor(self.game.metrics.accuracy * 100)
-        love.graphics.print("Accuracy: " .. accuracy .. "%", 20, 250)
+        love.graphics.print("Accuracy: " .. accuracy .. "%", 20, 190)
     end
 
     -- Pattern history display (Phase 5 completion)

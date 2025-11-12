@@ -352,91 +352,6 @@ function DodgeView:draw()
         end
     end
 
-    -- Draw HUD (skip in VM render mode)
-    if not game.vm_render_mode then
-        local hud_icon_size = self.hud.icon_size or 16
-        local s = self.hud.text_scale or 0.85
-        local lx, ix, tx = self.hud.label_x or 10, self.hud.icon_x or 70, self.hud.text_x or 90
-        local ry = self.hud.row_y or {10, 30, 50, 70}
-        g.setColor(1, 1, 1)
-
-        -- Dodged: Use first enemy sprite from composition, otherwise fallback to icon
-        g.print("Dodged: ", lx, ry[1], 0, s, s)
-        local enemy_sprite = nil
-        local enemy_fallback = "msg_error-0"  -- Default fallback
-
-        -- Find first enemy type from composition (prefer non-obstacle enemies for display)
-        if game.enemy_composition then
-            -- First pass: Look for special enemy types (not obstacle)
-            for enemy_type, _ in pairs(game.enemy_composition) do
-                if enemy_type ~= "obstacle" then
-                    local sprite_key = "enemy_" .. enemy_type
-                    if game.sprites and game.sprites[sprite_key] then
-                        enemy_sprite = game.sprites[sprite_key]
-                        break
-                    end
-                    -- Set fallback based on enemy type (matching render logic)
-                    if enemy_type == 'chaser' then enemy_fallback = "world_lock-0"
-                    elseif enemy_type == 'shooter' then enemy_fallback = "world_star-1"
-                    end
-                    break  -- Use first special enemy type
-                end
-            end
-
-            -- Second pass: If no special enemies, use obstacle sprite
-            if not enemy_sprite and game.enemy_composition.obstacle then
-                if game.sprites and game.sprites.obstacle then
-                    enemy_sprite = game.sprites.obstacle
-                end
-            end
-        end
-
-        if enemy_sprite then
-            g.setColor(1, 1, 1)
-            g.draw(enemy_sprite, ix, ry[1], 0,
-                hud_icon_size / enemy_sprite:getWidth(),
-                hud_icon_size / enemy_sprite:getHeight())
-        else
-            -- Fallback to icon (use enemy_fallback from type, or metric sprite)
-            local icon = enemy_fallback
-            self.sprite_loader:drawSprite(icon, ix, ry[1], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        end
-        g.print(game.metrics.objects_dodged .. "/" .. game.dodge_target, tx, ry[1], 0, s, s)
-
-        -- Lives: Use player sprite if available, otherwise fallback to icon
-        local lives_sprite = nil
-        if game.sprites and game.sprites.player then
-            lives_sprite = game.sprites.player
-        end
-
-        g.print("Lives: ", lx, ry[2], 0, s, s)
-        if lives_sprite then
-            -- Draw actual player sprite
-            g.setColor(1, 1, 1)
-            g.draw(lives_sprite, ix, ry[2], 0,
-                hud_icon_size / lives_sprite:getWidth(),
-                hud_icon_size / lives_sprite:getHeight())
-        else
-            -- Fallback to icon
-            local lives_icon = self.sprite_manager:getMetricSprite(game.data, "objects_dodged") or "game_solitaire-0"
-            self.sprite_loader:drawSprite(lives_icon, ix, ry[2], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        end
-        local lives_remaining = game.lives - game.metrics.collisions
-        g.print(lives_remaining .. "/" .. game.lives, tx, ry[2], 0, s, s)
-
-        local combo_sprite = self.sprite_manager:getMetricSprite(game.data, "combo") or "check-0"
-        g.print("Combo: ", lx, ry[3], 0, s, s)
-        self.sprite_loader:drawSprite(combo_sprite, ix, ry[3], hud_icon_size, hud_icon_size, {1, 1, 1}, palette_id)
-        g.print(game.metrics.combo, tx, ry[3], 0, s, s)
-
-        -- Show shield charges if player has shields
-        if game.player.shield_max and game.player.shield_max > 0 then
-            g.print("Shield: " .. game.player.shield_charges .. "/" .. game.player.shield_max, lx, ry[4], 0, s, s)
-        else
-            g.print("Difficulty: " .. game.difficulty_level, lx, ry[4])
-        end
-    end
-
     -- Fog of war overlay (after all game elements, before closing transform)
     if game.fog_controller then
         local fog = game.fog_controller
@@ -459,6 +374,41 @@ function DodgeView:draw()
 
     -- Close camera shake transform
     g.pop()
+
+    -- Standard HUD (Phase 8) - NOT affected by camera shake
+    game.hud:draw(game_width, game_height)
+
+    -- Additional game-specific stats (below standard HUD)
+    if not game.vm_render_mode then
+        local s = 0.85
+        local lx = 10
+        local hud_y = 90  -- Start below standard HUD
+
+        g.setColor(1, 1, 1)
+
+        -- Dodged progress
+        g.print("Dodged: " .. game.metrics.objects_dodged .. "/" .. game.dodge_target, lx, hud_y, 0, s, s)
+        hud_y = hud_y + 18
+
+        -- Combo
+        if game.metrics.combo > 0 then
+            g.setColor(0.2, 1, 0.2)
+            g.print("Combo: " .. game.metrics.combo, lx, hud_y, 0, s, s)
+            hud_y = hud_y + 18
+            g.setColor(1, 1, 1)
+        end
+
+        -- Shield charges (if enabled)
+        if game.player.shield_max and game.player.shield_max > 0 then
+            g.setColor(0.5, 0.5, 1)
+            g.print("Shield: " .. game.player.shield_charges .. "/" .. game.player.shield_max, lx, hud_y, 0, s, s)
+            hud_y = hud_y + 18
+            g.setColor(1, 1, 1)
+        end
+
+        -- Difficulty
+        g.print("Difficulty: " .. game.difficulty_level, lx, hud_y, 0, s, s)
+    end
 end
 
 function DodgeView:drawBackground(width, height)

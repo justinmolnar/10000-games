@@ -6,6 +6,7 @@ local PopupManager = popup_module.PopupManager
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local AnimationSystem = require('src.utils.game_components.animation_system')
 local VariantLoader = require('src.utils.game_components.variant_loader')
+local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local CoinFlip = BaseGame:extend('CoinFlip')
 
 -- Config-driven defaults with safe fallbacks
@@ -187,6 +188,14 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
         speed_multiplier = self.flip_animation_speed,
         on_complete = nil  -- No callback needed
     })
+
+    -- Initialize HUD (Phase 8: Standard HUD layout)
+    self.hud = HUDRenderer:new({
+        primary = {label = "Score", key = "score"},
+        secondary = {label = "Streak", key = "current_streak"},
+        lives = {key = "lives", max = self.lives, style = "hearts"}
+    })
+    self.hud.game = self  -- Link game reference
 
     -- Create view
     self.view = CoinFlipView:new(self)

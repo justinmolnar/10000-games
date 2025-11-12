@@ -2,6 +2,7 @@ local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local SnakeView = require('src.games.views.snake_view')
 local VariantLoader = require('src.utils.game_components.variant_loader')
+local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
 -- Config-driven defaults with safe fallbacks
@@ -262,6 +263,13 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
     -- NOTE: Asset loading will be implemented in Phase 2-3
     -- Snake sprites will be loaded from variant.sprite_set
     -- e.g., "classic" (retro green), "modern" (sleek), grid patterns from variant.background
+
+    -- Initialize HUD (Phase 8: Standard HUD layout)
+    self.hud = HUDRenderer:new({
+        primary = {label = "Length", key = "metrics.snake_length"},
+        secondary = {label = "Time", key = "metrics.survival_time", format = "float"}
+    })
+    self.hud.game = self  -- Link game reference
 
     self.view = SnakeView:new(self, self.variant)
     print("[SnakeGame:init] Variant:", self.variant and self.variant.name or "Default")

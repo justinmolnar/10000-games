@@ -3,6 +3,7 @@ local Config = rawget(_G, 'DI_CONFIG') or {}
 local MemoryMatchView = require('src.games.views.memory_match_view')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VariantLoader = require('src.utils.game_components.variant_loader')
+local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
 -- Config-driven defaults with safe fallbacks
@@ -237,6 +238,14 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     -- Create cards after sprites are loaded and dimensions are set
     self.cards = {}
     self:createCards(pairs_count)
+
+    -- Standard HUD (Phase 8)
+    self.hud = HUDRenderer:new({
+        primary = {label = "Matches", key = "matches"},
+        secondary = {label = "Moves", key = "moves"},
+        timer = {label = "Time", key = "time_elapsed", format = "float"}
+    })
+    self.hud.game = self
 
     -- Audio/visual variant data (Phase 1.3)
     self.view = MemoryMatchView:new(self, self.variant)

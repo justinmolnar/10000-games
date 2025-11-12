@@ -1,6 +1,7 @@
 local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
-local Collision = require('src.utils.collision') 
+local Collision = require('src.utils.collision')
+local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local HiddenObjectView = require('src.games.views.hidden_object_view')
 local HiddenObject = BaseGame:extend('HiddenObject')
 
@@ -50,6 +51,14 @@ function HiddenObject:init(game_data, cheats, di, variant_override)
     -- NOTE: Asset loading will be implemented in Phase 2-3
     -- Scene background will be determined by variant.sprite_set
     -- e.g., "forest", "mansion", "beach", "space_station", "library"
+
+    -- Standard HUD (Phase 8)
+    self.hud = HUDRenderer:new({
+        primary = {label = "Found", key = "objects_found"},
+        secondary = {label = "Remaining", key = "objects_remaining"},
+        timer = {label = "Time", key = "time_remaining", format = "float"}
+    })
+    self.hud.game = self
 
     self.view = HiddenObjectView:new(self, self.variant)
     print("[HiddenObject:init] Initialized with default game dimensions:", self.game_width, self.game_height)

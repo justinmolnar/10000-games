@@ -208,40 +208,35 @@ function BreakoutView:draw()
 
     love.graphics.pop()  -- End camera shake transform
 
-    -- Draw HUD (Phase 10: Score prominently in yellow) - NOT affected by camera shake or fog
-    love.graphics.push()
+    -- Standard HUD (Phase 8) - NOT affected by camera shake or fog
+    self.game.hud:draw(self.game.arena_width, self.game.arena_height)
 
-    -- Lives (white)
+    -- Additional game-specific stats (below standard HUD)
+    local y_offset = 90
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Lives: " .. self.game.lives, 10, 10)
 
-    -- Score (prominent yellow)
-    love.graphics.setColor(1, 1, 0)
-    love.graphics.print("Score: " .. math.floor(self.game.score), 10, 30)
-
-    -- Combo (white)
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Combo: " .. self.game.combo, 10, 50)
+    -- Combo
+    if self.game.combo > 0 then
+        love.graphics.setColor(0.2, 1, 0.2)
+        love.graphics.print("Combo: " .. self.game.combo, 10, y_offset)
+        y_offset = y_offset + 18
+        love.graphics.setColor(1, 1, 1)
+    end
 
     -- Active power-ups (Phase 13)
-    local y_offset = 70
     if self.game.shield_active then
         love.graphics.setColor(0, 1, 1)  -- Cyan
         love.graphics.print("SHIELD ACTIVE", 10, y_offset)
-        y_offset = y_offset + 20
+        y_offset = y_offset + 18
+        love.graphics.setColor(1, 1, 1)
     end
     for powerup_type, effect in pairs(self.game.active_powerups) do
         local time_left = math.ceil(effect.duration_remaining)
         love.graphics.setColor(1, 1, 0)  -- Yellow
         love.graphics.print(powerup_type:upper():gsub("_", " ") .. ": " .. time_left .. "s", 10, y_offset)
-        y_offset = y_offset + 20
+        y_offset = y_offset + 18
+        love.graphics.setColor(1, 1, 1)
     end
-
-    -- Bricks destroyed (white, top right)
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Bricks: " .. self.game.bricks_destroyed, self.game.arena_width - 120, 10)
-
-    love.graphics.pop()
 
     -- Victory/Game Over overlay
     if self.game.victory then

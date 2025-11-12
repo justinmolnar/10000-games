@@ -7,6 +7,7 @@ local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local VariantLoader = require('src.utils.game_components.variant_loader')
+local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -337,6 +338,14 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     -- Phase 2.3: Load variant assets (with fallback to icons)
     self:loadAssets()
 
+    -- Standard HUD (Phase 8)
+    self.hud = HUDRenderer:new({
+        primary = {label = "Score", key = "score"},
+        secondary = {label = "Time", key = "metrics.survival_time", format = "float"},
+        lives = {key = "lives", max = self.lives, style = "hearts"}
+    })
+    self.hud.game = self
+
     self.view = DodgeView:new(self, self.variant)
     print("[DodgeGame:init] Initialized with default game dimensions:", self.game_width, self.game_height)
     print("[DodgeGame:init] Variant:", self.variant and self.variant.name or "Default")
@@ -581,9 +590,7 @@ end
 
 function DodgeGame:draw()
     if self.view and self.view.draw then
-        love.graphics.push()
         self.view:draw()
-        love.graphics.pop()
     else
         love.graphics.setColor(1,0,0)
         love.graphics.print("Error: DodgeView not loaded or has no draw function.", 10, 100)
