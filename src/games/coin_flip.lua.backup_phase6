@@ -1,8 +1,7 @@
 local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local CoinFlipView = require('src.games.views.coin_flip_view')
-local popup_module = require('src.games.score_popup')
-local PopupManager = popup_module.PopupManager
+local ScorePopup = require('src.games.score_popup')
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local AnimationSystem = require('src.utils.game_components.animation_system')
 local CoinFlip = BaseGame:extend('CoinFlip')
@@ -219,8 +218,7 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
     }
 
     -- Score popups
-    -- Phase 6: Score popups managed by PopupManager
-    self.popup_manager = PopupManager:new()
+    self.score_popups = {}
 
     -- Visual effects parameters (Phase 11)
     self.celebration_on_streak = true
@@ -277,8 +275,13 @@ function CoinFlip:updateGameLogic(dt)
     self.visual_effects:update(dt)
 
     -- Update score popups
-    -- Phase 6: Update score popups via PopupManager
-    self.popup_manager:update(dt)
+    for i = #self.score_popups, 1, -1 do
+        local popup = self.score_popups[i]
+        popup:update(dt)
+        if not popup.alive then
+            table.remove(self.score_popups, i)
+        end
+    end
 
     -- Handle result display timer
     if self.show_result and not self.game_over and not self.victory then
@@ -441,7 +444,7 @@ function CoinFlip:flipCoin()
             if self.current_streak == 5 or self.current_streak == 10 then
                 popup_color = {1, 1, 0}
             end
-            self.popup_manager:add(w / 2, h / 2 - 50, "+" .. points, popup_color)
+            table.insert(self.score_popups, ScorePopup:new(w / 2, h / 2 - 50, "+" .. points, popup_color))
         end
 
         -- Update max streak
@@ -472,7 +475,7 @@ function CoinFlip:flipCoin()
                 -- Spawn green popup for perfect streak
                 if self.score_popup_enabled then
                     local w, h = love.graphics.getDimensions()
-                    self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT! +" .. self.perfect_streak_bonus, {0, 1, 0})
+                    table.insert(self.score_popups, ScorePopup:new(w / 2, h / 2 - 100, "PERFECT! +" .. self.perfect_streak_bonus, {0, 1, 0}))
                 end
             end
         end
@@ -559,7 +562,7 @@ function CoinFlip:makeGuess(guess)
             if self.current_streak == 5 or self.current_streak == 10 then
                 popup_color = {1, 1, 0}
             end
-            self.popup_manager:add(w / 2, h / 2 - 50, "+" .. points, popup_color)
+            table.insert(self.score_popups, ScorePopup:new(w / 2, h / 2 - 50, "+" .. points, popup_color))
         end
 
         -- Update max streak
@@ -590,7 +593,7 @@ function CoinFlip:makeGuess(guess)
                 -- Spawn green popup for perfect streak
                 if self.score_popup_enabled then
                     local w, h = love.graphics.getDimensions()
-                    self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT! +" .. self.perfect_streak_bonus, {0, 1, 0})
+                    table.insert(self.score_popups, ScorePopup:new(w / 2, h / 2 - 100, "PERFECT! +" .. self.perfect_streak_bonus, {0, 1, 0}))
                 end
             end
         end

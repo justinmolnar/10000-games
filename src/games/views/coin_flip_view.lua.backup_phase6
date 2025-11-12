@@ -17,8 +17,10 @@ function CoinFlipView:draw()
     -- Visual effects: screen flash + particles (Phase 3 - VisualEffects component)
     self.game.visual_effects:drawScreenFlash(w, h)
 
-    -- Phase 6: Draw score popups via PopupManager
-    self.game.popup_manager:draw()
+    -- Draw score popups
+    for _, popup in ipairs(self.game.score_popups) do
+        popup:draw()
+    end
 
     -- Draw particles (Phase 3 - VisualEffects component)
     self.game.visual_effects:drawParticles()

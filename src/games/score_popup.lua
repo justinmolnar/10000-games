@@ -1,6 +1,6 @@
 -- score_popup.lua
 -- Simple score popup system for visual feedback
--- Phase 10: Victory Conditions & Scoring
+-- Phase 6: Popup Manager Component
 
 local Class = require('lib.class')
 local ScorePopup = Class:extend('ScorePopup')
@@ -45,4 +45,55 @@ function ScorePopup:draw()
     love.graphics.pop()
 end
 
-return ScorePopup
+-- ===================================================================
+-- POPUP MANAGER (Phase 6)
+-- ===================================================================
+-- Manages a collection of score popups
+-- Simplifies popup lifecycle management across games
+
+local PopupManager = Class:extend('PopupManager')
+
+function PopupManager:init()
+    self.popups = {}
+end
+
+-- Add a new popup to the manager
+function PopupManager:add(x, y, text, color, duration)
+    local popup = ScorePopup:new(x, y, text, color, duration)
+    table.insert(self.popups, popup)
+    return popup
+end
+
+-- Update all popups, removing dead ones
+function PopupManager:update(dt)
+    for i = #self.popups, 1, -1 do
+        local popup = self.popups[i]
+        popup:update(dt)
+        if not popup.alive then
+            table.remove(self.popups, i)
+        end
+    end
+end
+
+-- Draw all active popups
+function PopupManager:draw()
+    for _, popup in ipairs(self.popups) do
+        popup:draw()
+    end
+end
+
+-- Clear all popups (useful for game reset)
+function PopupManager:clear()
+    self.popups = {}
+end
+
+-- Get count of active popups
+function PopupManager:count()
+    return #self.popups
+end
+
+-- Export both ScorePopup (for backward compatibility) and PopupManager
+return {
+    ScorePopup = ScorePopup,
+    PopupManager = PopupManager
+}

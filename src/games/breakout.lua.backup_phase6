@@ -2,8 +2,7 @@ local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local Collision = require('src.utils.collision')
 local BreakoutView = require('src.games.views.breakout_view')
-local popup_module = require('src.games.score_popup')
-local PopupManager = popup_module.PopupManager
+local ScorePopup = require('src.games.score_popup')
 local PNGCollision = require('src.utils.png_collision')
 local MovementController = require('src.utils.game_components.movement_controller')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
@@ -560,8 +559,8 @@ function Breakout:init(game_data, cheats, di, variant_override)
         time_elapsed = 0
     }
 
-    -- Phase 6: Score popups managed by PopupManager
-    self.popup_manager = PopupManager:new()
+    -- Score popups
+    self.score_popups = {}
 
     -- Visual effects parameters (Phase 11)
     local particle_effects_enabled = true
@@ -1068,8 +1067,14 @@ function Breakout:updateGameLogic(dt)
         end
     end
 
-    -- Phase 6: Update score popups via PopupManager
-    self.popup_manager:update(dt)
+    -- Update score popups
+    for i = #self.score_popups, 1, -1 do
+        local popup = self.score_popups[i]
+        popup:update(dt)
+        if not popup.alive then
+            table.remove(self.score_popups, i)
+        end
+    end
 
     -- Update paddle
     self:updatePaddle(dt)
@@ -1128,7 +1133,7 @@ function Breakout:updateGameLogic(dt)
 
                         -- Spawn score popup (white for normal scoring)
                         if self.score_popup_enabled then
-                            self.popup_manager:add(brick.x + brick.width / 2, brick.y, "+" .. math.floor(points), {1, 1, 1})
+                            table.insert(self.score_popups, ScorePopup:new(brick.x + brick.width / 2, brick.y, "+" .. math.floor(points), {1, 1, 1}))
                         end
 
                         -- Check for extra ball threshold
@@ -1403,7 +1408,7 @@ function Breakout:updateBall(ball, dt)
                     if self.combo == 5 or self.combo == 10 or self.combo == 15 then
                         popup_color = {1, 1, 0}
                     end
-                    self.popup_manager:add(brick.x + brick.width / 2, brick.y, "+" .. math.floor(points), popup_color)
+                    table.insert(self.score_popups, ScorePopup:new(brick.x + brick.width / 2, brick.y, "+" .. math.floor(points), popup_color))
                 end
 
                 -- Check for extra ball threshold (Phase 10)
@@ -1750,7 +1755,7 @@ function Breakout:checkExtraBallThreshold()
 
         -- Spawn green popup for extra life
         if self.score_popup_enabled then
-            self.popup_manager:add(self.arena_width / 2, self.arena_height / 2, "EXTRA LIFE!", {0, 1, 0})
+            table.insert(self.score_popups, ScorePopup:new(self.arena_width / 2, self.arena_height / 2, "EXTRA LIFE!", {0, 1, 0}))
         end
     end
 end
@@ -1771,7 +1776,7 @@ function Breakout:checkVictoryConditions()
                 self.score = self.score + self.perfect_clear_bonus
                 -- Spawn green popup for perfect clear
                 if self.score_popup_enabled then
-                    self.popup_manager:add(self.arena_width / 2, self.arena_height / 2, "PERFECT CLEAR! +" .. self.perfect_clear_bonus, {0, 1, 0})
+                    table.insert(self.score_popups, ScorePopup:new(self.arena_width / 2, self.arena_height / 2, "PERFECT CLEAR! +" .. self.perfect_clear_bonus, {0, 1, 0}))
                 end
             end
             self.victory = true
