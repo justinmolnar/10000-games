@@ -6,6 +6,7 @@ local MovementController = require('src.utils.game_components.movement_controlle
 local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
+local VariantLoader = require('src.utils.game_components.variant_loader')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -81,6 +82,9 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.dodge) or DodgeCfg
 
+    -- Initialize VariantLoader
+    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
+
     -- Apply variant difficulty modifier (from Phase 1.1-1.2)
     local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
 
@@ -95,187 +99,85 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (DodgeCfg.arena and DodgeCfg.arena.height) or 400
 
     -- Per-variant rotation speed (fallback to runtime config, then file constant)
-    local rotation_speed = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.rotation_speed) or PLAYER_ROTATION_SPEED
-    if self.variant and self.variant.rotation_speed then
-        rotation_speed = self.variant.rotation_speed
-    end
+    local rotation_speed = loader:get('rotation_speed', PLAYER_ROTATION_SPEED)
 
     -- Per-variant movement speed (fallback to runtime config, then file constant)
-    local movement_speed = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.speed) or PLAYER_SPEED
-    if self.variant and self.variant.movement_speed then
-        movement_speed = self.variant.movement_speed
-    end
+    local movement_speed = loader:get('movement_speed', PLAYER_SPEED)
 
     -- Per-variant movement type (default or asteroids)
-    local movement_type = "default"
-    if self.variant and self.variant.movement_type then
-        movement_type = self.variant.movement_type
-    end
+    local movement_type = loader:get('movement_type', "default")
 
     -- Universal physics properties (apply to all movement types)
     -- Separate friction for acceleration (start-up) and deceleration (stopping)
-    local accel_friction = 1.0  -- Default: no friction when accelerating
-    if self.variant and self.variant.accel_friction ~= nil then
-        accel_friction = self.variant.accel_friction
-    end
+    local accel_friction = loader:get('accel_friction', 1.0)
 
-    local decel_friction = 1.0  -- Default: no friction when decelerating
-    if self.variant and self.variant.decel_friction ~= nil then
-        decel_friction = self.variant.decel_friction
-    end
+    local decel_friction = loader:get('decel_friction', 1.0)
 
-    local bounce_damping = 0.5  -- Default: 50% bounce
-    if self.variant and self.variant.bounce_damping ~= nil then
-        bounce_damping = self.variant.bounce_damping
-    end
+    local bounce_damping = loader:get('bounce_damping', 0.5)
 
     -- Asteroids-specific: reverse mode (down key behavior)
-    local reverse_mode = "none"  -- "none", "brake", or "thrust"
-    if self.variant and self.variant.reverse_mode then
-        reverse_mode = self.variant.reverse_mode
-    end
+    local reverse_mode = loader:get('reverse_mode', "none")
 
     -- Jump-specific: jump distance and cooldown
-    local jump_distance = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.jump_distance) or 80
-    if self.variant and self.variant.jump_distance ~= nil then
-        jump_distance = self.variant.jump_distance
-    end
+    local jump_distance = loader:get('jump_distance', 80)
 
-    local jump_cooldown = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.jump_cooldown) or 0.5
-    if self.variant and self.variant.jump_cooldown ~= nil then
-        jump_cooldown = self.variant.jump_cooldown
-    end
+    local jump_cooldown = loader:get('jump_cooldown', 0.5)
 
-    local jump_speed = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.jump_speed) or 800
-    if self.variant and self.variant.jump_speed ~= nil then
-        jump_speed = self.variant.jump_speed
-    end
+    local jump_speed = loader:get('jump_speed', 800)
 
     -- New player parameters
-    local player_size = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.player_size) or 1.0
-    if self.variant and self.variant.player_size ~= nil then
-        player_size = self.variant.player_size
-    end
+    local player_size = loader:get('player_size', 1.0)
 
-    local max_speed = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.max_speed) or 600
-    if self.variant and self.variant.max_speed ~= nil then
-        max_speed = self.variant.max_speed
-    end
+    local max_speed = loader:get('max_speed', 600)
 
-    local lives = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.lives) or 10
-    if self.variant and self.variant.lives ~= nil then
-        lives = self.variant.lives
-    end
+    local lives = loader:get('lives', 10)
 
-    local shield = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.shield) or 0
-    if self.variant and self.variant.shield ~= nil then
-        shield = self.variant.shield
-    end
+    local shield = loader:get('shield', 0)
 
-    local shield_recharge_time = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.shield_recharge_time) or 0
-    if self.variant and self.variant.shield_recharge_time ~= nil then
-        shield_recharge_time = self.variant.shield_recharge_time
-    end
+    local shield_recharge_time = loader:get('shield_recharge_time', 0)
 
     -- New obstacle parameters
-    local obstacle_tracking = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.tracking) or 0.0
-    if self.variant and self.variant.obstacle_tracking ~= nil then
-        obstacle_tracking = self.variant.obstacle_tracking
-    end
+    local obstacle_tracking = loader:get('obstacle_tracking', 0.0)
 
-    local obstacle_speed_variance = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.speed_variance) or 0.0
-    if self.variant and self.variant.obstacle_speed_variance ~= nil then
-        obstacle_speed_variance = self.variant.obstacle_speed_variance
-    end
+    local obstacle_speed_variance = loader:get('obstacle_speed_variance', 0.0)
 
-    local obstacle_spawn_rate = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.spawn_rate_multiplier) or 1.0
-    if self.variant and self.variant.obstacle_spawn_rate ~= nil then
-        obstacle_spawn_rate = self.variant.obstacle_spawn_rate
-    end
+    local obstacle_spawn_rate = loader:get('obstacle_spawn_rate', 1.0)
 
-    local obstacle_spawn_pattern = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.spawn_pattern) or "random"
-    if self.variant and self.variant.obstacle_spawn_pattern then
-        obstacle_spawn_pattern = self.variant.obstacle_spawn_pattern
-    end
+    local obstacle_spawn_pattern = loader:get('obstacle_spawn_pattern', "random")
 
-    local obstacle_size_variance = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.size_variance) or 0.0
-    if self.variant and self.variant.obstacle_size_variance ~= nil then
-        obstacle_size_variance = self.variant.obstacle_size_variance
-    end
+    local obstacle_size_variance = loader:get('obstacle_size_variance', 0.0)
 
-    local obstacle_trails = (runtimeCfg and runtimeCfg.objects and runtimeCfg.objects.trails) or 0
-    if self.variant and self.variant.obstacle_trails ~= nil then
-        obstacle_trails = self.variant.obstacle_trails
-    end
+    local obstacle_trails = loader:get('obstacle_trails', 0)
 
-    local disable_obstacle_fallback = false
-    if self.variant and self.variant.disable_obstacle_fallback ~= nil then
-        disable_obstacle_fallback = self.variant.disable_obstacle_fallback
-    end
+    local disable_obstacle_fallback = loader:get('disable_obstacle_fallback', false)
 
     -- Seeker/chaser homing strength
-    local seeker_turn_rate = (runtimeCfg and runtimeCfg.seeker and runtimeCfg.seeker.base_turn_deg) or 54
-    if self.variant and self.variant.seeker_turn_rate ~= nil then
-        seeker_turn_rate = self.variant.seeker_turn_rate
-    end
+    local seeker_turn_rate = loader:get('seeker_turn_rate', 54)
 
     -- New environment parameters
-    local area_gravity = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.gravity) or 0.0
-    if self.variant and self.variant.area_gravity ~= nil then
-        area_gravity = self.variant.area_gravity
-    end
+    local area_gravity = loader:get('area_gravity', 0.0)
 
-    local wind_direction = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.wind_direction) or 0
-    if self.variant and self.variant.wind_direction ~= nil then
-        wind_direction = self.variant.wind_direction
-    end
+    local wind_direction = loader:get('wind_direction', 0)
 
-    local wind_strength = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.wind_strength) or 0
-    if self.variant and self.variant.wind_strength ~= nil then
-        wind_strength = self.variant.wind_strength
-    end
+    local wind_strength = loader:get('wind_strength', 0)
 
-    local wind_type = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.wind_type) or "none"
-    if self.variant and self.variant.wind_type then
-        wind_type = self.variant.wind_type
-    end
+    local wind_type = loader:get('wind_type', "none")
 
     -- New visual parameters
-    local fog_origin = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.fog_origin) or "none"
-    if self.variant and self.variant.fog_of_war_origin then
-        fog_origin = self.variant.fog_of_war_origin
-    end
+    local fog_origin = loader:get('fog_of_war_origin', "none")
 
-    local fog_radius = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.fog_radius) or 9999
-    if self.variant and self.variant.fog_of_war_radius ~= nil then
-        fog_radius = self.variant.fog_of_war_radius
-    end
+    local fog_radius = loader:get('fog_of_war_radius', 9999)
 
-    local camera_shake = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.camera_shake) or 0.0
-    if self.variant and self.variant.camera_shake_intensity ~= nil then
-        camera_shake = self.variant.camera_shake_intensity
-    end
+    local camera_shake = loader:get('camera_shake_intensity', 0.0)
 
-    local player_trail = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.player_trail) or 0
-    if self.variant and self.variant.player_trail_length ~= nil then
-        player_trail = self.variant.player_trail_length
-    end
+    local player_trail = loader:get('player_trail_length', 0)
 
-    local score_mode = (runtimeCfg and runtimeCfg.view and runtimeCfg.view.score_mode) or "none"
-    if self.variant and self.variant.score_multiplier_mode then
-        score_mode = self.variant.score_multiplier_mode
-    end
+    local score_mode = loader:get('score_multiplier_mode', "none")
 
     -- New victory parameters
-    local victory_condition = (runtimeCfg and runtimeCfg.victory and runtimeCfg.victory.condition) or "dodge_count"
-    if self.variant and self.variant.victory_condition then
-        victory_condition = self.variant.victory_condition
-    end
+    local victory_condition = loader:get('victory_condition', "dodge_count")
 
-    local victory_limit = (runtimeCfg and runtimeCfg.victory and runtimeCfg.victory.limit) or BASE_DODGE_TARGET
-    if self.variant and self.variant.victory_limit ~= nil then
-        victory_limit = self.variant.victory_limit
-    end
+    local victory_limit = loader:get('victory_limit', BASE_DODGE_TARGET)
 
     -- Store new parameters as instance variables for access throughout the game
     self.lives = lives
@@ -440,56 +342,26 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     print("[DodgeGame:init] Variant:", self.variant and self.variant.name or "Default")
 
     -- Load per-variant safe zone customization properties
-    local area_size = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_size) or 1.0
-    if self.variant and self.variant.area_size ~= nil then
-        area_size = self.variant.area_size
-    end
+    local area_size = loader:get('area_size', 1.0)
 
-    local area_morph_type = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_morph_type) or "shrink"
-    if self.variant and self.variant.area_morph_type then
-        area_morph_type = self.variant.area_morph_type
-    end
+    local area_morph_type = loader:get('area_morph_type', "shrink")
 
-    local area_morph_speed = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_morph_speed) or 1.0
-    if self.variant and self.variant.area_morph_speed ~= nil then
-        area_morph_speed = self.variant.area_morph_speed
-    end
+    local area_morph_speed = loader:get('area_morph_speed', 1.0)
 
-    local area_movement_speed = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_movement_speed) or 1.0
-    if self.variant and self.variant.area_movement_speed ~= nil then
-        area_movement_speed = self.variant.area_movement_speed
-    end
+    local area_movement_speed = loader:get('area_movement_speed', 1.0)
 
-    local area_movement_type = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_movement_type) or "random"
-    if self.variant and self.variant.area_movement_type then
-        area_movement_type = self.variant.area_movement_type
-    end
+    local area_movement_type = loader:get('area_movement_type', "random")
 
-    local area_friction = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_friction) or 1.0
-    if self.variant and self.variant.area_friction ~= nil then
-        area_friction = self.variant.area_friction
-    end
+    local area_friction = loader:get('area_friction', 1.0)
 
-    local area_shape = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.area_shape) or "circle"
-    if self.variant and self.variant.area_shape then
-        area_shape = self.variant.area_shape
-    end
+    local area_shape = loader:get('area_shape', "circle")
 
     -- Load per-variant game over properties
-    local leaving_area_ends_game = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.leaving_area_ends_game) or false
-    if self.variant and self.variant.leaving_area_ends_game ~= nil then
-        leaving_area_ends_game = self.variant.leaving_area_ends_game
-    end
+    local leaving_area_ends_game = loader:get('leaving_area_ends_game', false)
 
-    local holes_type = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.holes_type) or "none"
-    if self.variant and self.variant.holes_type then
-        holes_type = self.variant.holes_type
-    end
+    local holes_type = loader:get('holes_type', "none")
 
-    local holes_count = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.holes_count) or 0
-    if self.variant and self.variant.holes_count ~= nil then
-        holes_count = self.variant.holes_count
-    end
+    local holes_count = loader:get('holes_count', 0)
 
     -- Safe zone (Undertale-like arena)
     local min_dim = math.min(self.game_width, self.game_height)

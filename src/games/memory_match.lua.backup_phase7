@@ -2,7 +2,6 @@ local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local MemoryMatchView = require('src.games.views.memory_match_view')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
-local VariantLoader = require('src.utils.game_components.variant_loader')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
 -- Config-driven defaults with safe fallbacks
@@ -19,38 +18,6 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match) or MMCfg
 
-    -- Phase 7: Initialize VariantLoader for simplified parameter loading
-    local loader = VariantLoader:new(self.variant, runtimeCfg, {
-        -- Card dimensions
-        card_width = CARD_WIDTH,
-        card_height = CARD_HEIGHT,
-        card_spacing = CARD_SPACING,
-        card_icon_padding = CARD_ICON_PADDING,
-        -- Arena
-        arena_width = (MMCfg.arena and MMCfg.arena.width) or 800,
-        arena_height = (MMCfg.arena and MMCfg.arena.height) or 600,
-        -- Timings
-        flip_speed = 0.3,
-        reveal_duration = 1.0,
-        memorize_time_base = MEMORIZE_TIME_BASE,
-        -- Scoring
-        mismatch_penalty = 0,
-        combo_multiplier = 0.0,
-        speed_bonus = 0,
-        perfect_bonus = 0,
-        -- Constraints
-        time_limit = 0,
-        move_limit = 0,
-        -- Auto shuffle
-        auto_shuffle_interval = 0,
-        auto_shuffle_count = 0,
-        -- Visual effects
-        gravity_enabled = false,
-        card_rotation = false,
-        spinning_cards = false,
-        fog_of_war = 0
-    })
-
     -- Update display name from variant (so window title shows correct name)
     if self.variant and self.variant.name then
         self.data.display_name = self.variant.name
@@ -58,7 +25,7 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     end
 
     -- Apply variant difficulty modifier (from Phase 1.1-1.2)
-    local variant_difficulty = loader:getNumber('difficulty_modifier', 1.0)
+    local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
 
     local speed_modifier_value = self.cheats.speed_modifier or 1.0
     local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
@@ -68,16 +35,18 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     self.CARD_HEIGHT = nil
     self.base_sprite_width = nil   -- Store original sprite dimensions for scaling
     self.base_sprite_height = nil
-    -- Phase 7: Use VariantLoader for all parameter loading
-    self.CARD_SPACING = loader:get('cards.spacing', CARD_SPACING)
-    self.CARD_ICON_PADDING = loader:get('cards.icon_padding', CARD_ICON_PADDING)
+    self.CARD_SPACING = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.spacing) or CARD_SPACING
+    self.CARD_ICON_PADDING = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.icon_padding) or CARD_ICON_PADDING
     self.grid_padding = 10  -- Padding around the grid edges (reduced to maximize card space)
-
-    self.game_width = loader:get('arena.width', loader.defaults.arena_width)
-    self.game_height = loader:get('arena.height', loader.defaults.arena_height)
-
+    
+    self.game_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (MMCfg.arena and MMCfg.arena.width) or 800
+    self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (MMCfg.arena and MMCfg.arena.height) or 600
+    
     -- Grid & Layout parameters
-    local card_count_override = loader:getNumber('card_count', 0)
+    local card_count_override = (runtimeCfg and runtimeCfg.card_count) or 0
+    if self.variant and self.variant.card_count ~= nil then
+        card_count_override = self.variant.card_count
+    end
 
     local per_complexity = (MMCfg.pairs and MMCfg.pairs.per_complexity) or 6
     local pairs_count
@@ -95,7 +64,10 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     self.total_pairs = pairs_count
 
     -- Grid columns (0 = auto-calculate square, non-zero = explicit)
-    self.columns = loader:getNumber('columns', 0)
+    self.columns = (runtimeCfg and runtimeCfg.columns) or 0
+    if self.variant and self.variant.columns ~= nil then
+        self.columns = self.variant.columns
+    end
 
     -- Always calculate grid_cols and grid_rows for proper rectangular layouts
     if self.columns == 0 then
@@ -118,7 +90,10 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     print("===========================================")
 
     -- Match requirement (2-4 cards)
-    self.match_requirement = loader:getNumber('match_requirement', 2)
+    self.match_requirement = (runtimeCfg and runtimeCfg.match_requirement) or 2
+    if self.variant and self.variant.match_requirement ~= nil then
+        self.match_requirement = self.variant.match_requirement
+    end
 
     -- Store pairs_count for later use
     self.pairs_count_for_sprites = pairs_count
@@ -127,21 +102,37 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     self.matched_pairs = {}
 
     -- Timing parameters
-    self.flip_speed = loader:get('timings.flip_speed', loader.defaults.flip_speed)
-    self.reveal_duration = loader:get('timings.reveal_duration', loader.defaults.reveal_duration)
+    self.flip_speed = (runtimeCfg and runtimeCfg.timings and runtimeCfg.timings.flip_speed) or 0.3
+    if self.variant and self.variant.flip_speed ~= nil then
+        self.flip_speed = self.variant.flip_speed
+    end
 
-    local memorize_time_var = loader:get('memorize_time', loader:get('timings.memorize_time_base', MEMORIZE_TIME_BASE))
+    self.reveal_duration = (runtimeCfg and runtimeCfg.timings and runtimeCfg.timings.reveal_duration) or 1.0
+    if self.variant and self.variant.reveal_duration ~= nil then
+        self.reveal_duration = self.variant.reveal_duration
+    end
+
+    local memorize_time_var = (runtimeCfg and runtimeCfg.timings and runtimeCfg.timings.memorize_time_base) or MEMORIZE_TIME_BASE
+    if self.variant and self.variant.memorize_time ~= nil then
+        memorize_time_var = self.variant.memorize_time
+    end
 
     self.memorize_phase = memorize_time_var > 0
     self.memorize_timer = ((memorize_time_var / self.difficulty_modifiers.time_limit) * time_bonus_multiplier) / variant_difficulty
     self.match_check_timer = 0
     self.memorize_time_initial = self.memorize_timer  -- Store for later use
 
-    self.auto_shuffle_interval = loader:getNumber('auto_shuffle_interval', 0)
+    self.auto_shuffle_interval = (runtimeCfg and runtimeCfg.auto_shuffle_interval) or 0
+    if self.variant and self.variant.auto_shuffle_interval ~= nil then
+        self.auto_shuffle_interval = self.variant.auto_shuffle_interval
+    end
     self.shuffle_timer = self.auto_shuffle_interval
 
     -- 0 = shuffle all face-down cards, N = shuffle only N random face-down cards
-    self.auto_shuffle_count = loader:getNumber('auto_shuffle_count', 0)
+    self.auto_shuffle_count = (runtimeCfg and runtimeCfg.auto_shuffle_count) or 0
+    if self.variant and self.variant.auto_shuffle_count ~= nil then
+        self.auto_shuffle_count = self.variant.auto_shuffle_count
+    end
 
     self.is_shuffling = false
     self.shuffle_animation_timer = 0
@@ -151,30 +142,72 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
         self.auto_shuffle_interval, self.auto_shuffle_count))
 
     -- Constraints parameters
-    self.time_limit = loader:getNumber('time_limit', 0)
+    self.time_limit = (runtimeCfg and runtimeCfg.time_limit) or 0
+    if self.variant and self.variant.time_limit ~= nil then
+        self.time_limit = self.variant.time_limit
+    end
     self.time_remaining = self.time_limit
 
-    self.move_limit = loader:getNumber('move_limit', 0)
+    self.move_limit = (runtimeCfg and runtimeCfg.move_limit) or 0
+    if self.variant and self.variant.move_limit ~= nil then
+        self.move_limit = self.variant.move_limit
+    end
     self.moves_made = 0
 
     -- Scoring parameters
-    self.mismatch_penalty = loader:getNumber('mismatch_penalty', 0)
-    self.combo_multiplier = loader:getNumber('combo_multiplier', 0.0)
+    self.mismatch_penalty = (runtimeCfg and runtimeCfg.mismatch_penalty) or 0
+    if self.variant and self.variant.mismatch_penalty ~= nil then
+        self.mismatch_penalty = self.variant.mismatch_penalty
+    end
+
+    self.combo_multiplier = (runtimeCfg and runtimeCfg.combo_multiplier) or 0.0
+    if self.variant and self.variant.combo_multiplier ~= nil then
+        self.combo_multiplier = self.variant.combo_multiplier
+    end
     self.current_combo = 0
-    self.speed_bonus = loader:getNumber('speed_bonus', 0)
-    self.perfect_bonus = loader:getNumber('perfect_bonus', 0)
+
+    self.speed_bonus = (runtimeCfg and runtimeCfg.speed_bonus) or 0
+    if self.variant and self.variant.speed_bonus ~= nil then
+        self.speed_bonus = self.variant.speed_bonus
+    end
+
+    self.perfect_bonus = (runtimeCfg and runtimeCfg.perfect_bonus) or 0
+    if self.variant and self.variant.perfect_bonus ~= nil then
+        self.perfect_bonus = self.variant.perfect_bonus
+    end
 
     -- Visual Effects parameters
-    self.gravity_enabled = loader:getBoolean('gravity_enabled', false)
-    self.card_rotation = loader:getBoolean('card_rotation', false)
-    self.spinning_cards = loader:getBoolean('spinning_cards', false)
-    self.fog_of_war = loader:getNumber('fog_of_war', 0)
+    self.gravity_enabled = (runtimeCfg and runtimeCfg.gravity_enabled) or false
+    if self.variant and self.variant.gravity_enabled ~= nil then
+        self.gravity_enabled = self.variant.gravity_enabled
+    end
+
+    self.card_rotation = (runtimeCfg and runtimeCfg.card_rotation) or false
+    if self.variant and self.variant.card_rotation ~= nil then
+        self.card_rotation = self.variant.card_rotation
+    end
+
+    self.spinning_cards = (runtimeCfg and runtimeCfg.spinning_cards) or false
+    if self.variant and self.variant.spinning_cards ~= nil then
+        self.spinning_cards = self.variant.spinning_cards
+    end
+
+    self.fog_of_war = (runtimeCfg and runtimeCfg.fog_of_war) or 0
+    if self.variant and self.variant.fog_of_war ~= nil then
+        self.fog_of_war = self.variant.fog_of_war
+    end
 
     -- Fog spotlight size: 0.0-1.0, percentage of radius that's fully lit (0.6 = 60% inner clear, 40% gradient)
-    self.fog_inner_radius = loader:getNumber('fog_inner_radius', 0.6)
+    self.fog_inner_radius = (runtimeCfg and runtimeCfg.fog_inner_radius) or 0.6
+    if self.variant and self.variant.fog_inner_radius ~= nil then
+        self.fog_inner_radius = self.variant.fog_inner_radius
+    end
 
     -- Fog darkness: 0.0-1.0, how dark the obscured area is (0.0 = pitch black, 1.0 = no obscuring)
-    self.fog_darkness = loader:getNumber('fog_darkness', 0.1)
+    self.fog_darkness = (runtimeCfg and runtimeCfg.fog_darkness) or 0.1
+    if self.variant and self.variant.fog_darkness ~= nil then
+        self.fog_darkness = self.variant.fog_darkness
+    end
 
     -- Initialize FogOfWar component (alpha mode for per-card fog)
     self.fog_controller = FogOfWar:new({
@@ -185,11 +218,17 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
         outer_radius = self.fog_of_war
     })
 
-    self.distraction_elements = loader:getBoolean('distraction_elements', false)
+    self.distraction_elements = (runtimeCfg and runtimeCfg.distraction_elements) or false
+    if self.variant and self.variant.distraction_elements ~= nil then
+        self.distraction_elements = self.variant.distraction_elements
+    end
     self.distraction_particles = {}
 
     -- Challenge Mode parameters
-    self.chain_requirement = loader:getNumber('chain_requirement', 0)
+    self.chain_requirement = (runtimeCfg and runtimeCfg.chain_requirement) or 0
+    if self.variant and self.variant.chain_requirement ~= nil then
+        self.chain_requirement = self.variant.chain_requirement
+    end
     self.chain_target = nil
     self.chain_progress = 0
 

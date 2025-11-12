@@ -5,6 +5,7 @@ local popup_module = require('src.games.score_popup')
 local PopupManager = popup_module.PopupManager
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local AnimationSystem = require('src.utils.game_components.animation_system')
+local VariantLoader = require('src.utils.game_components.variant_loader')
 local RPS = BaseGame:extend('RPS')
 
 -- Config-driven defaults with safe fallbacks
@@ -88,54 +89,30 @@ function RPS:init(game_data, cheats, di, variant_override)
     -- Three-tier fallback: runtimeCfg → variant → DEFAULT
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.rps)
 
+    -- Initialize VariantLoader
+    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
+
     -- Load parameters with three-tier fallback
-    self.rounds_to_win = (runtimeCfg and runtimeCfg.rounds_to_win) or DEFAULT_ROUNDS_TO_WIN
-    if self.variant and self.variant.rounds_to_win ~= nil then
-        self.rounds_to_win = self.variant.rounds_to_win
-    end
+    self.rounds_to_win = loader:get('rounds_to_win', DEFAULT_ROUNDS_TO_WIN)
 
-    self.game_mode = (runtimeCfg and runtimeCfg.game_mode) or DEFAULT_GAME_MODE
-    if self.variant and self.variant.game_mode ~= nil then
-        self.game_mode = self.variant.game_mode
-    end
+    self.game_mode = loader:get('game_mode', DEFAULT_GAME_MODE)
 
-    self.ai_pattern = (runtimeCfg and runtimeCfg.ai_pattern) or DEFAULT_AI_PATTERN
-    if self.variant and self.variant.ai_pattern ~= nil then
-        self.ai_pattern = self.variant.ai_pattern
-    end
+    self.ai_pattern = loader:get('ai_pattern', DEFAULT_AI_PATTERN)
 
     -- AI Behavior Parameters
-    self.ai_bias = (runtimeCfg and runtimeCfg.ai_bias) or DEFAULT_AI_BIAS
-    if self.variant and self.variant.ai_bias ~= nil then
-        self.ai_bias = self.variant.ai_bias
-    end
+    self.ai_bias = loader:get('ai_bias', DEFAULT_AI_BIAS)
 
-    self.ai_bias_strength = (runtimeCfg and runtimeCfg.ai_bias_strength) or DEFAULT_AI_BIAS_STRENGTH
-    if self.variant and self.variant.ai_bias_strength ~= nil then
-        self.ai_bias_strength = self.variant.ai_bias_strength
-    end
+    self.ai_bias_strength = loader:get('ai_bias_strength', DEFAULT_AI_BIAS_STRENGTH)
 
     -- Timing Parameters
-    self.time_per_round = (runtimeCfg and runtimeCfg.time_per_round) or DEFAULT_TIME_PER_ROUND
-    if self.variant and self.variant.time_per_round ~= nil then
-        self.time_per_round = self.variant.time_per_round
-    end
+    self.time_per_round = loader:get('time_per_round', DEFAULT_TIME_PER_ROUND)
 
-    self.round_result_display_time = (runtimeCfg and runtimeCfg.round_result_display_time) or DEFAULT_ROUND_RESULT_DISPLAY_TIME
-    if self.variant and self.variant.round_result_display_time ~= nil then
-        self.round_result_display_time = self.variant.round_result_display_time
-    end
+    self.round_result_display_time = loader:get('round_result_display_time', DEFAULT_ROUND_RESULT_DISPLAY_TIME)
 
     -- Display Parameters
-    self.show_ai_pattern_hint = (runtimeCfg and runtimeCfg.show_ai_pattern_hint) or DEFAULT_SHOW_AI_PATTERN_HINT
-    if self.variant and self.variant.show_ai_pattern_hint ~= nil then
-        self.show_ai_pattern_hint = self.variant.show_ai_pattern_hint
-    end
+    self.show_ai_pattern_hint = loader:get('show_ai_pattern_hint', DEFAULT_SHOW_AI_PATTERN_HINT)
 
-    self.show_player_history = (runtimeCfg and runtimeCfg.show_player_history) or DEFAULT_SHOW_PLAYER_HISTORY
-    if self.variant and self.variant.show_player_history ~= nil then
-        self.show_player_history = self.variant.show_player_history
-    end
+    self.show_player_history = loader:get('show_player_history', DEFAULT_SHOW_PLAYER_HISTORY)
 
     -- Apply difficulty_modifier from variant
     if self.variant and self.variant.difficulty_modifier then
@@ -158,142 +135,64 @@ function RPS:init(game_data, cheats, di, variant_override)
     end
 
     -- Scoring parameters
-    self.score_per_round_win = (runtimeCfg and runtimeCfg.score_per_round_win) or DEFAULT_SCORE_PER_ROUND_WIN
-    if self.variant and self.variant.score_per_round_win ~= nil then
-        self.score_per_round_win = self.variant.score_per_round_win
-    end
+    self.score_per_round_win = loader:get('score_per_round_win', DEFAULT_SCORE_PER_ROUND_WIN)
 
-    self.streak_bonus = (runtimeCfg and runtimeCfg.streak_bonus) or DEFAULT_STREAK_BONUS
-    if self.variant and self.variant.streak_bonus ~= nil then
-        self.streak_bonus = self.variant.streak_bonus
-    end
+    self.streak_bonus = loader:get('streak_bonus', DEFAULT_STREAK_BONUS)
 
-    self.perfect_game_bonus = (runtimeCfg and runtimeCfg.perfect_game_bonus) or DEFAULT_PERFECT_GAME_BONUS
-    if self.variant and self.variant.perfect_game_bonus ~= nil then
-        self.perfect_game_bonus = self.variant.perfect_game_bonus
-    end
+    self.perfect_game_bonus = loader:get('perfect_game_bonus', DEFAULT_PERFECT_GAME_BONUS)
 
-    self.score_popup_enabled = (runtimeCfg and runtimeCfg.score_popup_enabled) or DEFAULT_SCORE_POPUP_ENABLED
-    if self.variant and self.variant.score_popup_enabled ~= nil then
-        self.score_popup_enabled = self.variant.score_popup_enabled
-    end
+    self.score_popup_enabled = loader:get('score_popup_enabled', DEFAULT_SCORE_POPUP_ENABLED)
 
     -- Phase 6 completion: Double hands mode parameters
-    self.hands_mode = (runtimeCfg and runtimeCfg.hands_mode) or DEFAULT_HANDS_MODE
-    if self.variant and self.variant.hands_mode ~= nil then
-        self.hands_mode = self.variant.hands_mode
-    end
+    self.hands_mode = loader:get('hands_mode', DEFAULT_HANDS_MODE)
 
-    self.time_per_removal = (runtimeCfg and runtimeCfg.time_per_removal) or DEFAULT_TIME_PER_REMOVAL
-    if self.variant and self.variant.time_per_removal ~= nil then
-        self.time_per_removal = self.variant.time_per_removal
-    end
+    self.time_per_removal = loader:get('time_per_removal', DEFAULT_TIME_PER_REMOVAL)
 
-    self.both_hands_history_length = (runtimeCfg and runtimeCfg.both_hands_history_length) or DEFAULT_BOTH_HANDS_HISTORY_LENGTH
-    if self.variant and self.variant.both_hands_history_length ~= nil then
-        self.both_hands_history_length = self.variant.both_hands_history_length
-    end
+    self.both_hands_history_length = loader:get('both_hands_history_length', DEFAULT_BOTH_HANDS_HISTORY_LENGTH)
 
-    self.show_opponent_hands = (runtimeCfg and runtimeCfg.show_opponent_hands) or DEFAULT_SHOW_OPPONENT_HANDS
-    if self.variant and self.variant.show_opponent_hands ~= nil then
-        self.show_opponent_hands = self.variant.show_opponent_hands
-    end
+    self.show_opponent_hands = loader:get('show_opponent_hands', DEFAULT_SHOW_OPPONENT_HANDS)
 
     -- Phase 6 completion: Multiple opponents parameters
-    self.num_opponents = (runtimeCfg and runtimeCfg.num_opponents) or DEFAULT_NUM_OPPONENTS
-    if self.variant and self.variant.num_opponents ~= nil then
-        self.num_opponents = self.variant.num_opponents
-    end
+    self.num_opponents = loader:get('num_opponents', DEFAULT_NUM_OPPONENTS)
     self.num_opponents = math.max(1, math.min(5, self.num_opponents))  -- Clamp 1-5
 
-    self.elimination_mode = (runtimeCfg and runtimeCfg.elimination_mode) or DEFAULT_ELIMINATION_MODE
-    if self.variant and self.variant.elimination_mode ~= nil then
-        self.elimination_mode = self.variant.elimination_mode
-    end
+    self.elimination_mode = loader:get('elimination_mode', DEFAULT_ELIMINATION_MODE)
 
     -- Phase 6 completion: Victory conditions parameters
-    self.victory_condition = (runtimeCfg and runtimeCfg.victory_condition) or DEFAULT_VICTORY_CONDITION
-    if self.variant and self.variant.victory_condition ~= nil then
-        self.victory_condition = self.variant.victory_condition
-    end
+    self.victory_condition = loader:get('victory_condition', DEFAULT_VICTORY_CONDITION)
 
-    self.first_to_target = (runtimeCfg and runtimeCfg.first_to_target) or DEFAULT_FIRST_TO_TARGET
-    if self.variant and self.variant.first_to_target ~= nil then
-        self.first_to_target = self.variant.first_to_target
-    end
+    self.first_to_target = loader:get('first_to_target', DEFAULT_FIRST_TO_TARGET)
 
-    self.streak_target = (runtimeCfg and runtimeCfg.streak_target) or DEFAULT_STREAK_TARGET
-    if self.variant and self.variant.streak_target ~= nil then
-        self.streak_target = self.variant.streak_target
-    end
+    self.streak_target = loader:get('streak_target', DEFAULT_STREAK_TARGET)
 
-    self.total_wins_target = (runtimeCfg and runtimeCfg.total_wins_target) or DEFAULT_TOTAL_WINS_TARGET
-    if self.variant and self.variant.total_wins_target ~= nil then
-        self.total_wins_target = self.variant.total_wins_target
-    end
+    self.total_wins_target = loader:get('total_wins_target', DEFAULT_TOTAL_WINS_TARGET)
 
-    self.time_limit = (runtimeCfg and runtimeCfg.time_limit) or DEFAULT_TIME_LIMIT
-    if self.variant and self.variant.time_limit ~= nil then
-        self.time_limit = self.variant.time_limit
-    end
+    self.time_limit = loader:get('time_limit', DEFAULT_TIME_LIMIT)
 
     -- Phase 6 completion: Lives system parameters
-    self.lives = (runtimeCfg and runtimeCfg.lives) or DEFAULT_LIVES
-    if self.variant and self.variant.lives ~= nil then
-        self.lives = self.variant.lives
-    end
+    self.lives = loader:get('lives', DEFAULT_LIVES)
 
-    self.lose_life_on = (runtimeCfg and runtimeCfg.lose_life_on) or DEFAULT_LOSE_LIFE_ON
-    if self.variant and self.variant.lose_life_on ~= nil then
-        self.lose_life_on = self.variant.lose_life_on
-    end
+    self.lose_life_on = loader:get('lose_life_on', DEFAULT_LOSE_LIFE_ON)
 
     -- Phase 6 completion: Special rounds parameters
-    self.special_rounds_enabled = (runtimeCfg and runtimeCfg.special_rounds_enabled) or DEFAULT_SPECIAL_ROUNDS_ENABLED
-    if self.variant and self.variant.special_rounds_enabled ~= nil then
-        self.special_rounds_enabled = self.variant.special_rounds_enabled
-    end
+    self.special_rounds_enabled = loader:get('special_rounds_enabled', DEFAULT_SPECIAL_ROUNDS_ENABLED)
 
-    self.double_or_nothing_enabled = (runtimeCfg and runtimeCfg.double_or_nothing_enabled) or DEFAULT_DOUBLE_OR_NOTHING_ENABLED
-    if self.variant and self.variant.double_or_nothing_enabled ~= nil then
-        self.double_or_nothing_enabled = self.variant.double_or_nothing_enabled
-    end
+    self.double_or_nothing_enabled = loader:get('double_or_nothing_enabled', DEFAULT_DOUBLE_OR_NOTHING_ENABLED)
 
-    self.sudden_death_enabled = (runtimeCfg and runtimeCfg.sudden_death_enabled) or DEFAULT_SUDDEN_DEATH_ENABLED
-    if self.variant and self.variant.sudden_death_enabled ~= nil then
-        self.sudden_death_enabled = self.variant.sudden_death_enabled
-    end
+    self.sudden_death_enabled = loader:get('sudden_death_enabled', DEFAULT_SUDDEN_DEATH_ENABLED)
 
-    self.reverse_mode_enabled = (runtimeCfg and runtimeCfg.reverse_mode_enabled) or DEFAULT_REVERSE_MODE_ENABLED
-    if self.variant and self.variant.reverse_mode_enabled ~= nil then
-        self.reverse_mode_enabled = self.variant.reverse_mode_enabled
-    end
+    self.reverse_mode_enabled = loader:get('reverse_mode_enabled', DEFAULT_REVERSE_MODE_ENABLED)
 
-    self.mirror_mode_enabled = (runtimeCfg and runtimeCfg.mirror_mode_enabled) or DEFAULT_MIRROR_MODE_ENABLED
-    if self.variant and self.variant.mirror_mode_enabled ~= nil then
-        self.mirror_mode_enabled = self.variant.mirror_mode_enabled
-    end
+    self.mirror_mode_enabled = loader:get('mirror_mode_enabled', DEFAULT_MIRROR_MODE_ENABLED)
 
     -- Phase 6 completion: Display parameters
-    self.show_history_display = (runtimeCfg and runtimeCfg.show_history_display) or DEFAULT_SHOW_HISTORY_DISPLAY
-    if self.variant and self.variant.show_history_display ~= nil then
-        self.show_history_display = self.variant.show_history_display
-    end
+    self.show_history_display = loader:get('show_history_display', DEFAULT_SHOW_HISTORY_DISPLAY)
 
-    self.history_length = (runtimeCfg and runtimeCfg.history_length) or DEFAULT_HISTORY_LENGTH
-    if self.variant and self.variant.history_length ~= nil then
-        self.history_length = self.variant.history_length
-    end
+    self.history_length = loader:get('history_length', DEFAULT_HISTORY_LENGTH)
 
-    self.show_statistics = (runtimeCfg and runtimeCfg.show_statistics) or DEFAULT_SHOW_STATISTICS
-    if self.variant and self.variant.show_statistics ~= nil then
-        self.show_statistics = self.variant.show_statistics
-    end
+    self.show_statistics = loader:get('show_statistics', DEFAULT_SHOW_STATISTICS)
 
-    self.ai_pattern_delay = (runtimeCfg and runtimeCfg.ai_pattern_delay) or DEFAULT_AI_PATTERN_DELAY
-    if self.variant and self.variant.ai_pattern_delay ~= nil then
-        self.ai_pattern_delay = self.variant.ai_pattern_delay
-    end
+    self.ai_pattern_delay = loader:get('ai_pattern_delay', DEFAULT_AI_PATTERN_DELAY)
 
     -- Initialize game state
     self.player_wins = 0

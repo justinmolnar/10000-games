@@ -8,7 +8,6 @@ local PNGCollision = require('src.utils.png_collision')
 local MovementController = require('src.utils.game_components.movement_controller')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VisualEffects = require('src.utils.game_components.visual_effects')
-local VariantLoader = require('src.utils.game_components.variant_loader')
 local Breakout = BaseGame:extend('Breakout')
 
 -- Config-driven defaults with safe fallbacks
@@ -118,59 +117,128 @@ function Breakout:init(game_data, cheats, di, variant_override)
     -- Three-tier fallback: runtimeCfg → variant → DEFAULT
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.breakout)
 
-    -- Initialize VariantLoader
-    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
-
     -- Paddle Parameters
-    self.movement_type = loader:get('movement_type', DEFAULT_MOVEMENT_TYPE)
+    self.movement_type = (runtimeCfg and runtimeCfg.movement_type) or DEFAULT_MOVEMENT_TYPE
+    if self.variant and self.variant.movement_type ~= nil then
+        self.movement_type = self.variant.movement_type
+    end
 
-    self.paddle_width = loader:get('paddle_width', DEFAULT_PADDLE_WIDTH)
+    self.paddle_width = (runtimeCfg and runtimeCfg.paddle_width) or DEFAULT_PADDLE_WIDTH
+    if self.variant and self.variant.paddle_width ~= nil then
+        self.paddle_width = self.variant.paddle_width
+    end
 
-    self.paddle_speed = loader:get('paddle_speed', DEFAULT_PADDLE_SPEED)
+    self.paddle_speed = (runtimeCfg and runtimeCfg.paddle_speed) or DEFAULT_PADDLE_SPEED
+    if self.variant and self.variant.paddle_speed ~= nil then
+        self.paddle_speed = self.variant.paddle_speed
+    end
 
-    self.paddle_friction = loader:get('paddle_friction', DEFAULT_PADDLE_FRICTION)
+    self.paddle_friction = (runtimeCfg and runtimeCfg.paddle_friction) or DEFAULT_PADDLE_FRICTION
+    if self.variant and self.variant.paddle_friction ~= nil then
+        self.paddle_friction = self.variant.paddle_friction
+    end
 
-    self.rotation_speed = loader:get('rotation_speed', DEFAULT_ROTATION_SPEED)
+    self.rotation_speed = (runtimeCfg and runtimeCfg.rotation_speed) or DEFAULT_ROTATION_SPEED
+    if self.variant and self.variant.rotation_speed ~= nil then
+        self.rotation_speed = self.variant.rotation_speed
+    end
 
-    self.jump_distance = loader:get('jump_distance', DEFAULT_JUMP_DISTANCE)
+    self.jump_distance = (runtimeCfg and runtimeCfg.jump_distance) or DEFAULT_JUMP_DISTANCE
+    if self.variant and self.variant.jump_distance ~= nil then
+        self.jump_distance = self.variant.jump_distance
+    end
 
-    self.jump_cooldown = loader:get('jump_cooldown', DEFAULT_JUMP_COOLDOWN)
+    self.jump_cooldown = (runtimeCfg and runtimeCfg.jump_cooldown) or DEFAULT_JUMP_COOLDOWN
+    if self.variant and self.variant.jump_cooldown ~= nil then
+        self.jump_cooldown = self.variant.jump_cooldown
+    end
 
     -- Ball Parameters
-    self.ball_count = loader:get('ball_count', DEFAULT_BALL_COUNT)
+    self.ball_count = (runtimeCfg and runtimeCfg.ball_count) or DEFAULT_BALL_COUNT
+    if self.variant and self.variant.ball_count ~= nil then
+        self.ball_count = self.variant.ball_count
+    end
 
-    self.ball_speed = loader:get('ball_speed', DEFAULT_BALL_SPEED)
+    self.ball_speed = (runtimeCfg and runtimeCfg.ball_speed) or DEFAULT_BALL_SPEED
+    if self.variant and self.variant.ball_speed ~= nil then
+        self.ball_speed = self.variant.ball_speed
+    end
 
-    self.ball_max_speed = loader:get('ball_max_speed', DEFAULT_BALL_MAX_SPEED)
+    self.ball_max_speed = (runtimeCfg and runtimeCfg.ball_max_speed) or DEFAULT_BALL_MAX_SPEED
+    if self.variant and self.variant.ball_max_speed ~= nil then
+        self.ball_max_speed = self.variant.ball_max_speed
+    end
 
-    self.ball_gravity = loader:get('ball_gravity', DEFAULT_BALL_GRAVITY)
+    self.ball_gravity = (runtimeCfg and runtimeCfg.ball_gravity) or DEFAULT_BALL_GRAVITY
+    if self.variant and self.variant.ball_gravity ~= nil then
+        self.ball_gravity = self.variant.ball_gravity
+    end
 
-    self.ball_gravity_direction = loader:get('ball_gravity_direction', DEFAULT_BALL_GRAVITY_DIRECTION)
+    self.ball_gravity_direction = (runtimeCfg and runtimeCfg.ball_gravity_direction) or DEFAULT_BALL_GRAVITY_DIRECTION
+    if self.variant and self.variant.ball_gravity_direction ~= nil then
+        self.ball_gravity_direction = self.variant.ball_gravity_direction
+    end
 
-    self.ball_speed_increase_per_bounce = loader:get('ball_speed_increase_per_bounce', DEFAULT_BALL_SPEED_INCREASE_PER_BOUNCE)
+    self.ball_speed_increase_per_bounce = (runtimeCfg and runtimeCfg.ball_speed_increase_per_bounce) or DEFAULT_BALL_SPEED_INCREASE_PER_BOUNCE
+    if self.variant and self.variant.ball_speed_increase_per_bounce ~= nil then
+        self.ball_speed_increase_per_bounce = self.variant.ball_speed_increase_per_bounce
+    end
 
-    self.ball_homing_strength = loader:get('ball_homing_strength', DEFAULT_BALL_HOMING_STRENGTH)
+    self.ball_homing_strength = (runtimeCfg and runtimeCfg.ball_homing_strength) or DEFAULT_BALL_HOMING_STRENGTH
+    if self.variant and self.variant.ball_homing_strength ~= nil then
+        self.ball_homing_strength = self.variant.ball_homing_strength
+    end
 
-    self.ball_phase_through_bricks = loader:get('ball_phase_through_bricks', DEFAULT_BALL_PHASE_THROUGH_BRICKS)
+    self.ball_phase_through_bricks = (runtimeCfg and runtimeCfg.ball_phase_through_bricks) or DEFAULT_BALL_PHASE_THROUGH_BRICKS
+    if self.variant and self.variant.ball_phase_through_bricks ~= nil then
+        self.ball_phase_through_bricks = self.variant.ball_phase_through_bricks
+    end
 
-    self.ball_trail_length = loader:get('ball_trail_length', DEFAULT_BALL_TRAIL_LENGTH)
+    self.ball_trail_length = (runtimeCfg and runtimeCfg.ball_trail_length) or DEFAULT_BALL_TRAIL_LENGTH
+    if self.variant and self.variant.ball_trail_length ~= nil then
+        self.ball_trail_length = self.variant.ball_trail_length
+    end
 
-    self.ball_bounce_randomness = loader:get('ball_bounce_randomness', DEFAULT_BALL_BOUNCE_RANDOMNESS)
+    self.ball_bounce_randomness = (runtimeCfg and runtimeCfg.ball_bounce_randomness) or DEFAULT_BALL_BOUNCE_RANDOMNESS
+    if self.variant and self.variant.ball_bounce_randomness ~= nil then
+        self.ball_bounce_randomness = self.variant.ball_bounce_randomness
+    end
 
-    self.ball_spawn_angle_variance = loader:get('ball_spawn_angle_variance', DEFAULT_BALL_SPAWN_ANGLE_VARIANCE)
+    self.ball_spawn_angle_variance = (runtimeCfg and runtimeCfg.ball_spawn_angle_variance) or DEFAULT_BALL_SPAWN_ANGLE_VARIANCE
+    if self.variant and self.variant.ball_spawn_angle_variance ~= nil then
+        self.ball_spawn_angle_variance = self.variant.ball_spawn_angle_variance
+    end
 
     -- Power-up Parameters (Phase 13)
-    self.powerup_enabled = loader:get('powerup_enabled', DEFAULT_POWERUP_ENABLED)
+    self.powerup_enabled = (runtimeCfg and runtimeCfg.powerup_enabled) or DEFAULT_POWERUP_ENABLED
+    if self.variant and self.variant.powerup_enabled ~= nil then
+        self.powerup_enabled = self.variant.powerup_enabled
+    end
 
-    self.brick_powerup_drop_chance = loader:get('brick_powerup_drop_chance', DEFAULT_BRICK_POWERUP_DROP_CHANCE)
+    self.brick_powerup_drop_chance = (runtimeCfg and runtimeCfg.brick_powerup_drop_chance) or DEFAULT_BRICK_POWERUP_DROP_CHANCE
+    if self.variant and self.variant.brick_powerup_drop_chance ~= nil then
+        self.brick_powerup_drop_chance = self.variant.brick_powerup_drop_chance
+    end
 
-    self.powerup_fall_speed = loader:get('powerup_fall_speed', DEFAULT_POWERUP_FALL_SPEED)
+    self.powerup_fall_speed = (runtimeCfg and runtimeCfg.powerup_fall_speed) or DEFAULT_POWERUP_FALL_SPEED
+    if self.variant and self.variant.powerup_fall_speed ~= nil then
+        self.powerup_fall_speed = self.variant.powerup_fall_speed
+    end
 
-    self.powerup_size = loader:get('powerup_size', DEFAULT_POWERUP_SIZE)
+    self.powerup_size = (runtimeCfg and runtimeCfg.powerup_size) or DEFAULT_POWERUP_SIZE
+    if self.variant and self.variant.powerup_size ~= nil then
+        self.powerup_size = self.variant.powerup_size
+    end
 
-    self.powerup_duration = loader:get('powerup_duration', DEFAULT_POWERUP_DURATION)
+    self.powerup_duration = (runtimeCfg and runtimeCfg.powerup_duration) or DEFAULT_POWERUP_DURATION
+    if self.variant and self.variant.powerup_duration ~= nil then
+        self.powerup_duration = self.variant.powerup_duration
+    end
 
-    self.powerup_types = loader:get('powerup_types', DEFAULT_POWERUP_TYPES)
+    self.powerup_types = (runtimeCfg and runtimeCfg.powerup_types) or DEFAULT_POWERUP_TYPES
+    if self.variant and self.variant.powerup_types ~= nil then
+        self.powerup_types = self.variant.powerup_types
+    end
 
     -- Per-power-up configuration (deep copy of defaults)
     self.powerup_config = {}
@@ -204,21 +272,45 @@ function Breakout:init(game_data, cheats, di, variant_override)
     end
 
     -- Brick Parameters
-    self.brick_rows = loader:get('brick_rows', DEFAULT_BRICK_ROWS)
+    self.brick_rows = (runtimeCfg and runtimeCfg.brick_rows) or DEFAULT_BRICK_ROWS
+    if self.variant and self.variant.brick_rows ~= nil then
+        self.brick_rows = self.variant.brick_rows
+    end
 
-    self.brick_columns = loader:get('brick_columns', DEFAULT_BRICK_COLUMNS)
+    self.brick_columns = (runtimeCfg and runtimeCfg.brick_columns) or DEFAULT_BRICK_COLUMNS
+    if self.variant and self.variant.brick_columns ~= nil then
+        self.brick_columns = self.variant.brick_columns
+    end
 
-    self.brick_layout = loader:get('brick_layout', DEFAULT_BRICK_LAYOUT)
+    self.brick_layout = (runtimeCfg and runtimeCfg.brick_layout) or DEFAULT_BRICK_LAYOUT
+    if self.variant and self.variant.brick_layout ~= nil then
+        self.brick_layout = self.variant.brick_layout
+    end
 
-    self.brick_health = loader:get('brick_health', DEFAULT_BRICK_HEALTH)
+    self.brick_health = (runtimeCfg and runtimeCfg.brick_health) or DEFAULT_BRICK_HEALTH
+    if self.variant and self.variant.brick_health ~= nil then
+        self.brick_health = self.variant.brick_health
+    end
 
-    self.brick_shape = loader:get('brick_shape', DEFAULT_BRICK_SHAPE)
+    self.brick_shape = (runtimeCfg and runtimeCfg.brick_shape) or DEFAULT_BRICK_SHAPE
+    if self.variant and self.variant.brick_shape ~= nil then
+        self.brick_shape = self.variant.brick_shape
+    end
 
-    self.brick_radius = loader:get('brick_radius', DEFAULT_BRICK_RADIUS)
+    self.brick_radius = (runtimeCfg and runtimeCfg.brick_radius) or DEFAULT_BRICK_RADIUS
+    if self.variant and self.variant.brick_radius ~= nil then
+        self.brick_radius = self.variant.brick_radius
+    end
 
-    self.brick_collision_image = loader:get('brick_collision_image', DEFAULT_BRICK_COLLISION_IMAGE)
+    self.brick_collision_image = (runtimeCfg and runtimeCfg.brick_collision_image) or DEFAULT_BRICK_COLLISION_IMAGE
+    if self.variant and self.variant.brick_collision_image ~= nil then
+        self.brick_collision_image = self.variant.brick_collision_image
+    end
 
-    self.brick_alpha_threshold = loader:get('brick_alpha_threshold', DEFAULT_BRICK_ALPHA_THRESHOLD)
+    self.brick_alpha_threshold = (runtimeCfg and runtimeCfg.brick_alpha_threshold) or DEFAULT_BRICK_ALPHA_THRESHOLD
+    if self.variant and self.variant.brick_alpha_threshold ~= nil then
+        self.brick_alpha_threshold = self.variant.brick_alpha_threshold
+    end
 
     -- Brick Behavior Parameters (Phase 8)
     self.brick_fall_enabled = false
@@ -319,27 +411,57 @@ function Breakout:init(game_data, cheats, di, variant_override)
     end
 
     -- Game Parameters
-    self.lives = loader:get('lives', DEFAULT_LIVES)
+    self.lives = (runtimeCfg and runtimeCfg.lives) or DEFAULT_LIVES
+    if self.variant and self.variant.lives ~= nil then
+        self.lives = self.variant.lives
+    end
 
-    self.victory_condition = loader:get('victory_condition', DEFAULT_VICTORY_CONDITION)
+    self.victory_condition = (runtimeCfg and runtimeCfg.victory_condition) or DEFAULT_VICTORY_CONDITION
+    if self.variant and self.variant.victory_condition ~= nil then
+        self.victory_condition = self.variant.victory_condition
+    end
 
     -- Scoring Parameters (Phase 10)
-    self.brick_score_multiplier = loader:get('brick_score_multiplier', DEFAULT_BRICK_SCORE_MULTIPLIER)
+    self.brick_score_multiplier = (runtimeCfg and runtimeCfg.brick_score_multiplier) or DEFAULT_BRICK_SCORE_MULTIPLIER
+    if self.variant and self.variant.brick_score_multiplier ~= nil then
+        self.brick_score_multiplier = self.variant.brick_score_multiplier
+    end
 
-    self.combo_multiplier = loader:get('combo_multiplier', DEFAULT_COMBO_MULTIPLIER)
+    self.combo_multiplier = (runtimeCfg and runtimeCfg.combo_multiplier) or DEFAULT_COMBO_MULTIPLIER
+    if self.variant and self.variant.combo_multiplier ~= nil then
+        self.combo_multiplier = self.variant.combo_multiplier
+    end
 
-    self.perfect_clear_bonus = loader:get('perfect_clear_bonus', DEFAULT_PERFECT_CLEAR_BONUS)
+    self.perfect_clear_bonus = (runtimeCfg and runtimeCfg.perfect_clear_bonus) or DEFAULT_PERFECT_CLEAR_BONUS
+    if self.variant and self.variant.perfect_clear_bonus ~= nil then
+        self.perfect_clear_bonus = self.variant.perfect_clear_bonus
+    end
 
-    self.extra_ball_score_threshold = loader:get('extra_ball_score_threshold', DEFAULT_EXTRA_BALL_SCORE_THRESHOLD)
+    self.extra_ball_score_threshold = (runtimeCfg and runtimeCfg.extra_ball_score_threshold) or DEFAULT_EXTRA_BALL_SCORE_THRESHOLD
+    if self.variant and self.variant.extra_ball_score_threshold ~= nil then
+        self.extra_ball_score_threshold = self.variant.extra_ball_score_threshold
+    end
 
     -- Victory Condition Parameters (Phase 10)
-    self.destroy_count_target = loader:get('destroy_count_target', DEFAULT_DESTROY_COUNT_TARGET)
+    self.destroy_count_target = (runtimeCfg and runtimeCfg.destroy_count_target) or DEFAULT_DESTROY_COUNT_TARGET
+    if self.variant and self.variant.destroy_count_target ~= nil then
+        self.destroy_count_target = self.variant.destroy_count_target
+    end
 
-    self.score_target = loader:get('score_target', DEFAULT_SCORE_TARGET)
+    self.score_target = (runtimeCfg and runtimeCfg.score_target) or DEFAULT_SCORE_TARGET
+    if self.variant and self.variant.score_target ~= nil then
+        self.score_target = self.variant.score_target
+    end
 
-    self.time_target = loader:get('time_target', DEFAULT_TIME_TARGET)
+    self.time_target = (runtimeCfg and runtimeCfg.time_target) or DEFAULT_TIME_TARGET
+    if self.variant and self.variant.time_target ~= nil then
+        self.time_target = self.variant.time_target
+    end
 
-    self.score_popup_enabled = loader:get('score_popup_enabled', DEFAULT_SCORE_POPUP_ENABLED)
+    self.score_popup_enabled = (runtimeCfg and runtimeCfg.score_popup_enabled) or DEFAULT_SCORE_POPUP_ENABLED
+    if self.variant and self.variant.score_popup_enabled ~= nil then
+        self.score_popup_enabled = self.variant.score_popup_enabled
+    end
 
     -- Apply difficulty_modifier from variant
     if self.variant and self.variant.difficulty_modifier then

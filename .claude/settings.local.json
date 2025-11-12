@@ -35,7 +35,10 @@
       "Bash(test:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(luac:*)"
+      "Bash(luac:*)",
+      "Bash(for game in breakout dodge_game rps coin_flip)",
+      "Bash(do echo \"=== Migrating $game ===\")",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

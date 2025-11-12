@@ -5,6 +5,7 @@ local popup_module = require('src.games.score_popup')
 local PopupManager = popup_module.PopupManager
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local AnimationSystem = require('src.utils.game_components.animation_system')
+local VariantLoader = require('src.utils.game_components.variant_loader')
 local CoinFlip = BaseGame:extend('CoinFlip')
 
 -- Config-driven defaults with safe fallbacks
@@ -39,96 +40,48 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
     -- Three-tier fallback: runtimeCfg → variant → DEFAULT
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.coin_flip)
 
+    -- Initialize VariantLoader
+    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
+
     -- Core Mechanics Parameters
-    self.streak_target = (runtimeCfg and runtimeCfg.streak_target) or DEFAULT_STREAK_TARGET
-    if self.variant and self.variant.streak_target ~= nil then
-        self.streak_target = self.variant.streak_target
-    end
+    self.streak_target = loader:get('streak_target', DEFAULT_STREAK_TARGET)
 
-    self.coin_bias = (runtimeCfg and runtimeCfg.coin_bias) or DEFAULT_COIN_BIAS
-    if self.variant and self.variant.coin_bias ~= nil then
-        self.coin_bias = self.variant.coin_bias
-    end
+    self.coin_bias = loader:get('coin_bias', DEFAULT_COIN_BIAS)
 
-    self.lives = (runtimeCfg and runtimeCfg.lives) or DEFAULT_LIVES
-    if self.variant and self.variant.lives ~= nil then
-        self.lives = self.variant.lives
-    end
+    self.lives = loader:get('lives', DEFAULT_LIVES)
 
     -- Timing Parameters
-    self.time_per_flip = (runtimeCfg and runtimeCfg.time_per_flip) or DEFAULT_TIME_PER_FLIP
-    if self.variant and self.variant.time_per_flip ~= nil then
-        self.time_per_flip = self.variant.time_per_flip
-    end
+    self.time_per_flip = loader:get('time_per_flip', DEFAULT_TIME_PER_FLIP)
 
-    self.flip_animation_speed = (runtimeCfg and runtimeCfg.flip_animation_speed) or DEFAULT_FLIP_ANIMATION_SPEED
-    if self.variant and self.variant.flip_animation_speed ~= nil then
-        self.flip_animation_speed = self.variant.flip_animation_speed
-    end
+    self.flip_animation_speed = loader:get('flip_animation_speed', DEFAULT_FLIP_ANIMATION_SPEED)
 
     -- Display Parameters
-    self.show_bias_hint = (runtimeCfg and runtimeCfg.show_bias_hint) or DEFAULT_SHOW_BIAS_HINT
-    if self.variant and self.variant.show_bias_hint ~= nil then
-        self.show_bias_hint = self.variant.show_bias_hint
-    end
+    self.show_bias_hint = loader:get('show_bias_hint', DEFAULT_SHOW_BIAS_HINT)
 
-    self.show_pattern_history = (runtimeCfg and runtimeCfg.show_pattern_history) or DEFAULT_SHOW_PATTERN_HISTORY
-    if self.variant and self.variant.show_pattern_history ~= nil then
-        self.show_pattern_history = self.variant.show_pattern_history
-    end
+    self.show_pattern_history = loader:get('show_pattern_history', DEFAULT_SHOW_PATTERN_HISTORY)
 
-    self.pattern_history_length = (runtimeCfg and runtimeCfg.pattern_history_length) or DEFAULT_PATTERN_HISTORY_LENGTH
-    if self.variant and self.variant.pattern_history_length ~= nil then
-        self.pattern_history_length = self.variant.pattern_history_length
-    end
+    self.pattern_history_length = loader:get('pattern_history_length', DEFAULT_PATTERN_HISTORY_LENGTH)
 
-    self.auto_flip_interval = (runtimeCfg and runtimeCfg.auto_flip_interval) or DEFAULT_AUTO_FLIP_INTERVAL
-    if self.variant and self.variant.auto_flip_interval ~= nil then
-        self.auto_flip_interval = self.variant.auto_flip_interval
-    end
+    self.auto_flip_interval = loader:get('auto_flip_interval', DEFAULT_AUTO_FLIP_INTERVAL)
 
-    self.result_announce_mode = (runtimeCfg and runtimeCfg.result_announce_mode) or DEFAULT_RESULT_ANNOUNCE_MODE
-    if self.variant and self.variant.result_announce_mode ~= nil then
-        self.result_announce_mode = self.variant.result_announce_mode
-    end
+    self.result_announce_mode = loader:get('result_announce_mode', DEFAULT_RESULT_ANNOUNCE_MODE)
 
     -- Pattern Mode
-    self.pattern_mode = (runtimeCfg and runtimeCfg.pattern_mode) or DEFAULT_PATTERN_MODE
-    if self.variant and self.variant.pattern_mode ~= nil then
-        self.pattern_mode = self.variant.pattern_mode
-    end
+    self.pattern_mode = loader:get('pattern_mode', DEFAULT_PATTERN_MODE)
 
     -- Flip mode: "auto" = heads advance streak (default), "guess" = player calls it
-    self.flip_mode = (runtimeCfg and runtimeCfg.flip_mode) or "auto"
-    if self.variant and self.variant.flip_mode ~= nil then
-        self.flip_mode = self.variant.flip_mode
-    end
+    self.flip_mode = loader:get('flip_mode', "auto")
 
     -- Victory Condition Parameters
-    self.victory_condition = (runtimeCfg and runtimeCfg.victory_condition) or DEFAULT_VICTORY_CONDITION
-    if self.variant and self.variant.victory_condition ~= nil then
-        self.victory_condition = self.variant.victory_condition
-    end
+    self.victory_condition = loader:get('victory_condition', DEFAULT_VICTORY_CONDITION)
 
-    self.total_correct_target = (runtimeCfg and runtimeCfg.total_correct_target) or DEFAULT_TOTAL_CORRECT_TARGET
-    if self.variant and self.variant.total_correct_target ~= nil then
-        self.total_correct_target = self.variant.total_correct_target
-    end
+    self.total_correct_target = loader:get('total_correct_target', DEFAULT_TOTAL_CORRECT_TARGET)
 
-    self.ratio_target = (runtimeCfg and runtimeCfg.ratio_target) or DEFAULT_RATIO_TARGET
-    if self.variant and self.variant.ratio_target ~= nil then
-        self.ratio_target = self.variant.ratio_target
-    end
+    self.ratio_target = loader:get('ratio_target', DEFAULT_RATIO_TARGET)
 
-    self.ratio_flip_count = (runtimeCfg and runtimeCfg.ratio_flip_count) or DEFAULT_RATIO_FLIP_COUNT
-    if self.variant and self.variant.ratio_flip_count ~= nil then
-        self.ratio_flip_count = self.variant.ratio_flip_count
-    end
+    self.ratio_flip_count = loader:get('ratio_flip_count', DEFAULT_RATIO_FLIP_COUNT)
 
-    self.time_limit = (runtimeCfg and runtimeCfg.time_limit) or DEFAULT_TIME_LIMIT
-    if self.variant and self.variant.time_limit ~= nil then
-        self.time_limit = self.variant.time_limit
-    end
+    self.time_limit = loader:get('time_limit', DEFAULT_TIME_LIMIT)
 
     -- Apply difficulty_modifier from variant
     if self.variant and self.variant.difficulty_modifier then
@@ -185,25 +138,13 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
     self.time_per_flip_timer = 0  -- Countdown for time pressure mode
 
     -- Scoring parameters
-    self.score_per_correct = (runtimeCfg and runtimeCfg.score_per_correct) or DEFAULT_SCORE_PER_CORRECT
-    if self.variant and self.variant.score_per_correct ~= nil then
-        self.score_per_correct = self.variant.score_per_correct
-    end
+    self.score_per_correct = loader:get('score_per_correct', DEFAULT_SCORE_PER_CORRECT)
 
-    self.streak_multiplier = (runtimeCfg and runtimeCfg.streak_multiplier) or DEFAULT_STREAK_MULTIPLIER
-    if self.variant and self.variant.streak_multiplier ~= nil then
-        self.streak_multiplier = self.variant.streak_multiplier
-    end
+    self.streak_multiplier = loader:get('streak_multiplier', DEFAULT_STREAK_MULTIPLIER)
 
-    self.perfect_streak_bonus = (runtimeCfg and runtimeCfg.perfect_streak_bonus) or DEFAULT_PERFECT_STREAK_BONUS
-    if self.variant and self.variant.perfect_streak_bonus ~= nil then
-        self.perfect_streak_bonus = self.variant.perfect_streak_bonus
-    end
+    self.perfect_streak_bonus = loader:get('perfect_streak_bonus', DEFAULT_PERFECT_STREAK_BONUS)
 
-    self.score_popup_enabled = (runtimeCfg and runtimeCfg.score_popup_enabled) or DEFAULT_SCORE_POPUP_ENABLED
-    if self.variant and self.variant.score_popup_enabled ~= nil then
-        self.score_popup_enabled = self.variant.score_popup_enabled
-    end
+    self.score_popup_enabled = loader:get('score_popup_enabled', DEFAULT_SCORE_POPUP_ENABLED)
 
     -- Scoring state
     self.score = 0

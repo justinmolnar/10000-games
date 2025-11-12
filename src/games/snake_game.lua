@@ -1,6 +1,7 @@
 local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local SnakeView = require('src.games.views.snake_view')
+local VariantLoader = require('src.utils.game_components.variant_loader')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
 -- Config-driven defaults with safe fallbacks
@@ -14,6 +15,10 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
     SnakeGame.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.snake) or SCfg
+
+    -- Initialize VariantLoader
+    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
+
     self.GRID_SIZE = (runtimeCfg and runtimeCfg.grid_size) or GRID_SIZE
 
     -- Apply variant difficulty modifier (from Phase 1.1-1.2)
@@ -23,220 +28,97 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
 
     -- Load all variant properties (following Dodge pattern)
     -- Movement properties
-    self.movement_type = (runtimeCfg and runtimeCfg.movement_type) or "grid"
-    if self.variant and self.variant.movement_type then
-        self.movement_type = self.variant.movement_type
-    end
+    self.movement_type = loader:get('movement_type', "grid")
 
-    self.snake_speed = (runtimeCfg and runtimeCfg.snake_speed) or BASE_SPEED
-    if self.variant and self.variant.snake_speed ~= nil then
-        self.snake_speed = self.variant.snake_speed
-    end
+    self.snake_speed = loader:get('snake_speed', BASE_SPEED)
 
-    self.turn_speed = (runtimeCfg and runtimeCfg.turn_speed) or 180
-    if self.variant and self.variant.turn_speed ~= nil then
-        self.turn_speed = self.variant.turn_speed
-    end
+    self.turn_speed = loader:get('turn_speed', 180)
 
-    self.speed_increase_per_food = (runtimeCfg and runtimeCfg.speed_increase_per_food) or 0
-    if self.variant and self.variant.speed_increase_per_food ~= nil then
-        self.speed_increase_per_food = self.variant.speed_increase_per_food
-    end
+    self.speed_increase_per_food = loader:get('speed_increase_per_food', 0)
 
-    self.max_speed_cap = (runtimeCfg and runtimeCfg.max_speed_cap) or 20
-    if self.variant and self.variant.max_speed_cap ~= nil then
-        self.max_speed_cap = self.variant.max_speed_cap
-    end
+    self.max_speed_cap = loader:get('max_speed_cap', 20)
 
     -- Growth & Body properties
-    self.growth_per_food = (runtimeCfg and runtimeCfg.growth_per_food) or 1
-    if self.variant and self.variant.growth_per_food ~= nil then
-        self.growth_per_food = self.variant.growth_per_food
-    end
+    self.growth_per_food = loader:get('growth_per_food', 1)
 
-    self.shrink_over_time = (runtimeCfg and runtimeCfg.shrink_over_time) or 0
-    if self.variant and self.variant.shrink_over_time ~= nil then
-        self.shrink_over_time = self.variant.shrink_over_time
-    end
+    self.shrink_over_time = loader:get('shrink_over_time', 0)
 
-    self.phase_through_tail = (runtimeCfg and runtimeCfg.phase_through_tail) or false
-    if self.variant and self.variant.phase_through_tail ~= nil then
-        self.phase_through_tail = self.variant.phase_through_tail
-    end
+    self.phase_through_tail = loader:get('phase_through_tail', false)
 
-    self.max_length_cap = (runtimeCfg and runtimeCfg.max_length_cap) or 9999
-    if self.variant and self.variant.max_length_cap ~= nil then
-        self.max_length_cap = self.variant.max_length_cap
-    end
+    self.max_length_cap = loader:get('max_length_cap', 9999)
 
-    self.girth = (runtimeCfg and runtimeCfg.girth) or 1
-    if self.variant and self.variant.girth ~= nil then
-        self.girth = self.variant.girth
-    end
+    self.girth = loader:get('girth', 1)
 
-    self.girth_growth = (runtimeCfg and runtimeCfg.girth_growth) or 0
-    if self.variant and self.variant.girth_growth ~= nil then
-        self.girth_growth = self.variant.girth_growth
-    end
+    self.girth_growth = loader:get('girth_growth', 0)
 
     -- Arena properties
-    self.wall_mode = (runtimeCfg and runtimeCfg.wall_mode) or "wrap"
-    if self.variant and self.variant.wall_mode then
-        self.wall_mode = self.variant.wall_mode
-    end
+    self.wall_mode = loader:get('wall_mode', "wrap")
 
     -- Separate control for obstacle bouncing (default: false, obstacles cause death)
-    self.obstacle_bounce = (runtimeCfg and runtimeCfg.obstacle_bounce) or false
-    if self.variant and self.variant.obstacle_bounce ~= nil then
-        self.obstacle_bounce = self.variant.obstacle_bounce
-    end
+    self.obstacle_bounce = loader:get('obstacle_bounce', false)
 
-    self.arena_size = (runtimeCfg and runtimeCfg.arena_size) or 1.0
-    if self.variant and self.variant.arena_size ~= nil then
-        self.arena_size = self.variant.arena_size
-    end
+    self.arena_size = loader:get('arena_size', 1.0)
 
-    self.arena_shape = (runtimeCfg and runtimeCfg.arena_shape) or "rectangle"
-    if self.variant and self.variant.arena_shape then
-        self.arena_shape = self.variant.arena_shape
-    end
+    self.arena_shape = loader:get('arena_shape', "rectangle")
 
-    self.shrinking_arena = (runtimeCfg and runtimeCfg.shrinking_arena) or false
-    if self.variant and self.variant.shrinking_arena ~= nil then
-        self.shrinking_arena = self.variant.shrinking_arena
-    end
+    self.shrinking_arena = loader:get('shrinking_arena', false)
 
-    self.moving_walls = (runtimeCfg and runtimeCfg.moving_walls) or false
-    if self.variant and self.variant.moving_walls ~= nil then
-        self.moving_walls = self.variant.moving_walls
-    end
+    self.moving_walls = loader:get('moving_walls', false)
 
     -- Food properties
-    self.food_count = (runtimeCfg and runtimeCfg.food_count) or 1
-    if self.variant and self.variant.food_count ~= nil then
-        self.food_count = self.variant.food_count
-    end
+    self.food_count = loader:get('food_count', 1)
 
-    self.food_spawn_pattern = (runtimeCfg and runtimeCfg.food_spawn_pattern) or "random"
-    if self.variant and self.variant.food_spawn_pattern then
-        self.food_spawn_pattern = self.variant.food_spawn_pattern
-    end
+    self.food_spawn_pattern = loader:get('food_spawn_pattern', "random")
 
-    self.food_lifetime = (runtimeCfg and runtimeCfg.food_lifetime) or 0
-    if self.variant and self.variant.food_lifetime ~= nil then
-        self.food_lifetime = self.variant.food_lifetime
-    end
+    self.food_lifetime = loader:get('food_lifetime', 0)
 
-    self.food_movement = (runtimeCfg and runtimeCfg.food_movement) or "static"
-    if self.variant and self.variant.food_movement then
-        self.food_movement = self.variant.food_movement
-    end
+    self.food_movement = loader:get('food_movement', "static")
 
-    self.food_speed = (runtimeCfg and runtimeCfg.food_speed) or 3
-    if self.variant and self.variant.food_speed ~= nil then
-        self.food_speed = self.variant.food_speed
-    end
+    self.food_speed = loader:get('food_speed', 3)
 
-    self.food_spawn_mode = (runtimeCfg and runtimeCfg.food_spawn_mode) or "continuous"
-    if self.variant and self.variant.food_spawn_mode then
-        self.food_spawn_mode = self.variant.food_spawn_mode
-    end
+    self.food_spawn_mode = loader:get('food_spawn_mode', "continuous")
 
-    self.food_size_variance = (runtimeCfg and runtimeCfg.food_size_variance) or 0
-    if self.variant and self.variant.food_size_variance ~= nil then
-        self.food_size_variance = self.variant.food_size_variance
-    end
+    self.food_size_variance = loader:get('food_size_variance', 0)
 
-    self.bad_food_chance = (runtimeCfg and runtimeCfg.bad_food_chance) or 0
-    if self.variant and self.variant.bad_food_chance ~= nil then
-        self.bad_food_chance = self.variant.bad_food_chance
-    end
+    self.bad_food_chance = loader:get('bad_food_chance', 0)
 
-    self.golden_food_spawn_rate = (runtimeCfg and runtimeCfg.golden_food_spawn_rate) or 0
-    if self.variant and self.variant.golden_food_spawn_rate ~= nil then
-        self.golden_food_spawn_rate = self.variant.golden_food_spawn_rate
-    end
+    self.golden_food_spawn_rate = loader:get('golden_food_spawn_rate', 0)
 
     -- Obstacle properties
-    self.obstacle_count = (runtimeCfg and runtimeCfg.obstacle_count) or BASE_OBSTACLE_COUNT
-    if self.variant and self.variant.obstacle_count ~= nil then
-        self.obstacle_count = self.variant.obstacle_count
-    end
+    self.obstacle_count = loader:get('obstacle_count', BASE_OBSTACLE_COUNT)
     print(string.format("[SnakeGame:init] Variant: %s, obstacle_count set to: %s",
         (self.variant and self.variant.name) or "None", tostring(self.obstacle_count)))
 
-    self.obstacle_type = (runtimeCfg and runtimeCfg.obstacle_type) or "static_blocks"
-    if self.variant and self.variant.obstacle_type then
-        self.obstacle_type = self.variant.obstacle_type
-    end
+    self.obstacle_type = loader:get('obstacle_type', "static_blocks")
 
-    self.obstacle_spawn_over_time = (runtimeCfg and runtimeCfg.obstacle_spawn_over_time) or 0
-    if self.variant and self.variant.obstacle_spawn_over_time ~= nil then
-        self.obstacle_spawn_over_time = self.variant.obstacle_spawn_over_time
-    end
+    self.obstacle_spawn_over_time = loader:get('obstacle_spawn_over_time', 0)
 
     -- AI properties
-    self.ai_snake_count = (runtimeCfg and runtimeCfg.ai_snake_count) or 0
-    if self.variant and self.variant.ai_snake_count ~= nil then
-        self.ai_snake_count = self.variant.ai_snake_count
-    end
+    self.ai_snake_count = loader:get('ai_snake_count', 0)
 
-    self.ai_behavior = (runtimeCfg and runtimeCfg.ai_behavior) or "food_focused"
-    if self.variant and self.variant.ai_behavior then
-        self.ai_behavior = self.variant.ai_behavior
-    end
+    self.ai_behavior = loader:get('ai_behavior', "food_focused")
 
-    self.ai_speed = (runtimeCfg and runtimeCfg.ai_speed) or self.snake_speed
-    if self.variant and self.variant.ai_speed ~= nil then
-        self.ai_speed = self.variant.ai_speed
-    end
+    self.ai_speed = loader:get('ai_speed', self.snake_speed)
 
-    self.snake_collision_mode = (runtimeCfg and runtimeCfg.snake_collision_mode) or "both_die"
-    if self.variant and self.variant.snake_collision_mode then
-        self.snake_collision_mode = self.variant.snake_collision_mode
-    end
+    self.snake_collision_mode = loader:get('snake_collision_mode', "both_die")
 
-    self.snake_count = (runtimeCfg and runtimeCfg.snake_count) or 1
-    if self.variant and self.variant.snake_count ~= nil then
-        self.snake_count = self.variant.snake_count
-    end
+    self.snake_count = loader:get('snake_count', 1)
 
     -- Victory properties
-    self.victory_condition = (runtimeCfg and runtimeCfg.victory_condition) or "length"
-    if self.variant and self.variant.victory_condition then
-        self.victory_condition = self.variant.victory_condition
-    end
+    self.victory_condition = loader:get('victory_condition', "length")
 
-    self.victory_limit = (runtimeCfg and runtimeCfg.victory_limit) or BASE_TARGET_LENGTH
-    if self.variant and self.variant.victory_limit ~= nil then
-        self.victory_limit = self.variant.victory_limit
-    end
+    self.victory_limit = loader:get('victory_limit', BASE_TARGET_LENGTH)
 
     -- Visual properties
-    self.fog_of_war = (runtimeCfg and runtimeCfg.fog_of_war) or "none"
-    if self.variant and self.variant.fog_of_war then
-        self.fog_of_war = self.variant.fog_of_war
-    end
+    self.fog_of_war = loader:get('fog_of_war', "none")
 
-    self.invisible_tail = (runtimeCfg and runtimeCfg.invisible_tail) or false
-    if self.variant and self.variant.invisible_tail ~= nil then
-        self.invisible_tail = self.variant.invisible_tail
-    end
+    self.invisible_tail = loader:get('invisible_tail', false)
 
-    self.camera_mode = (runtimeCfg and runtimeCfg.camera_mode) or "follow_head"
-    if self.variant and self.variant.camera_mode then
-        self.camera_mode = self.variant.camera_mode
-    end
+    self.camera_mode = loader:get('camera_mode', "follow_head")
 
-    self.camera_zoom = (runtimeCfg and runtimeCfg.camera_zoom) or 1.0
-    if self.variant and self.variant.camera_zoom ~= nil then
-        self.camera_zoom = self.variant.camera_zoom
-    end
+    self.camera_zoom = loader:get('camera_zoom', 1.0)
 
-    self.sprite_style = (runtimeCfg and runtimeCfg.sprite_style) or "uniform"
-    if self.variant and self.variant.sprite_style then
-        self.sprite_style = self.variant.sprite_style
-    end
+    self.sprite_style = loader:get('sprite_style', "uniform")
 
     -- Sprite set defaults to classic/snake if not specified
     if not self.variant then
