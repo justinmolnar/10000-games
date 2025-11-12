@@ -1,0 +1,27 @@
+{
+  "session_name": "fix_diamond",
+  "description": "Regenerate diamond sprite with better prompt",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "fix_diamond",
+      "output_folder": "assets/sprites/shared/collectibles",
+      "description": "Fix white diamond sprite",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "diamond_white_01",
+          "prompt": "white diamond gem, four-pointed rhombus shape rotated 45 degrees, sparkly crystal jewel, pixel art",
+          "notes": "White diamond - rhombus/kite shape (regenerated)"
+        }
+      ]
+    }
+  ]
+}

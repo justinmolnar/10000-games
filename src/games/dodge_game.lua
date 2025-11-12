@@ -1,5 +1,5 @@
 local BaseGame = require('src.games.base_game')
-local Config = rawget(_G, 'DI_CONFIG') or {}
+local Config = require('src.config')
 local Collision = require('src.utils.collision')
 local DodgeView = require('src.games.views.dodge_view')
 local DodgeGame = BaseGame:extend('DodgeGame')
@@ -7,6 +7,12 @@ local DodgeGame = BaseGame:extend('DodgeGame')
 -- Enemy type definitions (Phase 1.4)
 -- These define the behaviors that variants can compose from
 DodgeGame.ENEMY_TYPES = {
+    obstacle = {
+        name = "obstacle",
+        base_type = "linear",  -- Basic straight-line movement
+        speed_multiplier = 1.0,
+        description = "Basic obstacle - moves in straight line"
+    },
     chaser = {
         name = "chaser",
         base_type = "seeker",  -- Maps to existing seeker behavior
@@ -17,7 +23,6 @@ DodgeGame.ENEMY_TYPES = {
         name = "shooter",
         base_type = "shooter",  -- New behavior (fires projectiles)
         speed_multiplier = 0.7,
-        shoot_interval = 2.0,
         description = "Fires projectiles at player"
     },
     bouncer = {
@@ -39,6 +44,12 @@ DodgeGame.ENEMY_TYPES = {
         teleport_interval = 3.0,
         teleport_range = 100,
         description = "Disappears and reappears near player"
+    },
+    splitter = {
+        name = "splitter",
+        base_type = "splitter",  -- Splits into shards when reaching safe zone
+        speed_multiplier = 0.8,
+        description = "Splits into smaller shards at safe zone boundary"
     }
 }
 
@@ -193,6 +204,17 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
         obstacle_trails = self.variant.obstacle_trails
     end
 
+    local disable_obstacle_fallback = false
+    if self.variant and self.variant.disable_obstacle_fallback ~= nil then
+        disable_obstacle_fallback = self.variant.disable_obstacle_fallback
+    end
+
+    -- Seeker/chaser homing strength
+    local seeker_turn_rate = (runtimeCfg and runtimeCfg.seeker and runtimeCfg.seeker.base_turn_deg) or 54
+    if self.variant and self.variant.seeker_turn_rate ~= nil then
+        seeker_turn_rate = self.variant.seeker_turn_rate
+    end
+
     -- New environment parameters
     local area_gravity = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.gravity) or 0.0
     if self.variant and self.variant.area_gravity ~= nil then
@@ -259,6 +281,8 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     self.obstacle_spawn_pattern = obstacle_spawn_pattern
     self.obstacle_size_variance = obstacle_size_variance
     self.obstacle_trails = obstacle_trails
+    self.disable_obstacle_fallback = disable_obstacle_fallback
+    self.seeker_turn_rate = seeker_turn_rate
     self.area_gravity = area_gravity
     self.wind_direction = wind_direction
     self.wind_strength = wind_strength
@@ -507,57 +531,70 @@ function DodgeGame:loadAssets()
     self.sprites = {}  -- Store loaded sprites
 
     -- Get sprite_set from variant, or fall back to default
-    local sprite_set = (self.variant and self.variant.sprite_set) or
-                      (self.data and self.data.visual_identity and self.data.visual_identity.sprite_set_id) or
-                      "base_1"
+    local sprite_set_id = (self.variant and self.variant.sprite_set) or
+                         (self.data and self.data.visual_identity and self.data.visual_identity.sprite_set_id) or
+                         "dodge_base"
 
-    local base_path = "assets/sprites/games/dodge/" .. sprite_set .. "/"
-    local default_sprite_set = self.data and self.data.visual_identity and self.data.visual_identity.sprite_set_id or "base_1"
-    local default_path = "assets/sprites/games/dodge/" .. default_sprite_set .. "/"
+    -- Always use dodge_base as fallback (not variant's sprite set)
+    local default_sprite_set_id = "dodge_base"
 
-    print(string.format("[DodgeGame:loadAssets] sprite_set=%s, default=%s", sprite_set, default_sprite_set))
+    print(string.format("[DodgeGame:loadAssets] sprite_set=%s, default=%s", sprite_set_id, default_sprite_set_id))
 
-    -- Try to load each sprite with fallback to default sprite_set
-    local function tryLoad(filename, sprite_key)
-        local filepath = base_path .. filename
-        local success, result = pcall(function()
-            return love.graphics.newImage(filepath)
-        end)
+    -- Use SpriteSetLoader if available in DI, otherwise fall back to old path system
+    local sprite_set_loader = self.di and self.di.spriteSetLoader
 
-        if success then
-            self.sprites[sprite_key] = result
-            print("[DodgeGame:loadAssets] Loaded: " .. filepath)
-        else
-            -- Try default sprite_set
-            local default_filepath = default_path .. filename
-            local default_success, default_result = pcall(function()
-                return love.graphics.newImage(default_filepath)
+    if sprite_set_loader then
+        -- New system: Use SpriteSetLoader
+        self.sprites.player = sprite_set_loader:getSprite(sprite_set_id, "player", default_sprite_set_id)
+        self.sprites.obstacle = sprite_set_loader:getSprite(sprite_set_id, "obstacle", default_sprite_set_id)
+
+        -- Background is optional - DON'T load if not defined (allows starfield fallback)
+        -- DO NOT SET self.sprites.background if sprite doesn't exist
+
+        -- Load enemy sprites based on variant composition
+        if self.enemy_composition then
+            for enemy_type, _ in pairs(self.enemy_composition) do
+                -- Skip "obstacle" - already loaded separately above
+                if enemy_type ~= "obstacle" then
+                    local sprite_key = "enemy_" .. enemy_type
+                    self.sprites[sprite_key] = sprite_set_loader:getSprite(sprite_set_id, sprite_key, default_sprite_set_id)
+                    print(string.format("[DodgeGame:loadAssets] Loaded %s sprite: %s", sprite_key, tostring(self.sprites[sprite_key])))
+                end
+            end
+        end
+
+        print("[DodgeGame:loadAssets] Loaded sprites using SpriteSetLoader")
+        print(string.format("[DodgeGame:loadAssets] Total sprites loaded: player=%s, obstacle=%s",
+            tostring(self.sprites.player), tostring(self.sprites.obstacle)))
+    else
+        -- Old system: Hardcoded paths (fallback)
+        print("[DodgeGame:loadAssets] WARNING: SpriteSetLoader not available, using legacy path loading")
+        local base_path = "assets/sprites/games/dodge/" .. sprite_set_id .. "/"
+        local function tryLoad(filename, sprite_key)
+            local filepath = base_path .. filename
+            local success, result = pcall(function()
+                return love.graphics.newImage(filepath)
             end)
 
-            if default_success then
-                self.sprites[sprite_key] = default_result
-                print("[DodgeGame:loadAssets] Loaded from default: " .. default_filepath)
+            if success then
+                self.sprites[sprite_key] = result
+                print("[DodgeGame:loadAssets] Loaded: " .. filepath)
             else
                 print("[DodgeGame:loadAssets] Missing: " .. filepath .. " (using fallback)")
             end
         end
-    end
 
-    -- Load player sprite
-    tryLoad("player.png", "player")
+        tryLoad("player.png", "player")
+        tryLoad("obstacle.png", "obstacle")
+        tryLoad("background.png", "background")
 
-    -- Load obstacle sprite
-    tryLoad("obstacle.png", "obstacle")
-
-    -- Load enemy sprites based on variant composition
-    if self.enemy_composition then
-        for enemy_type, _ in pairs(self.enemy_composition) do
-            tryLoad("enemy_" .. enemy_type .. ".png", "enemy_" .. enemy_type)
+        -- Load enemy sprites based on variant composition
+        if self.enemy_composition then
+            for enemy_type, _ in pairs(self.enemy_composition) do
+                tryLoad("enemy_" .. enemy_type .. ".png", "enemy_" .. enemy_type)
+            end
         end
     end
-
-    -- Load background
-    tryLoad("background.png", "background")
 
     print("[DodgeGame:loadAssets] Loaded " .. self:countLoadedSprites() .. " sprites for variant: " .. (self.variant.name or "Unknown"))
 
@@ -602,7 +639,7 @@ function DodgeGame:updateGameLogic(dt)
         return
     end
 
-    self.time_elapsed = self.time_elapsed + dt
+    -- NOTE: time_elapsed is already incremented in BaseGame:updateBase, don't double-increment!
     self:updateSafeZone(dt)
     self:updateSafeMorph(dt)
     self:updateShield(dt)
@@ -1413,6 +1450,13 @@ function DodgeGame:updateObjects(dt)
         obj.vx = obj.vx or math.cos(obj.angle) * obj.speed
         obj.vy = obj.vy or math.sin(obj.angle) * obj.speed
 
+        -- Update sprite rotation (accumulate over time)
+        if obj.sprite_rotation_speed and obj.sprite_rotation_speed ~= 0 then
+            obj.sprite_rotation_angle = (obj.sprite_rotation_angle or 0) + (obj.sprite_rotation_speed * dt)
+            -- Keep angle in 0-360 range
+            obj.sprite_rotation_angle = obj.sprite_rotation_angle % 360
+        end
+
         -- Phase 1.4: Handle variant enemy special behaviors
         if obj.type == 'shooter' and obj.is_enemy then
             -- Shooter: Fire projectiles at player
@@ -1423,12 +1467,18 @@ function DodgeGame:updateObjects(dt)
                 local dx = self.player.x - obj.x
                 local dy = self.player.y - obj.y
                 local proj_angle = math.atan2(dy, dx)
+
+                -- Get shooter config (variant override or config default)
+                local shooter_cfg = (self.variant and self.variant.shooter) or
+                                   (DodgeCfg.objects and DodgeCfg.objects.shooter) or
+                                   { projectile_size = 0.5, projectile_speed = 0.8 }
+
                 local projectile = {
                     x = obj.x,
                     y = obj.y,
-                    radius = OBJECT_RADIUS * 0.5,
+                    radius = OBJECT_RADIUS * (shooter_cfg.projectile_size or 0.5),
                     type = 'linear',
-                    speed = self.object_speed * 0.8,
+                    speed = self.object_speed * (shooter_cfg.projectile_speed or 0.8),
                     angle = proj_angle,
                     is_projectile = true,
                     warned = false
@@ -1438,16 +1488,35 @@ function DodgeGame:updateObjects(dt)
                 table.insert(self.objects, projectile)
             end
         elseif obj.type == 'bouncer' and obj.is_enemy then
-            -- Bouncer: Bounce off walls
-            local next_x = obj.x + obj.vx * dt
-            local next_y = obj.y + obj.vy * dt
-            if next_x <= obj.radius or next_x >= self.game_width - obj.radius then
-                obj.vx = -obj.vx
-                obj.bounce_count = obj.bounce_count + 1
+            -- Bouncer: Bounce off walls (after entering play area)
+
+            -- Check if bouncer has entered play area
+            if not obj.has_entered then
+                if obj.x >= obj.radius and obj.x <= self.game_width - obj.radius and
+                   obj.y >= obj.radius and obj.y <= self.game_height - obj.radius then
+                    obj.has_entered = true
+                end
             end
-            if next_y <= obj.radius or next_y >= self.game_height - obj.radius then
-                obj.vy = -obj.vy
-                obj.bounce_count = obj.bounce_count + 1
+
+            -- Only bounce if we've entered the play area
+            if obj.has_entered then
+                local next_x = obj.x + obj.vx * dt
+                local next_y = obj.y + obj.vy * dt
+                if next_x <= obj.radius or next_x >= self.game_width - obj.radius then
+                    obj.vx = -obj.vx
+                    obj.bounce_count = obj.bounce_count + 1
+                end
+                if next_y <= obj.radius or next_y >= self.game_height - obj.radius then
+                    obj.vy = -obj.vy
+                    obj.bounce_count = obj.bounce_count + 1
+                end
+
+                -- Remove bouncer after enough bounces (counts as dodged)
+                local max_bounces = (DodgeCfg.objects and DodgeCfg.objects.bouncer and DodgeCfg.objects.bouncer.max_bounces) or 3
+                if obj.bounce_count >= max_bounces then
+                    obj.should_remove = true
+                    obj.was_dodged = true
+                end
             end
         elseif obj.type == 'teleporter' and obj.is_enemy then
             -- Teleporter: Disappear and reappear near player
@@ -1498,7 +1567,14 @@ function DodgeGame:updateObjects(dt)
                 return d
             end
             local diff = angdiff(desired, obj.angle)
-            local base_turn = math.rad(((DodgeCfg.seeker and DodgeCfg.seeker.base_turn_deg) or 6)) -- degrees/sec at baseline
+            local base_turn = math.rad(self.seeker_turn_rate) -- Use instance variable (config or variant override)
+
+            -- Debug: print first seeker update
+            if not self._seeker_debug_printed then
+                print(string.format("[DodgeGame] SEEKER BEHAVIOR ACTIVE - seeker_turn_rate: %d, base_turn_rad: %.4f",
+                    self.seeker_turn_rate, base_turn))
+                self._seeker_debug_printed = true
+            end
             local te = self.time_elapsed or 0
             local difficulty_scaler = 1 + math.min(((DodgeCfg.seeker and DodgeCfg.seeker.difficulty and DodgeCfg.seeker.difficulty.max) or 2.0), te / ((DodgeCfg.seeker and DodgeCfg.seeker.difficulty and DodgeCfg.seeker.difficulty.time) or 90))
             local max_turn = base_turn * difficulty_scaler * dt
@@ -1615,9 +1691,9 @@ function DodgeGame:updateObjects(dt)
                     end
                 end
             end
-        elseif self:isObjectOffscreen(obj) then
+        elseif self:isObjectOffscreen(obj) or obj.should_remove then
             table.remove(self.objects, i)
-            if obj.entered_play then
+            if obj.entered_play or obj.was_dodged then
                 self.metrics.objects_dodged = self.metrics.objects_dodged + 1
 
                 -- Phase 3.3: Play dodge sound (subtle)
@@ -1710,14 +1786,19 @@ end
 
 function DodgeGame:spawnSingleObject()
     -- Phase 1.4: Spawn variant-specific enemies if defined
-    if self:hasVariantEnemies() and math.random() < 0.3 then
-        -- 30% chance to spawn a variant-specific enemy
+    if self:hasVariantEnemies() and math.random() < 0.7 then
+        -- 70% chance to spawn a variant-specific enemy
         self:spawnVariantEnemy(false)
     elseif self.warning_enabled and math.random() < ((DodgeCfg.spawn and DodgeCfg.spawn.warning_chance) or 0.7) then
         table.insert(self.warnings, self:createWarning())
     else
-        -- createRandomObject already inserts into self.objects
-        self:createRandomObject(false)
+        -- Spawn basic "obstacle" enemy as fallback (unless variant disables it)
+        if not self.disable_obstacle_fallback then
+            self:spawnVariantEnemy(false, "obstacle")
+        else
+            -- If obstacle fallback disabled, always spawn from variant composition
+            self:spawnVariantEnemy(false)
+        end
     end
 end
 
@@ -1727,26 +1808,31 @@ function DodgeGame:hasVariantEnemies()
 end
 
 -- Phase 1.4: Spawn an enemy from variant composition
-function DodgeGame:spawnVariantEnemy(warned_status)
-    if not self:hasVariantEnemies() then
-        return self:createRandomObject(warned_status)
-    end
+function DodgeGame:spawnVariantEnemy(warned_status, force_type)
+    local chosen_type = force_type  -- Allow forcing a specific enemy type
 
-    -- Pick a random enemy type from composition
-    local enemy_types = {}
-    local total_weight = 0
-    for enemy_type, multiplier in pairs(self.enemy_composition) do
-        table.insert(enemy_types, {type = enemy_type, weight = multiplier})
-        total_weight = total_weight + multiplier
-    end
+    if not chosen_type then
+        if not self:hasVariantEnemies() then
+            -- No enemies defined, use basic obstacle
+            chosen_type = "obstacle"
+        else
+            -- Pick a random enemy type from composition
+            local enemy_types = {}
+            local total_weight = 0
+            for enemy_type, multiplier in pairs(self.enemy_composition) do
+                table.insert(enemy_types, {type = enemy_type, weight = multiplier})
+                total_weight = total_weight + multiplier
+            end
 
-    local r = math.random() * total_weight
-    local chosen_type = enemy_types[1].type -- fallback
-    for _, entry in ipairs(enemy_types) do
-        r = r - entry.weight
-        if r <= 0 then
-            chosen_type = entry.type
-            break
+            local r = math.random() * total_weight
+            chosen_type = enemy_types[1].type -- fallback
+            for _, entry in ipairs(enemy_types) do
+                r = r - entry.weight
+                if r <= 0 then
+                    chosen_type = entry.type
+                    break
+                end
+            end
         end
     end
 
@@ -1761,6 +1847,7 @@ function DodgeGame:spawnVariantEnemy(warned_status)
         self:createEnemyObject(sx, sy, angle, warned_status, enemy_def)
     else
         -- Fallback to regular object if enemy type not found
+        print("[DodgeGame] ERROR: Unknown enemy type: " .. tostring(chosen_type))
         self:createObject(sx, sy, angle, warned_status, 'linear')
     end
 end
@@ -1771,13 +1858,84 @@ function DodgeGame:createEnemyObject(spawn_x, spawn_y, angle, was_warned, enemy_
     local base_type = enemy_def.base_type or 'linear'
     local speed_mult = enemy_def.speed_multiplier or 1.0
 
+    -- Get size range (variant per-enemy override > variant universal > config per-enemy > config universal)
+    local size_range = nil
+
+    -- Check variant per-enemy override first
+    if self.variant and self.variant.enemy_sizes and self.variant.enemy_sizes[enemy_def.name] then
+        size_range = self.variant.enemy_sizes[enemy_def.name]
+    end
+
+    -- Then variant universal
+    if not size_range and self.variant and self.variant.size_range then
+        size_range = self.variant.size_range
+    end
+
+    -- Then config per-enemy
+    if not size_range and DodgeCfg.objects and DodgeCfg.objects.enemy_sizes then
+        size_range = DodgeCfg.objects.enemy_sizes[enemy_def.name]
+    end
+
+    -- Finally config universal
+    if not size_range and DodgeCfg.objects then
+        size_range = DodgeCfg.objects.size_range or {OBJECT_RADIUS, OBJECT_RADIUS}
+    end
+
+    size_range = size_range or {OBJECT_RADIUS, OBJECT_RADIUS}
+
+    -- Random size within range
+    local final_radius = size_range[1] + math.random() * (size_range[2] - size_range[1])
+
+    -- Get speed range (variant per-enemy override > variant universal > config per-enemy > config universal)
+    local speed_range = nil
+
+    -- Check variant per-enemy override first
+    if self.variant and self.variant.enemy_speeds and self.variant.enemy_speeds[enemy_def.name] then
+        speed_range = self.variant.enemy_speeds[enemy_def.name]
+    end
+
+    -- Then variant universal
+    if not speed_range and self.variant and self.variant.speed_range then
+        speed_range = self.variant.speed_range
+    end
+
+    -- Then config per-enemy
+    if not speed_range and DodgeCfg.objects and DodgeCfg.objects.enemy_speeds then
+        speed_range = DodgeCfg.objects.enemy_speeds[enemy_def.name]
+    end
+
+    -- Finally config universal
+    if not speed_range and DodgeCfg.objects then
+        speed_range = DodgeCfg.objects.speed_range or {self.object_speed, self.object_speed}
+    end
+
+    speed_range = speed_range or {self.object_speed, self.object_speed}
+
+    -- Random speed within range
+    local base_speed = speed_range[1] + math.random() * (speed_range[2] - speed_range[1])
+    local final_speed = base_speed * speed_mult
+
+    -- Get sprite rendering settings (variant per-enemy override > config per-enemy > defaults)
+    local sprite_settings = nil
+    if self.variant and self.variant.enemy_sprite_settings and self.variant.enemy_sprite_settings[enemy_def.name] then
+        sprite_settings = self.variant.enemy_sprite_settings[enemy_def.name]
+    elseif DodgeCfg.objects and DodgeCfg.objects.enemy_sprite_settings then
+        sprite_settings = DodgeCfg.objects.enemy_sprite_settings[enemy_def.name]
+    end
+
+    local sprite_rotation = (sprite_settings and sprite_settings.rotation) or 0
+    local sprite_direction = (sprite_settings and sprite_settings.direction) or "movement_based"
+
     local obj = {
         warned = was_warned,
-        radius = OBJECT_RADIUS,
+        radius = final_radius,
         type = base_type,
         enemy_type = enemy_def.name,  -- Store enemy type for identification
-        speed = self.object_speed * speed_mult,
-        is_enemy = true  -- Mark as variant enemy (not regular obstacle)
+        speed = final_speed,
+        is_enemy = true,  -- Mark as variant enemy (not regular obstacle)
+        sprite_rotation_angle = 0,  -- Accumulated rotation for sprite rendering (degrees)
+        sprite_rotation_speed = sprite_rotation,  -- Rotation speed in degrees/second
+        sprite_direction_mode = sprite_direction  -- "movement_based" or angle in degrees (0-360)
     }
 
     obj.x = spawn_x
@@ -1793,17 +1951,33 @@ function DodgeGame:createEnemyObject(spawn_x, spawn_y, angle, was_warned, enemy_
         obj.wave_amp = zig.wave_amp or 30
         obj.wave_phase = math.random()*math.pi*2
     elseif base_type == 'shooter' then
-        obj.shoot_timer = enemy_def.shoot_interval or 2.0
-        obj.shoot_interval = enemy_def.shoot_interval or 2.0
+        -- Get shoot interval (variant override or config default)
+        local shoot_interval = 2.0
+        if self.variant and self.variant.shooter and self.variant.shooter.shoot_interval then
+            shoot_interval = self.variant.shooter.shoot_interval
+        elseif DodgeCfg.objects and DodgeCfg.objects.shooter and DodgeCfg.objects.shooter.shoot_interval then
+            shoot_interval = DodgeCfg.objects.shooter.shoot_interval
+        end
+        obj.shoot_timer = shoot_interval
+        obj.shoot_interval = shoot_interval
     elseif base_type == 'teleporter' then
         obj.teleport_timer = enemy_def.teleport_interval or 3.0
         obj.teleport_interval = enemy_def.teleport_interval or 3.0
         obj.teleport_range = enemy_def.teleport_range or 100
     elseif base_type == 'bouncer' then
         obj.bounce_count = 0
+        obj.has_entered = false  -- Track if bouncer has entered play area yet
     end
 
     table.insert(self.objects, obj)
+
+    -- Debug output (limited to avoid spam)
+    if not self._last_enemy_debug or (love.timer.getTime() - self._last_enemy_debug) > 1.0 then
+        print(string.format("[DodgeGame] Created enemy: type=%s, enemy_type=%s, is_enemy=%s",
+            obj.type, obj.enemy_type, tostring(obj.is_enemy)))
+        self._last_enemy_debug = love.timer.getTime()
+    end
+
     return obj
 end
 
@@ -1873,7 +2047,14 @@ function DodgeGame:createWarning()
 end
 
 function DodgeGame:createObjectFromWarning(warning)
-    self:createObject(warning.sx, warning.sy, warning.angle, true)
+    -- Warnings should create obstacle enemies, not generic objects
+    local enemy_def = self.ENEMY_TYPES.obstacle
+    if enemy_def then
+        self:createEnemyObject(warning.sx, warning.sy, warning.angle, true, enemy_def)
+    else
+        -- Fallback to old system if obstacle enemy not found
+        self:createObject(warning.sx, warning.sy, warning.angle, true)
+    end
 end
 
 function DodgeGame:createRandomObject(warned_status)

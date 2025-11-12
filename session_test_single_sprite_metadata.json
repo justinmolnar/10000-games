@@ -1,0 +1,14 @@
+{
+  "session_name": "test_single_sprite",
+  "started_at": "2025-11-07T03:57:35.085454Z",
+  "total_sprites": 1,
+  "generated": [],
+  "failed": [
+    {
+      "id": "test_apple_01",
+      "prompt": "red apple fruit, shiny surface, top-down pixel art",
+      "error": "Generation or download failed"
+    }
+  ],
+  "completed_at": "2025-11-07T03:58:11.839159Z"
+}

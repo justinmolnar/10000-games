@@ -1,0 +1,28 @@
+{
+  "session_name": "fix_diamond",
+  "started_at": "2025-11-07T04:58:18.260519+00:00",
+  "total_sprites": 1,
+  "generated": [
+    {
+      "id": "diamond_white_01",
+      "file_path": "assets/sprites/shared/collectibles\\diamond_white_01.png",
+      "prompt": "white diamond gem, four-pointed rhombus shape rotated 45 degrees, sparkly crystal jewel, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:58:31.020771+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1247,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": [],
+  "completed_at": "2025-11-07T04:58:31.020814+00:00"
+}

@@ -111,20 +111,11 @@ function WindowManager:createWindow(program, title, content_state, default_w, de
              print("Calculated initial position and default size:", x, y, w, h)
         end
     elseif remembered and remembered.w and remembered.h and remembered.x and remembered.y then
-        -- For minigame_runner, only restore position (not size) to preserve aspect ratios
-        -- Games with lock_aspect_ratio will correct themselves after instantiation
-        if program_type == "minigame_runner" then
-            w = default_w or conf_default_w
-            h = default_h or conf_default_h
-            x, y = remembered.x, remembered.y
-            print("Using remembered position with default size for", program_type, "(variant:", variant_id or "N/A", "):", x, y, w, h)
-        else
-            -- Use remembered size exactly - user has resized it before
-            w = remembered.w
-            h = remembered.h
-            x, y = remembered.x, remembered.y
-            print("Using remembered position and size for", program_type, ":", x, y, w, h)
-        end
+        -- Restore both position and size from saved data
+        w = remembered.w
+        h = remembered.h
+        x, y = remembered.x, remembered.y
+        print("Using remembered position and size for", program_type, "(variant:", variant_id or "N/A", "):", x, y, w, h)
     else
     w = default_w or conf_default_w
     h = default_h or conf_default_h
@@ -199,6 +190,8 @@ function WindowManager:closeWindow(window_id)
             -- Remember position for this program type if not maximized
             if not window.is_maximized then
                 self:rememberWindowPosition(window)
+                -- Save to disk immediately so positions persist across sessions
+                self:saveWindowPositions()
             end
 
             -- Clear minimized state

@@ -1,6 +1,8 @@
 local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local CoinFlipView = require('src.games.views.coin_flip_view')
+local ScorePopup = require('src.games.score_popup')
+local ParticleSystem = require('src.utils.particle_system')
 local CoinFlip = BaseGame:extend('CoinFlip')
 
 -- Config-driven defaults with safe fallbacks
@@ -16,6 +18,16 @@ local DEFAULT_TOTAL_CORRECT_TARGET = 50
 local DEFAULT_RATIO_TARGET = 0.75  -- 75% accuracy
 local DEFAULT_RATIO_FLIP_COUNT = 20  -- Over last 20 flips
 local DEFAULT_TIME_LIMIT = 120  -- 2 minutes
+local DEFAULT_PATTERN_HISTORY_LENGTH = 10  -- Show last 10 flips
+local DEFAULT_SHOW_PATTERN_HISTORY = false
+local DEFAULT_AUTO_FLIP_INTERVAL = 0  -- 0 = disabled, >0 = auto flip every N seconds
+local DEFAULT_RESULT_ANNOUNCE_MODE = "text"  -- "text", "voice", "both", "none"
+
+-- Scoring defaults
+local DEFAULT_SCORE_PER_CORRECT = 100
+local DEFAULT_STREAK_MULTIPLIER = 0.1  -- +10% per streak level
+local DEFAULT_PERFECT_STREAK_BONUS = 1000
+local DEFAULT_SCORE_POPUP_ENABLED = true
 
 function CoinFlip:init(game_data, cheats, di, variant_override)
     CoinFlip.super.init(self, game_data, cheats, di, variant_override)
@@ -56,6 +68,26 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
     self.show_bias_hint = (runtimeCfg and runtimeCfg.show_bias_hint) or DEFAULT_SHOW_BIAS_HINT
     if self.variant and self.variant.show_bias_hint ~= nil then
         self.show_bias_hint = self.variant.show_bias_hint
+    end
+
+    self.show_pattern_history = (runtimeCfg and runtimeCfg.show_pattern_history) or DEFAULT_SHOW_PATTERN_HISTORY
+    if self.variant and self.variant.show_pattern_history ~= nil then
+        self.show_pattern_history = self.variant.show_pattern_history
+    end
+
+    self.pattern_history_length = (runtimeCfg and runtimeCfg.pattern_history_length) or DEFAULT_PATTERN_HISTORY_LENGTH
+    if self.variant and self.variant.pattern_history_length ~= nil then
+        self.pattern_history_length = self.variant.pattern_history_length
+    end
+
+    self.auto_flip_interval = (runtimeCfg and runtimeCfg.auto_flip_interval) or DEFAULT_AUTO_FLIP_INTERVAL
+    if self.variant and self.variant.auto_flip_interval ~= nil then
+        self.auto_flip_interval = self.variant.auto_flip_interval
+    end
+
+    self.result_announce_mode = (runtimeCfg and runtimeCfg.result_announce_mode) or DEFAULT_RESULT_ANNOUNCE_MODE
+    if self.variant and self.variant.result_announce_mode ~= nil then
+        self.result_announce_mode = self.variant.result_announce_mode
     end
 
     -- Pattern Mode
@@ -143,13 +175,68 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
     self.time_elapsed = 0  -- For "time" victory condition
     self.flip_history = {}  -- For "ratio" victory condition (stores 1 for correct, 0 for incorrect)
 
+    -- Pattern history tracking (Phase 5 completion)
+    self.pattern_history = {}  -- Stores last N flip results ('H' or 'T') for display
+
+    -- Auto-flip timer (Phase 5 completion)
+    self.auto_flip_timer = 0  -- Countdown to next auto flip
+    self.time_per_flip_timer = 0  -- Countdown for time pressure mode
+
+    -- Scoring parameters
+    self.score_per_correct = (runtimeCfg and runtimeCfg.score_per_correct) or DEFAULT_SCORE_PER_CORRECT
+    if self.variant and self.variant.score_per_correct ~= nil then
+        self.score_per_correct = self.variant.score_per_correct
+    end
+
+    self.streak_multiplier = (runtimeCfg and runtimeCfg.streak_multiplier) or DEFAULT_STREAK_MULTIPLIER
+    if self.variant and self.variant.streak_multiplier ~= nil then
+        self.streak_multiplier = self.variant.streak_multiplier
+    end
+
+    self.perfect_streak_bonus = (runtimeCfg and runtimeCfg.perfect_streak_bonus) or DEFAULT_PERFECT_STREAK_BONUS
+    if self.variant and self.variant.perfect_streak_bonus ~= nil then
+        self.perfect_streak_bonus = self.variant.perfect_streak_bonus
+    end
+
+    self.score_popup_enabled = (runtimeCfg and runtimeCfg.score_popup_enabled) or DEFAULT_SCORE_POPUP_ENABLED
+    if self.variant and self.variant.score_popup_enabled ~= nil then
+        self.score_popup_enabled = self.variant.score_popup_enabled
+    end
+
+    -- Scoring state
+    self.score = 0
+    self.perfect_streak = true  -- Track if player has maintained streak without any mistakes
+
     -- Initialize metrics table for formula
     self.metrics = {
         max_streak = 0,
         correct_total = 0,
         flips_total = 0,
-        accuracy = 0
+        accuracy = 0,
+        score = 0
     }
+
+    -- Score popups
+    self.score_popups = {}
+
+    -- Visual effects parameters (Phase 11)
+    self.celebration_on_streak = true
+    if self.variant and self.variant.celebration_on_streak ~= nil then
+        self.celebration_on_streak = self.variant.celebration_on_streak
+    end
+
+    self.screen_flash_enabled = true
+    if self.variant and self.variant.screen_flash_enabled ~= nil then
+        self.screen_flash_enabled = self.variant.screen_flash_enabled
+    end
+
+    -- Visual effects state (Phase 11)
+    self.particle_system = ParticleSystem:new()
+    self.flip_animation_rotation = 0  -- Current rotation of coin during flip
+    self.is_flipping = false
+    self.flip_timer = 0
+    self.screen_flash_color = nil  -- {r, g, b, a} for screen flash
+    self.screen_flash_timer = 0
 
     -- Create view
     self.view = CoinFlipView:new(self)
@@ -158,14 +245,57 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
     self.rng = love.math.newRandomGenerator(self.seed or os.time())
 end
 
-function CoinFlip:updateGameLogic(dt)
-    -- Track time for "time" victory condition
-    if not self.game_over and not self.victory then
-        self.time_elapsed = self.time_elapsed + dt
+function CoinFlip:setPlayArea(width, height)
+    -- Store viewport dimensions for demo playback
+    self.viewport_width = width
+    self.viewport_height = height
+    print("[CoinFlip] Play area updated to:", width, height)
+end
 
-        -- Check time limit for "time" victory condition
+function CoinFlip:updateGameLogic(dt)
+    -- Check time limit for "time" victory condition
+    -- NOTE: time_elapsed is already incremented in BaseGame:updateBase, don't double-increment!
+    if not self.game_over and not self.victory then
         if self.victory_condition == "time" and self.time_elapsed >= self.time_limit then
             self.victory = true
+        end
+    end
+
+    -- Update visual effects (Phase 11)
+    self.particle_system:update(dt)
+
+    -- Update flip animation (Phase 11)
+    if self.is_flipping then
+        self.flip_timer = self.flip_timer + dt
+        self.flip_animation_rotation = self.flip_animation_rotation + dt * 20 * self.flip_animation_speed
+
+        -- End flip animation after duration
+        if self.flip_timer >= (0.5 / self.flip_animation_speed) then
+            self.is_flipping = false
+            self.flip_timer = 0
+            self.flip_animation_rotation = 0
+        end
+    end
+
+    -- Update screen flash (Phase 11)
+    if self.screen_flash_timer > 0 then
+        self.screen_flash_timer = self.screen_flash_timer - dt
+        if self.screen_flash_timer <= 0 then
+            self.screen_flash_color = nil
+        else
+            -- Fade out alpha
+            if self.screen_flash_color then
+                self.screen_flash_color[4] = self.screen_flash_timer / 0.2
+            end
+        end
+    end
+
+    -- Update score popups
+    for i = #self.score_popups, 1, -1 do
+        local popup = self.score_popups[i]
+        popup:update(dt)
+        if not popup.alive then
+            table.remove(self.score_popups, i)
         end
     end
 
@@ -176,6 +306,43 @@ function CoinFlip:updateGameLogic(dt)
             self.show_result = false
             self.result_display_time = 0
             self.waiting_for_guess = true
+
+            -- Reset auto-flip timer when ready for next flip
+            if self.auto_flip_interval > 0 then
+                self.auto_flip_timer = self.auto_flip_interval
+            end
+
+            -- Reset time per flip timer
+            if self.time_per_flip > 0 then
+                self.time_per_flip_timer = self.time_per_flip
+            end
+        end
+    end
+
+    -- Auto-flip countdown (Phase 5 completion)
+    if self.waiting_for_guess and not self.game_over and not self.victory and self.auto_flip_interval > 0 then
+        self.auto_flip_timer = self.auto_flip_timer - dt
+        if self.auto_flip_timer <= 0 then
+            -- Auto flip (default to heads in auto mode)
+            if self.flip_mode == "auto" then
+                self:flipCoin()
+            else
+                -- In guess mode, auto-guess heads if no input
+                self:makeGuess('heads')
+            end
+        end
+    end
+
+    -- Time per flip countdown (Phase 5 completion)
+    if self.waiting_for_guess and not self.game_over and not self.victory and self.time_per_flip > 0 then
+        self.time_per_flip_timer = self.time_per_flip_timer - dt
+        if self.time_per_flip_timer <= 0 then
+            -- Time ran out, count as incorrect
+            if self.flip_mode == "auto" then
+                self:flipCoin()  -- Still flip, but streak resets if tails
+            else
+                self:makeGuess('heads')  -- Default to heads
+            end
         end
     end
 end
@@ -256,9 +423,19 @@ function CoinFlip:flipCoin()
     -- Auto mode: just flip, heads = advance streak
     self.waiting_for_guess = false
 
+    -- Start flip animation (Phase 11)
+    self.is_flipping = true
+    self.flip_timer = 0
+
     -- Generate result based on pattern mode
     local result = self:generateFlipResult()
     self.last_result = result
+
+    -- Update pattern history (Phase 5 completion)
+    table.insert(self.pattern_history, result == 'heads' and 'H' or 'T')
+    while #self.pattern_history > self.pattern_history_length do
+        table.remove(self.pattern_history, 1)  -- Remove oldest
+    end
 
     -- Update stats
     self.flips_total = self.flips_total + 1
@@ -269,19 +446,79 @@ function CoinFlip:flipCoin()
         self.current_streak = self.current_streak + 1
         table.insert(self.flip_history, 1)  -- Track for ratio victory condition
 
+        -- Award score with streak multiplier
+        local base_score = self.score_per_correct
+        local multiplier = 1 + (self.current_streak * self.streak_multiplier)
+        local points = math.floor(base_score * multiplier)
+        self.score = self.score + points
+
+        -- Spawn score popup
+        if self.score_popup_enabled then
+            local w, h = love.graphics.getDimensions()
+            local popup_color = {1, 1, 1}  -- White for correct guess
+            -- Yellow for streak milestones at 5/10
+            if self.current_streak == 5 or self.current_streak == 10 then
+                popup_color = {1, 1, 0}
+            end
+            table.insert(self.score_popups, ScorePopup:new(w / 2, h / 2 - 50, "+" .. points, popup_color))
+        end
+
         -- Update max streak
         if self.current_streak > self.max_streak then
             self.max_streak = self.current_streak
         end
 
+        -- Visual effects: screen flash (green for correct) - Phase 11
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {0, 1, 0, 0.3}  -- Green flash
+            self.screen_flash_timer = 0.2
+        end
+
+        -- Visual effects: celebration on streak milestones - Phase 11
+        if self.celebration_on_streak and (self.current_streak % 5 == 0) then
+            local w, h = love.graphics.getDimensions()
+            self.particle_system:emitConfetti(w / 2, h / 2, 15)
+        end
+
+        -- TTS announcement (Phase 5 completion)
+        if (self.result_announce_mode == "voice" or self.result_announce_mode == "both") and self.di and self.di.ttsManager then
+            local tts = self.di.ttsManager
+            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
+            tts:speakWeird("correct", weirdness)
+        end
+
         -- Check victory condition
         if self:checkVictoryCondition() then
             self.victory = true
+            -- Award perfect streak bonus if no mistakes
+            if self.perfect_streak and self.incorrect_total == 0 then
+                self.score = self.score + self.perfect_streak_bonus
+                -- Spawn green popup for perfect streak
+                if self.score_popup_enabled then
+                    local w, h = love.graphics.getDimensions()
+                    table.insert(self.score_popups, ScorePopup:new(w / 2, h / 2 - 100, "PERFECT! +" .. self.perfect_streak_bonus, {0, 1, 0}))
+                end
+            end
         end
     else
         -- Tails = miss
         self.incorrect_total = self.incorrect_total + 1
+        self.perfect_streak = false  -- Mark that we've made a mistake
         self.current_streak = 0  -- Reset streak
+
+        -- Visual effects: screen flash (red for wrong) - Phase 11
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {1, 0, 0, 0.3}  -- Red flash
+            self.screen_flash_timer = 0.2
+        end
+
+        -- TTS announcement (Phase 5 completion)
+        if (self.result_announce_mode == "voice" or self.result_announce_mode == "both") and self.di and self.di.ttsManager then
+            local tts = self.di.ttsManager
+            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
+            tts:speakWeird("wrong", weirdness)
+        end
+
         table.insert(self.flip_history, 0)  -- Track for ratio victory condition
 
         -- Lose a life (if not unlimited)
@@ -298,6 +535,7 @@ function CoinFlip:flipCoin()
     self.metrics.correct_total = self.correct_total
     self.metrics.flips_total = self.flips_total
     self.metrics.accuracy = self.flips_total > 0 and (self.correct_total / self.flips_total) or 0
+    self.metrics.score = self.score
 
     -- Show result
     self.show_result = true
@@ -310,9 +548,19 @@ function CoinFlip:makeGuess(guess)
     self.last_guess = guess
     self.waiting_for_guess = false
 
+    -- Start flip animation (Phase 11)
+    self.is_flipping = true
+    self.flip_timer = 0
+
     -- Generate result based on pattern mode
     local result = self:generateFlipResult()
     self.last_result = result
+
+    -- Update pattern history (Phase 5 completion)
+    table.insert(self.pattern_history, result == 'heads' and 'H' or 'T')
+    while #self.pattern_history > self.pattern_history_length do
+        table.remove(self.pattern_history, 1)  -- Remove oldest
+    end
 
     -- Update stats
     self.flips_total = self.flips_total + 1
@@ -324,20 +572,79 @@ function CoinFlip:makeGuess(guess)
         self.current_streak = self.current_streak + 1
         table.insert(self.flip_history, 1)  -- Track for ratio victory condition
 
+        -- Award score with streak multiplier
+        local base_score = self.score_per_correct
+        local multiplier = 1 + (self.current_streak * self.streak_multiplier)
+        local points = math.floor(base_score * multiplier)
+        self.score = self.score + points
+
+        -- Spawn score popup
+        if self.score_popup_enabled then
+            local w, h = love.graphics.getDimensions()
+            local popup_color = {1, 1, 1}  -- White for correct guess
+            -- Yellow for streak milestones at 5/10
+            if self.current_streak == 5 or self.current_streak == 10 then
+                popup_color = {1, 1, 0}
+            end
+            table.insert(self.score_popups, ScorePopup:new(w / 2, h / 2 - 50, "+" .. points, popup_color))
+        end
+
         -- Update max streak
         if self.current_streak > self.max_streak then
             self.max_streak = self.current_streak
         end
 
+        -- Visual effects: screen flash (green for correct) - Phase 11
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {0, 1, 0, 0.3}  -- Green flash
+            self.screen_flash_timer = 0.2
+        end
+
+        -- Visual effects: celebration on streak milestones - Phase 11
+        if self.celebration_on_streak and (self.current_streak % 5 == 0) then
+            local w, h = love.graphics.getDimensions()
+            self.particle_system:emitConfetti(w / 2, h / 2, 15)
+        end
+
+        -- TTS announcement (Phase 5 completion)
+        if (self.result_announce_mode == "voice" or self.result_announce_mode == "both") and self.di and self.di.ttsManager then
+            local tts = self.di.ttsManager
+            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
+            tts:speakWeird("correct", weirdness)
+        end
+
         -- Check victory condition
         if self:checkVictoryCondition() then
             self.victory = true
+            -- Award perfect streak bonus if no mistakes
+            if self.perfect_streak and self.incorrect_total == 0 then
+                self.score = self.score + self.perfect_streak_bonus
+                -- Spawn green popup for perfect streak
+                if self.score_popup_enabled then
+                    local w, h = love.graphics.getDimensions()
+                    table.insert(self.score_popups, ScorePopup:new(w / 2, h / 2 - 100, "PERFECT! +" .. self.perfect_streak_bonus, {0, 1, 0}))
+                end
+            end
         end
     else
         -- Wrong guess
         self.incorrect_total = self.incorrect_total + 1
+        self.perfect_streak = false  -- Mark that we've made a mistake
         self.current_streak = 0  -- Reset streak
         table.insert(self.flip_history, 0)  -- Track for ratio victory condition
+
+        -- Visual effects: screen flash (red for wrong) - Phase 11
+        if self.screen_flash_enabled then
+            self.screen_flash_color = {1, 0, 0, 0.3}  -- Red flash
+            self.screen_flash_timer = 0.2
+        end
+
+        -- TTS announcement (Phase 5 completion)
+        if (self.result_announce_mode == "voice" or self.result_announce_mode == "both") and self.di and self.di.ttsManager then
+            local tts = self.di.ttsManager
+            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
+            tts:speakWeird("wrong", weirdness)
+        end
 
         -- Lose a life (if not unlimited)
         if self.lives < 999 then
@@ -353,6 +660,7 @@ function CoinFlip:makeGuess(guess)
     self.metrics.correct_total = self.correct_total
     self.metrics.flips_total = self.flips_total
     self.metrics.accuracy = self.flips_total > 0 and (self.correct_total / self.flips_total) or 0
+    self.metrics.score = self.score
 
     -- Show result
     self.show_result = true

@@ -1,0 +1,53 @@
+{
+  "robots": [
+    {"id": "robot_small_01", "object_id": "0b3e18da-4235-4da7-8228-80bdd2d3b66f"},
+    {"id": "robot_small_02", "object_id": "0ea0aed5-4b96-4df8-b138-3eb219c52f3d"},
+    {"id": "robot_medium_01", "object_id": "c2aa76ea-9ada-4440-8073-107766efebe4"},
+    {"id": "robot_medium_02", "object_id": "69a76144-5198-425f-8edc-1dad23cd32f4"},
+    {"id": "robot_large_01", "object_id": "01793cd9-2d0a-4258-aaef-758cec87345c"}
+  ],
+  "turrets": [
+    {"id": "turret_basic_01", "object_id": "0a501959-73c4-4274-bdbd-3915af29fe50"},
+    {"id": "turret_laser_01", "object_id": "ac109852-ef9b-4551-ae64-b1c5499867da"},
+    {"id": "turret_missile_01", "object_id": "e3c276d8-279f-435e-9359-2591b662cecc"}
+  ],
+  "drones": [
+    {"id": "drone_01", "object_id": "100fa880-5736-47b2-ac49-01b6b373f6a3"},
+    {"id": "drone_02", "object_id": "30bfb5e4-f463-464a-b898-b26edd772f72"},
+    {"id": "drone_03", "object_id": "0f4a0e5f-26ef-46ba-aa29-413d09683e9e"}
+  ],
+  "mechs": [
+    {"id": "mech_01", "object_id": "6632241a-00ae-4773-980c-c47a14f3a98e"},
+    {"id": "mech_02", "object_id": "3c54975c-ccaa-4111-8947-e3d9ed8bd68c"}
+  ],
+  "tanks": [
+    {"id": "tank_01", "object_id": "e0a4d613-b3fa-4a48-8cfe-9f27ad6acfa5"},
+    {"id": "tank_02", "object_id": "914326cd-8a18-46e0-8349-012f0ca45594"}
+  ],
+  "probes": [
+    {"id": "probe_01", "object_id": "7c5be111-4382-42fd-ab83-909b00cf046d"},
+    {"id": "probe_02", "object_id": "dc9a52d7-4408-4415-b5c9-d97326c14bcd"}
+  ],
+  "mines": [
+    {"id": "mine_01", "object_id": "3a22b95b-bbef-46f4-9c8b-ec5c7486e906"},
+    {"id": "mine_02", "object_id": "d2eeb542-ef2d-4313-b8bc-64051fcebc7b"}
+  ],
+  "satellite": [
+    {"id": "satellite_01", "object_id": "d9aa5441-df4f-4ec0-bea6-520afc53e9d3"}
+  ],
+  "coins": [
+    {"id": "coin_gold_heads", "object_id": "fdb0b1be-a755-4882-ab6c-bdc2d165e8fb"},
+    {"id": "coin_gold_tails", "object_id": "7ccf693f-6899-4414-8ce9-4747f3a770d8"},
+    {"id": "coin_silver_heads", "object_id": "41097ab8-877a-4023-8f03-008409176a98"},
+    {"id": "coin_silver_tails", "object_id": "0581970b-c54b-4139-b448-e1fed64f1fac"},
+    {"id": "coin_bronze_heads", "object_id": "a7d1fc0f-0317-4604-bb27-3c84ce6a81d3"},
+    {"id": "coin_bronze_tails", "object_id": "8a214a00-dc48-424d-9d59-c4fed4d81fa5"}
+  ],
+  "hands": [
+    {"id": "hand_rock", "object_id": "c1bf22aa-e680-4292-a7c1-071298345de0"},
+    {"id": "hand_paper", "object_id": "05c51bcc-6ad2-4564-8e61-c93612e46412"},
+    {"id": "hand_scissors", "object_id": "01451c03-17ba-4e15-ad20-98c1f1107daa"},
+    {"id": "hand_lizard", "object_id": "9cff407f-61ab-4677-b690-4bd3b6bef8ca"},
+    {"id": "hand_spock", "object_id": "7c21ce1b-9a42-424a-853c-6b297c76c1f9"}
+  ]
+}

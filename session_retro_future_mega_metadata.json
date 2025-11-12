@@ -1,0 +1,3334 @@
+{
+  "session_name": "retro_future_mega",
+  "started_at": "2025-11-08T03:44:31.047193+00:00",
+  "total_sprites": 175,
+  "generated": [
+    {
+      "id": "robot_chrome_round_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_chrome_round_01.png",
+      "prompt": "chrome robot with round body, antenna on head, shiny metallic finish, 1950s retro-futuristic design, straight front view facing camera",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:44:42.024918+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 3852,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_chrome_boxy_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_chrome_boxy_01.png",
+      "prompt": "boxy chrome robot, rectangular body, rivets visible, atomic age styling, direct front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:44:58.584677+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2091,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_chrome_dome_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_chrome_dome_01.png",
+      "prompt": "robot with glass dome head, brain visible inside, chrome body, vintage sci-fi, facing camera straight on",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:45:12.838077+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 3215,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_chrome_treads_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_chrome_treads_01.png",
+      "prompt": "robot on tank treads, chrome plating, mechanical arms, retro-future design, top-down overhead view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:45:30.743852+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 5415,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_chrome_humanoid_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_chrome_humanoid_01.png",
+      "prompt": "humanoid chrome robot, art deco styling, sleek 1930s future aesthetic, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:45:44.827897+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2239,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_brass_vintage_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_brass_vintage_01.png",
+      "prompt": "brass colored robot, vintage clockwork style, gears visible, steampunk meets retro-future, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:46:02.154441+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3917,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_copper_rusty_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_copper_rusty_01.png",
+      "prompt": "copper robot with patina, aged retro-future aesthetic, weathered atomic age, facing camera",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:46:19.538386+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3546,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_silver_sleek_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_silver_sleek_01.png",
+      "prompt": "sleek silver robot, streamlined design, 1950s Jetsons-style futurism, direct front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:46:34.855876+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2602,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_gold_luxe_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_gold_luxe_01.png",
+      "prompt": "golden robot, luxurious finish, ceremonial design, art deco retro-future, straight front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:46:50.831940+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2243,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_tin_toy_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/chrome\\robot_tin_toy_01.png",
+      "prompt": "tin toy robot, wind-up key on back visible, vintage 1950s toy aesthetic, front view facing camera",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:47:05.207767+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2195,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_red_friendly_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_red_friendly_01.png",
+      "prompt": "red robot with friendly face, rounded design, helpful assistant, 1950s retro-futuristic style, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:47:21.534377+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2860,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_blue_service_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_blue_service_01.png",
+      "prompt": "blue service robot, retro-diner aesthetic, carrying tray visible, 1950s future servant, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:47:38.097364+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1456,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_green_garden_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_green_garden_01.png",
+      "prompt": "green robot with watering can attachment, gardener bot, atomic age design, facing camera",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:47:54.402926+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2486,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_yellow_caution_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_yellow_caution_01.png",
+      "prompt": "yellow and black striped robot, caution markings, industrial retro-future, direct front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:48:11.278800+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3259,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_purple_science_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_purple_science_01.png",
+      "prompt": "purple robot with laboratory flask, scientist bot, vintage sci-fi mad scientist assistant, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:48:28.741297+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3903,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_orange_construction_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_orange_construction_01.png",
+      "prompt": "orange construction robot, hard hat, tool attachments, 1960s space age worker, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:48:45.240073+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2486,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_pink_companion_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_pink_companion_01.png",
+      "prompt": "pink companion robot, cute design, heart display on chest, retro-future friend, facing camera",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:49:01.133405+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2617,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_white_medical_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_white_medical_01.png",
+      "prompt": "white medical robot, red cross symbol, clean room design, 1950s hospital of tomorrow, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:49:15.268538+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2751,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_black_security_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_black_security_01.png",
+      "prompt": "black security robot, spotlight eye, patrol duty, retro-future law enforcement, facing forward",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:49:35.923941+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 3315,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_teal_aquatic_01",
+      "file_path": "assets/sprites/shared/retro_future/robots/colored\\robot_teal_aquatic_01.png",
+      "prompt": "teal underwater robot, propeller, diving bell aesthetic, Jules Verne meets atomic age, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:49:51.081309+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2158,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_classic_red_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_classic_red_01.png",
+      "prompt": "classic 1950s ray gun, chrome barrel with red accents, tail fins on back, Buck Rogers style, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:50:16.891032+00:00",
+      "generation_time_seconds": 22,
+      "size": "64x64",
+      "file_size_bytes": 1333,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_classic_blue_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_classic_blue_01.png",
+      "prompt": "blue ray gun, bubble dome on side, atomic age styling, Flash Gordon aesthetic, side profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:50:46.515194+00:00",
+      "generation_time_seconds": 26,
+      "size": "64x64",
+      "file_size_bytes": 2651,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_classic_green_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_classic_green_01.png",
+      "prompt": "green ray gun, Tesla coils visible, electric discharge effect, mad scientist weapon, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:51:07.815706+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 3007,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_pistol_chrome_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_pistol_chrome_01.png",
+      "prompt": "chrome ray pistol, sleek art deco design, 1930s future detective sidearm, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:51:23.869055+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1532,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_pistol_gold_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_pistol_gold_01.png",
+      "prompt": "gold plated ray pistol, ornate art nouveau engravings, space captain's sidearm, side profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:51:41.848643+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2839,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_rifle_long_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_rifle_long_01.png",
+      "prompt": "long ray rifle with scope, stabilizer fins, 1950s space marine weapon, side view profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:51:59.053320+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1192,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_rifle_heavy_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_rifle_heavy_01.png",
+      "prompt": "heavy ray rifle, cooling vents, power pack attached, retro-future military, side profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:52:15.697286+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3110,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_disintegrator_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_disintegrator_01.png",
+      "prompt": "disintegrator ray, spiral barrel, dangerous looking, atomic age death ray, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:52:32.852951+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2085,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_freeze_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_freeze_01.png",
+      "prompt": "freeze ray gun, ice blue color, frost emanating, 1960s villain weapon, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:52:57.478660+00:00",
+      "generation_time_seconds": 21,
+      "size": "64x64",
+      "file_size_bytes": 1156,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_heat_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_heat_01.png",
+      "prompt": "heat ray, orange-red glow, thermal waves visible, retro sci-fi incinerator, side profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:53:16.931763+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 4075,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_stun_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_stun_01.png",
+      "prompt": "stun ray, yellow electricity arcs, non-lethal design, space police weapon, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:53:31.081352+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1795,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_shrink_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_shrink_01.png",
+      "prompt": "shrink ray, purple beam emitter, scientific tool, mad scientist invention, side profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:53:47.201841+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1175,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_growth_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_growth_01.png",
+      "prompt": "growth ray, green beam, enlarging device, 1950s B-movie prop, side view profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:54:07.937183+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 2179,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_atomic_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_atomic_01.png",
+      "prompt": "atomic ray gun, radiation trefoil symbol, glowing green core, nuclear powered, side profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:54:27.510666+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1799,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raygun_laser_01",
+      "file_path": "assets/sprites/shared/retro_future/weapons/rayguns\\raygun_laser_01.png",
+      "prompt": "laser pistol, red beam visible, focusing lens, retro-future space opera, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:54:44.309282+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1978,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_silver_classic_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_silver_classic_01.png",
+      "prompt": "silver rocket ship, pointed nose cone, three stabilizer fins, flame from exhaust, 1950s retro-futuristic, top-down overhead view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:54:59.757898+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1277,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_red_stripe_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_red_stripe_01.png",
+      "prompt": "rocket with red racing stripe, sleek streamlined design, round portholes, atomic age styling, top-down view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:55:14.924929+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1992,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_blue_explorer_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_blue_explorer_01.png",
+      "prompt": "blue exploration rocket, scientific equipment on sides, antenna array, 1960s space age, top-down overhead",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:55:32.130202+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1372,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_gold_luxury_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_gold_luxury_01.png",
+      "prompt": "gold plated luxury rocket, art deco styling, passenger liner, Jetsons aesthetic, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:55:49.401776+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1516,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_green_cargo_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_green_cargo_01.png",
+      "prompt": "green cargo rocket, bulky design, loading bay doors, retro-future freight hauler, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:56:15.092307+00:00",
+      "generation_time_seconds": 22,
+      "size": "64x64",
+      "file_size_bytes": 2069,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_military_gray_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_military_gray_01.png",
+      "prompt": "military gray rocket, weapon hardpoints, aggressive design, 1950s war rocket, top-down view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:56:40.122362+00:00",
+      "generation_time_seconds": 22,
+      "size": "64x64",
+      "file_size_bytes": 1193,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_racer_yellow_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_racer_yellow_01.png",
+      "prompt": "yellow racing rocket, streamlined, speed fins, number decal, space grand prix, side profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:56:54.874124+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2080,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_tiny_scout_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_tiny_scout_01.png",
+      "prompt": "tiny scout rocket, single pilot, compact design, retro-future exploration pod, top-down overhead",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:57:11.257340+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1741,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_massive_colony_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_massive_colony_01.png",
+      "prompt": "massive colony ship, multiple decks visible, city in space, retro-future ark, side view profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:57:32.761917+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 3768,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "saucer_classic_chrome_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\saucer_classic_chrome_01.png",
+      "prompt": "classic flying saucer, chrome dome top, lights around rim, 1950s UFO design, top-down overhead view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:57:57.958799+00:00",
+      "generation_time_seconds": 22,
+      "size": "64x64",
+      "file_size_bytes": 3494,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "saucer_alien_green_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\saucer_alien_green_01.png",
+      "prompt": "alien flying saucer, green metallic, strange hieroglyphs, retro B-movie UFO, top-down view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:58:15.573182+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3397,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "saucer_earth_military_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\saucer_earth_military_01.png",
+      "prompt": "earth military saucer, camouflage pattern, weapons visible, reverse-engineered UFO, top-down overhead",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:58:32.983884+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 4529,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "saucer_spinning_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\saucer_spinning_01.png",
+      "prompt": "spinning UFO, motion blur on edges, rotating sections, 1960s sci-fi design, top-down view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:58:49.868804+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2104,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "shuttle_space_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\shuttle_space_01.png",
+      "prompt": "space shuttle, delta wings, heat tiles visible, retro-future spaceplane, top-down overhead view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:59:06.167005+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1477,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pod_escape_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\pod_escape_01.png",
+      "prompt": "escape pod, spherical design, single porthole window, emergency ejection capsule, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:59:21.838551+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2756,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "jetpack_chrome_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\jetpack_chrome_01.png",
+      "prompt": "chrome jetpack, dual rocket nozzles, flame exhaust, shoulder straps, 1950s Buck Rogers style, back view showing exhaust",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:59:36.469746+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2473,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "jetpack_red_racing_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\jetpack_red_racing_01.png",
+      "prompt": "red racing jetpack, streamlined design, go-fast stripes, retro-future speed aesthetic, back view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T03:59:52.049265+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1872,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "jetpack_military_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\jetpack_military_01.png",
+      "prompt": "military jetpack, olive drab, tactical design, fuel gauge visible, atomic age soldier equipment, back view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:00:06.601937+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2635,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hoverboard_chrome_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\hoverboard_chrome_01.png",
+      "prompt": "chrome hoverboard, glowing underside visible, footpads, 1960s anti-gravity skateboard, top-down overhead view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:00:24.006981+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3497,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hoverboard_red_flames_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\hoverboard_red_flames_01.png",
+      "prompt": "red hoverboard with flame decals, racing style, retro-future hot rod aesthetic, top-down view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:00:41.826647+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 4417,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hoverboard_blue_cool_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\hoverboard_blue_cool_01.png",
+      "prompt": "blue hoverboard, ice theme, frost trail effect, space age cool design, top-down overhead",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:00:59.313776+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3749,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "antigrav_belt_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\antigrav_belt_01.png",
+      "prompt": "anti-gravity belt, glowing buckle, floating effect, 1950s retro-future accessory, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:01:13.914925+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1389,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "force_field_generator_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\force_field_generator_01.png",
+      "prompt": "personal force field generator, blue energy dome visible, retro sci-fi protection, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:01:29.431728+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2463,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "teleporter_pad_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\teleporter_pad_01.png",
+      "prompt": "teleporter pad, circular platform, energy swirls, atomic age transportation device, top-down overhead view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:01:46.661062+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 4280,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "teleporter_bracelet_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\teleporter_bracelet_01.png",
+      "prompt": "teleporter bracelet, glowing gems, wrist device, retro-future jewelry tech, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:02:03.755690+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 4031,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "translator_device_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\translator_device_01.png",
+      "prompt": "universal translator, handheld, display screen, speaker grille, 1960s space diplomat tool, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:02:19.124080+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2003,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "communicator_flip_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\communicator_flip_01.png",
+      "prompt": "flip communicator, metallic, antenna extended, light blinking, retro-future mobile phone, front view open",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:02:36.074054+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2889,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "communicator_wrist_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\communicator_wrist_01.png",
+      "prompt": "wrist communicator, video screen showing, futuristic watch, Dick Tracy style, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:02:52.503328+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1663,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "scanner_tricorder_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\scanner_tricorder_01.png",
+      "prompt": "handheld scanner, readings display screen, multiple sensors, retro sci-fi analysis tool, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:03:07.863496+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1865,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "scanner_medical_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\scanner_medical_01.png",
+      "prompt": "medical scanner, blue glow, health readings visible, 1950s hospital of tomorrow diagnostic, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:03:25.274709+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1868,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hologram_projector_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\hologram_projector_01.png",
+      "prompt": "hologram projector, blue light beam projecting upward, 3D image forming above, retro-future display tech, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:03:46.169610+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 1081,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "energy_cell_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\energy_cell_01.png",
+      "prompt": "energy power cell, glowing core center, plug connectors, atomic battery design, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:04:03.446064+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2805,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "atomic_battery_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\atomic_battery_01.png",
+      "prompt": "atomic battery, radiation warning symbol on front, green glow, nuclear power pack, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:04:20.375394+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1984,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gravity_boots_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\gravity_boots_01.png",
+      "prompt": "magnetic gravity boots, metal soles visible, power indicators, space station footwear, front view pair",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:04:37.484719+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3062,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "oxygen_tank_01",
+      "file_path": "assets/sprites/shared/retro_future/gadgets\\oxygen_tank_01.png",
+      "prompt": "futuristic oxygen tank, clear dome showing liquid air, backpack style, retro spacewalk gear, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:05:02.155557+00:00",
+      "generation_time_seconds": 21,
+      "size": "64x64",
+      "file_size_bytes": 3473,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_mainframe_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\computer_mainframe_01.png",
+      "prompt": "mainframe computer, wall of blinking lights, tape reels spinning, 1960s retro-future data center, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:05:19.009834+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 4307,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_terminal_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\computer_terminal_01.png",
+      "prompt": "computer terminal, green phosphor screen display, keyboard visible, retro CRT, 1970s future office, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:05:33.675891+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1480,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_portable_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\computer_portable_01.png",
+      "prompt": "portable computer, suitcase style, handle on top, folding screen open, 1950s traveling businessman's future, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:05:54.982395+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 2720,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_wall_panel_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\computer_wall_panel_01.png",
+      "prompt": "wall computer panel, buttons and switches, blinking indicators, atomic age control room, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:06:09.806372+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 4330,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "holographic_display_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\holographic_display_01.png",
+      "prompt": "holographic display, floating 3D interface, blue glow, retro sci-fi hologram projector, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:06:24.500870+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2786,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "data_tape_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\data_tape_01.png",
+      "prompt": "data storage tape reel, magnetic tape visible, metal canister, 1960s computer memory, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:06:38.634293+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2738,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "data_crystal_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\data_crystal_01.png",
+      "prompt": "data storage crystal, glowing geometric shape, information storage, retro-future memory device, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:06:52.701396+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1762,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "punch_card_future_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\punch_card_future_01.png",
+      "prompt": "futuristic punch card, metallic, holes pattern visible, data storage, atomic age programming, flat top-down view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:07:09.743947+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3704,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "memory_chip_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\memory_chip_01.png",
+      "prompt": "memory chip, chrome with gold circuits visible, sci-fi styling, retro integrated circuit, top-down overhead",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:07:24.923099+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 6554,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_brain_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/computers\\robot_brain_01.png",
+      "prompt": "robot brain module, exposed circuitry, glowing synapses, 1950s artificial intelligence core, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:07:42.257528+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 4840,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_orb_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_orb_01.png",
+      "prompt": "alien orb, smooth metallic surface, strange glowing hieroglyphs, 1950s B-movie artifact, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:07:57.823462+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 5428,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_cube_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_cube_01.png",
+      "prompt": "alien cube artifact, geometric perfection, hovering, retro sci-fi mystery object, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:08:12.052558+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 3164,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_pyramid_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_pyramid_01.png",
+      "prompt": "alien pyramid, four sided, energy beam from apex, ancient astronaut design, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:08:28.633578+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2431,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_crystal_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_crystal_01.png",
+      "prompt": "alien crystal, impossible geometry, multi-faceted, pulsing light, retro-future power source, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:08:43.509018+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1603,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_device_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_device_01.png",
+      "prompt": "alien device, unknown purpose, organic technology blend, 1960s flying saucer interior equipment, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:08:58.735114+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1703,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_weapon_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_weapon_01.png",
+      "prompt": "alien weapon, bio-mechanical design, living technology, retro sci-fi horror style, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:09:14.740840+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2915,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_power_source_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_power_source_01.png",
+      "prompt": "alien power source, glowing core center, infinite energy, atomic age mystery engine, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:09:28.996315+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 3112,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_communication_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_communication_01.png",
+      "prompt": "alien communicator, telepathic amplifier, mind link device, retro psychic technology, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:09:46.050794+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2374,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_egg_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_egg_01.png",
+      "prompt": "alien egg pod, leathery texture, veins pulsing, 1950s creature feature prop, side view profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:10:03.797825+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3596,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_probe_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_probe_01.png",
+      "prompt": "alien probe, spherical with antenna, scanning beams, autonomous UFO scout, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:10:20.339283+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1715,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "helmet_bubble_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\helmet_bubble_01.png",
+      "prompt": "space helmet, bubble visor, reflective gold coating, 1960s astronaut helmet retro-future style, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:10:35.207642+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2625,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "helmet_fishbowl_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\helmet_fishbowl_01.png",
+      "prompt": "fishbowl space helmet, clear dome, neck ring seal, classic sci-fi spaceman design, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:10:49.137806+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 2715,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "helmet_retro_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\helmet_retro_01.png",
+      "prompt": "retro space helmet, art deco styling, chrome finish with fins, 1930s Buck Rogers aesthetic, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:11:04.524380+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2382,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "helmet_military_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\helmet_military_01.png",
+      "prompt": "space helmet with angular visor, antennae on sides, 1950s retro-futuristic space marine design, straight front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:11:20.680314+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2349,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "suit_classic_white_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\suit_classic_white_01.png",
+      "prompt": "classic white space suit, puffy design, American flag patch visible, 1960s NASA retro-future, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:11:37.862496+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2908,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "suit_silver_chrome_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\suit_silver_chrome_01.png",
+      "prompt": "silver chrome space suit, sleek metallic finish, future fashion, Flash Gordon style, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:11:55.073324+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2109,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "suit_orange_pilot_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\suit_orange_pilot_01.png",
+      "prompt": "orange pilot space suit, fitted design, pressure suit, retro test pilot aesthetic, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:12:11.479835+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2363,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "suit_green_explorer_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\suit_green_explorer_01.png",
+      "prompt": "green explorer suit, equipment pouches visible, rugged design, atomic age adventurer, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:12:27.880390+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2383,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "suit_combat_armor_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\suit_combat_armor_01.png",
+      "prompt": "space combat armor, plated design, weapon mounts, 1950s retro-futuristic space soldier, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:12:43.428217+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 5374,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gloves_space_01",
+      "file_path": "assets/sprites/shared/retro_future/equipment/suits\\gloves_space_01.png",
+      "prompt": "space gloves pair, pressurized with ribbed joints, fingerless grip pads, retro astronaut gear, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:12:59.899758+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1995,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "atom_symbol_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\atom_symbol_01.png",
+      "prompt": "atomic symbol, electrons orbiting nucleus, classic 1950s science icon, retro-future styling, flat front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:13:16.411931+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1945,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "atom_symbol_glowing_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\atom_symbol_glowing_01.png",
+      "prompt": "glowing atom symbol, radioactive green, energy trails, atomic age power emblem, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:13:31.771178+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2960,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "radiation_sign_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\radiation_sign_01.png",
+      "prompt": "radiation warning sign, yellow and black, trefoil symbol, 1950s nuclear hazard marking, flat front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:13:48.513568+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3148,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "geiger_counter_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\geiger_counter_01.png",
+      "prompt": "geiger counter, handheld device, clicking needle visible, radiation detector, retro scientific instrument, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:14:03.929746+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1804,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "nuclear_core_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\nuclear_core_01.png",
+      "prompt": "nuclear reactor core, glowing rods, cooling system, atomic age power plant retro-future, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:14:21.339739+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3074,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "atomic_bomb_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\atomic_bomb_01.png",
+      "prompt": "atomic bomb, fin stabilizers, danger markings, 1950s Cold War weapon, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:14:35.268465+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 1861,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "mushroom_cloud_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\mushroom_cloud_01.png",
+      "prompt": "mushroom cloud, nuclear explosion, ominous power, atomic age destruction icon, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:14:52.613039+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 4026,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "nuclear_waste_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\nuclear_waste_01.png",
+      "prompt": "nuclear waste barrel, radiation symbol on front, green ooze leaking, toxic hazard, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:15:09.475248+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1718,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "atomic_energy_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\atomic_energy_01.png",
+      "prompt": "atomic energy symbol, lightning bolt through atom, retro power company logo, flat front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:15:27.033945+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1677,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "radiation_suit_01",
+      "file_path": "assets/sprites/shared/retro_future/atomic\\radiation_suit_01.png",
+      "prompt": "radiation protection suit, yellow hazmat, gas mask visible, atomic age safety gear, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:15:43.681555+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2698,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "flying_car_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\flying_car_01.png",
+      "prompt": "flying car, tail fins, propellers underneath visible, 1950s Jetsons-style vehicle, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:16:00.694918+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 910,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "flying_car_convertible_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\flying_car_convertible_01.png",
+      "prompt": "flying convertible car, chrome trim, bubble canopy, retro-future luxury, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:16:17.371234+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2789,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "moving_sidewalk_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\moving_sidewalk_01.png",
+      "prompt": "moving sidewalk section, conveyor belt, handrails, 1960s future city transport, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:16:33.668006+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2411,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tube_transport_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\tube_transport_01.png",
+      "prompt": "pneumatic tube transport capsule, glass pod, retro-future rapid transit, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:16:48.404793+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1932,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "food_pill_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\food_pill_01.png",
+      "prompt": "food pill, complete meal in capsule form, retro-future nutrition, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:17:04.586751+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1632,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "meal_machine_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\meal_machine_01.png",
+      "prompt": "automatic meal machine, buttons for different foods, instant dinner dispenser, Jetsons kitchen, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:17:21.998494+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3485,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "weather_control_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\weather_control_01.png",
+      "prompt": "weather control device, dials and gauges visible, cloud generation, retro-future climate machine, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:17:37.361193+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3001,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "time_machine_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\time_machine_01.png",
+      "prompt": "time machine, spinning rings, clock face visible, H.G. Wells inspired retro design, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:17:59.888978+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 3180,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "matter_transmitter_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\matter_transmitter_01.png",
+      "prompt": "matter transmitter booth, telephone booth style, teleportation chamber, 1960s sci-fi, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:18:15.457397+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2121,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "android_butler_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\android_butler_01.png",
+      "prompt": "android butler, tuxedo design, serving tray in hand, retro-future domestic robot, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:18:31.573920+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2078,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "thinking_cap_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\thinking_cap_01.png",
+      "prompt": "thinking cap, electrodes and wires, brain amplifier helmet, mad scientist invention, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:18:46.120874+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 3335,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "x_ray_specs_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\x_ray_specs_01.png",
+      "prompt": "x-ray spectacles, swirly lenses, see-through vision glasses, comic book ad gadget, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:19:08.802582+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 1666,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "invisibility_cloak_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\invisibility_cloak_01.png",
+      "prompt": "invisibility cloak, shimmering fabric, fading effect, retro sci-fi stealth device, front-facing hanging",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:19:24.894495+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1880,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_boots_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\rocket_boots_01.png",
+      "prompt": "rocket boots, flame jets from heels, strapped design, retro-future footwear, front view pair",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:19:41.690601+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1801,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_dog_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\robot_dog_01.png",
+      "prompt": "robot dog, metallic body, antenna tail, retro-future pet, Jetsons Astro style, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:19:58.074541+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2533,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_cat_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\robot_cat_01.png",
+      "prompt": "robot cat, chrome whiskers, LED eyes, mechanical feline companion, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:20:21.544212+00:00",
+      "generation_time_seconds": 20,
+      "size": "64x64",
+      "file_size_bytes": 4082,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "flying_saucer_chair_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\flying_saucer_chair_01.png",
+      "prompt": "flying saucer chair, hovering seat, control stick, retro-future furniture, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:20:35.367281+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 2082,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "video_phone_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\video_phone_01.png",
+      "prompt": "video telephone, screen showing caller's face, rotary dial, 1960s vision of future communication, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:20:52.280630+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3085,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "robot_maid_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\robot_maid_01.png",
+      "prompt": "robot maid, apron and duster, domestic service android, Jetsons Rosie style, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:21:08.742587+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 927,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "anti_gravity_chair_01",
+      "file_path": "assets/sprites/shared/retro_future/tech/misc\\anti_gravity_chair_01.png",
+      "prompt": "anti-gravity floating chair, cushioned seat hovering, retro-future relaxation, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:21:23.900664+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1598,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "space_station_wheel_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\space_station_wheel_01.png",
+      "prompt": "rotating space station wheel section, windows visible, 1950s orbital city design, top-down overhead view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:21:38.236971+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 4665,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "space_station_sphere_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\space_station_sphere_01.png",
+      "prompt": "spherical space station module, antenna arrays, retro-future orbital habitat, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:21:54.436227+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2589,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "satellite_dish_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\satellite_dish_01.png",
+      "prompt": "satellite dish, retro design, support struts, space communications array, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:22:09.792085+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2032,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "solar_panel_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\solar_panel_01.png",
+      "prompt": "solar panel array, rectangular cells visible, extending arm, atomic age space power, top-down view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:22:24.323867+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 5965,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "airlock_door_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\airlock_door_01.png",
+      "prompt": "airlock door, circular hatch, wheel handle center, pressure seal, retro spacecraft entrance, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:22:39.228000+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 5991,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "observation_dome_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\observation_dome_01.png",
+      "prompt": "observation dome, transparent bubble, telescope inside visible, space station viewing port, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:22:54.955421+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3533,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "antenna_array_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\antenna_array_01.png",
+      "prompt": "antenna array, multiple dishes, communication tower, retro space technology, side profile",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:23:10.413713+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3078,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "docking_port_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\docking_port_01.png",
+      "prompt": "docking port, extending arm, connection ring, retro-future spacecraft berth, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:23:26.183227+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 4575,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_engine_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\rocket_engine_01.png",
+      "prompt": "rocket engine nozzle, thrust chamber, retro spacecraft propulsion, back view showing nozzle",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:23:42.159958+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1309,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "space_telescope_01",
+      "file_path": "assets/sprites/shared/retro_future/structures\\space_telescope_01.png",
+      "prompt": "space telescope, large lens visible, retro observatory satellite, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:24:05.509854+00:00",
+      "generation_time_seconds": 20,
+      "size": "64x64",
+      "file_size_bytes": 2978,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tesla_coil_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\tesla_coil_01.png",
+      "prompt": "Tesla coil, electrical arcs shooting, copper coils, mad scientist equipment, retro laboratory, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:24:22.587731+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 4539,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "beaker_bubbling_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\beaker_bubbling_01.png",
+      "prompt": "bubbling beaker, green liquid, steam rising, retro chemistry experiment, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:24:39.426711+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1780,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "test_tube_glowing_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\test_tube_glowing_01.png",
+      "prompt": "glowing test tube, radioactive substance, rack holder, atomic age science, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:24:55.597969+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1502,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "microscope_chrome_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\microscope_chrome_01.png",
+      "prompt": "chrome microscope, retro design, illuminated stage, 1950s laboratory instrument, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:25:11.649591+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2043,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bunsen_burner_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\bunsen_burner_01.png",
+      "prompt": "Bunsen burner, blue flame visible, gas tube, classic science equipment, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:25:43.416046+00:00",
+      "generation_time_seconds": 28,
+      "size": "64x64",
+      "file_size_bytes": 1179,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "circuit_board_vintage_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\circuit_board_vintage_01.png",
+      "prompt": "vintage circuit board, vacuum tubes, blinking lights, retro-future electronics, top-down overhead view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:26:03.716665+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 7253,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "oscilloscope_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\oscilloscope_01.png",
+      "prompt": "oscilloscope, green waveform display screen, dials and knobs, retro testing equipment, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:26:36.057802+00:00",
+      "generation_time_seconds": 29,
+      "size": "64x64",
+      "file_size_bytes": 4241,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "centrifuge_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\centrifuge_01.png",
+      "prompt": "centrifuge machine, spinning samples visible, retro laboratory device, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:26:50.813667+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2237,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gene_splicer_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\gene_splicer_01.png",
+      "prompt": "gene splicing machine, DNA helix display, retro-future genetic engineering, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:27:06.731826+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2744,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brain_jar_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\brain_jar_01.png",
+      "prompt": "brain in jar, preservative fluid, electrodes attached, mad scientist specimen, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:27:20.477425+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 2449,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "reanimation_table_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\reanimation_table_01.png",
+      "prompt": "reanimation table, electrical equipment, Frankenstein style, retro horror lab, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:27:34.599548+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 3432,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "laser_experiment_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\laser_experiment_01.png",
+      "prompt": "laser experiment setup, beam splitters, mirrors, retro optics lab, top-down overhead view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:27:49.364393+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 3947,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "chemical_storage_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\chemical_storage_01.png",
+      "prompt": "chemical storage cabinet, hazard labels visible, glass bottles, retro laboratory safety, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:28:04.749960+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3926,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "clipboard_chart_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\clipboard_chart_01.png",
+      "prompt": "clipboard with graph chart, scientific data visible, retro documentation, flat top-down view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:28:20.705481+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 957,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "petri_dish_01",
+      "file_path": "assets/sprites/shared/retro_future/lab\\petri_dish_01.png",
+      "prompt": "petri dish, bacterial culture visible, magnified view, retro microbiology, top-down overhead",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:28:36.904865+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3878,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "big_red_button_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\big_red_button_01.png",
+      "prompt": "big red button, glass protective cover, warning labels, retro doomsday device, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:28:51.324150+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 3142,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "lever_large_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\lever_large_01.png",
+      "prompt": "large control lever, red handle, Frankenstein laboratory switch, retro power control, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:29:05.260489+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 2737,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "dial_gauge_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\dial_gauge_01.png",
+      "prompt": "analog dial gauge, needle pointer, measurement markings, retro instrument panel, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:29:19.300854+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 4063,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "switch_panel_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\switch_panel_01.png",
+      "prompt": "panel of toggle switches, different colors, blinking lights, retro control board, straight front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:29:43.857807+00:00",
+      "generation_time_seconds": 21,
+      "size": "64x64",
+      "file_size_bytes": 3462,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "knob_array_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\knob_array_01.png",
+      "prompt": "array of control knobs, different sizes, retro adjustment panel, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:29:57.500993+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 3907,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "meter_analog_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\meter_analog_01.png",
+      "prompt": "analog meter, bouncing needle, VU meter style, retro monitoring device, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:30:18.073055+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 1934,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "warning_light_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\warning_light_01.png",
+      "prompt": "rotating warning light, red beacon, siren top, retro alarm system, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:30:32.020357+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 2018,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "emergency_button_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\emergency_button_01.png",
+      "prompt": "emergency stop button, yellow and red, protective housing, retro safety control, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:30:45.931602+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 2773,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "countdown_timer_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\countdown_timer_01.png",
+      "prompt": "countdown timer, flip numbers visible, retro digital display, bomb timer aesthetic, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:31:00.683882+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1849,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pressure_gauge_01",
+      "file_path": "assets/sprites/shared/retro_future/controls\\pressure_gauge_01.png",
+      "prompt": "pressure gauge, circular dial, danger zone marked red, retro industrial instrument, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:31:14.866496+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 3370,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "energy_sphere_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\energy_sphere_01.png",
+      "prompt": "glowing energy sphere, crackling electricity, floating orb, retro power source, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:31:29.228752+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2552,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "energy_sphere_blue_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\energy_sphere_blue_01.png",
+      "prompt": "blue energy sphere, pulsing light, atomic power ball, retro sci-fi, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:31:43.015465+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 2133,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "energy_sphere_red_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\energy_sphere_red_01.png",
+      "prompt": "red energy sphere, dangerous glow, unstable power, retro danger orb, front-facing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:31:58.868810+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2284,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "lightning_ball_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\lightning_ball_01.png",
+      "prompt": "ball lightning, electrical discharge, plasma sphere, retro natural phenomenon, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:32:13.612764+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 3093,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "force_field_wall_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\force_field_wall_01.png",
+      "prompt": "force field wall section, blue energy barrier, hexagon pattern visible, retro shield, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:32:30.081183+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3904,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "energy_beam_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\energy_beam_01.png",
+      "prompt": "energy beam shooting, bright ray, particle effects, retro weapon fire, side profile view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:32:45.244954+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1823,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "portal_swirl_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\portal_swirl_01.png",
+      "prompt": "swirling portal, dimensional gateway, energy vortex, retro teleportation effect, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:33:02.051346+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2481,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "explosion_atomic_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\explosion_atomic_01.png",
+      "prompt": "atomic explosion, expanding shockwave, retro blast effect, front-facing view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:33:15.691498+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 2603,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "smoke_rocket_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\smoke_rocket_01.png",
+      "prompt": "rocket exhaust smoke, white vapor trail, retro propulsion effect, side view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:33:30.239925+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1384,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "sparks_electric_01",
+      "file_path": "assets/sprites/shared/retro_future/effects\\sparks_electric_01.png",
+      "prompt": "electrical sparks, arcing electricity, short circuit, retro malfunction effect, front view",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-08T04:33:45.818322+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2523,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": [],
+  "completed_at": "2025-11-08T04:33:45.818497+00:00"
+}

@@ -80,6 +80,176 @@
     "ai_pattern": "anti_player",
     "rounds_to_win": 5,
     "flavor_text": "AI throws what you threw 2 rounds ago. Memory test!"
+  },
+  {
+    "clone_index": 10,
+    "name": "RPS Score Blitz",
+    "difficulty_modifier": 1.0,
+    "score_per_round_win": 250,
+    "streak_bonus": 100,
+    "rounds_to_win": 5,
+    "flavor_text": "Phase 10 Test: High scoring with strong streak bonuses"
+  },
+  {
+    "clone_index": 11,
+    "name": "RPS Perfect Game",
+    "difficulty_modifier": 1.3,
+    "score_per_round_win": 100,
+    "streak_bonus": 50,
+    "perfect_game_bonus": 10000,
+    "rounds_to_win": 3,
+    "flavor_text": "Phase 10 Test: Huge bonus if you win without losing a round"
+  },
+  {
+    "clone_index": 12,
+    "name": "RPS Party Mode",
+    "difficulty_modifier": 1.0,
+    "celebration_on_perfect": true,
+    "screen_flash_enabled": true,
+    "animation_speed": 0.7,
+    "rounds_to_win": 3,
+    "flavor_text": "Phase 11 Test: Full visual effects - confetti on perfect game, screen flash, smooth throw animation"
+  },
+  {
+    "clone_index": 13,
+    "name": "RPS Minimal",
+    "difficulty_modifier": 1.0,
+    "celebration_on_perfect": false,
+    "screen_flash_enabled": false,
+    "animation_speed": 3.0,
+    "rounds_to_win": 3,
+    "flavor_text": "Phase 11 Test: No visual effects, fast animation (performance mode)"
+  },
+  {
+    "clone_index": 14,
+    "name": "RPS Slow Mo",
+    "difficulty_modifier": 0.8,
+    "screen_flash_enabled": true,
+    "animation_speed": 0.3,
+    "rounds_to_win": 5,
+    "flavor_text": "Phase 11 Test: Dramatic slow-motion throw animations"
+  },
+  {
+    "clone_index": 15,
+    "name": "RPS Double Hands",
+    "difficulty_modifier": 1.2,
+    "hands_mode": "double",
+    "time_per_removal": 5,
+    "show_opponent_hands": true,
+    "rounds_to_win": 3,
+    "flavor_text": "Phase 6 Test: Select two hands, see AI's hands, both remove simultaneously!"
+  },
+  {
+    "clone_index": 26,
+    "name": "RPS Double Hands Blind",
+    "difficulty_modifier": 1.5,
+    "hands_mode": "double",
+    "time_per_removal": 5,
+    "show_opponent_hands": false,
+    "rounds_to_win": 3,
+    "flavor_text": "Phase 6 Test: Double hands mode WITHOUT seeing AI's hands - pure bluff!"
+  },
+  {
+    "clone_index": 16,
+    "name": "RPS Battle Royale",
+    "difficulty_modifier": 1.5,
+    "num_opponents": 3,
+    "rounds_to_win": 5,
+    "flavor_text": "Phase 6 Test: Face 3 opponents! Win majority of matchups"
+  },
+  {
+    "clone_index": 17,
+    "name": "RPS Streak Master",
+    "difficulty_modifier": 1.3,
+    "victory_condition": "streak",
+    "streak_target": 5,
+    "rounds_to_win": 99,
+    "flavor_text": "Phase 6 Test: Win 5 consecutive rounds to achieve victory"
+  },
+  {
+    "clone_index": 18,
+    "name": "RPS First to 10",
+    "difficulty_modifier": 1.1,
+    "victory_condition": "first_to",
+    "first_to_target": 10,
+    "rounds_to_win": 99,
+    "flavor_text": "Phase 6 Test: First to 10 total wins (no streak required)"
+  },
+  {
+    "clone_index": 19,
+    "name": "RPS Speed Run",
+    "difficulty_modifier": 1.2,
+    "victory_condition": "time",
+    "time_limit": 30,
+    "rounds_to_win": 99,
+    "flavor_text": "Phase 6 Test: Get most wins in 30 seconds!"
+  },
+  {
+    "clone_index": 20,
+    "name": "RPS Limited Lives",
+    "difficulty_modifier": 1.3,
+    "lives": 3,
+    "lose_life_on": "loss",
+    "rounds_to_win": 5,
+    "flavor_text": "Phase 6 Test: 3 lives, lose one on each loss"
+  },
+  {
+    "clone_index": 21,
+    "name": "RPS Special Rounds",
+    "difficulty_modifier": 1.0,
+    "special_rounds_enabled": true,
+    "double_or_nothing_enabled": true,
+    "sudden_death_enabled": true,
+    "reverse_mode_enabled": true,
+    "mirror_mode_enabled": true,
+    "rounds_to_win": 5,
+    "flavor_text": "Phase 6 Test: Random special rounds! Double-or-nothing, sudden death, reverse, mirror"
+  },
+  {
+    "clone_index": 22,
+    "name": "RPS History Tracker",
+    "difficulty_modifier": 1.0,
+    "show_history_display": true,
+    "history_length": 10,
+    "rounds_to_win": 5,
+    "flavor_text": "Phase 6 Test: Shows last 10 throws in sidebar for pattern analysis"
+  },
+  {
+    "clone_index": 23,
+    "name": "RPS Statistics Master",
+    "difficulty_modifier": 1.0,
+    "show_statistics": true,
+    "show_ai_pattern_hint": true,
+    "show_history_display": true,
+    "history_length": 8,
+    "rounds_to_win": 5,
+    "flavor_text": "Phase 6 Test: Full statistics display, AI pattern hints, history"
+  },
+  {
+    "clone_index": 24,
+    "name": "RPS AI Delay",
+    "difficulty_modifier": 1.2,
+    "ai_pattern": "counter_player",
+    "ai_pattern_delay": 3,
+    "show_ai_pattern_hint": true,
+    "rounds_to_win": 7,
+    "flavor_text": "Phase 6 Test: AI uses random for 3 rounds, then activates counter pattern"
+  },
+  {
+    "clone_index": 25,
+    "name": "RPS Ultimate Challenge",
+    "difficulty_modifier": 2.0,
+    "hands_mode": "double",
+    "num_opponents": 5,
+    "lives": 5,
+    "special_rounds_enabled": true,
+    "double_or_nothing_enabled": true,
+    "sudden_death_enabled": true,
+    "show_statistics": true,
+    "show_history_display": true,
+    "history_length": 15,
+    "rounds_to_win": 10,
+    "flavor_text": "Phase 6 Test: ALL FEATURES! Double hands, 5 opponents, special rounds, lives, stats"
   }
 ]
 }

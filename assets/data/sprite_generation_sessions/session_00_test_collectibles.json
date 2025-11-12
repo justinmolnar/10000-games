@@ -1,0 +1,97 @@
+{
+  "session_name": "test_collectibles",
+  "description": "Test session with 15 collectible sprites to validate batch workflow",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "collectibles_food",
+      "output_folder": "assets/sprites/shared/collectibles",
+      "description": "Collectible food items for Snake and general use",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "apple_red_01",
+          "prompt": "red apple, shiny surface, fresh fruit, pixel art",
+          "notes": "Classic red apple"
+        },
+        {
+          "id": "apple_green_01",
+          "prompt": "green apple, shiny surface, fresh fruit, pixel art",
+          "notes": "Green apple variant"
+        },
+        {
+          "id": "banana_01",
+          "prompt": "yellow banana, curved shape, fresh fruit, pixel art",
+          "notes": "Banana"
+        },
+        {
+          "id": "orange_01",
+          "prompt": "orange fruit, round shape, textured peel, pixel art",
+          "notes": "Orange"
+        },
+        {
+          "id": "strawberry_01",
+          "prompt": "red strawberry with green leaves, fresh berry, pixel art",
+          "notes": "Strawberry"
+        },
+        {
+          "id": "cherry_01",
+          "prompt": "red cherries with stems, paired fruit, pixel art",
+          "notes": "Cherry pair"
+        },
+        {
+          "id": "watermelon_slice_01",
+          "prompt": "watermelon slice, red flesh with black seeds, green rind, pixel art",
+          "notes": "Watermelon slice"
+        },
+        {
+          "id": "gem_blue_01",
+          "prompt": "blue gem crystal, shiny faceted surface, jewel, pixel art",
+          "notes": "Blue gem"
+        },
+        {
+          "id": "gem_red_01",
+          "prompt": "red gem crystal, shiny faceted surface, ruby, pixel art",
+          "notes": "Red gem"
+        },
+        {
+          "id": "gem_green_01",
+          "prompt": "green gem crystal, shiny faceted surface, emerald, pixel art",
+          "notes": "Green gem"
+        },
+        {
+          "id": "coin_gold_01",
+          "prompt": "gold coin, shiny metallic surface, round shape, pixel art",
+          "notes": "Gold coin"
+        },
+        {
+          "id": "star_yellow_01",
+          "prompt": "yellow star, five-pointed, glowing, pixel art",
+          "notes": "Yellow star"
+        },
+        {
+          "id": "star_blue_01",
+          "prompt": "blue star, five-pointed, glowing, pixel art",
+          "notes": "Blue star"
+        },
+        {
+          "id": "heart_red_01",
+          "prompt": "red heart, classic heart shape, pixel art",
+          "notes": "Red heart"
+        },
+        {
+          "id": "diamond_white_01",
+          "prompt": "white diamond gem, four-pointed rhombus shape rotated 45 degrees, sparkly crystal jewel, pixel art",
+          "notes": "White diamond - rhombus/kite shape"
+        }
+      ]
+    }
+  ]
+}

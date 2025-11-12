@@ -1,0 +1,767 @@
+{
+  "session_name": "creative_collection",
+  "description": "150 creative, weird, and usable sprites - 90s game asset vibes",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "characters_humanoid",
+      "output_folder": "assets/sprites/shared/characters/humanoid",
+      "description": "Human and humanoid characters",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "astronaut_floating_01",
+          "prompt": "astronaut floating in space, tethered suit, visor reflecting stars"
+        },
+        {
+          "id": "astronaut_damaged_01",
+          "prompt": "astronaut with torn suit, helmet cracked, drifting"
+        },
+        {
+          "id": "baby_spacesuit_01",
+          "prompt": "baby in oversized spacesuit, floating, chubby arms out"
+        },
+        {
+          "id": "baby_floating_01",
+          "prompt": "baby floating freely, diaper visible, reaching upward"
+        },
+        {
+          "id": "superhero_cape_01",
+          "prompt": "superhero with flowing cape, fist forward, classic costume"
+        },
+        {
+          "id": "superhero_visor_01",
+          "prompt": "superhero with visor mask, energy glowing from hands"
+        },
+        {
+          "id": "superhero_flying_01",
+          "prompt": "superhero in flight pose, cape trailing behind"
+        },
+        {
+          "id": "ninja_star_01",
+          "prompt": "ninja holding throwing star, crouched stance, masked"
+        },
+        {
+          "id": "ninja_sword_01",
+          "prompt": "ninja with katana drawn, action pose"
+        },
+        {
+          "id": "wizard_staff_01",
+          "prompt": "wizard with glowing staff, pointed hat, long beard"
+        },
+        {
+          "id": "wizard_spell_01",
+          "prompt": "wizard casting spell, magic swirling around hands"
+        },
+        {
+          "id": "knight_sword_01",
+          "prompt": "knight with sword raised, full armor, shield"
+        },
+        {
+          "id": "knight_charging_01",
+          "prompt": "knight charging forward, lance extended"
+        },
+        {
+          "id": "pirate_sword_01",
+          "prompt": "pirate with cutlass, tricorn hat, eyepatch"
+        },
+        {
+          "id": "pirate_hook_01",
+          "prompt": "pirate with hook hand, peg leg, parrot on shoulder"
+        },
+        {
+          "id": "cowboy_lasso_01",
+          "prompt": "cowboy twirling lasso, wide-brimmed hat, boots"
+        },
+        {
+          "id": "cowboy_gun_01",
+          "prompt": "cowboy drawing pistol, quick-draw stance"
+        },
+        {
+          "id": "alien_gray_01",
+          "prompt": "gray alien with oversized head, thin limbs, black eyes"
+        },
+        {
+          "id": "alien_tentacle_01",
+          "prompt": "alien with tentacles instead of arms, multiple eyes"
+        },
+        {
+          "id": "alien_crystal_01",
+          "prompt": "crystalline alien, translucent body, geometric shapes"
+        }
+      ]
+    },
+    {
+      "name": "animals_creatures",
+      "output_folder": "assets/sprites/shared/animals",
+      "description": "Animals and creature faces",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "cat_face_orange_01",
+          "prompt": "orange tabby cat face, whiskers, green eyes"
+        },
+        {
+          "id": "cat_face_black_01",
+          "prompt": "black cat face, yellow eyes, pointed ears"
+        },
+        {
+          "id": "cat_face_calico_01",
+          "prompt": "calico cat face, patches of color, cute expression"
+        },
+        {
+          "id": "dog_face_golden_01",
+          "prompt": "golden retriever face, tongue out, happy"
+        },
+        {
+          "id": "dog_face_bulldog_01",
+          "prompt": "bulldog face, wrinkled, underbite"
+        },
+        {
+          "id": "dog_face_husky_01",
+          "prompt": "husky face, blue eyes, fluffy"
+        },
+        {
+          "id": "bear_face_brown_01",
+          "prompt": "brown bear face, round ears, snout"
+        },
+        {
+          "id": "bear_face_panda_01",
+          "prompt": "panda bear face, black eye patches, bamboo in mouth"
+        },
+        {
+          "id": "bear_face_polar_01",
+          "prompt": "polar bear face, white fur, black nose"
+        },
+        {
+          "id": "lion_face_01",
+          "prompt": "lion face with mane, regal expression"
+        },
+        {
+          "id": "tiger_face_01",
+          "prompt": "tiger face with stripes, fierce eyes"
+        },
+        {
+          "id": "monkey_face_01",
+          "prompt": "monkey face, cheeky grin, big ears"
+        },
+        {
+          "id": "elephant_face_01",
+          "prompt": "elephant face with trunk, wise eyes"
+        },
+        {
+          "id": "pig_face_01",
+          "prompt": "pig face, snout, floppy ears, pink"
+        },
+        {
+          "id": "cow_face_01",
+          "prompt": "cow face, black and white spots, horns"
+        },
+        {
+          "id": "horse_face_01",
+          "prompt": "horse face, flowing mane, noble"
+        },
+        {
+          "id": "rabbit_face_01",
+          "prompt": "rabbit face, long ears, twitching nose"
+        },
+        {
+          "id": "mouse_face_01",
+          "prompt": "mouse face, round ears, whiskers"
+        },
+        {
+          "id": "frog_face_01",
+          "prompt": "frog face, bulging eyes, wide mouth"
+        },
+        {
+          "id": "fish_face_01",
+          "prompt": "fish face, scales, bubbles coming from mouth"
+        }
+      ]
+    },
+    {
+      "name": "vehicles_transport",
+      "output_folder": "assets/sprites/shared/vehicles",
+      "description": "Cars, bikes, and other vehicles",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "car_sports_red_01",
+          "prompt": "red sports car, sleek design, racing stripes"
+        },
+        {
+          "id": "car_sports_blue_01",
+          "prompt": "blue sports car, spoiler, shiny finish"
+        },
+        {
+          "id": "car_classic_01",
+          "prompt": "classic vintage car, rounded body, chrome bumper"
+        },
+        {
+          "id": "car_taxi_01",
+          "prompt": "yellow taxi cab, checkered pattern on side"
+        },
+        {
+          "id": "car_police_01",
+          "prompt": "police car, lights on roof, sirens"
+        },
+        {
+          "id": "car_ambulance_01",
+          "prompt": "ambulance, red cross on side, emergency vehicle"
+        },
+        {
+          "id": "truck_pickup_01",
+          "prompt": "pickup truck, bed in back, rugged"
+        },
+        {
+          "id": "truck_monster_01",
+          "prompt": "monster truck, massive wheels, lifted suspension"
+        },
+        {
+          "id": "motorcycle_chopper_01",
+          "prompt": "chopper motorcycle, long front fork, custom paint"
+        },
+        {
+          "id": "motorcycle_racing_01",
+          "prompt": "racing motorcycle, aerodynamic, sport bike"
+        },
+        {
+          "id": "bicycle_mountain_01",
+          "prompt": "mountain bike, thick tires, rugged frame"
+        },
+        {
+          "id": "bicycle_bmx_01",
+          "prompt": "BMX bike, compact frame, stunt pegs"
+        },
+        {
+          "id": "scooter_kick_01",
+          "prompt": "kick scooter, two wheels, handlebars"
+        },
+        {
+          "id": "skateboard_01",
+          "prompt": "skateboard with wheels, deck with graphics"
+        },
+        {
+          "id": "hoverboard_01",
+          "prompt": "futuristic hoverboard, glowing underneath, floating"
+        },
+        {
+          "id": "jetpack_01",
+          "prompt": "jetpack with flames shooting down, strapped on back"
+        },
+        {
+          "id": "rocket_01",
+          "prompt": "cartoon rocket ship, flames from exhaust, fins"
+        },
+        {
+          "id": "ufo_classic_01",
+          "prompt": "flying saucer UFO, dome top, lights around edge"
+        },
+        {
+          "id": "helicopter_01",
+          "prompt": "helicopter with spinning rotors, skids"
+        },
+        {
+          "id": "airplane_prop_01",
+          "prompt": "propeller airplane, single engine, classic design"
+        }
+      ]
+    },
+    {
+      "name": "food_items",
+      "output_folder": "assets/sprites/shared/food",
+      "description": "Food and drink items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "pizza_slice_01",
+          "prompt": "pizza slice, melted cheese, pepperoni"
+        },
+        {
+          "id": "burger_classic_01",
+          "prompt": "hamburger with bun, patty, lettuce, cheese"
+        },
+        {
+          "id": "hotdog_01",
+          "prompt": "hot dog in bun, mustard squiggle on top"
+        },
+        {
+          "id": "taco_01",
+          "prompt": "taco shell with meat, lettuce, cheese spilling out"
+        },
+        {
+          "id": "sushi_roll_01",
+          "prompt": "sushi roll, rice outside, filling visible"
+        },
+        {
+          "id": "ramen_bowl_01",
+          "prompt": "bowl of ramen noodles, chopsticks, steam rising"
+        },
+        {
+          "id": "donut_sprinkle_01",
+          "prompt": "donut with pink frosting and rainbow sprinkles"
+        },
+        {
+          "id": "donut_chocolate_01",
+          "prompt": "chocolate glazed donut, shiny coating"
+        },
+        {
+          "id": "cake_slice_01",
+          "prompt": "slice of layered cake, frosting, cherry on top"
+        },
+        {
+          "id": "cupcake_01",
+          "prompt": "cupcake with swirled frosting, paper wrapper"
+        },
+        {
+          "id": "cookie_chocolate_01",
+          "prompt": "chocolate chip cookie, chips visible"
+        },
+        {
+          "id": "icecream_cone_01",
+          "prompt": "ice cream cone, three scoops, waffle cone"
+        },
+        {
+          "id": "icecream_sundae_01",
+          "prompt": "ice cream sundae in glass, cherry on top, whipped cream"
+        },
+        {
+          "id": "popcorn_01",
+          "prompt": "bucket of popcorn, red and white striped container"
+        },
+        {
+          "id": "candy_lollipop_01",
+          "prompt": "swirl lollipop, stick, colorful spiral"
+        },
+        {
+          "id": "candy_bar_01",
+          "prompt": "wrapped candy bar, chocolate visible at bite mark"
+        },
+        {
+          "id": "soda_can_01",
+          "prompt": "soda can, condensation droplets, pull tab"
+        },
+        {
+          "id": "coffee_cup_01",
+          "prompt": "coffee cup with steam, lid, sleeve"
+        },
+        {
+          "id": "teacup_01",
+          "prompt": "teacup on saucer, steam rising, delicate handle"
+        },
+        {
+          "id": "milkshake_01",
+          "prompt": "milkshake in tall glass, whipped cream, straw, cherry"
+        }
+      ]
+    },
+    {
+      "name": "powerups_weird",
+      "output_folder": "assets/sprites/shared/powerups/weird",
+      "description": "Weird and creative power-ups",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "clock_time_01",
+          "prompt": "pocket watch showing time, chain attached, glowing"
+        },
+        {
+          "id": "hourglass_sand_01",
+          "prompt": "hourglass with sand flowing, magical glow"
+        },
+        {
+          "id": "magnet_horseshoe_01",
+          "prompt": "horseshoe magnet, red and blue ends, sparks"
+        },
+        {
+          "id": "battery_power_01",
+          "prompt": "battery with lightning bolt symbol, charged"
+        },
+        {
+          "id": "spring_coil_01",
+          "prompt": "coiled spring, bouncy, metallic"
+        },
+        {
+          "id": "wings_angel_01",
+          "prompt": "angel wings, white feathers, glowing"
+        },
+        {
+          "id": "wings_demon_01",
+          "prompt": "demon wings, bat-like, dark purple"
+        },
+        {
+          "id": "halo_golden_01",
+          "prompt": "golden halo ring, floating, glowing"
+        },
+        {
+          "id": "anchor_ship_01",
+          "prompt": "ship anchor, heavy chain, iron"
+        },
+        {
+          "id": "balloon_red_01",
+          "prompt": "red balloon floating, string trailing"
+        },
+        {
+          "id": "balloon_bunch_01",
+          "prompt": "bunch of colorful balloons tied together"
+        },
+        {
+          "id": "umbrella_01",
+          "prompt": "open umbrella, curved handle, colorful"
+        },
+        {
+          "id": "parachute_01",
+          "prompt": "deployed parachute, ropes hanging down"
+        },
+        {
+          "id": "propeller_beanie_01",
+          "prompt": "propeller beanie hat, spinning blades on top"
+        },
+        {
+          "id": "glasses_xray_01",
+          "prompt": "x-ray glasses, thick frames, swirly lenses"
+        },
+        {
+          "id": "boots_rocket_01",
+          "prompt": "rocket boots, flames from soles"
+        },
+        {
+          "id": "gloves_boxing_01",
+          "prompt": "red boxing gloves, laced up"
+        },
+        {
+          "id": "gloves_rubber_01",
+          "prompt": "yellow rubber cleaning gloves"
+        },
+        {
+          "id": "mustache_fake_01",
+          "prompt": "fake mustache, curly ends, disguise"
+        },
+        {
+          "id": "nose_clown_01",
+          "prompt": "red clown nose, round, shiny"
+        }
+      ]
+    },
+    {
+      "name": "objects_household",
+      "output_folder": "assets/sprites/shared/objects/household",
+      "description": "Common household objects",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "toaster_01",
+          "prompt": "toaster with bread popping out, chrome finish"
+        },
+        {
+          "id": "microwave_01",
+          "prompt": "microwave oven, window showing inside, buttons"
+        },
+        {
+          "id": "blender_01",
+          "prompt": "blender with lid, glass pitcher, base"
+        },
+        {
+          "id": "vacuum_01",
+          "prompt": "vacuum cleaner, hose attached, wheels"
+        },
+        {
+          "id": "iron_steam_01",
+          "prompt": "steam iron, cord attached, hot"
+        },
+        {
+          "id": "fan_desk_01",
+          "prompt": "desk fan, spinning blades, tilted head"
+        },
+        {
+          "id": "lamp_desk_01",
+          "prompt": "desk lamp, adjustable arm, light bulb"
+        },
+        {
+          "id": "alarm_clock_01",
+          "prompt": "alarm clock, bells on top, ringing"
+        },
+        {
+          "id": "telephone_rotary_01",
+          "prompt": "rotary telephone, coiled cord, vintage"
+        },
+        {
+          "id": "tv_old_01",
+          "prompt": "old CRT television, antenna on top, screen glowing"
+        },
+        {
+          "id": "radio_boombox_01",
+          "prompt": "boombox radio, cassette player, speakers"
+        },
+        {
+          "id": "camera_polaroid_01",
+          "prompt": "polaroid camera, photo ejecting from front"
+        },
+        {
+          "id": "camera_video_01",
+          "prompt": "video camera, viewfinder, recording light"
+        },
+        {
+          "id": "calculator_01",
+          "prompt": "calculator with number pad, small display"
+        },
+        {
+          "id": "typewriter_01",
+          "prompt": "manual typewriter, keys, paper loaded"
+        },
+        {
+          "id": "scissors_01",
+          "prompt": "scissors, open blades, handle holes"
+        },
+        {
+          "id": "stapler_01",
+          "prompt": "stapler, spring-loaded, metallic"
+        },
+        {
+          "id": "tape_dispenser_01",
+          "prompt": "tape dispenser, roll of tape, serrated edge"
+        },
+        {
+          "id": "pencil_sharpener_01",
+          "prompt": "pencil sharpener, crank handle, shavings"
+        },
+        {
+          "id": "ruler_01",
+          "prompt": "ruler with measurements, straight edge"
+        }
+      ]
+    },
+    {
+      "name": "objects_sports",
+      "output_folder": "assets/sprites/shared/objects/sports",
+      "description": "Sports equipment and balls",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "ball_soccer_01",
+          "prompt": "soccer ball, black and white hexagon pattern"
+        },
+        {
+          "id": "ball_basketball_01",
+          "prompt": "basketball, orange with black lines"
+        },
+        {
+          "id": "ball_football_01",
+          "prompt": "american football, brown leather, laces"
+        },
+        {
+          "id": "ball_baseball_01",
+          "prompt": "baseball, white with red stitching"
+        },
+        {
+          "id": "ball_tennis_01",
+          "prompt": "tennis ball, yellow-green, fuzzy texture"
+        },
+        {
+          "id": "ball_bowling_01",
+          "prompt": "bowling ball, three finger holes, shiny"
+        },
+        {
+          "id": "ball_golf_01",
+          "prompt": "golf ball, white, dimpled surface"
+        },
+        {
+          "id": "ball_volleyball_01",
+          "prompt": "volleyball, white with colored panels"
+        },
+        {
+          "id": "hockey_stick_01",
+          "prompt": "hockey stick, curved blade, grip tape"
+        },
+        {
+          "id": "hockey_puck_01",
+          "prompt": "hockey puck, black rubber disc"
+        },
+        {
+          "id": "baseball_bat_01",
+          "prompt": "wooden baseball bat, knob handle"
+        },
+        {
+          "id": "baseball_glove_01",
+          "prompt": "baseball glove, brown leather, webbing"
+        },
+        {
+          "id": "tennis_racket_01",
+          "prompt": "tennis racket, string mesh, grip handle"
+        },
+        {
+          "id": "golf_club_01",
+          "prompt": "golf club, driver head, long shaft"
+        },
+        {
+          "id": "boxing_glove_01",
+          "prompt": "boxing glove, padded, laced wrist"
+        },
+        {
+          "id": "dumbbell_01",
+          "prompt": "dumbbell weight, plates on ends, handle"
+        },
+        {
+          "id": "trophy_gold_01",
+          "prompt": "golden trophy cup, handles, pedestal base"
+        },
+        {
+          "id": "medal_gold_01",
+          "prompt": "gold medal on ribbon, star design"
+        },
+        {
+          "id": "whistle_01",
+          "prompt": "referee whistle, metal, lanyard attached"
+        },
+        {
+          "id": "stopwatch_01",
+          "prompt": "stopwatch, digital display, buttons on top"
+        }
+      ]
+    },
+    {
+      "name": "nature_elements",
+      "output_folder": "assets/sprites/shared/nature",
+      "description": "Natural elements and phenomena",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "sun_bright_01",
+          "prompt": "bright yellow sun, rays extending outward"
+        },
+        {
+          "id": "moon_crescent_01",
+          "prompt": "crescent moon, pale glow, night sky"
+        },
+        {
+          "id": "star_shining_01",
+          "prompt": "twinkling star, multiple points, bright"
+        },
+        {
+          "id": "cloud_fluffy_01",
+          "prompt": "fluffy white cloud, soft edges"
+        },
+        {
+          "id": "cloud_storm_01",
+          "prompt": "dark storm cloud, lightning flashing"
+        },
+        {
+          "id": "rainbow_arc_01",
+          "prompt": "rainbow arc, seven colors, after rain"
+        },
+        {
+          "id": "lightning_bolt_01",
+          "prompt": "lightning bolt, jagged electric, bright yellow"
+        },
+        {
+          "id": "tornado_01",
+          "prompt": "tornado funnel, swirling debris, powerful"
+        },
+        {
+          "id": "snowflake_01",
+          "prompt": "snowflake, six-pointed, crystalline, delicate"
+        },
+        {
+          "id": "raindrop_01",
+          "prompt": "water raindrop, teardrop shape, falling"
+        },
+        {
+          "id": "fire_flame_01",
+          "prompt": "fire flame, orange and yellow, flickering"
+        },
+        {
+          "id": "fire_campfire_01",
+          "prompt": "campfire, logs burning, smoke rising"
+        },
+        {
+          "id": "water_wave_01",
+          "prompt": "ocean wave, curling crest, foam"
+        },
+        {
+          "id": "water_splash_01",
+          "prompt": "water splash, droplets flying, impact"
+        },
+        {
+          "id": "tree_oak_01",
+          "prompt": "oak tree, thick trunk, leafy branches"
+        },
+        {
+          "id": "tree_pine_01",
+          "prompt": "pine tree, conical shape, needles"
+        },
+        {
+          "id": "flower_rose_01",
+          "prompt": "red rose flower, petals, thorny stem"
+        },
+        {
+          "id": "flower_sunflower_01",
+          "prompt": "sunflower, yellow petals, brown center, tall"
+        },
+        {
+          "id": "mushroom_red_01",
+          "prompt": "red mushroom with white spots, toadstool"
+        },
+        {
+          "id": "cactus_01",
+          "prompt": "cactus with arms, spines, desert plant"
+        }
+      ]
+    }
+  ]
+}

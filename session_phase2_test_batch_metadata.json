@@ -1,0 +1,47 @@
+{
+  "session_name": "phase2_test_batch",
+  "started_at": "2025-11-07T04:04:00Z",
+  "completed_at": "2025-11-07T04:06:30Z",
+  "total_sprites": 3,
+  "sprites_generated": 3,
+  "sprites_failed": 0,
+  "generated": [
+    {
+      "id": "apple_green_01",
+      "pixellab_object_id": "7d21e90f-acab-4ef2-9024-7a0d97cb4cf8",
+      "file_path": "assets/testsprites/phase2_batch/apple_green_01.png",
+      "prompt": "green apple fruit, shiny surface, simple design, top-down pixel art",
+      "generated_at": "2025-11-07T04:04:00Z",
+      "generation_time_seconds": 40,
+      "size": "32x32",
+      "file_size_bytes": 680,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "banana_01",
+      "pixellab_object_id": "300ce62a-7dd8-4be0-b15e-7c42d30b4af0",
+      "file_path": "assets/testsprites/phase2_batch/banana_01.png",
+      "prompt": "yellow banana fruit, curved shape, simple design, top-down pixel art",
+      "generated_at": "2025-11-07T04:04:30Z",
+      "generation_time_seconds": 40,
+      "size": "32x32",
+      "file_size_bytes": 463,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "orange_01",
+      "pixellab_object_id": "0b0f4739-79d6-4aa3-a68c-45421620741a",
+      "file_path": "assets/testsprites/phase2_batch/orange_01.png",
+      "prompt": "orange fruit, round shape, textured peel, simple design, top-down pixel art",
+      "generated_at": "2025-11-07T04:05:00Z",
+      "generation_time_seconds": 40,
+      "size": "32x32",
+      "file_size_bytes": 730,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": []
+}

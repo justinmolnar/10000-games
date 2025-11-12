@@ -240,7 +240,7 @@ function DodgeView:draw()
     end
 
     -- Phase 2.3: Draw objects/enemies (sprites or fallback to icons)
-    for _, obj in ipairs(game.objects) do
+    for i, obj in ipairs(game.objects) do
         -- Draw obstacle trail first (behind object)
         if obj.trail_positions and #obj.trail_positions > 1 then
             g.setColor(1, 0.4, 0.2, 0.4)
@@ -261,38 +261,89 @@ function DodgeView:draw()
 
         -- Determine which sprite to use
         if obj.is_enemy and obj.enemy_type then
-            -- Variant enemy - try to load enemy sprite
-            sprite_key = "enemy_" .. obj.enemy_type
+            -- Enemy sprite - check if it's "obstacle" type or special enemy
+            if obj.enemy_type == "obstacle" then
+                -- Basic obstacle enemy - use obstacle sprite
+                sprite_key = "obstacle"
+            else
+                -- Special enemy type - use enemy-specific sprite
+                sprite_key = "enemy_" .. obj.enemy_type
+            end
             sprite_img = game.sprites and game.sprites[sprite_key]
+            if _G.DEBUG_SPRITES and i <= 3 then  -- Only debug first 3 objects to avoid spam
+                print(string.format("[DodgeView] Drawing obj #%d: is_enemy=%s, enemy_type=%s, sprite_key=%s, sprite_found=%s",
+                    i, tostring(obj.is_enemy), tostring(obj.enemy_type), sprite_key, tostring(sprite_img ~= nil)))
+            end
+            if not sprite_img and _G.DEBUG_SPRITES then
+                print(string.format("[DodgeView] Enemy sprite not found: %s (enemy_type=%s, is_enemy=%s)",
+                    sprite_key, tostring(obj.enemy_type), tostring(obj.is_enemy)))
+            end
         elseif not obj.is_enemy then
-            -- Regular obstacle
+            -- Legacy: Regular obstacle (shouldn't happen anymore)
             sprite_key = "obstacle"
             sprite_img = game.sprites and game.sprites[sprite_key]
+            if _G.DEBUG_SPRITES then
+                print(string.format("[DodgeView] WARNING: Object with is_enemy=false (should not happen)"))
+            end
         end
 
         if sprite_img then
             -- Use loaded sprite with palette swapping
             local size = obj.radius * 2
 
+            -- DEBUG: Print what we're actually drawing (first object only)
+            if i == 1 and not self._draw_debug_printed then
+                print(string.format("[DodgeView] Drawing first object: enemy_type=%s, sprite_key=%s, sprite=%s, paletteManager=%s, palette_id=%s",
+                    tostring(obj.enemy_type), sprite_key, tostring(sprite_img), tostring(paletteManager ~= nil), tostring(palette_id)))
+                self._draw_debug_printed = true
+            end
+
+            -- Calculate rotation angle based on sprite direction mode
+            local rotation = 0
+
+            if obj.sprite_direction_mode == "movement_based" or not obj.sprite_direction_mode then
+                -- Default: rotate sprite to face movement direction
+                if obj.vx or obj.vy then
+                    rotation = math.atan2(obj.vy or 0, obj.vx or 0) + math.pi/2  -- +90° because sprites point up
+                else
+                    rotation = obj.angle or 0
+                end
+            else
+                -- Locked direction: use specified angle in degrees
+                rotation = math.rad(obj.sprite_direction_mode)
+            end
+
+            -- Add accumulated rotation from sprite_rotation_speed
+            if obj.sprite_rotation_angle then
+                rotation = rotation + math.rad(obj.sprite_rotation_angle)
+            end
+
             if paletteManager and palette_id then
+                -- Palette drawing with rotation (need to transform manually)
+                g.push()
+                g.translate(obj.x, obj.y)
+                g.rotate(rotation)
                 paletteManager:drawSpriteWithPalette(
                     sprite_img,
-                    obj.x - obj.radius,
-                    obj.y - obj.radius,
+                    -obj.radius,
+                    -obj.radius,
                     size,
                     size,
                     palette_id,
                     {1, 1, 1}
                 )
+                g.pop()
             else
-                -- No palette, just draw normally
+                -- No palette, just draw normally with rotation
                 g.setColor(1, 1, 1)
                 g.draw(sprite_img,
-                    obj.x - obj.radius,
-                    obj.y - obj.radius,
-                    0,
+                    obj.x,
+                    obj.y,
+                    rotation,
                     size / sprite_img:getWidth(),
-                    size / sprite_img:getHeight())
+                    size / sprite_img:getHeight(),
+                    sprite_img:getWidth() / 2,
+                    sprite_img:getHeight() / 2)
             end
         else
             -- Fallback to icon system
@@ -328,19 +379,29 @@ function DodgeView:draw()
         local enemy_sprite = nil
         local enemy_fallback = "msg_error-0"  -- Default fallback
 
-        -- Find first enemy type from composition
+        -- Find first enemy type from composition (prefer non-obstacle enemies for display)
         if game.enemy_composition then
+            -- First pass: Look for special enemy types (not obstacle)
             for enemy_type, _ in pairs(game.enemy_composition) do
-                local sprite_key = "enemy_" .. enemy_type
-                if game.sprites and game.sprites[sprite_key] then
-                    enemy_sprite = game.sprites[sprite_key]
-                    break
+                if enemy_type ~= "obstacle" then
+                    local sprite_key = "enemy_" .. enemy_type
+                    if game.sprites and game.sprites[sprite_key] then
+                        enemy_sprite = game.sprites[sprite_key]
+                        break
+                    end
+                    -- Set fallback based on enemy type (matching render logic)
+                    if enemy_type == 'chaser' then enemy_fallback = "world_lock-0"
+                    elseif enemy_type == 'shooter' then enemy_fallback = "world_star-1"
+                    end
+                    break  -- Use first special enemy type
                 end
-                -- Set fallback based on enemy type (matching render logic)
-                if enemy_type == 'chaser' then enemy_fallback = "world_lock-0"
-                elseif enemy_type == 'shooter' then enemy_fallback = "world_star-1"
+            end
+
+            -- Second pass: If no special enemies, use obstacle sprite
+            if not enemy_sprite and game.enemy_composition.obstacle then
+                if game.sprites and game.sprites.obstacle then
+                    enemy_sprite = game.sprites.obstacle
                 end
-                break  -- Use first enemy type
             end
         end
 

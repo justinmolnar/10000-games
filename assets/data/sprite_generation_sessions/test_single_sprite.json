@@ -1,0 +1,27 @@
+{
+  "session_name": "test_single_sprite",
+  "description": "Minimal test config with 1 sprite to validate script foundation",
+  "sprite_type": "map_object",
+  "sprite_groups": [
+    {
+      "name": "test_group",
+      "output_folder": "assets/testsprites/phase1_test",
+      "description": "Single test sprite for Phase 1 validation",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "test_apple_01",
+          "prompt": "red apple fruit, shiny surface, top-down pixel art",
+          "notes": "Simple test sprite to validate generation pipeline"
+        }
+      ]
+    }
+  ]
+}

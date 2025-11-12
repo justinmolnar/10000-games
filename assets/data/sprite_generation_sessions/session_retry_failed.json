@@ -1,0 +1,176 @@
+{
+  "session_name": "retry_failed_sprites",
+  "description": "Retry 31 sprites that failed with 422 errors",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "enemies_mechanical",
+      "output_folder": "assets/sprites/shared/enemies/mechanical",
+      "description": "Mechanical robots and turrets",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "high detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "robot_small_01",
+          "prompt": "small robot, metallic gray, boxy body, simple design, pixel art"
+        },
+        {
+          "id": "robot_small_02",
+          "prompt": "small blue robot, round body, antenna, pixel art"
+        },
+        {
+          "id": "robot_medium_01",
+          "prompt": "medium robot, silver metallic, angular design, pixel art"
+        },
+        {
+          "id": "robot_medium_02",
+          "prompt": "medium red robot, sturdy build, mechanical arms, pixel art"
+        },
+        {
+          "id": "robot_large_01",
+          "prompt": "large robot, heavy armor plating, intimidating, pixel art"
+        },
+        {
+          "id": "turret_basic_01",
+          "prompt": "basic turret, gray metal, rotating barrel, stationary, pixel art"
+        },
+        {
+          "id": "turret_laser_01",
+          "prompt": "laser turret, glowing blue energy, advanced tech, pixel art"
+        },
+        {
+          "id": "turret_missile_01",
+          "prompt": "missile turret, multiple barrels, heavy weapon, pixel art"
+        },
+        {
+          "id": "drone_01",
+          "prompt": "flying drone, propellers, compact body, surveillance, pixel art"
+        },
+        {
+          "id": "drone_02",
+          "prompt": "combat drone, sleek design, weapon mounted, pixel art"
+        },
+        {
+          "id": "drone_03",
+          "prompt": "scout drone, small size, single rotor, pixel art"
+        },
+        {
+          "id": "mech_01",
+          "prompt": "small mech walker, bipedal, mechanical legs, pixel art"
+        },
+        {
+          "id": "mech_02",
+          "prompt": "assault mech, heavy armor, dual weapons, pixel art"
+        },
+        {
+          "id": "tank_01",
+          "prompt": "small tank, treads, rotating turret, armored, pixel art"
+        },
+        {
+          "id": "tank_02",
+          "prompt": "heavy tank, thick armor, large cannon, pixel art"
+        },
+        {
+          "id": "probe_01",
+          "prompt": "floating probe, spherical body, scanning device, pixel art"
+        },
+        {
+          "id": "probe_02",
+          "prompt": "recon probe, multiple sensors, hovering, pixel art"
+        },
+        {
+          "id": "mine_01",
+          "prompt": "explosive mine, spherical shape, spikes, danger, pixel art"
+        },
+        {
+          "id": "mine_02",
+          "prompt": "proximity mine, blinking light, metallic, pixel art"
+        },
+        {
+          "id": "satellite_01",
+          "prompt": "small satellite, solar panels, antenna, orbiting, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "coins",
+      "output_folder": "assets/sprites/shared/coins",
+      "description": "Coin Flip game coins (heads and tails)",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "high detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "coin_gold_heads",
+          "prompt": "gold coin heads side, face profile, shiny metallic, circular, pixel art"
+        },
+        {
+          "id": "coin_gold_tails",
+          "prompt": "gold coin tails side, eagle symbol, shiny metallic, circular, pixel art"
+        },
+        {
+          "id": "coin_silver_heads",
+          "prompt": "silver coin heads side, face profile, metallic shine, circular, pixel art"
+        },
+        {
+          "id": "coin_silver_tails",
+          "prompt": "silver coin tails side, shield symbol, metallic, circular, pixel art"
+        },
+        {
+          "id": "coin_bronze_heads",
+          "prompt": "bronze coin heads side, face profile, copper color, circular, pixel art"
+        },
+        {
+          "id": "coin_bronze_tails",
+          "prompt": "bronze coin tails side, laurel wreath symbol, copper, circular, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "gestures_classic",
+      "output_folder": "assets/sprites/shared/gestures/classic",
+      "description": "Classic RPS hand gestures",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "side",
+        "detail": "high detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "hand_rock",
+          "prompt": "hand making rock gesture, closed fist, side view, pixel art"
+        },
+        {
+          "id": "hand_paper",
+          "prompt": "hand making paper gesture, flat palm, side view, pixel art"
+        },
+        {
+          "id": "hand_scissors",
+          "prompt": "hand making scissors gesture, two fingers extended, side view, pixel art"
+        },
+        {
+          "id": "hand_lizard",
+          "prompt": "hand making lizard gesture, spock variant, side view, pixel art"
+        },
+        {
+          "id": "hand_spock",
+          "prompt": "hand making spock gesture, vulcan salute, side view, pixel art"
+        }
+      ]
+    }
+  ]
+}

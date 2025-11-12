@@ -6,11 +6,27 @@ function CoinFlipView:init(game)
 end
 
 function CoinFlipView:draw()
-    local w, h = love.graphics.getDimensions()
+    -- Use viewport dimensions if available (for demo playback), otherwise full screen
+    local w = self.game.viewport_width or love.graphics.getWidth()
+    local h = self.game.viewport_height or love.graphics.getHeight()
 
     -- Background
     love.graphics.setColor(0.1, 0.1, 0.15)
     love.graphics.rectangle('fill', 0, 0, w, h)
+
+    -- Screen flash overlay (Phase 11)
+    if self.game.screen_flash_color then
+        love.graphics.setColor(self.game.screen_flash_color)
+        love.graphics.rectangle('fill', 0, 0, w, h)
+    end
+
+    -- Draw score popups
+    for _, popup in ipairs(self.game.score_popups) do
+        popup:draw()
+    end
+
+    -- Draw particles (Phase 11)
+    self.game.particle_system:draw()
 
     -- Title
     love.graphics.setColor(1, 1, 1)
@@ -26,14 +42,41 @@ function CoinFlipView:draw()
         love.graphics.print("Lives: " .. self.game.lives, 20, 120)
     end
 
+    -- Score (prominent display)
+    love.graphics.setColor(1, 1, 0)  -- Yellow for score
+    love.graphics.print("SCORE: " .. self.game.score, 20, 150, 0, 1.5, 1.5)
+
     -- Stats
-    love.graphics.print("Total Flips: " .. self.game.flips_total, 20, 150)
-    love.graphics.print("Correct: " .. self.game.correct_total, 20, 170)
-    love.graphics.print("Wrong: " .. self.game.incorrect_total, 20, 190)
+    love.graphics.setColor(1, 1, 1)  -- Back to white
+    love.graphics.print("Total Flips: " .. self.game.flips_total, 20, 190)
+    love.graphics.print("Correct: " .. self.game.correct_total, 20, 210)
+    love.graphics.print("Wrong: " .. self.game.incorrect_total, 20, 230)
 
     if self.game.flips_total > 0 then
         local accuracy = math.floor(self.game.metrics.accuracy * 100)
-        love.graphics.print("Accuracy: " .. accuracy .. "%", 20, 210)
+        love.graphics.print("Accuracy: " .. accuracy .. "%", 20, 250)
+    end
+
+    -- Pattern history display (Phase 5 completion)
+    if self.game.show_pattern_history and #self.game.pattern_history > 0 then
+        local history_str = table.concat(self.game.pattern_history, " ")
+        love.graphics.setColor(0.7, 0.7, 0.7)
+        love.graphics.print("History: " .. history_str, 20, 270)
+    end
+
+    -- Auto-flip countdown (Phase 5 completion)
+    if self.game.auto_flip_interval > 0 and self.game.waiting_for_guess and not self.game.game_over and not self.game.victory then
+        love.graphics.setColor(1, 1, 0.3)
+        local countdown = math.ceil(self.game.auto_flip_timer)
+        love.graphics.print("Auto-flip in: " .. countdown .. "s", w - 150, 10)
+    end
+
+    -- Time per flip countdown (Phase 5 completion)
+    if self.game.time_per_flip > 0 and self.game.waiting_for_guess and not self.game.game_over and not self.game.victory then
+        local time_left = math.ceil(self.game.time_per_flip_timer)
+        local color = time_left <= 3 and {1, 0, 0} or {1, 1, 1}  -- Red if low
+        love.graphics.setColor(color)
+        love.graphics.print("Time Left: " .. time_left .. "s", w - 150, 30, 0, 1.2, 1.2)
     end
 
     -- Coin display area (center)
@@ -41,20 +84,33 @@ function CoinFlipView:draw()
     local coin_y = h / 2
     local coin_radius = 80
 
+    -- Flip animation (Phase 11) - Apply rotation if flipping
+    love.graphics.push()
+    love.graphics.translate(coin_x, coin_y)
+
+    if self.game.is_flipping then
+        -- Rotate around Y-axis (create 3D flip illusion by scaling X)
+        local rotation_progress = self.game.flip_animation_rotation % (math.pi * 2)
+        local scale_x = math.abs(math.cos(rotation_progress))
+        love.graphics.scale(scale_x, 1)
+    end
+
     -- Draw coin
     love.graphics.setColor(0.8, 0.7, 0.2)  -- Gold color
-    love.graphics.circle('fill', coin_x, coin_y, coin_radius)
+    love.graphics.circle('fill', 0, 0, coin_radius)
     love.graphics.setColor(0.6, 0.5, 0.1)
-    love.graphics.circle('line', coin_x, coin_y, coin_radius)
+    love.graphics.circle('line', 0, 0, coin_radius)
 
     -- Show last result on coin
     love.graphics.setColor(0.2, 0.2, 0.2)
     if self.game.last_result then
         local result_text = self.game.last_result:upper()
-        love.graphics.printf(result_text, coin_x - 60, coin_y - 10, 120, 'center')
+        love.graphics.printf(result_text, -60, -10, 120, 'center')
     else
-        love.graphics.printf("?", coin_x - 60, coin_y - 10, 120, 'center')
+        love.graphics.printf("?", -60, -10, 120, 'center')
     end
+
+    love.graphics.pop()
 
     -- Show result message
     if self.game.show_result then

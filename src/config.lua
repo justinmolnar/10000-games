@@ -928,10 +928,14 @@ local Config = {
                 shield_recharge_time = 0  -- Time in seconds to recharge shield (0 = never recharges)
             },
             objects = {
-                size = 15,
+                size = 24,
                 base_speed = 200,
                 base_spawn_rate = 1.0,
                 warning_time = 0.5,
+                -- Universal size range (applies to all enemies if not overridden)
+                size_range = {24, 24},  -- {min, max} - default same as size
+                -- Universal speed range (applies to all enemies if not overridden)
+                speed_range = {200, 200},  -- {min, max} - default same as base_speed
                 -- Per-type speed multipliers relative to base object speed
                 type_speed_multipliers = {
                     seeker = 0.9,
@@ -939,6 +943,43 @@ local Config = {
                     zigzag = 1.1,
                     sine   = 1.0,
                     linear = 1.0
+                },
+                -- Per-enemy-type size ranges (overrides universal if set)
+                enemy_sizes = {
+                    obstacle = nil,     -- nil = use universal range
+                    chaser = nil,
+                    shooter = nil,
+                    zigzag = nil,
+                    bouncer = nil,
+                    teleporter = nil
+                },
+                -- Per-enemy-type speed ranges (overrides universal if set)
+                enemy_speeds = {
+                    obstacle = nil,     -- nil = use universal range
+                    chaser = {140, 180},  -- Slightly slower than default
+                    shooter = {100, 140}, -- Much slower
+                    zigzag = {200, 240},  -- Slightly faster
+                    bouncer = nil,
+                    teleporter = {140, 180}
+                },
+                -- Bouncer parameters
+                bouncer = {
+                    max_bounces = 3  -- Number of bounces before expiring (counts as dodged)
+                },
+                -- Shooter parameters
+                shooter = {
+                    shoot_interval = 2.0,  -- Time between shots in seconds
+                    projectile_size = 0.5,  -- Multiplier relative to OBJECT_RADIUS (0.5 = half size)
+                    projectile_speed = 0.8  -- Multiplier relative to object_speed (0.8 = 80% speed)
+                },
+                -- Per-enemy-type sprite rendering (nil = use defaults: 0 rotation, movement_based direction)
+                enemy_sprite_settings = {
+                    obstacle = nil,
+                    chaser = nil,
+                    shooter = nil,
+                    zigzag = nil,
+                    bouncer = nil,
+                    teleporter = nil
                 },
                 -- Zigzag/Sine wobble parameters
                 zigzag = {
@@ -1003,7 +1044,7 @@ local Config = {
                 accel = { max = 2.0, time = 60 } -- spawn rate speeds up to 2x over 60s
             },
             seeker = {
-                base_turn_deg = 6,
+                base_turn_deg = 25,
                 difficulty = { max = 2.0, time = 90 } -- up to 2x turn rate over 90s
             },
             drift = {

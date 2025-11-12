@@ -1,0 +1,1514 @@
+{
+  "session_name": "themed_collection",
+  "description": "250+ themed sprites across fantasy, horror, pirates, cowboys, medieval, music, office, weather, holidays, and emotions",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "fantasy_magic",
+      "output_folder": "assets/sprites/shared/fantasy/magic",
+      "description": "Fantasy and magical items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "wand_wooden_01",
+          "prompt": "wooden wizard wand, gnarled texture, glowing tip, fantasy magic, straight front view"
+        },
+        {
+          "id": "wand_crystal_01",
+          "prompt": "crystal wand, transparent shaft, star at tip, magical sparkles, front-facing"
+        },
+        {
+          "id": "staff_twisted_01",
+          "prompt": "twisted wooden staff, orb at top glowing blue, fantasy wizard, side profile view"
+        },
+        {
+          "id": "staff_skull_01",
+          "prompt": "staff with skull on top, dark magic, necromancer weapon, front view"
+        },
+        {
+          "id": "orb_crystal_blue_01",
+          "prompt": "blue crystal ball, swirling mist inside, fortune telling, front-facing view"
+        },
+        {
+          "id": "orb_crystal_purple_01",
+          "prompt": "purple crystal orb, levitating, dark energy, mystical, front view"
+        },
+        {
+          "id": "spellbook_ancient_01",
+          "prompt": "ancient spellbook, leather bound, glowing runes on cover, front-facing view"
+        },
+        {
+          "id": "spellbook_open_01",
+          "prompt": "open spellbook, pages visible with magical symbols, glowing text, top-down view"
+        },
+        {
+          "id": "scroll_magic_01",
+          "prompt": "magic scroll rolled, glowing seal, ancient parchment, side view"
+        },
+        {
+          "id": "scroll_spell_01",
+          "prompt": "spell scroll unrolled, magical text visible, floating, top-down overhead"
+        },
+        {
+          "id": "potion_red_health_01",
+          "prompt": "red health potion in glass bottle, bubbling liquid, cork stopper, front view"
+        },
+        {
+          "id": "potion_blue_mana_01",
+          "prompt": "blue mana potion, glowing liquid, sparkles inside bottle, front-facing"
+        },
+        {
+          "id": "potion_green_poison_01",
+          "prompt": "green poison potion, skull symbol on label, toxic liquid, front view"
+        },
+        {
+          "id": "potion_purple_magic_01",
+          "prompt": "purple magic potion, swirling contents, mystical elixir, front-facing"
+        },
+        {
+          "id": "cauldron_bubbling_01",
+          "prompt": "iron cauldron, green bubbling brew, steam rising, witch's pot, side view"
+        },
+        {
+          "id": "amulet_sun_01",
+          "prompt": "sun amulet on chain, golden rays, magical pendant, front-facing view"
+        },
+        {
+          "id": "amulet_moon_01",
+          "prompt": "crescent moon amulet, silver, mystical jewelry, front view"
+        },
+        {
+          "id": "ring_magic_01",
+          "prompt": "magical ring, gemstone glowing, enchanted band, front-facing view"
+        },
+        {
+          "id": "gem_ruby_01",
+          "prompt": "red ruby gemstone, faceted cut, glowing with power, front view"
+        },
+        {
+          "id": "gem_sapphire_01",
+          "prompt": "blue sapphire gem, magical aura, precious stone, front-facing"
+        },
+        {
+          "id": "gem_emerald_01",
+          "prompt": "green emerald, rectangular cut, nature magic, front view"
+        },
+        {
+          "id": "rune_stone_fire_01",
+          "prompt": "rune stone with fire symbol carved, glowing orange, magic tablet, flat top-down"
+        },
+        {
+          "id": "rune_stone_ice_01",
+          "prompt": "rune stone with ice symbol, glowing blue, frost magic, flat front view"
+        },
+        {
+          "id": "phoenix_feather_01",
+          "prompt": "phoenix feather, glowing orange-red, magical item, side profile view"
+        },
+        {
+          "id": "dragon_scale_01",
+          "prompt": "dragon scale, iridescent, tough armor piece, front-facing view"
+        },
+        {
+          "id": "fairy_dust_01",
+          "prompt": "jar of fairy dust, glowing sparkles, magical powder, front view"
+        },
+        {
+          "id": "magic_mirror_01",
+          "prompt": "ornate magic mirror, golden frame, mystical reflection, front-facing"
+        },
+        {
+          "id": "enchanted_key_01",
+          "prompt": "enchanted skeleton key, glowing, intricate design, side profile"
+        },
+        {
+          "id": "unicorn_horn_01",
+          "prompt": "unicorn horn, spiral shape, glowing white, magical, side view"
+        },
+        {
+          "id": "wizard_hat_01",
+          "prompt": "tall wizard hat, blue with stars and moon, pointed tip, side view"
+        }
+      ]
+    },
+    {
+      "name": "horror_spooky",
+      "output_folder": "assets/sprites/shared/horror",
+      "description": "Horror and spooky items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "skull_human_01",
+          "prompt": "human skull, white bone, jaw visible, creepy, front-facing view"
+        },
+        {
+          "id": "skull_cracked_01",
+          "prompt": "cracked skull, damage visible, aged bone, front view"
+        },
+        {
+          "id": "skull_horned_01",
+          "prompt": "demon skull with horns, evil, dark magic, front-facing"
+        },
+        {
+          "id": "skeleton_hand_01",
+          "prompt": "skeletal hand reaching upward, bony fingers, creepy, front view"
+        },
+        {
+          "id": "skeleton_ribcage_01",
+          "prompt": "skeleton ribcage, white bones, spooky anatomy, front-facing view"
+        },
+        {
+          "id": "ghost_white_01",
+          "prompt": "white ghost, sheet-like, hollow eyes, floating, front view"
+        },
+        {
+          "id": "ghost_blue_01",
+          "prompt": "blue ghost, translucent, wispy tail, spectral, front-facing"
+        },
+        {
+          "id": "ghost_green_01",
+          "prompt": "green ectoplasm ghost, slimy appearance, haunting, front view"
+        },
+        {
+          "id": "pumpkin_jackolantern_01",
+          "prompt": "jack-o-lantern pumpkin, carved scary face, glowing inside, front-facing view"
+        },
+        {
+          "id": "pumpkin_evil_grin_01",
+          "prompt": "evil grinning jack-o-lantern, triangular eyes, menacing, front view"
+        },
+        {
+          "id": "pumpkin_surprised_01",
+          "prompt": "surprised pumpkin face, round eyes and mouth, comical, front-facing"
+        },
+        {
+          "id": "witch_hat_black_01",
+          "prompt": "black witch hat, pointed cone, wide brim, buckle, side profile view"
+        },
+        {
+          "id": "witch_broom_01",
+          "prompt": "witch's broomstick, wooden handle, straw bristles, flying, side view"
+        },
+        {
+          "id": "cauldron_witch_01",
+          "prompt": "black witch cauldron, bubbling green brew, iron pot, front view"
+        },
+        {
+          "id": "coffin_wooden_01",
+          "prompt": "wooden coffin, closed, cross on lid, vampire's resting place, top-down view"
+        },
+        {
+          "id": "coffin_open_01",
+          "prompt": "open coffin, red velvet interior, empty, side view"
+        },
+        {
+          "id": "gravestone_rip_01",
+          "prompt": "gravestone with RIP carved, cracked stone, cemetery, front-facing view"
+        },
+        {
+          "id": "gravestone_cross_01",
+          "prompt": "cross gravestone, weathered, moss growing, front view"
+        },
+        {
+          "id": "bat_flying_01",
+          "prompt": "black bat with wings spread, flying, vampire creature, front-facing view"
+        },
+        {
+          "id": "bat_hanging_01",
+          "prompt": "bat hanging upside down, wings wrapped, sleeping, front view"
+        },
+        {
+          "id": "spider_black_01",
+          "prompt": "black spider, eight legs, creepy crawler, top-down overhead view"
+        },
+        {
+          "id": "spider_web_01",
+          "prompt": "spider web, intricate pattern, sticky strands, flat front-facing view"
+        },
+        {
+          "id": "candle_black_01",
+          "prompt": "black candle, dripping wax, flame flickering, occult, front view"
+        },
+        {
+          "id": "candelabra_01",
+          "prompt": "ornate candelabra, three candles, gothic, front-facing view"
+        },
+        {
+          "id": "voodoo_doll_01",
+          "prompt": "voodoo doll with pins, stitched fabric, cursed, front view"
+        },
+        {
+          "id": "ouija_board_01",
+          "prompt": "ouija board, letters and numbers, planchette, flat top-down view"
+        },
+        {
+          "id": "crystal_ball_dark_01",
+          "prompt": "dark crystal ball, swirling purple mist, fortune telling, front-facing"
+        },
+        {
+          "id": "zombie_hand_01",
+          "prompt": "zombie hand emerging, rotting flesh, green skin, reaching up, front view"
+        },
+        {
+          "id": "eyeball_bloodshot_01",
+          "prompt": "bloodshot eyeball, veins visible, staring, creepy, front-facing view"
+        },
+        {
+          "id": "chains_rusty_01",
+          "prompt": "rusty chains, links, shackles, haunted, coiled view"
+        }
+      ]
+    },
+    {
+      "name": "pirate_nautical",
+      "output_folder": "assets/sprites/shared/pirate",
+      "description": "Pirate and nautical items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "treasure_chest_closed_01",
+          "prompt": "wooden treasure chest, closed, iron bands, keyhole, front-facing view"
+        },
+        {
+          "id": "treasure_chest_open_01",
+          "prompt": "open treasure chest overflowing with gold coins and jewels, front view"
+        },
+        {
+          "id": "gold_coin_01",
+          "prompt": "gold pirate coin, doubloon, skull emblem, front-facing view"
+        },
+        {
+          "id": "gold_coins_pile_01",
+          "prompt": "pile of gold coins stacked, treasure hoard, top-down view"
+        },
+        {
+          "id": "jewel_ruby_pirate_01",
+          "prompt": "large ruby gemstone, stolen treasure, red sparkle, front view"
+        },
+        {
+          "id": "jewel_diamond_pirate_01",
+          "prompt": "diamond gemstone, pirate loot, brilliant cut, front-facing"
+        },
+        {
+          "id": "pirate_hat_tricorn_01",
+          "prompt": "black tricorn pirate hat, skull and crossbones, feather, side view"
+        },
+        {
+          "id": "eyepatch_black_01",
+          "prompt": "black leather eyepatch, string ties, pirate accessory, front view"
+        },
+        {
+          "id": "hook_hand_01",
+          "prompt": "pirate hook hand, metal curved hook, strap attachment, side profile"
+        },
+        {
+          "id": "pegleg_wooden_01",
+          "prompt": "wooden peg leg, pirate prosthetic, strapped, side view"
+        },
+        {
+          "id": "cutlass_sword_01",
+          "prompt": "pirate cutlass, curved blade, hand guard, side profile view"
+        },
+        {
+          "id": "flintlock_pistol_01",
+          "prompt": "flintlock pistol, wooden stock, ornate, pirate weapon, side view"
+        },
+        {
+          "id": "cannon_ship_01",
+          "prompt": "ship cannon, iron barrel, wheels, naval weapon, side profile"
+        },
+        {
+          "id": "cannonball_01",
+          "prompt": "iron cannonball, round, stacked pyramid, front-facing view"
+        },
+        {
+          "id": "anchor_ship_01",
+          "prompt": "ship anchor, heavy iron, rope chain, nautical, front view"
+        },
+        {
+          "id": "ship_wheel_01",
+          "prompt": "wooden ship wheel, spokes, helm, steering, front-facing view"
+        },
+        {
+          "id": "compass_brass_01",
+          "prompt": "brass compass, needle pointing north, navigation tool, top-down view"
+        },
+        {
+          "id": "spyglass_telescope_01",
+          "prompt": "brass spyglass telescope, extending sections, pirate tool, side view"
+        },
+        {
+          "id": "map_treasure_01",
+          "prompt": "treasure map, X marks the spot, aged parchment, rolled, side view"
+        },
+        {
+          "id": "map_treasure_open_01",
+          "prompt": "treasure map unrolled, islands and route drawn, flat top-down view"
+        },
+        {
+          "id": "flag_jolly_roger_01",
+          "prompt": "Jolly Roger pirate flag, skull and crossbones, black flag, front view"
+        },
+        {
+          "id": "rum_bottle_01",
+          "prompt": "rum bottle, dark glass, cork stopper, pirate drink, front-facing"
+        },
+        {
+          "id": "barrel_wooden_01",
+          "prompt": "wooden barrel, iron bands, storage, side view"
+        },
+        {
+          "id": "rope_coiled_01",
+          "prompt": "coiled ship rope, thick nautical rope, hemp, top-down view"
+        },
+        {
+          "id": "lantern_ship_01",
+          "prompt": "ship lantern, oil lamp, metal cage, glowing, front view"
+        },
+        {
+          "id": "parrot_green_01",
+          "prompt": "green parrot, pirate's pet bird, colorful, side profile view"
+        },
+        {
+          "id": "shark_fin_01",
+          "prompt": "shark fin cutting water surface, dangerous, side view"
+        },
+        {
+          "id": "octopus_tentacle_01",
+          "prompt": "octopus tentacle, suckers visible, sea creature, curled view"
+        },
+        {
+          "id": "message_bottle_01",
+          "prompt": "message in a bottle, paper inside, cork sealed, floating, side view"
+        },
+        {
+          "id": "sextant_01",
+          "prompt": "brass sextant, navigation instrument, triangular, side view"
+        }
+      ]
+    },
+    {
+      "name": "western_cowboys",
+      "output_folder": "assets/sprites/shared/western",
+      "description": "Western and cowboy items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "cowboy_hat_brown_01",
+          "prompt": "brown cowboy Stetson hat, wide brim, leather band, side view"
+        },
+        {
+          "id": "cowboy_hat_black_01",
+          "prompt": "black cowboy hat, villain style, creased crown, side profile"
+        },
+        {
+          "id": "cowboy_boot_01",
+          "prompt": "cowboy boot with spur, leather, decorative stitching, side view"
+        },
+        {
+          "id": "cowboy_boots_pair_01",
+          "prompt": "pair of cowboy boots, brown leather, pointed toes, front view"
+        },
+        {
+          "id": "spur_01",
+          "prompt": "cowboy spur with spinning rowel, metal, boot attachment, side view"
+        },
+        {
+          "id": "bandana_red_01",
+          "prompt": "red bandana, paisley pattern, neck cloth, front-facing view"
+        },
+        {
+          "id": "sheriff_badge_01",
+          "prompt": "sheriff star badge, six-pointed, metal, law enforcement, front view"
+        },
+        {
+          "id": "revolver_sixshooter_01",
+          "prompt": "six-shooter revolver, wooden grip, western pistol, side profile view"
+        },
+        {
+          "id": "revolver_fancy_01",
+          "prompt": "ornate revolver, engraved barrel, pearl handle, gunslinger, side view"
+        },
+        {
+          "id": "rifle_winchester_01",
+          "prompt": "Winchester rifle, lever-action, wooden stock, cowboy weapon, side profile"
+        },
+        {
+          "id": "shotgun_double_01",
+          "prompt": "double-barrel shotgun, break-action, western style, side view"
+        },
+        {
+          "id": "holster_leather_01",
+          "prompt": "leather gun holster, belt attachment, empty, side view"
+        },
+        {
+          "id": "bullet_cartridge_01",
+          "prompt": "rifle bullet cartridge, brass casing, ammunition, side view"
+        },
+        {
+          "id": "bullets_belt_01",
+          "prompt": "bullet belt, cartridges in loops, ammo bandolier, front view"
+        },
+        {
+          "id": "lasso_rope_01",
+          "prompt": "lasso rope, coiled with loop, cowboy tool, top-down view"
+        },
+        {
+          "id": "horseshoe_01",
+          "prompt": "iron horseshoe, U-shape, nail holes, lucky charm, front-facing"
+        },
+        {
+          "id": "saddle_western_01",
+          "prompt": "western saddle, leather, horn and stirrups, horse tack, side view"
+        },
+        {
+          "id": "wanted_poster_01",
+          "prompt": "wanted poster, WANTED in bold, silhouette, reward amount, front view"
+        },
+        {
+          "id": "dynamite_stick_01",
+          "prompt": "stick of dynamite, red, fuse lit, explosive, side view"
+        },
+        {
+          "id": "dynamite_bundle_01",
+          "prompt": "bundle of dynamite sticks, tied together, dangerous, front view"
+        },
+        {
+          "id": "whiskey_bottle_01",
+          "prompt": "whiskey bottle, brown glass, cork, saloon drink, front-facing"
+        },
+        {
+          "id": "shot_glass_01",
+          "prompt": "whiskey shot glass, small glass, empty, front view"
+        },
+        {
+          "id": "poker_chips_01",
+          "prompt": "stack of poker chips, casino tokens, gambling, front-facing view"
+        },
+        {
+          "id": "playing_cards_01",
+          "prompt": "playing cards fanned, aces showing, poker hand, front view"
+        },
+        {
+          "id": "cactus_saguaro_01",
+          "prompt": "saguaro cactus, tall with arms, desert plant, side view"
+        },
+        {
+          "id": "tumbleweed_01",
+          "prompt": "tumbleweed, dried bush, rolling, desert, side view"
+        },
+        {
+          "id": "wagon_wheel_01",
+          "prompt": "wooden wagon wheel, spokes, iron rim, western transport, side view"
+        },
+        {
+          "id": "oil_lantern_01",
+          "prompt": "oil lantern, glass chimney, metal base, frontier lighting, front view"
+        },
+        {
+          "id": "harmonica_01",
+          "prompt": "harmonica, metal reeds, cowboy instrument, front-facing view"
+        },
+        {
+          "id": "rattlesnake_coiled_01",
+          "prompt": "coiled rattlesnake, tail rattle, desert danger, top-down view"
+        }
+      ]
+    },
+    {
+      "name": "medieval_knights",
+      "output_folder": "assets/sprites/shared/medieval",
+      "description": "Medieval and knight items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "sword_longsword_01",
+          "prompt": "medieval longsword, steel blade, cross guard, leather grip, side profile view"
+        },
+        {
+          "id": "sword_excalibur_01",
+          "prompt": "legendary sword, ornate hilt, glowing blade, magical, side view"
+        },
+        {
+          "id": "sword_claymore_01",
+          "prompt": "large claymore sword, two-handed, Scottish, side profile"
+        },
+        {
+          "id": "axe_battle_01",
+          "prompt": "battle axe, double-bladed, wooden handle, Viking weapon, side view"
+        },
+        {
+          "id": "axe_executioner_01",
+          "prompt": "executioner's axe, large blade, long handle, front view"
+        },
+        {
+          "id": "mace_spiked_01",
+          "prompt": "spiked mace, metal ball with spikes, chain, medieval weapon, side view"
+        },
+        {
+          "id": "flail_chain_01",
+          "prompt": "flail with spiked ball on chain, swinging weapon, side view"
+        },
+        {
+          "id": "spear_lance_01",
+          "prompt": "knight's lance, long spear, pointed tip, jousting weapon, side profile"
+        },
+        {
+          "id": "halberd_01",
+          "prompt": "halberd polearm, axe blade and spike, long pole, side view"
+        },
+        {
+          "id": "crossbow_medieval_01",
+          "prompt": "medieval crossbow, wooden stock, string drawn, side profile view"
+        },
+        {
+          "id": "bow_longbow_01",
+          "prompt": "English longbow, tall wooden bow, unstrung, side view"
+        },
+        {
+          "id": "arrow_bodkin_01",
+          "prompt": "medieval arrow, bodkin point, fletching, armor-piercing, side profile"
+        },
+        {
+          "id": "quiver_arrows_01",
+          "prompt": "leather quiver with arrows, strap, archer equipment, side view"
+        },
+        {
+          "id": "shield_kite_01",
+          "prompt": "kite shield, triangular, coat of arms, medieval defense, front-facing view"
+        },
+        {
+          "id": "shield_round_01",
+          "prompt": "round shield, Viking style, metal boss center, front view"
+        },
+        {
+          "id": "helmet_knight_01",
+          "prompt": "knight helmet, closed visor, metal, armor piece, front-facing view"
+        },
+        {
+          "id": "helmet_horned_01",
+          "prompt": "horned Viking helmet, metal, fearsome, front view"
+        },
+        {
+          "id": "armor_breastplate_01",
+          "prompt": "metal breastplate, steel armor, chest protection, front-facing"
+        },
+        {
+          "id": "gauntlet_metal_01",
+          "prompt": "metal gauntlet, armored glove, articulated fingers, front view"
+        },
+        {
+          "id": "crown_gold_01",
+          "prompt": "golden crown, jeweled, royal headpiece, king's crown, front-facing view"
+        },
+        {
+          "id": "crown_circlet_01",
+          "prompt": "silver circlet, simple crown, gemstone center, front view"
+        },
+        {
+          "id": "throne_stone_01",
+          "prompt": "stone throne, high back, carved, king's seat, front-facing view"
+        },
+        {
+          "id": "banner_kingdom_01",
+          "prompt": "kingdom banner, coat of arms, flag on pole, front view"
+        },
+        {
+          "id": "flag_medieval_01",
+          "prompt": "medieval flag, heraldic symbol, pennant, waving, side view"
+        },
+        {
+          "id": "torch_wall_01",
+          "prompt": "wall torch, wooden handle, flame burning, medieval lighting, side view"
+        },
+        {
+          "id": "chalice_gold_01",
+          "prompt": "golden chalice, jeweled, holy grail style, goblet, front view"
+        },
+        {
+          "id": "scroll_decree_01",
+          "prompt": "royal decree scroll, wax seal, rolled parchment, side view"
+        },
+        {
+          "id": "catapult_01",
+          "prompt": "wooden catapult, siege weapon, boulder loaded, side profile view"
+        },
+        {
+          "id": "trebuchet_01",
+          "prompt": "trebuchet siege engine, counterweight, medieval artillery, side view"
+        },
+        {
+          "id": "castle_tower_01",
+          "prompt": "castle tower, stone battlements, flag on top, front-facing view"
+        }
+      ]
+    },
+    {
+      "name": "music_instruments",
+      "output_folder": "assets/sprites/shared/music",
+      "description": "Musical instruments",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "guitar_acoustic_01",
+          "prompt": "acoustic guitar, wooden body, strings visible, sound hole, front-facing view"
+        },
+        {
+          "id": "guitar_electric_01",
+          "prompt": "electric guitar, solid body, pickups, rock instrument, front view"
+        },
+        {
+          "id": "bass_guitar_01",
+          "prompt": "bass guitar, four strings, long neck, front-facing view"
+        },
+        {
+          "id": "violin_01",
+          "prompt": "violin, wooden body, bow resting on strings, classical, front view"
+        },
+        {
+          "id": "cello_01",
+          "prompt": "cello, large string instrument, scroll neck, front-facing view"
+        },
+        {
+          "id": "piano_keys_01",
+          "prompt": "piano keyboard, black and white keys, section view, top-down"
+        },
+        {
+          "id": "piano_grand_01",
+          "prompt": "grand piano, open lid, keys visible, classical, top-down view"
+        },
+        {
+          "id": "drums_kit_01",
+          "prompt": "drum kit, bass drum, snare, cymbals, rock setup, front-facing view"
+        },
+        {
+          "id": "drum_snare_01",
+          "prompt": "snare drum with sticks, drumhead, metal rim, top-down view"
+        },
+        {
+          "id": "cymbal_crash_01",
+          "prompt": "crash cymbal on stand, bronze, percussion, side view"
+        },
+        {
+          "id": "trumpet_brass_01",
+          "prompt": "brass trumpet, valves, mouthpiece, shiny, side profile view"
+        },
+        {
+          "id": "saxophone_alto_01",
+          "prompt": "alto saxophone, curved neck, golden brass, side view"
+        },
+        {
+          "id": "trombone_01",
+          "prompt": "trombone, slide extended, brass instrument, side profile"
+        },
+        {
+          "id": "tuba_01",
+          "prompt": "tuba, large brass, coiled tubing, bell facing up, front view"
+        },
+        {
+          "id": "flute_silver_01",
+          "prompt": "silver flute, keys visible, wind instrument, side view"
+        },
+        {
+          "id": "clarinet_01",
+          "prompt": "clarinet, black wood, silver keys, mouthpiece, side profile"
+        },
+        {
+          "id": "oboe_01",
+          "prompt": "oboe, double reed, wooden, keys visible, side view"
+        },
+        {
+          "id": "harp_classical_01",
+          "prompt": "classical harp, strings, curved neck, golden, side view"
+        },
+        {
+          "id": "banjo_01",
+          "prompt": "banjo, round body, long neck, folk instrument, front-facing"
+        },
+        {
+          "id": "ukulele_01",
+          "prompt": "ukulele, small guitar, four strings, Hawaiian, front view"
+        },
+        {
+          "id": "accordion_01",
+          "prompt": "accordion, bellows, keys and buttons, folk instrument, front-facing"
+        },
+        {
+          "id": "tambourine_01",
+          "prompt": "tambourine, jingles around rim, percussion, front view"
+        },
+        {
+          "id": "maracas_pair_01",
+          "prompt": "pair of maracas, colorful, Latin percussion, front-facing view"
+        },
+        {
+          "id": "bongos_01",
+          "prompt": "bongo drums, two drums connected, hand percussion, front view"
+        },
+        {
+          "id": "xylophone_01",
+          "prompt": "xylophone, colored bars, mallets, children's instrument, top-down view"
+        },
+        {
+          "id": "microphone_vintage_01",
+          "prompt": "vintage microphone, chrome, round head, stand mount, front-facing"
+        },
+        {
+          "id": "metronome_01",
+          "prompt": "mechanical metronome, pyramid shape, pendulum, tempo keeper, front view"
+        },
+        {
+          "id": "tuning_fork_01",
+          "prompt": "tuning fork, U-shaped metal, musical tool, front-facing view"
+        },
+        {
+          "id": "music_note_01",
+          "prompt": "musical note symbol, eighth note, black on white, front view"
+        },
+        {
+          "id": "vinyl_record_01",
+          "prompt": "vinyl record, grooves visible, music album, top-down view"
+        }
+      ]
+    },
+    {
+      "name": "office_school",
+      "output_folder": "assets/sprites/shared/office_school",
+      "description": "Office and school items pre-2000",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "pencil_yellow_01",
+          "prompt": "yellow pencil with eraser, sharpened, number 2, side view"
+        },
+        {
+          "id": "pen_ballpoint_01",
+          "prompt": "blue ballpoint pen, plastic, click top, side profile"
+        },
+        {
+          "id": "pen_fountain_01",
+          "prompt": "fountain pen, elegant, gold nib, ink writing, side view"
+        },
+        {
+          "id": "eraser_pink_01",
+          "prompt": "pink rubber eraser, rectangular, worn edges, front view"
+        },
+        {
+          "id": "ruler_wooden_01",
+          "prompt": "wooden ruler, 12 inches, measurement markings, flat top-down"
+        },
+        {
+          "id": "scissors_school_01",
+          "prompt": "school scissors, safety blunt, plastic handles, side view"
+        },
+        {
+          "id": "scissors_office_01",
+          "prompt": "office scissors, metal blades, sharp, side profile"
+        },
+        {
+          "id": "stapler_desktop_01",
+          "prompt": "desktop stapler, metal, spring-loaded, side view"
+        },
+        {
+          "id": "staples_box_01",
+          "prompt": "box of staples, metal fasteners, office supply, front view"
+        },
+        {
+          "id": "paperclip_01",
+          "prompt": "metal paperclip, bent wire, silver, side view"
+        },
+        {
+          "id": "binder_clip_01",
+          "prompt": "black binder clip, fold-back arms, metal, front view"
+        },
+        {
+          "id": "tape_dispenser_01",
+          "prompt": "tape dispenser, clear tape roll, serrated edge, side view"
+        },
+        {
+          "id": "glue_bottle_01",
+          "prompt": "white glue bottle, Elmer's style, orange cap, front-facing"
+        },
+        {
+          "id": "glue_stick_01",
+          "prompt": "glue stick, twist-up, purple glue, front view"
+        },
+        {
+          "id": "notebook_spiral_01",
+          "prompt": "spiral notebook, lined paper, cardboard cover, front-facing view"
+        },
+        {
+          "id": "binder_three_ring_01",
+          "prompt": "three-ring binder, thick, rings visible, side view"
+        },
+        {
+          "id": "folder_manila_01",
+          "prompt": "manila folder, tab, document storage, side view"
+        },
+        {
+          "id": "calculator_basic_01",
+          "prompt": "basic calculator, number pad, small display, solar panel, front view"
+        },
+        {
+          "id": "pencil_sharpener_01",
+          "prompt": "pencil sharpener, crank handle, desktop mount, side view"
+        },
+        {
+          "id": "pushpin_01",
+          "prompt": "colored pushpin, plastic head, metal point, side view"
+        },
+        {
+          "id": "thumbtack_01",
+          "prompt": "metal thumbtack, flat head, bulletin board pin, side view"
+        },
+        {
+          "id": "clipboard_01",
+          "prompt": "clipboard with clip, holds paper, wooden board, front view"
+        },
+        {
+          "id": "stamp_rubber_01",
+          "prompt": "rubber stamp, wooden handle, ink pad impression, side view"
+        },
+        {
+          "id": "stamp_pad_01",
+          "prompt": "ink stamp pad, red ink, rectangular case, top-down view"
+        },
+        {
+          "id": "protractor_01",
+          "prompt": "protractor, semicircle, degree markings, clear plastic, flat view"
+        },
+        {
+          "id": "compass_drawing_01",
+          "prompt": "drawing compass, pencil attachment, adjustable, side view"
+        },
+        {
+          "id": "backpack_school_01",
+          "prompt": "school backpack, two straps, zippers, pockets, front-facing view"
+        },
+        {
+          "id": "lunchbox_01",
+          "prompt": "metal lunchbox, handle on top, thermos, side view"
+        },
+        {
+          "id": "chalkboard_eraser_01",
+          "prompt": "chalkboard eraser, felt, dusty, front view"
+        },
+        {
+          "id": "chalk_stick_01",
+          "prompt": "white chalk stick, dusty, writing tool, side view"
+        }
+      ]
+    },
+    {
+      "name": "weather_seasons",
+      "output_folder": "assets/sprites/shared/weather",
+      "description": "Weather and seasonal items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "sun_bright_01",
+          "prompt": "bright yellow sun, rays extending, happy face, front-facing view"
+        },
+        {
+          "id": "sun_sunset_01",
+          "prompt": "orange sunset sun, warm glow, horizon, front view"
+        },
+        {
+          "id": "cloud_white_01",
+          "prompt": "white fluffy cloud, soft edges, floating, side view"
+        },
+        {
+          "id": "cloud_rain_01",
+          "prompt": "gray rain cloud, raindrops falling, stormy, front view"
+        },
+        {
+          "id": "cloud_storm_01",
+          "prompt": "dark storm cloud, lightning bolt, thunder, front-facing"
+        },
+        {
+          "id": "lightning_bolt_01",
+          "prompt": "yellow lightning bolt, jagged zigzag, electric, front view"
+        },
+        {
+          "id": "raindrop_01",
+          "prompt": "water raindrop, teardrop shape, blue, side view"
+        },
+        {
+          "id": "rain_puddle_01",
+          "prompt": "water puddle, ripples, ground water, top-down view"
+        },
+        {
+          "id": "snowflake_01",
+          "prompt": "snowflake, six-pointed, crystalline pattern, white, front view"
+        },
+        {
+          "id": "snowflake_ornate_01",
+          "prompt": "ornate snowflake, detailed pattern, lacy, front-facing"
+        },
+        {
+          "id": "snowman_01",
+          "prompt": "snowman with carrot nose, coal eyes, stick arms, front view"
+        },
+        {
+          "id": "snowball_01",
+          "prompt": "snowball, round packed snow, white, front-facing"
+        },
+        {
+          "id": "icicle_01",
+          "prompt": "icicle hanging, pointed, frozen water, side view"
+        },
+        {
+          "id": "rainbow_arc_01",
+          "prompt": "rainbow arc, seven colors, after rain, front-facing view"
+        },
+        {
+          "id": "umbrella_open_01",
+          "prompt": "open umbrella, colorful, rain protection, side view"
+        },
+        {
+          "id": "umbrella_closed_01",
+          "prompt": "closed umbrella, handle hook, folded, side profile"
+        },
+        {
+          "id": "raincoat_yellow_01",
+          "prompt": "yellow raincoat, hood, slicker, front-facing view"
+        },
+        {
+          "id": "rain_boots_01",
+          "prompt": "rubber rain boots, yellow, puddle stomping, front view"
+        },
+        {
+          "id": "thermometer_01",
+          "prompt": "thermometer, mercury column, temperature readings, front view"
+        },
+        {
+          "id": "wind_swirl_01",
+          "prompt": "wind swirl, motion lines, breeze effect, front-facing"
+        },
+        {
+          "id": "tornado_funnel_01",
+          "prompt": "tornado funnel, swirling debris, twister, side view"
+        },
+        {
+          "id": "leaf_autumn_red_01",
+          "prompt": "red autumn leaf, maple, fall foliage, front view"
+        },
+        {
+          "id": "leaf_autumn_orange_01",
+          "prompt": "orange autumn leaf, falling, seasonal, side view"
+        },
+        {
+          "id": "leaf_pile_01",
+          "prompt": "pile of autumn leaves, colorful, raked heap, top-down"
+        },
+        {
+          "id": "flower_spring_01",
+          "prompt": "spring flower blooming, pink petals, tulip, side view"
+        },
+        {
+          "id": "flower_daisy_01",
+          "prompt": "white daisy flower, yellow center, spring bloom, front view"
+        },
+        {
+          "id": "sun_hat_01",
+          "prompt": "summer sun hat, wide brim, straw, side view"
+        },
+        {
+          "id": "sunglasses_01",
+          "prompt": "sunglasses, dark lenses, summer accessory, front-facing view"
+        },
+        {
+          "id": "mittens_winter_01",
+          "prompt": "winter mittens, knitted, warm, pair, front view"
+        },
+        {
+          "id": "scarf_winter_01",
+          "prompt": "winter scarf, striped, knitted, hanging view"
+        }
+      ]
+    },
+    {
+      "name": "holiday_christmas",
+      "output_folder": "assets/sprites/shared/holidays/christmas",
+      "description": "Christmas holiday items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "ornament_ball_red_01",
+          "prompt": "red Christmas ornament ball, shiny, hook on top, front view"
+        },
+        {
+          "id": "ornament_ball_gold_01",
+          "prompt": "gold Christmas ornament, metallic shine, decorative, front-facing"
+        },
+        {
+          "id": "ornament_icicle_01",
+          "prompt": "icicle ornament, silver glass, hanging, side view"
+        },
+        {
+          "id": "christmas_tree_01",
+          "prompt": "decorated Christmas tree, star on top, ornaments, lights, front view"
+        },
+        {
+          "id": "tree_star_topper_01",
+          "prompt": "golden star tree topper, five-pointed, shining, front-facing"
+        },
+        {
+          "id": "candy_cane_01",
+          "prompt": "candy cane, red and white stripes, peppermint, hooked, side view"
+        },
+        {
+          "id": "christmas_lights_01",
+          "prompt": "string of Christmas lights, multicolored bulbs, glowing, hanging view"
+        },
+        {
+          "id": "wreath_holly_01",
+          "prompt": "Christmas wreath, holly leaves, red berries, circular, front view"
+        },
+        {
+          "id": "wreath_bow_01",
+          "prompt": "Christmas wreath with red bow, greenery, front-facing"
+        },
+        {
+          "id": "stocking_red_01",
+          "prompt": "Christmas stocking, red with white trim, hanging, side view"
+        },
+        {
+          "id": "stocking_striped_01",
+          "prompt": "striped Christmas stocking, candy cane colors, front view"
+        },
+        {
+          "id": "present_wrapped_01",
+          "prompt": "wrapped Christmas present, red paper, gold bow, front-facing"
+        },
+        {
+          "id": "present_green_01",
+          "prompt": "green wrapped gift, ribbon bow, Christmas present, front view"
+        },
+        {
+          "id": "santa_hat_01",
+          "prompt": "red Santa hat, white trim, pom-pom, side view"
+        },
+        {
+          "id": "santa_beard_01",
+          "prompt": "white Santa beard, fluffy, costume piece, front-facing"
+        },
+        {
+          "id": "santa_sack_01",
+          "prompt": "Santa's toy sack, bulging with gifts, tied top, side view"
+        },
+        {
+          "id": "sleigh_01",
+          "prompt": "Santa's sleigh, red and gold, curved runners, side profile"
+        },
+        {
+          "id": "reindeer_nose_01",
+          "prompt": "Rudolph red nose, glowing, reindeer, front view"
+        },
+        {
+          "id": "snowglobe_01",
+          "prompt": "snow globe, winter scene inside, glass dome, falling snow, front view"
+        },
+        {
+          "id": "gingerbread_man_01",
+          "prompt": "gingerbread man cookie, icing decoration, smile, front-facing"
+        },
+        {
+          "id": "gingerbread_house_01",
+          "prompt": "gingerbread house, candy decorations, icing, front view"
+        },
+        {
+          "id": "mistletoe_01",
+          "prompt": "mistletoe sprig, green leaves, white berries, hanging, side view"
+        },
+        {
+          "id": "jingle_bell_01",
+          "prompt": "jingle bell, gold or silver, Christmas decoration, front view"
+        },
+        {
+          "id": "nutcracker_01",
+          "prompt": "nutcracker soldier, colorful uniform, wooden toy, front-facing"
+        },
+        {
+          "id": "angel_tree_01",
+          "prompt": "Christmas angel decoration, wings, halo, tree topper, front view"
+        }
+      ]
+    },
+    {
+      "name": "holiday_halloween",
+      "output_folder": "assets/sprites/shared/holidays/halloween",
+      "description": "Halloween holiday items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "pumpkin_basket_01",
+          "prompt": "Halloween pumpkin basket, orange plastic, trick-or-treat, front view"
+        },
+        {
+          "id": "candy_corn_01",
+          "prompt": "candy corn, orange yellow white layers, Halloween candy, front-facing"
+        },
+        {
+          "id": "candy_wrapper_01",
+          "prompt": "wrapped Halloween candy, colorful wrapper, twisted ends, side view"
+        },
+        {
+          "id": "trick_or_treat_bag_01",
+          "prompt": "trick-or-treat bag, orange, jack-o-lantern face, front view"
+        },
+        {
+          "id": "witch_cauldron_candy_01",
+          "prompt": "witch cauldron filled with candy, overflowing sweets, front-facing"
+        },
+        {
+          "id": "black_cat_silhouette_01",
+          "prompt": "black cat silhouette, arched back, Halloween symbol, side view"
+        },
+        {
+          "id": "vampire_fangs_01",
+          "prompt": "vampire fangs, white teeth, dripping blood, front view"
+        },
+        {
+          "id": "vampire_cape_01",
+          "prompt": "vampire cape, black with red lining, collar popped, front-facing"
+        },
+        {
+          "id": "frankenstein_bolt_01",
+          "prompt": "neck bolt, Frankenstein's monster, metal bolt, side view"
+        },
+        {
+          "id": "mummy_wrapping_01",
+          "prompt": "mummy bandage wrapping, torn cloth strips, ancient, front view"
+        },
+        {
+          "id": "zombie_brain_01",
+          "prompt": "zombie brain, exposed, gory, horror prop, front-facing"
+        },
+        {
+          "id": "werewolf_claw_01",
+          "prompt": "werewolf claw paw, furry, sharp claws, monster, front view"
+        },
+        {
+          "id": "full_moon_01",
+          "prompt": "full moon, bright, glowing, night sky, front-facing view"
+        },
+        {
+          "id": "haunted_house_01",
+          "prompt": "haunted house, spooky, broken windows, crooked, front view"
+        },
+        {
+          "id": "fence_spooky_01",
+          "prompt": "spooky fence, crooked pickets, cemetery gate, side view"
+        }
+      ]
+    },
+    {
+      "name": "holiday_birthday",
+      "output_folder": "assets/sprites/shared/holidays/birthday",
+      "description": "Birthday celebration items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "cake_birthday_01",
+          "prompt": "birthday cake, frosting, lit candles on top, front-facing view"
+        },
+        {
+          "id": "cake_slice_01",
+          "prompt": "slice of birthday cake, layers visible, frosting, side view"
+        },
+        {
+          "id": "cupcake_birthday_01",
+          "prompt": "birthday cupcake, frosting swirl, sprinkles, candle, front view"
+        },
+        {
+          "id": "candle_lit_01",
+          "prompt": "birthday candle, flame burning, colorful wax, side view"
+        },
+        {
+          "id": "candles_number_01",
+          "prompt": "number candles, birthday age, lit flames, front-facing"
+        },
+        {
+          "id": "balloon_red_01",
+          "prompt": "red birthday balloon, helium, string, floating, front view"
+        },
+        {
+          "id": "balloon_blue_01",
+          "prompt": "blue birthday balloon, shiny, tied string, front-facing"
+        },
+        {
+          "id": "balloon_bunch_01",
+          "prompt": "bunch of balloons, multicolored, tied together, front view"
+        },
+        {
+          "id": "party_hat_cone_01",
+          "prompt": "cone party hat, colorful, elastic strap, side view"
+        },
+        {
+          "id": "party_hat_striped_01",
+          "prompt": "striped party hat, pom-pom on top, birthday, front view"
+        },
+        {
+          "id": "confetti_01",
+          "prompt": "confetti pieces, colorful paper, celebration, scattered view"
+        },
+        {
+          "id": "streamers_01",
+          "prompt": "party streamers, hanging, twisted paper, colorful, front view"
+        },
+        {
+          "id": "present_birthday_01",
+          "prompt": "birthday present, wrapped with bow, gift box, front-facing"
+        },
+        {
+          "id": "gift_bag_01",
+          "prompt": "gift bag, tissue paper, handles, birthday present, front view"
+        },
+        {
+          "id": "noisemaker_horn_01",
+          "prompt": "party horn noisemaker, rolled paper, blowing, side view"
+        },
+        {
+          "id": "banner_happy_birthday_01",
+          "prompt": "Happy Birthday banner, letters on flags, hanging, front view"
+        },
+        {
+          "id": "pinata_donkey_01",
+          "prompt": "donkey pinata, colorful paper, candy inside, hanging, side view"
+        },
+        {
+          "id": "ice_cream_cone_birthday_01",
+          "prompt": "ice cream cone, sprinkles, birthday party treat, front view"
+        }
+      ]
+    },
+    {
+      "name": "holiday_valentines",
+      "output_folder": "assets/sprites/shared/holidays/valentines",
+      "description": "Valentine's Day items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "heart_red_01",
+          "prompt": "red heart, classic shape, love symbol, front-facing view"
+        },
+        {
+          "id": "heart_pink_01",
+          "prompt": "pink heart, pastel, Valentine's Day, front view"
+        },
+        {
+          "id": "heart_candy_01",
+          "prompt": "conversation heart candy, message text, pastel, front-facing"
+        },
+        {
+          "id": "chocolate_box_01",
+          "prompt": "heart-shaped chocolate box, red, gold trim, front view"
+        },
+        {
+          "id": "chocolate_truffle_01",
+          "prompt": "chocolate truffle, wrapper, Valentine's candy, front-facing"
+        },
+        {
+          "id": "rose_red_01",
+          "prompt": "red rose flower, stem with thorns, romantic, side view"
+        },
+        {
+          "id": "rose_bouquet_01",
+          "prompt": "bouquet of red roses, wrapped, ribbon, front view"
+        },
+        {
+          "id": "rose_petal_01",
+          "prompt": "red rose petal, single, romantic, side view"
+        },
+        {
+          "id": "valentine_card_01",
+          "prompt": "Valentine's card, hearts, Be Mine text, front-facing view"
+        },
+        {
+          "id": "love_letter_01",
+          "prompt": "love letter, envelope with heart seal, romantic, front view"
+        },
+        {
+          "id": "cupid_bow_01",
+          "prompt": "Cupid's bow, golden, arrow nocked, love weapon, side view"
+        },
+        {
+          "id": "cupid_arrow_01",
+          "prompt": "Cupid's arrow with heart tip, love arrow, side profile"
+        },
+        {
+          "id": "teddy_bear_valentine_01",
+          "prompt": "teddy bear holding heart, plush, gift, front-facing view"
+        },
+        {
+          "id": "locket_heart_01",
+          "prompt": "heart locket, gold chain, opens, romantic jewelry, front view"
+        },
+        {
+          "id": "ring_diamond_01",
+          "prompt": "diamond engagement ring, proposal, sparkle, front-facing"
+        }
+      ]
+    },
+    {
+      "name": "holiday_easter",
+      "output_folder": "assets/sprites/shared/holidays/easter",
+      "description": "Easter holiday items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "easter_egg_decorated_01",
+          "prompt": "decorated Easter egg, colorful patterns, front-facing view"
+        },
+        {
+          "id": "easter_egg_striped_01",
+          "prompt": "striped Easter egg, pastel colors, dyed, front view"
+        },
+        {
+          "id": "easter_egg_polka_01",
+          "prompt": "polka dot Easter egg, spots, decorated, front-facing"
+        },
+        {
+          "id": "easter_egg_gold_01",
+          "prompt": "golden Easter egg, shiny, special, front view"
+        },
+        {
+          "id": "easter_basket_01",
+          "prompt": "Easter basket, woven, handle, grass inside, front-facing view"
+        },
+        {
+          "id": "easter_grass_01",
+          "prompt": "green Easter grass, plastic, basket filler, top-down"
+        },
+        {
+          "id": "bunny_chocolate_01",
+          "prompt": "chocolate Easter bunny, wrapped foil, front view"
+        },
+        {
+          "id": "bunny_ears_headband_01",
+          "prompt": "bunny ears headband, pink ears, costume, front-facing"
+        },
+        {
+          "id": "peeps_marshmallow_01",
+          "prompt": "Peeps marshmallow chick, yellow, sugar-coated, front view"
+        },
+        {
+          "id": "jelly_beans_01",
+          "prompt": "jelly beans, multicolored, Easter candy, scattered view"
+        },
+        {
+          "id": "chick_yellow_01",
+          "prompt": "baby chick, fluffy yellow, Easter symbol, side view"
+        },
+        {
+          "id": "carrot_01",
+          "prompt": "orange carrot with green top, bunny food, side view"
+        },
+        {
+          "id": "tulip_flower_01",
+          "prompt": "tulip flower, pink or yellow, spring bloom, side view"
+        },
+        {
+          "id": "daffodil_01",
+          "prompt": "daffodil flower, yellow, spring, side profile"
+        },
+        {
+          "id": "egg_carton_01",
+          "prompt": "egg carton with decorated eggs, cardboard, top-down view"
+        }
+      ]
+    }
+  ]
+}

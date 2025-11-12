@@ -22,7 +22,19 @@
       "Bash(cat:*)",
       "Bash(/tmp/dodge_backup.json)",
       "Bash(for game in space_shooter dodge snake memory hidden_object breakout coin_flip rps)",
-      "Bash(do echo \"=== $game ===\")"
+      "Bash(do echo \"=== $game ===\")",
+      "mcp__pixellab__create_map_object",
+      "mcp__pixellab__get_map_object",
+      "Bash(python scripts/pixellab_batch_generator.py:*)",
+      "Bash(pip install:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(python scripts/pixellab_batch_generator_mcp_integrated.py:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:api.pixellab.ai)",
+      "Bash(python:*)",
+      "Bash(test:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

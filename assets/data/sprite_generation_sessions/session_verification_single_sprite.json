@@ -1,0 +1,27 @@
+{
+  "session_name": "verification_single_sprite",
+  "description": "Single sprite verification to validate API connectivity and workflow",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "verification",
+      "output_folder": "assets/testsprites/verification",
+      "description": "Single test sprite to validate end-to-end workflow",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "apple_red_verification",
+          "prompt": "red apple fruit, shiny surface, simple design, pixel art",
+          "notes": "Verification sprite to test API and workflow"
+        }
+      ]
+    }
+  ]
+}

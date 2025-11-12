@@ -1,0 +1,2388 @@
+{
+  "session_name": "complete_sprite_library",
+  "started_at": "2025-11-07T05:00:10.106786+00:00",
+  "total_sprites": 148,
+  "generated": [
+    {
+      "id": "blob_red_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\blob_red_01.png",
+      "prompt": "red blob creature, round slimy body, simple eyes, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:00:23.265611+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1102,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "blob_blue_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\blob_blue_01.png",
+      "prompt": "blue blob creature, round slimy body, simple eyes, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:00:41.290890+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1198,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "blob_green_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\blob_green_01.png",
+      "prompt": "green blob creature, round slimy body, simple eyes, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:00:56.230203+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2050,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "blob_purple_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\blob_purple_01.png",
+      "prompt": "purple blob creature with tentacles, slimy appearance, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:01:13.095915+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2280,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "blob_orange_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\blob_orange_01.png",
+      "prompt": "orange blob creature, round slimy body, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:01:30.039822+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1883,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "slime_small_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\slime_small_01.png",
+      "prompt": "small green slime, gooey texture, cute appearance, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:01:49.489969+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 2146,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "slime_medium_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\slime_medium_01.png",
+      "prompt": "medium blue slime, gooey dripping texture, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:02:08.665218+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1461,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "slime_large_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\slime_large_01.png",
+      "prompt": "large purple slime, intimidating size, gooey texture, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:02:24.412449+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3418,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "jellyfish_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\jellyfish_01.png",
+      "prompt": "pink jellyfish creature, floating tentacles, glowing body, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:02:40.461579+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2296,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "jellyfish_02",
+      "file_path": "assets/sprites/shared/enemies/organic\\jellyfish_02.png",
+      "prompt": "blue jellyfish creature, flowing tentacles, translucent, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:02:56.793952+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2837,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "amoeba_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\amoeba_01.png",
+      "prompt": "green amoeba creature, irregular shape, simple organism, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:03:12.249047+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1038,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "amoeba_02",
+      "file_path": "assets/sprites/shared/enemies/organic\\amoeba_02.png",
+      "prompt": "red amoeba creature, blob-like shape, moving pseudopods, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:03:29.249858+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1453,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "worm_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\worm_01.png",
+      "prompt": "purple worm creature, segmented body, curved shape, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:03:46.457150+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2766,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "worm_02",
+      "file_path": "assets/sprites/shared/enemies/organic\\worm_02.png",
+      "prompt": "green worm creature, long segmented body, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:04:05.708894+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1184,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "eyeball_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\eyeball_01.png",
+      "prompt": "floating eyeball monster, large pupil, veiny appearance, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:04:22.622936+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2649,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "eyeball_02",
+      "file_path": "assets/sprites/shared/enemies/organic\\eyeball_02.png",
+      "prompt": "red eyeball creature, intense gaze, bloodshot, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:04:39.574866+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2240,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "spore_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\spore_01.png",
+      "prompt": "floating spore creature, mushroom-like, small tentacles, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:04:55.193882+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1732,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "spore_02",
+      "file_path": "assets/sprites/shared/enemies/organic\\spore_02.png",
+      "prompt": "pink spore creature, fuzzy texture, floating, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:05:10.847777+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2524,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tentacle_beast_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\tentacle_beast_01.png",
+      "prompt": "creature with multiple tentacles, dark purple, menacing, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:05:26.622595+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3507,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "coral_creature_01",
+      "file_path": "assets/sprites/shared/enemies/organic\\coral_creature_01.png",
+      "prompt": "coral-like creature, branching structure, colorful, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:05:46.366223+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 4513,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "star_5point_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\star_5point_01.png",
+      "prompt": "five-pointed star, yellow, simple geometric shape, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:07:36.074982+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 403,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "star_5point_02",
+      "file_path": "assets/sprites/shared/icons/symbols\\star_5point_02.png",
+      "prompt": "five-pointed star, blue, outlined, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:07:52.048427+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2424,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "star_5point_03",
+      "file_path": "assets/sprites/shared/icons/symbols\\star_5point_03.png",
+      "prompt": "five-pointed star, red, filled, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:08:21.343292+00:00",
+      "generation_time_seconds": 26,
+      "size": "64x64",
+      "file_size_bytes": 1674,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "star_4point_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\star_4point_01.png",
+      "prompt": "four-pointed star, sparkle shape, white, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:08:37.516320+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 952,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "star_4point_02",
+      "file_path": "assets/sprites/shared/icons/symbols\\star_4point_02.png",
+      "prompt": "four-pointed star, diamond sparkle, gold, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:08:53.685010+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2720,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "heart_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\heart_01.png",
+      "prompt": "heart symbol, red, classic shape, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:09:10.331197+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1336,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "heart_02",
+      "file_path": "assets/sprites/shared/icons/symbols\\heart_02.png",
+      "prompt": "heart symbol, pink, outlined, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:09:34.238428+00:00",
+      "generation_time_seconds": 20,
+      "size": "64x64",
+      "file_size_bytes": 870,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "heart_03",
+      "file_path": "assets/sprites/shared/icons/symbols\\heart_03.png",
+      "prompt": "heart symbol, purple, filled, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:09:52.862113+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1457,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "diamond_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\diamond_01.png",
+      "prompt": "diamond shape, blue, geometric, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:10:11.945335+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 598,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "diamond_02",
+      "file_path": "assets/sprites/shared/icons/symbols\\diamond_02.png",
+      "prompt": "diamond shape, white, outlined, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:10:31.198586+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 488,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "circle_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\circle_01.png",
+      "prompt": "circle symbol, red, filled, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:10:50.454132+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1180,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "circle_02",
+      "file_path": "assets/sprites/shared/icons/symbols\\circle_02.png",
+      "prompt": "circle symbol, blue, outlined, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:11:09.801417+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1329,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "square_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\square_01.png",
+      "prompt": "square symbol, green, filled, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:11:29.368254+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 377,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "square_02",
+      "file_path": "assets/sprites/shared/icons/symbols\\square_02.png",
+      "prompt": "square symbol, yellow, outlined, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:11:48.306524+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 201,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "triangle_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\triangle_01.png",
+      "prompt": "triangle symbol, orange, pointing up, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:12:07.465649+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 752,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "triangle_02",
+      "file_path": "assets/sprites/shared/icons/symbols\\triangle_02.png",
+      "prompt": "triangle symbol, purple, outlined, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:12:24.467483+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 894,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hexagon_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\hexagon_01.png",
+      "prompt": "hexagon shape, teal, filled, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:12:40.853658+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1074,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hexagon_02",
+      "file_path": "assets/sprites/shared/icons/symbols\\hexagon_02.png",
+      "prompt": "hexagon shape, cyan, outlined, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:12:56.215262+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 942,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cross_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\cross_01.png",
+      "prompt": "cross symbol, red, plus sign shape, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:13:11.503946+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1591,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cross_02",
+      "file_path": "assets/sprites/shared/icons/symbols\\cross_02.png",
+      "prompt": "cross symbol, white, medical cross, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:13:27.145472+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 422,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "arrow_up_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\arrow_up_01.png",
+      "prompt": "arrow pointing up, blue, simple design, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:13:42.520711+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1217,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "arrow_right_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\arrow_right_01.png",
+      "prompt": "arrow pointing right, green, simple design, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:13:57.664016+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 318,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "moon_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\moon_01.png",
+      "prompt": "crescent moon, yellow, night symbol, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:14:13.640970+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 878,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "sun_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\sun_01.png",
+      "prompt": "sun symbol, yellow, rays, day symbol, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:14:29.213139+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1654,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cloud_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\cloud_01.png",
+      "prompt": "cloud symbol, white, fluffy, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:14:45.111836+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 618,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "lightning_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\lightning_01.png",
+      "prompt": "lightning bolt, yellow, zigzag shape, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:15:01.776129+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 821,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "snowflake_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\snowflake_01.png",
+      "prompt": "snowflake, light blue, six-pointed, winter, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:15:18.785202+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2294,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "flame_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\flame_01.png",
+      "prompt": "flame symbol, orange-red gradient, fire, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:15:35.400765+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1122,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "water_drop_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\water_drop_01.png",
+      "prompt": "water droplet, blue, teardrop shape, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:15:50.523817+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 736,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "leaf_01",
+      "file_path": "assets/sprites/shared/icons/symbols\\leaf_01.png",
+      "prompt": "leaf symbol, green, simple plant shape, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:16:06.501256+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 946,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "key_01",
+      "file_path": "assets/sprites/shared/icons/objects\\key_01.png",
+      "prompt": "golden key, classic design, shiny metal, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:16:25.692809+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1260,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "key_02",
+      "file_path": "assets/sprites/shared/icons/objects\\key_02.png",
+      "prompt": "silver key, simple design, metallic, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:16:44.804042+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1207,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "lock_01",
+      "file_path": "assets/sprites/shared/icons/objects\\lock_01.png",
+      "prompt": "padlock, closed, metallic gray, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:17:03.725715+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1312,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "chest_01",
+      "file_path": "assets/sprites/shared/icons/objects\\chest_01.png",
+      "prompt": "treasure chest, brown wood, closed, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:17:23.721176+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 4717,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "potion_red_01",
+      "file_path": "assets/sprites/shared/icons/objects\\potion_red_01.png",
+      "prompt": "red potion bottle, glass vial, liquid inside, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:17:38.672135+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1970,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "potion_blue_01",
+      "file_path": "assets/sprites/shared/icons/objects\\potion_blue_01.png",
+      "prompt": "blue potion bottle, magic elixir, glowing, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:17:58.757980+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 1824,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "potion_green_01",
+      "file_path": "assets/sprites/shared/icons/objects\\potion_green_01.png",
+      "prompt": "green potion bottle, healing liquid, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:18:18.820161+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 2454,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "sword_01",
+      "file_path": "assets/sprites/shared/icons/objects\\sword_01.png",
+      "prompt": "sword, silver blade, simple design, weapon, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:18:34.799281+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 537,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "shield_01",
+      "file_path": "assets/sprites/shared/icons/objects\\shield_01.png",
+      "prompt": "shield, round shape, metallic, defense, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:18:51.593521+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3715,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bow_01",
+      "file_path": "assets/sprites/shared/icons/objects\\bow_01.png",
+      "prompt": "bow weapon, wooden, curved design, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:19:10.373040+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1034,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "arrow_01",
+      "file_path": "assets/sprites/shared/icons/objects\\arrow_01.png",
+      "prompt": "arrow, wooden shaft, pointed tip, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:19:27.233278+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1015,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "axe_01",
+      "file_path": "assets/sprites/shared/icons/objects\\axe_01.png",
+      "prompt": "axe, metal blade, wooden handle, tool, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:19:51.608253+00:00",
+      "generation_time_seconds": 21,
+      "size": "64x64",
+      "file_size_bytes": 1416,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hammer_01",
+      "file_path": "assets/sprites/shared/icons/objects\\hammer_01.png",
+      "prompt": "hammer, metal head, wooden handle, tool, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:20:06.170104+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1068,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "wrench_01",
+      "file_path": "assets/sprites/shared/icons/objects\\wrench_01.png",
+      "prompt": "wrench, silver metal, mechanical tool, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:20:21.214108+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1866,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gear_01",
+      "file_path": "assets/sprites/shared/icons/objects\\gear_01.png",
+      "prompt": "gear, metallic, cog wheel, mechanical, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:20:38.513573+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 4975,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bolt_01",
+      "file_path": "assets/sprites/shared/icons/objects\\bolt_01.png",
+      "prompt": "bolt and nut, metal hardware, gray, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:20:53.913270+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2028,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "book_01",
+      "file_path": "assets/sprites/shared/icons/objects\\book_01.png",
+      "prompt": "book, closed, red cover, knowledge, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:21:09.442240+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2444,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "book_02",
+      "file_path": "assets/sprites/shared/icons/objects\\book_02.png",
+      "prompt": "book, open pages, blue cover, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:21:33.598529+00:00",
+      "generation_time_seconds": 21,
+      "size": "64x64",
+      "file_size_bytes": 1685,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "scroll_01",
+      "file_path": "assets/sprites/shared/icons/objects\\scroll_01.png",
+      "prompt": "scroll, rolled parchment, ancient document, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:21:52.866018+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 2906,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "feather_01",
+      "file_path": "assets/sprites/shared/icons/objects\\feather_01.png",
+      "prompt": "feather, white, quill, lightweight, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:22:09.198576+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 805,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bell_01",
+      "file_path": "assets/sprites/shared/icons/objects\\bell_01.png",
+      "prompt": "bell, golden, ringing object, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:22:31.579468+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 2067,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "clock_01",
+      "file_path": "assets/sprites/shared/icons/objects\\clock_01.png",
+      "prompt": "clock, round face, showing time, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:22:48.583477+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2556,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "compass_01",
+      "file_path": "assets/sprites/shared/icons/objects\\compass_01.png",
+      "prompt": "compass, navigation tool, red needle, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:23:08.450470+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 3715,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "map_01",
+      "file_path": "assets/sprites/shared/icons/objects\\map_01.png",
+      "prompt": "map, folded paper, navigation, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:23:27.811774+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 4548,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "telescope_01",
+      "file_path": "assets/sprites/shared/icons/objects\\telescope_01.png",
+      "prompt": "telescope, brass, viewing instrument, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:23:42.656293+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2025,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "magnifying_glass_01",
+      "file_path": "assets/sprites/shared/icons/objects\\magnifying_glass_01.png",
+      "prompt": "magnifying glass, detective tool, lens, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:23:58.256807+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1884,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "candle_01",
+      "file_path": "assets/sprites/shared/icons/objects\\candle_01.png",
+      "prompt": "candle, lit flame, wax, light source, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:24:15.018905+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1270,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "lantern_01",
+      "file_path": "assets/sprites/shared/icons/objects\\lantern_01.png",
+      "prompt": "lantern, hanging, glowing light, metal, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:24:29.999238+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1714,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "torch_01",
+      "file_path": "assets/sprites/shared/icons/objects\\torch_01.png",
+      "prompt": "torch, burning flame, wooden handle, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:24:47.381088+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1078,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hourglass_01",
+      "file_path": "assets/sprites/shared/icons/objects\\hourglass_01.png",
+      "prompt": "hourglass, sand timer, time measurement, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:25:04.182768+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1959,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_stone_01",
+      "file_path": "assets/sprites/shared/blocks\\brick_stone_01.png",
+      "prompt": "stone brick, gray rock texture, rectangular block, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:25:22.012438+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x32",
+      "file_size_bytes": 1532,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_stone_02",
+      "file_path": "assets/sprites/shared/blocks\\brick_stone_02.png",
+      "prompt": "stone brick, cracked surface, weathered, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:25:41.865770+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x32",
+      "file_size_bytes": 3459,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_stone_03",
+      "file_path": "assets/sprites/shared/blocks\\brick_stone_03.png",
+      "prompt": "stone brick, mossy texture, aged, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:26:03.718660+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x32",
+      "file_size_bytes": 3504,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_metal_01",
+      "file_path": "assets/sprites/shared/blocks\\brick_metal_01.png",
+      "prompt": "metal brick, silver metallic, shiny surface, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:26:19.554499+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x32",
+      "file_size_bytes": 1533,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_metal_02",
+      "file_path": "assets/sprites/shared/blocks\\brick_metal_02.png",
+      "prompt": "metal brick, bronze colored, industrial, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:26:36.272446+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x32",
+      "file_size_bytes": 5408,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_metal_03",
+      "file_path": "assets/sprites/shared/blocks\\brick_metal_03.png",
+      "prompt": "metal brick, rusty surface, weathered metal, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:26:55.806085+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x32",
+      "file_size_bytes": 4737,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_crystal_01",
+      "file_path": "assets/sprites/shared/blocks\\brick_crystal_01.png",
+      "prompt": "crystal brick, blue transparent, glowing, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:27:11.576590+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x32",
+      "file_size_bytes": 1414,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_crystal_02",
+      "file_path": "assets/sprites/shared/blocks\\brick_crystal_02.png",
+      "prompt": "crystal brick, purple gemstone, shimmering, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:27:27.555559+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x32",
+      "file_size_bytes": 1466,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_crystal_03",
+      "file_path": "assets/sprites/shared/blocks\\brick_crystal_03.png",
+      "prompt": "crystal brick, green jade, translucent, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:27:41.652664+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x32",
+      "file_size_bytes": 901,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_wood_01",
+      "file_path": "assets/sprites/shared/blocks\\brick_wood_01.png",
+      "prompt": "wooden brick, brown planks, natural texture, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:27:59.307196+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x32",
+      "file_size_bytes": 2071,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_wood_02",
+      "file_path": "assets/sprites/shared/blocks\\brick_wood_02.png",
+      "prompt": "wooden brick, dark oak, grain pattern, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:28:14.258174+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x32",
+      "file_size_bytes": 2543,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_wood_03",
+      "file_path": "assets/sprites/shared/blocks\\brick_wood_03.png",
+      "prompt": "wooden brick, weathered wood, old planks, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:28:29.311956+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x32",
+      "file_size_bytes": 3689,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_gold_01",
+      "file_path": "assets/sprites/shared/blocks\\brick_gold_01.png",
+      "prompt": "gold brick, shiny golden, treasure block, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:28:44.695109+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x32",
+      "file_size_bytes": 1782,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_explosive_01",
+      "file_path": "assets/sprites/shared/blocks\\brick_explosive_01.png",
+      "prompt": "explosive brick, TNT pattern, danger warning, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:29:00.341925+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x32",
+      "file_size_bytes": 2078,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick_rainbow_01",
+      "file_path": "assets/sprites/shared/blocks\\brick_rainbow_01.png",
+      "prompt": "rainbow brick, multicolored, special block, pixel art",
+      "params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:29:14.774394+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x32",
+      "file_size_bytes": 1202,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_shield_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_shield_01.png",
+      "prompt": "shield powerup icon, blue protective barrier, glowing, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:29:30.042641+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2014,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_multiball_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_multiball_01.png",
+      "prompt": "multi-ball powerup, three spheres, multiplication, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:29:52.780419+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 2463,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_laser_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_laser_01.png",
+      "prompt": "laser powerup icon, red beam symbol, weapon upgrade, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:30:15.507023+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 847,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_paddle_extend_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_paddle_extend_01.png",
+      "prompt": "paddle extend powerup, wide bar icon, size increase, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:30:35.377667+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1056,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_slow_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_slow_01.png",
+      "prompt": "slow time powerup, clock icon, time manipulation, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:30:51.768345+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3266,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_fast_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_fast_01.png",
+      "prompt": "speed boost powerup, lightning symbol, acceleration, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:31:11.226623+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 987,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_fireball_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_fireball_01.png",
+      "prompt": "fireball powerup, flaming sphere, destruction, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:31:26.319987+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2951,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_magnet_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_magnet_01.png",
+      "prompt": "magnet powerup, horseshoe magnet, attraction, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:31:45.556589+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 2021,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_sticky_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_sticky_01.png",
+      "prompt": "sticky paddle powerup, glue drop, catch ability, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:32:04.277324+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1644,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_life_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_life_01.png",
+      "prompt": "extra life powerup, red heart, health bonus, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:32:20.873060+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 430,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_score_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_score_01.png",
+      "prompt": "score multiplier powerup, x2 symbol, points boost, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:32:37.461129+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2487,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "powerup_invincible_01",
+      "file_path": "assets/sprites/shared/powerups\\powerup_invincible_01.png",
+      "prompt": "invincibility powerup, golden star, temporary immunity, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:32:54.257343+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2201,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "icon_rock",
+      "file_path": "assets/sprites/shared/gestures/cartoon\\icon_rock.png",
+      "prompt": "cartoon rock icon, gray stone, round shape, simple design, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:34:08.814116+00:00",
+      "generation_time_seconds": 21,
+      "size": "64x64",
+      "file_size_bytes": 791,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "icon_paper",
+      "file_path": "assets/sprites/shared/gestures/cartoon\\icon_paper.png",
+      "prompt": "cartoon paper icon, white sheet, floating, simple design, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:34:25.404274+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 881,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "icon_scissors",
+      "file_path": "assets/sprites/shared/gestures/cartoon\\icon_scissors.png",
+      "prompt": "cartoon scissors icon, silver blades, simple design, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:34:39.537870+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1376,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "icon_lizard",
+      "file_path": "assets/sprites/shared/gestures/cartoon\\icon_lizard.png",
+      "prompt": "cartoon lizard icon, green reptile, cute design, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:35:03.924157+00:00",
+      "generation_time_seconds": 21,
+      "size": "64x64",
+      "file_size_bytes": 2809,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "icon_spock",
+      "file_path": "assets/sprites/shared/gestures/cartoon\\icon_spock.png",
+      "prompt": "cartoon spock icon, vulcan hand symbol, simple design, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T05:35:22.442026+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1895,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pixel_rock",
+      "file_path": "assets/sprites/shared/gestures/pixel\\pixel_rock.png",
+      "prompt": "bold pixel rock symbol, geometric stone, thick outline, retro style, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "low detail",
+        "shading": "flat shading",
+        "outline": "single color black outline"
+      },
+      "generated_at": "2025-11-07T05:35:41.601397+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1599,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pixel_paper",
+      "file_path": "assets/sprites/shared/gestures/pixel\\pixel_paper.png",
+      "prompt": "bold pixel paper symbol, rectangular sheet, thick outline, retro style, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "low detail",
+        "shading": "flat shading",
+        "outline": "single color black outline"
+      },
+      "generated_at": "2025-11-07T05:35:58.195759+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 397,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pixel_scissors",
+      "file_path": "assets/sprites/shared/gestures/pixel\\pixel_scissors.png",
+      "prompt": "bold pixel scissors symbol, X-shape, thick outline, retro style, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "low detail",
+        "shading": "flat shading",
+        "outline": "single color black outline"
+      },
+      "generated_at": "2025-11-07T05:36:14.014869+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1507,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pixel_lizard",
+      "file_path": "assets/sprites/shared/gestures/pixel\\pixel_lizard.png",
+      "prompt": "bold pixel lizard symbol, simplified reptile, thick outline, retro style, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "low detail",
+        "shading": "flat shading",
+        "outline": "single color black outline"
+      },
+      "generated_at": "2025-11-07T05:36:31.179790+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1501,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pixel_spock",
+      "file_path": "assets/sprites/shared/gestures/pixel\\pixel_spock.png",
+      "prompt": "bold pixel spock symbol, hand gesture, thick outline, retro style, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "low detail",
+        "shading": "flat shading",
+        "outline": "single color black outline"
+      },
+      "generated_at": "2025-11-07T05:36:47.701625+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1648,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": [
+    {
+      "id": "robot_small_01",
+      "prompt": "small robot, metallic gray, boxy body, simple design, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "robot_small_02",
+      "prompt": "small blue robot, round body, antenna, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "robot_medium_01",
+      "prompt": "medium robot, silver metallic, angular design, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "robot_medium_02",
+      "prompt": "medium red robot, sturdy build, mechanical arms, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "robot_large_01",
+      "prompt": "large robot, heavy armor plating, intimidating, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "turret_basic_01",
+      "prompt": "basic turret, gray metal, rotating barrel, stationary, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "turret_laser_01",
+      "prompt": "laser turret, glowing blue energy, advanced tech, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "turret_missile_01",
+      "prompt": "missile turret, multiple barrels, heavy weapon, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "drone_01",
+      "prompt": "flying drone, propellers, compact body, surveillance, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "drone_02",
+      "prompt": "combat drone, sleek design, weapon mounted, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "drone_03",
+      "prompt": "scout drone, small size, single rotor, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "mech_01",
+      "prompt": "small mech walker, bipedal, mechanical legs, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "mech_02",
+      "prompt": "assault mech, heavy armor, dual weapons, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "tank_01",
+      "prompt": "small tank, treads, rotating turret, armored, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "tank_02",
+      "prompt": "heavy tank, thick armor, large cannon, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "probe_01",
+      "prompt": "floating probe, spherical body, scanning device, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "probe_02",
+      "prompt": "recon probe, multiple sensors, hovering, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "mine_01",
+      "prompt": "explosive mine, spherical shape, spikes, danger, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "mine_02",
+      "prompt": "proximity mine, blinking light, metallic, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "satellite_01",
+      "prompt": "small satellite, solar panels, antenna, orbiting, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "coin_gold_heads",
+      "prompt": "gold coin heads side, face profile, shiny metallic, circular, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "coin_gold_tails",
+      "prompt": "gold coin tails side, eagle symbol, shiny metallic, circular, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "coin_silver_heads",
+      "prompt": "silver coin heads side, face profile, metallic shine, circular, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "coin_silver_tails",
+      "prompt": "silver coin tails side, shield symbol, metallic, circular, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "coin_bronze_heads",
+      "prompt": "bronze coin heads side, face profile, copper color, circular, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "coin_bronze_tails",
+      "prompt": "bronze coin tails side, laurel wreath symbol, copper, circular, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "hand_rock",
+      "prompt": "hand making rock gesture, closed fist, side view, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "hand_paper",
+      "prompt": "hand making paper gesture, flat palm, side view, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "hand_scissors",
+      "prompt": "hand making scissors gesture, two fingers extended, side view, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "hand_lizard",
+      "prompt": "hand making lizard gesture, spock variant, side view, pixel art",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "hand_spock",
+      "prompt": "hand making spock gesture, vulcan salute, side view, pixel art",
+      "error": "Generation or save failed"
+    }
+  ],
+  "completed_at": "2025-11-07T05:36:47.701666+00:00"
+}

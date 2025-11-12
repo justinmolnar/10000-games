@@ -1,0 +1,2910 @@
+{
+  "session_name": "creative_collection",
+  "started_at": "2025-11-07T21:59:49.309154+00:00",
+  "total_sprites": 160,
+  "generated": [
+    {
+      "id": "astronaut_damaged_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\astronaut_damaged_01.png",
+      "prompt": "astronaut with torn suit, helmet cracked, drifting",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:01:30.054687+00:00",
+      "generation_time_seconds": 36,
+      "size": "64x64",
+      "file_size_bytes": 2766,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "baby_spacesuit_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\baby_spacesuit_01.png",
+      "prompt": "baby in oversized spacesuit, floating, chubby arms out",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:02:03.769637+00:00",
+      "generation_time_seconds": 30,
+      "size": "64x64",
+      "file_size_bytes": 2939,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "baby_floating_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\baby_floating_01.png",
+      "prompt": "baby floating freely, diaper visible, reaching upward",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:02:28.935488+00:00",
+      "generation_time_seconds": 22,
+      "size": "64x64",
+      "file_size_bytes": 1302,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "superhero_cape_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\superhero_cape_01.png",
+      "prompt": "superhero with flowing cape, fist forward, classic costume",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:02:47.486904+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 2841,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "superhero_visor_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\superhero_visor_01.png",
+      "prompt": "superhero with visor mask, energy glowing from hands",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:03:06.808231+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 3880,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "superhero_flying_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\superhero_flying_01.png",
+      "prompt": "superhero in flight pose, cape trailing behind",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:03:25.704821+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 2687,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ninja_star_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\ninja_star_01.png",
+      "prompt": "ninja holding throwing star, crouched stance, masked",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:03:48.698485+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 3040,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ninja_sword_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\ninja_sword_01.png",
+      "prompt": "ninja with katana drawn, action pose",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:04:10.515600+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 1830,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "wizard_staff_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\wizard_staff_01.png",
+      "prompt": "wizard with glowing staff, pointed hat, long beard",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:05:01.569204+00:00",
+      "generation_time_seconds": 48,
+      "size": "64x64",
+      "file_size_bytes": 2715,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "wizard_spell_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\wizard_spell_01.png",
+      "prompt": "wizard casting spell, magic swirling around hands",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:05:30.630257+00:00",
+      "generation_time_seconds": 26,
+      "size": "64x64",
+      "file_size_bytes": 3611,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "knight_sword_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\knight_sword_01.png",
+      "prompt": "knight with sword raised, full armor, shield",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:05:52.158546+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 2203,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "knight_charging_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\knight_charging_01.png",
+      "prompt": "knight charging forward, lance extended",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:06:10.740202+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 2840,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pirate_sword_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\pirate_sword_01.png",
+      "prompt": "pirate with cutlass, tricorn hat, eyepatch",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:06:26.555589+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2993,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pirate_hook_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\pirate_hook_01.png",
+      "prompt": "pirate with hook hand, peg leg, parrot on shoulder",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:06:43.783172+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1702,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cowboy_lasso_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\cowboy_lasso_01.png",
+      "prompt": "cowboy twirling lasso, wide-brimmed hat, boots",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:07:07.944675+00:00",
+      "generation_time_seconds": 21,
+      "size": "64x64",
+      "file_size_bytes": 1924,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cowboy_gun_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\cowboy_gun_01.png",
+      "prompt": "cowboy drawing pistol, quick-draw stance",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:07:27.197982+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1093,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_gray_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\alien_gray_01.png",
+      "prompt": "gray alien with oversized head, thin limbs, black eyes",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:07:46.794606+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1196,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_tentacle_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\alien_tentacle_01.png",
+      "prompt": "alien with tentacles instead of arms, multiple eyes",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:08:03.616602+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3727,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_crystal_01",
+      "file_path": "assets/sprites/shared/characters/humanoid\\alien_crystal_01.png",
+      "prompt": "crystalline alien, translucent body, geometric shapes",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:08:19.998945+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1687,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cat_face_orange_01",
+      "file_path": "assets/sprites/shared/animals\\cat_face_orange_01.png",
+      "prompt": "orange tabby cat face, whiskers, green eyes",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:08:37.049384+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2822,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cat_face_black_01",
+      "file_path": "assets/sprites/shared/animals\\cat_face_black_01.png",
+      "prompt": "black cat face, yellow eyes, pointed ears",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:08:53.583603+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1427,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cat_face_calico_01",
+      "file_path": "assets/sprites/shared/animals\\cat_face_calico_01.png",
+      "prompt": "calico cat face, patches of color, cute expression",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:09:08.293288+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2051,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "dog_face_golden_01",
+      "file_path": "assets/sprites/shared/animals\\dog_face_golden_01.png",
+      "prompt": "golden retriever face, tongue out, happy",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:09:23.639967+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 5276,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "dog_face_bulldog_01",
+      "file_path": "assets/sprites/shared/animals\\dog_face_bulldog_01.png",
+      "prompt": "bulldog face, wrinkled, underbite",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:09:42.310317+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 4202,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "dog_face_husky_01",
+      "file_path": "assets/sprites/shared/animals\\dog_face_husky_01.png",
+      "prompt": "husky face, blue eyes, fluffy",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:10:04.434790+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 2249,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bear_face_brown_01",
+      "file_path": "assets/sprites/shared/animals\\bear_face_brown_01.png",
+      "prompt": "brown bear face, round ears, snout",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:10:26.539191+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 2191,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bear_face_panda_01",
+      "file_path": "assets/sprites/shared/animals\\bear_face_panda_01.png",
+      "prompt": "panda bear face, black eye patches, bamboo in mouth",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:11:01.231365+00:00",
+      "generation_time_seconds": 31,
+      "size": "64x64",
+      "file_size_bytes": 2664,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bear_face_polar_01",
+      "file_path": "assets/sprites/shared/animals\\bear_face_polar_01.png",
+      "prompt": "polar bear face, white fur, black nose",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:11:21.111797+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1518,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "lion_face_01",
+      "file_path": "assets/sprites/shared/animals\\lion_face_01.png",
+      "prompt": "lion face with mane, regal expression",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:11:42.824110+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 5378,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tiger_face_01",
+      "file_path": "assets/sprites/shared/animals\\tiger_face_01.png",
+      "prompt": "tiger face with stripes, fierce eyes",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:12:04.570636+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 4372,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "monkey_face_01",
+      "file_path": "assets/sprites/shared/animals\\monkey_face_01.png",
+      "prompt": "monkey face, cheeky grin, big ears",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:12:23.523203+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 2918,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "elephant_face_01",
+      "file_path": "assets/sprites/shared/animals\\elephant_face_01.png",
+      "prompt": "elephant face with trunk, wise eyes",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:12:57.429776+00:00",
+      "generation_time_seconds": 30,
+      "size": "64x64",
+      "file_size_bytes": 2742,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pig_face_01",
+      "file_path": "assets/sprites/shared/animals\\pig_face_01.png",
+      "prompt": "pig face, snout, floppy ears, pink",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:13:52.390713+00:00",
+      "generation_time_seconds": 51,
+      "size": "64x64",
+      "file_size_bytes": 2152,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rabbit_face_01",
+      "file_path": "assets/sprites/shared/animals\\rabbit_face_01.png",
+      "prompt": "rabbit face, long ears, twitching nose",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:16:32.451681+00:00",
+      "generation_time_seconds": 28,
+      "size": "64x64",
+      "file_size_bytes": 1852,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "car_classic_01",
+      "file_path": "assets/sprites/shared/vehicles\\car_classic_01.png",
+      "prompt": "classic vintage car, rounded body, chrome bumper",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:22:39.297714+00:00",
+      "generation_time_seconds": 44,
+      "size": "64x64",
+      "file_size_bytes": 2487,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "car_taxi_01",
+      "file_path": "assets/sprites/shared/vehicles\\car_taxi_01.png",
+      "prompt": "yellow taxi cab, checkered pattern on side",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:23:20.469867+00:00",
+      "generation_time_seconds": 38,
+      "size": "64x64",
+      "file_size_bytes": 2923,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "car_police_01",
+      "file_path": "assets/sprites/shared/vehicles\\car_police_01.png",
+      "prompt": "police car, lights on roof, sirens",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:23:49.775282+00:00",
+      "generation_time_seconds": 26,
+      "size": "64x64",
+      "file_size_bytes": 3178,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "car_ambulance_01",
+      "file_path": "assets/sprites/shared/vehicles\\car_ambulance_01.png",
+      "prompt": "ambulance, red cross on side, emergency vehicle",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:24:46.623284+00:00",
+      "generation_time_seconds": 53,
+      "size": "64x64",
+      "file_size_bytes": 2964,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "truck_pickup_01",
+      "file_path": "assets/sprites/shared/vehicles\\truck_pickup_01.png",
+      "prompt": "pickup truck, bed in back, rugged",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:25:01.451382+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2936,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "motorcycle_chopper_01",
+      "file_path": "assets/sprites/shared/vehicles\\motorcycle_chopper_01.png",
+      "prompt": "chopper motorcycle, long front fork, custom paint",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:26:33.421973+00:00",
+      "generation_time_seconds": 24,
+      "size": "64x64",
+      "file_size_bytes": 2666,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "motorcycle_racing_01",
+      "file_path": "assets/sprites/shared/vehicles\\motorcycle_racing_01.png",
+      "prompt": "racing motorcycle, aerodynamic, sport bike",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:27:00.236471+00:00",
+      "generation_time_seconds": 23,
+      "size": "64x64",
+      "file_size_bytes": 2539,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bicycle_mountain_01",
+      "file_path": "assets/sprites/shared/vehicles\\bicycle_mountain_01.png",
+      "prompt": "mountain bike, thick tires, rugged frame",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:27:37.123202+00:00",
+      "generation_time_seconds": 33,
+      "size": "64x64",
+      "file_size_bytes": 2809,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bicycle_bmx_01",
+      "file_path": "assets/sprites/shared/vehicles\\bicycle_bmx_01.png",
+      "prompt": "BMX bike, compact frame, stunt pegs",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:28:12.761198+00:00",
+      "generation_time_seconds": 32,
+      "size": "64x64",
+      "file_size_bytes": 2054,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "scooter_kick_01",
+      "file_path": "assets/sprites/shared/vehicles\\scooter_kick_01.png",
+      "prompt": "kick scooter, two wheels, handlebars",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:28:30.993577+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1112,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "skateboard_01",
+      "file_path": "assets/sprites/shared/vehicles\\skateboard_01.png",
+      "prompt": "skateboard with wheels, deck with graphics",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:28:48.402675+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1427,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hoverboard_01",
+      "file_path": "assets/sprites/shared/vehicles\\hoverboard_01.png",
+      "prompt": "futuristic hoverboard, glowing underneath, floating",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:29:09.295761+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 2915,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_01",
+      "file_path": "assets/sprites/shared/vehicles\\rocket_01.png",
+      "prompt": "cartoon rocket ship, flames from exhaust, fins",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:29:37.767219+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 1471,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ufo_classic_01",
+      "file_path": "assets/sprites/shared/vehicles\\ufo_classic_01.png",
+      "prompt": "flying saucer UFO, dome top, lights around edge",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:29:59.679793+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 2226,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "helicopter_01",
+      "file_path": "assets/sprites/shared/vehicles\\helicopter_01.png",
+      "prompt": "helicopter with spinning rotors, skids",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:30:21.747775+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 1453,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "airplane_prop_01",
+      "file_path": "assets/sprites/shared/vehicles\\airplane_prop_01.png",
+      "prompt": "propeller airplane, single engine, classic design",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:30:44.259096+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 929,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pizza_slice_01",
+      "file_path": "assets/sprites/shared/food\\pizza_slice_01.png",
+      "prompt": "pizza slice, melted cheese, pepperoni",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:31:06.661609+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 2532,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "burger_classic_01",
+      "file_path": "assets/sprites/shared/food\\burger_classic_01.png",
+      "prompt": "hamburger with bun, patty, lettuce, cheese",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:31:23.823044+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3132,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hotdog_01",
+      "file_path": "assets/sprites/shared/food\\hotdog_01.png",
+      "prompt": "hot dog in bun, mustard squiggle on top",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:31:43.032818+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 2821,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "taco_01",
+      "file_path": "assets/sprites/shared/food\\taco_01.png",
+      "prompt": "taco shell with meat, lettuce, cheese spilling out",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:32:02.996240+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 3311,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "sushi_roll_01",
+      "file_path": "assets/sprites/shared/food\\sushi_roll_01.png",
+      "prompt": "sushi roll, rice outside, filling visible",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:32:17.281048+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2037,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ramen_bowl_01",
+      "file_path": "assets/sprites/shared/food\\ramen_bowl_01.png",
+      "prompt": "bowl of ramen noodles, chopsticks, steam rising",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:32:32.484362+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2736,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "donut_sprinkle_01",
+      "file_path": "assets/sprites/shared/food\\donut_sprinkle_01.png",
+      "prompt": "donut with pink frosting and rainbow sprinkles",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:32:49.896847+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 4337,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "donut_chocolate_01",
+      "file_path": "assets/sprites/shared/food\\donut_chocolate_01.png",
+      "prompt": "chocolate glazed donut, shiny coating",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:33:06.692937+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2337,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cake_slice_01",
+      "file_path": "assets/sprites/shared/food\\cake_slice_01.png",
+      "prompt": "slice of layered cake, frosting, cherry on top",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:33:26.558447+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 2925,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cupcake_01",
+      "file_path": "assets/sprites/shared/food\\cupcake_01.png",
+      "prompt": "cupcake with swirled frosting, paper wrapper",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:33:45.608829+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 2072,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cookie_chocolate_01",
+      "file_path": "assets/sprites/shared/food\\cookie_chocolate_01.png",
+      "prompt": "chocolate chip cookie, chips visible",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:34:05.682849+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 2367,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "icecream_cone_01",
+      "file_path": "assets/sprites/shared/food\\icecream_cone_01.png",
+      "prompt": "ice cream cone, three scoops, waffle cone",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:34:21.042980+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2028,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "icecream_sundae_01",
+      "file_path": "assets/sprites/shared/food\\icecream_sundae_01.png",
+      "prompt": "ice cream sundae in glass, cherry on top, whipped cream",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:34:37.432011+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1395,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "popcorn_01",
+      "file_path": "assets/sprites/shared/food\\popcorn_01.png",
+      "prompt": "bucket of popcorn, red and white striped container",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:34:54.019373+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2164,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "candy_lollipop_01",
+      "file_path": "assets/sprites/shared/food\\candy_lollipop_01.png",
+      "prompt": "swirl lollipop, stick, colorful spiral",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:35:08.973501+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2260,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "candy_bar_01",
+      "file_path": "assets/sprites/shared/food\\candy_bar_01.png",
+      "prompt": "wrapped candy bar, chocolate visible at bite mark",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:35:25.359253+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1480,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "soda_can_01",
+      "file_path": "assets/sprites/shared/food\\soda_can_01.png",
+      "prompt": "soda can, condensation droplets, pull tab",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:35:42.566222+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 1294,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "coffee_cup_01",
+      "file_path": "assets/sprites/shared/food\\coffee_cup_01.png",
+      "prompt": "coffee cup with steam, lid, sleeve",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:35:57.526553+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1486,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "teacup_01",
+      "file_path": "assets/sprites/shared/food\\teacup_01.png",
+      "prompt": "teacup on saucer, steam rising, delicate handle",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:36:12.880234+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1898,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "milkshake_01",
+      "file_path": "assets/sprites/shared/food\\milkshake_01.png",
+      "prompt": "milkshake in tall glass, whipped cream, straw, cherry",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:36:33.687807+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 1083,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "clock_time_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\clock_time_01.png",
+      "prompt": "pocket watch showing time, chain attached, glowing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:36:48.923174+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3203,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hourglass_sand_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\hourglass_sand_01.png",
+      "prompt": "hourglass with sand flowing, magical glow",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:37:03.720582+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2476,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "magnet_horseshoe_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\magnet_horseshoe_01.png",
+      "prompt": "horseshoe magnet, red and blue ends, sparks",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:37:23.763329+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 2329,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "battery_power_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\battery_power_01.png",
+      "prompt": "battery with lightning bolt symbol, charged",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:37:46.898069+00:00",
+      "generation_time_seconds": 20,
+      "size": "64x64",
+      "file_size_bytes": 622,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "spring_coil_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\spring_coil_01.png",
+      "prompt": "coiled spring, bouncy, metallic",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:38:02.256896+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1759,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "wings_angel_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\wings_angel_01.png",
+      "prompt": "angel wings, white feathers, glowing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:38:20.654746+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1152,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "wings_demon_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\wings_demon_01.png",
+      "prompt": "demon wings, bat-like, dark purple",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:38:39.746478+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 1838,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "halo_golden_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\halo_golden_01.png",
+      "prompt": "golden halo ring, floating, glowing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:39:00.586470+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 1644,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "anchor_ship_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\anchor_ship_01.png",
+      "prompt": "ship anchor, heavy chain, iron",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:39:16.821245+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1702,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "balloon_red_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\balloon_red_01.png",
+      "prompt": "red balloon floating, string trailing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:39:39.141980+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 871,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "balloon_bunch_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\balloon_bunch_01.png",
+      "prompt": "bunch of colorful balloons tied together",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:39:55.740160+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1341,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "umbrella_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\umbrella_01.png",
+      "prompt": "open umbrella, curved handle, colorful",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:40:10.480300+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1374,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "parachute_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\parachute_01.png",
+      "prompt": "deployed parachute, ropes hanging down",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:40:26.232025+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 988,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "propeller_beanie_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\propeller_beanie_01.png",
+      "prompt": "propeller beanie hat, spinning blades on top",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:40:47.060237+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 2699,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "glasses_xray_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\glasses_xray_01.png",
+      "prompt": "x-ray glasses, thick frames, swirly lenses",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:41:08.788219+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 1692,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "boots_rocket_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\boots_rocket_01.png",
+      "prompt": "rocket boots, flames from soles",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:41:26.578494+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2007,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gloves_boxing_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\gloves_boxing_01.png",
+      "prompt": "red boxing gloves, laced up",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:41:47.979026+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 3153,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gloves_rubber_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\gloves_rubber_01.png",
+      "prompt": "yellow rubber cleaning gloves",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:42:09.493279+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 4078,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "mustache_fake_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\mustache_fake_01.png",
+      "prompt": "fake mustache, curly ends, disguise",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:42:28.334616+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 862,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "nose_clown_01",
+      "file_path": "assets/sprites/shared/powerups/weird\\nose_clown_01.png",
+      "prompt": "red clown nose, round, shiny",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:42:44.728281+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1688,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "toaster_01",
+      "file_path": "assets/sprites/shared/objects/household\\toaster_01.png",
+      "prompt": "toaster with bread popping out, chrome finish",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:43:03.925088+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 2461,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "microwave_01",
+      "file_path": "assets/sprites/shared/objects/household\\microwave_01.png",
+      "prompt": "microwave oven, window showing inside, buttons",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:43:24.452356+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 2335,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "blender_01",
+      "file_path": "assets/sprites/shared/objects/household\\blender_01.png",
+      "prompt": "blender with lid, glass pitcher, base",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:43:40.849977+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1178,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "vacuum_01",
+      "file_path": "assets/sprites/shared/objects/household\\vacuum_01.png",
+      "prompt": "vacuum cleaner, hose attached, wheels",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:43:57.430904+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2220,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "iron_steam_01",
+      "file_path": "assets/sprites/shared/objects/household\\iron_steam_01.png",
+      "prompt": "steam iron, cord attached, hot",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:44:11.766460+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1731,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "fan_desk_01",
+      "file_path": "assets/sprites/shared/objects/household\\fan_desk_01.png",
+      "prompt": "desk fan, spinning blades, tilted head",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:44:26.891630+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2475,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "lamp_desk_01",
+      "file_path": "assets/sprites/shared/objects/household\\lamp_desk_01.png",
+      "prompt": "desk lamp, adjustable arm, light bulb",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:44:42.087455+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1231,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alarm_clock_01",
+      "file_path": "assets/sprites/shared/objects/household\\alarm_clock_01.png",
+      "prompt": "alarm clock, bells on top, ringing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:44:57.299659+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3031,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "telephone_rotary_01",
+      "file_path": "assets/sprites/shared/objects/household\\telephone_rotary_01.png",
+      "prompt": "rotary telephone, coiled cord, vintage",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:45:13.627892+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2387,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tv_old_01",
+      "file_path": "assets/sprites/shared/objects/household\\tv_old_01.png",
+      "prompt": "old CRT television, antenna on top, screen glowing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:45:30.628596+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1549,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "radio_boombox_01",
+      "file_path": "assets/sprites/shared/objects/household\\radio_boombox_01.png",
+      "prompt": "boombox radio, cassette player, speakers",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:45:48.012349+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 2736,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "camera_polaroid_01",
+      "file_path": "assets/sprites/shared/objects/household\\camera_polaroid_01.png",
+      "prompt": "polaroid camera, photo ejecting from front",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:46:04.834343+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1794,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "camera_video_01",
+      "file_path": "assets/sprites/shared/objects/household\\camera_video_01.png",
+      "prompt": "video camera, viewfinder, recording light",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:46:37.401850+00:00",
+      "generation_time_seconds": 29,
+      "size": "64x64",
+      "file_size_bytes": 1628,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "calculator_01",
+      "file_path": "assets/sprites/shared/objects/household\\calculator_01.png",
+      "prompt": "calculator with number pad, small display",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:46:59.732706+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 1912,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "typewriter_01",
+      "file_path": "assets/sprites/shared/objects/household\\typewriter_01.png",
+      "prompt": "manual typewriter, keys, paper loaded",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:47:18.163061+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1900,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "scissors_01",
+      "file_path": "assets/sprites/shared/objects/household\\scissors_01.png",
+      "prompt": "scissors, open blades, handle holes",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:47:33.115768+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1265,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "stapler_01",
+      "file_path": "assets/sprites/shared/objects/household\\stapler_01.png",
+      "prompt": "stapler, spring-loaded, metallic",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:47:48.272247+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1229,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tape_dispenser_01",
+      "file_path": "assets/sprites/shared/objects/household\\tape_dispenser_01.png",
+      "prompt": "tape dispenser, roll of tape, serrated edge",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:48:04.597142+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1755,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pencil_sharpener_01",
+      "file_path": "assets/sprites/shared/objects/household\\pencil_sharpener_01.png",
+      "prompt": "pencil sharpener, crank handle, shavings",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:48:19.817677+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1942,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ruler_01",
+      "file_path": "assets/sprites/shared/objects/household\\ruler_01.png",
+      "prompt": "ruler with measurements, straight edge",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:48:34.769283+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1275,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ball_soccer_01",
+      "file_path": "assets/sprites/shared/objects/sports\\ball_soccer_01.png",
+      "prompt": "soccer ball, black and white hexagon pattern",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:48:50.951015+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1266,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ball_basketball_01",
+      "file_path": "assets/sprites/shared/objects/sports\\ball_basketball_01.png",
+      "prompt": "basketball, orange with black lines",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:49:07.539983+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2246,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ball_football_01",
+      "file_path": "assets/sprites/shared/objects/sports\\ball_football_01.png",
+      "prompt": "american football, brown leather, laces",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:49:22.570672+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2374,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ball_baseball_01",
+      "file_path": "assets/sprites/shared/objects/sports\\ball_baseball_01.png",
+      "prompt": "baseball, white with red stitching",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:49:41.346400+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 2733,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ball_tennis_01",
+      "file_path": "assets/sprites/shared/objects/sports\\ball_tennis_01.png",
+      "prompt": "tennis ball, yellow-green, fuzzy texture",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:50:00.590623+00:00",
+      "generation_time_seconds": 16,
+      "size": "64x64",
+      "file_size_bytes": 2808,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ball_bowling_01",
+      "file_path": "assets/sprites/shared/objects/sports\\ball_bowling_01.png",
+      "prompt": "bowling ball, three finger holes, shiny",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:50:19.101828+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1471,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ball_golf_01",
+      "file_path": "assets/sprites/shared/objects/sports\\ball_golf_01.png",
+      "prompt": "golf ball, white, dimpled surface",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:50:41.147111+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 2748,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ball_volleyball_01",
+      "file_path": "assets/sprites/shared/objects/sports\\ball_volleyball_01.png",
+      "prompt": "volleyball, white with colored panels",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:50:59.585525+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1724,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hockey_stick_01",
+      "file_path": "assets/sprites/shared/objects/sports\\hockey_stick_01.png",
+      "prompt": "hockey stick, curved blade, grip tape",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:51:21.497258+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 439,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hockey_puck_01",
+      "file_path": "assets/sprites/shared/objects/sports\\hockey_puck_01.png",
+      "prompt": "hockey puck, black rubber disc",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:51:36.245077+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1535,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "baseball_bat_01",
+      "file_path": "assets/sprites/shared/objects/sports\\baseball_bat_01.png",
+      "prompt": "wooden baseball bat, knob handle",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:51:51.605140+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2192,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "baseball_glove_01",
+      "file_path": "assets/sprites/shared/objects/sports\\baseball_glove_01.png",
+      "prompt": "baseball glove, brown leather, webbing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:52:13.114628+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 3285,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tennis_racket_01",
+      "file_path": "assets/sprites/shared/objects/sports\\tennis_racket_01.png",
+      "prompt": "tennis racket, string mesh, grip handle",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:52:27.454328+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1621,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "golf_club_01",
+      "file_path": "assets/sprites/shared/objects/sports\\golf_club_01.png",
+      "prompt": "golf club, driver head, long shaft",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:52:42.814839+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 669,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "boxing_glove_01",
+      "file_path": "assets/sprites/shared/objects/sports\\boxing_glove_01.png",
+      "prompt": "boxing glove, padded, laced wrist",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:53:01.662638+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1984,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "dumbbell_01",
+      "file_path": "assets/sprites/shared/objects/sports\\dumbbell_01.png",
+      "prompt": "dumbbell weight, plates on ends, handle",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:53:23.985254+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 1384,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "trophy_gold_01",
+      "file_path": "assets/sprites/shared/objects/sports\\trophy_gold_01.png",
+      "prompt": "golden trophy cup, handles, pedestal base",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:53:53.770092+00:00",
+      "generation_time_seconds": 26,
+      "size": "64x64",
+      "file_size_bytes": 1341,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "medal_gold_01",
+      "file_path": "assets/sprites/shared/objects/sports\\medal_gold_01.png",
+      "prompt": "gold medal on ribbon, star design",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:54:16.021820+00:00",
+      "generation_time_seconds": 19,
+      "size": "64x64",
+      "file_size_bytes": 2222,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "whistle_01",
+      "file_path": "assets/sprites/shared/objects/sports\\whistle_01.png",
+      "prompt": "referee whistle, metal, lanyard attached",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:54:42.142291+00:00",
+      "generation_time_seconds": 23,
+      "size": "64x64",
+      "file_size_bytes": 624,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "stopwatch_01",
+      "file_path": "assets/sprites/shared/objects/sports\\stopwatch_01.png",
+      "prompt": "stopwatch, digital display, buttons on top",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:54:58.822105+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2792,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "sun_bright_01",
+      "file_path": "assets/sprites/shared/nature\\sun_bright_01.png",
+      "prompt": "bright yellow sun, rays extending outward",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:55:15.106344+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 903,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "moon_crescent_01",
+      "file_path": "assets/sprites/shared/nature\\moon_crescent_01.png",
+      "prompt": "crescent moon, pale glow, night sky",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:55:32.004119+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1271,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "star_shining_01",
+      "file_path": "assets/sprites/shared/nature\\star_shining_01.png",
+      "prompt": "twinkling star, multiple points, bright",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:55:48.858018+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2712,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cloud_fluffy_01",
+      "file_path": "assets/sprites/shared/nature\\cloud_fluffy_01.png",
+      "prompt": "fluffy white cloud, soft edges",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:56:10.716298+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 910,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cloud_storm_01",
+      "file_path": "assets/sprites/shared/nature\\cloud_storm_01.png",
+      "prompt": "dark storm cloud, lightning flashing",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:56:25.669435+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2208,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rainbow_arc_01",
+      "file_path": "assets/sprites/shared/nature\\rainbow_arc_01.png",
+      "prompt": "rainbow arc, seven colors, after rain",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:56:44.102190+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1219,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "lightning_bolt_01",
+      "file_path": "assets/sprites/shared/nature\\lightning_bolt_01.png",
+      "prompt": "lightning bolt, jagged electric, bright yellow",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:56:58.884829+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 967,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tornado_01",
+      "file_path": "assets/sprites/shared/nature\\tornado_01.png",
+      "prompt": "tornado funnel, swirling debris, powerful",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:57:15.647985+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2984,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "snowflake_01",
+      "file_path": "assets/sprites/shared/nature\\snowflake_01.png",
+      "prompt": "snowflake, six-pointed, crystalline, delicate",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:57:32.649686+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 854,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "raindrop_01",
+      "file_path": "assets/sprites/shared/nature\\raindrop_01.png",
+      "prompt": "water raindrop, teardrop shape, falling",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:57:47.518404+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1100,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "fire_flame_01",
+      "file_path": "assets/sprites/shared/nature\\fire_flame_01.png",
+      "prompt": "fire flame, orange and yellow, flickering",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:58:02.964606+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2059,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "fire_campfire_01",
+      "file_path": "assets/sprites/shared/nature\\fire_campfire_01.png",
+      "prompt": "campfire, logs burning, smoke rising",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:58:19.346641+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2066,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "water_wave_01",
+      "file_path": "assets/sprites/shared/nature\\water_wave_01.png",
+      "prompt": "ocean wave, curling crest, foam",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:58:36.397953+00:00",
+      "generation_time_seconds": 14,
+      "size": "64x64",
+      "file_size_bytes": 3685,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "water_splash_01",
+      "file_path": "assets/sprites/shared/nature\\water_splash_01.png",
+      "prompt": "water splash, droplets flying, impact",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:58:52.735143+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 657,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tree_oak_01",
+      "file_path": "assets/sprites/shared/nature\\tree_oak_01.png",
+      "prompt": "oak tree, thick trunk, leafy branches",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:59:19.772244+00:00",
+      "generation_time_seconds": 24,
+      "size": "64x64",
+      "file_size_bytes": 2984,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tree_pine_01",
+      "file_path": "assets/sprites/shared/nature\\tree_pine_01.png",
+      "prompt": "pine tree, conical shape, needles",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:59:41.689429+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 2867,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "flower_rose_01",
+      "file_path": "assets/sprites/shared/nature\\flower_rose_01.png",
+      "prompt": "red rose flower, petals, thorny stem",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T22:59:56.644092+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 2807,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "flower_sunflower_01",
+      "file_path": "assets/sprites/shared/nature\\flower_sunflower_01.png",
+      "prompt": "sunflower, yellow petals, brown center, tall",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T23:00:12.421960+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3642,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "mushroom_red_01",
+      "file_path": "assets/sprites/shared/nature\\mushroom_red_01.png",
+      "prompt": "red mushroom with white spots, toadstool",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T23:00:52.764210+00:00",
+      "generation_time_seconds": 37,
+      "size": "64x64",
+      "file_size_bytes": 1938,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cactus_01",
+      "file_path": "assets/sprites/shared/nature\\cactus_01.png",
+      "prompt": "cactus with arms, spines, desert plant",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T23:01:12.838109+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 2576,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": [
+    {
+      "id": "astronaut_floating_01",
+      "prompt": "astronaut floating in space, tethered suit, visor reflecting stars",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "cow_face_01",
+      "prompt": "cow face, black and white spots, horns",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "horse_face_01",
+      "prompt": "horse face, flowing mane, noble",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "mouse_face_01",
+      "prompt": "mouse face, round ears, whiskers",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "frog_face_01",
+      "prompt": "frog face, bulging eyes, wide mouth",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "fish_face_01",
+      "prompt": "fish face, scales, bubbles coming from mouth",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "car_sports_red_01",
+      "prompt": "red sports car, sleek design, racing stripes",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "car_sports_blue_01",
+      "prompt": "blue sports car, spoiler, shiny finish",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "truck_monster_01",
+      "prompt": "monster truck, massive wheels, lifted suspension",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "jetpack_01",
+      "prompt": "jetpack with flames shooting down, strapped on back",
+      "error": "Generation or save failed"
+    }
+  ],
+  "completed_at": "2025-11-07T23:01:12.838324+00:00"
+}

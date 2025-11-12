@@ -1,0 +1,749 @@
+{
+  "session_name": "complete_sprite_library",
+  "description": "Complete game sprite library - 148 sprites across 10 categories",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "enemies_organic",
+      "output_folder": "assets/sprites/shared/enemies/organic",
+      "description": "Organic blob creatures and monsters",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "blob_red_01",
+          "prompt": "red blob creature, round slimy body, simple eyes, pixel art"
+        },
+        {
+          "id": "blob_blue_01",
+          "prompt": "blue blob creature, round slimy body, simple eyes, pixel art"
+        },
+        {
+          "id": "blob_green_01",
+          "prompt": "green blob creature, round slimy body, simple eyes, pixel art"
+        },
+        {
+          "id": "blob_purple_01",
+          "prompt": "purple blob creature with tentacles, slimy appearance, pixel art"
+        },
+        {
+          "id": "blob_orange_01",
+          "prompt": "orange blob creature, round slimy body, pixel art"
+        },
+        {
+          "id": "slime_small_01",
+          "prompt": "small green slime, gooey texture, cute appearance, pixel art"
+        },
+        {
+          "id": "slime_medium_01",
+          "prompt": "medium blue slime, gooey dripping texture, pixel art"
+        },
+        {
+          "id": "slime_large_01",
+          "prompt": "large purple slime, intimidating size, gooey texture, pixel art"
+        },
+        {
+          "id": "jellyfish_01",
+          "prompt": "pink jellyfish creature, floating tentacles, glowing body, pixel art"
+        },
+        {
+          "id": "jellyfish_02",
+          "prompt": "blue jellyfish creature, flowing tentacles, translucent, pixel art"
+        },
+        {
+          "id": "amoeba_01",
+          "prompt": "green amoeba creature, irregular shape, simple organism, pixel art"
+        },
+        {
+          "id": "amoeba_02",
+          "prompt": "red amoeba creature, blob-like shape, moving pseudopods, pixel art"
+        },
+        {
+          "id": "worm_01",
+          "prompt": "purple worm creature, segmented body, curved shape, pixel art"
+        },
+        {
+          "id": "worm_02",
+          "prompt": "green worm creature, long segmented body, pixel art"
+        },
+        {
+          "id": "eyeball_01",
+          "prompt": "floating eyeball monster, large pupil, veiny appearance, pixel art"
+        },
+        {
+          "id": "eyeball_02",
+          "prompt": "red eyeball creature, intense gaze, bloodshot, pixel art"
+        },
+        {
+          "id": "spore_01",
+          "prompt": "floating spore creature, mushroom-like, small tentacles, pixel art"
+        },
+        {
+          "id": "spore_02",
+          "prompt": "pink spore creature, fuzzy texture, floating, pixel art"
+        },
+        {
+          "id": "tentacle_beast_01",
+          "prompt": "creature with multiple tentacles, dark purple, menacing, pixel art"
+        },
+        {
+          "id": "coral_creature_01",
+          "prompt": "coral-like creature, branching structure, colorful, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "enemies_mechanical",
+      "output_folder": "assets/sprites/shared/enemies/mechanical",
+      "description": "Mechanical robots and turrets",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "high detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "robot_small_01",
+          "prompt": "small robot, metallic gray, boxy body, simple design, pixel art"
+        },
+        {
+          "id": "robot_small_02",
+          "prompt": "small blue robot, round body, antenna, pixel art"
+        },
+        {
+          "id": "robot_medium_01",
+          "prompt": "medium robot, silver metallic, angular design, pixel art"
+        },
+        {
+          "id": "robot_medium_02",
+          "prompt": "medium red robot, sturdy build, mechanical arms, pixel art"
+        },
+        {
+          "id": "robot_large_01",
+          "prompt": "large robot, heavy armor plating, intimidating, pixel art"
+        },
+        {
+          "id": "turret_basic_01",
+          "prompt": "basic turret, gray metal, rotating barrel, stationary, pixel art"
+        },
+        {
+          "id": "turret_laser_01",
+          "prompt": "laser turret, glowing blue energy, advanced tech, pixel art"
+        },
+        {
+          "id": "turret_missile_01",
+          "prompt": "missile turret, multiple barrels, heavy weapon, pixel art"
+        },
+        {
+          "id": "drone_01",
+          "prompt": "flying drone, propellers, compact body, surveillance, pixel art"
+        },
+        {
+          "id": "drone_02",
+          "prompt": "combat drone, sleek design, weapon mounted, pixel art"
+        },
+        {
+          "id": "drone_03",
+          "prompt": "scout drone, small size, single rotor, pixel art"
+        },
+        {
+          "id": "mech_01",
+          "prompt": "small mech walker, bipedal, mechanical legs, pixel art"
+        },
+        {
+          "id": "mech_02",
+          "prompt": "assault mech, heavy armor, dual weapons, pixel art"
+        },
+        {
+          "id": "tank_01",
+          "prompt": "small tank, treads, rotating turret, armored, pixel art"
+        },
+        {
+          "id": "tank_02",
+          "prompt": "heavy tank, thick armor, large cannon, pixel art"
+        },
+        {
+          "id": "probe_01",
+          "prompt": "floating probe, spherical body, scanning device, pixel art"
+        },
+        {
+          "id": "probe_02",
+          "prompt": "recon probe, multiple sensors, hovering, pixel art"
+        },
+        {
+          "id": "mine_01",
+          "prompt": "explosive mine, spherical shape, spikes, danger, pixel art"
+        },
+        {
+          "id": "mine_02",
+          "prompt": "proximity mine, blinking light, metallic, pixel art"
+        },
+        {
+          "id": "satellite_01",
+          "prompt": "small satellite, solar panels, antenna, orbiting, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "icons_symbols",
+      "output_folder": "assets/sprites/shared/icons/symbols",
+      "description": "Symbolic icons for Memory Match and UI",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "star_5point_01",
+          "prompt": "five-pointed star, yellow, simple geometric shape, pixel art"
+        },
+        {
+          "id": "star_5point_02",
+          "prompt": "five-pointed star, blue, outlined, pixel art"
+        },
+        {
+          "id": "star_5point_03",
+          "prompt": "five-pointed star, red, filled, pixel art"
+        },
+        {
+          "id": "star_4point_01",
+          "prompt": "four-pointed star, sparkle shape, white, pixel art"
+        },
+        {
+          "id": "star_4point_02",
+          "prompt": "four-pointed star, diamond sparkle, gold, pixel art"
+        },
+        {
+          "id": "heart_01",
+          "prompt": "heart symbol, red, classic shape, pixel art"
+        },
+        {
+          "id": "heart_02",
+          "prompt": "heart symbol, pink, outlined, pixel art"
+        },
+        {
+          "id": "heart_03",
+          "prompt": "heart symbol, purple, filled, pixel art"
+        },
+        {
+          "id": "diamond_01",
+          "prompt": "diamond shape, blue, geometric, pixel art"
+        },
+        {
+          "id": "diamond_02",
+          "prompt": "diamond shape, white, outlined, pixel art"
+        },
+        {
+          "id": "circle_01",
+          "prompt": "circle symbol, red, filled, pixel art"
+        },
+        {
+          "id": "circle_02",
+          "prompt": "circle symbol, blue, outlined, pixel art"
+        },
+        {
+          "id": "square_01",
+          "prompt": "square symbol, green, filled, pixel art"
+        },
+        {
+          "id": "square_02",
+          "prompt": "square symbol, yellow, outlined, pixel art"
+        },
+        {
+          "id": "triangle_01",
+          "prompt": "triangle symbol, orange, pointing up, pixel art"
+        },
+        {
+          "id": "triangle_02",
+          "prompt": "triangle symbol, purple, outlined, pixel art"
+        },
+        {
+          "id": "hexagon_01",
+          "prompt": "hexagon shape, teal, filled, pixel art"
+        },
+        {
+          "id": "hexagon_02",
+          "prompt": "hexagon shape, cyan, outlined, pixel art"
+        },
+        {
+          "id": "cross_01",
+          "prompt": "cross symbol, red, plus sign shape, pixel art"
+        },
+        {
+          "id": "cross_02",
+          "prompt": "cross symbol, white, medical cross, pixel art"
+        },
+        {
+          "id": "arrow_up_01",
+          "prompt": "arrow pointing up, blue, simple design, pixel art"
+        },
+        {
+          "id": "arrow_right_01",
+          "prompt": "arrow pointing right, green, simple design, pixel art"
+        },
+        {
+          "id": "moon_01",
+          "prompt": "crescent moon, yellow, night symbol, pixel art"
+        },
+        {
+          "id": "sun_01",
+          "prompt": "sun symbol, yellow, rays, day symbol, pixel art"
+        },
+        {
+          "id": "cloud_01",
+          "prompt": "cloud symbol, white, fluffy, pixel art"
+        },
+        {
+          "id": "lightning_01",
+          "prompt": "lightning bolt, yellow, zigzag shape, pixel art"
+        },
+        {
+          "id": "snowflake_01",
+          "prompt": "snowflake, light blue, six-pointed, winter, pixel art"
+        },
+        {
+          "id": "flame_01",
+          "prompt": "flame symbol, orange-red gradient, fire, pixel art"
+        },
+        {
+          "id": "water_drop_01",
+          "prompt": "water droplet, blue, teardrop shape, pixel art"
+        },
+        {
+          "id": "leaf_01",
+          "prompt": "leaf symbol, green, simple plant shape, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "icons_objects",
+      "output_folder": "assets/sprites/shared/icons/objects",
+      "description": "Object icons for Memory Match and collectibles",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "key_01",
+          "prompt": "golden key, classic design, shiny metal, pixel art"
+        },
+        {
+          "id": "key_02",
+          "prompt": "silver key, simple design, metallic, pixel art"
+        },
+        {
+          "id": "lock_01",
+          "prompt": "padlock, closed, metallic gray, pixel art"
+        },
+        {
+          "id": "chest_01",
+          "prompt": "treasure chest, brown wood, closed, pixel art"
+        },
+        {
+          "id": "potion_red_01",
+          "prompt": "red potion bottle, glass vial, liquid inside, pixel art"
+        },
+        {
+          "id": "potion_blue_01",
+          "prompt": "blue potion bottle, magic elixir, glowing, pixel art"
+        },
+        {
+          "id": "potion_green_01",
+          "prompt": "green potion bottle, healing liquid, pixel art"
+        },
+        {
+          "id": "sword_01",
+          "prompt": "sword, silver blade, simple design, weapon, pixel art"
+        },
+        {
+          "id": "shield_01",
+          "prompt": "shield, round shape, metallic, defense, pixel art"
+        },
+        {
+          "id": "bow_01",
+          "prompt": "bow weapon, wooden, curved design, pixel art"
+        },
+        {
+          "id": "arrow_01",
+          "prompt": "arrow, wooden shaft, pointed tip, pixel art"
+        },
+        {
+          "id": "axe_01",
+          "prompt": "axe, metal blade, wooden handle, tool, pixel art"
+        },
+        {
+          "id": "hammer_01",
+          "prompt": "hammer, metal head, wooden handle, tool, pixel art"
+        },
+        {
+          "id": "wrench_01",
+          "prompt": "wrench, silver metal, mechanical tool, pixel art"
+        },
+        {
+          "id": "gear_01",
+          "prompt": "gear, metallic, cog wheel, mechanical, pixel art"
+        },
+        {
+          "id": "bolt_01",
+          "prompt": "bolt and nut, metal hardware, gray, pixel art"
+        },
+        {
+          "id": "book_01",
+          "prompt": "book, closed, red cover, knowledge, pixel art"
+        },
+        {
+          "id": "book_02",
+          "prompt": "book, open pages, blue cover, pixel art"
+        },
+        {
+          "id": "scroll_01",
+          "prompt": "scroll, rolled parchment, ancient document, pixel art"
+        },
+        {
+          "id": "feather_01",
+          "prompt": "feather, white, quill, lightweight, pixel art"
+        },
+        {
+          "id": "bell_01",
+          "prompt": "bell, golden, ringing object, pixel art"
+        },
+        {
+          "id": "clock_01",
+          "prompt": "clock, round face, showing time, pixel art"
+        },
+        {
+          "id": "compass_01",
+          "prompt": "compass, navigation tool, red needle, pixel art"
+        },
+        {
+          "id": "map_01",
+          "prompt": "map, folded paper, navigation, pixel art"
+        },
+        {
+          "id": "telescope_01",
+          "prompt": "telescope, brass, viewing instrument, pixel art"
+        },
+        {
+          "id": "magnifying_glass_01",
+          "prompt": "magnifying glass, detective tool, lens, pixel art"
+        },
+        {
+          "id": "candle_01",
+          "prompt": "candle, lit flame, wax, light source, pixel art"
+        },
+        {
+          "id": "lantern_01",
+          "prompt": "lantern, hanging, glowing light, metal, pixel art"
+        },
+        {
+          "id": "torch_01",
+          "prompt": "torch, burning flame, wooden handle, pixel art"
+        },
+        {
+          "id": "hourglass_01",
+          "prompt": "hourglass, sand timer, time measurement, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "blocks_bricks",
+      "output_folder": "assets/sprites/shared/blocks",
+      "description": "Breakout brick variants",
+      "default_params": {
+        "width": 64,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "brick_stone_01",
+          "prompt": "stone brick, gray rock texture, rectangular block, pixel art"
+        },
+        {
+          "id": "brick_stone_02",
+          "prompt": "stone brick, cracked surface, weathered, pixel art"
+        },
+        {
+          "id": "brick_stone_03",
+          "prompt": "stone brick, mossy texture, aged, pixel art"
+        },
+        {
+          "id": "brick_metal_01",
+          "prompt": "metal brick, silver metallic, shiny surface, pixel art"
+        },
+        {
+          "id": "brick_metal_02",
+          "prompt": "metal brick, bronze colored, industrial, pixel art"
+        },
+        {
+          "id": "brick_metal_03",
+          "prompt": "metal brick, rusty surface, weathered metal, pixel art"
+        },
+        {
+          "id": "brick_crystal_01",
+          "prompt": "crystal brick, blue transparent, glowing, pixel art"
+        },
+        {
+          "id": "brick_crystal_02",
+          "prompt": "crystal brick, purple gemstone, shimmering, pixel art"
+        },
+        {
+          "id": "brick_crystal_03",
+          "prompt": "crystal brick, green jade, translucent, pixel art"
+        },
+        {
+          "id": "brick_wood_01",
+          "prompt": "wooden brick, brown planks, natural texture, pixel art"
+        },
+        {
+          "id": "brick_wood_02",
+          "prompt": "wooden brick, dark oak, grain pattern, pixel art"
+        },
+        {
+          "id": "brick_wood_03",
+          "prompt": "wooden brick, weathered wood, old planks, pixel art"
+        },
+        {
+          "id": "brick_gold_01",
+          "prompt": "gold brick, shiny golden, treasure block, pixel art"
+        },
+        {
+          "id": "brick_explosive_01",
+          "prompt": "explosive brick, TNT pattern, danger warning, pixel art"
+        },
+        {
+          "id": "brick_rainbow_01",
+          "prompt": "rainbow brick, multicolored, special block, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "powerups",
+      "output_folder": "assets/sprites/shared/powerups",
+      "description": "Breakout power-up drops",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "powerup_shield_01",
+          "prompt": "shield powerup icon, blue protective barrier, glowing, pixel art"
+        },
+        {
+          "id": "powerup_multiball_01",
+          "prompt": "multi-ball powerup, three spheres, multiplication, pixel art"
+        },
+        {
+          "id": "powerup_laser_01",
+          "prompt": "laser powerup icon, red beam symbol, weapon upgrade, pixel art"
+        },
+        {
+          "id": "powerup_paddle_extend_01",
+          "prompt": "paddle extend powerup, wide bar icon, size increase, pixel art"
+        },
+        {
+          "id": "powerup_slow_01",
+          "prompt": "slow time powerup, clock icon, time manipulation, pixel art"
+        },
+        {
+          "id": "powerup_fast_01",
+          "prompt": "speed boost powerup, lightning symbol, acceleration, pixel art"
+        },
+        {
+          "id": "powerup_fireball_01",
+          "prompt": "fireball powerup, flaming sphere, destruction, pixel art"
+        },
+        {
+          "id": "powerup_magnet_01",
+          "prompt": "magnet powerup, horseshoe magnet, attraction, pixel art"
+        },
+        {
+          "id": "powerup_sticky_01",
+          "prompt": "sticky paddle powerup, glue drop, catch ability, pixel art"
+        },
+        {
+          "id": "powerup_life_01",
+          "prompt": "extra life powerup, red heart, health bonus, pixel art"
+        },
+        {
+          "id": "powerup_score_01",
+          "prompt": "score multiplier powerup, x2 symbol, points boost, pixel art"
+        },
+        {
+          "id": "powerup_invincible_01",
+          "prompt": "invincibility powerup, golden star, temporary immunity, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "coins",
+      "output_folder": "assets/sprites/shared/coins",
+      "description": "Coin Flip game coins (heads and tails)",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "high detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "coin_gold_heads",
+          "prompt": "gold coin heads side, face profile, shiny metallic, circular, pixel art"
+        },
+        {
+          "id": "coin_gold_tails",
+          "prompt": "gold coin tails side, eagle symbol, shiny metallic, circular, pixel art"
+        },
+        {
+          "id": "coin_silver_heads",
+          "prompt": "silver coin heads side, face profile, metallic shine, circular, pixel art"
+        },
+        {
+          "id": "coin_silver_tails",
+          "prompt": "silver coin tails side, shield symbol, metallic, circular, pixel art"
+        },
+        {
+          "id": "coin_bronze_heads",
+          "prompt": "bronze coin heads side, face profile, copper color, circular, pixel art"
+        },
+        {
+          "id": "coin_bronze_tails",
+          "prompt": "bronze coin tails side, laurel wreath symbol, copper, circular, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "gestures_classic",
+      "output_folder": "assets/sprites/shared/gestures/classic",
+      "description": "Classic RPS hand gestures",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "side",
+        "detail": "high detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "hand_rock",
+          "prompt": "hand making rock gesture, closed fist, side view, pixel art"
+        },
+        {
+          "id": "hand_paper",
+          "prompt": "hand making paper gesture, flat palm, side view, pixel art"
+        },
+        {
+          "id": "hand_scissors",
+          "prompt": "hand making scissors gesture, two fingers extended, side view, pixel art"
+        },
+        {
+          "id": "hand_lizard",
+          "prompt": "hand making lizard gesture, spock variant, side view, pixel art"
+        },
+        {
+          "id": "hand_spock",
+          "prompt": "hand making spock gesture, vulcan salute, side view, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "gestures_cartoon",
+      "output_folder": "assets/sprites/shared/gestures/cartoon",
+      "description": "Cartoon icon versions of RPS",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "icon_rock",
+          "prompt": "cartoon rock icon, gray stone, round shape, simple design, pixel art"
+        },
+        {
+          "id": "icon_paper",
+          "prompt": "cartoon paper icon, white sheet, floating, simple design, pixel art"
+        },
+        {
+          "id": "icon_scissors",
+          "prompt": "cartoon scissors icon, silver blades, simple design, pixel art"
+        },
+        {
+          "id": "icon_lizard",
+          "prompt": "cartoon lizard icon, green reptile, cute design, pixel art"
+        },
+        {
+          "id": "icon_spock",
+          "prompt": "cartoon spock icon, vulcan hand symbol, simple design, pixel art"
+        }
+      ]
+    },
+    {
+      "name": "gestures_pixel",
+      "output_folder": "assets/sprites/shared/gestures/pixel",
+      "description": "Bold pixel art RPS icons",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "low detail",
+        "shading": "flat shading",
+        "outline": "single color black outline"
+      },
+      "sprites": [
+        {
+          "id": "pixel_rock",
+          "prompt": "bold pixel rock symbol, geometric stone, thick outline, retro style, pixel art"
+        },
+        {
+          "id": "pixel_paper",
+          "prompt": "bold pixel paper symbol, rectangular sheet, thick outline, retro style, pixel art"
+        },
+        {
+          "id": "pixel_scissors",
+          "prompt": "bold pixel scissors symbol, X-shape, thick outline, retro style, pixel art"
+        },
+        {
+          "id": "pixel_lizard",
+          "prompt": "bold pixel lizard symbol, simplified reptile, thick outline, retro style, pixel art"
+        },
+        {
+          "id": "pixel_spock",
+          "prompt": "bold pixel spock symbol, hand gesture, thick outline, retro style, pixel art"
+        }
+      ]
+    }
+  ]
+}

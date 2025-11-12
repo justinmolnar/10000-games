@@ -1,0 +1,294 @@
+{
+  "session_name": "test_collectibles",
+  "started_at": "2025-11-07T04:50:53.476997+00:00",
+  "total_sprites": 15,
+  "generated": [
+    {
+      "id": "apple_red_01",
+      "file_path": "assets/sprites/shared/collectibles\\apple_red_01.png",
+      "prompt": "red apple, shiny surface, fresh fruit, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:51:05.239201+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1771,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "apple_green_01",
+      "file_path": "assets/sprites/shared/collectibles\\apple_green_01.png",
+      "prompt": "green apple, shiny surface, fresh fruit, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:51:20.410634+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 2096,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "banana_01",
+      "file_path": "assets/sprites/shared/collectibles\\banana_01.png",
+      "prompt": "yellow banana, curved shape, fresh fruit, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:51:35.841008+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1204,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "orange_01",
+      "file_path": "assets/sprites/shared/collectibles\\orange_01.png",
+      "prompt": "orange fruit, round shape, textured peel, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:51:52.429836+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 3054,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "strawberry_01",
+      "file_path": "assets/sprites/shared/collectibles\\strawberry_01.png",
+      "prompt": "red strawberry with green leaves, fresh berry, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:52:08.467109+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2610,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cherry_01",
+      "file_path": "assets/sprites/shared/collectibles\\cherry_01.png",
+      "prompt": "red cherries with stems, paired fruit, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:52:25.401819+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2195,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "watermelon_slice_01",
+      "file_path": "assets/sprites/shared/collectibles\\watermelon_slice_01.png",
+      "prompt": "watermelon slice, red flesh with black seeds, green rind, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:52:41.992999+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 1530,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gem_blue_01",
+      "file_path": "assets/sprites/shared/collectibles\\gem_blue_01.png",
+      "prompt": "blue gem crystal, shiny faceted surface, jewel, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:53:00.202068+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1874,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gem_red_01",
+      "file_path": "assets/sprites/shared/collectibles\\gem_red_01.png",
+      "prompt": "red gem crystal, shiny faceted surface, ruby, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:53:16.404310+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 2305,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gem_green_01",
+      "file_path": "assets/sprites/shared/collectibles\\gem_green_01.png",
+      "prompt": "green gem crystal, shiny faceted surface, emerald, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:53:35.248761+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1394,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "coin_gold_01",
+      "file_path": "assets/sprites/shared/collectibles\\coin_gold_01.png",
+      "prompt": "gold coin, shiny metallic surface, round shape, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:53:50.829002+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 3996,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "star_yellow_01",
+      "file_path": "assets/sprites/shared/collectibles\\star_yellow_01.png",
+      "prompt": "yellow star, five-pointed, glowing, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:54:07.815746+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 883,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "star_blue_01",
+      "file_path": "assets/sprites/shared/collectibles\\star_blue_01.png",
+      "prompt": "blue star, five-pointed, glowing, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:54:24.118018+00:00",
+      "generation_time_seconds": 13,
+      "size": "64x64",
+      "file_size_bytes": 975,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "heart_red_01",
+      "file_path": "assets/sprites/shared/collectibles\\heart_red_01.png",
+      "prompt": "red heart, classic heart shape, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:54:38.885081+00:00",
+      "generation_time_seconds": 11,
+      "size": "64x64",
+      "file_size_bytes": 1334,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "diamond_white_01",
+      "file_path": "assets/sprites/shared/collectibles\\diamond_white_01.png",
+      "prompt": "white diamond shape, simple geometric, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:54:53.952448+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 387,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": [],
+  "completed_at": "2025-11-07T04:54:53.952476+00:00"
+}

@@ -507,6 +507,10 @@ Sprite Loading
 - SpriteLoader (src/utils/sprite_loader.lua) - Currently a singleton (being refactored to DI)
 - SpriteManager and PaletteManager - Handle sprite sheets and color palettes
 - Sprites loaded from assets/sprites/
+- PixelLab AI Sprite Generation: Available via MCP integration
+  - API Documentation: https://api.pixellab.ai/mcp/docs
+  - Capabilities: Characters (4/8 directions), animations, isometric tiles, top-down tilesets, sidescroller tilesets, map objects
+  - See "PixelLab MCP Integration" section below for usage details
 
 Context Menus
 - Options built by owning state
@@ -727,6 +731,72 @@ Performance Targets
 - Bullet system uses object pooling (src/models/bullet_system.lua)
 - Neural Core must remain playable with max bullet count
 - Profile with high bullet counts during development
+
+PixelLab MCP Integration
+
+The project has access to PixelLab's AI-powered pixel art generation via MCP (Model Context Protocol) integration.
+
+Available Tools:
+
+1. Character Generation (mcp__pixellab__create_character):
+   - Generates characters with 4 or 8 directional views
+   - Options: size (16-128px), detail level, shading, outline style, view angle, proportions
+   - Returns job ID immediately, check status with get_character
+   - Processing time: 2-3 min (4 directions), 3-5 min (8 directions)
+
+2. Character Animation (mcp__pixellab__animate_character):
+   - Add animations to existing characters
+   - Templates: walking, running, jumping, attacking, idle, etc.
+   - Automatically generates for all character directions
+   - Processing time: 2-4 minutes
+
+3. Isometric Tiles (mcp__pixellab__create_isometric_tile):
+   - Single isometric tiles for game assets
+   - Tile shapes: thin tile, thick tile, block
+   - Size: 16-64px (recommend 24px+ for quality)
+   - Processing time: ~10-20 seconds
+
+4. Top-Down Tilesets (mcp__pixellab__create_topdown_tileset):
+   - Wang tileset (16 or 23 tiles) for corner-based autotiling
+   - Define lower/upper terrains with transition layer
+   - Can create connected tilesets using base tile IDs
+   - Processing time: ~100 seconds
+
+5. Sidescroller Tilesets (mcp__pixellab__create_sidescroller_tileset):
+   - Platform tiles for 2D platformers
+   - Side-view perspective, transparent background
+   - Processing time: ~100 seconds
+
+6. Map Objects (mcp__pixellab__create_map_object):
+   - Transparent background objects for game maps
+   - Two modes: basic (standalone) or style matching (with background image)
+   - Size: 32-400px, supports non-square dimensions
+   - Processing time: ~15-30 seconds
+
+Usage Pattern:
+```lua
+-- Example: Create a character
+1. Call create_character (returns immediately with character_id)
+2. Wait for processing (2-5 minutes)
+3. Call get_character to retrieve PNG images and download URLs
+4. Optionally call animate_character to add animations
+5. Download sprites and integrate into assets/sprites/
+```
+
+Key Considerations:
+- All operations are asynchronous (non-blocking)
+- Use list_* functions to view previously generated assets
+- Downloaded sprites should be saved to assets/sprites/
+- Style parameters (shading, outline, detail) guide the AI but aren't strict
+- Base tile IDs allow creating visually consistent connected tilesets
+
+Integration with Project:
+- Use for generating minigame sprite variants
+- Create placeholder art during development
+- Generate diverse enemy/obstacle sprites for game clones
+- Could be integrated into in-game "generation tools" for meta-fiction layer
+
+Documentation: https://api.pixellab.ai/mcp/docs
 
 Contact and Resources
 

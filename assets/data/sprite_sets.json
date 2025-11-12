@@ -4,8 +4,13 @@
       "id": "dodge_base",
       "sprites": {
         "player": "assets/sprites/games/dodge/base_1/player.png",
-        "enemy": "assets/sprites/games/dodge/base_1/enemy.png",
-        "background": "assets/sprites/games/dodge/base_1/background.png"
+        "obstacle": "assets/sprites/shared/retro_future/vehicles/space/pod_escape_01.png",
+        "enemy_chaser": "assets/sprites/shared/retro_future/vehicles/space/saucer_alien_green_01.png",
+        "enemy_shooter": "assets/sprites/shared/retro_future/vehicles/space/saucer_earth_military_01.png",
+        "enemy_zigzag": "assets/sprites/shared/retro_future/vehicles/space/rocket_silver_classic_01.png",
+        "enemy_bouncer": "assets/sprites/shared/retro_future/vehicles/space/saucer_spinning_01.png",
+        "enemy_teleporter": "assets/sprites/shared/retro_future/aliens/artifacts/alien_probe_01.png",
+        "enemy_splitter": "assets/sprites/shared/retro_future/vehicles/space/rocket_massive_colony_01.png"
       }
     },
     {
@@ -59,6 +64,78 @@
         "rock": "assets/sprites/games/rps/base/rock.png",
         "paper": "assets/sprites/games/rps/base/paper.png",
         "scissors": "assets/sprites/games/rps/base/scissors.png"
+      }
+    },
+    {
+      "id": "dodge_pixellab_1",
+      "sprites": {
+        "player": "assets/testsprites/player_1.png",
+        "enemy": "assets/sprites/games/dodge/base_1/enemy.png",
+        "background": "assets/sprites/games/dodge/base_1/background.png"
+      }
+    },
+    {
+      "id": "dodge_pixellab_2",
+      "sprites": {
+        "player": "assets/testsprites/player_2.png",
+        "enemy": "assets/sprites/games/dodge/base_1/enemy.png",
+        "background": "assets/sprites/games/dodge/base_1/background.png"
+      }
+    },
+    {
+      "id": "dodge_pixellab_3",
+      "sprites": {
+        "player": "assets/testsprites/player_3.png",
+        "enemy": "assets/sprites/games/dodge/base_1/enemy.png",
+        "background": "assets/sprites/games/dodge/base_1/background.png"
+      }
+    },
+    {
+      "id": "dodge_animals_cats",
+      "sprites": {
+        "player": "assets/sprites/shared/animals/cat_face_orange_01.png",
+        "obstacle": "assets/sprites/shared/animals/dog_face_bulldog_01.png",
+        "enemy_chaser": "assets/sprites/shared/animals/dog_face_golden_01.png",
+        "enemy_shooter": "assets/sprites/shared/animals/dog_face_husky_01.png",
+        "enemy_zigzag": "assets/sprites/shared/animals/lion_face_01.png",
+        "enemy_bouncer": "assets/sprites/shared/animals/tiger_face_01.png",
+        "enemy_teleporter": "assets/sprites/shared/animals/bear_face_brown_01.png"
+      }
+    },
+    {
+      "id": "dodge_food_burger",
+      "sprites": {
+        "player": "assets/sprites/shared/food/burger_classic_01.png",
+        "obstacle": "assets/sprites/shared/food/pizza_slice_01.png",
+        "enemy_chaser": "assets/sprites/shared/food/hotdog_01.png",
+        "enemy_shooter": "assets/sprites/shared/food/taco_01.png",
+        "enemy_zigzag": "assets/sprites/shared/food/sushi_roll_01.png",
+        "enemy_bouncer": "assets/sprites/shared/food/ramen_bowl_01.png",
+        "enemy_teleporter": "assets/sprites/shared/food/coffee_cup_01.png"
+      }
+    },
+    {
+      "id": "dodge_animals_mixed",
+      "sprites": {
+        "player": "assets/sprites/shared/animals/bear_face_panda_01.png",
+        "obstacle": "assets/sprites/shared/animals/lion_face_01.png",
+        "enemy_chaser": "assets/sprites/shared/animals/tiger_face_01.png",
+        "enemy_shooter": "assets/sprites/shared/animals/monkey_face_01.png",
+        "enemy_zigzag": "assets/sprites/shared/animals/elephant_face_01.png",
+        "enemy_bouncer": "assets/sprites/shared/animals/horse_face_01.png",
+        "enemy_teleporter": "assets/sprites/shared/animals/frog_face_01.png"
+      }
+    },
+    {
+      "id": "dodge_desserts",
+      "sprites": {
+        "player": "assets/sprites/shared/food/icecream_cone_01.png",
+        "obstacle": "assets/sprites/shared/food/donut_sprinkle_01.png",
+        "enemy_chaser": "assets/sprites/shared/food/cupcake_01.png",
+        "enemy_shooter": "assets/sprites/shared/food/cake_slice_01.png",
+        "enemy_zigzag": "assets/sprites/shared/food/cookie_chocolate_01.png",
+        "enemy_bouncer": "assets/sprites/shared/food/candy_lollipop_01.png",
+        "enemy_teleporter": "assets/sprites/shared/food/milkshake_01.png"
       }
     }
   ]

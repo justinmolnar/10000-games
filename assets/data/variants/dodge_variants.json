@@ -11,7 +11,7 @@
     "clone_index": 0,
     "name": "Dodge Master",
     "movement_type": "default",
-    "sprite_set": "base_1",
+    "sprite_set": "dodge_pixellab_1",
     "palette": "blue",
     "music_track": "dodge_theme_1",
     "sfx_pack": "retro_beeps",
@@ -30,7 +30,7 @@
     "clone_index": 1,
     "name": "Dodge Deluxe",
     "movement_type": "default",
-    "sprite_set": "base_1",
+    "sprite_set": "dodge_pixellab_2",
     "palette": "red",
     "music_track": "dodge_theme_2",
     "sfx_pack": "retro_beeps",
@@ -48,7 +48,7 @@
     "clone_index": 2,
     "name": "Dodge Ice Rink",
     "movement_type": "default",
-    "sprite_set": "base_1",
+    "sprite_set": "dodge_pixellab_3",
     "palette": "cyan",
     "music_track": "dodge_theme_1",
     "sfx_pack": "retro_beeps",
@@ -67,7 +67,7 @@
     "clone_index": 3,
     "name": "Dodge Pinball",
     "movement_type": "default",
-    "sprite_set": "base_1",
+    "sprite_set": "dodge_animals_cats",
     "palette": "purple",
     "music_track": "dodge_theme_3",
     "sfx_pack": "retro_beeps",
@@ -88,7 +88,7 @@
     "clone_index": 4,
     "name": "Dodge Slippery Slope",
     "movement_type": "default",
-    "sprite_set": "base_1",
+    "sprite_set": "dodge_food_burger",
     "palette": "green",
     "music_track": "dodge_theme_2",
     "sfx_pack": "retro_beeps",
@@ -109,7 +109,7 @@
     "clone_index": 5,
     "name": "Dodge Tiny Arena",
     "movement_type": "default",
-    "sprite_set": "base_1",
+    "sprite_set": "dodge_animals_mixed",
     "palette": "red",
     "music_track": "dodge_theme_1",
     "sfx_pack": "retro_beeps",
@@ -126,7 +126,7 @@
     "clone_index": 6,
     "name": "Dodge Momentum Master",
     "movement_type": "default",
-    "sprite_set": "base_1",
+    "sprite_set": "dodge_desserts",
     "palette": "blue",
     "music_track": "dodge_theme_3",
     "sfx_pack": "retro_beeps",
@@ -1050,6 +1050,220 @@
     "camera_shake_intensity": 0.8,
     "enemies": [],
     "flavor_text": "The ultimate test. Waves, wind, tracking, minimal survival",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 52,
+    "name": "Dodge Giant Hunters",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "red",
+    "music_track": "dodge_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_red",
+    "difficulty_modifier": 1.0,
+    "movement_speed": 300,
+    "enemy_sizes": {
+      "chaser": [40, 60]
+    },
+    "enemy_speeds": {
+      "chaser": [80, 120]
+    },
+    "enemies": [
+      { "type": "chaser", "multiplier": 1.0 }
+    ],
+    "flavor_text": "Massive slow chasers! Stay ahead of the giants",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 53,
+    "name": "Dodge Size Chaos",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "purple",
+    "music_track": "dodge_theme_2",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_purple",
+    "difficulty_modifier": 1.2,
+    "movement_speed": 300,
+    "size_range": [5, 40],
+    "enemies": [
+      { "type": "bouncer", "multiplier": 1.0 },
+      { "type": "zigzag", "multiplier": 1.0 }
+    ],
+    "flavor_text": "Enemies range from tiny to huge! Unpredictable chaos",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 54,
+    "name": "Dodge Speed Roulette",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "yellow",
+    "music_track": "dodge_theme_3",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_blue",
+    "difficulty_modifier": 1.1,
+    "movement_speed": 300,
+    "speed_range": [50, 400],
+    "enemies": [
+      { "type": "shooter", "multiplier": 1.0 },
+      { "type": "chaser", "multiplier": 0.8 }
+    ],
+    "flavor_text": "Wildly varying speeds! Some crawl, some lightning fast",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 55,
+    "name": "Dodge Micro Swarm",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "cyan",
+    "music_track": "dodge_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_blue",
+    "difficulty_modifier": 1.3,
+    "movement_speed": 300,
+    "size_range": [3, 8],
+    "speed_range": [250, 350],
+    "obstacle_spawn_rate": 2.0,
+    "enemies": [
+      { "type": "zigzag", "multiplier": 2.0 }
+    ],
+    "flavor_text": "Tiny fast enemies swarm everywhere!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 56,
+    "name": "Dodge Spinning Madness",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "purple",
+    "music_track": "dodge_theme_2",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_purple",
+    "difficulty_modifier": 1.0,
+    "movement_speed": 300,
+    "enemy_sprite_settings": {
+      "bouncer": { "rotation": 360, "direction": "movement_based" },
+      "zigzag": { "rotation": -180, "direction": "movement_based" },
+      "chaser": { "rotation": 720, "direction": "movement_based" }
+    },
+    "enemies": [
+      { "type": "bouncer", "multiplier": 1.0 },
+      { "type": "zigzag", "multiplier": 1.0 },
+      { "type": "chaser", "multiplier": 0.5 }
+    ],
+    "flavor_text": "Everything spins! Bouncers fast, zigzags backward, chasers ultra-fast",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 57,
+    "name": "Dodge Locked Facings",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "green",
+    "music_track": "dodge_theme_3",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_blue",
+    "difficulty_modifier": 0.9,
+    "movement_speed": 300,
+    "enemy_sprite_settings": {
+      "obstacle": { "rotation": 0, "direction": 0 },
+      "chaser": { "rotation": 0, "direction": 90 },
+      "shooter": { "rotation": 0, "direction": 180 },
+      "bouncer": { "rotation": 0, "direction": 270 }
+    },
+    "enemies": [
+      { "type": "obstacle", "multiplier": 1.0 },
+      { "type": "chaser", "multiplier": 0.8 },
+      { "type": "shooter", "multiplier": 0.5 },
+      { "type": "bouncer", "multiplier": 0.8 }
+    ],
+    "flavor_text": "Sprites never rotate! Each type locked to different cardinal direction",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 58,
+    "name": "Dodge Dizzy Spin",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "yellow",
+    "music_track": "dodge_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_red",
+    "difficulty_modifier": 1.2,
+    "movement_speed": 300,
+    "enemy_sprite_settings": {
+      "teleporter": { "rotation": 540, "direction": 45 },
+      "zigzag": { "rotation": -360, "direction": 135 }
+    },
+    "enemies": [
+      { "type": "teleporter", "multiplier": 1.0 },
+      { "type": "zigzag", "multiplier": 1.5 }
+    ],
+    "flavor_text": "Teleporters spin 1.5x/sec facing NE, zigzags spin -1x/sec facing SE",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 59,
+    "name": "Dodge Shooter Carousel",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "red",
+    "music_track": "dodge_theme_2",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_purple",
+    "difficulty_modifier": 1.1,
+    "movement_speed": 300,
+    "shooter": {
+      "shoot_interval": 1.5,
+      "projectile_size": 0.4,
+      "projectile_speed": 1.0
+    },
+    "enemy_sprite_settings": {
+      "shooter": { "rotation": 180, "direction": "movement_based" }
+    },
+    "enemies": [
+      { "type": "shooter", "multiplier": 2.0 }
+    ],
+    "flavor_text": "Shooters spin while tracking you and firing rapidly",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 60,
+    "name": "Dodge Asteroid Field",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "gray",
+    "music_track": "dodge_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_blue",
+    "difficulty_modifier": 1.0,
+    "movement_speed": 300,
+    "enemies": [
+      { "type": "splitter", "multiplier": 2.0 }
+    ],
+    "flavor_text": "Asteroids split into dangerous shards at the safe zone!",
+    "intro_cutscene": null
+  },
+  {
+    "clone_index": 61,
+    "name": "Dodge Shrapnel Storm",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "red",
+    "music_track": "dodge_theme_2",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield_red",
+    "difficulty_modifier": 1.3,
+    "movement_speed": 300,
+    "disable_obstacle_fallback": true,
+    "enemies": [
+      { "type": "splitter", "multiplier": 1.0 },
+      { "type": "chaser", "multiplier": 1.0 }
+    ],
+    "flavor_text": "Splitters rain shards while chasers hunt you down",
     "intro_cutscene": null
   }
 ]

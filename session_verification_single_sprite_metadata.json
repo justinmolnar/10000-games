@@ -1,0 +1,28 @@
+{
+  "session_name": "verification_single_sprite",
+  "started_at": "2025-11-07T04:50:08.869584+00:00",
+  "total_sprites": 1,
+  "generated": [
+    {
+      "id": "apple_red_verification",
+      "file_path": "assets/testsprites/verification\\apple_red_verification.png",
+      "prompt": "red apple fruit, shiny surface, simple design, pixel art",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2025-11-07T04:50:21.187643+00:00",
+      "generation_time_seconds": 12,
+      "size": "64x64",
+      "file_size_bytes": 1531,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": [],
+  "completed_at": "2025-11-07T04:50:21.187674+00:00"
+}

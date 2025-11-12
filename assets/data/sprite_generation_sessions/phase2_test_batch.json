@@ -1,0 +1,37 @@
+{
+  "session_name": "phase2_test_batch",
+  "description": "3-sprite test batch for Phase 2 validation",
+  "sprite_type": "map_object",
+  "sprite_groups": [
+    {
+      "name": "test_fruits",
+      "output_folder": "assets/testsprites/phase2_batch",
+      "description": "Small batch of test sprites for Phase 2",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "apple_green_01",
+          "prompt": "green apple fruit, shiny surface, simple design, top-down pixel art",
+          "notes": "Test sprite 1"
+        },
+        {
+          "id": "banana_01",
+          "prompt": "yellow banana fruit, curved shape, simple design, top-down pixel art",
+          "notes": "Test sprite 2"
+        },
+        {
+          "id": "orange_01",
+          "prompt": "orange fruit, round shape, textured peel, simple design, top-down pixel art",
+          "notes": "Test sprite 3"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,917 @@
+{
+  "session_name": "retro_future_mega",
+  "description": "200+ retro-futuristic sprites - 1950s vision of tomorrow mixed with various styles",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "robots_chrome",
+      "output_folder": "assets/sprites/shared/retro_future/robots/chrome",
+      "description": "Chrome and metallic retro robots",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "robot_chrome_round_01",
+          "prompt": "chrome robot with round body, antenna on head, shiny metallic finish, 1950s retro-futuristic design, straight front view facing camera"
+        },
+        {
+          "id": "robot_chrome_boxy_01",
+          "prompt": "boxy chrome robot, rectangular body, rivets visible, atomic age styling, direct front-facing view"
+        },
+        {
+          "id": "robot_chrome_dome_01",
+          "prompt": "robot with glass dome head, brain visible inside, chrome body, vintage sci-fi, facing camera straight on"
+        },
+        {
+          "id": "robot_chrome_treads_01",
+          "prompt": "robot on tank treads, chrome plating, mechanical arms, retro-future design, top-down overhead view"
+        },
+        {
+          "id": "robot_chrome_humanoid_01",
+          "prompt": "humanoid chrome robot, art deco styling, sleek 1930s future aesthetic, straight front view"
+        },
+        {
+          "id": "robot_brass_vintage_01",
+          "prompt": "brass colored robot, vintage clockwork style, gears visible, steampunk meets retro-future, front-facing"
+        },
+        {
+          "id": "robot_copper_rusty_01",
+          "prompt": "copper robot with patina, aged retro-future aesthetic, weathered atomic age, facing camera"
+        },
+        {
+          "id": "robot_silver_sleek_01",
+          "prompt": "sleek silver robot, streamlined design, 1950s Jetsons-style futurism, direct front view"
+        },
+        {
+          "id": "robot_gold_luxe_01",
+          "prompt": "golden robot, luxurious finish, ceremonial design, art deco retro-future, straight front-facing"
+        },
+        {
+          "id": "robot_tin_toy_01",
+          "prompt": "tin toy robot, wind-up key on back visible, vintage 1950s toy aesthetic, front view facing camera"
+        }
+      ]
+    },
+    {
+      "name": "robots_colored",
+      "output_folder": "assets/sprites/shared/retro_future/robots/colored",
+      "description": "Colorful retro robots with different finishes",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "robot_red_friendly_01",
+          "prompt": "red robot with friendly face, rounded design, helpful assistant, 1950s retro-futuristic style, straight front view"
+        },
+        {
+          "id": "robot_blue_service_01",
+          "prompt": "blue service robot, retro-diner aesthetic, carrying tray visible, 1950s future servant, front-facing"
+        },
+        {
+          "id": "robot_green_garden_01",
+          "prompt": "green robot with watering can attachment, gardener bot, atomic age design, facing camera"
+        },
+        {
+          "id": "robot_yellow_caution_01",
+          "prompt": "yellow and black striped robot, caution markings, industrial retro-future, direct front view"
+        },
+        {
+          "id": "robot_purple_science_01",
+          "prompt": "purple robot with laboratory flask, scientist bot, vintage sci-fi mad scientist assistant, front-facing"
+        },
+        {
+          "id": "robot_orange_construction_01",
+          "prompt": "orange construction robot, hard hat, tool attachments, 1960s space age worker, straight front view"
+        },
+        {
+          "id": "robot_pink_companion_01",
+          "prompt": "pink companion robot, cute design, heart display on chest, retro-future friend, facing camera"
+        },
+        {
+          "id": "robot_white_medical_01",
+          "prompt": "white medical robot, red cross symbol, clean room design, 1950s hospital of tomorrow, front view"
+        },
+        {
+          "id": "robot_black_security_01",
+          "prompt": "black security robot, spotlight eye, patrol duty, retro-future law enforcement, facing forward"
+        },
+        {
+          "id": "robot_teal_aquatic_01",
+          "prompt": "teal underwater robot, propeller, diving bell aesthetic, Jules Verne meets atomic age, front-facing view"
+        }
+      ]
+    },
+    {
+      "name": "raygun_weapons",
+      "output_folder": "assets/sprites/shared/retro_future/weapons/rayguns",
+      "description": "Retro-future ray guns and energy weapons",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "raygun_classic_red_01",
+          "prompt": "classic 1950s ray gun, chrome barrel with red accents, tail fins on back, Buck Rogers style, side profile view"
+        },
+        {
+          "id": "raygun_classic_blue_01",
+          "prompt": "blue ray gun, bubble dome on side, atomic age styling, Flash Gordon aesthetic, side profile"
+        },
+        {
+          "id": "raygun_classic_green_01",
+          "prompt": "green ray gun, Tesla coils visible, electric discharge effect, mad scientist weapon, side view"
+        },
+        {
+          "id": "raygun_pistol_chrome_01",
+          "prompt": "chrome ray pistol, sleek art deco design, 1930s future detective sidearm, side profile view"
+        },
+        {
+          "id": "raygun_pistol_gold_01",
+          "prompt": "gold plated ray pistol, ornate art nouveau engravings, space captain's sidearm, side profile"
+        },
+        {
+          "id": "raygun_rifle_long_01",
+          "prompt": "long ray rifle with scope, stabilizer fins, 1950s space marine weapon, side view profile"
+        },
+        {
+          "id": "raygun_rifle_heavy_01",
+          "prompt": "heavy ray rifle, cooling vents, power pack attached, retro-future military, side profile"
+        },
+        {
+          "id": "raygun_disintegrator_01",
+          "prompt": "disintegrator ray, spiral barrel, dangerous looking, atomic age death ray, side view"
+        },
+        {
+          "id": "raygun_freeze_01",
+          "prompt": "freeze ray gun, ice blue color, frost emanating, 1960s villain weapon, side profile view"
+        },
+        {
+          "id": "raygun_heat_01",
+          "prompt": "heat ray, orange-red glow, thermal waves visible, retro sci-fi incinerator, side profile"
+        },
+        {
+          "id": "raygun_stun_01",
+          "prompt": "stun ray, yellow electricity arcs, non-lethal design, space police weapon, side view"
+        },
+        {
+          "id": "raygun_shrink_01",
+          "prompt": "shrink ray, purple beam emitter, scientific tool, mad scientist invention, side profile"
+        },
+        {
+          "id": "raygun_growth_01",
+          "prompt": "growth ray, green beam, enlarging device, 1950s B-movie prop, side view profile"
+        },
+        {
+          "id": "raygun_atomic_01",
+          "prompt": "atomic ray gun, radiation trefoil symbol, glowing green core, nuclear powered, side profile"
+        },
+        {
+          "id": "raygun_laser_01",
+          "prompt": "laser pistol, red beam visible, focusing lens, retro-future space opera, side view"
+        }
+      ]
+    },
+    {
+      "name": "space_vehicles",
+      "output_folder": "assets/sprites/shared/retro_future/vehicles/space",
+      "description": "Retro-future space vehicles and rockets",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "rocket_silver_classic_01",
+          "prompt": "silver rocket ship, pointed nose cone, three stabilizer fins, flame from exhaust, 1950s retro-futuristic, top-down overhead view"
+        },
+        {
+          "id": "rocket_red_stripe_01",
+          "prompt": "rocket with red racing stripe, sleek streamlined design, round portholes, atomic age styling, top-down view"
+        },
+        {
+          "id": "rocket_blue_explorer_01",
+          "prompt": "blue exploration rocket, scientific equipment on sides, antenna array, 1960s space age, top-down overhead"
+        },
+        {
+          "id": "rocket_gold_luxury_01",
+          "prompt": "gold plated luxury rocket, art deco styling, passenger liner, Jetsons aesthetic, side profile view"
+        },
+        {
+          "id": "rocket_green_cargo_01",
+          "prompt": "green cargo rocket, bulky design, loading bay doors, retro-future freight hauler, side view"
+        },
+        {
+          "id": "rocket_military_gray_01",
+          "prompt": "military gray rocket, weapon hardpoints, aggressive design, 1950s war rocket, top-down view"
+        },
+        {
+          "id": "rocket_racer_yellow_01",
+          "prompt": "yellow racing rocket, streamlined, speed fins, number decal, space grand prix, side profile"
+        },
+        {
+          "id": "rocket_tiny_scout_01",
+          "prompt": "tiny scout rocket, single pilot, compact design, retro-future exploration pod, top-down overhead"
+        },
+        {
+          "id": "rocket_massive_colony_01",
+          "prompt": "massive colony ship, multiple decks visible, city in space, retro-future ark, side view profile"
+        },
+        {
+          "id": "saucer_classic_chrome_01",
+          "prompt": "classic flying saucer, chrome dome top, lights around rim, 1950s UFO design, top-down overhead view"
+        },
+        {
+          "id": "saucer_alien_green_01",
+          "prompt": "alien flying saucer, green metallic, strange hieroglyphs, retro B-movie UFO, top-down view"
+        },
+        {
+          "id": "saucer_earth_military_01",
+          "prompt": "earth military saucer, camouflage pattern, weapons visible, reverse-engineered UFO, top-down overhead"
+        },
+        {
+          "id": "saucer_spinning_01",
+          "prompt": "spinning UFO, motion blur on edges, rotating sections, 1960s sci-fi design, top-down view"
+        },
+        {
+          "id": "shuttle_space_01",
+          "prompt": "space shuttle, delta wings, heat tiles visible, retro-future spaceplane, top-down overhead view"
+        },
+        {
+          "id": "pod_escape_01",
+          "prompt": "escape pod, spherical design, single porthole window, emergency ejection capsule, front-facing view"
+        }
+      ]
+    },
+    {
+      "name": "future_gadgets",
+      "output_folder": "assets/sprites/shared/retro_future/gadgets",
+      "description": "Retro-futuristic gadgets and devices",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "jetpack_chrome_01",
+          "prompt": "chrome jetpack, dual rocket nozzles, flame exhaust, shoulder straps, 1950s Buck Rogers style, back view showing exhaust"
+        },
+        {
+          "id": "jetpack_red_racing_01",
+          "prompt": "red racing jetpack, streamlined design, go-fast stripes, retro-future speed aesthetic, back view"
+        },
+        {
+          "id": "jetpack_military_01",
+          "prompt": "military jetpack, olive drab, tactical design, fuel gauge visible, atomic age soldier equipment, back view"
+        },
+        {
+          "id": "hoverboard_chrome_01",
+          "prompt": "chrome hoverboard, glowing underside visible, footpads, 1960s anti-gravity skateboard, top-down overhead view"
+        },
+        {
+          "id": "hoverboard_red_flames_01",
+          "prompt": "red hoverboard with flame decals, racing style, retro-future hot rod aesthetic, top-down view"
+        },
+        {
+          "id": "hoverboard_blue_cool_01",
+          "prompt": "blue hoverboard, ice theme, frost trail effect, space age cool design, top-down overhead"
+        },
+        {
+          "id": "antigrav_belt_01",
+          "prompt": "anti-gravity belt, glowing buckle, floating effect, 1950s retro-future accessory, front-facing view"
+        },
+        {
+          "id": "force_field_generator_01",
+          "prompt": "personal force field generator, blue energy dome visible, retro sci-fi protection, front view"
+        },
+        {
+          "id": "teleporter_pad_01",
+          "prompt": "teleporter pad, circular platform, energy swirls, atomic age transportation device, top-down overhead view"
+        },
+        {
+          "id": "teleporter_bracelet_01",
+          "prompt": "teleporter bracelet, glowing gems, wrist device, retro-future jewelry tech, straight front view"
+        },
+        {
+          "id": "translator_device_01",
+          "prompt": "universal translator, handheld, display screen, speaker grille, 1960s space diplomat tool, front-facing"
+        },
+        {
+          "id": "communicator_flip_01",
+          "prompt": "flip communicator, metallic, antenna extended, light blinking, retro-future mobile phone, front view open"
+        },
+        {
+          "id": "communicator_wrist_01",
+          "prompt": "wrist communicator, video screen showing, futuristic watch, Dick Tracy style, front-facing view"
+        },
+        {
+          "id": "scanner_tricorder_01",
+          "prompt": "handheld scanner, readings display screen, multiple sensors, retro sci-fi analysis tool, front view"
+        },
+        {
+          "id": "scanner_medical_01",
+          "prompt": "medical scanner, blue glow, health readings visible, 1950s hospital of tomorrow diagnostic, front-facing"
+        },
+        {
+          "id": "hologram_projector_01",
+          "prompt": "hologram projector, blue light beam projecting upward, 3D image forming above, retro-future display tech, front view"
+        },
+        {
+          "id": "energy_cell_01",
+          "prompt": "energy power cell, glowing core center, plug connectors, atomic battery design, front-facing view"
+        },
+        {
+          "id": "atomic_battery_01",
+          "prompt": "atomic battery, radiation warning symbol on front, green glow, nuclear power pack, straight front view"
+        },
+        {
+          "id": "gravity_boots_01",
+          "prompt": "magnetic gravity boots, metal soles visible, power indicators, space station footwear, front view pair"
+        },
+        {
+          "id": "oxygen_tank_01",
+          "prompt": "futuristic oxygen tank, clear dome showing liquid air, backpack style, retro spacewalk gear, front-facing"
+        }
+      ]
+    },
+    {
+      "name": "computers_retro",
+      "output_folder": "assets/sprites/shared/retro_future/tech/computers",
+      "description": "Retro-future computers and displays",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "computer_mainframe_01",
+          "prompt": "mainframe computer, wall of blinking lights, tape reels spinning, 1960s retro-future data center, front-facing view"
+        },
+        {
+          "id": "computer_terminal_01",
+          "prompt": "computer terminal, green phosphor screen display, keyboard visible, retro CRT, 1970s future office, front view"
+        },
+        {
+          "id": "computer_portable_01",
+          "prompt": "portable computer, suitcase style, handle on top, folding screen open, 1950s traveling businessman's future, front-facing"
+        },
+        {
+          "id": "computer_wall_panel_01",
+          "prompt": "wall computer panel, buttons and switches, blinking indicators, atomic age control room, straight front view"
+        },
+        {
+          "id": "holographic_display_01",
+          "prompt": "holographic display, floating 3D interface, blue glow, retro sci-fi hologram projector, front view"
+        },
+        {
+          "id": "data_tape_01",
+          "prompt": "data storage tape reel, magnetic tape visible, metal canister, 1960s computer memory, front-facing view"
+        },
+        {
+          "id": "data_crystal_01",
+          "prompt": "data storage crystal, glowing geometric shape, information storage, retro-future memory device, front view"
+        },
+        {
+          "id": "punch_card_future_01",
+          "prompt": "futuristic punch card, metallic, holes pattern visible, data storage, atomic age programming, flat top-down view"
+        },
+        {
+          "id": "memory_chip_01",
+          "prompt": "memory chip, chrome with gold circuits visible, sci-fi styling, retro integrated circuit, top-down overhead"
+        },
+        {
+          "id": "robot_brain_01",
+          "prompt": "robot brain module, exposed circuitry, glowing synapses, 1950s artificial intelligence core, front-facing view"
+        }
+      ]
+    },
+    {
+      "name": "alien_artifacts",
+      "output_folder": "assets/sprites/shared/retro_future/aliens/artifacts",
+      "description": "Alien technology and mysterious objects",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "alien_orb_01",
+          "prompt": "alien orb, smooth metallic surface, strange glowing hieroglyphs, 1950s B-movie artifact, front-facing view"
+        },
+        {
+          "id": "alien_cube_01",
+          "prompt": "alien cube artifact, geometric perfection, hovering, retro sci-fi mystery object, straight front view"
+        },
+        {
+          "id": "alien_pyramid_01",
+          "prompt": "alien pyramid, four sided, energy beam from apex, ancient astronaut design, front-facing view"
+        },
+        {
+          "id": "alien_crystal_01",
+          "prompt": "alien crystal, impossible geometry, multi-faceted, pulsing light, retro-future power source, front view"
+        },
+        {
+          "id": "alien_device_01",
+          "prompt": "alien device, unknown purpose, organic technology blend, 1960s flying saucer interior equipment, front-facing"
+        },
+        {
+          "id": "alien_weapon_01",
+          "prompt": "alien weapon, bio-mechanical design, living technology, retro sci-fi horror style, side profile view"
+        },
+        {
+          "id": "alien_power_source_01",
+          "prompt": "alien power source, glowing core center, infinite energy, atomic age mystery engine, front view"
+        },
+        {
+          "id": "alien_communication_01",
+          "prompt": "alien communicator, telepathic amplifier, mind link device, retro psychic technology, front-facing"
+        },
+        {
+          "id": "alien_egg_01",
+          "prompt": "alien egg pod, leathery texture, veins pulsing, 1950s creature feature prop, side view profile"
+        },
+        {
+          "id": "alien_probe_01",
+          "prompt": "alien probe, spherical with antenna, scanning beams, autonomous UFO scout, front-facing view"
+        }
+      ]
+    },
+    {
+      "name": "space_suits",
+      "output_folder": "assets/sprites/shared/retro_future/equipment/suits",
+      "description": "Space suits and protective gear",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "helmet_bubble_01",
+          "prompt": "space helmet, bubble visor, reflective gold coating, 1960s astronaut helmet retro-future style, straight front view"
+        },
+        {
+          "id": "helmet_fishbowl_01",
+          "prompt": "fishbowl space helmet, clear dome, neck ring seal, classic sci-fi spaceman design, front-facing view"
+        },
+        {
+          "id": "helmet_retro_01",
+          "prompt": "retro space helmet, art deco styling, chrome finish with fins, 1930s Buck Rogers aesthetic, front view"
+        },
+        {
+          "id": "helmet_military_01",
+          "prompt": "space helmet with angular visor, antennae on sides, 1950s retro-futuristic space marine design, straight front-facing"
+        },
+        {
+          "id": "suit_classic_white_01",
+          "prompt": "classic white space suit, puffy design, American flag patch visible, 1960s NASA retro-future, front view"
+        },
+        {
+          "id": "suit_silver_chrome_01",
+          "prompt": "silver chrome space suit, sleek metallic finish, future fashion, Flash Gordon style, front-facing"
+        },
+        {
+          "id": "suit_orange_pilot_01",
+          "prompt": "orange pilot space suit, fitted design, pressure suit, retro test pilot aesthetic, front view"
+        },
+        {
+          "id": "suit_green_explorer_01",
+          "prompt": "green explorer suit, equipment pouches visible, rugged design, atomic age adventurer, front-facing"
+        },
+        {
+          "id": "suit_combat_armor_01",
+          "prompt": "space combat armor, plated design, weapon mounts, 1950s retro-futuristic space soldier, front view"
+        },
+        {
+          "id": "gloves_space_01",
+          "prompt": "space gloves pair, pressurized with ribbed joints, fingerless grip pads, retro astronaut gear, front-facing view"
+        }
+      ]
+    },
+    {
+      "name": "atomic_age",
+      "output_folder": "assets/sprites/shared/retro_future/atomic",
+      "description": "Atomic age symbols and nuclear items",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "atom_symbol_01",
+          "prompt": "atomic symbol, electrons orbiting nucleus, classic 1950s science icon, retro-future styling, flat front-facing view"
+        },
+        {
+          "id": "atom_symbol_glowing_01",
+          "prompt": "glowing atom symbol, radioactive green, energy trails, atomic age power emblem, straight front view"
+        },
+        {
+          "id": "radiation_sign_01",
+          "prompt": "radiation warning sign, yellow and black, trefoil symbol, 1950s nuclear hazard marking, flat front-facing"
+        },
+        {
+          "id": "geiger_counter_01",
+          "prompt": "geiger counter, handheld device, clicking needle visible, radiation detector, retro scientific instrument, front view"
+        },
+        {
+          "id": "nuclear_core_01",
+          "prompt": "nuclear reactor core, glowing rods, cooling system, atomic age power plant retro-future, front-facing view"
+        },
+        {
+          "id": "atomic_bomb_01",
+          "prompt": "atomic bomb, fin stabilizers, danger markings, 1950s Cold War weapon, side profile view"
+        },
+        {
+          "id": "mushroom_cloud_01",
+          "prompt": "mushroom cloud, nuclear explosion, ominous power, atomic age destruction icon, front-facing view"
+        },
+        {
+          "id": "nuclear_waste_01",
+          "prompt": "nuclear waste barrel, radiation symbol on front, green ooze leaking, toxic hazard, front view"
+        },
+        {
+          "id": "atomic_energy_01",
+          "prompt": "atomic energy symbol, lightning bolt through atom, retro power company logo, flat front-facing"
+        },
+        {
+          "id": "radiation_suit_01",
+          "prompt": "radiation protection suit, yellow hazmat, gas mask visible, atomic age safety gear, front-facing view"
+        }
+      ]
+    },
+    {
+      "name": "retro_tech_misc",
+      "output_folder": "assets/sprites/shared/retro_future/tech/misc",
+      "description": "Miscellaneous retro-future technology",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "flying_car_01",
+          "prompt": "flying car, tail fins, propellers underneath visible, 1950s Jetsons-style vehicle, side profile view"
+        },
+        {
+          "id": "flying_car_convertible_01",
+          "prompt": "flying convertible car, chrome trim, bubble canopy, retro-future luxury, side view"
+        },
+        {
+          "id": "moving_sidewalk_01",
+          "prompt": "moving sidewalk section, conveyor belt, handrails, 1960s future city transport, side profile view"
+        },
+        {
+          "id": "tube_transport_01",
+          "prompt": "pneumatic tube transport capsule, glass pod, retro-future rapid transit, side view"
+        },
+        {
+          "id": "food_pill_01",
+          "prompt": "food pill, complete meal in capsule form, retro-future nutrition, front-facing view"
+        },
+        {
+          "id": "meal_machine_01",
+          "prompt": "automatic meal machine, buttons for different foods, instant dinner dispenser, Jetsons kitchen, front view"
+        },
+        {
+          "id": "weather_control_01",
+          "prompt": "weather control device, dials and gauges visible, cloud generation, retro-future climate machine, front-facing"
+        },
+        {
+          "id": "time_machine_01",
+          "prompt": "time machine, spinning rings, clock face visible, H.G. Wells inspired retro design, front view"
+        },
+        {
+          "id": "matter_transmitter_01",
+          "prompt": "matter transmitter booth, telephone booth style, teleportation chamber, 1960s sci-fi, front-facing view"
+        },
+        {
+          "id": "android_butler_01",
+          "prompt": "android butler, tuxedo design, serving tray in hand, retro-future domestic robot, front view"
+        },
+        {
+          "id": "thinking_cap_01",
+          "prompt": "thinking cap, electrodes and wires, brain amplifier helmet, mad scientist invention, front-facing view"
+        },
+        {
+          "id": "x_ray_specs_01",
+          "prompt": "x-ray spectacles, swirly lenses, see-through vision glasses, comic book ad gadget, front view"
+        },
+        {
+          "id": "invisibility_cloak_01",
+          "prompt": "invisibility cloak, shimmering fabric, fading effect, retro sci-fi stealth device, front-facing hanging"
+        },
+        {
+          "id": "rocket_boots_01",
+          "prompt": "rocket boots, flame jets from heels, strapped design, retro-future footwear, front view pair"
+        },
+        {
+          "id": "robot_dog_01",
+          "prompt": "robot dog, metallic body, antenna tail, retro-future pet, Jetsons Astro style, side profile view"
+        },
+        {
+          "id": "robot_cat_01",
+          "prompt": "robot cat, chrome whiskers, LED eyes, mechanical feline companion, front-facing view"
+        },
+        {
+          "id": "flying_saucer_chair_01",
+          "prompt": "flying saucer chair, hovering seat, control stick, retro-future furniture, side view"
+        },
+        {
+          "id": "video_phone_01",
+          "prompt": "video telephone, screen showing caller's face, rotary dial, 1960s vision of future communication, front view"
+        },
+        {
+          "id": "robot_maid_01",
+          "prompt": "robot maid, apron and duster, domestic service android, Jetsons Rosie style, front-facing view"
+        },
+        {
+          "id": "anti_gravity_chair_01",
+          "prompt": "anti-gravity floating chair, cushioned seat hovering, retro-future relaxation, side profile view"
+        }
+      ]
+    },
+    {
+      "name": "space_station_parts",
+      "output_folder": "assets/sprites/shared/retro_future/structures",
+      "description": "Space station and structure components",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "medium shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "space_station_wheel_01",
+          "prompt": "rotating space station wheel section, windows visible, 1950s orbital city design, top-down overhead view"
+        },
+        {
+          "id": "space_station_sphere_01",
+          "prompt": "spherical space station module, antenna arrays, retro-future orbital habitat, front-facing view"
+        },
+        {
+          "id": "satellite_dish_01",
+          "prompt": "satellite dish, retro design, support struts, space communications array, side profile view"
+        },
+        {
+          "id": "solar_panel_01",
+          "prompt": "solar panel array, rectangular cells visible, extending arm, atomic age space power, top-down view"
+        },
+        {
+          "id": "airlock_door_01",
+          "prompt": "airlock door, circular hatch, wheel handle center, pressure seal, retro spacecraft entrance, front view"
+        },
+        {
+          "id": "observation_dome_01",
+          "prompt": "observation dome, transparent bubble, telescope inside visible, space station viewing port, side view"
+        },
+        {
+          "id": "antenna_array_01",
+          "prompt": "antenna array, multiple dishes, communication tower, retro space technology, side profile"
+        },
+        {
+          "id": "docking_port_01",
+          "prompt": "docking port, extending arm, connection ring, retro-future spacecraft berth, front-facing view"
+        },
+        {
+          "id": "rocket_engine_01",
+          "prompt": "rocket engine nozzle, thrust chamber, retro spacecraft propulsion, back view showing nozzle"
+        },
+        {
+          "id": "space_telescope_01",
+          "prompt": "space telescope, large lens visible, retro observatory satellite, side profile view"
+        }
+      ]
+    },
+    {
+      "name": "laboratory_equipment",
+      "output_folder": "assets/sprites/shared/retro_future/lab",
+      "description": "Mad scientist laboratory equipment",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "tesla_coil_01",
+          "prompt": "Tesla coil, electrical arcs shooting, copper coils, mad scientist equipment, retro laboratory, front view"
+        },
+        {
+          "id": "beaker_bubbling_01",
+          "prompt": "bubbling beaker, green liquid, steam rising, retro chemistry experiment, front-facing view"
+        },
+        {
+          "id": "test_tube_glowing_01",
+          "prompt": "glowing test tube, radioactive substance, rack holder, atomic age science, front view"
+        },
+        {
+          "id": "microscope_chrome_01",
+          "prompt": "chrome microscope, retro design, illuminated stage, 1950s laboratory instrument, side profile view"
+        },
+        {
+          "id": "bunsen_burner_01",
+          "prompt": "Bunsen burner, blue flame visible, gas tube, classic science equipment, front-facing view"
+        },
+        {
+          "id": "circuit_board_vintage_01",
+          "prompt": "vintage circuit board, vacuum tubes, blinking lights, retro-future electronics, top-down overhead view"
+        },
+        {
+          "id": "oscilloscope_01",
+          "prompt": "oscilloscope, green waveform display screen, dials and knobs, retro testing equipment, front view"
+        },
+        {
+          "id": "centrifuge_01",
+          "prompt": "centrifuge machine, spinning samples visible, retro laboratory device, front-facing view"
+        },
+        {
+          "id": "gene_splicer_01",
+          "prompt": "gene splicing machine, DNA helix display, retro-future genetic engineering, front view"
+        },
+        {
+          "id": "brain_jar_01",
+          "prompt": "brain in jar, preservative fluid, electrodes attached, mad scientist specimen, front-facing view"
+        },
+        {
+          "id": "reanimation_table_01",
+          "prompt": "reanimation table, electrical equipment, Frankenstein style, retro horror lab, side view"
+        },
+        {
+          "id": "laser_experiment_01",
+          "prompt": "laser experiment setup, beam splitters, mirrors, retro optics lab, top-down overhead view"
+        },
+        {
+          "id": "chemical_storage_01",
+          "prompt": "chemical storage cabinet, hazard labels visible, glass bottles, retro laboratory safety, front view"
+        },
+        {
+          "id": "clipboard_chart_01",
+          "prompt": "clipboard with graph chart, scientific data visible, retro documentation, flat top-down view"
+        },
+        {
+          "id": "petri_dish_01",
+          "prompt": "petri dish, bacterial culture visible, magnified view, retro microbiology, top-down overhead"
+        }
+      ]
+    },
+    {
+      "name": "control_panels",
+      "output_folder": "assets/sprites/shared/retro_future/controls",
+      "description": "Control panels, buttons, and switches",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "big_red_button_01",
+          "prompt": "big red button, glass protective cover, warning labels, retro doomsday device, straight front view"
+        },
+        {
+          "id": "lever_large_01",
+          "prompt": "large control lever, red handle, Frankenstein laboratory switch, retro power control, side view"
+        },
+        {
+          "id": "dial_gauge_01",
+          "prompt": "analog dial gauge, needle pointer, measurement markings, retro instrument panel, front-facing view"
+        },
+        {
+          "id": "switch_panel_01",
+          "prompt": "panel of toggle switches, different colors, blinking lights, retro control board, straight front view"
+        },
+        {
+          "id": "knob_array_01",
+          "prompt": "array of control knobs, different sizes, retro adjustment panel, front-facing view"
+        },
+        {
+          "id": "meter_analog_01",
+          "prompt": "analog meter, bouncing needle, VU meter style, retro monitoring device, front view"
+        },
+        {
+          "id": "warning_light_01",
+          "prompt": "rotating warning light, red beacon, siren top, retro alarm system, front-facing view"
+        },
+        {
+          "id": "emergency_button_01",
+          "prompt": "emergency stop button, yellow and red, protective housing, retro safety control, front view"
+        },
+        {
+          "id": "countdown_timer_01",
+          "prompt": "countdown timer, flip numbers visible, retro digital display, bomb timer aesthetic, front-facing"
+        },
+        {
+          "id": "pressure_gauge_01",
+          "prompt": "pressure gauge, circular dial, danger zone marked red, retro industrial instrument, front view"
+        }
+      ]
+    },
+    {
+      "name": "energy_effects",
+      "output_folder": "assets/sprites/shared/retro_future/effects",
+      "description": "Energy effects and power sources",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {
+          "id": "energy_sphere_01",
+          "prompt": "glowing energy sphere, crackling electricity, floating orb, retro power source, front-facing view"
+        },
+        {
+          "id": "energy_sphere_blue_01",
+          "prompt": "blue energy sphere, pulsing light, atomic power ball, retro sci-fi, front view"
+        },
+        {
+          "id": "energy_sphere_red_01",
+          "prompt": "red energy sphere, dangerous glow, unstable power, retro danger orb, front-facing"
+        },
+        {
+          "id": "lightning_ball_01",
+          "prompt": "ball lightning, electrical discharge, plasma sphere, retro natural phenomenon, front view"
+        },
+        {
+          "id": "force_field_wall_01",
+          "prompt": "force field wall section, blue energy barrier, hexagon pattern visible, retro shield, front-facing view"
+        },
+        {
+          "id": "energy_beam_01",
+          "prompt": "energy beam shooting, bright ray, particle effects, retro weapon fire, side profile view"
+        },
+        {
+          "id": "portal_swirl_01",
+          "prompt": "swirling portal, dimensional gateway, energy vortex, retro teleportation effect, front-facing view"
+        },
+        {
+          "id": "explosion_atomic_01",
+          "prompt": "atomic explosion, expanding shockwave, retro blast effect, front-facing view"
+        },
+        {
+          "id": "smoke_rocket_01",
+          "prompt": "rocket exhaust smoke, white vapor trail, retro propulsion effect, side view"
+        },
+        {
+          "id": "sparks_electric_01",
+          "prompt": "electrical sparks, arcing electricity, short circuit, retro malfunction effect, front view"
+        }
+      ]
+    }
+  ]
+}
