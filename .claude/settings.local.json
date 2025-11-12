@@ -38,7 +38,8 @@
       "Bash(luac:*)",
       "Bash(for game in breakout dodge_game rps coin_flip)",
       "Bash(do echo \"=== Migrating $game ===\")",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(\"/tmp/refactor_reordered.md\")"
     ],
     "deny": [],
     "ask": []
