@@ -144,9 +144,19 @@ function DodgeView:draw()
         end
     end
 
-    -- Phase 5: Draw player trail using PhysicsUtils component
-    if game.player_trail and game.player_trail_length > 0 then
-        game.player_trail:draw()
+    -- Draw player trail
+    if game.player_trail_buffer and #game.player_trail_buffer > 1 then
+        g.setColor(0.5, 0.7, 1.0, 0.3)
+        g.setLineWidth(3)
+        local points = {}
+        for i, pos in ipairs(game.player_trail_buffer) do
+            table.insert(points, pos.x)
+            table.insert(points, pos.y)
+        end
+        if #points >= 4 then  -- Need at least 2 points
+            g.line(points)
+        end
+        g.setLineWidth(1)
     end
 
     -- Phase 2.3: Draw player (sprite or fallback to icon)

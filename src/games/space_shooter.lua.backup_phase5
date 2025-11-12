@@ -2,7 +2,6 @@ local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local Collision = require('src.utils.collision')
 local MovementController = require('src.utils.game_components.movement_controller')
-local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
@@ -2689,16 +2688,24 @@ end
 -- Phase 8: Screen wrap helper
 -- Returns true if object should be destroyed (exceeded max wraps)
 function SpaceShooter:applyScreenWrap(obj, max_wraps)
-    -- Phase 5: Use PhysicsUtils for screen wrap
+    local wrapped = false
     max_wraps = max_wraps or 999  -- Default to effectively unlimited
 
-    local old_x, old_y = obj.x, obj.y
-    obj.x, obj.y = PhysicsUtils.wrapPosition(
-        obj.x, obj.y, obj.width, obj.height,
-        self.game_width, self.game_height
-    )
+    if obj.x < -obj.width then
+        obj.x = self.game_width
+        wrapped = true
+    elseif obj.x > self.game_width then
+        obj.x = -obj.width
+        wrapped = true
+    end
 
-    local wrapped = (obj.x ~= old_x or obj.y ~= old_y)
+    if obj.y < -obj.height then
+        obj.y = self.game_height
+        wrapped = true
+    elseif obj.y > self.game_height then
+        obj.y = -obj.height
+        wrapped = true
+    end
 
     -- Increment wrap count if object wrapped
     if wrapped and obj.wrap_count ~= nil then

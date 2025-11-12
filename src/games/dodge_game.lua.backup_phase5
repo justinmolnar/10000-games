@@ -5,7 +5,6 @@ local DodgeView = require('src.games.views.dodge_view')
 local MovementController = require('src.utils.game_components.movement_controller')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VisualEffects = require('src.utils.game_components.visual_effects')
-local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -327,12 +326,8 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
         cluster_pending = 0
     }
 
-    -- Phase 5: Initialize player trail system using PhysicsUtils component
-    self.player_trail = PhysicsUtils.createTrailSystem({
-        max_length = self.player_trail_length,
-        color = {0.5, 0.7, 1.0, 0.3},
-        line_width = 3
-    })
+    -- Initialize player trail buffer
+    self.player_trail_buffer = {}
 
     -- Initialize score tracking for multiplier modes
     self.avg_speed_tracker = { sum = 0, count = 0 }
@@ -751,7 +746,6 @@ function DodgeGame:consumeShield()
 end
 
 function DodgeGame:updatePlayerTrail(dt)
-    -- Phase 5: Trail now managed by PhysicsUtils component
     if self.player_trail_length <= 0 or not self.player then
         return
     end
@@ -765,8 +759,13 @@ function DodgeGame:updatePlayerTrail(dt)
     local trail_x = self.player.x + math.cos(back_angle) * self.player.radius
     local trail_y = self.player.y + math.sin(back_angle) * self.player.radius
 
-    -- Add back position to trail system
-    self.player_trail:addPoint(trail_x, trail_y)
+    -- Add back position to trail buffer
+    table.insert(self.player_trail_buffer, 1, {x = trail_x, y = trail_y})
+
+    -- Limit trail length
+    while #self.player_trail_buffer > self.player_trail_length do
+        table.remove(self.player_trail_buffer)
+    end
 end
 
 function DodgeGame:updateCameraShake(dt)
@@ -1163,17 +1162,16 @@ function DodgeGame:updateObjects(dt)
                 end
             end
 
-            -- Phase 5: Only bounce if we've entered the play area (using PhysicsUtils)
+            -- Only bounce if we've entered the play area
             if obj.has_entered then
                 local next_x = obj.x + obj.vx * dt
                 local next_y = obj.y + obj.vy * dt
-                local old_vx, old_vy = obj.vx, obj.vy
-                obj.vx, obj.vy = PhysicsUtils.bounceOffWalls(
-                    next_x, next_y, obj.vx, obj.vy, obj.radius,
-                    self.game_width, self.game_height, 1.0
-                )
-                -- Track bounces if velocity changed
-                if obj.vx ~= old_vx or obj.vy ~= old_vy then
+                if next_x <= obj.radius or next_x >= self.game_width - obj.radius then
+                    obj.vx = -obj.vx
+                    obj.bounce_count = obj.bounce_count + 1
+                end
+                if next_y <= obj.radius or next_y >= self.game_height - obj.radius then
+                    obj.vy = -obj.vy
                     obj.bounce_count = obj.bounce_count + 1
                 end
 
