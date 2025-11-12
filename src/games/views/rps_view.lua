@@ -185,11 +185,10 @@ function RPSView:draw()
     local center_x = w / 2
     local center_y = h / 2
 
-    -- Throw animation bounce effect (Phase 11)
+    -- Throw animation bounce effect (Phase 4 - AnimationSystem component)
     local bounce_offset = 0
-    if self.game.is_animating then
-        local anim_progress = self.game.throw_animation_timer / (0.5 / self.game.animation_speed)
-        bounce_offset = math.sin(anim_progress * math.pi) * -30  -- Bounce up and down
+    if self.game.throw_animation:isActive() then
+        bounce_offset = -self.game.throw_animation:getOffset()  -- Negative for upward bounce
     end
 
     -- Show throws

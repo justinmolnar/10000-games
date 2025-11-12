@@ -85,9 +85,9 @@ function CoinFlipView:draw()
     love.graphics.push()
     love.graphics.translate(coin_x, coin_y)
 
-    if self.game.is_flipping then
-        -- Rotate around Y-axis (create 3D flip illusion by scaling X)
-        local rotation_progress = self.game.flip_animation_rotation % (math.pi * 2)
+    if self.game.flip_animation:isActive() then
+        -- Rotate around Y-axis (create 3D flip illusion by scaling X) - Phase 4: AnimationSystem
+        local rotation_progress = self.game.flip_animation:getRotation() % (math.pi * 2)
         local scale_x = math.abs(math.cos(rotation_progress))
         love.graphics.scale(scale_x, 1)
     end

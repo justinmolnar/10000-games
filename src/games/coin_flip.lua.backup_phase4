@@ -3,7 +3,6 @@ local Config = rawget(_G, 'DI_CONFIG') or {}
 local CoinFlipView = require('src.games.views.coin_flip_view')
 local ScorePopup = require('src.games.score_popup')
 local VisualEffects = require('src.utils.game_components.visual_effects')
-local AnimationSystem = require('src.utils.game_components.animation_system')
 local CoinFlip = BaseGame:extend('CoinFlip')
 
 -- Config-driven defaults with safe fallbacks
@@ -238,12 +237,10 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
         particle_effects_enabled = true
     })
 
-    -- Phase 4: Initialize AnimationSystem for coin flip
-    self.flip_animation = AnimationSystem.createFlipAnimation({
-        duration = 0.5,
-        speed_multiplier = self.flip_animation_speed,
-        on_complete = nil  -- No callback needed
-    })
+    -- Animation state
+    self.flip_animation_rotation = 0  -- Current rotation of coin during flip
+    self.is_flipping = false
+    self.flip_timer = 0
 
     -- Create view
     self.view = CoinFlipView:new(self)
@@ -268,8 +265,18 @@ function CoinFlip:updateGameLogic(dt)
         end
     end
 
-    -- Update flip animation (Phase 4 - AnimationSystem component)
-    self.flip_animation:update(dt)
+    -- Update flip animation (Phase 11)
+    if self.is_flipping then
+        self.flip_timer = self.flip_timer + dt
+        self.flip_animation_rotation = self.flip_animation_rotation + dt * 20 * self.flip_animation_speed
+
+        -- End flip animation after duration
+        if self.flip_timer >= (0.5 / self.flip_animation_speed) then
+            self.is_flipping = false
+            self.flip_timer = 0
+            self.flip_animation_rotation = 0
+        end
+    end
 
     -- Update visual effects (Phase 3 - VisualEffects component)
     self.visual_effects:update(dt)
@@ -408,7 +415,7 @@ function CoinFlip:flipCoin()
     self.waiting_for_guess = false
 
     -- Start flip animation (Phase 11)
-    self.flip_animation:start()
+    self.is_flipping = true
     self.flip_timer = 0
 
     -- Generate result based on pattern mode
@@ -525,7 +532,7 @@ function CoinFlip:makeGuess(guess)
     self.waiting_for_guess = false
 
     -- Start flip animation (Phase 11)
-    self.flip_animation:start()
+    self.is_flipping = true
     self.flip_timer = 0
 
     -- Generate result based on pattern mode

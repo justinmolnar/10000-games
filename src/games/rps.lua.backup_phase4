@@ -3,7 +3,6 @@ local Config = rawget(_G, 'DI_CONFIG') or {}
 local RPSView = require('src.games.views.rps_view')
 local ScorePopup = require('src.games.score_popup')
 local VisualEffects = require('src.utils.game_components.visual_effects')
-local AnimationSystem = require('src.utils.game_components.animation_system')
 local RPS = BaseGame:extend('RPS')
 
 -- Config-driven defaults with safe fallbacks
@@ -390,13 +389,9 @@ function RPS:init(game_data, cheats, di, variant_override)
         particle_effects_enabled = true
     })
 
-    -- Phase 4: Initialize AnimationSystem for throw animation (bounce)
-    self.throw_animation = AnimationSystem.createBounceAnimation({
-        duration = 0.5,
-        height = 20,  -- Bounce height
-        speed_multiplier = self.animation_speed,
-        on_complete = nil  -- No callback needed
-    })
+    -- Animation state
+    self.throw_animation_timer = 0
+    self.is_animating = false
 
     -- Create view
     self.view = RPSView:new(self)
@@ -453,8 +448,14 @@ function RPS:updateGameLogic(dt)
         end
     end
 
-    -- Update throw animation (Phase 4 - AnimationSystem component)
-    self.throw_animation:update(dt)
+    -- Update throw animation (Phase 11)
+    if self.is_animating then
+        self.throw_animation_timer = self.throw_animation_timer + dt
+        if self.throw_animation_timer >= (0.5 / self.animation_speed) then
+            self.is_animating = false
+            self.throw_animation_timer = 0
+        end
+    end
 
     -- Update visual effects (Phase 3 - VisualEffects component)
     self.visual_effects:update(dt)
@@ -664,8 +665,9 @@ function RPS:playRound(player_choice)
     self.player_choice = player_choice
     self.waiting_for_input = false
 
-    -- Start throw animation (Phase 4 - AnimationSystem component)
-    self.throw_animation:start()
+    -- Start throw animation (Phase 11)
+    self.is_animating = true
+    self.throw_animation_timer = 0
 
     -- Phase 6 completion: Multiple opponents mode
     if self.num_opponents > 1 then
