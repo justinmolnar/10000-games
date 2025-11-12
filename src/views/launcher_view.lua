@@ -1,14 +1,14 @@
 -- launcher_view.lua: View class for the game launcher
 
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
 local FormulaRenderer = require('src.views.formula_renderer')
 local MetricLegend = require('src.views.metric_legend')
 local GameSpriteHelper = require('src.utils.game_sprite_helper')  -- Phase 4
-local LauncherView = Object:extend('LauncherView')
+local LauncherView = BaseView:extend('LauncherView')
 
 function LauncherView:init(controller, player_data, game_data)
-    self.controller = controller
+    LauncherView.super.init(self, controller) -- Initialize BaseView
     self.player_data = player_data
     self.game_data = game_data
     local di = controller and controller.di
@@ -481,6 +481,7 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     love.graphics.print(string.format("×%.1f", game_data.variant_multiplier), stats_x, y + h - 22, 0, 1.1, 1.1)
 end
 
+-- Override BaseView's drawWindowed to pass extra parameters
 function LauncherView:drawWindowed(filtered_games, tokens, viewport_width, viewport_height)
     if type(viewport_width) ~= "number" or type(viewport_height) ~= "number" or viewport_width <= 0 or viewport_height <= 0 then
         love.graphics.setColor(1, 0, 0)
@@ -488,6 +489,19 @@ function LauncherView:drawWindowed(filtered_games, tokens, viewport_width, viewp
         print("ERROR in LauncherView:drawWindowed - Invalid viewport dimensions:", viewport_width, viewport_height)
         return
     end
+
+    -- Store parameters for drawContent
+    self.filtered_games = filtered_games
+    self.tokens = tokens
+
+    -- Call BaseView's drawWindowed
+    LauncherView.super.drawWindowed(self, viewport_width, viewport_height)
+end
+
+-- Implements BaseView's abstract drawContent method
+function LauncherView:drawContent(viewport_width, viewport_height)
+    local filtered_games = self.filtered_games
+    local tokens = self.tokens
 
     love.graphics.setColor(0.15, 0.15, 0.15)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)

@@ -1,7 +1,6 @@
 local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
-local Collision = require('src.utils.collision')
-local MovementController = require('src.utils.game_components.movement_controller')
+local Collision = require('src.utils.collision') 
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
@@ -632,9 +631,8 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     self.player = {
         x = self.game_width / 2,
         y = player_y,
-        width = PLAYER_WIDTH,  -- Keep for collision
+        width = PLAYER_WIDTH,
         height = PLAYER_HEIGHT,
-        radius = math.max(PLAYER_WIDTH, PLAYER_HEIGHT) / 2,  -- For center-based bounds
         fire_cooldown = 0,
         -- Phase 3: Weapon state
         auto_fire_timer = 0,
@@ -664,37 +662,7 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
         self.player.jump_start_y = 0
         self.player.jump_target_x = 0
         self.player.jump_target_y = 0
-    elseif self.movement_type == "default" or self.movement_type == "rail" then
-        -- Initialize velocity for default/rail modes (required by MovementController)
-        self.player.vx = 0
-        self.player.vy = 0
-        self.player.angle = 0
     end
-
-    -- Initialize MovementController based on movement_type
-    local movement_mode = "direct"
-    if self.movement_type == "asteroids" then
-        movement_mode = "asteroids"
-    elseif self.movement_type == "rail" then
-        movement_mode = "rail"
-    elseif self.movement_type == "jump" then
-        movement_mode = "jump"
-    end
-
-    self.movement_controller = MovementController:new({
-        mode = movement_mode,
-        speed = self.movement_speed,
-        friction = 1.0,
-        accel_friction = self.accel_friction,
-        decel_friction = self.decel_friction,
-        rotation_speed = self.rotation_speed,
-        rail_axis = "horizontal",
-        thrust_acceleration = self.movement_speed * 5,
-        reverse_mode = "none",
-        jump_distance = self.game_width * self.jump_distance_percent,
-        jump_cooldown = self.jump_cooldown,
-        jump_speed = self.jump_speed
-    })
 
     -- Phase 2: Initialize shield state
     if self.shield_enabled then
@@ -1007,34 +975,105 @@ function SpaceShooter:updateGameLogic(dt)
 end
 
 function SpaceShooter:updatePlayer(dt)
-    -- Phase 2: Movement type system (using MovementController)
-    -- Build input table from keyboard state
-    local input = {
-        left = self:isKeyDown('left', 'a'),
-        right = self:isKeyDown('right', 'd'),
-        up = self:isKeyDown('up', 'w'),
-        down = self:isKeyDown('down', 's'),
-        jump = false  -- Not used in space shooter
-    }
+    -- Phase 2: Movement type system
+    if self.movement_type == "default" then
+        -- Default: WASD free movement
+        if self:isKeyDown('up', 'w') then self.player.y = self.player.y - self.movement_speed * dt end
+        if self:isKeyDown('down', 's') then self.player.y = self.player.y + self.movement_speed * dt end
+        if self:isKeyDown('left', 'a') then self.player.x = self.player.x - self.movement_speed * dt end
+        if self:isKeyDown('right', 'd') then self.player.x = self.player.x + self.movement_speed * dt end
 
-    -- Build bounds table
-    local bounds = {
-        x = 0,
-        y = 0,
-        width = self.game_width,
-        height = self.game_height,
-        wrap_x = self.screen_wrap,
-        wrap_y = self.screen_wrap
-    }
+        -- Phase 8: Screen wrap or clamp
+        if self.screen_wrap then
+            self:applyScreenWrap(self.player)
+        else
+            self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+            self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+        end
 
-    -- Add time_elapsed for jump mode cooldown tracking
-    if not self.player.time_elapsed then
-        self.player.time_elapsed = 0
+    elseif self.movement_type == "rail" then
+        -- Rail: Left/right only, vertical fixed
+        if self:isKeyDown('left', 'a') then self.player.x = self.player.x - self.movement_speed * dt end
+        if self:isKeyDown('right', 'd') then self.player.x = self.player.x + self.movement_speed * dt end
+
+        -- Phase 8: Screen wrap or clamp horizontal only
+        if self.screen_wrap then
+            self:applyScreenWrap(self.player)
+        else
+            self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+        end
+
+    elseif self.movement_type == "asteroids" then
+        -- Asteroids: Rotate + thrust physics
+        if self:isKeyDown('left', 'a') then
+            self.player.angle = self.player.angle - self.rotation_speed * dt * 60
+        end
+        if self:isKeyDown('right', 'd') then
+            self.player.angle = self.player.angle + self.rotation_speed * dt * 60
+        end
+
+        -- Thrust (sprite faces UP, angle 0 = UP, 90 = RIGHT, etc.)
+        if self:isKeyDown('up', 'w') then
+            -- Convert from "UP = 0" to radians (need to rotate coordinate system)
+            -- Angle 0 = UP means we need sin for X (sideways) and -cos for Y (vertical)
+            local rad = math.rad(self.player.angle)
+            local thrust = self.movement_speed * 5 * dt  -- Thrust acceleration
+            self.player.vx = self.player.vx + math.sin(rad) * thrust * self.accel_friction
+            self.player.vy = self.player.vy + (-math.cos(rad)) * thrust * self.accel_friction
+        end
+
+        -- Apply deceleration
+        self.player.vx = self.player.vx * (1.0 - (1.0 - self.decel_friction) * dt * 5)
+        self.player.vy = self.player.vy * (1.0 - (1.0 - self.decel_friction) * dt * 5)
+
+        -- Update position
+        self.player.x = self.player.x + self.player.vx * dt
+        self.player.y = self.player.y + self.player.vy * dt
+
+        -- Phase 8: Screen wrap or clamp to bounds
+        if self.screen_wrap then
+            self:applyScreenWrap(self.player)
+        else
+            self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+            self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+        end
+
+    elseif self.movement_type == "jump" then
+        -- Jump/Dash mode: Discrete dashes instead of continuous movement
+        if self.player.jump_timer > 0 then
+            self.player.jump_timer = self.player.jump_timer - dt
+        end
+
+        if not self.player.is_jumping and self.player.jump_timer <= 0 then
+            local jump_dir = nil
+            if self:isKeyDown('left', 'a') then jump_dir = 'left' end
+            if self:isKeyDown('right', 'd') then jump_dir = 'right' end
+            if self:isKeyDown('up', 'w') then jump_dir = 'up' end
+            if self:isKeyDown('down', 's') then jump_dir = 'down' end
+
+            if jump_dir then
+                self:executeJump(jump_dir)
+                self.player.jump_timer = self.jump_cooldown
+            end
+        end
+
+        -- Update jump animation
+        if self.player.is_jumping then
+            local jump_distance = self.game_width * self.jump_distance_percent
+            self.player.jump_progress = self.player.jump_progress + dt / (jump_distance / self.jump_speed)
+
+            if self.player.jump_progress >= 1.0 then
+                self.player.x = self.player.jump_target_x
+                self.player.y = self.player.jump_target_y
+                self.player.is_jumping = false
+            else
+                -- Lerp to target
+                local t = self.player.jump_progress
+                self.player.x = self.player.jump_start_x + (self.player.jump_target_x - self.player.jump_start_x) * t
+                self.player.y = self.player.jump_start_y + (self.player.jump_target_y - self.player.jump_start_y) * t
+            end
+        end
     end
-    self.player.time_elapsed = self.player.time_elapsed + dt
-
-    -- Update movement via MovementController
-    self.movement_controller:update(dt, self.player, input, bounds)
 
     -- Phase 2: Shield regeneration (regenerates ONE shield at a time)
     if self.shield_enabled and self.player.shield_hits_remaining < self.shield_max_hits then
@@ -1146,6 +1185,46 @@ function SpaceShooter:updatePlayer(dt)
     end
 end
 
+function SpaceShooter:executeJump(direction)
+    self.player.is_jumping = true
+    self.player.jump_progress = 0
+    self.player.jump_start_x = self.player.x
+    self.player.jump_start_y = self.player.y
+
+    -- Calculate jump distance as % of game window width
+    local jump_distance = self.game_width * self.jump_distance_percent
+
+    -- Calculate target based on direction
+    local target_x = self.player.x
+    local target_y = self.player.y
+
+    if direction == 'left' then target_x = target_x - jump_distance end
+    if direction == 'right' then target_x = target_x + jump_distance end
+    if direction == 'up' then target_y = target_y - jump_distance end
+    if direction == 'down' then target_y = target_y + jump_distance end
+
+    -- Phase 8: Screen wrap or clamp to bounds
+    if self.screen_wrap then
+        -- Wrap target coordinates
+        if target_x < -self.player.width then
+            target_x = self.game_width
+        elseif target_x > self.game_width then
+            target_x = -self.player.width
+        end
+        if target_y < -self.player.height then
+            target_y = self.game_height
+        elseif target_y > self.game_height then
+            target_y = -self.player.height
+        end
+    else
+        -- Clamp to bounds
+        target_x = math.max(0, math.min(self.game_width - self.player.width, target_x))
+        target_y = math.max(0, math.min(self.game_height - self.player.height, target_y))
+    end
+
+    self.player.jump_target_x = target_x
+    self.player.jump_target_y = target_y
+end
 
 function SpaceShooter:updateEnemies(dt)
      for i = #self.enemies, 1, -1 do

@@ -2,7 +2,6 @@ local BaseGame = require('src.games.base_game')
 local Config = require('src.config')
 local Collision = require('src.utils.collision')
 local DodgeView = require('src.games.views.dodge_view')
-local MovementController = require('src.utils.game_components.movement_controller')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -349,37 +348,8 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
         shield_charges = shield,  -- Current shield count
         shield_max = shield,  -- Maximum shield charges
         shield_recharge_timer = shield_recharge_time,  -- Countdown to next recharge
-        shield_recharge_time = shield_recharge_time,  -- Time between recharges
-        -- Add fields required by MovementController
-        -- NOTE: Using radius for center-based positioning, NOT width/height
-        angle = 0,  -- Use 'angle' instead of 'rotation' for MovementController
-        time_elapsed = 0  -- For jump mode cooldown tracking
+        shield_recharge_time = shield_recharge_time  -- Time between recharges
     }
-
-    -- Create MovementController based on movement_type
-    local controller_mode = "direct"  -- Map movement_type to controller mode
-    if movement_type == "asteroids" then
-        controller_mode = "asteroids"
-    elseif movement_type == "jump" then
-        controller_mode = "jump"
-    end
-
-    self.movement_controller = MovementController:new({
-        mode = controller_mode,
-        speed = movement_speed,
-        friction = 1.0,  -- Will be overridden by accel/decel friction below
-        accel_friction = accel_friction,
-        decel_friction = decel_friction,
-        rotation_speed = rotation_speed,
-        bounce_damping = bounce_damping,
-        -- Asteroids specific
-        thrust_acceleration = (runtimeCfg and runtimeCfg.player and runtimeCfg.player.thrust_acceleration) or 600,
-        reverse_mode = reverse_mode,
-        -- Jump specific
-        jump_distance = jump_distance,
-        jump_cooldown = jump_cooldown,
-        jump_speed = jump_speed
-    })
 
     self.objects = {}
     self.warnings = {}
@@ -889,42 +859,416 @@ function DodgeGame:getWindForce(dt)
 end
 
 function DodgeGame:updatePlayer(dt)
-    -- Build input table from keyboard state
-    local input = {
-        left = self:isKeyDown('left', 'a'),
-        right = self:isKeyDown('right', 'd'),
-        up = self:isKeyDown('up', 'w'),
-        down = self:isKeyDown('down', 's'),
-        jump = false  -- Not currently used, but included for completeness
-    }
+    if self.player.movement_type == "asteroids" then
+        self:updatePlayerAsteroids(dt)
+    elseif self.player.movement_type == "jump" then
+        self:updatePlayerJump(dt)
+    else
+        self:updatePlayerDefault(dt)
+    end
+end
 
-    -- Build bounds table for the game arena
-    local bounds = {
-        x = 0,
-        y = 0,
-        width = self.game_width,
-        height = self.game_height,
-        wrap_x = false,
-        wrap_y = false
-    }
+function DodgeGame:updatePlayerDefault(dt)
+    local dx, dy = 0, 0
+    if self:isKeyDown('left', 'a') then dx = dx - 1 end
+    if self:isKeyDown('right', 'd') then dx = dx + 1 end
+    if self:isKeyDown('up', 'w') then dy = dy - 1 end
+    if self:isKeyDown('down', 's') then dy = dy + 1 end
 
-    -- Update player.time_elapsed for jump mode cooldown tracking
-    self.player.time_elapsed = self.time_elapsed
+    -- Update rotation towards movement direction
+    if dx ~= 0 or dy ~= 0 then
+        -- Add π/2 offset because sprite's default orientation is facing up (not right)
+        local target_rotation = math.atan2(dy, dx) + math.pi / 2
 
-    -- Sync rotation/angle fields (player uses 'rotation', controller uses 'angle')
-    self.player.angle = self.player.rotation
+        -- Calculate shortest path to target rotation
+        local function angdiff(a, b)
+            local d = (a - b + math.pi) % (2 * math.pi) - math.pi
+            return d
+        end
 
-    -- Call MovementController to update position, velocity, and rotation
-    self.movement_controller:update(dt, self.player, input, bounds)
+        local diff = angdiff(target_rotation, self.player.rotation)
+        local max_turn = self.player.rotation_speed * dt
 
-    -- Sync back: controller modifies 'angle', we need to update 'rotation'
-    self.player.rotation = self.player.angle
+        -- Clamp rotation delta to max turn speed
+        if diff > max_turn then
+            diff = max_turn
+        elseif diff < -max_turn then
+            diff = -max_turn
+        end
+
+        self.player.rotation = self.player.rotation + diff
+
+        -- Normalize rotation to [0, 2π] range for consistency
+        self.player.rotation = self.player.rotation % (2 * math.pi)
+    end
+
+    if dx ~= 0 and dy ~= 0 then
+        local inv_sqrt2 = 0.70710678118
+        dx = dx * inv_sqrt2; dy = dy * inv_sqrt2
+    end
+
+    -- If friction is enabled, use velocity-based movement (momentum)
+    local has_momentum = self.player.accel_friction < 1.0 or self.player.decel_friction < 1.0
+    if has_momentum then
+        -- Apply input as acceleration/force
+        if dx ~= 0 or dy ~= 0 then
+            -- Player is accelerating - apply accel_friction
+            self.player.vx = self.player.vx + dx * self.player.movement_speed * dt
+            self.player.vy = self.player.vy + dy * self.player.movement_speed * dt
+
+            if self.player.accel_friction < 1.0 then
+                local accel_factor = math.pow(self.player.accel_friction, dt * 60)
+                self.player.vx = self.player.vx * accel_factor
+                self.player.vy = self.player.vy * accel_factor
+            end
+        else
+            -- Player is coasting - apply decel_friction (stopping)
+            if self.player.decel_friction < 1.0 then
+                local decel_factor = math.pow(self.player.decel_friction, dt * 60)
+                self.player.vx = self.player.vx * decel_factor
+                self.player.vy = self.player.vy * decel_factor
+            else
+                -- Instant stop if decel_friction = 1.0
+                self.player.vx = 0
+                self.player.vy = 0
+            end
+        end
+
+        -- Update position from velocity
+        self.player.x = self.player.x + self.player.vx * dt
+        self.player.y = self.player.y + self.player.vy * dt
+    else
+        -- Direct positional movement (classic, no momentum)
+        self.player.x = self.player.x + dx * self.player.movement_speed * dt
+        self.player.y = self.player.y + dy * self.player.movement_speed * dt
+    end
 
     -- Apply environment forces (gravity, wind) and max speed cap
     self:applyEnvironmentForces(dt)
 
-    -- Clamp to safe zone (MovementController only handles rectangular bounds, not safe zone shapes)
     self:clampPlayerPosition()
+
+    -- Apply bounce if friction is enabled (has velocity)
+    if has_momentum then
+        local hit_boundary = false
+        if self.player.x <= self.player.radius or self.player.x >= self.game_width - self.player.radius then
+            self.player.vx = -self.player.vx * self.player.bounce_damping
+            hit_boundary = true
+        end
+        if self.player.y <= self.player.radius or self.player.y >= self.game_height - self.player.radius then
+            self.player.vy = -self.player.vy * self.player.bounce_damping
+            hit_boundary = true
+        end
+
+        if hit_boundary then
+            self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
+            self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
+        end
+    end
+end
+
+function DodgeGame:updatePlayerAsteroids(dt)
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.dodge) or {}
+    local thrust_accel = (runtimeCfg.player and runtimeCfg.player.thrust_acceleration) or 600
+
+    -- Rotation controls (left/right turn the ship)
+    if self:isKeyDown('left', 'a') then
+        self.player.rotation = self.player.rotation - self.player.rotation_speed * dt
+    end
+    if self:isKeyDown('right', 'd') then
+        self.player.rotation = self.player.rotation + self.player.rotation_speed * dt
+    end
+
+    -- Normalize rotation
+    self.player.rotation = self.player.rotation % (2 * math.pi)
+
+    -- Thrust controls (forward accelerates in facing direction)
+    local is_thrusting = false
+    if self:isKeyDown('up', 'w') then
+        is_thrusting = true
+        -- Calculate thrust direction (sprite faces up by default, so rotation 0 = up)
+        local thrust_angle = self.player.rotation - math.pi / 2  -- Subtract π/2 to convert from sprite space to world space
+        local thrust_x = math.cos(thrust_angle) * thrust_accel * dt
+        local thrust_y = math.sin(thrust_angle) * thrust_accel * dt
+
+        self.player.vx = self.player.vx + thrust_x
+        self.player.vy = self.player.vy + thrust_y
+
+        -- Apply acceleration friction (resistance when starting up)
+        if self.player.accel_friction < 1.0 then
+            local accel_factor = math.pow(self.player.accel_friction, dt * 60)
+            self.player.vx = self.player.vx * accel_factor
+            self.player.vy = self.player.vy * accel_factor
+        end
+    end
+
+    -- Reverse/brake controls (down key behavior)
+    if self:isKeyDown('down', 's') then
+        if self.player.reverse_mode == "thrust" then
+            is_thrusting = true
+            -- Reverse thrust (accelerate backwards)
+            local thrust_angle = self.player.rotation - math.pi / 2
+            local thrust_x = math.cos(thrust_angle) * thrust_accel * dt
+            local thrust_y = math.sin(thrust_angle) * thrust_accel * dt
+
+            self.player.vx = self.player.vx - thrust_x  -- Opposite direction
+            self.player.vy = self.player.vy - thrust_y
+
+            -- Apply acceleration friction
+            if self.player.accel_friction < 1.0 then
+                local accel_factor = math.pow(self.player.accel_friction, dt * 60)
+                self.player.vx = self.player.vx * accel_factor
+                self.player.vy = self.player.vy * accel_factor
+            end
+        elseif self.player.reverse_mode == "brake" then
+            -- Active braking (reduce velocity toward zero)
+            local brake_strength = 0.92  -- Aggressive decay when braking
+            local brake_factor = math.pow(brake_strength, dt * 60)  -- Normalized to 60fps
+            self.player.vx = self.player.vx * brake_factor
+            self.player.vy = self.player.vy * brake_factor
+        end
+        -- "none" = down does nothing
+    end
+
+    -- Apply deceleration friction when coasting (not actively thrusting)
+    if not is_thrusting and self.player.decel_friction < 1.0 then
+        local decel_factor = math.pow(self.player.decel_friction, dt * 60)  -- Normalize to 60fps
+        self.player.vx = self.player.vx * decel_factor
+        self.player.vy = self.player.vy * decel_factor
+    end
+
+    -- Update position based on velocity
+    self.player.x = self.player.x + self.player.vx * dt
+    self.player.y = self.player.y + self.player.vy * dt
+
+    -- Apply environment forces (gravity, wind) and max speed cap
+    self:applyEnvironmentForces(dt)
+
+    self:clampPlayerPosition()
+
+    -- When hitting boundaries, bounce/dampen velocity
+    local hit_boundary = false
+    if self.player.x <= self.player.radius or self.player.x >= self.game_width - self.player.radius then
+        self.player.vx = -self.player.vx * self.player.bounce_damping  -- Reverse and dampen
+        hit_boundary = true
+    end
+    if self.player.y <= self.player.radius or self.player.y >= self.game_height - self.player.radius then
+        self.player.vy = -self.player.vy * self.player.bounce_damping  -- Reverse and dampen
+        hit_boundary = true
+    end
+
+    -- Clamp position again after potential bounce
+    if hit_boundary then
+        self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
+        self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
+    end
+end
+
+function DodgeGame:updatePlayerJump(dt)
+    -- Jump/dash movement: discrete jumps with cooldown
+    -- Press a direction key → player dashes a fixed distance at jump_speed
+    -- Must wait for cooldown before next jump
+    --
+    -- Supports optional momentum/drift:
+    -- - If accel_friction or decel_friction < 1.0, uses velocity-based movement (can drift after jump)
+    -- - Otherwise, uses direct positional movement (instant stop after jump)
+
+    local time_since_jump = self.time_elapsed - self.player.last_jump_time
+    local can_jump = time_since_jump >= self.player.jump_cooldown
+
+    -- Check if momentum/drift is enabled
+    local has_momentum = self.player.accel_friction < 1.0 or self.player.decel_friction < 1.0
+
+    -- If currently mid-jump, continue moving towards target
+    if self.player.is_jumping then
+        -- Safety check: if jump has been going too long, end it (prevents getting stuck)
+        local expected_jump_time = self.player.jump_distance / self.player.jump_speed
+        local actual_jump_time = self.time_elapsed - self.player.last_jump_time
+        if actual_jump_time > expected_jump_time * 2.5 then
+            -- Jump took way too long, probably stuck on wall - end it
+            self.player.is_jumping = false
+        end
+
+        if self.player.is_jumping then
+            local dx = self.player.jump_target_x - self.player.x
+            local dy = self.player.jump_target_y - self.player.y
+            local dist_to_target = math.sqrt(dx*dx + dy*dy)
+
+            -- If very high speed (9999+), teleport instantly
+            if self.player.jump_speed >= 9999 then
+                self.player.x = self.player.jump_target_x
+                self.player.y = self.player.jump_target_y
+                self.player.is_jumping = false
+                -- If using momentum mode, set velocity to jump direction for drift
+                if has_momentum then
+                    self.player.vx = self.player.jump_dir_x * self.player.jump_speed * 0.3
+                    self.player.vy = self.player.jump_dir_y * self.player.jump_speed * 0.3
+                end
+            -- Otherwise, move smoothly towards target
+            elseif dist_to_target > 1 then
+                -- Recalculate direction to target (in case clamping pushed us off course)
+                local dir_x = dx / dist_to_target
+                local dir_y = dy / dist_to_target
+
+                -- Move at jump_speed towards target
+                local move_dist = self.player.jump_speed * dt
+
+                if move_dist >= dist_to_target then
+                    -- Reached target
+                    self.player.x = self.player.jump_target_x
+                    self.player.y = self.player.jump_target_y
+                    self.player.is_jumping = false
+                    -- If using momentum mode, set velocity to jump direction for drift
+                    if has_momentum then
+                        self.player.vx = self.player.jump_dir_x * self.player.jump_speed * 0.3
+                        self.player.vy = self.player.jump_dir_y * self.player.jump_speed * 0.3
+                    end
+                else
+                    -- Store position before moving
+                    local old_x, old_y = self.player.x, self.player.y
+
+                    -- Move towards target using recalculated direction
+                    self.player.x = self.player.x + dir_x * move_dist
+                    self.player.y = self.player.y + dir_y * move_dist
+
+                    -- Apply clamping
+                    self:clampPlayerPosition()
+
+                    -- After clamping, check if we actually moved
+                    -- (if not, we're stuck on a wall and should end jump)
+                    local moved_x = math.abs(self.player.x - old_x)
+                    local moved_y = math.abs(self.player.y - old_y)
+                    if moved_x < 0.5 and moved_y < 0.5 then
+                        -- Barely moved, stuck on wall - end jump
+                        self.player.is_jumping = false
+                        -- If using momentum mode, preserve some velocity for bounce
+                        if has_momentum then
+                            self.player.vx = dir_x * self.player.jump_speed * 0.2
+                            self.player.vy = dir_y * self.player.jump_speed * 0.2
+                        end
+                    end
+                end
+
+                -- Rotate sprite towards current movement direction
+                if self.player.is_jumping then
+                    local target_rotation = math.atan2(dir_y, dir_x) + math.pi / 2
+                    local function angdiff(a, b)
+                        local d = (a - b + math.pi) % (2 * math.pi) - math.pi
+                        return d
+                    end
+                    local diff = angdiff(target_rotation, self.player.rotation)
+                    local max_turn = self.player.rotation_speed * dt
+                    if diff > max_turn then diff = max_turn
+                    elseif diff < -max_turn then diff = -max_turn end
+                    self.player.rotation = (self.player.rotation + diff) % (2 * math.pi)
+                end
+            else
+                -- Close enough, snap to target
+                self.player.x = self.player.jump_target_x
+                self.player.y = self.player.jump_target_y
+                self.player.is_jumping = false
+                -- If using momentum mode, set velocity to jump direction for drift
+                if has_momentum then
+                    self.player.vx = self.player.jump_dir_x * self.player.jump_speed * 0.3
+                    self.player.vy = self.player.jump_dir_y * self.player.jump_speed * 0.3
+                end
+            end
+        end
+
+    -- Not jumping, check if we can start a new jump
+    elseif can_jump and not self.player.is_jumping then
+        -- Check for directional input (only register one direction per jump)
+        local jump_dx, jump_dy = 0, 0
+
+        if self:isKeyDown('left', 'a') then
+            jump_dx = -1
+        elseif self:isKeyDown('right', 'd') then
+            jump_dx = 1
+        elseif self:isKeyDown('up', 'w') then
+            jump_dy = -1
+        elseif self:isKeyDown('down', 's') then
+            jump_dy = 1
+        end
+
+        -- If a direction was pressed, start jump
+        if jump_dx ~= 0 or jump_dy ~= 0 then
+            -- Calculate target position
+            self.player.jump_target_x = self.player.x + jump_dx * self.player.jump_distance
+            self.player.jump_target_y = self.player.y + jump_dy * self.player.jump_distance
+
+            -- Clamp target to bounds
+            self.player.jump_target_x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.jump_target_x))
+            self.player.jump_target_y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.jump_target_y))
+
+            -- Store normalized direction
+            self.player.jump_dir_x = jump_dx
+            self.player.jump_dir_y = jump_dy
+
+            -- Start jump
+            self.player.is_jumping = true
+            self.player.last_jump_time = self.time_elapsed
+
+            -- Play a jump sound (if available)
+            self:playSound("jump", 0.5)
+        end
+    end
+
+    -- If not jumping and momentum mode is enabled, apply drift/friction
+    if not self.player.is_jumping and has_momentum then
+        -- Apply deceleration friction (drift after jump)
+        if self.player.decel_friction < 1.0 then
+            local decel_factor = math.pow(self.player.decel_friction, dt * 60)
+            self.player.vx = self.player.vx * decel_factor
+            self.player.vy = self.player.vy * decel_factor
+        else
+            -- Instant stop if decel_friction = 1.0
+            self.player.vx = 0
+            self.player.vy = 0
+        end
+
+        -- Update position from velocity (drift)
+        self.player.x = self.player.x + self.player.vx * dt
+        self.player.y = self.player.y + self.player.vy * dt
+
+        -- Rotate sprite towards drift direction (if moving)
+        local speed = math.sqrt(self.player.vx * self.player.vx + self.player.vy * self.player.vy)
+        if speed > 10 then
+            local target_rotation = math.atan2(self.player.vy, self.player.vx) + math.pi / 2
+            local function angdiff(a, b)
+                local d = (a - b + math.pi) % (2 * math.pi) - math.pi
+                return d
+            end
+            local diff = angdiff(target_rotation, self.player.rotation)
+            local max_turn = self.player.rotation_speed * dt
+            if diff > max_turn then diff = max_turn
+            elseif diff < -max_turn then diff = -max_turn end
+            self.player.rotation = (self.player.rotation + diff) % (2 * math.pi)
+        end
+    end
+
+    -- Apply environment forces (gravity, wind) and max speed cap
+    self:applyEnvironmentForces(dt)
+
+    -- Clamp to safe zone
+    self:clampPlayerPosition()
+
+    -- Apply bounce if momentum mode is enabled and hit boundaries
+    if has_momentum then
+        local hit_boundary = false
+        if self.player.x <= self.player.radius or self.player.x >= self.game_width - self.player.radius then
+            self.player.vx = -self.player.vx * self.player.bounce_damping
+            hit_boundary = true
+        end
+        if self.player.y <= self.player.radius or self.player.y >= self.game_height - self.player.radius then
+            self.player.vy = -self.player.vy * self.player.bounce_damping
+            hit_boundary = true
+        end
+
+        if hit_boundary then
+            self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
+            self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
+        end
+    end
 end
 
 -- Shape-specific collision helpers
@@ -982,8 +1326,9 @@ function DodgeGame:checkCircleLineCollision(cx, cy, cr, x1, y1, x2, y2)
 end
 
 function DodgeGame:clampPlayerPosition()
-    -- NOTE: MovementController already handles rectangular bounds
-    -- This function ONLY handles safe zone clamping
+    -- Clamp to rectangular bounds first
+    self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
+    self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
 
     -- Clamp to safe zone based on shape
     local sz = self.safe_zone

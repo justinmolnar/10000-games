@@ -1,12 +1,14 @@
 -- src/views/shutdown_view.lua
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
 local Strings = require('src.utils.strings')
 local SpriteLoader = require('src.utils.sprite_loader')
 
-local ShutdownView = Object:extend('ShutdownView')
+local ShutdownView = BaseView:extend('ShutdownView')
 
 function ShutdownView:init(di)
+    -- Note: controller not available at init, will be set by state
+    ShutdownView.super.init(self, nil)
     self.di = di
     if di and UIComponents and UIComponents.inject then UIComponents.inject(di) end
     self.sprite_loader = (di and di.spriteLoader) or nil
@@ -39,7 +41,8 @@ function ShutdownView:update(dt)
     -- No dynamic behavior needed currently
 end
 
-function ShutdownView:drawWindowed(w, h)
+-- Implements BaseView's abstract drawContent method
+function ShutdownView:drawContent(w, h)
     -- Content background
     local colors = (self.di and self.di.config and self.di.config.ui and self.di.config.ui.colors and self.di.config.ui.colors.shutdown_dialog) or {}
     love.graphics.setColor(colors.bg or {0.8, 0.8, 0.8})

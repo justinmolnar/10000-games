@@ -1,14 +1,15 @@
 -- src/views/control_panel_desktop_view.lua
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UI = require('src.views.ui_components')
 local Form = require('src.views.ui_dynamic_form')
 local Strings = require('src.utils.strings')
 local Paths = require('src.paths')
 local Wallpapers = require('src.utils.wallpapers')
 
-local View = Object:extend('ControlPanelDesktopView')
+local View = BaseView:extend('ControlPanelDesktopView')
 
 function View:init(controller, di)
+    View.super.init(self, controller)
     self.controller = controller
     self.di = di
     if di then UI.inject(di) end
@@ -42,7 +43,16 @@ function View:update(dt, settings, pending)
     -- nothing recurrent here
 end
 
+-- Override BaseView's drawWindowed to pass extra parameters
 function View:drawWindowed(w, h, settings, pending)
+    self.draw_params = { settings = settings, pending = pending }
+    View.super.drawWindowed(self, w, h)
+end
+
+-- Implements BaseView's abstract drawContent method
+function View:drawContent(w, h)
+    local settings = self.draw_params.settings
+    local pending = self.draw_params.pending
     -- Background/frame
     love.graphics.setColor(0.9, 0.9, 0.9)
     love.graphics.rectangle('fill', 0, 0, w, h)

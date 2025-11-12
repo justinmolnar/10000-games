@@ -1,4 +1,4 @@
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UI = require('src.views.ui_components')
 local json = require('json')
 local Strings = require('src.utils.strings')
@@ -6,9 +6,10 @@ local Paths = require('src.paths')
 local ScrollbarController = require('src.controllers.scrollbar_controller')
 -- Config is accessed via self.di.config when available
 
-local View = Object:extend('ControlPanelScreensaversView')
+local View = BaseView:extend('ControlPanelScreensaversView')
 
 function View:init(controller, di)
+    View.super.init(self, controller)
     self.controller = controller
     self.di = di
     if di then UI.inject(di) end
@@ -344,8 +345,16 @@ function View:drawPreview(x, y, w, h)
     love.graphics.setColor(0,0,0)
 end
 
--- Main draw
+-- Override BaseView's drawWindowed to pass extra parameters
 function View:drawWindowed(w, h, settings, pending)
+    self.draw_params = { settings = settings, pending = pending }
+    View.super.drawWindowed(self, w, h)
+end
+
+-- Implements BaseView's abstract drawContent method
+function View:drawContent(w, h)
+    local settings = self.draw_params.settings
+    local pending = self.draw_params.pending
     -- reset per-frame layout cache so hit-tests match what's drawn
     self.layout_cache = {}
     -- Background and border

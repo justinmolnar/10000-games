@@ -1,10 +1,11 @@
 -- src/views/credits_view.lua
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
 
-local CreditsView = Object:extend('CreditsView')
+local CreditsView = BaseView:extend('CreditsView')
 
 function CreditsView:init(controller)
+    CreditsView.super.init(self, controller)
     self.controller = controller
     self.title = "Credits & Attributions"
 
@@ -36,7 +37,8 @@ function CreditsView:update(dt)
                    local_my <= self.close_button.y + self.close_button.h
 end
 
-function CreditsView:drawWindowed(viewport_width, viewport_height)
+-- Implements BaseView's abstract drawContent method
+function CreditsView:drawContent(viewport_width, viewport_height)
     -- Draw background
     love.graphics.setColor(0.15, 0.15, 0.15)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
@@ -51,18 +53,9 @@ function CreditsView:drawWindowed(viewport_width, viewport_height)
     local content_area_y = title_height
     local content_area_height = viewport_height - title_height - button_height
 
-    -- Get window position for scissor (scissor uses screen coordinates, not viewport coordinates)
-    local viewport = self.controller.viewport
-    local screen_x = viewport and viewport.x or 0
-    local screen_y = viewport and viewport.y or 0
-
-    print(string.format("SCISSOR: screen_x=%d, screen_y=%d, viewport y=%d, scissor spans screen y=%d to y=%d",
-        screen_x, screen_y, content_area_y, screen_y + content_area_y, screen_y + content_area_y + content_area_height))
-
     -- Enable scissor for scrollable content area ONLY
-    -- IMPORTANT: setScissor uses SCREEN coordinates, so we must add the window position offset
     love.graphics.push()
-    love.graphics.setScissor(screen_x, screen_y + content_area_y, viewport_width, content_area_height)
+    self:setScissor(0, content_area_y, viewport_width, content_area_height)
     love.graphics.translate(0, -self.scroll_offset)
 
     local y_pos = content_area_y
@@ -149,7 +142,7 @@ function CreditsView:drawWindowed(viewport_width, viewport_height)
     self.content_height = y_pos - content_area_y
     self.max_scroll = math.max(0, self.content_height - content_area_height)
 
-    love.graphics.setScissor()
+    self:clearScissor()
     love.graphics.pop()
 
     -- Draw scrollbar if content is scrollable

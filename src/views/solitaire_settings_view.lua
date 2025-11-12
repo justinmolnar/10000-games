@@ -1,13 +1,14 @@
 -- src/views/solitaire_settings_view.lua
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UI = require('src.views.ui_components')
 local Form = require('src.views.ui_dynamic_form')
 local Paths = require('src.paths')
 local Backs = require('src.utils.solitaire_backs')
 
-local View = Object:extend('SolitaireSettingsView')
+local View = BaseView:extend('SolitaireSettingsView')
 
 function View:init(controller, di)
+    View.super.init(self, controller)
     self.controller = controller
     self.di = di
     if di then UI.inject(di) end
@@ -36,7 +37,8 @@ end
 function View:update(dt)
 end
 
-function View:drawWindowed(w, h)
+-- Implements BaseView's abstract drawContent method
+function View:drawContent(w, h)
     -- Background/frame
     love.graphics.setColor(0.9,0.9,0.9)
     love.graphics.rectangle('fill', 0, 0, w, h)

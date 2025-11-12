@@ -1,10 +1,11 @@
 -- src/views/cheat_engine_view.lua
 -- View for dynamic parameter modification UI
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
-local CheatEngineView = Object:extend('CheatEngineView')
+local CheatEngineView = BaseView:extend('CheatEngineView')
 
 function CheatEngineView:init(controller, di)
+    CheatEngineView.super.init(self, controller)
     self.controller = controller
     self.di = di
 
@@ -130,7 +131,35 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
     end
 end
 
+-- Override BaseView's drawWindowed to pass extra parameters
 function CheatEngineView:drawWindowed(games, selected_game_id, params, modifications, player_data, step_size, selected_param_index, viewport_width, viewport_height, game_scroll, param_scroll)
+    self.draw_params = {
+        games = games,
+        selected_game_id = selected_game_id,
+        params = params,
+        modifications = modifications,
+        player_data = player_data,
+        step_size = step_size,
+        selected_param_index = selected_param_index,
+        game_scroll = game_scroll,
+        param_scroll = param_scroll
+    }
+    CheatEngineView.super.drawWindowed(self, viewport_width, viewport_height)
+end
+
+-- Implements BaseView's abstract drawContent method
+function CheatEngineView:drawContent(viewport_width, viewport_height)
+    local p = self.draw_params
+    local games = p.games
+    local selected_game_id = p.selected_game_id
+    local params = p.params
+    local modifications = p.modifications
+    local player_data = p.player_data
+    local step_size = p.step_size
+    local selected_param_index = p.selected_param_index
+    local game_scroll = p.game_scroll
+    local param_scroll = p.param_scroll
+
     -- Background
     love.graphics.setColor(0, 0, 0)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)

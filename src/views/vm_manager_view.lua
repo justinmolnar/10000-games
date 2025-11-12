@@ -1,14 +1,14 @@
 -- vm_manager_view.lua: View class for VM Manager UI
 
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
 local FormulaRenderer = require('src.views.formula_renderer')
 -- Config is supplied via DI; avoid requiring src.config here
 local Strings = require('src.utils.strings')
-local VMManagerView = Object:extend('VMManagerView')
+local VMManagerView = BaseView:extend('VMManagerView')
 
 function VMManagerView:init(controller, vm_manager, player_data, game_data, di)
-    self.controller = controller -- This is the vm_manager_state
+    VMManagerView.super.init(self, controller) -- Initialize BaseView
     self.vm_manager = vm_manager
     self.player_data = player_data
     self.game_data = game_data
@@ -143,7 +143,16 @@ function VMManagerView:drawUpgradeButton(x, y, w, h, label, desc, level, cost, c
 end
 
 
+-- Override BaseView's drawWindowed to pass filtered_games parameter
 function VMManagerView:drawWindowed(filtered_games, viewport_width, viewport_height)
+    self.filtered_games = filtered_games -- Store for drawContent
+    VMManagerView.super.drawWindowed(self, viewport_width, viewport_height)
+end
+
+-- Implements BaseView's abstract drawContent method
+function VMManagerView:drawContent(viewport_width, viewport_height)
+    local filtered_games = self.filtered_games -- Retrieve from drawWindowed
+
     -- Draw background
     local Config_ = (self.di and self.di.config) or Config
     local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
@@ -170,11 +179,8 @@ function VMManagerView:drawWindowed(filtered_games, viewport_width, viewport_hei
     -- Calculate grid area for scissor and scrollbar
     local grid_area_height = viewport_height - grid_start_y - (G.bottom_reserved or 70)
 
-    -- Apply scissor to clip slots outside visible area
-    local viewport = self.controller.viewport
-    local screen_x = viewport and viewport.x or 0
-    local screen_y = viewport and viewport.y or 0
-    love.graphics.setScissor(screen_x, screen_y + grid_start_y, viewport_width, grid_area_height)
+    -- Apply scissor to clip slots outside visible area (BaseView handles screen coords)
+    self:setScissor(0, grid_start_y, viewport_width, grid_area_height)
 
     for i, slot in ipairs(slots) do
         local col = (i - 1) % self.slot_cols
@@ -190,7 +196,7 @@ function VMManagerView:drawWindowed(filtered_games, viewport_width, viewport_hei
         end
     end
 
-    love.graphics.setScissor()
+    self:clearScissor()
 
     -- Draw grid scrollbar if needed
     local total_rows = math.ceil(#slots / self.slot_cols)
@@ -594,13 +600,8 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
             love.graphics.push()
             love.graphics.translate(x, content_y)
 
-            -- Get viewport for scissor (screen coordinates)
-            local viewport = self.controller.viewport
-            local screen_x = (viewport and viewport.x or 0) + x
-            local screen_y = (viewport and viewport.y or 0) + content_y
-
-            -- Scissor to content area
-            love.graphics.setScissor(screen_x, screen_y, w, content_h)
+            -- Scissor to content area (BaseView handles screen coords)
+            self:setScissor(x, content_y, w, content_h)
 
             -- Enable VM render mode (hides HUD)
             if slot.game_instance.setVMRenderMode then
@@ -652,7 +653,7 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
                 slot.game_instance:setVMRenderMode(false)
             end
 
-            love.graphics.setScissor()
+            self:clearScissor()
             love.graphics.pop()
 
             -- Draw HUD overlay at bottom (outside transform and scissor)

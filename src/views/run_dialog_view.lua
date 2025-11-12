@@ -1,11 +1,13 @@
 -- src/views/run_dialog_view.lua
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
 local Strings = require('src.utils.strings')
 
-local RunDialogView = Object:extend('RunDialogView')
+local RunDialogView = BaseView:extend('RunDialogView')
 
 function RunDialogView:init(di)
+    -- Note: controller not available at init, will be set by state
+    RunDialogView.super.init(self, nil)
     self.di = di
     if di and UIComponents and UIComponents.inject then UIComponents.inject(di) end
     -- Default layout; will be updated by updateLayout
@@ -33,7 +35,15 @@ function RunDialogView:setParams(params)
     if params.cancel_label then self.cancel_label = params.cancel_label end
 end
 
+-- Override BaseView's drawWindowed to pass extra parameters
 function RunDialogView:drawWindowed(text, w, h)
+    self.draw_params = { text = text }
+    RunDialogView.super.drawWindowed(self, w, h)
+end
+
+-- Implements BaseView's abstract drawContent method
+function RunDialogView:drawContent(w, h)
+    local text = self.draw_params.text
     local desktop_cfg = (self.di and self.di.config and self.di.config.ui and self.di.config.ui.desktop) or {}
     local run_cfg = desktop_cfg.run_dialog or {}
     local pad = run_cfg.padding or 10

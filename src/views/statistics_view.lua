@@ -1,9 +1,10 @@
 -- src/views/statistics_view.lua
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
-local StatisticsView = Object:extend('StatisticsView')
+local StatisticsView = BaseView:extend('StatisticsView')
 
 function StatisticsView:init(controller)
+    StatisticsView.super.init(self, controller)
     self.controller = controller -- statistics_state
     self.title = "Game Statistics"
 
@@ -31,7 +32,16 @@ function StatisticsView:update(dt)
                    local_my >= self.back_button.y and local_my <= self.back_button.y + self.back_button.h
 end
 
+-- Override BaseView's drawWindowed to pass extra parameters
 function StatisticsView:drawWindowed(stats_data, viewport_width, viewport_height)
+    self.draw_params = { stats_data = stats_data }
+    StatisticsView.super.drawWindowed(self, viewport_width, viewport_height)
+end
+
+-- Implements BaseView's abstract drawContent method
+function StatisticsView:drawContent(viewport_width, viewport_height)
+    local stats_data = self.draw_params.stats_data
+
     -- Draw background
     love.graphics.setColor(0.15, 0.15, 0.15)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)

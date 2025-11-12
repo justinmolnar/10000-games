@@ -1,15 +1,16 @@
 -- src/views/file_explorer_view.lua
 -- View for rendering file explorer interface
 
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
 local Strings = require('src.utils.strings')
 -- Fallback config for non-DI usage
 local Config = rawget(_G, 'DI_CONFIG') or {}
 
-local FileExplorerView = Object:extend('FileExplorerView')
+local FileExplorerView = BaseView:extend('FileExplorerView')
 
 function FileExplorerView:init(controller, di)
+    FileExplorerView.super.init(self, controller)
     self.controller = controller
     self.di = di
     if di then UIComponents.inject(di) end
@@ -76,7 +77,36 @@ function FileExplorerView:update(dt, viewport_width, viewport_height)
 end
 
 
+-- Override BaseView's drawWindowed to pass extra parameters
 function FileExplorerView:drawWindowed(current_path, contents, selected_item, view_mode, sort_by, sort_order, can_go_back, can_go_forward, is_recycle_bin, viewport_width, viewport_height)
+    -- Store parameters for drawContent
+    self.draw_params = {
+        current_path = current_path,
+        contents = contents,
+        selected_item = selected_item,
+        view_mode = view_mode,
+        sort_by = sort_by,
+        sort_order = sort_order,
+        can_go_back = can_go_back,
+        can_go_forward = can_go_forward,
+        is_recycle_bin = is_recycle_bin
+    }
+    FileExplorerView.super.drawWindowed(self, viewport_width, viewport_height)
+end
+
+-- Implements BaseView's abstract drawContent method
+function FileExplorerView:drawContent(viewport_width, viewport_height)
+    local p = self.draw_params
+    local current_path = p.current_path
+    local contents = p.contents
+    local selected_item = p.selected_item
+    local view_mode = p.view_mode
+    local sort_by = p.sort_by
+    local sort_order = p.sort_order
+    local can_go_back = p.can_go_back
+    local can_go_forward = p.can_go_forward
+    local is_recycle_bin = p.is_recycle_bin
+
     -- Background
     local Config_ = (self.di and self.di.config) or Config
     local V = (Config_.ui and Config_.ui.views and Config_.ui.views.file_explorer) or {}
@@ -207,15 +237,11 @@ function FileExplorerView:drawAddressBar(x, y, width, current_path)
     -- Path text
     love.graphics.setColor(0, 0, 0)
     -- Clip text rendering to address bar bounds
-    -- IMPORTANT: setScissor uses SCREEN coordinates, so we must add the window position offset
-    local viewport = self.controller.viewport
-    local screen_x = viewport and viewport.x or 0
-    local screen_y = viewport and viewport.y or 0
     love.graphics.push()
-    love.graphics.setScissor(screen_x + x + (A.text_pad_x or 10), screen_y + y + (A.inset_y or 2), width - 2*(A.text_pad_x or 10), self.address_bar_height - 2*(A.inset_y or 2))
+    self:setScissor(x + (A.text_pad_x or 10), y + (A.inset_y or 2), width - 2*(A.text_pad_x or 10), self.address_bar_height - 2*(A.inset_y or 2))
     local ts = A.text_scale or 0.9
     love.graphics.print(current_path, x + (A.text_pad_x or 10), y + ((A.inset_y or 2) + 4), 0, ts, ts)
-    love.graphics.setScissor()
+    self:clearScissor()
     love.graphics.pop()
 end
 

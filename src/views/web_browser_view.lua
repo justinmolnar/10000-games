@@ -1,15 +1,16 @@
 -- src/views/web_browser_view.lua
 -- Web browser view - toolbar, address bar, content rendering
 
-local Object = require('lib.class')
+local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
 local HTMLRenderer = require('src.utils.html_renderer')
 local SyntaxHighlighter = require('src.utils.syntax_highlighter')
 local TextInputView = require('src.views.text_input_view')
 
-local WebBrowserView = Object:extend('WebBrowserView')
+local WebBrowserView = BaseView:extend('WebBrowserView')
 
 function WebBrowserView:init(controller, di)
+    WebBrowserView.super.init(self, controller)
     self.controller = controller
     self.di = di
 
@@ -62,8 +63,36 @@ function WebBrowserView:update(dt, viewport_width, viewport_height)
     end
 end
 
--- Draw windowed view
+-- Override BaseView's drawWindowed to pass extra parameters
 function WebBrowserView:drawWindowed(current_url, current_html, current_layout, view_source_mode, scroll_y, max_scroll, can_go_back, can_go_forward, viewport_width, viewport_height, image_load_progress)
+    -- Store parameters for drawContent
+    self.draw_params = {
+        current_url = current_url,
+        current_html = current_html,
+        current_layout = current_layout,
+        view_source_mode = view_source_mode,
+        scroll_y = scroll_y,
+        max_scroll = max_scroll,
+        can_go_back = can_go_back,
+        can_go_forward = can_go_forward,
+        image_load_progress = image_load_progress
+    }
+    WebBrowserView.super.drawWindowed(self, viewport_width, viewport_height)
+end
+
+-- Implements BaseView's abstract drawContent method
+function WebBrowserView:drawContent(viewport_width, viewport_height)
+    local p = self.draw_params
+    local current_url = p.current_url
+    local current_html = p.current_html
+    local current_layout = p.current_layout
+    local view_source_mode = p.view_source_mode
+    local scroll_y = p.scroll_y
+    local max_scroll = p.max_scroll
+    local can_go_back = p.can_go_back
+    local can_go_forward = p.can_go_forward
+    local image_load_progress = p.image_load_progress
+
     local g = love.graphics
 
     -- Background
@@ -200,10 +229,8 @@ function WebBrowserView:drawHTMLContent(x, y, width, height, layout, scroll_y, i
     local g = love.graphics
     local viewport = self.controller.viewport
 
-    -- Set scissor for content area (SCREEN COORDINATES)
-    local screen_x = viewport.x + x
-    local screen_y = viewport.y + y
-    g.setScissor(screen_x, screen_y, width, height)
+    -- Set scissor for content area
+    self:setScissor(x, y, width, height)
 
     -- Render HTML
     g.push()
@@ -216,12 +243,16 @@ function WebBrowserView:drawHTMLContent(x, y, width, height, layout, scroll_y, i
     if not self.controller.loading_complete then
         loaded_elements = self.controller.loaded_elements
     end
+
+    -- Calculate screen coordinates for html_renderer (it needs them for link detection)
+    local screen_x = viewport.x + x
+    local screen_y = viewport.y + y
     self.html_renderer:render(layout, scroll_y, screen_x, screen_y, width, height, loaded_elements, image_load_progress)
 
     g.pop()
 
     -- Clear scissor
-    g.setScissor()
+    self:clearScissor()
 end
 
 -- Draw source view
@@ -231,16 +262,13 @@ function WebBrowserView:drawSourceView(x, y, width, height, html, scroll_y)
     end
 
     local g = love.graphics
-    local viewport = self.controller.viewport
 
     -- Background
     g.setColor(0.95, 0.95, 0.95)
     g.rectangle('fill', x, y, width, height)
 
-    -- Set scissor for content area (SCREEN COORDINATES)
-    local screen_x = viewport.x + x
-    local screen_y = viewport.y + y
-    g.setScissor(screen_x, screen_y, width, height)
+    -- Set scissor for content area
+    self:setScissor(x, y, width, height)
 
     -- Draw source text with syntax highlighting
     g.push()
@@ -269,7 +297,7 @@ function WebBrowserView:drawSourceView(x, y, width, height, html, scroll_y)
     g.pop()
 
     -- Clear scissor
-    g.setScissor()
+    self:clearScissor()
 end
 
 -- Get button at position

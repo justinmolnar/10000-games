@@ -200,6 +200,32 @@ Neural Core (Main Progression Gate - Replaces "Space Defender"):
 
 Key Systems
 
+BaseView Pattern (Standardized Window Rendering):
+- ALL windowed views now extend BaseView (src/views/base_view.lua) instead of Object
+- Solves recurring viewport coordinate bug (see "Viewport Coordinates vs Screen Coordinates" section)
+- Child classes implement drawContent() instead of drawWindowed()
+- BaseView provides helper methods:
+  - self:setScissor(viewport_x, viewport_y, width, height) - Automatically converts viewport → screen coords
+  - self:clearScissor() - Safely clears scissor region
+  - self:getViewportPosition() - Returns viewport offset (for debugging)
+  - self:isPointInViewport(screen_x, screen_y, w, h) - Checks if screen point is inside viewport
+- For views with extra parameters:
+  ```lua
+  -- Override drawWindowed to store params, then call super
+  function MyView:drawWindowed(extra_param, viewport_width, viewport_height)
+      self.draw_params = { extra_param = extra_param }
+      MyView.super.drawWindowed(self, viewport_width, viewport_height)
+  end
+
+  -- Implement drawContent to use stored params
+  function MyView:drawContent(viewport_width, viewport_height)
+      local extra_param = self.draw_params.extra_param
+      -- ... render using viewport coordinates (0,0 = top-left of window content)
+  end
+  ```
+- NEVER call love.graphics.origin() inside windowed views - WindowController sets up transformation matrix
+- ALL scissor operations must use self:setScissor() and self:clearScissor(), not love.graphics.setScissor()
+
 Window Management:
 - WindowController handles window lifecycle, focus, dragging, resizing
 - WindowManager model stores window positions and state

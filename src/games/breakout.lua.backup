@@ -5,7 +5,6 @@ local BreakoutView = require('src.games.views.breakout_view')
 local ScorePopup = require('src.games.score_popup')
 local ParticleSystem = require('src.utils.particle_system')
 local PNGCollision = require('src.utils.png_collision')
-local MovementController = require('src.utils.game_components.movement_controller')
 local Breakout = BaseGame:extend('Breakout')
 
 -- Config-driven defaults with safe fallbacks
@@ -506,9 +505,8 @@ function Breakout:init(game_data, cheats, di, variant_override)
     self.paddle = {
         x = self.arena_width / 2,
         y = self.arena_height - 50,
-        width = self.paddle_width,  -- Keep for collision detection and rendering
+        width = self.paddle_width,
         height = PADDLE_HEIGHT,
-        radius = self.paddle_width / 2,  -- For MovementController bounds (center-based)
         vx = 0,
         vy = 0,  -- For asteroids mode
         angle = 0,  -- For asteroids mode
@@ -518,14 +516,6 @@ function Breakout:init(game_data, cheats, di, variant_override)
     }
 
     print("DEBUG BREAKOUT INIT: paddle_friction=" .. tostring(self.paddle_friction) .. ", paddle_speed=" .. tostring(self.paddle_speed) .. ", movement_type=" .. tostring(self.movement_type))
-
-    -- Initialize MovementController for paddle
-    self.paddle_movement = MovementController:new({
-        mode = "direct",
-        speed = self.paddle_speed,
-        friction = self.paddle_friction,
-        rail_axis = "horizontal"  -- Paddle only moves horizontally
-    })
 
     -- Initialize ball(s)
     self.balls = {}
@@ -1179,28 +1169,58 @@ function Breakout:updateGameLogic(dt)
 end
 
 function Breakout:updatePaddle(dt)
-    -- Build input table from keyboard state
-    local input = {
-        left = love.keyboard.isDown('a') or love.keyboard.isDown('left'),
-        right = love.keyboard.isDown('d') or love.keyboard.isDown('right'),
-        up = false,
-        down = false,
-        jump = false
-    }
+    -- DEFAULT MOVEMENT ONLY (rail/asteroids/jump modes removed per user request - unnecessary for Breakout)
+    local move_dir = 0
+    if love.keyboard.isDown('a') or love.keyboard.isDown('left') then
+        move_dir = -1
+    end
+    if love.keyboard.isDown('d') or love.keyboard.isDown('right') then
+        move_dir = move_dir + 1
+    end
 
-    -- Build bounds table for arena
-    -- Paddle uses center-based positioning with radius
-    local bounds = {
-        x = 0,
-        y = 0,
-        width = self.arena_width,
-        height = self.arena_height,
-        wrap_x = false,
-        wrap_y = false
-    }
+    -- Acceleration-based physics matching DodgeGame
+    -- paddle_friction: 1.0 = instant/no friction, 0.95 = slight drift, 0.85 = heavy momentum
+    local has_momentum = self.paddle_friction < 1.0
 
-    -- Use MovementController to update paddle
-    self.paddle_movement:update(dt, self.paddle, input, bounds)
+    if has_momentum then
+        if move_dir ~= 0 then
+            -- Apply input as acceleration (like DodgeGame line 916)
+            self.paddle.vx = self.paddle.vx + move_dir * self.paddle_speed * dt
+
+            -- Apply friction to accumulated velocity (like DodgeGame line 920-922)
+            local friction_factor = math.pow(self.paddle_friction, dt * 60)
+            self.paddle.vx = self.paddle.vx * friction_factor
+
+            -- Cap at max speed
+            if math.abs(self.paddle.vx) > self.paddle_speed then
+                self.paddle.vx = (self.paddle.vx > 0 and 1 or -1) * self.paddle_speed
+            end
+        else
+            -- Coasting - apply deceleration friction (like DodgeGame line 926-933)
+            local friction_factor = math.pow(self.paddle_friction, dt * 60)
+            self.paddle.vx = self.paddle.vx * friction_factor
+
+            -- Stop if velocity is very small
+            if math.abs(self.paddle.vx) < 1 then
+                self.paddle.vx = 0
+            end
+        end
+    else
+        -- Direct movement with no momentum (friction = 1.0)
+        self.paddle.vx = move_dir * self.paddle_speed
+    end
+
+    -- Update X position
+    self.paddle.x = self.paddle.x + self.paddle.vx * dt
+
+    -- Clamp to arena bounds
+    if self.paddle.x - self.paddle.width / 2 < 0 then
+        self.paddle.x = self.paddle.width / 2
+        self.paddle.vx = 0
+    elseif self.paddle.x + self.paddle.width / 2 > self.arena_width then
+        self.paddle.x = self.arena_width - self.paddle.width / 2
+        self.paddle.vx = 0
+    end
 end
 
 function Breakout:updateBall(ball, dt)

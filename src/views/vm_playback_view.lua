@@ -1,10 +1,12 @@
 -- src/views/vm_playback_view.lua: View for live VM playback visualization
 
-local Object = require('class')
+local BaseView = require('src.views.base_view')
 local Strings = require('src.utils.strings')
-local VMPlaybackView = Object:extend('VMPlaybackView')
+local VMPlaybackView = BaseView:extend('VMPlaybackView')
 
 function VMPlaybackView:init(di)
+    -- Note: controller is set later via setController()
+    VMPlaybackView.super.init(self, nil)
     self.di = di
     self.controller = nil -- Set by state
 end
@@ -13,7 +15,8 @@ function VMPlaybackView:setController(controller)
     self.controller = controller
 end
 
-function VMPlaybackView:drawWindowed(viewport_width, viewport_height)
+-- Implements BaseView's abstract drawContent method
+function VMPlaybackView:drawContent(viewport_width, viewport_height)
     local Config = (self.di and self.di.config) or require('src.config')
 
     -- Draw background
@@ -58,13 +61,8 @@ function VMPlaybackView:drawWindowed(viewport_width, viewport_height)
     local hud_height = 60
     local game_area_height = viewport_height - hud_height
 
-    -- Get viewport for scissor (screen coordinates)
-    local viewport = self.controller.viewport
-    local screen_x = viewport and viewport.x or 0
-    local screen_y = viewport and viewport.y or 0
-
-    -- Scissor to game area (use screen coordinates)
-    love.graphics.setScissor(screen_x, screen_y, viewport_width, game_area_height)
+    -- Scissor to game area
+    self:setScissor(0, 0, viewport_width, game_area_height)
 
     -- Draw game content
     local game = vm_slot.game_instance
@@ -84,7 +82,7 @@ function VMPlaybackView:drawWindowed(viewport_width, viewport_height)
 
         if not success then
             love.graphics.pop()
-            love.graphics.setScissor()
+            self:clearScissor()
             love.graphics.setColor(1, 0, 0)
             love.graphics.printf("Game render error: " .. tostring(err), 0, game_area_height / 2, viewport_width, "center", 0, 0.7, 0.7)
             return
@@ -94,7 +92,7 @@ function VMPlaybackView:drawWindowed(viewport_width, viewport_height)
     end
 
     -- Clear scissor
-    love.graphics.setScissor()
+    self:clearScissor()
 
     -- Draw HUD overlay
     self:drawHUD(0, game_area_height, viewport_width, hud_height, vm_slot)
