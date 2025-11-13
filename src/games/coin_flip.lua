@@ -8,6 +8,7 @@ local AnimationSystem = require('src.utils.game_components.animation_system')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
+local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local CoinFlip = BaseGame:extend('CoinFlip')
 
 -- Config-driven defaults with safe fallbacks
@@ -50,7 +51,8 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
 
     self.coin_bias = loader:get('coin_bias', DEFAULT_COIN_BIAS)
 
-    self.lives = loader:get('lives', DEFAULT_LIVES)
+    -- Lives handled by LivesHealthSystem (Phase 10)
+    local starting_lives = loader:get('lives', DEFAULT_LIVES)
 
     -- Timing Parameters
     self.time_per_flip = loader:get('time_per_flip', DEFAULT_TIME_PER_FLIP)
@@ -96,7 +98,7 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
         self.time_per_flip = self.time_per_flip * self.cheats.speed_modifier
     end
     if self.cheats.advantage_modifier then
-        self.lives = self.lives + (self.cheats.advantage_modifier or 0)
+        starting_lives = starting_lives + (self.cheats.advantage_modifier or 0)
     end
     if self.cheats.performance_modifier then
         -- Adjust bias toward 0.5 (fairer) based on modifier
@@ -190,11 +192,19 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
         on_complete = nil  -- No callback needed
     })
 
+    -- Lives/Health System (Phase 10)
+    self.health_system = LivesHealthSystem:new({
+        mode = "lives",
+        starting_lives = starting_lives,
+        max_lives = 10
+    })
+    self.lives = self.health_system.lives
+
     -- Initialize HUD (Phase 8: Standard HUD layout)
     self.hud = HUDRenderer:new({
         primary = {label = "Score", key = "score"},
         secondary = {label = "Streak", key = "current_streak"},
-        lives = {key = "lives", max = self.lives, style = "hearts"}
+        lives = {key = "lives", max = starting_lives, style = "hearts"}
     })
     self.hud.game = self  -- Link game reference
 
@@ -465,10 +475,11 @@ function CoinFlip:flipCoin()
 
         table.insert(self.flip_history, 0)  -- Track for ratio victory condition
 
-        -- Lose a life (if not unlimited)
+        -- Phase 10: Use LivesHealthSystem
         if self.lives < 999 then
-            self.lives = self.lives - 1
-            if self.lives <= 0 then
+            self.health_system:takeDamage(1, "wrong_guess")
+            self.lives = self.health_system.lives
+            if not self.health_system:isAlive() then
                 self.game_over = true
             end
         end
@@ -582,10 +593,11 @@ function CoinFlip:makeGuess(guess)
             tts:speakWeird("wrong", weirdness)
         end
 
-        -- Lose a life (if not unlimited)
+        -- Phase 10: Use LivesHealthSystem
         if self.lives < 999 then
-            self.lives = self.lives - 1
-            if self.lives <= 0 then
+            self.health_system:takeDamage(1, "wrong_guess")
+            self.lives = self.health_system.lives
+            if not self.health_system:isAlive() then
                 self.game_over = true
             end
         end

@@ -8,6 +8,7 @@ local AnimationSystem = require('src.utils.game_components.animation_system')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
+local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local RPS = BaseGame:extend('RPS')
 
 -- Config-driven defaults with safe fallbacks
@@ -171,8 +172,8 @@ function RPS:init(game_data, cheats, di, variant_override)
 
     self.time_limit = loader:get('time_limit', DEFAULT_TIME_LIMIT)
 
-    -- Phase 6 completion: Lives system parameters
-    self.lives = loader:get('lives', DEFAULT_LIVES)
+    -- Phase 10: Lives handled by LivesHealthSystem
+    local starting_lives = loader:get('lives', DEFAULT_LIVES)
 
     self.lose_life_on = loader:get('lose_life_on', DEFAULT_LOSE_LIFE_ON)
 
@@ -300,6 +301,15 @@ function RPS:init(game_data, cheats, di, variant_override)
         speed_multiplier = self.animation_speed,
         on_complete = nil  -- No callback needed
     })
+
+    -- Lives/Health System (Phase 10)
+    self.health_system = LivesHealthSystem:new({
+        mode = "lives",
+        starting_lives = starting_lives,
+        max_lives = 999,
+        lose_life_on = self.lose_life_on
+    })
+    self.lives = self.health_system.lives
 
     -- Initialize HUD (Phase 8: Standard HUD layout)
     self.hud = HUDRenderer:new({
@@ -714,10 +724,11 @@ function RPS:playRound(player_choice)
         -- Visual effects: screen flash (red for loss) - Phase 11
         self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")  -- Red flash
 
-        -- Phase 6 completion: Lives system - lose life on loss
+        -- Phase 10: Use LivesHealthSystem
         if self.lives < 999 and (self.lose_life_on == "loss" or self.lose_life_on == "both") then
-            self.lives = self.lives - 1
-            if self.lives <= 0 then
+            self.health_system:takeDamage(1, "round_loss")
+            self.lives = self.health_system.lives
+            if not self.health_system:isAlive() then
                 self.game_over = true
             end
         end
@@ -736,10 +747,11 @@ function RPS:playRound(player_choice)
             self.screen_flash_timer = 0.15
         end
 
-        -- Phase 6 completion: Lives system - lose life on tie (if configured)
+        -- Phase 10: Use LivesHealthSystem
         if self.lives < 999 and (self.lose_life_on == "tie" or self.lose_life_on == "both") then
-            self.lives = self.lives - 1
-            if self.lives <= 0 then
+            self.health_system:takeDamage(1, "round_tie")
+            self.lives = self.health_system.lives
+            if not self.health_system:isAlive() then
                 self.game_over = true
             end
         end

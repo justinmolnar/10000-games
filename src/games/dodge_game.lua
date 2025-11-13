@@ -9,6 +9,7 @@ local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
+local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -181,8 +182,8 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
 
     local victory_limit = loader:get('victory_limit', BASE_DODGE_TARGET)
 
-    -- Store new parameters as instance variables for access throughout the game
-    self.lives = lives
+    -- Phase 10: Lives handled by LivesHealthSystem
+    local starting_lives = lives
     self.obstacle_tracking = obstacle_tracking
     self.obstacle_speed_variance = obstacle_speed_variance
     self.obstacle_spawn_rate = obstacle_spawn_rate
@@ -339,11 +340,19 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     -- Phase 2.3: Load variant assets (with fallback to icons)
     self:loadAssets()
 
+    -- Lives/Health System (Phase 10)
+    self.health_system = LivesHealthSystem:new({
+        mode = "lives",
+        starting_lives = starting_lives,
+        max_lives = 20
+    })
+    self.lives = self.health_system.lives
+
     -- Standard HUD (Phase 8)
     self.hud = HUDRenderer:new({
         primary = {label = "Score", key = "score"},
         secondary = {label = "Time", key = "metrics.survival_time", format = "float"},
-        lives = {key = "lives", max = self.lives, style = "hearts"}
+        lives = {key = "lives", max = starting_lives, style = "hearts"}
     })
     self.hud.game = self
 
@@ -1212,8 +1221,12 @@ function DodgeGame:updateObjects(dt)
                 self:playSound("hit", 1.0)
                 self:triggerCameraShake()  -- Trigger shake on hit
 
+                -- Phase 10: Use LivesHealthSystem
+                self.health_system:takeDamage(1, "obstacle_collision")
+                self.lives = self.health_system.lives
+
                 -- Check if out of lives
-                if self.metrics.collisions >= self.lives then
+                if not self.health_system:isAlive() then
                     self:playSound("death", 1.0)
                     self:onComplete()
                     return

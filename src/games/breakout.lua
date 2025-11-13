@@ -11,6 +11,7 @@ local VisualEffects = require('src.utils.game_components.visual_effects')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
+local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local Breakout = BaseGame:extend('Breakout')
 
 -- Config-driven defaults with safe fallbacks
@@ -321,7 +322,7 @@ function Breakout:init(game_data, cheats, di, variant_override)
     end
 
     -- Game Parameters
-    self.lives = loader:get('lives', DEFAULT_LIVES)
+    -- Lives now handled by LivesHealthSystem (Phase 10)
 
     self.victory_condition = loader:get('victory_condition', DEFAULT_VICTORY_CONDITION)
 
@@ -357,7 +358,7 @@ function Breakout:init(game_data, cheats, di, variant_override)
         self.ball_max_speed = self.ball_max_speed * self.cheats.speed_modifier
     end
     if self.cheats.advantage_modifier then
-        self.lives = self.lives + math.floor(self.cheats.advantage_modifier or 0)
+        -- Lives handled by LivesHealthSystem (Phase 10)
         self.paddle_width = self.paddle_width * (1 + (self.cheats.advantage_modifier or 0) * 0.1)
     end
     if self.cheats.performance_modifier then
@@ -502,11 +503,26 @@ function Breakout:init(game_data, cheats, di, variant_override)
 
     self.brick_flash_map = {}  -- Track which bricks are flashing
 
+    -- Lives/Health System (Phase 10)
+    local starting_lives = loader:get('lives', DEFAULT_LIVES)
+    if self.cheats.advantage_modifier then
+        starting_lives = starting_lives + math.floor(self.cheats.advantage_modifier or 0)
+    end
+
+    self.health_system = LivesHealthSystem:new({
+        mode = "lives",
+        starting_lives = starting_lives,
+        max_lives = 10,
+        extra_life_enabled = true,
+        extra_life_threshold = self.extra_ball_score_threshold
+    })
+    self.lives = self.health_system.lives  -- Expose for HUD/VictoryCondition compatibility
+
     -- Standard HUD (Phase 8)
     self.hud = HUDRenderer:new({
         primary = {label = "Score", key = "score"},
         secondary = {label = "Bricks", key = "bricks_left"},
-        lives = {key = "lives", max = self.lives, style = "hearts"}
+        lives = {key = "lives", max = starting_lives, style = "hearts"}
     })
     self.hud.game = self
 
@@ -1066,10 +1082,13 @@ function Breakout:updateGameLogic(dt)
 
     if active_balls == 0 then
         self.balls_lost = self.balls_lost + 1
-        self.lives = self.lives - 1
         self.combo = 0  -- Reset combo on ball lost
 
-        if self.lives <= 0 then
+        -- Phase 10: Use LivesHealthSystem for damage
+        self.health_system:takeDamage(1, "ball_lost")
+        self.lives = self.health_system.lives  -- Sync for HUD/VictoryCondition
+
+        if not self.health_system:isAlive() then
             self.game_over = true
         else
             -- Respawn ball
@@ -1650,16 +1669,9 @@ function Breakout:checkBulletBrickCollision(bullet, brick)
 end
 
 function Breakout:checkExtraBallThreshold()
-    -- Check if we've crossed a new extra ball threshold (Phase 10)
-    if self.extra_ball_score_threshold <= 0 then
-        return  -- Feature disabled if threshold is 0 or negative
-    end
-
-    local current_threshold = math.floor(self.score / self.extra_ball_score_threshold)
-    if current_threshold > self.last_extra_ball_threshold then
-        -- Award extra life
-        self.lives = self.lives + 1
-        self.last_extra_ball_threshold = current_threshold
+    -- Phase 10: Use LivesHealthSystem for extra life awards
+    if self.health_system:checkExtraLifeAward(self.score) then
+        self.lives = self.health_system.lives  -- Sync for HUD/VictoryCondition
 
         -- Spawn green popup for extra life
         if self.score_popup_enabled then
@@ -1860,7 +1872,9 @@ function Breakout:collectPowerup(powerup)
 
     elseif powerup_type == "extra_life" then
         local count = config.count or 1
-        self.lives = self.lives + count
+        -- Phase 10: Use LivesHealthSystem
+        self.health_system:addLife(count)
+        self.lives = self.health_system.lives  -- Sync for HUD/VictoryCondition
 
     elseif powerup_type == "shield" then
         self.shield_active = true
