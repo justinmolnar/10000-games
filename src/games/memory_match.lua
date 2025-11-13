@@ -4,6 +4,7 @@ local MemoryMatchView = require('src.games.views.memory_match_view')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
+local VictoryCondition = require('src.utils.game_components.victory_condition')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
 -- Config-driven defaults with safe fallbacks
@@ -246,6 +247,23 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
         timer = {label = "Time", key = "time_elapsed", format = "float"}
     })
     self.hud.game = self
+
+    -- Victory Condition System (Phase 9)
+    local victory_config = {
+        victory = {type = "threshold", metric = "metrics.matches", target = self.total_pairs},
+        loss = {type = "none"},
+        check_loss_first = false
+    }
+
+    -- Add loss conditions if applicable
+    if self.time_limit > 0 then
+        victory_config.loss = {type = "time_expired", metric = "time_remaining"}
+    elseif self.move_limit > 0 then
+        victory_config.loss = {type = "move_limit", moves_metric = "moves_made", limit_metric = "move_limit"}
+    end
+
+    self.victory_checker = VictoryCondition:new(victory_config)
+    self.victory_checker.game = self
 
     -- Audio/visual variant data (Phase 1.3)
     self.view = MemoryMatchView:new(self, self.variant)
@@ -819,15 +837,21 @@ end
 function MemoryMatch:checkComplete()
     if self.memorize_phase then return false end
 
-    -- Check failure conditions first
+    -- Phase 9: Check penalty failure first
     if self.is_failed then
+        self.victory = false
+        self.game_over = true
         return true
     end
 
-    -- Check success condition
-    local matched_count = 0
-    for _ in pairs(self.matched_pairs) do matched_count = matched_count + 1 end
-    return matched_count >= self.total_pairs
+    -- Phase 9: Use VictoryCondition component
+    local result = self.victory_checker:check()
+    if result then
+        self.victory = (result == "victory")
+        self.game_over = (result == "loss")
+        return true
+    end
+    return false
 end
 
 -- Phase 3.3: Override onComplete to play success sound

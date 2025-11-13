@@ -5,6 +5,7 @@ local MovementController = require('src.utils.game_components.movement_controlle
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
+local VictoryCondition = require('src.utils.game_components.victory_condition')
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
@@ -561,6 +562,21 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
         lives = {key = "lives", max = self.lives, style = "hearts"}
     })
     self.hud.game = self
+
+    -- Victory Condition System (Phase 9)
+    local victory_config = {}
+    if self.victory_condition == "kills" then
+        victory_config.victory = {type = "threshold", metric = "metrics.kills", target = self.victory_limit}
+    elseif self.victory_condition == "time" then
+        victory_config.victory = {type = "time_survival", metric = "survival_time", target = self.victory_limit}
+    elseif self.victory_condition == "survival" then
+        victory_config.victory = {type = "endless"}
+    end
+    victory_config.loss = {type = "threshold", metric = "metrics.deaths", target = self.PLAYER_MAX_DEATHS}
+    victory_config.check_loss_first = true
+
+    self.victory_checker = VictoryCondition:new(victory_config)
+    self.victory_checker.game = self
 
     self.view = SpaceShooterView:new(self, self.variant)
     print("[SpaceShooter:init] Initialized with default game dimensions:", self.game_width, self.game_height)
@@ -1532,37 +1548,20 @@ function SpaceShooter:checkCollision(a, b)
 end
 
 function SpaceShooter:checkComplete()
-    -- Check death condition first (always applies)
-    if self.metrics.deaths >= self.PLAYER_MAX_DEATHS then
+    -- Phase 9: Use VictoryCondition component
+    local result = self.victory_checker:check()
+    if result then
+        self.victory = (result == "victory")
+        self.game_over = (result == "loss")
         return true
     end
-
-    -- Phase 8: Check victory condition
-    if self.victory_condition == "kills" then
-        return self.metrics.kills >= self.victory_limit
-    elseif self.victory_condition == "time" then
-        return self.survival_time >= self.victory_limit
-    elseif self.victory_condition == "survival" then
-        return false  -- Never complete (endless mode)
-    end
-
-    -- Default fallback
-    return self.metrics.kills >= self.target_kills
+    return false
 end
 
 -- Phase 3.3: Override onComplete to play success sound and stop music
 function SpaceShooter:onComplete()
-    -- Phase 8: Determine if win based on victory condition
-    local is_win = false
-    if self.metrics.deaths >= self.PLAYER_MAX_DEATHS then
-        is_win = false  -- Lost due to deaths
-    elseif self.victory_condition == "kills" then
-        is_win = self.metrics.kills >= self.victory_limit
-    elseif self.victory_condition == "time" then
-        is_win = self.survival_time >= self.victory_limit
-    else
-        is_win = self.metrics.kills >= self.target_kills  -- Default
-    end
+    -- Phase 9: Victory determined by VictoryCondition component
+    local is_win = self.victory
 
     if is_win then
         self:playSound("success", 1.0)

@@ -10,6 +10,7 @@ local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
+local VictoryCondition = require('src.utils.game_components.victory_condition')
 local Breakout = BaseGame:extend('Breakout')
 
 -- Config-driven defaults with safe fallbacks
@@ -379,6 +380,7 @@ function Breakout:init(game_data, cheats, di, variant_override)
     self.combo = 0
     self.max_combo = 0
     self.bricks_destroyed = 0
+    self.bricks_left = 0  -- Phase 9: Track remaining bricks for victory condition
     self.balls_lost = 0
     self.last_extra_ball_threshold = 0  -- Track when last extra ball was awarded
     self.time_elapsed = 0  -- For "time" victory condition
@@ -508,6 +510,25 @@ function Breakout:init(game_data, cheats, di, variant_override)
     })
     self.hud.game = self
 
+    -- Victory Condition System (Phase 9)
+    local victory_config = {}
+    if self.victory_condition == "clear_bricks" or self.victory_condition == "clear_all" then
+        victory_config.victory = {type = "clear_all", metric = "bricks_left"}
+    elseif self.victory_condition == "destroy_count" then
+        victory_config.victory = {type = "threshold", metric = "bricks_destroyed", target = self.destroy_count_target}
+    elseif self.victory_condition == "score" then
+        victory_config.victory = {type = "threshold", metric = "score", target = self.score_target}
+    elseif self.victory_condition == "time" then
+        victory_config.victory = {type = "time_survival", metric = "time_elapsed", target = self.time_target}
+    elseif self.victory_condition == "survival" then
+        victory_config.victory = {type = "endless"}
+    end
+    victory_config.loss = {type = "lives_depleted", metric = "lives"}
+    victory_config.check_loss_first = true
+
+    self.victory_checker = VictoryCondition:new(victory_config)
+    self.victory_checker.game = self
+
     -- Create view
     self.view = BreakoutView:new(self)
 end
@@ -621,6 +642,9 @@ function Breakout:generateBricks()
         -- Default to grid
         self:generateGridLayout()
     end
+
+    -- Phase 9: Count initial bricks
+    self.bricks_left = #self.bricks
 end
 
 function Breakout:generateGridLayout()
@@ -1005,6 +1029,7 @@ function Breakout:updateGameLogic(dt)
                     if brick.health <= 0 then
                         brick.alive = false
                         self.bricks_destroyed = self.bricks_destroyed + 1
+                        self.bricks_left = self.bricks_left - 1  -- Phase 9
 
                         -- Spawn power-up (Phase 13)
                         self:spawnPowerup(brick.x + brick.width / 2, brick.y + brick.height / 2)
@@ -1262,6 +1287,7 @@ function Breakout:updateBall(ball, dt)
             if brick.health <= 0 then
                 brick.alive = false
                 self.bricks_destroyed = self.bricks_destroyed + 1
+                self.bricks_left = self.bricks_left - 1  -- Phase 9
 
                 -- Spawn power-up (Phase 13)
                 self:spawnPowerup(brick.x + brick.width / 2, brick.y + brick.height / 2)
@@ -1643,48 +1669,21 @@ function Breakout:checkExtraBallThreshold()
 end
 
 function Breakout:checkVictoryConditions()
-    -- Check all victory conditions (Phase 10)
-    if self.victory_condition == "clear_bricks" then
-        -- Victory: Clear all bricks
-        local remaining = 0
-        for _, brick in ipairs(self.bricks) do
-            if brick.alive then
-                remaining = remaining + 1
-            end
-        end
-        if remaining == 0 then
-            -- Award perfect clear bonus if no balls lost (Phase 10)
+    -- Phase 9: Use VictoryCondition component
+    local result = self.victory_checker:check()
+    if result then
+        -- Award perfect clear bonus if all bricks cleared with no balls lost
+        if result == "victory" and (self.victory_condition == "clear_bricks" or self.victory_condition == "clear_all") then
             if self.balls_lost == 0 and self.perfect_clear_bonus > 0 then
                 self.score = self.score + self.perfect_clear_bonus
-                -- Spawn green popup for perfect clear
                 if self.score_popup_enabled then
                     self.popup_manager:add(self.arena_width / 2, self.arena_height / 2, "PERFECT CLEAR! +" .. self.perfect_clear_bonus, {0, 1, 0})
                 end
             end
-            self.victory = true
         end
 
-    elseif self.victory_condition == "destroy_count" then
-        -- Victory: Destroy N bricks (doesn't require clearing all)
-        if self.bricks_destroyed >= self.destroy_count_target then
-            self.victory = true
-        end
-
-    elseif self.victory_condition == "score" then
-        -- Victory: Reach target score
-        if self.score >= self.score_target then
-            self.victory = true
-        end
-
-    elseif self.victory_condition == "time" then
-        -- Victory: Survive for N seconds
-        if self.time_elapsed >= self.time_target then
-            self.victory = true
-        end
-
-    elseif self.victory_condition == "survival" then
-        -- Victory: Never complete (endless mode)
-        -- No victory condition - just play until game over
+        self.victory = (result == "victory")
+        self.game_over = (result == "loss")
     end
 end
 

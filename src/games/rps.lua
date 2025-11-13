@@ -7,6 +7,7 @@ local VisualEffects = require('src.utils.game_components.visual_effects')
 local AnimationSystem = require('src.utils.game_components.animation_system')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
+local VictoryCondition = require('src.utils.game_components.victory_condition')
 local RPS = BaseGame:extend('RPS')
 
 -- Config-driven defaults with safe fallbacks
@@ -319,6 +320,32 @@ function RPS:init(game_data, cheats, di, variant_override)
     if self.current_special_round then
         print("[RPS] Special round activated for first throw:", self.current_special_round)
     end
+
+    -- Victory Condition System (Phase 9)
+    local victory_config = {}
+
+    if self.victory_condition == "rounds" then
+        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.rounds_to_win}
+    elseif self.victory_condition == "first_to" then
+        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.first_to_target}
+    elseif self.victory_condition == "streak" then
+        victory_config.victory = {type = "streak", metric = "current_win_streak", target = self.streak_target}
+    elseif self.victory_condition == "total" then
+        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.total_wins_target}
+    elseif self.victory_condition == "time" then
+        victory_config.victory = {type = "time_survival", metric = "time_elapsed", target = self.time_limit}
+    end
+
+    -- Loss condition: ai_wins reaches rounds_to_win OR lives depleted
+    if self.lives < 999 then
+        victory_config.loss = {type = "lives_depleted", metric = "lives"}
+    else
+        victory_config.loss = {type = "threshold", metric = "ai_wins", target = self.rounds_to_win}
+    end
+    victory_config.check_loss_first = true
+
+    self.victory_checker = VictoryCondition:new(victory_config)
+    self.victory_checker.game = self
 end
 
 function RPS:setPlayArea(width, height)
@@ -873,31 +900,12 @@ function RPS:determineWinner(player, ai)
 end
 
 function RPS:checkVictoryCondition()
-    -- Phase 6 completion: Check various victory conditions
-    if self.victory_condition == "rounds" then
-        -- Default: First to win X rounds
-        return self.player_wins >= self.rounds_to_win
-
-    elseif self.victory_condition == "first_to" then
-        -- First to X wins (total)
-        return self.player_wins >= self.first_to_target
-
-    elseif self.victory_condition == "streak" then
-        -- Win X consecutive rounds
-        return self.current_win_streak >= self.streak_target
-
-    elseif self.victory_condition == "total" then
-        -- Get X total wins
-        return self.player_wins >= self.total_wins_target
-
-    elseif self.victory_condition == "time" then
-        -- Best record when time runs out (checked in updateGameLogic)
-        return false  -- Victory triggered by timer in update
-
-    else
-        -- Fallback to default
-        return self.player_wins >= self.rounds_to_win
+    -- Phase 9: Use VictoryCondition component
+    local result = self.victory_checker:check()
+    if result then
+        return result == "victory"
     end
+    return false
 end
 
 function RPS:activateSpecialRound()
@@ -925,7 +933,14 @@ function RPS:activateSpecialRound()
 end
 
 function RPS:checkComplete()
-    return self.victory or self.game_over
+    -- Phase 9: Use VictoryCondition component
+    local result = self.victory_checker:check()
+    if result then
+        self.victory = (result == "victory")
+        self.game_over = (result == "loss")
+        return true
+    end
+    return false
 end
 
 function RPS:draw()

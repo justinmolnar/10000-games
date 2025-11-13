@@ -3,6 +3,7 @@ local Config = rawget(_G, 'DI_CONFIG') or {}
 local SnakeView = require('src.games.views.snake_view')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
+local VictoryCondition = require('src.utils.game_components.victory_condition')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
 -- Config-driven defaults with safe fallbacks
@@ -270,6 +271,19 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
         secondary = {label = "Time", key = "metrics.survival_time", format = "float"}
     })
     self.hud.game = self  -- Link game reference
+
+    -- Victory Condition System (Phase 9)
+    local victory_config = {}
+    if self.victory_condition == "length" then
+        victory_config.victory = {type = "threshold", metric = "metrics.snake_length", target = self.victory_limit}
+    elseif self.victory_condition == "time" then
+        victory_config.victory = {type = "time_survival", metric = "time_elapsed", target = self.victory_limit}
+    end
+    victory_config.loss = {type = "death_event", flag = "completed"}
+    victory_config.check_loss_first = true
+
+    self.victory_checker = VictoryCondition:new(victory_config)
+    self.victory_checker.game = self
 
     self.view = SnakeView:new(self, self.variant)
     print("[SnakeGame:init] Variant:", self.variant and self.variant.name or "Default")
@@ -1448,24 +1462,13 @@ function SnakeGame:updateGameLogic(dt)
 end
 
 function SnakeGame:checkComplete()
-    -- Check victory conditions based on victory_condition type
-    if self.victory_condition == "length" then
-        -- Win by reaching target length
-        if self.metrics.snake_length >= self.victory_limit then
-            return true
-        end
-    elseif self.victory_condition == "time" then
-        -- Win by surviving time limit
-        if self.time_elapsed >= self.victory_limit then
-            return true
-        end
-    end
-
-    -- Lose condition: game marked completed (collision/death)
-    if self.completed then
+    -- Phase 9: Use VictoryCondition component
+    local result = self.victory_checker:check()
+    if result then
+        self.victory = (result == "victory")
+        self.game_over = (result == "loss")
         return true
     end
-
     return false
 end
 

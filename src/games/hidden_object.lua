@@ -2,6 +2,7 @@ local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local Collision = require('src.utils.collision')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
+local VictoryCondition = require('src.utils.game_components.victory_condition')
 local HiddenObjectView = require('src.games.views.hidden_object_view')
 local HiddenObject = BaseGame:extend('HiddenObject')
 
@@ -109,6 +110,16 @@ function HiddenObject:loadAssets()
 
     -- Phase 3.3: Load audio - using BaseGame helper
     self:loadAudio()
+
+    -- Victory Condition System (Phase 9)
+    local victory_config = {
+        victory = {type = "threshold", metric = "objects_found", target = self.total_objects},
+        loss = {type = "time_expired", metric = "time_remaining"},
+        check_loss_first = true
+    }
+
+    self.victory_checker = VictoryCondition:new(victory_config)
+    self.victory_checker.game = self
 end
 
 function HiddenObject:countLoadedSprites()
@@ -238,7 +249,14 @@ function HiddenObject:onComplete()
 end
 
 function HiddenObject:checkComplete()
-    return self.objects_found >= self.total_objects or self.time_remaining <= 0
+    -- Phase 9: Use VictoryCondition component
+    local result = self.victory_checker:check()
+    if result then
+        self.victory = (result == "victory")
+        self.game_over = (result == "loss")
+        return true
+    end
+    return false
 end
 
 function HiddenObject:keypressed(key)

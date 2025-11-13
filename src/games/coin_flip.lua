@@ -7,6 +7,7 @@ local VisualEffects = require('src.utils.game_components.visual_effects')
 local AnimationSystem = require('src.utils.game_components.animation_system')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
+local VictoryCondition = require('src.utils.game_components.victory_condition')
 local CoinFlip = BaseGame:extend('CoinFlip')
 
 -- Config-driven defaults with safe fallbacks
@@ -202,6 +203,26 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
 
     -- Initialize RNG with seed for deterministic flips
     self.rng = love.math.newRandomGenerator(self.seed or os.time())
+
+    -- Victory Condition System (Phase 9)
+    local victory_config = {}
+
+    if self.victory_condition == "streak" then
+        victory_config.victory = {type = "streak", metric = "current_streak", target = self.streak_target}
+    elseif self.victory_condition == "total" then
+        victory_config.victory = {type = "threshold", metric = "correct_total", target = self.total_correct_target}
+    elseif self.victory_condition == "ratio" then
+        -- Note: ratio checking uses flip_history in checkVictoryCondition (kept as is)
+        victory_config.victory = {type = "ratio", metric = "flip_history", target = self.ratio_target, count = self.ratio_flip_count}
+    elseif self.victory_condition == "time" then
+        victory_config.victory = {type = "time_survival", metric = "time_elapsed", target = self.time_limit}
+    end
+
+    victory_config.loss = {type = "lives_depleted", metric = "lives"}
+    victory_config.check_loss_first = true
+
+    self.victory_checker = VictoryCondition:new(victory_config)
+    self.victory_checker.game = self
 end
 
 function CoinFlip:setPlayArea(width, height)
@@ -583,16 +604,8 @@ function CoinFlip:makeGuess(guess)
 end
 
 function CoinFlip:checkVictoryCondition()
-    -- Check victory based on victory_condition type
-    if self.victory_condition == "streak" then
-        -- Default: reach streak_target consecutive correct
-        return self.current_streak >= self.streak_target
-
-    elseif self.victory_condition == "total" then
-        -- Reach total_correct_target total correct guesses
-        return self.correct_total >= self.total_correct_target
-
-    elseif self.victory_condition == "ratio" then
+    -- Phase 9: Keep ratio calculation for now (special case), use VictoryCondition for others
+    if self.victory_condition == "ratio" then
         -- Maintain ratio_target accuracy over ratio_flip_count flips
         if #self.flip_history >= self.ratio_flip_count then
             -- Calculate accuracy over last N flips
@@ -607,19 +620,25 @@ function CoinFlip:checkVictoryCondition()
             return recent_accuracy >= self.ratio_target
         end
         return false
-
-    elseif self.victory_condition == "time" then
-        -- Get highest streak within time_limit seconds (checked in updateGameLogic)
-        -- Victory triggered when time runs out
-        return false  -- Handled in updateGameLogic
-
     end
 
+    -- For all other victory types, use VictoryCondition
+    local result = self.victory_checker:check()
+    if result then
+        return result == "victory"
+    end
     return false
 end
 
 function CoinFlip:checkComplete()
-    return self.victory or self.game_over
+    -- Phase 9: Use VictoryCondition component
+    local result = self.victory_checker:check()
+    if result then
+        self.victory = (result == "victory")
+        self.game_over = (result == "loss")
+        return true
+    end
+    return false
 end
 
 function CoinFlip:draw()

@@ -8,6 +8,7 @@ local VisualEffects = require('src.utils.game_components.visual_effects')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
+local VictoryCondition = require('src.utils.game_components.victory_condition')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -345,6 +346,19 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
         lives = {key = "lives", max = self.lives, style = "hearts"}
     })
     self.hud.game = self
+
+    -- Victory Condition System (Phase 9)
+    local victory_config = {}
+    if self.victory_condition == "time" then
+        victory_config.victory = {type = "time_survival", metric = "time_elapsed", target = self.victory_limit}
+    else  -- dodge_count
+        victory_config.victory = {type = "threshold", metric = "metrics.objects_dodged", target = self.dodge_target}
+    end
+    victory_config.loss = {type = "lives_depleted", metric = "lives"}
+    victory_config.check_loss_first = true
+
+    self.victory_checker = VictoryCondition:new(victory_config)
+    self.victory_checker.game = self
 
     self.view = DodgeView:new(self, self.variant)
     print("[DodgeGame:init] Initialized with default game dimensions:", self.game_width, self.game_height)
@@ -1824,30 +1838,20 @@ function DodgeGame:updateSafeMorph(dt)
 end
 
 function DodgeGame:checkComplete()
-    -- Check loss conditions
-    if self.game_over or self.metrics.collisions >= self.lives then
+    -- Phase 9: Use VictoryCondition component
+    local result = self.victory_checker:check()
+    if result then
+        self.victory = (result == "victory")
+        self.game_over = (result == "loss")
         return true
     end
-
-    -- Check victory conditions
-    if self.victory_condition == "time" then
-        return self.time_elapsed >= self.victory_limit
-    elseif self.victory_condition == "dodge_count" then
-        return self.metrics.objects_dodged >= self.dodge_target
-    end
-
     return false
 end
 
 -- Phase 3.3: Override onComplete to play appropriate sound
 function DodgeGame:onComplete()
-    -- Determine if win or loss based on victory condition
-    local is_win = false
-    if self.victory_condition == "time" then
-        is_win = self.time_elapsed >= self.victory_limit
-    elseif self.victory_condition == "dodge_count" then
-        is_win = self.metrics.objects_dodged >= self.dodge_target
-    end
+    -- Phase 9: Victory determined by VictoryCondition component
+    local is_win = self.victory
 
     -- Apply score multiplier to metrics if won
     if is_win and self.score_mode ~= "none" then
