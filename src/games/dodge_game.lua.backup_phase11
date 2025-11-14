@@ -10,7 +10,6 @@ local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
-local EntityController = require('src.utils.game_components.entity_controller')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -306,24 +305,6 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
         jump_speed = jump_speed
     })
 
-    -- Phase 11: EntityController for obstacles
-    self.entity_controller = EntityController:new({
-        entity_types = {
-            ["obstacle"] = {
-                radius = OBJECT_RADIUS,
-                speed = self.object_speed,
-                type = "linear",
-                is_enemy = false,
-                warned = false,
-                should_remove = false,
-                was_dodged = false
-            }
-        },
-        spawning = {mode = "manual"},
-        pooling = true,
-        max_entities = 500
-    })
-
     self.objects = {}
     self.warnings = {}
     self.time_elapsed = 0
@@ -603,9 +584,6 @@ function DodgeGame:setPlayArea(width, height)
 end
 
 function DodgeGame:updateGameLogic(dt)
-    -- Phase 11: Sync objects array with EntityController
-    self.objects = self.entity_controller:getEntities()
-
     -- Check for game over conditions first
     self:checkGameOver()
 

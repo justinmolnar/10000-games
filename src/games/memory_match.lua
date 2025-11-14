@@ -5,6 +5,7 @@ local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
+local EntityController = require('src.utils.game_components.entity_controller')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
 -- Config-driven defaults with safe fallbacks
@@ -235,6 +236,19 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
 
     -- NOW calculate grid position (needs CARD_WIDTH and CARD_HEIGHT)
     self:calculateGridPosition()
+
+    -- Phase 11: EntityController for cards
+    self.entity_controller = EntityController:new({
+        entity_types = {
+            ["card"] = {
+                flipped = false,
+                matched = false
+            }
+        },
+        spawning = {mode = "manual"},
+        pooling = false,
+        max_entities = 100
+    })
 
     -- Create cards after sprites are loaded and dimensions are set
     self.cards = {}
@@ -482,6 +496,9 @@ function MemoryMatch:calculateGridPosition()
 end
 
 function MemoryMatch:updateGameLogic(dt)
+    -- Phase 11: Sync cards array with EntityController
+    self.cards = self.entity_controller:getEntities()
+
     if self.memorize_phase then
         self.memorize_timer = self.memorize_timer - dt
         if self.memorize_timer <= 0 then

@@ -12,7 +12,6 @@ local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
-local EntityController = require('src.utils.game_components.entity_controller')
 local Breakout = BaseGame:extend('Breakout')
 
 -- Config-driven defaults with safe fallbacks
@@ -425,32 +424,8 @@ function Breakout:init(game_data, cheats, di, variant_override)
     self.obstacles = {}
     self:generateObstacles()
 
-    -- Phase 11: Initialize EntityController for bricks
-    self.entity_controller = EntityController:new({
-        entity_types = {
-            ["brick"] = {
-                width = BRICK_WIDTH,
-                height = BRICK_HEIGHT,
-                alive = true,
-                vx = 0,
-                vy = 0,
-                regen_timer = 0,
-                on_hit = function(brick, ball)
-                    brick.health = brick.health - 1
-                    if brick.health <= 0 then
-                        brick.alive = false
-                        self.bricks_destroyed = self.bricks_destroyed + 1
-                        self.bricks_left = self.bricks_left - 1
-                    end
-                end
-            }
-        },
-        spawning = {mode = "manual"},
-        pooling = false,
-        max_entities = 500
-    })
-
-    -- Initialize bricks via EntityController
+    -- Initialize bricks
+    self.bricks = {}
     self:generateBricks()
 
     -- Initialize power-ups (Phase 13)
@@ -655,30 +630,8 @@ function Breakout:generateObstacles()
     end
 end
 
--- Phase 11: Helper to spawn bricks via EntityController
-function Breakout:addBrick(brick_data)
-    local brick = self.entity_controller:spawn("brick", brick_data.x, brick_data.y, {
-        health = brick_data.health or self.brick_health,
-        max_health = brick_data.max_health or self.brick_health,
-        shape = brick_data.shape or self.brick_shape,
-        radius = brick_data.radius or self.brick_radius,
-        collision_image = brick_data.collision_image or self.shared_collision_image_data,
-        display_image = brick_data.display_image or self.shared_display_image,
-        alpha_threshold = brick_data.alpha_threshold or self.brick_alpha_threshold
-    })
-
-    if brick and not self:canPlaceBrick(brick) then
-        self.entity_controller:removeEntity(brick)
-        return nil
-    end
-
-    return brick
-end
-
 function Breakout:generateBricks()
-    -- Phase 11: Clear existing bricks
-    self.entity_controller:clear()
-    self.bricks = {}  -- Keep legacy array for backward compatibility
+    self.bricks = {}
 
     -- Load collision/display images once for all bricks (shared)
     self.shared_collision_image_data = nil
@@ -706,9 +659,6 @@ function Breakout:generateBricks()
         self:generateGridLayout()
     end
 
-    -- Phase 11: Sync bricks array with entity controller
-    self.bricks = self.entity_controller:getEntities()
-
     -- Phase 9: Count initial bricks
     self.bricks_left = #self.bricks
 end
@@ -720,10 +670,28 @@ function Breakout:generateGridLayout()
 
     for row = 1, self.brick_rows do
         for col = 1, self.brick_columns do
-            self:addBrick({
+            local brick = {
                 x = start_x + (col - 1) * (BRICK_WIDTH + BRICK_PADDING),
-                y = start_y + (row - 1) * (BRICK_HEIGHT + BRICK_PADDING)
-            })
+                y = start_y + (row - 1) * (BRICK_HEIGHT + BRICK_PADDING),
+                width = BRICK_WIDTH,
+                height = BRICK_HEIGHT,
+                health = self.brick_health,
+                max_health = self.brick_health,
+                alive = true,
+                vx = 0,  -- For moving bricks
+                vy = 0,  -- For falling bricks
+                regen_timer = 0,  -- For regenerating bricks
+                shape = self.brick_shape,  -- "rectangle", "circle", or "png"
+                radius = self.brick_radius,  -- For circle bricks
+                collision_image = self.shared_collision_image_data,  -- ImageData for PNG collision
+                display_image = self.shared_display_image,  -- Image for rendering PNG bricks
+                alpha_threshold = self.brick_alpha_threshold  -- Alpha threshold for PNG collision
+            }
+
+            -- Check for overlap if bricks_can_overlap is false
+            if self:canPlaceBrick(brick) then
+                table.insert(self.bricks, brick)
+            end
         end
     end
 end
@@ -741,10 +709,26 @@ function Breakout:generatePyramidLayout()
         local start_x = (self.arena_width - total_width) / 2
 
         for col = 1, cols_this_row do
-            self:addBrick({
+            local brick = {
                 x = start_x + (col - 1) * (BRICK_WIDTH + BRICK_PADDING),
-                y = start_y + (row - 1) * (BRICK_HEIGHT + BRICK_PADDING)
-            })
+                y = start_y + (row - 1) * (BRICK_HEIGHT + BRICK_PADDING),
+                width = BRICK_WIDTH,
+                height = BRICK_HEIGHT,
+                health = self.brick_health,
+                max_health = self.brick_health,
+                alive = true,
+                vx = 0,
+                vy = 0,
+                regen_timer = 0,
+                shape = self.brick_shape,
+                radius = self.brick_radius,
+                collision_image = self.shared_collision_image_data,
+                display_image = self.shared_display_image,
+                alpha_threshold = self.brick_alpha_threshold
+            }
+            if self:canPlaceBrick(brick) then
+                table.insert(self.bricks, brick)
+            end
         end
     end
 end
@@ -762,10 +746,26 @@ function Breakout:generateCircleLayout()
 
         for i = 1, bricks_this_ring do
             local angle = (i / bricks_this_ring) * math.pi * 2
-            self:addBrick({
+            local brick = {
                 x = center_x + math.cos(angle) * radius - BRICK_WIDTH / 2,
-                y = center_y + math.sin(angle) * radius - BRICK_HEIGHT / 2
-            })
+                y = center_y + math.sin(angle) * radius - BRICK_HEIGHT / 2,
+                width = BRICK_WIDTH,
+                height = BRICK_HEIGHT,
+                health = self.brick_health,
+                max_health = self.brick_health,
+                alive = true,
+                vx = 0,
+                vy = 0,
+                regen_timer = 0,
+                shape = self.brick_shape,
+                radius = self.brick_radius,
+                collision_image = self.shared_collision_image_data,
+                display_image = self.shared_display_image,
+                alpha_threshold = self.brick_alpha_threshold
+            }
+            if self:canPlaceBrick(brick) then
+                table.insert(self.bricks, brick)
+            end
         end
     end
 end
@@ -780,12 +780,26 @@ function Breakout:generateRandomLayout()
     for attempt = 1, max_attempts do
         if placed >= brick_count then break end
 
-        local added = self:addBrick({
+        local brick = {
             x = margin + self.rng:random() * (self.arena_width - BRICK_WIDTH - margin * 2),
-            y = margin + self.rng:random() * (self.arena_height * 0.4)  -- Top 40% of arena
-        })
+            y = margin + self.rng:random() * (self.arena_height * 0.4),  -- Top 40% of arena
+            width = BRICK_WIDTH,
+            height = BRICK_HEIGHT,
+            health = self.brick_health,
+            max_health = self.brick_health,
+            alive = true,
+            vx = 0,
+            vy = 0,
+            regen_timer = 0,
+            shape = self.brick_shape,
+            radius = self.brick_radius,
+            collision_image = self.shared_collision_image_data,
+            display_image = self.shared_display_image,
+            alpha_threshold = self.brick_alpha_threshold
+        }
 
-        if added then
+        if self:canPlaceBrick(brick) then
+            table.insert(self.bricks, brick)
             placed = placed + 1
         end
     end
@@ -801,10 +815,26 @@ function Breakout:generateCheckerboardLayout()
         for col = 1, self.brick_columns do
             -- Skip every other brick in checkerboard pattern
             if (row + col) % 2 == 0 then
-                self:addBrick({
+                local brick = {
                     x = start_x + (col - 1) * (BRICK_WIDTH + BRICK_PADDING),
-                    y = start_y + (row - 1) * (BRICK_HEIGHT + BRICK_PADDING)
-                })
+                    y = start_y + (row - 1) * (BRICK_HEIGHT + BRICK_PADDING),
+                    width = BRICK_WIDTH,
+                    height = BRICK_HEIGHT,
+                    health = self.brick_health,
+                    max_health = self.brick_health,
+                    alive = true,
+                    vx = 0,
+                    vy = 0,
+                    regen_timer = 0,
+                    shape = self.brick_shape,
+                    radius = self.brick_radius,
+                    collision_image = self.shared_collision_image_data,
+                    display_image = self.shared_display_image,
+                    alpha_threshold = self.brick_alpha_threshold
+                }
+                if self:canPlaceBrick(brick) then
+                    table.insert(self.bricks, brick)
+                end
             end
         end
     end
@@ -816,10 +846,9 @@ function Breakout:canPlaceBrick(new_brick)
         return true
     end
 
-    -- Phase 11: Check if new brick overlaps with any existing brick from EntityController
-    local existing_bricks = self.entity_controller:getEntities()
-    for _, existing in ipairs(existing_bricks) do
-        if existing ~= new_brick and existing.alive then
+    -- Check if new brick overlaps with any existing brick
+    for _, existing in ipairs(self.bricks) do
+        if existing.alive then
             if self:checkBrickBrickCollision(new_brick, existing, new_brick.x, new_brick.y) then
                 return false
             end
@@ -830,9 +859,6 @@ function Breakout:canPlaceBrick(new_brick)
 end
 
 function Breakout:updateBricks(dt)
-    -- Phase 11: Update from EntityController
-    self.bricks = self.entity_controller:getEntities()
-
     for _, brick in ipairs(self.bricks) do
         -- Falling bricks
         if self.brick_fall_enabled and brick.alive then

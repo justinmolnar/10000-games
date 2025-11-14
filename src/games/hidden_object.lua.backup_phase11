@@ -3,7 +3,6 @@ local Config = rawget(_G, 'DI_CONFIG') or {}
 local Collision = require('src.utils.collision')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
-local EntityController = require('src.utils.game_components.entity_controller')
 local HiddenObjectView = require('src.games.views.hidden_object_view')
 local HiddenObject = BaseGame:extend('HiddenObject')
 
@@ -44,31 +43,10 @@ function HiddenObject:init(game_data, cheats, di, variant_override)
 
     self.time_remaining = self.time_limit
     self.objects_found = 0
+    self.objects = self:generateObjects()
 
     self.metrics.objects_found = 0
     self.metrics.time_bonus = 0
-
-    -- Phase 11: Entity Controller for object management
-    self.entity_controller = EntityController:new({
-        entity_types = {
-            ["hidden_object"] = {
-                size = OBJECT_BASE_SIZE,
-                radius = OBJECT_BASE_SIZE / 2,
-                found = false,
-                on_hit = function(entity)
-                    entity.found = true
-                    self.objects_found = self.objects_found + 1
-                    self:playSound("find_object", 1.0)
-                end
-            }
-        },
-        spawning = {mode = "manual"},  -- Manual spawning (we spawn all at init)
-        pooling = false,  -- Not needed for static objects
-        max_entities = 50
-    })
-
-    -- Generate and spawn all objects
-    self:generateObjects()
 
     -- Audio/visual variant data (Phase 1.3)
     -- NOTE: Asset loading will be implemented in Phase 2-3
@@ -171,28 +149,27 @@ end
 
 function HiddenObject:regenerateObjects()
     local positions = self:getDeterministicPositions()
-    local objects = self.entity_controller:getEntities()
-    for i = 1, math.min(#objects, #positions) do
-        objects[i].x = positions[i].x
-        objects[i].y = positions[i].y
+    for i = 1, math.min(self.total_objects, #positions) do
+        if self.objects[i] then
+            self.objects[i].x = positions[i].x
+            self.objects[i].y = positions[i].y
+        end
     end
 end
 
 function HiddenObject:generateObjects()
-    -- Clear any existing objects
-    self.entity_controller:clear()
-
+    local objects = {}
     local positions = self:getDeterministicPositions()
     for i = 1, self.total_objects do
         local pos = positions[i]
-        local sprite_variant = math.floor((i - 1) / math.max(1, ((HOCfg.objects and HOCfg.objects.sprite_variant_divisor_base) or 5) - self.difficulty_modifiers.complexity)) + 1
-
-        -- Spawn via EntityController
-        self.entity_controller:spawn("hidden_object", pos.x, pos.y, {
-            id = i,
-            sprite_variant = sprite_variant
-        })
+        objects[i] = {
+            id = i, x = pos.x, y = pos.y,
+            size = OBJECT_BASE_SIZE, radius = OBJECT_BASE_SIZE / 2, 
+            found = false,
+            sprite_variant = math.floor((i - 1) / math.max(1, ((HOCfg.objects and HOCfg.objects.sprite_variant_divisor_base) or 5) - self.difficulty_modifiers.complexity)) + 1 
+        }
     end
+    return objects
 end
 
 function HiddenObject:getDeterministicPositions()
@@ -224,22 +201,24 @@ end
 function HiddenObject:mousepressed(x, y, button)
     if self.completed or button ~= 1 then return end
 
-    -- Phase 11: Use EntityController collision checking
-    local click_point = {x = x, y = y, radius = 0}
-    local collisions = self.entity_controller:checkCollision(click_point, function(entity)
-        if not entity.found then
-            -- Trigger on_hit callback (which marks found and increments counter)
-            local entity_type = self.entity_controller.entity_types[entity.type_name]
-            if entity_type and entity_type.on_hit then
-                entity_type.on_hit(entity)
-            end
-        end
-    end)
+    for i = #self.objects, 1, -1 do
+        local obj = self.objects[i]
+        if not obj.found and self:checkObjectClick(obj, x, y) then
+            obj.found = true
+            self.objects_found = self.objects_found + 1
 
-    -- Play wrong click sound if no object was clicked
-    if #collisions == 0 then
-        self:playSound("wrong_click", 0.5)
+            -- Phase 3.3: Play find_object sound
+            self:playSound("find_object", 1.0)
+            return
+        end
     end
+
+    -- Phase 3.3: Play wrong_click sound (clicked but didn't hit an object)
+    self:playSound("wrong_click", 0.5)
+end
+
+function HiddenObject:checkObjectClick(obj, x, y)
+    return Collision.checkCircles(obj.x, obj.y, obj.radius, x, y, 0)
 end
 
 function HiddenObject:onComplete()

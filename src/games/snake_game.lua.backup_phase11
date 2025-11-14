@@ -4,7 +4,6 @@ local SnakeView = require('src.games.views.snake_view')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
-local EntityController = require('src.utils.game_components.entity_controller')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
 -- Config-driven defaults with safe fallbacks
@@ -161,17 +160,6 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
     -- Lock when: fixed arena + fixed camera mode (shows entire arena at all times)
     self.lock_aspect_ratio = (self.is_fixed_arena and self.camera_mode == "fixed")
     
-    -- Phase 11: EntityController for food and obstacles
-    self.entity_controller = EntityController:new({
-        entity_types = {
-            ["food"] = {},
-            ["obstacle"] = {}
-        },
-        spawning = {mode = "manual"},
-        pooling = false,
-        max_entities = 200
-    })
-
     -- Initialize obstacles as empty - will be populated in setPlayArea
     self.obstacles = {}
 
@@ -879,18 +867,6 @@ function SnakeGame:setPlayArea(width, height)
 end
 
 function SnakeGame:updateGameLogic(dt)
-    -- Phase 11: Sync arrays with EntityController
-    local entities = self.entity_controller:getEntities()
-    self.foods = {}
-    self.obstacles = {}
-    for _, entity in ipairs(entities) do
-        if entity.type_name == "food" then
-            table.insert(self.foods, entity)
-        elseif entity.type_name == "obstacle" then
-            table.insert(self.obstacles, entity)
-        end
-    end
-
     self.metrics.survival_time = self.time_elapsed
 
     -- Update food movement

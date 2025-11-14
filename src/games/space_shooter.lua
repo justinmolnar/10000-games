@@ -6,6 +6,7 @@ local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
+local EntityController = require('src.utils.game_components.entity_controller')
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
@@ -443,6 +444,19 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
         self.player.shield_hits_remaining = self.shield_max_hits
     end
 
+    -- Phase 11: EntityController for enemies and bullets
+    self.entity_controller = EntityController:new({
+        entity_types = {
+            ["enemy"] = {},
+            ["enemy_bullet"] = {},
+            ["asteroid"] = {},
+            ["powerup"] = {}
+        },
+        spawning = {mode = "manual"},
+        pooling = true,
+        max_entities = 1000
+    })
+
     self.enemies = {}
     self.player_bullets = {}
     self.enemy_bullets = {}
@@ -703,6 +717,24 @@ function SpaceShooter:setPlayArea(width, height)
 end
 
 function SpaceShooter:updateGameLogic(dt)
+    -- Phase 11: Sync arrays with EntityController
+    local entities = self.entity_controller:getEntities()
+    self.enemies = {}
+    self.enemy_bullets = {}
+    self.asteroids = {}
+    self.powerups = {}
+    for _, entity in ipairs(entities) do
+        if entity.type_name == "enemy" then
+            table.insert(self.enemies, entity)
+        elseif entity.type_name == "enemy_bullet" then
+            table.insert(self.enemy_bullets, entity)
+        elseif entity.type_name == "asteroid" then
+            table.insert(self.asteroids, entity)
+        elseif entity.type_name == "powerup" then
+            table.insert(self.powerups, entity)
+        end
+    end
+
     self:updatePlayer(dt)
 
     -- Phase 8: Track survival time for victory conditions

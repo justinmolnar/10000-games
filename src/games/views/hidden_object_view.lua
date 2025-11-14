@@ -42,8 +42,8 @@ function HiddenObjectView:draw()
     local object_sprite_fallback = game.data.icon_sprite or "magnifying_glass-0"
     local paletteManager = self.di and self.di.paletteManager
 
-    -- Phase 2.3: Draw objects (sprite or fallback to icon)
-    for _, obj in ipairs(game.objects) do
+    -- Phase 11: Draw objects via EntityController
+    game.entity_controller:draw(function(obj)
         if not obj.found then
             local angle = (obj.id * 13) % 360
 
@@ -87,7 +87,7 @@ function HiddenObjectView:draw()
 
             love.graphics.pop()
         end
-    end
+    end)
 
     -- Standard HUD (Phase 8)
     game.hud:draw(game.game_width, game.game_height)
