@@ -198,10 +198,6 @@ function BreakoutView:draw()
     self.game.visual_effects:drawParticles()
 
     -- Draw fog of war (Phase 11) - uses stencil, not canvases
-    if _G.DEBUG_FOG then
-        print(string.format("[BreakoutView] fog_of_war_enabled=%s, fog_controller=%s",
-            tostring(self.game.fog_of_war_enabled), tostring(self.game.fog_controller ~= nil)))
-    end
     if self.game.fog_of_war_enabled then
         self:drawFogOfWar()
     end

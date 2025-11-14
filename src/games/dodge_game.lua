@@ -11,6 +11,7 @@ local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local EntityController = require('src.utils.game_components.entity_controller')
+local ProjectileSystem = require('src.utils.game_components.projectile_system')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -332,6 +333,21 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     self.object_speed = ((BASE_OBJECT_SPEED * self.difficulty_modifiers.speed) * speed_modifier) * variant_difficulty
     self.warning_enabled = self.difficulty_modifiers.complexity <= ((DodgeCfg.warnings and DodgeCfg.warnings.complexity_threshold) or 2)
 
+    -- Phase 12: ProjectileSystem for shooter enemy projectiles (must be after self.object_speed is set)
+    self.projectile_system = ProjectileSystem:new({
+        projectile_types = {
+            ["enemy_projectile"] = {
+                speed = self.object_speed * 0.8,  -- Default, will be overridden per-shot
+                radius = OBJECT_RADIUS * 0.5,    -- Default, will be overridden per-shot
+                movement_type = "linear",
+                lifetime = 10.0,
+                team = "enemy"
+            }
+        },
+        pooling = true,
+        max_projectiles = 200
+    })
+
     -- Use victory_limit if condition is dodge_count, otherwise calculate from base_target
     if self.victory_condition == "dodge_count" then
         self.dodge_target = math.floor(self.victory_limit)
@@ -603,15 +619,31 @@ function DodgeGame:setPlayArea(width, height)
 end
 
 function DodgeGame:updateGameLogic(dt)
-    -- Phase 11: Sync objects array with EntityController
-    self.objects = self.entity_controller:getEntities()
-
     -- Check for game over conditions first
     self:checkGameOver()
 
     -- If game is over, freeze game state
     if self.game_over then
         return
+    end
+
+    -- Phase 11: Update EntityController (obstacles)
+    self.entity_controller:update(dt)
+
+    -- Phase 12: Update ProjectileSystem (shooter projectiles)
+    local game_bounds = {
+        x_min = 0,
+        x_max = self.game_width,
+        y_min = 0,
+        y_max = self.game_height
+    }
+    self.projectile_system:update(dt, game_bounds)
+
+    -- Phase 11 & 12: Sync objects array with both EntityController and ProjectileSystem
+    self.objects = self.entity_controller:getEntities()
+    local projectiles = self.projectile_system:getProjectiles()
+    for _, proj in ipairs(projectiles) do
+        table.insert(self.objects, proj)
     end
 
     -- NOTE: time_elapsed is already incremented in BaseGame:updateBase, don't double-increment!
@@ -1062,19 +1094,20 @@ function DodgeGame:updateObjects(dt)
                                    (DodgeCfg.objects and DodgeCfg.objects.shooter) or
                                    { projectile_size = 0.5, projectile_speed = 0.8 }
 
-                local projectile = {
-                    x = obj.x,
-                    y = obj.y,
-                    radius = OBJECT_RADIUS * (shooter_cfg.projectile_size or 0.5),
-                    type = 'linear',
-                    speed = self.object_speed * (shooter_cfg.projectile_speed or 0.8),
-                    angle = proj_angle,
-                    is_projectile = true,
-                    warned = false
-                }
-                projectile.vx = math.cos(proj_angle) * projectile.speed
-                projectile.vy = math.sin(proj_angle) * projectile.speed
-                table.insert(self.objects, projectile)
+                -- Phase 12: Spawn projectile via ProjectileSystem
+                local projectile_speed = self.object_speed * (shooter_cfg.projectile_speed or 0.8)
+                self.projectile_system:shoot(
+                    "enemy_projectile",
+                    obj.x,
+                    obj.y,
+                    proj_angle,
+                    projectile_speed / (self.object_speed * 0.8),  -- Speed multiplier relative to default
+                    {
+                        radius = OBJECT_RADIUS * (shooter_cfg.projectile_size or 0.5),
+                        is_projectile = true,
+                        warned = false
+                    }
+                )
             end
         elseif obj.type == 'bouncer' and obj.is_enemy then
             -- Bouncer: Bounce off walls (after entering play area)
@@ -1221,15 +1254,24 @@ function DodgeGame:updateObjects(dt)
                 local shards = (DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shards_count) or 3
                 self:spawnShards(obj, shards)
                 obj.did_split = true
-                table.remove(self.objects, i)
+                -- Phase 11/12: Remove via component
+                if obj.is_projectile then
+                    self.projectile_system:removeProjectile(obj)
+                else
+                    self.entity_controller:removeEntity(obj)
+                end
                 goto continue_obj_loop
             end
             obj.was_inside = inside
         end
 
         if Collision.checkCircles(self.player.x, self.player.y, self.player.radius, obj.x, obj.y, obj.radius) then
-            -- Remove object first
-            table.remove(self.objects, i)
+            -- Remove object via component
+            if obj.is_projectile then
+                self.projectile_system:removeProjectile(obj)
+            else
+                self.entity_controller:removeEntity(obj)
+            end
 
             -- Check shield first
             if self:hasActiveShield() then
@@ -1269,7 +1311,11 @@ function DodgeGame:updateObjects(dt)
 
             if hit_trail then
                 -- Hit trail, treat like object collision
-                table.remove(self.objects, i)
+                if obj.is_projectile then
+                    self.projectile_system:removeProjectile(obj)
+                else
+                    self.entity_controller:removeEntity(obj)
+                end
                 if self:hasActiveShield() then
                     self:consumeShield()
                     self:playSound("hit", 0.5)
@@ -1286,7 +1332,11 @@ function DodgeGame:updateObjects(dt)
                 end
             end
         elseif self:isObjectOffscreen(obj) or obj.should_remove then
-            table.remove(self.objects, i)
+            if obj.is_projectile then
+                self.projectile_system:removeProjectile(obj)
+            else
+                self.entity_controller:removeEntity(obj)
+            end
             if obj.entered_play or obj.was_dodged then
                 self.metrics.objects_dodged = self.metrics.objects_dodged + 1
 
@@ -1520,55 +1570,53 @@ function DodgeGame:createEnemyObject(spawn_x, spawn_y, angle, was_warned, enemy_
     local sprite_rotation = (sprite_settings and sprite_settings.rotation) or 0
     local sprite_direction = (sprite_settings and sprite_settings.direction) or "movement_based"
 
-    local obj = {
+    -- Build custom params for EntityController
+    local custom_params = {
         warned = was_warned,
         radius = final_radius,
         type = base_type,
-        enemy_type = enemy_def.name,  -- Store enemy type for identification
+        enemy_type = enemy_def.name,
         speed = final_speed,
-        is_enemy = true,  -- Mark as variant enemy (not regular obstacle)
-        sprite_rotation_angle = 0,  -- Accumulated rotation for sprite rendering (degrees)
-        sprite_rotation_speed = sprite_rotation,  -- Rotation speed in degrees/second
-        sprite_direction_mode = sprite_direction  -- "movement_based" or angle in degrees (0-360)
+        is_enemy = true,
+        sprite_rotation_angle = 0,
+        sprite_rotation_speed = sprite_rotation,
+        sprite_direction_mode = sprite_direction,
+        angle = angle or 0,
+        vx = math.cos(angle or 0) * final_speed,
+        vy = math.sin(angle or 0) * final_speed
     }
-
-    obj.x = spawn_x
-    obj.y = spawn_y
-    obj.angle = angle or 0
-    obj.vx = math.cos(obj.angle) * obj.speed
-    obj.vy = math.sin(obj.angle) * obj.speed
 
     -- Special initialization for specific enemy types
     if base_type == 'zigzag' or base_type == 'sine' then
         local zig = (DodgeCfg.objects and DodgeCfg.objects.zigzag) or { wave_speed_min = 6, wave_speed_range = 4, wave_amp = 30 }
-        obj.wave_speed = (zig.wave_speed_min or 6) + math.random() * (zig.wave_speed_range or 4)
-        obj.wave_amp = zig.wave_amp or 30
-        obj.wave_phase = math.random()*math.pi*2
+        custom_params.wave_speed = (zig.wave_speed_min or 6) + math.random() * (zig.wave_speed_range or 4)
+        custom_params.wave_amp = zig.wave_amp or 30
+        custom_params.wave_phase = math.random()*math.pi*2
     elseif base_type == 'shooter' then
-        -- Get shoot interval (variant override or config default)
         local shoot_interval = 2.0
         if self.variant and self.variant.shooter and self.variant.shooter.shoot_interval then
             shoot_interval = self.variant.shooter.shoot_interval
         elseif DodgeCfg.objects and DodgeCfg.objects.shooter and DodgeCfg.objects.shooter.shoot_interval then
             shoot_interval = DodgeCfg.objects.shooter.shoot_interval
         end
-        obj.shoot_timer = shoot_interval
-        obj.shoot_interval = shoot_interval
+        custom_params.shoot_timer = shoot_interval
+        custom_params.shoot_interval = shoot_interval
     elseif base_type == 'teleporter' then
-        obj.teleport_timer = enemy_def.teleport_interval or 3.0
-        obj.teleport_interval = enemy_def.teleport_interval or 3.0
-        obj.teleport_range = enemy_def.teleport_range or 100
+        custom_params.teleport_timer = enemy_def.teleport_interval or 3.0
+        custom_params.teleport_interval = enemy_def.teleport_interval or 3.0
+        custom_params.teleport_range = enemy_def.teleport_range or 100
     elseif base_type == 'bouncer' then
-        obj.bounce_count = 0
-        obj.has_entered = false  -- Track if bouncer has entered play area yet
+        custom_params.bounce_count = 0
+        custom_params.has_entered = false
     end
 
-    table.insert(self.objects, obj)
+    -- Phase 11: Spawn via EntityController
+    local obj = self.entity_controller:spawn("obstacle", spawn_x, spawn_y, custom_params)
 
     -- Debug output (limited to avoid spam)
-    if not self._last_enemy_debug or (love.timer.getTime() - self._last_enemy_debug) > 1.0 then
+    if obj and (not self._last_enemy_debug or (love.timer.getTime() - self._last_enemy_debug) > 1.0) then
         print(string.format("[DodgeGame] Created enemy: type=%s, enemy_type=%s, is_enemy=%s",
-            obj.type, obj.enemy_type, tostring(obj.is_enemy)))
+            obj.type or "nil", obj.enemy_type or "nil", tostring(obj.is_enemy)))
         self._last_enemy_debug = love.timer.getTime()
     end
 
@@ -1700,33 +1748,31 @@ function DodgeGame:createObject(spawn_x, spawn_y, angle, was_warned, kind)
         base_speed = base_speed * speed_var
     end
 
-    local obj = {
+    local custom_params = {
         warned = was_warned,
         radius = base_radius,
         type = kind or 'linear',
         speed = base_speed,
-        tracking_strength = self.obstacle_tracking or 0  -- Store tracking strength
+        tracking_strength = self.obstacle_tracking or 0,
+        angle = angle or 0,
+        vx = math.cos(angle or 0) * base_speed,
+        vy = math.sin(angle or 0) * base_speed
     }
-    obj.x = spawn_x
-    obj.y = spawn_y
-    -- Heading toward chosen target angle
-    obj.angle = angle or 0
-    obj.vx = math.cos(obj.angle) * obj.speed
-    obj.vy = math.sin(obj.angle) * obj.speed
 
     -- Initialize trail if enabled
     if self.obstacle_trails > 0 then
-        obj.trail_positions = {}
+        custom_params.trail_positions = {}
     end
 
-    if obj.type == 'zigzag' or obj.type == 'sine' then
+    if (kind or 'linear') == 'zigzag' or (kind or 'linear') == 'sine' then
         local zig = (DodgeCfg.objects and DodgeCfg.objects.zigzag) or { wave_speed_min = 6, wave_speed_range = 4, wave_amp = 30 }
-        obj.wave_speed = (zig.wave_speed_min or 6) + math.random() * (zig.wave_speed_range or 4)
-        obj.wave_amp = zig.wave_amp or 30
-        obj.wave_phase = math.random()*math.pi*2
+        custom_params.wave_speed = (zig.wave_speed_min or 6) + math.random() * (zig.wave_speed_range or 4)
+        custom_params.wave_amp = zig.wave_amp or 30
+        custom_params.wave_phase = math.random()*math.pi*2
     end
-    table.insert(self.objects, obj)
-    return obj
+
+    -- Phase 11: Spawn via EntityController
+    return self.entity_controller:spawn("obstacle", spawn_x, spawn_y, custom_params)
 end
 
 function DodgeGame:spawnShards(parent, count)
@@ -1735,19 +1781,20 @@ function DodgeGame:spawnShards(parent, count)
         -- Emit shards around parent's current heading with some spread
         local spread = math.rad(((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.spread_deg) or 35))
         local a = parent.angle + (math.random()*2 - 1) * spread
-        local shard = {
-            x = parent.x,
-            y = parent.y,
-            radius = math.max(((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shard_radius_min) or 6), math.floor(parent.radius * (((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shard_radius_factor) or 0.6)))) ,
+        local shard_speed = self.object_speed * (((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shard_speed_factor) or 0.36))
+
+        local custom_params = {
+            radius = math.max(((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shard_radius_min) or 6), math.floor(parent.radius * (((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shard_radius_factor) or 0.6)))),
             type = 'linear',
-            -- about 70% slower than previous 1.2x => ~0.36x base speed
-            speed = self.object_speed * (((DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shard_speed_factor) or 0.36)),
-            warned = false
+            speed = shard_speed,
+            warned = false,
+            angle = a,
+            vx = math.cos(a) * shard_speed,
+            vy = math.sin(a) * shard_speed
         }
-        shard.angle = a
-        shard.vx = math.cos(shard.angle) * shard.speed
-        shard.vy = math.sin(shard.angle) * shard.speed
-        table.insert(self.objects, shard)
+
+        -- Phase 11: Spawn via EntityController
+        self.entity_controller:spawn("obstacle", parent.x, parent.y, custom_params)
     end
 end
 

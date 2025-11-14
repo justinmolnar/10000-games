@@ -13,7 +13,6 @@ local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local EntityController = require('src.utils.game_components.entity_controller')
-local ProjectileSystem = require('src.utils.game_components.projectile_system')
 local Breakout = BaseGame:extend('Breakout')
 
 -- Config-driven defaults with safe fallbacks
@@ -413,26 +412,6 @@ function Breakout:init(game_data, cheats, di, variant_override)
         rail_axis = "horizontal"  -- Paddle only moves horizontally
     })
 
-    -- Phase 12: ProjectileSystem for balls
-    self.projectile_system = ProjectileSystem:new({
-        projectile_types = {
-            ["ball"] = {
-                speed = BALL_SPEED,
-                radius = BALL_RADIUS,
-                movement_type = "bounce",
-                lifetime = 999,
-                team = "player",
-                -- Breakout balls bounce off top/left/right but NOT bottom
-                bounce_top = true,
-                bounce_left = true,
-                bounce_right = true,
-                bounce_bottom = false
-            }
-        },
-        pooling = false,
-        max_projectiles = 50
-    })
-
     -- Initialize ball(s)
     self.balls = {}
     for i = 1, self.ball_count do
@@ -522,12 +501,21 @@ function Breakout:init(game_data, cheats, di, variant_override)
         self.fog_of_war_radius = self.variant.fog_of_war_radius
     end
 
+    if _G.DEBUG_FOG then
+        print(string.format("[Breakout] About to create fog_controller: fog_of_war_enabled=%s, FogOfWar=%s",
+            tostring(self.fog_of_war_enabled), tostring(FogOfWar)))
+    end
+
     -- Initialize FogOfWar component (stencil mode)
     self.fog_controller = FogOfWar:new({
         enabled = self.fog_of_war_enabled,
         mode = "stencil",
         opacity = 0.8
     })
+
+    if _G.DEBUG_FOG then
+        print(string.format("[Breakout] fog_controller created: %s", tostring(self.fog_controller ~= nil)))
+    end
 
     -- Initialize VisualEffects component (camera shake + particles)
     self.visual_effects = VisualEffects:new({
@@ -636,19 +624,17 @@ end
 
 function Breakout:spawnBall()
     local angle = -math.pi / 2 + (self.rng:random() - 0.5) * self.ball_spawn_angle_variance
-
-    -- Phase 12: Use ProjectileSystem to spawn ball
-    self.projectile_system:shoot(
-        "ball",
-        self.paddle.x,
-        self.paddle.y - BALL_RADIUS - 10,
-        angle,
-        1.0,  -- speed_multiplier
-        {
-            pierce_count = self.ball_phase_through_bricks,  -- For phase-through bricks
-            trail = {}  -- Position history for trail rendering
-        }
-    )
+    local ball = {
+        x = self.paddle.x,
+        y = self.paddle.y - BALL_RADIUS - 10,
+        radius = BALL_RADIUS,
+        vx = math.cos(angle) * self.ball_speed,
+        vy = math.sin(angle) * self.ball_speed,
+        active = true,
+        pierce_count = self.ball_phase_through_bricks,  -- For phase-through bricks
+        trail = {}  -- Position history for trail rendering
+    }
+    table.insert(self.balls, ball)
 end
 
 function Breakout:generateObstacles()
@@ -968,18 +954,6 @@ function Breakout:updateGameLogic(dt)
     end
 
     -- NOTE: time_elapsed is already incremented in BaseGame:updateBase, don't double-increment!
-
-    -- Phase 12: Update ProjectileSystem (balls)
-    local game_bounds = {
-        x_min = 0,
-        x_max = self.arena_width,
-        y_min = 0,
-        y_max = self.arena_height
-    }
-    self.projectile_system:update(dt, game_bounds)
-
-    -- Phase 12: Sync balls array with ProjectileSystem
-    self.balls = self.projectile_system:getProjectiles()
 
     -- Update power-ups (Phase 13)
     self:updatePowerups(dt)
@@ -1682,10 +1656,8 @@ end
 
 function Breakout:checkVictoryConditions()
     -- Phase 9: Use VictoryCondition component
-    print("DEBUG VICTORY CHECK: bricks_left=" .. tostring(self.bricks_left) .. ", balls=" .. tostring(#self.balls))
     local result = self.victory_checker:check()
     if result then
-        print("DEBUG VICTORY RESULT: " .. tostring(result))
         -- Award perfect clear bonus if all bricks cleared with no balls lost
         if result == "victory" and (self.victory_condition == "clear_bricks" or self.victory_condition == "clear_all") then
             if self.balls_lost == 0 and self.perfect_clear_bonus > 0 then
@@ -1774,7 +1746,7 @@ function Breakout:collectPowerup(powerup)
         local count = config.count or 2
         local angle_spread = config.angle_spread or (math.pi/6)
 
-        -- Phase 12: Spawn balls via ProjectileSystem
+        local balls_to_spawn = {}
         for _, ball in ipairs(self.balls) do
             if ball.active then
                 for i = 1, count do
@@ -1783,20 +1755,21 @@ function Breakout:collectPowerup(powerup)
                     local current_angle = math.atan2(ball.vy, ball.vx)
                     local new_angle = current_angle + angle_offset
 
-                    self.projectile_system:shoot(
-                        "ball",
-                        ball.x,
-                        ball.y,
-                        new_angle,
-                        speed / self.ball_speed,  -- Convert absolute speed to multiplier
-                        {
-                            radius = ball.radius,
-                            trail = {}
-                        }
-                    )
+                    table.insert(balls_to_spawn, {
+                        x = ball.x,
+                        y = ball.y,
+                        vx = math.cos(new_angle) * speed,
+                        vy = math.sin(new_angle) * speed,
+                        radius = ball.radius,
+                        active = true,
+                        trail = {}
+                    })
                 end
                 break  -- Only spawn from first active ball
             end
+        end
+        for _, new_ball in ipairs(balls_to_spawn) do
+            table.insert(self.balls, new_ball)
         end
 
     elseif powerup_type == "paddle_extend" then

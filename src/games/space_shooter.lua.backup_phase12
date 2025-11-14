@@ -7,7 +7,6 @@ local VariantLoader = require('src.utils.game_components.variant_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local EntityController = require('src.utils.game_components.entity_controller')
-local ProjectileSystem = require('src.utils.game_components.projectile_system')
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
@@ -459,29 +458,6 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     })
 
     self.enemies = {}
-
-    -- Phase 12: ProjectileSystem for bullets
-    self.projectile_system = ProjectileSystem:new({
-        projectile_types = {
-            ["player_bullet"] = {
-                speed = 400,
-                damage = 1,
-                radius = 3,
-                lifetime = 5.0,
-                team = "player"
-            },
-            ["enemy_bullet"] = {
-                speed = 200,
-                damage = 1,
-                radius = 4,
-                lifetime = 10.0,
-                team = "enemy"
-            }
-        },
-        pooling = true,
-        max_projectiles = 500
-    })
-
     self.player_bullets = {}
     self.enemy_bullets = {}
 
@@ -741,36 +717,23 @@ function SpaceShooter:setPlayArea(width, height)
 end
 
 function SpaceShooter:updateGameLogic(dt)
-    -- Phase 11: Update EntityController (enemies, asteroids, powerups)
-    self.entity_controller:update(dt)
-
     -- Phase 11: Sync arrays with EntityController
     local entities = self.entity_controller:getEntities()
     self.enemies = {}
+    self.enemy_bullets = {}
     self.asteroids = {}
     self.powerups = {}
     for _, entity in ipairs(entities) do
         if entity.type_name == "enemy" then
             table.insert(self.enemies, entity)
+        elseif entity.type_name == "enemy_bullet" then
+            table.insert(self.enemy_bullets, entity)
         elseif entity.type_name == "asteroid" then
             table.insert(self.asteroids, entity)
         elseif entity.type_name == "powerup" then
             table.insert(self.powerups, entity)
         end
     end
-
-    -- Phase 12: Update ProjectileSystem (bullets)
-    local game_bounds = {
-        x_min = 0,
-        x_max = self.game_width,
-        y_min = 0,
-        y_max = self.game_height
-    }
-    self.projectile_system:update(dt, game_bounds)
-
-    -- Phase 12: Sync bullets with ProjectileSystem
-    self.player_bullets = self.projectile_system:getProjectilesByTeam("player")
-    self.enemy_bullets = self.projectile_system:getProjectilesByTeam("enemy")
 
     self:updatePlayer(dt)
 
@@ -1035,8 +998,8 @@ function SpaceShooter:updateEnemies(dt)
                 self.metrics.combo = 0  -- Phase 2: Reset combo on death
                 self:playSound("hit", 1.0)
             end
-            -- Remove enemy on collision (Phase 11: use EntityController)
-            self.entity_controller:removeEntity(enemy)
+            -- Remove enemy on collision
+            table.remove(self.enemies, i)
             goto continue_enemy_loop
         end
 
@@ -1055,7 +1018,7 @@ function SpaceShooter:updateEnemies(dt)
             -- Phase 8: In reverse gravity, remove when going off top; otherwise remove when going off bottom
             local off_screen = self.reverse_gravity and (enemy.y + enemy.height < 0) or (enemy.y > self.game_height)
             if off_screen then
-                self.entity_controller:removeEntity(enemy)
+                table.remove(self.enemies, i)
             end
         end
         ::continue_enemy_loop::
@@ -1152,7 +1115,7 @@ function SpaceShooter:updateBullets(dt)
                 -- All enemies now have health (default 1, configurable via enemy_health parameter)
                 enemy.health = enemy.health - 1
                 if enemy.health <= 0 then
-                    self.entity_controller:removeEntity(enemy)
+                    table.remove(self.enemies, j)
                     self.metrics.kills = self.metrics.kills + 1
                     self.metrics.combo = self.metrics.combo + 1  -- Phase 2: Increment combo
 
@@ -1162,7 +1125,7 @@ function SpaceShooter:updateBullets(dt)
 
                 -- Phase 3: Piercing bullets don't get removed on hit
                 if not bullet.piercing then
-                    self.projectile_system:removeProjectile(bullet)
+                    table.remove(self.player_bullets, i)
                     goto next_player_bullet
                 end
             end
@@ -1172,18 +1135,18 @@ function SpaceShooter:updateBullets(dt)
         if self.screen_wrap_bullets then
             local should_destroy = self:applyScreenWrap(bullet, self.bullet_max_wraps)
             if should_destroy then
-                self.projectile_system:removeProjectile(bullet)
+                table.remove(self.player_bullets, i)
             end
         else
             -- Remove bullets that go off screen (any direction)
             if bullet.directional then
                 if bullet.x < -BULLET_WIDTH or bullet.x > self.game_width or
                    bullet.y < -BULLET_HEIGHT or bullet.y > self.game_height then
-                    self.projectile_system:removeProjectile(bullet)
+                    table.remove(self.player_bullets, i)
                 end
             else
                 if bullet.y < -BULLET_HEIGHT then
-                    self.projectile_system:removeProjectile(bullet)
+                    table.remove(self.player_bullets, i)
                 end
             end
         end
@@ -1205,7 +1168,7 @@ function SpaceShooter:updateBullets(dt)
         end
 
         if self:checkCollision(bullet, self.player) then
-            self.projectile_system:removeProjectile(bullet)
+            table.remove(self.enemy_bullets, i)
 
             -- Phase 2: Check shield first
             if self.shield_enabled and self.player.shield_active then
@@ -1231,11 +1194,11 @@ function SpaceShooter:updateBullets(dt)
         if bullet.directional then
             if bullet.x < -BULLET_WIDTH or bullet.x > self.game_width or
                bullet.y < -BULLET_HEIGHT or bullet.y > self.game_height then
-                self.projectile_system:removeProjectile(bullet)
+                table.remove(self.enemy_bullets, i)
             end
         else
             if bullet.y > self.game_height + BULLET_HEIGHT then
-                self.projectile_system:removeProjectile(bullet)
+                table.remove(self.enemy_bullets, i)
             end
         end
         ::next_enemy_bullet::
@@ -1347,70 +1310,57 @@ function SpaceShooter:playerShoot(charge_multiplier)
 end
 
 -- Phase 3: Helper to create individual bullets with pattern support
--- Phase 12: Migrated to use ProjectileSystem
 function SpaceShooter:createBullet(angle, charge_multiplier, x_offset, wave_type)
     angle = angle or 0
     charge_multiplier = charge_multiplier or 1.0
     x_offset = x_offset or 0
     wave_type = wave_type or nil
 
+    local bullet = {
+        width = BULLET_WIDTH,
+        height = BULLET_HEIGHT,
+        charge_multiplier = charge_multiplier,
+        homing = self.bullet_homing,
+        homing_strength = self.homing_strength,
+        piercing = self.bullet_piercing,
+        wave_type = wave_type,
+        wave_time = 0,
+        wrap_count = 0  -- Phase 8: Track how many times bullet has wrapped
+    }
+
     local rad = math.rad(angle)
 
     -- Calculate spawn position
-    local spawn_x, spawn_y
     if self.movement_type == "asteroids" then
         -- Offset bullet spawn to front of ship
         local offset_distance = self.player.height / 2
         local offset_x = math.sin(rad) * offset_distance
         local offset_y = -math.cos(rad) * offset_distance
 
-        spawn_x = self.player.x + offset_x + x_offset - BULLET_WIDTH/2
-        spawn_y = self.player.y + offset_y - BULLET_HEIGHT/2
+        bullet.x = self.player.x + offset_x + x_offset - BULLET_WIDTH/2
+        bullet.y = self.player.y + offset_y - BULLET_HEIGHT/2
     else
         -- All other modes: spawn from top-center (or bottom-center if reverse gravity)
-        spawn_x = self.player.x + x_offset - BULLET_WIDTH/2
+        bullet.x = self.player.x + x_offset - BULLET_WIDTH/2
         if self.reverse_gravity then
-            spawn_y = self.player.y + self.player.height/2  -- Spawn from bottom
+            bullet.y = self.player.y + self.player.height/2  -- Spawn from bottom
         else
-            spawn_y = self.player.y - self.player.height/2  -- Spawn from top
+            bullet.y = self.player.y - self.player.height/2  -- Spawn from top
         end
     end
 
-    -- Phase 12: Convert from game's angle system to ProjectileSystem's standard math angles
-    -- Old: vx = sin(rad), vy = cos(rad) * direction_multiplier
-    -- New: vx = cos(angle), vy = sin(angle)
-    -- For angle=0, old gives: (0, -1) which shoots UP (direction_multiplier=-1 for normal)
-    -- Need to find angle where cos(angle)=sin(rad) and sin(angle)=cos(rad)*direction_multiplier
-    local direction_multiplier = self.reverse_gravity and 1 or -1
+    -- Calculate velocity (Phase 8: reverse if reverse_gravity)
+    local speed = self.bullet_speed * charge_multiplier
+    local direction_multiplier = self.reverse_gravity and 1 or -1  -- Reverse Y direction
+    bullet.vx = math.sin(rad) * speed
+    bullet.vy = math.cos(rad) * speed * direction_multiplier
+    bullet.directional = true
 
-    -- Conversion: angle = atan2(cos(rad) * dir_mult, sin(rad))
-    local standard_angle = math.atan2(math.cos(rad) * direction_multiplier, math.sin(rad))
-
-    -- Phase 12: Spawn via ProjectileSystem
-    self.projectile_system:shoot(
-        "player_bullet",
-        spawn_x,
-        spawn_y,
-        standard_angle,
-        charge_multiplier,
-        {
-            width = BULLET_WIDTH,
-            height = BULLET_HEIGHT,
-            charge_multiplier = charge_multiplier,
-            homing = self.bullet_homing,
-            homing_strength = self.homing_strength,
-            piercing = self.bullet_piercing,
-            wave_type = wave_type,
-            wave_time = 0,
-            wrap_count = 0,  -- Phase 8: Track how many times bullet has wrapped
-            directional = true
-        }
-    )
+    table.insert(self.player_bullets, bullet)
 end
 
 function SpaceShooter:enemyShoot(enemy)
     -- Phase 5: Enemy bullet patterns for bullet hell
-    -- Phase 12: Migrated to use ProjectileSystem
     local center_x = enemy.x + enemy.width/2
     local center_y = enemy.y + enemy.height
 
@@ -1427,85 +1377,59 @@ function SpaceShooter:enemyShoot(enemy)
         local start_angle = -self.enemy_bullet_spread_angle / 2
 
         for i = 1, count do
-            local game_angle = math.rad(start_angle + (i - 1) * angle_step)
-            local standard_angle = math.atan2(math.cos(game_angle) * direction_multiplier, math.sin(game_angle))
-
-            self.projectile_system:shoot(
-                "enemy_bullet",
-                center_x - enemy_bullet_size/2,
-                center_y,
-                standard_angle,
-                1.0,
-                {
-                    width = enemy_bullet_size,
-                    height = enemy_bullet_size,
-                    speed = self.enemy_bullet_speed,
-                    directional = true
-                }
-            )
+            local angle = math.rad(start_angle + (i - 1) * angle_step)
+            table.insert(self.enemy_bullets, {
+                x = center_x - enemy_bullet_size/2,
+                y = center_y,
+                width = enemy_bullet_size,
+                height = enemy_bullet_size,
+                speed = self.enemy_bullet_speed,
+                vx = math.sin(angle) * self.enemy_bullet_speed,
+                vy = math.cos(angle) * self.enemy_bullet_speed * direction_multiplier,
+                directional = true
+            })
         end
     elseif self.enemy_bullet_pattern == "spray" then
         -- Spray: many bullets in wide arc (true bullet hell)
         for i = 1, self.enemy_bullets_per_shot do
-            local game_angle = math.rad(math.random(-self.enemy_bullet_spread_angle, self.enemy_bullet_spread_angle))
-            local standard_angle = math.atan2(math.cos(game_angle) * direction_multiplier, math.sin(game_angle))
-
-            self.projectile_system:shoot(
-                "enemy_bullet",
-                center_x - enemy_bullet_size/2,
-                center_y,
-                standard_angle,
-                1.0,
-                {
-                    width = enemy_bullet_size,
-                    height = enemy_bullet_size,
-                    speed = self.enemy_bullet_speed,
-                    directional = true
-                }
-            )
-        end
-    elseif self.enemy_bullet_pattern == "ring" then
-        -- Ring: bullets in all directions (360 spray)
-        -- Ring uses cos/sin which matches ProjectileSystem, but OLD code also used sin/cos
-        -- So we still need the same conversion
-        local count = self.enemy_bullets_per_shot
-        local angle_step = 360 / count
-        for i = 1, count do
-            local game_angle = math.rad(i * angle_step)
-            local standard_angle = math.atan2(math.cos(game_angle) * direction_multiplier, math.sin(game_angle))
-
-            self.projectile_system:shoot(
-                "enemy_bullet",
-                center_x - enemy_bullet_size/2,
-                center_y,
-                standard_angle,
-                1.0,
-                {
-                    width = enemy_bullet_size,
-                    height = enemy_bullet_size,
-                    speed = self.enemy_bullet_speed,
-                    directional = true
-                }
-            )
-        end
-    else
-        -- Single bullet (default) - shoots straight down
-        -- Old: vy = speed * direction_multiplier (no angle, just straight down/up)
-        -- Down (+Y) in ProjectileSystem standard angles = π/2
-        local standard_angle = direction_multiplier == 1 and (math.pi / 2) or (-math.pi / 2)
-        self.projectile_system:shoot(
-            "enemy_bullet",
-            center_x - enemy_bullet_size/2,
-            center_y,
-            standard_angle,
-            1.0,
-            {
+            local angle = math.rad(math.random(-self.enemy_bullet_spread_angle, self.enemy_bullet_spread_angle))
+            table.insert(self.enemy_bullets, {
+                x = center_x - enemy_bullet_size/2,
+                y = center_y,
                 width = enemy_bullet_size,
                 height = enemy_bullet_size,
                 speed = self.enemy_bullet_speed,
+                vx = math.sin(angle) * self.enemy_bullet_speed,
+                vy = math.cos(angle) * self.enemy_bullet_speed * direction_multiplier,
                 directional = true
-            }
-        )
+            })
+        end
+    elseif self.enemy_bullet_pattern == "ring" then
+        -- Ring: bullets in all directions (360 spray)
+        local count = self.enemy_bullets_per_shot
+        local angle_step = 360 / count
+        for i = 1, count do
+            local angle = math.rad(i * angle_step)
+            table.insert(self.enemy_bullets, {
+                x = center_x - enemy_bullet_size/2,
+                y = center_y,
+                width = enemy_bullet_size,
+                height = enemy_bullet_size,
+                speed = self.enemy_bullet_speed,
+                vx = math.cos(angle) * self.enemy_bullet_speed,
+                vy = math.sin(angle) * self.enemy_bullet_speed * direction_multiplier,
+                directional = true
+            })
+        end
+    else
+        -- Single bullet (default)
+        table.insert(self.enemy_bullets, {
+            x = center_x - enemy_bullet_size/2,
+            y = center_y,
+            width = enemy_bullet_size,
+            height = enemy_bullet_size,
+            speed = self.enemy_bullet_speed * direction_multiplier
+        })
     end
 end
 
@@ -1565,20 +1489,17 @@ function SpaceShooter:spawnEnemy()
     local spawn_y = self.reverse_gravity and self.game_height or ENEMY_START_Y_OFFSET
     local speed_direction = self.reverse_gravity and -1 or 1
 
-    -- Phase 11: Spawn via EntityController
-    self.entity_controller:spawn("enemy",
-        math.random(0, self.game_width - ENEMY_WIDTH),
-        spawn_y,
-        {
-            width = ENEMY_WIDTH,
-            height = ENEMY_HEIGHT,
-            movement_pattern = movement,
-            speed_override = adjusted_speed * speed_direction,  -- Phase 8: Reverse direction if needed
-            shoot_timer = math.random() * (ENEMY_BASE_SHOOT_RATE_MAX - ENEMY_BASE_SHOOT_RATE_MIN) + ENEMY_BASE_SHOOT_RATE_MIN,
-            shoot_rate = math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR)) / self.enemy_fire_rate,
-            health = self:calculateEnemyHealth()
-        }
-    )
+    local enemy = {
+        x = math.random(0, self.game_width - ENEMY_WIDTH),
+        y = spawn_y,
+        width = ENEMY_WIDTH, height = ENEMY_HEIGHT,
+        movement_pattern = movement,
+        speed_override = adjusted_speed * speed_direction,  -- Phase 8: Reverse direction if needed
+        shoot_timer = math.random() * (ENEMY_BASE_SHOOT_RATE_MAX - ENEMY_BASE_SHOOT_RATE_MIN) + ENEMY_BASE_SHOOT_RATE_MIN,
+        shoot_rate = math.max(0.5, (ENEMY_BASE_SHOOT_RATE_MAX - self.difficulty_modifiers.complexity * ENEMY_SHOOT_RATE_COMPLEXITY_FACTOR)) / self.enemy_fire_rate,
+        health = self:calculateEnemyHealth()
+    }
+    table.insert(self.enemies, enemy)
 end
 
 -- Phase 1.4: Check if variant has enemies defined
@@ -2272,7 +2193,7 @@ function SpaceShooter:updateGalagaFormation(dt)
             enemy.dive_t = enemy.dive_t + (dt / enemy.dive_duration)
             if enemy.dive_t >= 1.0 then
                 -- Dive complete - respawn with new entrance
-                self.entity_controller:removeEntity(enemy)
+                table.remove(self.enemies, i)
                 self.galaga_state.diving_count = self.galaga_state.diving_count - 1
                 -- Mark formation slot as unoccupied
                 if enemy.formation_slot then
@@ -2373,7 +2294,7 @@ function SpaceShooter:updateAsteroids(dt)
                 if self:checkCollision(asteroid, bullet) then
                     table.remove(self.asteroids, i)
                     if not self.bullet_piercing then
-                        self.projectile_system:removeProjectile(bullet)
+                        table.remove(self.player_bullets, j)
                     end
                     goto continue_asteroid
                 end
@@ -2384,7 +2305,7 @@ function SpaceShooter:updateAsteroids(dt)
         for j = #self.enemies, 1, -1 do
             local enemy = self.enemies[j]
             if self:checkCollision(asteroid, enemy) then
-                self.entity_controller:removeEntity(enemy)
+                table.remove(self.enemies, j)
                 table.remove(self.asteroids, i)
                 goto continue_asteroid
             end
@@ -2463,7 +2384,7 @@ function SpaceShooter:updateMeteors(dt)
             if self:checkCollision(meteor, bullet) then
                 table.remove(self.meteors, i)
                 if not self.bullet_piercing then
-                    self.projectile_system:removeProjectile(bullet)
+                    table.remove(self.player_bullets, j)
                 end
                 goto continue_meteor
             end
