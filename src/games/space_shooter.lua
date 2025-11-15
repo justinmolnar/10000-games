@@ -8,6 +8,7 @@ local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local EntityController = require('src.utils.game_components.entity_controller')
 local ProjectileSystem = require('src.utils.game_components.projectile_system')
+local PowerupSystem = require('src.utils.game_components.powerup_system')
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
 
@@ -485,10 +486,29 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     self.player_bullets = {}
     self.enemy_bullets = {}
 
-    -- Phase 6: Power-up system
-    self.powerups = {}  -- Power-ups on screen
-    self.active_powerups = {}  -- Active effects on player
-    self.powerup_spawn_timer = self.powerup_spawn_rate  -- Countdown to next spawn
+    -- Phase 15: PowerupSystem for powerups
+    -- Use methods instead of closures to avoid 60-upvalue limit
+    self.powerup_system = PowerupSystem:new({
+        enabled = self.powerup_enabled,
+        spawn_mode = "timer",  -- Auto-spawn at intervals
+        spawn_rate = self.powerup_spawn_rate,
+        powerup_size = self.powerup_size,
+        drop_speed = self.powerup_drop_speed,
+        reverse_gravity = self.reverse_gravity,
+        default_duration = self.powerup_duration,
+        powerup_types = self.powerup_types,
+        powerup_configs = {},  -- No per-type configs needed
+        color_map = {},  -- Colors handled by view
+
+        -- Game-specific hooks (bind to methods to avoid upvalue limit)
+        on_collect = function(powerup) self:onPowerupCollect(powerup) end,
+        on_apply = function(powerup_type, effect, config) self:applyPowerupEffect(powerup_type, effect, config) end,
+        on_remove = function(powerup_type, effect) self:removePowerupEffect(powerup_type, effect) end
+    })
+
+    -- Phase 15: Keep legacy arrays for compatibility with view
+    self.powerups = {}
+    self.active_powerups = {}
 
     -- Phase 7: Environmental hazards
     self.asteroids = {}  -- Asteroids on screen
@@ -744,18 +764,16 @@ function SpaceShooter:updateGameLogic(dt)
     -- Phase 11: Update EntityController (enemies, asteroids, powerups)
     self.entity_controller:update(dt)
 
-    -- Phase 11: Sync arrays with EntityController
+    -- Phase 11: Sync arrays with EntityController (enemies and asteroids only)
+    -- Phase 15: Powerups now synced from PowerupSystem below
     local entities = self.entity_controller:getEntities()
     self.enemies = {}
     self.asteroids = {}
-    self.powerups = {}
     for _, entity in ipairs(entities) do
         if entity.type_name == "enemy" then
             table.insert(self.enemies, entity)
         elseif entity.type_name == "asteroid" then
             table.insert(self.asteroids, entity)
-        elseif entity.type_name == "powerup" then
-            table.insert(self.powerups, entity)
         end
     end
 
@@ -813,10 +831,13 @@ function SpaceShooter:updateGameLogic(dt)
     self:updateEnemies(dt)
     self:updateBullets(dt)
 
-    -- Phase 6: Power-up spawning and updates
-    if self.powerup_enabled then
-        self:updatePowerups(dt)
-    end
+    -- Phase 15: Update PowerupSystem
+    local game_bounds = {width = self.game_width, height = self.game_height}
+    self.powerup_system:update(dt, self.player, game_bounds)
+
+    -- Phase 15: Sync arrays for view compatibility
+    self.powerups = self.powerup_system:getPowerupsForRendering()
+    self.active_powerups = self.powerup_system:getActivePowerupsForHUD()
 
     -- Phase 7: Environmental hazards
     if self.asteroid_density > 0 then
@@ -1694,116 +1715,6 @@ function SpaceShooter:keypressed(key)
     return false
 end
 
--- Phase 6: Power-up system
-function SpaceShooter:updatePowerups(dt)
-    -- Spawn power-ups at intervals
-    self.powerup_spawn_timer = self.powerup_spawn_timer - dt
-    if self.powerup_spawn_timer <= 0 then
-        self:spawnPowerup()
-        self.powerup_spawn_timer = self.powerup_spawn_rate
-    end
-
-    -- Update power-ups on screen
-    for i = #self.powerups, 1, -1 do
-        local powerup = self.powerups[i]
-        -- Phase 8: Respect reverse gravity for powerup movement
-        local speed_direction = self.reverse_gravity and -1 or 1
-        powerup.y = powerup.y + self.powerup_drop_speed * speed_direction * dt
-
-        -- Check collection
-        if self:checkCollision(powerup, self.player) then
-            self:collectPowerup(powerup)
-            table.remove(self.powerups, i)
-        -- Remove if off screen
-        elseif (self.reverse_gravity and powerup.y + powerup.height < 0) or (not self.reverse_gravity and powerup.y > self.game_height) then
-            table.remove(self.powerups, i)
-        end
-    end
-
-    -- Update active power-up durations
-    for powerup_type, effect in pairs(self.active_powerups) do
-        effect.duration_remaining = effect.duration_remaining - dt
-        if effect.duration_remaining <= 0 then
-            self:removePowerupEffect(powerup_type)
-        end
-    end
-end
-
-function SpaceShooter:spawnPowerup()
-    -- Pick random type from available types
-    local powerup_type = self.powerup_types[math.random(#self.powerup_types)]
-
-    -- Phase 8: Respect reverse gravity for powerup spawning
-    local spawn_y = self.reverse_gravity and self.game_height or -self.powerup_size
-
-    table.insert(self.powerups, {
-        x = math.random(0, self.game_width - self.powerup_size),
-        y = spawn_y,
-        width = self.powerup_size,
-        height = self.powerup_size,
-        type = powerup_type
-    })
-end
-
-function SpaceShooter:collectPowerup(powerup)
-    local powerup_type = powerup.type
-
-    -- Remove existing effect of same type (refresh duration)
-    if self.active_powerups[powerup_type] then
-        self:removePowerupEffect(powerup_type)
-    end
-
-    -- Apply new effect
-    local effect = {
-        duration_remaining = self.powerup_duration
-    }
-
-    if powerup_type == "speed" then
-        effect.original_speed = PLAYER_SPEED
-        PLAYER_SPEED = PLAYER_SPEED * self.powerup_speed_multiplier
-    elseif powerup_type == "rapid_fire" then
-        effect.original_cooldown = FIRE_COOLDOWN
-        FIRE_COOLDOWN = FIRE_COOLDOWN * self.powerup_rapid_fire_multiplier
-    elseif powerup_type == "pierce" then
-        effect.original_piercing = self.bullet_piercing
-        self.bullet_piercing = true
-    elseif powerup_type == "shield" then
-        if self.shield_enabled then
-            self.player.shield_active = true
-            self.player.shield_hits_remaining = self.shield_max_hits
-        end
-    elseif powerup_type == "triple_shot" then
-        effect.original_pattern = self.bullet_pattern
-        self.bullet_pattern = "triple"
-    elseif powerup_type == "spread_shot" then
-        effect.original_pattern = self.bullet_pattern
-        self.bullet_pattern = "spread"
-    end
-
-    self.active_powerups[powerup_type] = effect
-    self:playSound("powerup", 1.0)  -- Play collection sound
-end
-
-function SpaceShooter:removePowerupEffect(powerup_type)
-    local effect = self.active_powerups[powerup_type]
-    if not effect then return end
-
-    -- Restore original values
-    if powerup_type == "speed" and effect.original_speed then
-        PLAYER_SPEED = effect.original_speed
-    elseif powerup_type == "rapid_fire" and effect.original_cooldown then
-        FIRE_COOLDOWN = effect.original_cooldown
-    elseif powerup_type == "pierce" and effect.original_piercing ~= nil then
-        self.bullet_piercing = effect.original_piercing
-    elseif powerup_type == "triple_shot" and effect.original_pattern then
-        self.bullet_pattern = effect.original_pattern
-    elseif powerup_type == "spread_shot" and effect.original_pattern then
-        self.bullet_pattern = effect.original_pattern
-    end
-
-    self.active_powerups[powerup_type] = nil
-end
-
 -- Phase 5: Formation spawning
 function SpaceShooter:spawnFormation(formation_type)
     local adjusted_speed = self.enemy_speed * self.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
@@ -2582,6 +2493,58 @@ function SpaceShooter:updateBlackoutZones(dt)
             zone.vy = -zone.vy
             zone.y = math.max(zone.radius, math.min(self.game_height - zone.radius, zone.y))
         end
+    end
+end
+
+-- Phase 15: Powerup hooks (separate methods to avoid 60-upvalue limit)
+function SpaceShooter:onPowerupCollect(powerup)
+    self:playSound("powerup", 1.0)
+end
+
+function SpaceShooter:applyPowerupEffect(powerup_type, effect, config)
+    if powerup_type == "speed" then
+        effect.original_speed = PLAYER_SPEED
+        PLAYER_SPEED = PLAYER_SPEED * self.powerup_speed_multiplier
+
+    elseif powerup_type == "rapid_fire" then
+        effect.original_cooldown = FIRE_COOLDOWN
+        FIRE_COOLDOWN = FIRE_COOLDOWN * self.powerup_rapid_fire_multiplier
+
+    elseif powerup_type == "pierce" then
+        effect.original_piercing = self.bullet_piercing
+        self.bullet_piercing = true
+
+    elseif powerup_type == "shield" then
+        if self.shield_enabled then
+            self.player.shield_active = true
+            self.player.shield_hits_remaining = self.shield_max_hits
+        end
+
+    elseif powerup_type == "triple_shot" then
+        effect.original_pattern = self.bullet_pattern
+        self.bullet_pattern = "triple"
+
+    elseif powerup_type == "spread_shot" then
+        effect.original_pattern = self.bullet_pattern
+        self.bullet_pattern = "spread"
+    end
+end
+
+function SpaceShooter:removePowerupEffect(powerup_type, effect)
+    if powerup_type == "speed" and effect.original_speed then
+        PLAYER_SPEED = effect.original_speed
+
+    elseif powerup_type == "rapid_fire" and effect.original_cooldown then
+        FIRE_COOLDOWN = effect.original_cooldown
+
+    elseif powerup_type == "pierce" and effect.original_piercing ~= nil then
+        self.bullet_piercing = effect.original_piercing
+
+    elseif powerup_type == "triple_shot" and effect.original_pattern then
+        self.bullet_pattern = effect.original_pattern
+
+    elseif powerup_type == "spread_shot" and effect.original_pattern then
+        self.bullet_pattern = effect.original_pattern
     end
 end
 
