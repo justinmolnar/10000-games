@@ -615,8 +615,8 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
 
     -- Standard HUD (Phase 8)
     self.hud = HUDRenderer:new({
-        primary = {label = "Score", key = "score"},
-        secondary = {label = "Wave", key = "wave"},
+        primary = {label = "Kills", key = "metrics.kills"},
+        secondary = {label = "Time", key = "time_elapsed", format = "float"},
         lives = {key = "lives", max = self.lives, style = "hearts"}
     })
     self.hud.game = self

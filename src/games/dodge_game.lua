@@ -385,8 +385,8 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
 
     -- Standard HUD (Phase 8)
     self.hud = HUDRenderer:new({
-        primary = {label = "Score", key = "score"},
-        secondary = {label = "Time", key = "metrics.survival_time", format = "float"},
+        primary = {label = "Dodged", key = "metrics.objects_dodged"},
+        secondary = {label = "Time", key = "time_elapsed", format = "float"},
         lives = {key = "lives", max = starting_lives, style = "hearts"}
     })
     self.hud.game = self

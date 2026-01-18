@@ -44,6 +44,7 @@ function HiddenObject:init(game_data, cheats, di, variant_override)
 
     self.time_remaining = self.time_limit
     self.objects_found = 0
+    self.objects_remaining = self.total_objects
 
     self.metrics.objects_found = 0
     self.metrics.time_bonus = 0
@@ -58,6 +59,7 @@ function HiddenObject:init(game_data, cheats, di, variant_override)
                 on_hit = function(entity)
                     entity.found = true
                     self.objects_found = self.objects_found + 1
+                    self.objects_remaining = self.objects_remaining - 1
                     self:playSound("find_object", 1.0)
                 end
             }

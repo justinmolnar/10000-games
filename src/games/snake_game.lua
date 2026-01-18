@@ -879,17 +879,10 @@ function SnakeGame:setPlayArea(width, height)
 end
 
 function SnakeGame:updateGameLogic(dt)
-    -- Phase 11: Sync arrays with EntityController
-    local entities = self.entity_controller:getEntities()
-    self.foods = {}
-    self.obstacles = {}
-    for _, entity in ipairs(entities) do
-        if entity.type_name == "food" then
-            table.insert(self.foods, entity)
-        elseif entity.type_name == "obstacle" then
-            table.insert(self.obstacles, entity)
-        end
-    end
+    -- NOTE: Phase 11 EntityController sync was removed - Snake uses direct arrays
+    -- for foods/obstacles. EntityController integration was incomplete and caused
+    -- all food/obstacles to be wiped every frame. See refactor_phases.md Phase 11
+    -- which notes Snake was "DEFERRED - Too Complex" for full migration.
 
     self.metrics.survival_time = self.time_elapsed
 
