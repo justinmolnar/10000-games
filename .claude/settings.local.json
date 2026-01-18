@@ -44,7 +44,9 @@
       "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/breakout.lua)",
       "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/memory_match.lua)",
       "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/rps.lua)",
-      "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/coin_flip.lua)"
+      "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/coin_flip.lua)",
+      "Bash(wc:*)",
+      "Bash(\"C:\\\\Program Files\\\\LOVE\\\\love.exe\" . --check)"
     ],
     "deny": [],
     "ask": []

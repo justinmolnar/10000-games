@@ -38,7 +38,7 @@ function SnakeView:draw()
 
     -- Calculate zoom based on arena mode and camera mode
     local zoom
-    local camera_mode = game.camera_mode or "follow_head"
+    local camera_mode = game.params.camera_mode or "follow_head"
 
     if game.is_fixed_arena then
         -- Fixed arena: zoom behavior depends on camera mode
@@ -56,7 +56,7 @@ function SnakeView:draw()
             -- Following cameras (follow_head, center_of_mass) - use MAX zoom to fill window
             -- Respect variant's camera_zoom as minimum
             local min_zoom = math.max(zoom_x, zoom_y)
-            local requested_zoom = game.camera_zoom or 1.0
+            local requested_zoom = game.params.camera_zoom or 1.0
             zoom = math.max(min_zoom, requested_zoom)
         end
     else
@@ -71,7 +71,7 @@ function SnakeView:draw()
 
     if camera_mode == "follow_head" and #game.snake > 0 then
         -- Follow snake head
-        if game.movement_type == "smooth" and game.smooth_x then
+        if game.params.movement_type == "smooth" and game.smooth_x then
             -- Use smooth float position for smooth camera following
             focus_x = game.smooth_x * GRID_SIZE
             focus_y = game.smooth_y * GRID_SIZE
@@ -84,7 +84,7 @@ function SnakeView:draw()
 
     elseif camera_mode == "center_of_mass" and #game.snake > 0 then
         -- Center on snake's center of mass
-        if game.movement_type == "smooth" and game.smooth_x then
+        if game.params.movement_type == "smooth" and game.smooth_x then
             -- For smooth mode, just use head position (trail doesn't have discrete segments)
             focus_x = game.smooth_x * GRID_SIZE
             focus_y = game.smooth_y * GRID_SIZE
@@ -147,7 +147,7 @@ function SnakeView:draw()
     local segment_size = GRID_SIZE - 1
 
     -- Check for smooth movement mode (analog turning with trail)
-    if game.movement_type == "smooth" then
+    if game.params.movement_type == "smooth" then
         -- Draw trail
         if #game.smooth_trail > 0 then
             love.graphics.setColor(0.3, 0.8, 0.3)
@@ -220,7 +220,7 @@ function SnakeView:draw()
 
     for i, segment in ipairs(game.snake) do
         -- Skip drawing tail segments if invisible_tail is enabled (except head)
-        if game.invisible_tail and i > 1 then
+        if game.params.invisible_tail and i > 1 then
             goto continue
         end
 
@@ -330,7 +330,7 @@ function SnakeView:draw()
         for i = 2, #game.player_snakes do
             local psnake = game.player_snakes[i]
             if psnake.alive then
-                if game.movement_type == "smooth" and psnake.smooth_x then
+                if game.params.movement_type == "smooth" and psnake.smooth_x then
                     -- Draw smooth trail
                     if #psnake.smooth_trail > 0 then
                         love.graphics.setColor(0.3, 0.3, 1)  -- Blue tint
@@ -554,14 +554,14 @@ end
 function SnakeView:drawArenaBoundaries()
     local game = self.game
     local GRID_SIZE = self.GRID_SIZE
-    local arena_shape = game.arena_shape or "rectangle"
+    local arena_shape = game.params.arena_shape or "rectangle"
 
     -- Get moving walls offset
     local offset_x = (game.moving_walls and game.wall_offset_x) or 0
     local offset_y = (game.moving_walls and game.wall_offset_y) or 0
 
     -- For arenas with wall_mode death/bounce, draw edge walls (accounting for moving walls)
-    if (game.wall_mode == "death" or game.wall_mode == "bounce") and arena_shape == "rectangle" then
+    if (game.params.wall_mode == "death" or game.params.wall_mode == "bounce") and arena_shape == "rectangle" then
         love.graphics.setColor(0.5, 0.5, 0.5, 1)
         local wall_thickness = GRID_SIZE - 1
 
@@ -603,7 +603,7 @@ function SnakeView:drawFogOfWar()
     local fog = game.fog_controller
     if not fog then return end
 
-    local fog_mode = game.fog_of_war or "none"
+    local fog_mode = game.params.fog_of_war or "none"
     if fog_mode == "none" then
         return
     end

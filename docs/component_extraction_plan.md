@@ -19,6 +19,57 @@
 9. Run NO tests yourself - the user will do manual testing.
 10. After completing a phase, tell the user what to test and wait for confirmation.
 
+### CRITICAL: Deletion Policy
+
+**THE ENTIRE POINT OF THIS REFACTOR IS TO DELETE CODE.**
+
+When you "migrate" or "replace" code, that means:
+1. Add the new component/pattern
+2. **DELETE the old code entirely** - not comment it out, not keep it "for reference", DELETE IT
+3. If something breaks, **fix the caller** - do NOT add backward compatibility shims
+4. If a view reads `self.snake_speed`, update the view to read from the component - do NOT keep `self.snake_speed` around
+
+**FORBIDDEN:**
+- ❌ "Kept for backward compatibility"
+- ❌ "Preserved for reference"
+- ❌ Commenting out old code instead of deleting
+- ❌ Creating `self.X = component.X` sync functions
+- ❌ Duplicating state between game object and component
+- ❌ Adding adapter/bridge layers
+
+**REQUIRED:**
+- ✓ Delete old code immediately after migration
+- ✓ Update all callers (views, other methods) to use the new pattern
+- ✓ If it breaks, fix it - that's how you find what needs updating
+- ✓ One source of truth: the component owns the state, period
+
+**Parameter Access Pattern:**
+```lua
+-- WRONG: Unpacking every parameter to self
+local p = SchemaLoader.load(...)
+self.movement_type = p.movement_type  -- DELETE THIS
+self.snake_speed = p.snake_speed      -- DELETE THIS
+-- ... 45 more lines of this garbage
+
+-- RIGHT: Keep params in one place, access directly
+self.params = SchemaLoader.load(...)
+-- Then use self.params.movement_type everywhere
+-- Or pass params to components and let THEM own the values
+```
+
+**Component State Pattern:**
+```lua
+-- WRONG: Duplicating component state
+self.arena_controller = ArenaController:new({...})
+self.safe_zone = { x = ..., y = ..., radius = ... }  -- DELETE THIS DUPLICATE
+
+-- RIGHT: Component owns the state
+self.arena_controller = ArenaController:new({...})
+-- Views call self.arena_controller:getState() directly
+```
+
+If the game file isn't getting dramatically smaller after each phase, YOU ARE DOING IT WRONG.
+
 ### Aggressive Reduction Philosophy
 
 **The goal is to make game files TINY.** When migrating a game:
@@ -27,6 +78,20 @@
 - If you find yourself writing game logic, stop and ask: should this be a component?
 - The Lua file should be so thin that creating a new game variant is just editing JSON
 - Target: each game file ~50-150 lines of pure orchestration code
+
+**After EVERY phase, the game file line count MUST go DOWN, not up.**
+
+If you added a component and the file got bigger:
+- You didn't delete the old code
+- You added unnecessary boilerplate
+- You created duplicate state
+- **GO BACK AND DELETE THINGS**
+
+The only acceptable reasons for a file to grow temporarily:
+- Adding a `require` statement (+1 line)
+- The component init itself (but this should be SHORT, <10 lines)
+
+Everything else is a sign you're doing it wrong.
 
 ### Line Changes Tracking
 
@@ -135,8 +200,10 @@ test_schema.json         +55 lines (new)
 
 2.3. Modify Snake's init to use SchemaLoader:
    - Replace all `self.X = loader:get('X', default)` lines with single SchemaLoader call
-   - Access params via `self.params.X` or destructure as needed
-   - Ensure VariantLoader data still overrides schema defaults
+   - Store as `self.params = SchemaLoader.load(...)` - ONE LINE
+   - Access params via `self.params.X` everywhere - DO NOT unpack to `self.X`
+   - **DELETE** all the old `self.X = loader:get()` lines - they're replaced, not duplicated
+   - Update views to read `game.params.X` instead of `game.X`
 
 2.4. Verify all existing variant JSON files still work (their keys should match schema keys).
 
@@ -150,18 +217,21 @@ test_schema.json         +55 lines (new)
 
 ### AI Notes
 
-**Completed:** 2026-01-18
+**Completed:** 2026-01-18 (CORRECTED 2026-01-18)
 
 **Summary:**
-- Replaced `VariantLoader` require with `SchemaLoader` require
-- Replaced ~90 lines of `loader:get()` calls with single `SchemaLoader.load()` call
-- Parameters now accessed via `p.parameter_name` pattern
-- All 47 variant keys in `snake_variants.json` match schema parameter names exactly
+- `self.params = SchemaLoader.load(...)` - ONE LINE, no unpacking
+- All params accessed via `self.params.X` throughout game and view
+- Init refactored: 212 lines → 13 lines
+- Extracted helpers: `setupArena()`, `setupSnake()`, `setupComponents()`
+- DELETED all "Phase X" comments (useless cruft)
+- DELETED all parameter unpacking boilerplate
 
 #### Line Changes
 ```
 snake_schema.json        +270 lines (new)
-snake_game.lua           -38 lines (2693 → 2655)
+snake_game.lua           -171 lines (2629 → 2458)
+snake_view.lua           ~0 lines (refs changed to game.params.X)
 ```
 
 ---
@@ -178,7 +248,10 @@ snake_game.lua           -38 lines (2693 → 2655)
 
 3.2. Create `assets/data/schemas/dodge_schema.json` with all Dodge parameters.
 
-3.3. Modify Dodge's init to use SchemaLoader.
+3.3. Modify Dodge's init to use SchemaLoader:
+   - `self.params = SchemaLoader.load(...)` - ONE LINE
+   - **DELETE** all old parameter loading - DO NOT unpack params to `self.X`
+   - Update views to read `game.params.X`
 
 3.4. Verify existing Dodge variant JSON files still work.
 
@@ -483,7 +556,9 @@ movement_controller.lua     +147 lines (556 → 703)
 
 8.3. Replace Snake's movement update code with MovementController.
 
-8.4. Remove now-unused movement methods from Snake.
+8.4. **DELETE** Snake's old movement code entirely. Not "remove unused" - DELETE the old implementation.
+
+8.5. Verify line count decreased. If Snake got bigger, you added without deleting.
 
 ### Testing (User)
 
@@ -598,7 +673,13 @@ arena_controller.lua        +458 lines (new)
 
 10.3. Replace Snake's arena code with ArenaController calls.
 
-10.4. Remove now-unused arena methods from Snake.
+10.4. **DELETE** Snake's old arena code entirely:
+   - DELETE old arena state variables
+   - DELETE old arena update methods
+   - DELETE any "sync" functions that copy state back to game object
+   - Views should call `arena_controller:getState()` directly
+
+10.5. Verify line count decreased significantly.
 
 ### Testing (User)
 
@@ -669,6 +750,15 @@ snake_game.lua              -40 lines (2669 → 2629)
 
 11.3. Replace Dodge's safe zone code with ArenaController calls.
 
+11.4. **DELETE** Dodge's old safe zone code entirely:
+   - DELETE `self.safe_zone` table - ArenaController owns this state now
+   - DELETE `updateSafeZone()` method
+   - DELETE `updateSafeMorph()` method
+   - DELETE any sync functions
+   - Views should call `arena_controller:getState()` directly
+
+11.5. Verify line count decreased significantly. If Dodge got bigger, you didn't delete.
+
 ### Testing (User)
 
 - [ ] Dodge safe zone appears correctly
@@ -738,7 +828,7 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
    - "circle"
    - "random_scatter"
 
-12.4. Update EntityController documentation/comments.
+12.4. Keep component code minimal - no verbose comments or documentation blocks.
 
 ### Testing (User)
 
@@ -772,7 +862,9 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
 
 13.2. Configure EntityController spawning in Dodge using schema params.
 
-13.3. Replace Dodge's spawn code with EntityController.
+13.3. **DELETE** Dodge's old spawn code entirely. Update any callers to use EntityController.
+
+13.4. Verify line count decreased. If not, you missed deletions.
 
 ### Testing (User)
 
@@ -807,7 +899,9 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
 
 14.2. Configure EntityController layout in Breakout using schema params.
 
-14.3. Replace Breakout's brick setup code with EntityController.
+14.3. **DELETE** Breakout's old brick layout code entirely. Update any callers.
+
+14.4. Verify line count decreased. If not, you missed deletions.
 
 ### Testing (User)
 
@@ -874,9 +968,13 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
    - Per-enemy behavior assignment
    - Behavior parameters (turn rate, speed, etc.)
 
-16.2. Configure AIBehaviorController in Dodge's init.
+16.2. Configure AIBehaviorController in Dodge's init (SHORT config, <10 lines).
 
-16.3. Replace Dodge's enemy update code with AIBehaviorController.
+16.3. **DELETE** Dodge's old enemy behavior code entirely. All of it. Gone.
+
+16.4. Update any callers (views, collision code) to get data from AIBehaviorController.
+
+16.5. Verify line count decreased significantly. If not, you missed deletions.
 
 ### Testing (User)
 
@@ -907,9 +1005,11 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
 
 17.1. Identify Space Shooter's enemy behavior code.
 
-17.2. Configure AIBehaviorController in Space Shooter.
+17.2. Configure AIBehaviorController in Space Shooter (SHORT config).
 
-17.3. Replace Space Shooter's enemy update code.
+17.3. **DELETE** Space Shooter's old enemy behavior code entirely.
+
+17.4. Verify line count decreased significantly.
 
 ### Testing (User)
 
@@ -969,9 +1069,13 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
 
 19a.1. Identify Coin Flip's round state machine.
 
-19a.2. Configure TurnController in Coin Flip's init.
+19a.2. Configure TurnController in Coin Flip's init (SHORT config).
 
-19a.3. Replace Coin Flip's state management with TurnController.
+19a.3. **DELETE** Coin Flip's old state machine code entirely.
+
+19a.4. Update view to read state from TurnController, not game object.
+
+19a.5. Verify line count decreased significantly.
 
 ### Testing (User)
 
@@ -1000,9 +1104,13 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
 
 19b.1. Identify RPS's round state machine.
 
-19b.2. Configure TurnController in RPS's init.
+19b.2. Configure TurnController in RPS's init (SHORT config).
 
-19b.3. Replace RPS's state management with TurnController.
+19b.3. **DELETE** RPS's old state machine code entirely.
+
+19b.4. Update view to read state from TurnController, not game object.
+
+19b.5. Verify line count decreased significantly.
 
 ### Testing (User)
 
@@ -1031,9 +1139,13 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
 
 19c.1. Identify Memory Match's turn state machine.
 
-19c.2. Configure TurnController in Memory Match's init.
+19c.2. Configure TurnController in Memory Match's init (SHORT config).
 
-19c.3. Replace Memory Match's state management with TurnController.
+19c.3. **DELETE** Memory Match's old state machine code entirely.
+
+19c.4. Update view to read state from TurnController, not game object.
+
+19c.5. Verify line count decreased significantly.
 
 ### Testing (User)
 
@@ -1065,12 +1177,15 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
    - Player history tracking (for adaptive AI)
    - Configurable choices
    - Methods: `makeDecision(player_last, player_history)`, `setPattern()`
+   - Keep it minimal - no verbose comments
 
-20.2. Configure in RPS for opponent AI.
+20.2. Configure in RPS for opponent AI (SHORT config).
 
-20.3. Configure in Coin Flip for outcome bias patterns.
+20.3. Configure in Coin Flip for outcome bias patterns (SHORT config).
 
-20.4. Remove now-unused AI code from both games.
+20.4. **DELETE** all old AI code from both games. Not "remove unused" - DELETE IT ALL.
+
+20.5. Verify both games' line counts decreased significantly.
 
 ### Testing (User)
 
@@ -1092,21 +1207,34 @@ Note: dodge_game.lua increased due to ArenaController init, sync function, and p
 
 ## Phase 21: Final Cleanup + Line Count Verification
 
-**What this phase accomplishes:** Removes any remaining dead code, verifies line count reductions, updates documentation.
+**What this phase accomplishes:** Final verification that games are actually tiny.
 
 **What will be noticed in-game:** Nothing.
 
 ### Steps
 
-21.1. Audit each game file for any remaining code that should have been extracted.
+21.1. Count lines in each game file. If ANY game is over 200 lines, it's not done:
+   - Find what's still duplicated/verbose
+   - DELETE it or move to component
+   - Repeat until under 200 lines
 
-21.2. Remove any dead/unused code.
+21.2. Verify no game has:
+   - Parameter unpacking (should use `self.params.X` directly)
+   - Duplicate state (component owns it, game doesn't copy it)
+   - Commented-out old code
+   - "Backward compatibility" shims
+   - Verbose section comments
 
-21.3. Count lines in each game file and document reduction.
+21.3. Final line counts must be close to targets:
+   - Snake: ~120
+   - Dodge: ~130
+   - Space Shooter: ~150
+   - Breakout: ~120
+   - Memory Match: ~80
+   - RPS: ~60
+   - Coin Flip: ~50
 
-21.4. Update `docs/game_abstraction_analysis.md` with actual results.
-
-21.5. Update CLAUDE.md with new component documentation.
+If you're not hitting these, YOU DIDN'T DELETE ENOUGH.
 
 ### Testing (User)
 
