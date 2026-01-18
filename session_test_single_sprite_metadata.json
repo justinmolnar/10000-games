@@ -1,14 +1,28 @@
 {
   "session_name": "test_single_sprite",
-  "started_at": "2025-11-07T03:57:35.085454Z",
+  "started_at": "2026-01-18T02:13:47.442855+00:00",
   "total_sprites": 1,
-  "generated": [],
-  "failed": [
+  "generated": [
     {
-      "id": "test_apple_01",
-      "prompt": "red apple fruit, shiny surface, top-down pixel art",
-      "error": "Generation or download failed"
+      "id": "player",
+      "file_path": "assets/sprites/games/space_shooter/fighter_1\\player.png",
+      "prompt": "player spaceship, blue and white, fighter, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:13:59.909317+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 1081,
+      "status": "success",
+      "review_flags": []
     }
   ],
-  "completed_at": "2025-11-07T03:58:11.839159Z"
+  "failed": [],
+  "completed_at": "2026-01-18T02:13:59.909317+00:00"
 }

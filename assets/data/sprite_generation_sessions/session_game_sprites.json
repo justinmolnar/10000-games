@@ -1,0 +1,239 @@
+{
+  "session_name": "game_sprites",
+  "description": "All game sprites referenced in sprite_sets.json - exact paths to work with existing code",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "dodge_base_1",
+      "output_folder": "assets/sprites/games/dodge/base_1",
+      "description": "Dodge game player sprite",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "player", "prompt": "small spaceship, silver hull, blue glow, fighter craft, pixel art icon"}
+      ]
+    },
+    {
+      "name": "retro_future_vehicles_space",
+      "output_folder": "assets/sprites/shared/retro_future/vehicles/space",
+      "description": "Retro-future space vehicles for dodge game enemies",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "pod_escape_01", "prompt": "escape pod, spherical, porthole window, pixel art icon"},
+        {"id": "saucer_alien_green_01", "prompt": "green flying saucer, UFO, alien ship, pixel art icon"},
+        {"id": "saucer_earth_military_01", "prompt": "military flying saucer, gray, weapons, pixel art icon"},
+        {"id": "rocket_silver_classic_01", "prompt": "silver rocket ship, fins, retro 1950s, pixel art icon"},
+        {"id": "saucer_spinning_01", "prompt": "spinning UFO, rotating disc, sci-fi, pixel art icon"},
+        {"id": "rocket_massive_colony_01", "prompt": "large colony ship, multiple decks, pixel art icon"}
+      ]
+    },
+    {
+      "name": "retro_future_alien_artifacts",
+      "output_folder": "assets/sprites/shared/retro_future/aliens/artifacts",
+      "description": "Alien artifacts for dodge game teleporter enemy",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "alien_probe_01", "prompt": "alien probe, spherical with antenna, scout drone, pixel art icon"}
+      ]
+    },
+    {
+      "name": "snake_classic",
+      "output_folder": "assets/sprites/games/snake/classic/snake",
+      "description": "Snake game sprites",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "segment", "prompt": "snake body segment, green square, scaly, pixel art icon"},
+        {"id": "seg_head", "prompt": "snake head, green, eyes, tongue, pixel art icon"},
+        {"id": "food", "prompt": "red apple, shiny fruit, small leaf, pixel art icon"}
+      ]
+    },
+    {
+      "name": "memory_icons_1",
+      "output_folder": "assets/sprites/games/memory/icons_1",
+      "description": "Memory match card sprites",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "card_back", "prompt": "playing card back, blue pattern, ornate design, pixel art icon"},
+        {"id": "card_front", "prompt": "playing card front, white background, border, pixel art icon"}
+      ]
+    },
+    {
+      "name": "space_shooter_fighter_1",
+      "output_folder": "assets/sprites/games/space_shooter/fighter_1",
+      "description": "Space shooter game sprites",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "player", "prompt": "player spaceship, blue and white, fighter, pixel art icon"},
+        {"id": "enemy", "prompt": "enemy spaceship, red and black, alien fighter, pixel art icon"},
+        {"id": "bullet", "prompt": "energy bullet, yellow, elongated, projectile, pixel art icon"}
+      ]
+    },
+    {
+      "name": "hidden_object_base",
+      "output_folder": "assets/sprites/games/hidden_object/base",
+      "description": "Hidden object game sprites",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "background", "prompt": "cluttered desk, papers, objects, pixel art icon"},
+        {"id": "highlight", "prompt": "glowing circle, yellow sparkle, selection ring, pixel art icon"}
+      ]
+    },
+    {
+      "name": "breakout_base",
+      "output_folder": "assets/sprites/games/breakout/base",
+      "description": "Breakout game sprites",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "paddle", "prompt": "breakout paddle, silver bar, horizontal, pixel art icon"},
+        {"id": "brick", "prompt": "breakout brick, red rectangular block, pixel art icon"},
+        {"id": "ball", "prompt": "breakout ball, white sphere, glowing, pixel art icon"}
+      ]
+    },
+    {
+      "name": "coin_flip_base",
+      "output_folder": "assets/sprites/games/coin_flip/base",
+      "description": "Coin flip game sprites",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "coin_heads", "prompt": "gold coin heads, face profile, shiny metallic, pixel art icon"},
+        {"id": "coin_tails", "prompt": "gold coin tails, eagle symbol, shiny metallic, pixel art icon"}
+      ]
+    },
+    {
+      "name": "rps_base",
+      "output_folder": "assets/sprites/games/rps/base",
+      "description": "Rock Paper Scissors game sprites",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "rock", "prompt": "hand making rock fist gesture, pixel art icon"},
+        {"id": "paper", "prompt": "hand making paper flat palm gesture, pixel art icon"},
+        {"id": "scissors", "prompt": "hand making scissors two fingers gesture, pixel art icon"}
+      ]
+    },
+    {
+      "name": "animals",
+      "output_folder": "assets/sprites/shared/animals",
+      "description": "Animal face sprites for dodge variants",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "cat_face_orange_01", "prompt": "orange tabby cat face, cute, whiskers, pixel art icon"},
+        {"id": "dog_face_bulldog_01", "prompt": "bulldog face, wrinkly, cute, pixel art icon"},
+        {"id": "dog_face_golden_01", "prompt": "golden retriever face, happy, cute, pixel art icon"},
+        {"id": "dog_face_husky_01", "prompt": "husky dog face, blue eyes, black white, pixel art icon"},
+        {"id": "lion_face_01", "prompt": "lion face, golden mane, majestic, pixel art icon"},
+        {"id": "tiger_face_01", "prompt": "tiger face, orange black stripes, pixel art icon"},
+        {"id": "bear_face_brown_01", "prompt": "brown bear face, round ears, cute, pixel art icon"},
+        {"id": "bear_face_panda_01", "prompt": "panda bear face, black white, cute, pixel art icon"},
+        {"id": "monkey_face_01", "prompt": "monkey face, brown fur, cute, pixel art icon"},
+        {"id": "elephant_face_01", "prompt": "elephant face, big ears, trunk, gray, pixel art icon"},
+        {"id": "horse_face_01", "prompt": "horse face, brown, long snout, mane, pixel art icon"},
+        {"id": "frog_face_01", "prompt": "frog face, green, big eyes, cute, pixel art icon"}
+      ]
+    },
+    {
+      "name": "food",
+      "output_folder": "assets/sprites/shared/food",
+      "description": "Food sprites for dodge variants",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "burger_classic_01", "prompt": "hamburger, sesame bun, lettuce tomato, pixel art icon"},
+        {"id": "pizza_slice_01", "prompt": "pizza slice, pepperoni, melted cheese, pixel art icon"},
+        {"id": "hotdog_01", "prompt": "hot dog in bun, mustard, pixel art icon"},
+        {"id": "taco_01", "prompt": "taco, hard shell, meat lettuce, pixel art icon"},
+        {"id": "sushi_roll_01", "prompt": "sushi roll, maki, nori wrap, pixel art icon"},
+        {"id": "ramen_bowl_01", "prompt": "ramen bowl, noodles, egg, pixel art icon"},
+        {"id": "coffee_cup_01", "prompt": "coffee cup, paper cup lid, steam, pixel art icon"},
+        {"id": "icecream_cone_01", "prompt": "ice cream cone, pink scoop, waffle cone, pixel art icon"},
+        {"id": "donut_sprinkle_01", "prompt": "donut, pink frosting, sprinkles, pixel art icon"},
+        {"id": "cupcake_01", "prompt": "cupcake, swirled frosting, cherry top, pixel art icon"},
+        {"id": "cake_slice_01", "prompt": "cake slice, chocolate layers, pixel art icon"},
+        {"id": "cookie_chocolate_01", "prompt": "chocolate chip cookie, round, pixel art icon"},
+        {"id": "candy_lollipop_01", "prompt": "lollipop, spiral colored candy, stick, pixel art icon"},
+        {"id": "milkshake_01", "prompt": "milkshake, tall glass, whipped cream, straw, pixel art icon"}
+      ]
+    }
+  ]
+}

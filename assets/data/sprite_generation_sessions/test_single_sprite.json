@@ -4,23 +4,19 @@
   "sprite_type": "map_object",
   "sprite_groups": [
     {
-      "name": "test_group",
-      "output_folder": "assets/testsprites/phase1_test",
-      "description": "Single test sprite for Phase 1 validation",
+      "name": "space_shooter_fighter_1",
+      "output_folder": "assets/sprites/games/space_shooter/fighter_1",
+      "description": "Space shooter game sprites",
       "default_params": {
         "width": 32,
         "height": 32,
-        "view": "high top-down",
+        "view": "side",
         "detail": "medium detail",
         "shading": "basic shading",
         "outline": "single color outline"
       },
       "sprites": [
-        {
-          "id": "test_apple_01",
-          "prompt": "red apple fruit, shiny surface, top-down pixel art",
-          "notes": "Simple test sprite to validate generation pipeline"
-        }
+        {"id": "player", "prompt": "player spaceship, blue and white, fighter, pixel art icon"}
       ]
     }
   ]

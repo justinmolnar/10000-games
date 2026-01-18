@@ -1,0 +1,1092 @@
+{
+  "session_name": "win98_icons",
+  "started_at": "2026-01-18T01:19:34.383745+00:00",
+  "total_sprites": 57,
+  "generated": [
+    {
+      "id": "conn_pcs_off_off",
+      "file_path": "assets/sprites/win98\\conn_pcs_off_off.png",
+      "prompt": "Windows 98 style shutdown icon, computer power button with red power symbol, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:19:49.055388+00:00",
+      "generation_time_seconds": 14,
+      "size": "32x32",
+      "file_size_bytes": 464,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "console_prompt-0",
+      "file_path": "assets/sprites/win98\\console_prompt-0.png",
+      "prompt": "Windows 98 style command prompt icon, black DOS window with white text cursor, MS-DOS prompt, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:20:09.667473+00:00",
+      "generation_time_seconds": 17,
+      "size": "32x32",
+      "file_size_bytes": 757,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "game_mine_1-0",
+      "file_path": "assets/sprites/win98\\game_mine_1-0.png",
+      "prompt": "Windows 98 style Minesweeper icon, grid with mine and red flag, bomb sweeper game, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:20:22.001009+00:00",
+      "generation_time_seconds": 9,
+      "size": "32x32",
+      "file_size_bytes": 2233,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cards_ace-0",
+      "file_path": "assets/sprites/win98\\cards_ace-0.png",
+      "prompt": "Windows 98 style playing card icon, ace of spades card, single card front, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:20:36.152595+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 333,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "monitor_tweakui-0",
+      "file_path": "assets/sprites/win98\\monitor_tweakui-0.png",
+      "prompt": "Windows 98 style display settings icon, CRT monitor with color palette, screen properties, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:20:49.608869+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 647,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "settings_gear-0",
+      "file_path": "assets/sprites/win98\\settings_gear-0.png",
+      "prompt": "Windows 98 style settings gear icon, silver mechanical cog wheel, system configuration, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:21:03.874940+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 1546,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "game_solitaire-0",
+      "file_path": "assets/sprites/win98\\game_solitaire-0.png",
+      "prompt": "Windows 98 style Solitaire icon, stack of playing cards fanned out, card game, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:21:16.799475+00:00",
+      "generation_time_seconds": 9,
+      "size": "32x32",
+      "file_size_bytes": 884,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_2-0",
+      "file_path": "assets/sprites/win98\\computer_2-0.png",
+      "prompt": "Windows 98 style My Computer icon, beige CRT monitor with PC tower, classic 90s desktop computer, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:21:34.623523+00:00",
+      "generation_time_seconds": 14,
+      "size": "32x32",
+      "file_size_bytes": 574,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "game_mine_2-0",
+      "file_path": "assets/sprites/win98\\game_mine_2-0.png",
+      "prompt": "Windows 98 style Minesweeper bomb icon, cartoon bomb with lit fuse, explosive mine, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:21:48.543669+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 688,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "gears_tweakui_a-0",
+      "file_path": "assets/sprites/win98\\gears_tweakui_a-0.png",
+      "prompt": "Windows 98 style system tweaks icon, two interlocking gears with wrench, advanced settings, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:21:59.799675+00:00",
+      "generation_time_seconds": 8,
+      "size": "32x32",
+      "file_size_bytes": 1316,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "directory_control_panel-0",
+      "file_path": "assets/sprites/win98\\directory_control_panel-0.png",
+      "prompt": "Windows 98 style Control Panel folder icon, folder with gears and sliders, system settings, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:22:17.723358+00:00",
+      "generation_time_seconds": 14,
+      "size": "32x32",
+      "file_size_bytes": 1199,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bar_graph-0",
+      "file_path": "assets/sprites/win98\\bar_graph-0.png",
+      "prompt": "Windows 98 style bar chart icon, colorful vertical bar graph, statistics chart, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:22:31.878708+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 673,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "recycle_bin_empty-0",
+      "file_path": "assets/sprites/win98\\recycle_bin_empty-0.png",
+      "prompt": "Windows 98 style empty recycle bin icon, metal wire mesh trash can empty, wastebasket, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:22:46.382014+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 779,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "notepad-0",
+      "file_path": "assets/sprites/win98\\notepad-0.png",
+      "prompt": "Windows 98 style Notepad icon, blue notepad with lined paper, text editor application, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:23:01.579268+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 458,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "paint_old-0",
+      "file_path": "assets/sprites/win98\\paint_old-0.png",
+      "prompt": "Windows 98 style MS Paint icon, artist palette with paint brush, image editor, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:23:20.378184+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 1331,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "doc_file-0",
+      "file_path": "assets/sprites/win98\\doc_file-0.png",
+      "prompt": "Windows 98 style Word document icon, blue W on white paper, rich text document, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:23:39.082179+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 488,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "connected_world-0",
+      "file_path": "assets/sprites/win98\\connected_world-0.png",
+      "prompt": "Windows 98 style Internet Explorer icon, blue letter e with globe, web browser, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:23:55.102211+00:00",
+      "generation_time_seconds": 13,
+      "size": "32x32",
+      "file_size_bytes": 1440,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "executable-0",
+      "file_path": "assets/sprites/win98\\executable-0.png",
+      "prompt": "Windows 98 style executable icon, white window with blue title bar, generic EXE program, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:24:10.479723+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 601,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "directory_open_file_mydocs_small-0",
+      "file_path": "assets/sprites/win98\\directory_open_file_mydocs_small-0.png",
+      "prompt": "Windows 98 style folder icon, yellow manila folder slightly open, documents folder, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:24:24.706660+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 658,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "notepad_file-0",
+      "file_path": "assets/sprites/win98\\notepad_file-0.png",
+      "prompt": "Windows 98 style text file icon, white paper with lines of text, TXT document, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:24:44.231120+00:00",
+      "generation_time_seconds": 16,
+      "size": "32x32",
+      "file_size_bytes": 361,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "file_lines-0",
+      "file_path": "assets/sprites/win98\\file_lines-0.png",
+      "prompt": "Windows 98 style code file icon, white paper with colored code lines, JSON programming file, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:25:08.216443+00:00",
+      "generation_time_seconds": 20,
+      "size": "32x32",
+      "file_size_bytes": 637,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "document-0",
+      "file_path": "assets/sprites/win98\\document-0.png",
+      "prompt": "Windows 98 style generic document icon, white paper with folded corner, blank file, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:25:35.023140+00:00",
+      "generation_time_seconds": 23,
+      "size": "32x32",
+      "file_size_bytes": 739,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_explorer-0",
+      "file_path": "assets/sprites/win98\\computer_explorer-0.png",
+      "prompt": "Windows 98 style Windows Explorer icon, folder with magnifying glass, file browser, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:25:48.472311+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 935,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "recycle_bin_full-0",
+      "file_path": "assets/sprites/win98\\recycle_bin_full-0.png",
+      "prompt": "Windows 98 style full recycle bin icon, metal wire mesh trash can with crumpled paper inside, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:26:02.179026+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 1697,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "msg_error-0",
+      "file_path": "assets/sprites/win98\\msg_error-0.png",
+      "prompt": "Windows 98 style error icon, red circle with white X, error message warning, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:26:15.966129+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 967,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "check-0",
+      "file_path": "assets/sprites/win98\\check-0.png",
+      "prompt": "Windows 98 style checkmark icon, green checkmark in circle, success confirmation, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:26:29.945091+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 972,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "clock-0",
+      "file_path": "assets/sprites/win98\\clock-0.png",
+      "prompt": "Windows 98 style clock icon, analog clock face with hands, system time, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:26:48.374638+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 1311,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "certificate-0",
+      "file_path": "assets/sprites/win98\\certificate-0.png",
+      "prompt": "Windows 98 style certificate icon, diploma paper with ribbon seal, award document, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:27:07.597538+00:00",
+      "generation_time_seconds": 16,
+      "size": "32x32",
+      "file_size_bytes": 1101,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "world_star-0",
+      "file_path": "assets/sprites/win98\\world_star-0.png",
+      "prompt": "Windows 98 style gold star icon, five-pointed yellow star, favorite bookmark, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:27:21.375153+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 790,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "world_star-1",
+      "file_path": "assets/sprites/win98\\world_star-1.png",
+      "prompt": "Windows 98 style silver star icon, five-pointed gray star, rating star variant, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:27:41.768496+00:00",
+      "generation_time_seconds": 17,
+      "size": "32x32",
+      "file_size_bytes": 886,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "game_spider-0",
+      "file_path": "assets/sprites/win98\\game_spider-0.png",
+      "prompt": "Windows 98 style Spider Solitaire icon, spider web with spider, card game, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:27:57.579861+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 1323,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "joystick_alt-0",
+      "file_path": "assets/sprites/win98\\joystick_alt-0.png",
+      "prompt": "Windows 98 style joystick icon, black gaming joystick with red button, game controller, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:28:13.087487+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 603,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "joystick_alt-1",
+      "file_path": "assets/sprites/win98\\joystick_alt-1.png",
+      "prompt": "Windows 98 style gamepad icon, gray game controller with d-pad and buttons, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:28:27.184488+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 773,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "game_freecell-0",
+      "file_path": "assets/sprites/win98\\game_freecell-0.png",
+      "prompt": "Windows 98 style FreeCell icon, four playing cards in a row, card game solitaire variant, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:28:48.068774+00:00",
+      "generation_time_seconds": 17,
+      "size": "32x32",
+      "file_size_bytes": 432,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "magnifying_glass-0",
+      "file_path": "assets/sprites/win98\\magnifying_glass-0.png",
+      "prompt": "Windows 98 style magnifying glass icon, search tool with handle, find search, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:29:19.302505+00:00",
+      "generation_time_seconds": 28,
+      "size": "32x32",
+      "file_size_bytes": 968,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "game_block-0",
+      "file_path": "assets/sprites/win98\\game_block-0.png",
+      "prompt": "Windows 98 style puzzle block icon, colorful tetris-like blocks, block puzzle game, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:29:38.244482+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 834,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "xml_gear-0",
+      "file_path": "assets/sprites/win98\\xml_gear-0.png",
+      "prompt": "Windows 98 style XML settings icon, document with gear overlay, configuration file, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:29:56.963064+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 1164,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "xml_gear-1",
+      "file_path": "assets/sprites/win98\\xml_gear-1.png",
+      "prompt": "Windows 98 style code settings icon, curly braces with small gear, developer config variant, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:30:10.669624+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 1155,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "world_lock-0",
+      "file_path": "assets/sprites/win98\\world_lock-0.png",
+      "prompt": "Windows 98 style security lock icon, golden padlock closed, secure locked, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:30:32.118556+00:00",
+      "generation_time_seconds": 18,
+      "size": "32x32",
+      "file_size_bytes": 719,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "windows_slanted-1",
+      "file_path": "assets/sprites/win98\\windows_slanted-1.png",
+      "prompt": "Windows 98 style Windows logo, four-colored waving flag tilted, red green blue yellow, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:30:48.096030+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 999,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_explorer-1",
+      "file_path": "assets/sprites/win98\\computer_explorer-1.png",
+      "prompt": "Windows 98 style file explorer variant 1, folder with documents, file manager, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:31:06.758111+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 777,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_explorer-2",
+      "file_path": "assets/sprites/win98\\computer_explorer-2.png",
+      "prompt": "Windows 98 style file explorer variant 2, folder with search lens, browser, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:31:25.768546+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 1021,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_explorer-3",
+      "file_path": "assets/sprites/win98\\computer_explorer-3.png",
+      "prompt": "Windows 98 style file explorer variant 3, folder with arrow, file navigation, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:31:47.543548+00:00",
+      "generation_time_seconds": 18,
+      "size": "32x32",
+      "file_size_bytes": 557,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "computer_explorer-5",
+      "file_path": "assets/sprites/win98\\computer_explorer-5.png",
+      "prompt": "Windows 98 style file explorer variant bold, thick folder icon, strong contrast, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:32:07.869328+00:00",
+      "generation_time_seconds": 17,
+      "size": "32x32",
+      "file_size_bytes": 634,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "wm-3",
+      "file_path": "assets/sprites/win98\\wm-3.png",
+      "prompt": "Windows 98 style window manager icon, overlapping windows, multiple documents, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:32:28.953749+00:00",
+      "generation_time_seconds": 18,
+      "size": "32x32",
+      "file_size_bytes": 933,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "wm_file-0",
+      "file_path": "assets/sprites/win98\\wm_file-0.png",
+      "prompt": "Windows 98 style window file icon, single window with document, file preview, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:32:45.659336+00:00",
+      "generation_time_seconds": 13,
+      "size": "32x32",
+      "file_size_bytes": 527,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "taskman-0",
+      "file_path": "assets/sprites/win98\\taskman-0.png",
+      "prompt": "Windows 98 style Task Manager icon, bar graph with process list, system monitor, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:33:01.956285+00:00",
+      "generation_time_seconds": 13,
+      "size": "32x32",
+      "file_size_bytes": 879,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "windows_update_large-0",
+      "file_path": "assets/sprites/win98\\windows_update_large-0.png",
+      "prompt": "Windows 98 style Windows Update icon, Windows logo with download arrow, system update, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:33:35.922919+00:00",
+      "generation_time_seconds": 30,
+      "size": "32x32",
+      "file_size_bytes": 1142,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "windows_movie-0",
+      "file_path": "assets/sprites/win98\\windows_movie-0.png",
+      "prompt": "Windows 98 style Windows Media icon, film reel with play button, movie player, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:33:53.136061+00:00",
+      "generation_time_seconds": 14,
+      "size": "32x32",
+      "file_size_bytes": 1235,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "window_program-0",
+      "file_path": "assets/sprites/win98\\window_program-0.png",
+      "prompt": "Windows 98 style program window icon, white window with blue title bar, application, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:34:07.174653+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 466,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "window_blank-0",
+      "file_path": "assets/sprites/win98\\window_blank-0.png",
+      "prompt": "Windows 98 style blank window icon, empty white window frame, generic window, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:34:27.645761+00:00",
+      "generation_time_seconds": 17,
+      "size": "32x32",
+      "file_size_bytes": 475,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "help_book-0",
+      "file_path": "assets/sprites/win98\\help_book-0.png",
+      "prompt": "Windows 98 style Help icon, yellow book with question mark, help documentation, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:34:39.945634+00:00",
+      "generation_time_seconds": 9,
+      "size": "32x32",
+      "file_size_bytes": 965,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "help-0",
+      "file_path": "assets/sprites/win98\\help-0.png",
+      "prompt": "Windows 98 style help icon, blue circle with white question mark, assistance, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:34:54.445164+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 743,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "question_mark-0",
+      "file_path": "assets/sprites/win98\\question_mark-0.png",
+      "prompt": "Windows 98 style question mark icon, large blue question mark, unknown help, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:35:09.930269+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 439,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "msg_warning-0",
+      "file_path": "assets/sprites/win98\\msg_warning-0.png",
+      "prompt": "Windows 98 style warning icon, yellow triangle with exclamation mark, caution alert, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:35:31.192037+00:00",
+      "generation_time_seconds": 18,
+      "size": "32x32",
+      "file_size_bytes": 498,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "app_favorites-0",
+      "file_path": "assets/sprites/win98\\app_favorites-0.png",
+      "prompt": "Windows 98 style favorites icon, folder with gold star, bookmarks collection, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:35:43.622554+00:00",
+      "generation_time_seconds": 9,
+      "size": "32x32",
+      "file_size_bytes": 863,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "msg_information-0",
+      "file_path": "assets/sprites/win98\\msg_information-0.png",
+      "prompt": "Windows 98 style info icon, blue circle with white letter i, information message, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:36:03.801965+00:00",
+      "generation_time_seconds": 17,
+      "size": "32x32",
+      "file_size_bytes": 668,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": [],
+  "completed_at": "2026-01-18T01:36:03.801965+00:00"
+}

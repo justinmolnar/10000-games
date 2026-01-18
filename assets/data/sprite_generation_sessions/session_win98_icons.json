@@ -1,0 +1,169 @@
+{
+  "session_name": "win98_icons",
+  "description": "Windows 98 style icons - ONLY sprites actually referenced in codebase",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "programs_json_icons",
+      "output_folder": "assets/sprites/win98",
+      "description": "Icons referenced in programs.json",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "conn_pcs_off_off", "prompt": "Windows 98 style shutdown icon, computer power button with red power symbol, pixel art icon"},
+        {"id": "console_prompt-0", "prompt": "Windows 98 style command prompt icon, black DOS window with white text cursor, MS-DOS prompt, pixel art icon"},
+        {"id": "game_mine_1-0", "prompt": "Windows 98 style Minesweeper icon, grid with mine and red flag, bomb sweeper game, pixel art icon"},
+        {"id": "cards_ace-0", "prompt": "Windows 98 style playing card icon, ace of spades card, single card front, pixel art icon"},
+        {"id": "monitor_tweakui-0", "prompt": "Windows 98 style display settings icon, CRT monitor with color palette, screen properties, pixel art icon"},
+        {"id": "settings_gear-0", "prompt": "Windows 98 style settings gear icon, silver mechanical cog wheel, system configuration, pixel art icon"},
+        {"id": "game_solitaire-0", "prompt": "Windows 98 style Solitaire icon, stack of playing cards fanned out, card game, pixel art icon"},
+        {"id": "computer_2-0", "prompt": "Windows 98 style My Computer icon, beige CRT monitor with PC tower, classic 90s desktop computer, pixel art icon"},
+        {"id": "game_mine_2-0", "prompt": "Windows 98 style Minesweeper bomb icon, cartoon bomb with lit fuse, explosive mine, pixel art icon"},
+        {"id": "gears_tweakui_a-0", "prompt": "Windows 98 style system tweaks icon, two interlocking gears with wrench, advanced settings, pixel art icon"},
+        {"id": "directory_control_panel-0", "prompt": "Windows 98 style Control Panel folder icon, folder with gears and sliders, system settings, pixel art icon"},
+        {"id": "bar_graph-0", "prompt": "Windows 98 style bar chart icon, colorful vertical bar graph, statistics chart, pixel art icon"},
+        {"id": "recycle_bin_empty-0", "prompt": "Windows 98 style empty recycle bin icon, metal wire mesh trash can empty, wastebasket, pixel art icon"},
+        {"id": "notepad-0", "prompt": "Windows 98 style Notepad icon, blue notepad with lined paper, text editor application, pixel art icon"},
+        {"id": "paint_old-0", "prompt": "Windows 98 style MS Paint icon, artist palette with paint brush, image editor, pixel art icon"},
+        {"id": "doc_file-0", "prompt": "Windows 98 style Word document icon, blue W on white paper, rich text document, pixel art icon"},
+        {"id": "connected_world-0", "prompt": "Windows 98 style Internet Explorer icon, blue letter e with globe, web browser, pixel art icon"}
+      ]
+    },
+    {
+      "name": "file_explorer_icons",
+      "output_folder": "assets/sprites/win98",
+      "description": "Icons used by file explorer for file types",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "executable-0", "prompt": "Windows 98 style executable icon, white window with blue title bar, generic EXE program, pixel art icon"},
+        {"id": "directory_open_file_mydocs_small-0", "prompt": "Windows 98 style folder icon, yellow manila folder slightly open, documents folder, pixel art icon"},
+        {"id": "notepad_file-0", "prompt": "Windows 98 style text file icon, white paper with lines of text, TXT document, pixel art icon"},
+        {"id": "file_lines-0", "prompt": "Windows 98 style code file icon, white paper with colored code lines, JSON programming file, pixel art icon"},
+        {"id": "document-0", "prompt": "Windows 98 style generic document icon, white paper with folded corner, blank file, pixel art icon"},
+        {"id": "computer_explorer-0", "prompt": "Windows 98 style Windows Explorer icon, folder with magnifying glass, file browser, pixel art icon"},
+        {"id": "recycle_bin_full-0", "prompt": "Windows 98 style full recycle bin icon, metal wire mesh trash can with crumpled paper inside, pixel art icon"}
+      ]
+    },
+    {
+      "name": "game_visual_identity",
+      "output_folder": "assets/sprites/win98",
+      "description": "Game icons and metric sprites from config.lua",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "msg_error-0", "prompt": "Windows 98 style error icon, red circle with white X, error message warning, pixel art icon"},
+        {"id": "check-0", "prompt": "Windows 98 style checkmark icon, green checkmark in circle, success confirmation, pixel art icon"},
+        {"id": "clock-0", "prompt": "Windows 98 style clock icon, analog clock face with hands, system time, pixel art icon"},
+        {"id": "certificate-0", "prompt": "Windows 98 style certificate icon, diploma paper with ribbon seal, award document, pixel art icon"},
+        {"id": "world_star-0", "prompt": "Windows 98 style gold star icon, five-pointed yellow star, favorite bookmark, pixel art icon"},
+        {"id": "world_star-1", "prompt": "Windows 98 style silver star icon, five-pointed gray star, rating star variant, pixel art icon"},
+        {"id": "game_spider-0", "prompt": "Windows 98 style Spider Solitaire icon, spider web with spider, card game, pixel art icon"},
+        {"id": "joystick_alt-0", "prompt": "Windows 98 style joystick icon, black gaming joystick with red button, game controller, pixel art icon"},
+        {"id": "joystick_alt-1", "prompt": "Windows 98 style gamepad icon, gray game controller with d-pad and buttons, pixel art icon"},
+        {"id": "game_freecell-0", "prompt": "Windows 98 style FreeCell icon, four playing cards in a row, card game solitaire variant, pixel art icon"},
+        {"id": "magnifying_glass-0", "prompt": "Windows 98 style magnifying glass icon, search tool with handle, find search, pixel art icon"},
+        {"id": "game_block-0", "prompt": "Windows 98 style puzzle block icon, colorful tetris-like blocks, block puzzle game, pixel art icon"},
+        {"id": "xml_gear-0", "prompt": "Windows 98 style XML settings icon, document with gear overlay, configuration file, pixel art icon"},
+        {"id": "xml_gear-1", "prompt": "Windows 98 style code settings icon, curly braces with small gear, developer config variant, pixel art icon"},
+        {"id": "world_lock-0", "prompt": "Windows 98 style security lock icon, golden padlock closed, secure locked, pixel art icon"}
+      ]
+    },
+    {
+      "name": "bullet_system_sprites",
+      "output_folder": "assets/sprites/win98",
+      "description": "Bullet sprites used in space defender",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "windows_slanted-1", "prompt": "Windows 98 style Windows logo, four-colored waving flag tilted, red green blue yellow, pixel art icon"},
+        {"id": "computer_explorer-1", "prompt": "Windows 98 style file explorer variant 1, folder with documents, file manager, pixel art icon"},
+        {"id": "computer_explorer-2", "prompt": "Windows 98 style file explorer variant 2, folder with search lens, browser, pixel art icon"},
+        {"id": "computer_explorer-3", "prompt": "Windows 98 style file explorer variant 3, folder with arrow, file navigation, pixel art icon"},
+        {"id": "computer_explorer-5", "prompt": "Windows 98 style file explorer variant bold, thick folder icon, strong contrast, pixel art icon"},
+        {"id": "wm-3", "prompt": "Windows 98 style window manager icon, overlapping windows, multiple documents, pixel art icon"},
+        {"id": "wm_file-0", "prompt": "Windows 98 style window file icon, single window with document, file preview, pixel art icon"},
+        {"id": "taskman-0", "prompt": "Windows 98 style Task Manager icon, bar graph with process list, system monitor, pixel art icon"},
+        {"id": "windows_update_large-0", "prompt": "Windows 98 style Windows Update icon, Windows logo with download arrow, system update, pixel art icon"},
+        {"id": "windows_movie-0", "prompt": "Windows 98 style Windows Media icon, film reel with play button, movie player, pixel art icon"}
+      ]
+    },
+    {
+      "name": "start_menu_icons",
+      "output_folder": "assets/sprites/win98",
+      "description": "Start menu specific icons",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "window_program-0", "prompt": "Windows 98 style program window icon, white window with blue title bar, application, pixel art icon"},
+        {"id": "window_blank-0", "prompt": "Windows 98 style blank window icon, empty white window frame, generic window, pixel art icon"},
+        {"id": "help_book-0", "prompt": "Windows 98 style Help icon, yellow book with question mark, help documentation, pixel art icon"},
+        {"id": "help-0", "prompt": "Windows 98 style help icon, blue circle with white question mark, assistance, pixel art icon"},
+        {"id": "question_mark-0", "prompt": "Windows 98 style question mark icon, large blue question mark, unknown help, pixel art icon"}
+      ]
+    },
+    {
+      "name": "snake_game_icons",
+      "output_folder": "assets/sprites/win98",
+      "description": "Snake game specific sprites",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "msg_warning-0", "prompt": "Windows 98 style warning icon, yellow triangle with exclamation mark, caution alert, pixel art icon"},
+        {"id": "app_favorites-0", "prompt": "Windows 98 style favorites icon, folder with gold star, bookmarks collection, pixel art icon"}
+      ]
+    },
+    {
+      "name": "space_shooter_icons",
+      "output_folder": "assets/sprites/win98",
+      "description": "Space shooter game specific sprites",
+      "default_params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "msg_information-0", "prompt": "Windows 98 style info icon, blue circle with white letter i, information message, pixel art icon"}
+      ]
+    }
+  ]
+}

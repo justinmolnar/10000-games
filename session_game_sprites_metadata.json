@@ -1,0 +1,984 @@
+{
+  "session_name": "game_sprites",
+  "started_at": "2026-01-18T01:49:05.470669+00:00",
+  "total_sprites": 52,
+  "generated": [
+    {
+      "id": "player",
+      "file_path": "assets/sprites/games/dodge/base_1\\player.png",
+      "prompt": "small spaceship, silver hull, blue glow, fighter craft, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:49:28.652550+00:00",
+      "generation_time_seconds": 23,
+      "size": "32x32",
+      "file_size_bytes": 882,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pod_escape_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\pod_escape_01.png",
+      "prompt": "escape pod, spherical, porthole window, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:49:42.301898+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 1283,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "saucer_alien_green_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\saucer_alien_green_01.png",
+      "prompt": "green flying saucer, UFO, alien ship, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:49:56.188738+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 524,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "saucer_earth_military_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\saucer_earth_military_01.png",
+      "prompt": "military flying saucer, gray, weapons, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:50:11.596369+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 810,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_silver_classic_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_silver_classic_01.png",
+      "prompt": "silver rocket ship, fins, retro 1950s, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:50:32.695926+00:00",
+      "generation_time_seconds": 18,
+      "size": "32x32",
+      "file_size_bytes": 702,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "saucer_spinning_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\saucer_spinning_01.png",
+      "prompt": "spinning UFO, rotating disc, sci-fi, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:50:56.221746+00:00",
+      "generation_time_seconds": 20,
+      "size": "32x32",
+      "file_size_bytes": 1200,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rocket_massive_colony_01",
+      "file_path": "assets/sprites/shared/retro_future/vehicles/space\\rocket_massive_colony_01.png",
+      "prompt": "large colony ship, multiple decks, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:51:21.629890+00:00",
+      "generation_time_seconds": 22,
+      "size": "32x32",
+      "file_size_bytes": 715,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "alien_probe_01",
+      "file_path": "assets/sprites/shared/retro_future/aliens/artifacts\\alien_probe_01.png",
+      "prompt": "alien probe, spherical with antenna, scout drone, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:51:46.193268+00:00",
+      "generation_time_seconds": 21,
+      "size": "32x32",
+      "file_size_bytes": 885,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "segment",
+      "file_path": "assets/sprites/games/snake/classic/snake\\segment.png",
+      "prompt": "snake body segment, green square, scaly, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:52:46.952753+00:00",
+      "generation_time_seconds": 57,
+      "size": "32x32",
+      "file_size_bytes": 1675,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "seg_head",
+      "file_path": "assets/sprites/games/snake/classic/snake\\seg_head.png",
+      "prompt": "snake head, green, eyes, tongue, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:53:26.089547+00:00",
+      "generation_time_seconds": 36,
+      "size": "32x32",
+      "file_size_bytes": 1477,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "food",
+      "file_path": "assets/sprites/games/snake/classic/snake\\food.png",
+      "prompt": "red apple, shiny fruit, small leaf, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:53:46.325635+00:00",
+      "generation_time_seconds": 17,
+      "size": "32x32",
+      "file_size_bytes": 959,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "card_back",
+      "file_path": "assets/sprites/games/memory/icons_1\\card_back.png",
+      "prompt": "playing card back, blue pattern, ornate design, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:54:05.282207+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 1661,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "card_front",
+      "file_path": "assets/sprites/games/memory/icons_1\\card_front.png",
+      "prompt": "playing card front, white background, border, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:54:27.724602+00:00",
+      "generation_time_seconds": 19,
+      "size": "32x32",
+      "file_size_bytes": 714,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "enemy",
+      "file_path": "assets/sprites/games/space_shooter/fighter_1\\enemy.png",
+      "prompt": "enemy spaceship, red and black, alien fighter, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:56:09.379871+00:00",
+      "generation_time_seconds": 34,
+      "size": "32x32",
+      "file_size_bytes": 1120,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bullet",
+      "file_path": "assets/sprites/games/space_shooter/fighter_1\\bullet.png",
+      "prompt": "energy bullet, yellow, elongated, projectile, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:56:34.088462+00:00",
+      "generation_time_seconds": 21,
+      "size": "32x32",
+      "file_size_bytes": 972,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "background",
+      "file_path": "assets/sprites/games/hidden_object/base\\background.png",
+      "prompt": "cluttered desk, papers, objects, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:56:53.718391+00:00",
+      "generation_time_seconds": 16,
+      "size": "32x32",
+      "file_size_bytes": 922,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "highlight",
+      "file_path": "assets/sprites/games/hidden_object/base\\highlight.png",
+      "prompt": "glowing circle, yellow sparkle, selection ring, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:57:12.468392+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 1128,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "paddle",
+      "file_path": "assets/sprites/games/breakout/base\\paddle.png",
+      "prompt": "breakout paddle, silver bar, horizontal, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:57:45.124066+00:00",
+      "generation_time_seconds": 29,
+      "size": "32x32",
+      "file_size_bytes": 592,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "brick",
+      "file_path": "assets/sprites/games/breakout/base\\brick.png",
+      "prompt": "breakout brick, red rectangular block, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:58:02.754915+00:00",
+      "generation_time_seconds": 14,
+      "size": "32x32",
+      "file_size_bytes": 727,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ball",
+      "file_path": "assets/sprites/games/breakout/base\\ball.png",
+      "prompt": "breakout ball, white sphere, glowing, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:58:26.801272+00:00",
+      "generation_time_seconds": 21,
+      "size": "32x32",
+      "file_size_bytes": 696,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "coin_heads",
+      "file_path": "assets/sprites/games/coin_flip/base\\coin_heads.png",
+      "prompt": "gold coin heads, face profile, shiny metallic, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:58:41.353906+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 1503,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "coin_tails",
+      "file_path": "assets/sprites/games/coin_flip/base\\coin_tails.png",
+      "prompt": "gold coin tails, eagle symbol, shiny metallic, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:58:55.610379+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 1393,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "rock",
+      "file_path": "assets/sprites/games/rps/base\\rock.png",
+      "prompt": "hand making rock fist gesture, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:59:10.976134+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 744,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "paper",
+      "file_path": "assets/sprites/games/rps/base\\paper.png",
+      "prompt": "hand making paper flat palm gesture, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:59:28.157089+00:00",
+      "generation_time_seconds": 14,
+      "size": "32x32",
+      "file_size_bytes": 447,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "scissors",
+      "file_path": "assets/sprites/games/rps/base\\scissors.png",
+      "prompt": "hand making scissors two fingers gesture, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T01:59:48.355765+00:00",
+      "generation_time_seconds": 17,
+      "size": "32x32",
+      "file_size_bytes": 643,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cat_face_orange_01",
+      "file_path": "assets/sprites/shared/animals\\cat_face_orange_01.png",
+      "prompt": "orange tabby cat face, cute, whiskers, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:00:16.771379+00:00",
+      "generation_time_seconds": 25,
+      "size": "32x32",
+      "file_size_bytes": 1274,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "dog_face_bulldog_01",
+      "file_path": "assets/sprites/shared/animals\\dog_face_bulldog_01.png",
+      "prompt": "bulldog face, wrinkly, cute, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:01:00.305471+00:00",
+      "generation_time_seconds": 40,
+      "size": "32x32",
+      "file_size_bytes": 1449,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "dog_face_golden_01",
+      "file_path": "assets/sprites/shared/animals\\dog_face_golden_01.png",
+      "prompt": "golden retriever face, happy, cute, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:01:18.327662+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 1627,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "dog_face_husky_01",
+      "file_path": "assets/sprites/shared/animals\\dog_face_husky_01.png",
+      "prompt": "husky dog face, blue eyes, black white, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:01:53.661974+00:00",
+      "generation_time_seconds": 32,
+      "size": "32x32",
+      "file_size_bytes": 1167,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "lion_face_01",
+      "file_path": "assets/sprites/shared/animals\\lion_face_01.png",
+      "prompt": "lion face, golden mane, majestic, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:02:19.973362+00:00",
+      "generation_time_seconds": 23,
+      "size": "32x32",
+      "file_size_bytes": 2031,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "tiger_face_01",
+      "file_path": "assets/sprites/shared/animals\\tiger_face_01.png",
+      "prompt": "tiger face, orange black stripes, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:02:42.910303+00:00",
+      "generation_time_seconds": 19,
+      "size": "32x32",
+      "file_size_bytes": 1745,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bear_face_brown_01",
+      "file_path": "assets/sprites/shared/animals\\bear_face_brown_01.png",
+      "prompt": "brown bear face, round ears, cute, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:02:59.722230+00:00",
+      "generation_time_seconds": 13,
+      "size": "32x32",
+      "file_size_bytes": 1283,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "bear_face_panda_01",
+      "file_path": "assets/sprites/shared/animals\\bear_face_panda_01.png",
+      "prompt": "panda bear face, black white, cute, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:03:15.078700+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 1048,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "monkey_face_01",
+      "file_path": "assets/sprites/shared/animals\\monkey_face_01.png",
+      "prompt": "monkey face, brown fur, cute, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:03:39.419510+00:00",
+      "generation_time_seconds": 21,
+      "size": "32x32",
+      "file_size_bytes": 1086,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "elephant_face_01",
+      "file_path": "assets/sprites/shared/animals\\elephant_face_01.png",
+      "prompt": "elephant face, big ears, trunk, gray, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:03:53.584278+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 960,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "horse_face_01",
+      "file_path": "assets/sprites/shared/animals\\horse_face_01.png",
+      "prompt": "horse face, brown, long snout, mane, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:04:24.083757+00:00",
+      "generation_time_seconds": 27,
+      "size": "32x32",
+      "file_size_bytes": 1083,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "frog_face_01",
+      "file_path": "assets/sprites/shared/animals\\frog_face_01.png",
+      "prompt": "frog face, green, big eyes, cute, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:05:12.596665+00:00",
+      "generation_time_seconds": 45,
+      "size": "32x32",
+      "file_size_bytes": 1463,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "burger_classic_01",
+      "file_path": "assets/sprites/shared/food\\burger_classic_01.png",
+      "prompt": "hamburger, sesame bun, lettuce tomato, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:05:37.743955+00:00",
+      "generation_time_seconds": 22,
+      "size": "32x32",
+      "file_size_bytes": 1101,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "pizza_slice_01",
+      "file_path": "assets/sprites/shared/food\\pizza_slice_01.png",
+      "prompt": "pizza slice, pepperoni, melted cheese, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:05:51.843824+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 1042,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "hotdog_01",
+      "file_path": "assets/sprites/shared/food\\hotdog_01.png",
+      "prompt": "hot dog in bun, mustard, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:06:15.440850+00:00",
+      "generation_time_seconds": 20,
+      "size": "32x32",
+      "file_size_bytes": 1003,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "taco_01",
+      "file_path": "assets/sprites/shared/food\\taco_01.png",
+      "prompt": "taco, hard shell, meat lettuce, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:06:29.756324+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 1257,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "sushi_roll_01",
+      "file_path": "assets/sprites/shared/food\\sushi_roll_01.png",
+      "prompt": "sushi roll, maki, nori wrap, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:06:42.536011+00:00",
+      "generation_time_seconds": 9,
+      "size": "32x32",
+      "file_size_bytes": 912,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "ramen_bowl_01",
+      "file_path": "assets/sprites/shared/food\\ramen_bowl_01.png",
+      "prompt": "ramen bowl, noodles, egg, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:06:54.440193+00:00",
+      "generation_time_seconds": 8,
+      "size": "32x32",
+      "file_size_bytes": 972,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "coffee_cup_01",
+      "file_path": "assets/sprites/shared/food\\coffee_cup_01.png",
+      "prompt": "coffee cup, paper cup lid, steam, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:07:19.814876+00:00",
+      "generation_time_seconds": 22,
+      "size": "32x32",
+      "file_size_bytes": 607,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "icecream_cone_01",
+      "file_path": "assets/sprites/shared/food\\icecream_cone_01.png",
+      "prompt": "ice cream cone, pink scoop, waffle cone, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:07:35.152220+00:00",
+      "generation_time_seconds": 12,
+      "size": "32x32",
+      "file_size_bytes": 726,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "donut_sprinkle_01",
+      "file_path": "assets/sprites/shared/food\\donut_sprinkle_01.png",
+      "prompt": "donut, pink frosting, sprinkles, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:07:55.345914+00:00",
+      "generation_time_seconds": 17,
+      "size": "32x32",
+      "file_size_bytes": 1331,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cupcake_01",
+      "file_path": "assets/sprites/shared/food\\cupcake_01.png",
+      "prompt": "cupcake, swirled frosting, cherry top, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:08:09.118214+00:00",
+      "generation_time_seconds": 10,
+      "size": "32x32",
+      "file_size_bytes": 1045,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cake_slice_01",
+      "file_path": "assets/sprites/shared/food\\cake_slice_01.png",
+      "prompt": "cake slice, chocolate layers, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:08:23.408568+00:00",
+      "generation_time_seconds": 11,
+      "size": "32x32",
+      "file_size_bytes": 887,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "cookie_chocolate_01",
+      "file_path": "assets/sprites/shared/food\\cookie_chocolate_01.png",
+      "prompt": "chocolate chip cookie, round, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:09:10.613883+00:00",
+      "generation_time_seconds": 44,
+      "size": "32x32",
+      "file_size_bytes": 899,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "candy_lollipop_01",
+      "file_path": "assets/sprites/shared/food\\candy_lollipop_01.png",
+      "prompt": "lollipop, spiral colored candy, stick, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:09:23.038087+00:00",
+      "generation_time_seconds": 9,
+      "size": "32x32",
+      "file_size_bytes": 843,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "milkshake_01",
+      "file_path": "assets/sprites/shared/food\\milkshake_01.png",
+      "prompt": "milkshake, tall glass, whipped cream, straw, pixel art icon",
+      "params": {
+        "width": 32,
+        "height": 32,
+        "view": "side",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-01-18T02:09:41.536097+00:00",
+      "generation_time_seconds": 15,
+      "size": "32x32",
+      "file_size_bytes": 657,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": [
+    {
+      "id": "player",
+      "prompt": "player spaceship, blue and white, fighter, pixel art icon",
+      "error": "Generation or save failed"
+    }
+  ],
+  "completed_at": "2026-01-18T02:09:41.539165+00:00"
+}

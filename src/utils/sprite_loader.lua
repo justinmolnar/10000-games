@@ -16,29 +16,21 @@ end
 
 function SpriteLoader:loadAll()
     if self.loaded then return end
-    
+
     print("[SpriteLoader] Starting sprite load from: " .. self.sprite_dir)
-    
-    -- Get list of files from the sprite list
-    local sprite_list_path = self.sprite_dir .. "win98.txt"
-    local success, contents = pcall(love.filesystem.read, sprite_list_path)
-    
-    if not success or not contents then
-        print("[SpriteLoader] WARNING: Could not read sprite list file: " .. sprite_list_path)
-        self.loaded = true
-        return
-    end
-    
-    -- Parse sprite names from the list
+
+    -- Scan directory for PNG files
+    local files = love.filesystem.getDirectoryItems(self.sprite_dir)
     local sprite_count = 0
-    for line in contents:gmatch("[^\r\n]+") do
-        local sprite_name = line:match("^(.+)%.png$")
+
+    for _, filename in ipairs(files) do
+        local sprite_name = filename:match("^(.+)%.png$")
         if sprite_name and sprite_name ~= "" then
             self:loadSprite(sprite_name)
             sprite_count = sprite_count + 1
         end
     end
-    
+
     -- Load aliases JSON (optional)
     self:loadAliases()
 
@@ -102,7 +94,7 @@ function SpriteLoader:drawSprite(sprite_name, x, y, width, height, tint, palette
         -- One-time warn about missing sprite key to help debug white boxes
         if not self._warned_missing then self._warned_missing = {} end
         if not self._warned_missing[sprite_name] then
-            print(string.format('[SpriteLoader] MISSING sprite "%s". Check %swin98.txt and callers.', tostring(sprite_name), self.sprite_dir))
+            print(string.format('[SpriteLoader] MISSING sprite "%s". Check %s folder.', tostring(sprite_name), self.sprite_dir))
             self._warned_missing[sprite_name] = true
         end
         -- Fallback: draw white rectangle with border

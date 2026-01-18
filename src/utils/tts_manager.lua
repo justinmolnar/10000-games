@@ -6,7 +6,7 @@ function TTSManager:init(config)
     self.enabled = self.config.enabled ~= false  -- Default to enabled
     self.rate = self.config.rate or 0  -- Speech rate: -10 to 10 (0 = normal, negative = slower, positive = faster)
     self.volume = self.config.volume or 100  -- Volume: 0-100
-    self.use_audio_effects = self.config.use_audio_effects ~= false  -- Generate to WAV for effects
+    self.use_audio_effects = self.config.use_audio_effects == true  -- Default to false (blocking WAV gen causes lag)
     self.voice_name = self.config.voice_name or nil  -- Specific SAPI voice name (nil = default)
 
     -- Detect OS
@@ -211,16 +211,17 @@ speech.Speak "%s"]],
 end
 
 function TTSManager:executeAsync(command)
-    -- Execute command in background without blocking
-    local success, err = pcall(function()
+    -- Execute command in a separate thread to ensure ZERO blocking
+    local thread_code = [[
+        local command = ...
         os.execute(command)
-    end)
-
-    if not success then
-        print("[TTSManager] Failed to execute TTS command: " .. tostring(err))
-    else
-        print("[TTSManager] Command executed successfully")
-    end
+    ]]
+    
+    local thread = love.thread.newThread(thread_code)
+    thread:start(command)
+    
+    -- Cleanup thread reference (let it run and die)
+    -- We don't need to join/wait for it
 end
 
 -- Weird/distorted voice presets

@@ -256,8 +256,8 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
 
     -- Standard HUD (Phase 8)
     self.hud = HUDRenderer:new({
-        primary = {label = "Matches", key = "matches"},
-        secondary = {label = "Moves", key = "moves"},
+        primary = {label = "Matches", key = "metrics.matches"},
+        secondary = {label = "Moves", key = "metrics.moves"},
         timer = {label = "Time", key = "time_elapsed", format = "float"}
     })
     self.hud.game = self
@@ -292,7 +292,7 @@ function MemoryMatch:loadAssets()
     -- Default to "flags" if no sprite_set specified
     local sprite_set = (self.variant and self.variant.sprite_set) or "flags"
 
-    local game_type = "memory_match"
+    local game_type = "memory"
     local base_path = "assets/sprites/games/" .. game_type .. "/" .. sprite_set
 
     -- Try to load card back
@@ -313,8 +313,28 @@ function MemoryMatch:loadAssets()
     local files = love.filesystem.getDirectoryItems(base_path)
 
     for _, filename in ipairs(files) do
-        if filename:match("%.png$") and filename ~= "card_back.png" and filename ~= "launcher_icon.png" then
+        if filename:lower():match("%.png$") and filename:lower() ~= "card_back.png" and filename:lower() ~= "launcher_icon.png" then
             table.insert(icon_files, filename)
+        end
+    end
+
+    -- Failsafe: If no icons found, try forcing the memory/flags path
+    if #icon_files == 0 then
+        print("[MemoryMatch:loadAssets] No icons found in " .. base_path .. ", trying fallback to assets/sprites/games/memory/flags")
+        base_path = "assets/sprites/games/memory/flags"
+        
+        -- Try loading card back again from fallback path
+        local fallback_card_back = base_path .. "/card_back.png"
+        local cb_success, cb_img = pcall(function() return love.graphics.newImage(fallback_card_back) end)
+        if cb_success then
+            self.sprites.card_back = cb_img
+        end
+
+        files = love.filesystem.getDirectoryItems(base_path)
+        for _, filename in ipairs(files) do
+            if filename:lower():match("%.png$") and filename:lower() ~= "card_back.png" and filename:lower() ~= "launcher_icon.png" then
+                table.insert(icon_files, filename)
+            end
         end
     end
 
@@ -800,21 +820,30 @@ function MemoryMatch:createCards(pairs_count)
                 init_vy = 0
             end
 
-            table.insert(self.cards, {
+            -- Spawn entity via controller (Phase 11)
+            -- This registers the card with the entity system so getEntities() works
+            local card = self.entity_controller:spawn("card", init_x, init_y, {
                 value = i,
                 attempts = {},
                 -- Flip animation state
                 flip_state = initial_flip_state,  -- "face_down", "flipping_up", "face_up", "flipping_down"
                 flip_progress = initial_flip_progress,  -- 0-1 animation progress
                 -- Physics for gravity mode
-                x = init_x,
-                y = init_y,
-                vx = init_vx,  -- Velocity X
-                vy = init_vy,  -- Velocity Y
+                vx = init_vx,
+                vy = init_vy,
                 grid_row = row,
                 grid_col = col,
-                icon_id = i  -- Icon identifier for sprite lookup
+                icon_id = i,  -- Icon identifier for sprite lookup
+                width = self.CARD_WIDTH,
+                height = self.CARD_HEIGHT
             })
+            
+            -- Also add to local cards list for initial shuffle
+            if card then
+                table.insert(self.cards, card)
+            else
+                print("[MemoryMatch:createCards] Failed to spawn card entity!")
+            end
         end
     end
     self:shuffleCards()
