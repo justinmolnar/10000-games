@@ -5,6 +5,7 @@ local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local EntityController = require('src.utils.game_components.entity_controller')
+local MovementController = require('src.utils.game_components.movement_controller')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
 -- Config-driven defaults with safe fallbacks
@@ -188,11 +189,20 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
         end
     end
 
-    self.move_timer = 0
     -- Use variant snake_speed directly (already configured per-variant)
     self.speed = self.snake_speed * speed_modifier
     -- Use variant victory_limit as target length (for length-based victory)
     self.target_length = self.victory_limit
+
+    -- Phase 8: MovementController for grid movement timing and direction queuing
+    -- Snake uses MC's timing but handles its own body segment management
+    self.movement_controller = MovementController:new({
+        mode = "grid",
+        cells_per_second = self.speed,
+        allow_reverse = false  -- Snake can't reverse into itself
+    })
+    -- Initialize grid state with starting direction
+    self.movement_controller:initGridState("snake", self.direction.x, self.direction.y)
 
     -- Initialize foods as empty - will be spawned in setPlayArea after obstacles exist
     self.foods = {}
@@ -473,7 +483,8 @@ function SnakeGame:setPlayArea(width, height)
                 if self.movement_type == "smooth" then
                     self.smooth_angle = math.atan2(self.direction.y, self.direction.x)
                 end
-                self.next_direction = {x = self.direction.x, y = self.direction.y}
+                -- Sync MovementController's direction after repositioning
+                self.movement_controller:initGridState("snake", self.direction.x, self.direction.y)
 
                 print("[SnakeGame:setPlayArea] Repositioned snake inside shaped arena (fixed)")
             end
@@ -588,7 +599,8 @@ function SnakeGame:setPlayArea(width, height)
                     else
                         self.direction = {x = 0, y = dy > 0 and 1 or -1}
                     end
-                    self.next_direction = {x = self.direction.x, y = self.direction.y}
+                    -- Sync MovementController's direction after repositioning
+                    self.movement_controller:initGridState("snake", self.direction.x, self.direction.y)
 
                     print("[SnakeGame:setPlayArea] Repositioned snake inside shaped arena")
                 end
@@ -810,7 +822,8 @@ function SnakeGame:setPlayArea(width, height)
                     if self.movement_type == "smooth" then
                         self.smooth_angle = math.atan2(self.direction.y, self.direction.x)
                     end
-                    self.next_direction = {x = self.direction.x, y = self.direction.y}
+                    -- Sync MovementController's direction after repositioning
+                    self.movement_controller:initGridState("snake", self.direction.x, self.direction.y)
 
                     print("[SnakeGame:setPlayArea] Repositioned snake to safe spawn (dynamic arena)")
                 end
@@ -1107,19 +1120,18 @@ function SnakeGame:updateGameLogic(dt)
         return  -- Skip grid-based movement
     end
 
-    -- Grid-based movement
-    self.move_timer = self.move_timer + dt
-    -- Apply max speed cap
+    -- Grid-based movement (Phase 8: Uses MovementController for timing)
+    -- Apply max speed cap to the movement controller
     local capped_speed = self.speed
     if self.max_speed_cap > 0 and self.speed > self.max_speed_cap then
         capped_speed = self.max_speed_cap
     end
-    local move_interval = 1 / capped_speed
+    self.movement_controller:setSpeed(capped_speed)
 
-    if self.move_timer >= move_interval then
-        self.move_timer = self.move_timer - move_interval
-
-        self.direction = self.next_direction
+    -- Check if it's time to move using MovementController's timing
+    if self.movement_controller:tickGrid(dt, "snake") then
+        -- Apply queued direction from MovementController
+        self.direction = self.movement_controller:applyQueuedDirection("snake")
 
         local head = self.snake[1]
 
@@ -1266,7 +1278,8 @@ function SnakeGame:updateGameLogic(dt)
                 print(string.format("[BOUNCE] New head position: (%d,%d)", new_head.x, new_head.y))
             end
 
-            self.next_direction = self.direction
+            -- Sync MovementController's direction after bounce
+            self.movement_controller:initGridState("snake", self.direction.x, self.direction.y)
         else
             -- Default to wrap (Pac-Man style)
             new_head = {
@@ -1495,30 +1508,30 @@ function SnakeGame:keypressed(key)
             handled = true
         end
     else
-        -- Grid movement: snap to cardinal directions
+        -- Grid movement: snap to cardinal directions (Phase 8: Uses MovementController)
         local new_dir = nil
 
-        if (key == 'left' or key == 'a') and self.direction.x == 0 then
+        if key == 'left' or key == 'a' then
             new_dir = {x = -1, y = 0}
-            handled = true
-        elseif (key == 'right' or key == 'd') and self.direction.x == 0 then
+        elseif key == 'right' or key == 'd' then
             new_dir = {x = 1, y = 0}
-            handled = true
-        elseif (key == 'up' or key == 'w') and self.direction.y == 0 then
+        elseif key == 'up' or key == 'w' then
             new_dir = {x = 0, y = -1}
-            handled = true
-        elseif (key == 'down' or key == 's') and self.direction.y == 0 then
+        elseif key == 'down' or key == 's' then
             new_dir = {x = 0, y = 1}
-            handled = true
         end
 
         if new_dir then
-            -- Apply to all player snakes (multi-snake control)
-            self.next_direction = new_dir
-            for i = 2, #self.player_snakes do
-                local psnake = self.player_snakes[i]
-                if psnake.alive then
-                    psnake.next_direction = {x = new_dir.x, y = new_dir.y}
+            -- Queue direction via MovementController (handles reverse check internally)
+            local queued = self.movement_controller:queueGridDirection("snake", new_dir.x, new_dir.y, self.direction)
+            if queued then
+                handled = true
+                -- Also apply to additional player snakes (multi-snake control)
+                for i = 2, #self.player_snakes do
+                    local psnake = self.player_snakes[i]
+                    if psnake.alive then
+                        psnake.next_direction = {x = new_dir.x, y = new_dir.y}
+                    end
                 end
             end
         end
@@ -2643,7 +2656,8 @@ function SnakeGame:_spawnSnakeSafe()
         self.direction = {x = 0, y = dy > 0 and 1 or -1}
     end
 
-    self.next_direction = {x = self.direction.x, y = self.direction.y}
+    -- Sync MovementController's direction after spawning
+    self.movement_controller:initGridState("snake", self.direction.x, self.direction.y)
 
     -- Update smooth movement positions
     if self.movement_type == "smooth" then

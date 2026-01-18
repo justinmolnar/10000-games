@@ -444,11 +444,24 @@ coin_flip.lua               -49 lines (660 → 611)
 
 ### AI Notes
 
-*[To be filled after phase completion]*
+**Completed:** 2026-01-18
+
+**Summary:**
+- Added "grid" mode to MovementController for discrete cell-based movement
+- Features implemented:
+  - Discrete cell-based positioning (entity.grid_x, entity.grid_y)
+  - Direction queuing (next_direction applied on cell boundary)
+  - Speed as cells_per_second (configurable)
+  - Grid wrap support (uses bounds.wrap_x/wrap_y)
+  - Configurable cell_size
+  - allow_diagonal option (default false)
+  - allow_reverse option for 180-degree turns (default false)
+- Helper methods added: getGridState(), setGridDirection(), resetGridState()
+- Updated documentation header with grid mode usage
 
 #### Line Changes
 ```
-[filename]               +/- [n] lines
+movement_controller.lua     +147 lines (556 → 703)
 ```
 
 ---
@@ -483,12 +496,33 @@ coin_flip.lua               -49 lines (660 → 611)
 
 ### AI Notes
 
-*[To be filled after phase completion]*
+**Completed:** 2026-01-18
+
+**Summary:**
+- Snake now uses MovementController for grid movement timing and direction queuing
+- Added Snake-friendly helper methods to MovementController:
+  - `tickGrid(dt, entity_id)` - Returns true when it's time to move
+  - `queueGridDirection(entity_id, dir_x, dir_y, current_dir)` - Queue direction with reverse check
+  - `applyQueuedDirection(entity_id)` - Apply queued direction and return it
+  - `getGridDirection(entity_id)` - Get current direction without modifying state
+  - `initGridState(entity_id, dir_x, dir_y)` - Initialize/reset grid state
+  - `setSpeed(speed)` - Dynamically change cells_per_second
+
+- Snake integration:
+  - Replaced `self.move_timer` logic with `movement_controller:tickGrid()`
+  - Replaced direct `self.next_direction` assignments with `movement_controller:queueGridDirection()`
+  - Snake still handles its own body management (array shifting) and wall mode logic
+  - Multi-snake mode (`player_snakes[2+]`) still uses local next_direction (only main snake uses MC)
+
+- Why partial migration: Snake has specialized needs (body array shifting, complex bounce logic, girth collision) that don't fit MovementController's single-entity model. MC handles timing, Snake handles body.
 
 #### Line Changes
 ```
-[filename]               +/- [n] lines
+movement_controller.lua     +101 lines (703 → 804)
+snake_game.lua              +14 lines (2655 → 2669)
 ```
+
+Note: snake_game.lua increased slightly due to MC initialization and sync calls replacing inline timer code.
 
 ---
 

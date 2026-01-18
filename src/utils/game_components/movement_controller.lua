@@ -1,17 +1,22 @@
 -- MovementController: Reusable movement system for game entities
--- Supports multiple movement types: direct, asteroids, rail, jump/dash
+-- Supports multiple movement types: direct, asteroids, rail, jump/dash, grid
 -- All movement is deterministic for demo playback compatibility
 --
 -- Usage:
 --   local MovementController = require('src.utils.game_components.movement_controller')
 --   local mc = MovementController:new({
---       mode = "direct",           -- "direct", "asteroids", "rail", "jump"
+--       mode = "direct",           -- "direct", "asteroids", "rail", "jump", "grid"
 --       speed = 300,               -- Movement speed (pixels/sec for direct, accel for asteroids)
 --       friction = 1.0,            -- Friction factor (1.0 = instant, 0.95 = drift)
 --       rotation_speed = 5.0,      -- Rotation speed (radians/sec)
 --       -- Jump/dash specific:
 --       jump_distance = 150,       -- Distance per jump
---       jump_cooldown = 0.5        -- Cooldown between jumps
+--       jump_cooldown = 0.5,       -- Cooldown between jumps
+--       -- Grid mode specific:
+--       cell_size = 20,            -- Size of each grid cell in pixels
+--       cells_per_second = 10,     -- Movement speed in cells per second
+--       allow_diagonal = false,    -- Allow diagonal movement
+--       allow_reverse = false      -- Allow instant 180-degree turns
 --   })
 --
 --   -- In update loop:
@@ -20,6 +25,7 @@
 --   mc:update(dt, entity, input, bounds)
 --
 --   -- Entity table must have: {x, y, vx, vy, angle, width, height, radius}
+--   -- For grid mode, entity also uses: {grid_x, grid_y, direction, next_direction}
 --   -- After update(), entity.x, entity.y, entity.vx, entity.vy, entity.angle are modified
 
 local Object = require('class')
@@ -54,6 +60,15 @@ function MovementController:new(params)
     -- Internal jump state (stored per entity, but initialized here)
     self.jump_state = {}  -- Keyed by entity ID if multiple entities use same controller
 
+    -- Grid mode parameters
+    self.cell_size = params.cell_size or 20  -- Size of each grid cell in pixels
+    self.cells_per_second = params.cells_per_second or 10  -- Movement speed in cells per second
+    self.allow_diagonal = params.allow_diagonal or false  -- Allow diagonal movement
+    self.allow_reverse = params.allow_reverse or false  -- Allow instant 180-degree turns
+
+    -- Internal grid state (stored per entity)
+    self.grid_state = {}  -- Keyed by entity ID
+
     return self
 end
 
@@ -70,6 +85,8 @@ function MovementController:update(dt, entity, input, bounds)
         self:updateRail(dt, entity, input, bounds)
     elseif self.mode == "jump" then
         self:updateJump(dt, entity, input, bounds)
+    elseif self.mode == "grid" then
+        self:updateGrid(dt, entity, input, bounds)
     end
 end
 
@@ -444,6 +461,237 @@ function MovementController:updateJump(dt, entity, input, bounds)
     if has_momentum then
         self:applyBounce(entity, bounds)
     end
+end
+
+-- Grid movement: Discrete cell-based movement (Snake-style)
+-- Entity moves in cells, not pixels. Direction can be queued while moving.
+function MovementController:updateGrid(dt, entity, input, bounds)
+    -- Get or initialize grid state for this entity
+    local entity_id = entity.id or "default"
+    if not self.grid_state[entity_id] then
+        self.grid_state[entity_id] = {
+            move_timer = 0,
+            direction = {x = 0, y = 0},      -- Current movement direction
+            next_direction = {x = 0, y = 0}  -- Queued direction for next cell
+        }
+    end
+    local state = self.grid_state[entity_id]
+
+    -- Initialize entity grid position if not set
+    if not entity.grid_x then
+        entity.grid_x = math.floor(entity.x / self.cell_size)
+        entity.grid_y = math.floor(entity.y / self.cell_size)
+    end
+
+    -- Process input to queue direction change
+    local input_dir = {x = 0, y = 0}
+    if input.left then input_dir.x = input_dir.x - 1 end
+    if input.right then input_dir.x = input_dir.x + 1 end
+    if input.up then input_dir.y = input_dir.y - 1 end
+    if input.down then input_dir.y = input_dir.y + 1 end
+
+    -- Normalize if not allowing diagonal
+    if not self.allow_diagonal and input_dir.x ~= 0 and input_dir.y ~= 0 then
+        -- Prefer horizontal (can be made configurable)
+        input_dir.y = 0
+    end
+
+    -- Queue direction if input given
+    if input_dir.x ~= 0 or input_dir.y ~= 0 then
+        -- Check if this is a reverse (180-degree turn)
+        local is_reverse = (input_dir.x == -state.direction.x and input_dir.y == -state.direction.y)
+                           and (state.direction.x ~= 0 or state.direction.y ~= 0)
+
+        if self.allow_reverse or not is_reverse then
+            state.next_direction.x = input_dir.x
+            state.next_direction.y = input_dir.y
+        end
+    end
+
+    -- Update move timer
+    local move_interval = 1.0 / self.cells_per_second
+    state.move_timer = state.move_timer + dt
+
+    -- Check if it's time to move to next cell
+    if state.move_timer >= move_interval then
+        state.move_timer = state.move_timer - move_interval
+
+        -- Apply queued direction
+        if state.next_direction.x ~= 0 or state.next_direction.y ~= 0 then
+            state.direction.x = state.next_direction.x
+            state.direction.y = state.next_direction.y
+        end
+
+        -- Move to next cell if we have a direction
+        if state.direction.x ~= 0 or state.direction.y ~= 0 then
+            entity.grid_x = entity.grid_x + state.direction.x
+            entity.grid_y = entity.grid_y + state.direction.y
+
+            -- Calculate grid bounds in cells
+            local grid_width = math.floor(bounds.width / self.cell_size)
+            local grid_height = math.floor(bounds.height / self.cell_size)
+            local grid_offset_x = math.floor(bounds.x / self.cell_size)
+            local grid_offset_y = math.floor(bounds.y / self.cell_size)
+
+            -- Apply wrapping or clamping
+            if bounds.wrap_x then
+                if entity.grid_x < grid_offset_x then
+                    entity.grid_x = grid_offset_x + grid_width - 1
+                elseif entity.grid_x >= grid_offset_x + grid_width then
+                    entity.grid_x = grid_offset_x
+                end
+            else
+                entity.grid_x = math.max(grid_offset_x, math.min(grid_offset_x + grid_width - 1, entity.grid_x))
+            end
+
+            if bounds.wrap_y then
+                if entity.grid_y < grid_offset_y then
+                    entity.grid_y = grid_offset_y + grid_height - 1
+                elseif entity.grid_y >= grid_offset_y + grid_height then
+                    entity.grid_y = grid_offset_y
+                end
+            else
+                entity.grid_y = math.max(grid_offset_y, math.min(grid_offset_y + grid_height - 1, entity.grid_y))
+            end
+
+            -- Update pixel position from grid position
+            entity.x = entity.grid_x * self.cell_size + self.cell_size / 2
+            entity.y = entity.grid_y * self.cell_size + self.cell_size / 2
+        end
+    end
+
+    -- Store direction in entity for external access (e.g., for rendering)
+    entity.direction = state.direction
+    entity.next_direction = state.next_direction
+end
+
+-- Get current grid state for an entity (useful for checking direction externally)
+function MovementController:getGridState(entity)
+    local entity_id = entity.id or "default"
+    return self.grid_state[entity_id]
+end
+
+-- Set direction directly (useful for AI control or initial setup)
+function MovementController:setGridDirection(entity, dir_x, dir_y)
+    local entity_id = entity.id or "default"
+    if not self.grid_state[entity_id] then
+        self.grid_state[entity_id] = {
+            move_timer = 0,
+            direction = {x = 0, y = 0},
+            next_direction = {x = 0, y = 0}
+        }
+    end
+    self.grid_state[entity_id].direction.x = dir_x
+    self.grid_state[entity_id].direction.y = dir_y
+    self.grid_state[entity_id].next_direction.x = dir_x
+    self.grid_state[entity_id].next_direction.y = dir_y
+end
+
+-- Reset grid state for an entity (useful when respawning)
+function MovementController:resetGridState(entity)
+    local entity_id = entity.id or "default"
+    self.grid_state[entity_id] = nil
+end
+
+-- ============================================================================
+-- Snake-friendly grid methods (timing + direction without position management)
+-- These let games with complex body mechanics (like Snake) use grid timing
+-- while handling their own position calculations.
+-- ============================================================================
+
+-- Check if it's time to move to the next grid cell (timing only)
+-- Returns: true if a move should happen this frame, false otherwise
+-- Usage: if mc:tickGrid(dt, "snake") then ... handle move ... end
+function MovementController:tickGrid(dt, entity_id)
+    entity_id = entity_id or "default"
+    if not self.grid_state[entity_id] then
+        self.grid_state[entity_id] = {
+            move_timer = 0,
+            direction = {x = 0, y = 0},
+            next_direction = {x = 0, y = 0}
+        }
+    end
+    local state = self.grid_state[entity_id]
+
+    local move_interval = 1.0 / self.cells_per_second
+    state.move_timer = state.move_timer + dt
+
+    if state.move_timer >= move_interval then
+        state.move_timer = state.move_timer - move_interval
+        return true
+    end
+    return false
+end
+
+-- Queue a direction change for grid movement
+-- current_dir: {x, y} - current direction (for reverse checking)
+-- Returns: true if direction was queued, false if blocked (reverse not allowed)
+function MovementController:queueGridDirection(entity_id, dir_x, dir_y, current_dir)
+    entity_id = entity_id or "default"
+    if not self.grid_state[entity_id] then
+        self.grid_state[entity_id] = {
+            move_timer = 0,
+            direction = {x = 0, y = 0},
+            next_direction = {x = 0, y = 0}
+        }
+    end
+    local state = self.grid_state[entity_id]
+
+    -- Check if this is a reverse (180-degree turn)
+    if not self.allow_reverse and current_dir then
+        local is_reverse = (dir_x == -current_dir.x and dir_y == -current_dir.y)
+                           and (current_dir.x ~= 0 or current_dir.y ~= 0)
+        if is_reverse then
+            return false
+        end
+    end
+
+    state.next_direction.x = dir_x
+    state.next_direction.y = dir_y
+    return true
+end
+
+-- Apply queued direction and return it (call this when tickGrid returns true)
+-- Returns: {x, y} direction vector
+function MovementController:applyQueuedDirection(entity_id)
+    entity_id = entity_id or "default"
+    local state = self.grid_state[entity_id]
+    if not state then
+        return {x = 0, y = 0}
+    end
+
+    -- Apply queued direction if set
+    if state.next_direction.x ~= 0 or state.next_direction.y ~= 0 then
+        state.direction.x = state.next_direction.x
+        state.direction.y = state.next_direction.y
+    end
+
+    return {x = state.direction.x, y = state.direction.y}
+end
+
+-- Get current grid direction without modifying state
+function MovementController:getGridDirection(entity_id)
+    entity_id = entity_id or "default"
+    local state = self.grid_state[entity_id]
+    if not state then
+        return {x = 0, y = 0}
+    end
+    return {x = state.direction.x, y = state.direction.y}
+end
+
+-- Initialize grid state with a starting direction
+function MovementController:initGridState(entity_id, dir_x, dir_y)
+    entity_id = entity_id or "default"
+    self.grid_state[entity_id] = {
+        move_timer = 0,
+        direction = {x = dir_x or 0, y = dir_y or 0},
+        next_direction = {x = dir_x or 0, y = dir_y or 0}
+    }
+end
+
+-- Set the movement speed (cells per second) dynamically
+function MovementController:setSpeed(speed)
+    self.cells_per_second = speed
 end
 
 -- Helper: Apply bounds clamping with optional wrapping
