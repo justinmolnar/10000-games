@@ -1,0 +1,164 @@
+{
+    "name": "memory_match_schema",
+    "description": "Schema for Memory Match game parameters - all configurable values for memory match variants",
+    "parameters": {
+        "card_count": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 100,
+            "description": "Override total cards (0 = auto-calculate from complexity)"
+        },
+        "columns": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 20,
+            "description": "Grid columns (0 = auto-calculate square)"
+        },
+        "match_requirement": {
+            "type": "integer",
+            "default": 2,
+            "min": 2,
+            "max": 4,
+            "description": "Cards required to make a match (2-4)"
+        },
+        "memorize_time": {
+            "type": "number",
+            "default": 5,
+            "min": 0,
+            "max": 60,
+            "description": "Seconds to memorize cards at start (0 = no memorize phase)"
+        },
+        "flip_speed": {
+            "type": "number",
+            "default": 0.3,
+            "min": 0.1,
+            "max": 2.0,
+            "description": "Card flip animation duration in seconds"
+        },
+        "reveal_duration": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.3,
+            "max": 5.0,
+            "description": "Time cards stay revealed before flipping back"
+        },
+        "time_limit": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 600,
+            "description": "Time limit in seconds (0 = unlimited)"
+        },
+        "move_limit": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 500,
+            "description": "Maximum moves allowed (0 = unlimited)"
+        },
+        "mismatch_penalty": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 30,
+            "description": "Time penalty for mismatch (or instant fail if no time limit)"
+        },
+        "combo_multiplier": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "description": "Score multiplier per consecutive match"
+        },
+        "speed_bonus": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 100,
+            "description": "Bonus points per second remaining"
+        },
+        "perfect_bonus": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 5000,
+            "description": "Bonus for matching on first attempt"
+        },
+        "auto_shuffle_interval": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 120,
+            "description": "Auto-shuffle face-down cards every N seconds (0 = disabled)"
+        },
+        "auto_shuffle_count": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 50,
+            "description": "Number of cards to shuffle (0 = all face-down)"
+        },
+        "gravity_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Cards fall with physics"
+        },
+        "card_rotation": {
+            "type": "boolean",
+            "default": false,
+            "description": "Cards can rotate"
+        },
+        "spinning_cards": {
+            "type": "boolean",
+            "default": false,
+            "description": "Cards continuously spin"
+        },
+        "fog_of_war": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 500,
+            "description": "Fog visibility radius around mouse (0 = disabled)"
+        },
+        "fog_inner_radius": {
+            "type": "number",
+            "default": 0.6,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Percentage of radius that's fully lit (0.6 = 60%)"
+        },
+        "fog_darkness": {
+            "type": "number",
+            "default": 0.1,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "How dark obscured area is (0 = black, 1 = visible)"
+        },
+        "distraction_elements": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable distracting visual elements"
+        },
+        "chain_requirement": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 10,
+            "description": "Must match specific target card (0 = disabled)"
+        },
+        "difficulty_modifier": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 3.0,
+            "description": "Global difficulty multiplier"
+        },
+        "sprite_set": {
+            "type": "string",
+            "default": "flags",
+            "description": "Sprite set folder name for card icons"
+        }
+    }
+}

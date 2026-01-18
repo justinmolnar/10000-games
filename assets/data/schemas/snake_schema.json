@@ -1,0 +1,270 @@
+{
+    "name": "snake_schema",
+    "description": "Schema for Snake game parameters - all configurable values for snake variants",
+    "parameters": {
+        "movement_type": {
+            "type": "enum",
+            "values": ["grid", "smooth"],
+            "default": "grid",
+            "description": "Grid-based discrete movement or smooth analog turning"
+        },
+        "snake_speed": {
+            "type": "number",
+            "default": 8,
+            "min": 1,
+            "max": 30,
+            "description": "Base movement speed (cells per second for grid, units per second for smooth)"
+        },
+        "turn_speed": {
+            "type": "number",
+            "default": 180,
+            "min": 30,
+            "max": 720,
+            "description": "Turn speed in degrees per second (smooth mode only)"
+        },
+        "speed_increase_per_food": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 5,
+            "description": "Speed increase each time food is eaten"
+        },
+        "max_speed_cap": {
+            "type": "number",
+            "default": 20,
+            "min": 1,
+            "max": 50,
+            "description": "Maximum speed limit after increases"
+        },
+        "growth_per_food": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 10,
+            "description": "Segments added per food eaten"
+        },
+        "shrink_over_time": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 2,
+            "description": "Segments lost per second (0 = no shrinking)"
+        },
+        "phase_through_tail": {
+            "type": "boolean",
+            "default": false,
+            "description": "Can snake pass through its own tail without dying"
+        },
+        "max_length_cap": {
+            "type": "integer",
+            "default": 9999,
+            "min": 5,
+            "max": 9999,
+            "description": "Maximum snake length (segments stop adding beyond this)"
+        },
+        "girth": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 5,
+            "description": "Starting width of snake in cells"
+        },
+        "girth_growth": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 10,
+            "description": "Segments needed before girth increases (0 = no girth growth)"
+        },
+        "wall_mode": {
+            "type": "enum",
+            "values": ["wrap", "death", "bounce"],
+            "default": "wrap",
+            "description": "What happens when snake hits arena boundary"
+        },
+        "obstacle_bounce": {
+            "type": "boolean",
+            "default": false,
+            "description": "Bounce off obstacles instead of dying"
+        },
+        "arena_size": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.3,
+            "max": 3.0,
+            "description": "Arena size multiplier (1.0 = base size)"
+        },
+        "arena_shape": {
+            "type": "enum",
+            "values": ["rectangle", "circle", "hexagon"],
+            "default": "rectangle",
+            "description": "Shape of the play area boundary"
+        },
+        "shrinking_arena": {
+            "type": "boolean",
+            "default": false,
+            "description": "Arena shrinks over time (battle royale style)"
+        },
+        "moving_walls": {
+            "type": "boolean",
+            "default": false,
+            "description": "Arena boundaries shift periodically"
+        },
+        "food_count": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 20,
+            "description": "Number of food items on screen at once"
+        },
+        "food_spawn_pattern": {
+            "type": "enum",
+            "values": ["random", "cluster", "line", "spiral"],
+            "default": "random",
+            "description": "How multiple foods are positioned relative to each other"
+        },
+        "food_lifetime": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 60,
+            "description": "Seconds before food disappears (0 = never expires)"
+        },
+        "food_movement": {
+            "type": "enum",
+            "values": ["static", "drift", "flee_from_snake", "chase_snake"],
+            "default": "static",
+            "description": "How food moves in the arena"
+        },
+        "food_speed": {
+            "type": "number",
+            "default": 3,
+            "min": 0.5,
+            "max": 15,
+            "description": "Movement speed for non-static food"
+        },
+        "food_spawn_mode": {
+            "type": "enum",
+            "values": ["continuous", "batch"],
+            "default": "continuous",
+            "description": "Continuous (replace eaten) or batch (all at once)"
+        },
+        "food_size_variance": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "description": "Random size variation for food items"
+        },
+        "bad_food_chance": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "description": "Probability that spawned food is harmful (0-1)"
+        },
+        "golden_food_spawn_rate": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "description": "Probability of bonus golden food spawning (0-1)"
+        },
+        "obstacle_count": {
+            "type": "integer",
+            "default": 5,
+            "min": 0,
+            "max": 50,
+            "description": "Number of obstacles in the arena"
+        },
+        "obstacle_type": {
+            "type": "enum",
+            "values": ["static_blocks", "moving_blocks"],
+            "default": "static_blocks",
+            "description": "Static or moving obstacles"
+        },
+        "obstacle_spawn_over_time": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 5,
+            "description": "New obstacles spawn every N seconds (0 = no spawning)"
+        },
+        "ai_snake_count": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 10,
+            "description": "Number of AI-controlled snakes"
+        },
+        "ai_behavior": {
+            "type": "enum",
+            "values": ["food_focused", "aggressive"],
+            "default": "food_focused",
+            "description": "AI snake behavior pattern"
+        },
+        "ai_speed": {
+            "type": "number",
+            "default": 8,
+            "min": 1,
+            "max": 30,
+            "description": "AI snake movement speed"
+        },
+        "snake_collision_mode": {
+            "type": "enum",
+            "values": ["both_die", "big_eats_small"],
+            "default": "both_die",
+            "description": "What happens when snakes collide"
+        },
+        "snake_count": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 5,
+            "description": "Number of player-controlled snakes"
+        },
+        "victory_condition": {
+            "type": "enum",
+            "values": ["length", "time"],
+            "default": "length",
+            "description": "Win by reaching length or surviving time"
+        },
+        "victory_limit": {
+            "type": "integer",
+            "default": 20,
+            "min": 5,
+            "max": 200,
+            "description": "Target length or survival seconds for victory"
+        },
+        "fog_of_war": {
+            "type": "enum",
+            "values": ["none", "player", "center"],
+            "default": "none",
+            "description": "Visibility limitation style"
+        },
+        "invisible_tail": {
+            "type": "boolean",
+            "default": false,
+            "description": "Snake tail is invisible (memory challenge)"
+        },
+        "camera_mode": {
+            "type": "enum",
+            "values": ["follow_head", "fixed"],
+            "default": "follow_head",
+            "description": "Camera follows snake head or shows entire arena"
+        },
+        "camera_zoom": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 2.0,
+            "description": "Camera zoom level"
+        },
+        "sprite_style": {
+            "type": "enum",
+            "values": ["uniform", "segmented"],
+            "default": "uniform",
+            "description": "Uniform sprites or distinct head/body/tail"
+        }
+    }
+}

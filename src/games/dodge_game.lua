@@ -6,7 +6,7 @@ local MovementController = require('src.utils.game_components.movement_controlle
 local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
-local VariantLoader = require('src.utils.game_components.variant_loader')
+local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
@@ -87,8 +87,8 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.dodge) or DodgeCfg
 
-    -- Initialize VariantLoader
-    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
+    -- Load ALL parameters from schema (variant → runtime_config → schema defaults)
+    local p = SchemaLoader.load(self.variant, "dodge_schema", runtimeCfg)
 
     -- Apply variant difficulty modifier (from Phase 1.1-1.2)
     local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
@@ -103,88 +103,51 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     self.game_width = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.width) or (DodgeCfg.arena and DodgeCfg.arena.width) or 400
     self.game_height = (runtimeCfg and runtimeCfg.arena and runtimeCfg.arena.height) or (DodgeCfg.arena and DodgeCfg.arena.height) or 400
 
-    -- Per-variant rotation speed (fallback to runtime config, then file constant)
-    local rotation_speed = loader:get('rotation_speed', PLAYER_ROTATION_SPEED)
+    -- Player movement parameters
+    local rotation_speed = p.rotation_speed
+    local movement_speed = p.movement_speed
+    local movement_type = p.movement_type
+    local accel_friction = p.accel_friction
+    local decel_friction = p.decel_friction
+    local bounce_damping = p.bounce_damping
+    local reverse_mode = p.reverse_mode
+    local jump_distance = p.jump_distance
+    local jump_cooldown = p.jump_cooldown
+    local jump_speed = p.jump_speed
+    local player_size = p.player_size
+    local max_speed = p.max_speed
+    local lives = p.lives
+    local shield = p.shield
+    local shield_recharge_time = p.shield_recharge_time
 
-    -- Per-variant movement speed (fallback to runtime config, then file constant)
-    local movement_speed = loader:get('movement_speed', PLAYER_SPEED)
+    -- Obstacle parameters
+    local obstacle_tracking = p.obstacle_tracking
+    local obstacle_speed_variance = p.obstacle_speed_variance
+    local obstacle_spawn_rate = p.obstacle_spawn_rate
+    local obstacle_spawn_pattern = p.obstacle_spawn_pattern
+    local obstacle_size_variance = p.obstacle_size_variance
+    local obstacle_trails = p.obstacle_trails
+    local disable_obstacle_fallback = p.disable_obstacle_fallback
+    local seeker_turn_rate = p.seeker_turn_rate
 
-    -- Per-variant movement type (default or asteroids)
-    local movement_type = loader:get('movement_type', "default")
+    -- Environment parameters
+    local area_gravity = p.area_gravity
+    local wind_direction = p.wind_direction
+    local wind_strength = p.wind_strength
+    local wind_type = p.wind_type
 
-    -- Universal physics properties (apply to all movement types)
-    -- Separate friction for acceleration (start-up) and deceleration (stopping)
-    local accel_friction = loader:get('accel_friction', 1.0)
+    -- Visual parameters
+    local fog_origin = p.fog_of_war_origin
+    local fog_radius = p.fog_of_war_radius
+    local camera_shake = p.camera_shake_intensity
+    local player_trail = p.player_trail_length
+    local score_mode = p.score_multiplier_mode
 
-    local decel_friction = loader:get('decel_friction', 1.0)
+    -- Victory parameters
+    local victory_condition = p.victory_condition
+    local victory_limit = p.victory_limit
 
-    local bounce_damping = loader:get('bounce_damping', 0.5)
-
-    -- Asteroids-specific: reverse mode (down key behavior)
-    local reverse_mode = loader:get('reverse_mode', "none")
-
-    -- Jump-specific: jump distance and cooldown
-    local jump_distance = loader:get('jump_distance', 80)
-
-    local jump_cooldown = loader:get('jump_cooldown', 0.5)
-
-    local jump_speed = loader:get('jump_speed', 800)
-
-    -- New player parameters
-    local player_size = loader:get('player_size', 1.0)
-
-    local max_speed = loader:get('max_speed', 600)
-
-    local lives = loader:get('lives', 10)
-
-    local shield = loader:get('shield', 0)
-
-    local shield_recharge_time = loader:get('shield_recharge_time', 0)
-
-    -- New obstacle parameters
-    local obstacle_tracking = loader:get('obstacle_tracking', 0.0)
-
-    local obstacle_speed_variance = loader:get('obstacle_speed_variance', 0.0)
-
-    local obstacle_spawn_rate = loader:get('obstacle_spawn_rate', 1.0)
-
-    local obstacle_spawn_pattern = loader:get('obstacle_spawn_pattern', "random")
-
-    local obstacle_size_variance = loader:get('obstacle_size_variance', 0.0)
-
-    local obstacle_trails = loader:get('obstacle_trails', 0)
-
-    local disable_obstacle_fallback = loader:get('disable_obstacle_fallback', false)
-
-    -- Seeker/chaser homing strength
-    local seeker_turn_rate = loader:get('seeker_turn_rate', 54)
-
-    -- New environment parameters
-    local area_gravity = loader:get('area_gravity', 0.0)
-
-    local wind_direction = loader:get('wind_direction', 0)
-
-    local wind_strength = loader:get('wind_strength', 0)
-
-    local wind_type = loader:get('wind_type', "none")
-
-    -- New visual parameters
-    local fog_origin = loader:get('fog_of_war_origin', "none")
-
-    local fog_radius = loader:get('fog_of_war_radius', 9999)
-
-    local camera_shake = loader:get('camera_shake_intensity', 0.0)
-
-    local player_trail = loader:get('player_trail_length', 0)
-
-    local score_mode = loader:get('score_multiplier_mode', "none")
-
-    -- New victory parameters
-    local victory_condition = loader:get('victory_condition', "dodge_count")
-
-    local victory_limit = loader:get('victory_limit', BASE_DODGE_TARGET)
-
-    -- Phase 10: Lives handled by LivesHealthSystem
+    -- Store on self for use elsewhere
     local starting_lives = lives
     self.obstacle_tracking = obstacle_tracking
     self.obstacle_speed_variance = obstacle_speed_variance
@@ -408,27 +371,19 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     print("[DodgeGame:init] Initialized with default game dimensions:", self.game_width, self.game_height)
     print("[DodgeGame:init] Variant:", self.variant and self.variant.name or "Default")
 
-    -- Load per-variant safe zone customization properties
-    local area_size = loader:get('area_size', 1.0)
+    -- Safe zone customization properties (from schema)
+    local area_size = p.area_size
+    local area_morph_type = p.area_morph_type
+    local area_morph_speed = p.area_morph_speed
+    local area_movement_speed = p.area_movement_speed
+    local area_movement_type = p.area_movement_type
+    local area_friction = p.area_friction
+    local area_shape = p.area_shape
 
-    local area_morph_type = loader:get('area_morph_type', "shrink")
-
-    local area_morph_speed = loader:get('area_morph_speed', 1.0)
-
-    local area_movement_speed = loader:get('area_movement_speed', 1.0)
-
-    local area_movement_type = loader:get('area_movement_type', "random")
-
-    local area_friction = loader:get('area_friction', 1.0)
-
-    local area_shape = loader:get('area_shape', "circle")
-
-    -- Load per-variant game over properties
-    local leaving_area_ends_game = loader:get('leaving_area_ends_game', false)
-
-    local holes_type = loader:get('holes_type', "none")
-
-    local holes_count = loader:get('holes_count', 0)
+    -- Game over properties (from schema)
+    local leaving_area_ends_game = p.leaving_area_ends_game
+    local holes_type = p.holes_type
+    local holes_count = p.holes_count
 
     -- Safe zone (Undertale-like arena)
     local min_dim = math.min(self.game_width, self.game_height)

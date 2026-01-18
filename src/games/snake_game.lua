@@ -1,7 +1,7 @@
 local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local SnakeView = require('src.games.views.snake_view')
-local VariantLoader = require('src.utils.game_components.variant_loader')
+local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local EntityController = require('src.utils.game_components.entity_controller')
@@ -19,109 +19,71 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
     self.di = di
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.snake) or SCfg
 
-    -- Initialize VariantLoader
-    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
+    -- Load ALL parameters from schema (variant → runtime_config → schema defaults)
+    local p = SchemaLoader.load(self.variant, "snake_schema", runtimeCfg)
 
     self.GRID_SIZE = (runtimeCfg and runtimeCfg.grid_size) or GRID_SIZE
 
-    -- Apply variant difficulty modifier (from Phase 1.1-1.2)
-    local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
-
     local speed_modifier = self.cheats.speed_modifier or 1.0
 
-    -- Load all variant properties (following Dodge pattern)
     -- Movement properties
-    self.movement_type = loader:get('movement_type', "grid")
-
-    self.snake_speed = loader:get('snake_speed', BASE_SPEED)
-
-    self.turn_speed = loader:get('turn_speed', 180)
-
-    self.speed_increase_per_food = loader:get('speed_increase_per_food', 0)
-
-    self.max_speed_cap = loader:get('max_speed_cap', 20)
+    self.movement_type = p.movement_type
+    self.snake_speed = p.snake_speed
+    self.turn_speed = p.turn_speed
+    self.speed_increase_per_food = p.speed_increase_per_food
+    self.max_speed_cap = p.max_speed_cap
 
     -- Growth & Body properties
-    self.growth_per_food = loader:get('growth_per_food', 1)
-
-    self.shrink_over_time = loader:get('shrink_over_time', 0)
-
-    self.phase_through_tail = loader:get('phase_through_tail', false)
-
-    self.max_length_cap = loader:get('max_length_cap', 9999)
-
-    self.girth = loader:get('girth', 1)
-
-    self.girth_growth = loader:get('girth_growth', 0)
+    self.growth_per_food = p.growth_per_food
+    self.shrink_over_time = p.shrink_over_time
+    self.phase_through_tail = p.phase_through_tail
+    self.max_length_cap = p.max_length_cap
+    self.girth = p.girth
+    self.girth_growth = p.girth_growth
 
     -- Arena properties
-    self.wall_mode = loader:get('wall_mode', "wrap")
-
-    -- Separate control for obstacle bouncing (default: false, obstacles cause death)
-    self.obstacle_bounce = loader:get('obstacle_bounce', false)
-
-    self.arena_size = loader:get('arena_size', 1.0)
-
-    self.arena_shape = loader:get('arena_shape', "rectangle")
-
-    self.shrinking_arena = loader:get('shrinking_arena', false)
-
-    self.moving_walls = loader:get('moving_walls', false)
+    self.wall_mode = p.wall_mode
+    self.obstacle_bounce = p.obstacle_bounce
+    self.arena_size = p.arena_size
+    self.arena_shape = p.arena_shape
+    self.shrinking_arena = p.shrinking_arena
+    self.moving_walls = p.moving_walls
 
     -- Food properties
-    self.food_count = loader:get('food_count', 1)
-
-    self.food_spawn_pattern = loader:get('food_spawn_pattern', "random")
-
-    self.food_lifetime = loader:get('food_lifetime', 0)
-
-    self.food_movement = loader:get('food_movement', "static")
-
-    self.food_speed = loader:get('food_speed', 3)
-
-    self.food_spawn_mode = loader:get('food_spawn_mode', "continuous")
-
-    self.food_size_variance = loader:get('food_size_variance', 0)
-
-    self.bad_food_chance = loader:get('bad_food_chance', 0)
-
-    self.golden_food_spawn_rate = loader:get('golden_food_spawn_rate', 0)
+    self.food_count = p.food_count
+    self.food_spawn_pattern = p.food_spawn_pattern
+    self.food_lifetime = p.food_lifetime
+    self.food_movement = p.food_movement
+    self.food_speed = p.food_speed
+    self.food_spawn_mode = p.food_spawn_mode
+    self.food_size_variance = p.food_size_variance
+    self.bad_food_chance = p.bad_food_chance
+    self.golden_food_spawn_rate = p.golden_food_spawn_rate
 
     -- Obstacle properties
-    self.obstacle_count = loader:get('obstacle_count', BASE_OBSTACLE_COUNT)
+    self.obstacle_count = p.obstacle_count
     print(string.format("[SnakeGame:init] Variant: %s, obstacle_count set to: %s",
         (self.variant and self.variant.name) or "None", tostring(self.obstacle_count)))
-
-    self.obstacle_type = loader:get('obstacle_type', "static_blocks")
-
-    self.obstacle_spawn_over_time = loader:get('obstacle_spawn_over_time', 0)
+    self.obstacle_type = p.obstacle_type
+    self.obstacle_spawn_over_time = p.obstacle_spawn_over_time
 
     -- AI properties
-    self.ai_snake_count = loader:get('ai_snake_count', 0)
-
-    self.ai_behavior = loader:get('ai_behavior', "food_focused")
-
-    self.ai_speed = loader:get('ai_speed', self.snake_speed)
-
-    self.snake_collision_mode = loader:get('snake_collision_mode', "both_die")
-
-    self.snake_count = loader:get('snake_count', 1)
+    self.ai_snake_count = p.ai_snake_count
+    self.ai_behavior = p.ai_behavior
+    self.ai_speed = p.ai_speed or self.snake_speed  -- Default to snake_speed if not set
+    self.snake_collision_mode = p.snake_collision_mode
+    self.snake_count = p.snake_count
 
     -- Victory properties
-    self.victory_condition = loader:get('victory_condition', "length")
-
-    self.victory_limit = loader:get('victory_limit', BASE_TARGET_LENGTH)
+    self.victory_condition = p.victory_condition
+    self.victory_limit = p.victory_limit
 
     -- Visual properties
-    self.fog_of_war = loader:get('fog_of_war', "none")
-
-    self.invisible_tail = loader:get('invisible_tail', false)
-
-    self.camera_mode = loader:get('camera_mode', "follow_head")
-
-    self.camera_zoom = loader:get('camera_zoom', 1.0)
-
-    self.sprite_style = loader:get('sprite_style', "uniform")
+    self.fog_of_war = p.fog_of_war
+    self.invisible_tail = p.invisible_tail
+    self.camera_mode = p.camera_mode
+    self.camera_zoom = p.camera_zoom
+    self.sprite_style = p.sprite_style
 
     -- Sprite set defaults to classic/snake if not specified
     if not self.variant then

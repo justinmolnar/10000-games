@@ -1,0 +1,643 @@
+{
+    "name": "space_shooter_schema",
+    "description": "Schema for Space Shooter game parameters - all configurable values for space shooter variants",
+    "parameters": {
+        "movement_type": {
+            "type": "enum",
+            "values": ["default", "asteroids", "rail", "jump"],
+            "default": "default",
+            "description": "Player movement style"
+        },
+        "movement_speed": {
+            "type": "number",
+            "default": 200,
+            "min": 50,
+            "max": 800,
+            "description": "Base movement speed in pixels per second"
+        },
+        "rotation_speed": {
+            "type": "number",
+            "default": 5.0,
+            "min": 1.0,
+            "max": 15.0,
+            "description": "Rotation speed for asteroids mode (radians per second)"
+        },
+        "accel_friction": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 1.0,
+            "description": "Friction when accelerating"
+        },
+        "decel_friction": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 1.0,
+            "description": "Friction when decelerating"
+        },
+        "jump_distance": {
+            "type": "number",
+            "default": 0.08,
+            "min": 0.02,
+            "max": 0.3,
+            "description": "Jump distance as fraction of screen width"
+        },
+        "jump_cooldown": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 2.0,
+            "description": "Seconds between jumps"
+        },
+        "jump_speed": {
+            "type": "number",
+            "default": 400,
+            "min": 100,
+            "max": 1000,
+            "description": "Speed of jump animation"
+        },
+        "lives_count": {
+            "type": "integer",
+            "default": 5,
+            "min": 1,
+            "max": 99,
+            "description": "Starting lives"
+        },
+        "shield": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable shield system"
+        },
+        "shield_hits": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 10,
+            "description": "Hits shield can absorb"
+        },
+        "shield_regen_time": {
+            "type": "number",
+            "default": 5.0,
+            "min": 1.0,
+            "max": 30.0,
+            "description": "Seconds to regenerate shield"
+        },
+        "fire_mode": {
+            "type": "enum",
+            "values": ["manual", "auto", "burst", "charge"],
+            "default": "manual",
+            "description": "How weapon fires"
+        },
+        "fire_rate": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 20.0,
+            "description": "Shots per second for auto mode"
+        },
+        "burst_count": {
+            "type": "integer",
+            "default": 3,
+            "min": 2,
+            "max": 10,
+            "description": "Bullets per burst"
+        },
+        "burst_delay": {
+            "type": "number",
+            "default": 0.1,
+            "min": 0.01,
+            "max": 0.5,
+            "description": "Delay between burst bullets"
+        },
+        "charge_time": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.3,
+            "max": 5.0,
+            "description": "Seconds to charge shot"
+        },
+        "bullet_pattern": {
+            "type": "enum",
+            "values": ["single", "double", "triple", "spread", "wave", "spiral"],
+            "default": "single",
+            "description": "Bullet firing pattern"
+        },
+        "spread_angle": {
+            "type": "number",
+            "default": 30,
+            "min": 5,
+            "max": 180,
+            "description": "Angle of spread pattern in degrees"
+        },
+        "bullet_arc": {
+            "type": "number",
+            "default": 30,
+            "min": 5,
+            "max": 90,
+            "description": "Arc angle for spread patterns"
+        },
+        "bullets_per_shot": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 20,
+            "description": "Bullets fired per shot"
+        },
+        "bullet_speed": {
+            "type": "number",
+            "default": 400,
+            "min": 100,
+            "max": 1500,
+            "description": "Bullet velocity"
+        },
+        "bullet_homing": {
+            "type": "boolean",
+            "default": false,
+            "description": "Bullets home toward enemies"
+        },
+        "homing_strength": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0,
+            "max": 5.0,
+            "description": "How strongly bullets home"
+        },
+        "bullet_piercing": {
+            "type": "boolean",
+            "default": false,
+            "description": "Bullets pass through enemies"
+        },
+        "bullet_gravity": {
+            "type": "number",
+            "default": 0,
+            "min": -500,
+            "max": 500,
+            "description": "Gravity affecting bullets"
+        },
+        "ammo_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable limited ammo system"
+        },
+        "ammo_capacity": {
+            "type": "integer",
+            "default": 50,
+            "min": 5,
+            "max": 500,
+            "description": "Maximum ammo"
+        },
+        "ammo_reload_time": {
+            "type": "number",
+            "default": 2.0,
+            "min": 0.5,
+            "max": 10.0,
+            "description": "Seconds to reload"
+        },
+        "overheat_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable weapon overheat system"
+        },
+        "overheat_threshold": {
+            "type": "integer",
+            "default": 10,
+            "min": 5,
+            "max": 100,
+            "description": "Shots before overheat"
+        },
+        "overheat_cooldown": {
+            "type": "number",
+            "default": 3.0,
+            "min": 1.0,
+            "max": 10.0,
+            "description": "Seconds to cool down from overheat"
+        },
+        "overheat_heat_dissipation": {
+            "type": "number",
+            "default": 2.0,
+            "min": 0.5,
+            "max": 10.0,
+            "description": "Heat lost per second"
+        },
+        "enemy_spawn_pattern": {
+            "type": "enum",
+            "values": ["continuous", "waves", "formation"],
+            "default": "continuous",
+            "description": "How enemies spawn"
+        },
+        "enemy_spawn_rate_multiplier": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 5.0,
+            "description": "Spawn rate multiplier"
+        },
+        "enemy_speed_multiplier": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 3.0,
+            "description": "Enemy speed multiplier"
+        },
+        "enemy_formation": {
+            "type": "enum",
+            "values": ["scattered", "wall", "v_formation", "grid", "circle"],
+            "default": "scattered",
+            "description": "Enemy formation pattern"
+        },
+        "enemy_bullets_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enemies can shoot"
+        },
+        "enemy_bullet_speed": {
+            "type": "number",
+            "default": 200,
+            "min": 50,
+            "max": 800,
+            "description": "Enemy bullet speed"
+        },
+        "enemy_fire_rate": {
+            "type": "number",
+            "default": 2.0,
+            "min": 0.5,
+            "max": 10.0,
+            "description": "Enemy shots per second"
+        },
+        "enemy_health": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 100,
+            "description": "Base enemy health"
+        },
+        "enemy_health_variance": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0,
+            "max": 1.0,
+            "description": "Random health variation"
+        },
+        "enemy_health_min": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 100,
+            "description": "Minimum enemy health (if using range)"
+        },
+        "enemy_health_max": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 100,
+            "description": "Maximum enemy health (if using range)"
+        },
+        "use_health_range": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use min/max health range instead of variance"
+        },
+        "enemy_behavior": {
+            "type": "enum",
+            "values": ["default", "space_invaders", "galaga"],
+            "default": "default",
+            "description": "Enemy movement behavior style"
+        },
+        "waves_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable wave-based spawning"
+        },
+        "wave_difficulty_increase": {
+            "type": "number",
+            "default": 0.1,
+            "min": 0,
+            "max": 1.0,
+            "description": "Difficulty increase per wave"
+        },
+        "wave_random_variance": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0,
+            "max": 1.0,
+            "description": "Random variance in wave difficulty"
+        },
+        "enemy_density": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 3.0,
+            "description": "Enemy spacing multiplier"
+        },
+        "grid_rows": {
+            "type": "integer",
+            "default": 4,
+            "min": 1,
+            "max": 10,
+            "description": "Space Invaders grid rows"
+        },
+        "grid_columns": {
+            "type": "integer",
+            "default": 8,
+            "min": 1,
+            "max": 20,
+            "description": "Space Invaders grid columns"
+        },
+        "grid_speed": {
+            "type": "number",
+            "default": 50,
+            "min": 10,
+            "max": 200,
+            "description": "Space Invaders grid movement speed"
+        },
+        "grid_descent": {
+            "type": "number",
+            "default": 20,
+            "min": 5,
+            "max": 100,
+            "description": "Grid descent distance on edge hit"
+        },
+        "dive_frequency": {
+            "type": "number",
+            "default": 3.0,
+            "min": 0.5,
+            "max": 15.0,
+            "description": "Galaga dive frequency (seconds)"
+        },
+        "max_diving_enemies": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 10,
+            "description": "Max simultaneous divers"
+        },
+        "entrance_pattern": {
+            "type": "enum",
+            "values": ["swoop", "straight", "spiral"],
+            "default": "swoop",
+            "description": "Galaga entrance animation"
+        },
+        "formation_size": {
+            "type": "integer",
+            "default": 24,
+            "min": 8,
+            "max": 64,
+            "description": "Galaga formation slots"
+        },
+        "initial_spawn_count": {
+            "type": "integer",
+            "default": 8,
+            "min": 1,
+            "max": 32,
+            "description": "Initial enemies to spawn"
+        },
+        "spawn_interval": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 3.0,
+            "description": "Galaga spawn interval"
+        },
+        "enemy_bullet_pattern": {
+            "type": "enum",
+            "values": ["single", "spread", "ring", "aimed"],
+            "default": "single",
+            "description": "Enemy bullet pattern"
+        },
+        "enemy_bullets_per_shot": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 36,
+            "description": "Enemy bullets per shot"
+        },
+        "enemy_bullet_spread_angle": {
+            "type": "number",
+            "default": 30,
+            "min": 5,
+            "max": 360,
+            "description": "Enemy spread angle"
+        },
+        "wave_enemies_per_wave": {
+            "type": "integer",
+            "default": 5,
+            "min": 1,
+            "max": 50,
+            "description": "Enemies per wave"
+        },
+        "wave_pause_duration": {
+            "type": "number",
+            "default": 3.0,
+            "min": 0.5,
+            "max": 10.0,
+            "description": "Pause between waves"
+        },
+        "difficulty_curve": {
+            "type": "enum",
+            "values": ["linear", "exponential", "logarithmic"],
+            "default": "linear",
+            "description": "How difficulty scales over time"
+        },
+        "difficulty_scaling_rate": {
+            "type": "number",
+            "default": 0.1,
+            "min": 0,
+            "max": 1.0,
+            "description": "Rate of difficulty increase"
+        },
+        "powerup_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable power-up drops"
+        },
+        "powerup_spawn_rate": {
+            "type": "number",
+            "default": 15.0,
+            "min": 1.0,
+            "max": 60.0,
+            "description": "Seconds between power-up spawns"
+        },
+        "powerup_duration": {
+            "type": "number",
+            "default": 8.0,
+            "min": 1.0,
+            "max": 30.0,
+            "description": "Power-up effect duration"
+        },
+        "powerup_types": {
+            "type": "table",
+            "default": ["speed", "rapid_fire", "pierce", "shield"],
+            "description": "Available power-up types"
+        },
+        "powerup_drop_speed": {
+            "type": "number",
+            "default": 150,
+            "min": 50,
+            "max": 500,
+            "description": "Power-up fall speed"
+        },
+        "powerup_size": {
+            "type": "number",
+            "default": 20,
+            "min": 10,
+            "max": 50,
+            "description": "Power-up sprite size"
+        },
+        "powerup_speed_multiplier": {
+            "type": "number",
+            "default": 1.5,
+            "min": 1.1,
+            "max": 3.0,
+            "description": "Speed boost multiplier"
+        },
+        "powerup_rapid_fire_multiplier": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 1.0,
+            "description": "Rapid fire cooldown multiplier"
+        },
+        "asteroid_density": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 10,
+            "description": "Asteroids per spawn cycle (0 = disabled)"
+        },
+        "asteroid_speed": {
+            "type": "number",
+            "default": 100,
+            "min": 20,
+            "max": 500,
+            "description": "Asteroid movement speed"
+        },
+        "asteroid_size_min": {
+            "type": "number",
+            "default": 20,
+            "min": 10,
+            "max": 100,
+            "description": "Minimum asteroid size"
+        },
+        "asteroid_size_max": {
+            "type": "number",
+            "default": 50,
+            "min": 20,
+            "max": 200,
+            "description": "Maximum asteroid size"
+        },
+        "asteroids_can_be_destroyed": {
+            "type": "boolean",
+            "default": true,
+            "description": "Asteroids can be shot"
+        },
+        "meteor_frequency": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 30,
+            "description": "Meteors per minute (0 = disabled)"
+        },
+        "meteor_speed": {
+            "type": "number",
+            "default": 400,
+            "min": 100,
+            "max": 1000,
+            "description": "Meteor speed"
+        },
+        "meteor_warning_time": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.3,
+            "max": 3.0,
+            "description": "Warning time before meteor"
+        },
+        "gravity_wells_count": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 10,
+            "description": "Number of gravity wells"
+        },
+        "gravity_well_strength": {
+            "type": "number",
+            "default": 400,
+            "min": 50,
+            "max": 1000,
+            "description": "Gravity well pull strength"
+        },
+        "gravity_well_radius": {
+            "type": "number",
+            "default": 150,
+            "min": 50,
+            "max": 500,
+            "description": "Gravity well effect radius"
+        },
+        "scroll_speed": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 200,
+            "description": "Vertical scroll speed (0 = static)"
+        },
+        "screen_wrap": {
+            "type": "boolean",
+            "default": false,
+            "description": "Player wraps around screen edges"
+        },
+        "screen_wrap_bullets": {
+            "type": "boolean",
+            "default": false,
+            "description": "Bullets wrap around screen"
+        },
+        "screen_wrap_enemies": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enemies wrap around screen"
+        },
+        "bullet_max_wraps": {
+            "type": "integer",
+            "default": 2,
+            "min": 1,
+            "max": 10,
+            "description": "Max bullet screen wraps"
+        },
+        "reverse_gravity": {
+            "type": "boolean",
+            "default": false,
+            "description": "Flip game vertically"
+        },
+        "blackout_zones_count": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 10,
+            "description": "Number of visibility-blocking zones"
+        },
+        "blackout_zone_radius": {
+            "type": "number",
+            "default": 100,
+            "min": 30,
+            "max": 300,
+            "description": "Blackout zone size"
+        },
+        "blackout_zones_move": {
+            "type": "boolean",
+            "default": false,
+            "description": "Blackout zones drift around"
+        },
+        "victory_condition": {
+            "type": "enum",
+            "values": ["kills", "time", "survival"],
+            "default": "kills",
+            "description": "Win condition type"
+        },
+        "victory_limit": {
+            "type": "integer",
+            "default": 20,
+            "min": 1,
+            "max": 500,
+            "description": "Target kills or survival seconds"
+        }
+    }
+}

@@ -2,57 +2,24 @@ local BaseGame = require('src.games.base_game')
 local Config = rawget(_G, 'DI_CONFIG') or {}
 local MemoryMatchView = require('src.games.views.memory_match_view')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
-local VariantLoader = require('src.utils.game_components.variant_loader')
+local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local EntityController = require('src.utils.game_components.entity_controller')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
--- Config-driven defaults with safe fallbacks
-local MMCfg = (Config and Config.games and Config.games.memory_match) or {}
-local CARD_WIDTH = (MMCfg.cards and MMCfg.cards.width) or 60
-local CARD_HEIGHT = (MMCfg.cards and MMCfg.cards.height) or 80
-local CARD_SPACING = (MMCfg.cards and MMCfg.cards.spacing) or 10
-local CARD_ICON_PADDING = (MMCfg.cards and MMCfg.cards.icon_padding) or 10
-local MEMORIZE_TIME_BASE = (MMCfg.timings and MMCfg.timings.memorize_time_base) or 5
-local MATCH_VIEW_TIME = (MMCfg.timings and MMCfg.timings.match_view_time) or 1
+-- Fixed constants
+local CARD_WIDTH_DEFAULT = 60
+local CARD_HEIGHT_DEFAULT = 80
+local CARD_SPACING_DEFAULT = 10
 
 function MemoryMatch:init(game_data, cheats, di, variant_override)
     MemoryMatch.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
-    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match) or MMCfg
 
-    -- Phase 7: Initialize VariantLoader for simplified parameter loading
-    local loader = VariantLoader:new(self.variant, runtimeCfg, {
-        -- Card dimensions
-        card_width = CARD_WIDTH,
-        card_height = CARD_HEIGHT,
-        card_spacing = CARD_SPACING,
-        card_icon_padding = CARD_ICON_PADDING,
-        -- Arena
-        arena_width = (MMCfg.arena and MMCfg.arena.width) or 800,
-        arena_height = (MMCfg.arena and MMCfg.arena.height) or 600,
-        -- Timings
-        flip_speed = 0.3,
-        reveal_duration = 1.0,
-        memorize_time_base = MEMORIZE_TIME_BASE,
-        -- Scoring
-        mismatch_penalty = 0,
-        combo_multiplier = 0.0,
-        speed_bonus = 0,
-        perfect_bonus = 0,
-        -- Constraints
-        time_limit = 0,
-        move_limit = 0,
-        -- Auto shuffle
-        auto_shuffle_interval = 0,
-        auto_shuffle_count = 0,
-        -- Visual effects
-        gravity_enabled = false,
-        card_rotation = false,
-        spinning_cards = false,
-        fog_of_war = 0
-    })
+    -- Load all parameters via SchemaLoader (variant → runtime_config → schema defaults)
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match)
+    local p = SchemaLoader.load(self.variant, "memory_match_schema", runtimeCfg)
 
     -- Update display name from variant (so window title shows correct name)
     if self.variant and self.variant.name then
@@ -60,8 +27,8 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
         print("[MemoryMatch:init] Updated display name to: " .. self.variant.name)
     end
 
-    -- Apply variant difficulty modifier (from Phase 1.1-1.2)
-    local variant_difficulty = loader:getNumber('difficulty_modifier', 1.0)
+    -- Apply variant difficulty modifier
+    local variant_difficulty = p.difficulty_modifier
 
     local speed_modifier_value = self.cheats.speed_modifier or 1.0
     local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
@@ -69,20 +36,18 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     -- Card dimensions will be set after loading sprites (to match sprite size)
     self.CARD_WIDTH = nil
     self.CARD_HEIGHT = nil
-    self.base_sprite_width = nil   -- Store original sprite dimensions for scaling
+    self.base_sprite_width = nil
     self.base_sprite_height = nil
-    -- Phase 7: Use VariantLoader for all parameter loading
-    self.CARD_SPACING = loader:get('cards.spacing', CARD_SPACING)
-    self.CARD_ICON_PADDING = loader:get('cards.icon_padding', CARD_ICON_PADDING)
-    self.grid_padding = 10  -- Padding around the grid edges (reduced to maximize card space)
+    self.CARD_SPACING = CARD_SPACING_DEFAULT
+    self.CARD_ICON_PADDING = 10
+    self.grid_padding = 10
 
-    self.game_width = loader:get('arena.width', loader.defaults.arena_width)
-    self.game_height = loader:get('arena.height', loader.defaults.arena_height)
+    self.game_width = 800
+    self.game_height = 600
 
     -- Grid & Layout parameters
-    local card_count_override = loader:getNumber('card_count', 0)
-
-    local per_complexity = (MMCfg.pairs and MMCfg.pairs.per_complexity) or 6
+    local card_count_override = p.card_count
+    local per_complexity = 6
     local pairs_count
     local total_cards
 
@@ -98,20 +63,17 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     self.total_pairs = pairs_count
 
     -- Grid columns (0 = auto-calculate square, non-zero = explicit)
-    self.columns = loader:getNumber('columns', 0)
+    self.columns = p.columns
 
     -- Always calculate grid_cols and grid_rows for proper rectangular layouts
     if self.columns == 0 then
-        -- Auto-calculate square-ish grid
         self.grid_cols = math.ceil(math.sqrt(total_cards))
         self.grid_rows = math.ceil(total_cards / self.grid_cols)
     else
-        -- Use explicit columns
         self.grid_cols = self.columns
         self.grid_rows = math.ceil(total_cards / self.columns)
     end
 
-    -- Keep grid_size for backward compatibility (use the larger dimension)
     self.grid_size = math.max(self.grid_cols, self.grid_rows)
 
     print("============ MEMORY MATCH INIT ============")
@@ -121,7 +83,7 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     print("===========================================")
 
     -- Match requirement (2-4 cards)
-    self.match_requirement = loader:getNumber('match_requirement', 2)
+    self.match_requirement = p.match_requirement
 
     -- Store pairs_count for later use
     self.pairs_count_for_sprites = pairs_count
@@ -130,21 +92,20 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     self.matched_pairs = {}
 
     -- Timing parameters
-    self.flip_speed = loader:get('timings.flip_speed', loader.defaults.flip_speed)
-    self.reveal_duration = loader:get('timings.reveal_duration', loader.defaults.reveal_duration)
+    self.flip_speed = p.flip_speed
+    self.reveal_duration = p.reveal_duration
 
-    local memorize_time_var = loader:get('memorize_time', loader:get('timings.memorize_time_base', MEMORIZE_TIME_BASE))
+    local memorize_time_var = p.memorize_time
 
     self.memorize_phase = memorize_time_var > 0
     self.memorize_timer = ((memorize_time_var / self.difficulty_modifiers.time_limit) * time_bonus_multiplier) / variant_difficulty
     self.match_check_timer = 0
-    self.memorize_time_initial = self.memorize_timer  -- Store for later use
+    self.memorize_time_initial = self.memorize_timer
 
-    self.auto_shuffle_interval = loader:getNumber('auto_shuffle_interval', 0)
+    self.auto_shuffle_interval = p.auto_shuffle_interval
     self.shuffle_timer = self.auto_shuffle_interval
 
-    -- 0 = shuffle all face-down cards, N = shuffle only N random face-down cards
-    self.auto_shuffle_count = loader:getNumber('auto_shuffle_count', 0)
+    self.auto_shuffle_count = p.auto_shuffle_count
 
     self.is_shuffling = false
     self.shuffle_animation_timer = 0
@@ -154,30 +115,27 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
         self.auto_shuffle_interval, self.auto_shuffle_count))
 
     -- Constraints parameters
-    self.time_limit = loader:getNumber('time_limit', 0)
+    self.time_limit = p.time_limit
     self.time_remaining = self.time_limit
 
-    self.move_limit = loader:getNumber('move_limit', 0)
+    self.move_limit = p.move_limit
     self.moves_made = 0
 
     -- Scoring parameters
-    self.mismatch_penalty = loader:getNumber('mismatch_penalty', 0)
-    self.combo_multiplier = loader:getNumber('combo_multiplier', 0.0)
+    self.mismatch_penalty = p.mismatch_penalty
+    self.combo_multiplier = p.combo_multiplier
     self.current_combo = 0
-    self.speed_bonus = loader:getNumber('speed_bonus', 0)
-    self.perfect_bonus = loader:getNumber('perfect_bonus', 0)
+    self.speed_bonus = p.speed_bonus
+    self.perfect_bonus = p.perfect_bonus
 
     -- Visual Effects parameters
-    self.gravity_enabled = loader:getBoolean('gravity_enabled', false)
-    self.card_rotation = loader:getBoolean('card_rotation', false)
-    self.spinning_cards = loader:getBoolean('spinning_cards', false)
-    self.fog_of_war = loader:getNumber('fog_of_war', 0)
+    self.gravity_enabled = p.gravity_enabled
+    self.card_rotation = p.card_rotation
+    self.spinning_cards = p.spinning_cards
+    self.fog_of_war = p.fog_of_war
 
-    -- Fog spotlight size: 0.0-1.0, percentage of radius that's fully lit (0.6 = 60% inner clear, 40% gradient)
-    self.fog_inner_radius = loader:getNumber('fog_inner_radius', 0.6)
-
-    -- Fog darkness: 0.0-1.0, how dark the obscured area is (0.0 = pitch black, 1.0 = no obscuring)
-    self.fog_darkness = loader:getNumber('fog_darkness', 0.1)
+    self.fog_inner_radius = p.fog_inner_radius
+    self.fog_darkness = p.fog_darkness
 
     -- Initialize FogOfWar component (alpha mode for per-card fog)
     self.fog_controller = FogOfWar:new({
@@ -188,11 +146,11 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
         outer_radius = self.fog_of_war
     })
 
-    self.distraction_elements = loader:getBoolean('distraction_elements', false)
+    self.distraction_elements = p.distraction_elements
     self.distraction_particles = {}
 
     -- Challenge Mode parameters
-    self.chain_requirement = loader:getNumber('chain_requirement', 0)
+    self.chain_requirement = p.chain_requirement
     self.chain_target = nil
     self.chain_progress = 0
 
@@ -516,8 +474,8 @@ function MemoryMatch:calculateGridPosition()
 end
 
 function MemoryMatch:updateGameLogic(dt)
-    -- Phase 11: Sync cards array with EntityController
-    self.cards = self.entity_controller:getEntities()
+    -- Note: self.cards is already populated by createCards() and shuffled by shuffleCards()
+    -- Do NOT sync with entity_controller:getEntities() as it returns spawn order, not shuffled order
 
     if self.memorize_phase then
         self.memorize_timer = self.memorize_timer - dt

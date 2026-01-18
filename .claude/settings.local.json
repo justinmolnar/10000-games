@@ -39,7 +39,12 @@
       "Bash(for game in breakout dodge_game rps coin_flip)",
       "Bash(do echo \"=== Migrating $game ===\")",
       "Bash(git checkout:*)",
-      "Bash(\"/tmp/refactor_reordered.md\")"
+      "Bash(\"/tmp/refactor_reordered.md\")",
+      "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/space_shooter.lua)",
+      "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/breakout.lua)",
+      "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/memory_match.lua)",
+      "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/rps.lua)",
+      "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/coin_flip.lua)"
     ],
     "deny": [],
     "ask": []

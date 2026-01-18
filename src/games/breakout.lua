@@ -8,7 +8,7 @@ local PNGCollision = require('src.utils.png_collision')
 local MovementController = require('src.utils.game_components.movement_controller')
 local FogOfWar = require('src.utils.game_components.fog_of_war')
 local VisualEffects = require('src.utils.game_components.visual_effects')
-local VariantLoader = require('src.utils.game_components.variant_loader')
+local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
@@ -17,44 +17,16 @@ local ProjectileSystem = require('src.utils.game_components.projectile_system')
 local PowerupSystem = require('src.utils.game_components.powerup_system')
 local Breakout = BaseGame:extend('Breakout')
 
--- Config-driven defaults with safe fallbacks
-local BCfg = (Config and Config.games and Config.games.breakout) or {}
+-- Fixed constants (not configurable via variants)
+local PADDLE_HEIGHT = 20
+local BALL_RADIUS = 8
+local BRICK_WIDTH = 60
+local BRICK_HEIGHT = 20
+local BRICK_PADDING = 5
 
--- Paddle defaults
-local DEFAULT_PADDLE_WIDTH = 100
-local DEFAULT_PADDLE_HEIGHT = 20
-local DEFAULT_PADDLE_SPEED = 600  -- Increased from 400 for smoother feel
-local DEFAULT_PADDLE_FRICTION = 1.0  -- Changed to match DodgeGame (1.0 = instant response, no drift)
-local DEFAULT_MOVEMENT_TYPE = "direct"  -- "direct", "velocity", "rail", "asteroids", "jump"
-local DEFAULT_ROTATION_SPEED = 5.0  -- For asteroids mode
-local DEFAULT_JUMP_DISTANCE = 150  -- For jump mode
-local DEFAULT_JUMP_COOLDOWN = 0.5  -- For jump mode
-
--- Ball defaults
-local DEFAULT_BALL_RADIUS = 8
-local DEFAULT_BALL_SPEED = 300
-local DEFAULT_BALL_MAX_SPEED = 600
-local DEFAULT_BALL_COUNT = 1
-local DEFAULT_BALL_GRAVITY = 0  -- 0 = no gravity
-local DEFAULT_BALL_GRAVITY_DIRECTION = 270  -- 270 = down, 90 = up, 0 = right, 180 = left
-local DEFAULT_BALL_SPEED_INCREASE_PER_BOUNCE = 0  -- Speed increase per brick hit
-local DEFAULT_BALL_HOMING_STRENGTH = 0.0  -- 0.0 = none, 1.0 = strong
-local DEFAULT_BALL_PHASE_THROUGH_BRICKS = 0  -- Number of bricks to pierce before bouncing
-local DEFAULT_BALL_TRAIL_LENGTH = 0  -- 0 = no trail, higher = longer trail (stores position history)
-local DEFAULT_BALL_BOUNCE_RANDOMNESS = 0.0  -- 0.0 = no randomness, 0.5 = moderate, 1.0 = high variance
-local DEFAULT_BALL_SPAWN_ANGLE_VARIANCE = 0.5  -- Default spawn angle variance in radians (0.5 = ~28 degrees)
-
--- Power-up defaults (Phase 13)
-local DEFAULT_POWERUP_ENABLED = false  -- Enable/disable power-up system
-local DEFAULT_BRICK_POWERUP_DROP_CHANCE = 0.2  -- 20% chance to drop power-up on brick destruction
-local DEFAULT_POWERUP_FALL_SPEED = 100  -- Fall speed in pixels/second
-local DEFAULT_POWERUP_SIZE = 20  -- Width and height of power-up entities
-local DEFAULT_POWERUP_DURATION = 10.0  -- Default duration for temporary effects (seconds)
-local DEFAULT_POWERUP_TYPES = {"multi_ball", "paddle_extend", "paddle_shrink", "slow_motion", "fast_ball", "laser", "sticky_paddle", "extra_life", "shield", "penetrating_ball", "fireball", "magnet"}  -- All 12 types
-
--- Per-power-up configuration defaults
+-- Default powerup config (used when variant doesn't specify)
 local DEFAULT_POWERUP_CONFIG = {
-    multi_ball = {count = 2, angle_spread = math.pi/6},  -- Spawn 2 balls at ±30 degrees
+    multi_ball = {count = 2, angle_spread = math.pi/6},
     paddle_extend = {multiplier = 1.5, duration = 10.0},
     paddle_shrink = {multiplier = 0.5, duration = 10.0},
     slow_motion = {multiplier = 0.5, duration = 10.0},
@@ -62,93 +34,32 @@ local DEFAULT_POWERUP_CONFIG = {
     laser = {duration = 10.0},
     sticky_paddle = {duration = 10.0},
     extra_life = {count = 1},
-    shield = {},  -- No config needed (one-time effect)
+    shield = {},
     penetrating_ball = {pierce_count = 5, duration = 10.0},
     fireball = {pierce_count = 5, duration = 10.0},
     magnet = {range = 150, duration = 10.0}
 }
 
--- Brick defaults
-local DEFAULT_BRICK_WIDTH = 60
-local DEFAULT_BRICK_HEIGHT = 20
-local DEFAULT_BRICK_ROWS = 5
-local DEFAULT_BRICK_COLUMNS = 10
-local DEFAULT_BRICK_HEALTH = 1
-local DEFAULT_BRICK_PADDING = 5
-local DEFAULT_BRICK_LAYOUT = "grid"
-local DEFAULT_BRICK_SHAPE = "rectangle"  -- "rectangle", "circle", or "png"
-local DEFAULT_BRICK_RADIUS = 15  -- For circle bricks (half of typical brick height)
-local DEFAULT_BRICK_COLLISION_IMAGE = nil  -- Path to PNG for pixel-perfect collision (nil = disabled)
-local DEFAULT_BRICK_ALPHA_THRESHOLD = 0.5  -- Alpha threshold for PNG collision (0-1)
+function Breakout:initVisualEffects(p)
+    self.fog_controller = FogOfWar:new({
+        enabled = p.fog_of_war_enabled,
+        mode = "stencil",
+        opacity = 0.8
+    })
 
--- Game defaults
-local DEFAULT_LIVES = 3
-local DEFAULT_VICTORY_CONDITION = "clear_bricks"
+    self.visual_effects = VisualEffects:new({
+        camera_shake_enabled = p.camera_shake_enabled,
+        particle_effects_enabled = p.particle_effects_enabled,
+        screen_flash_enabled = false,
+        shake_mode = "timer",
+        shake_decay = 0.9
+    })
 
--- Scoring defaults
-local DEFAULT_BRICK_SCORE_MULTIPLIER = 10  -- Base points per brick
-local DEFAULT_COMBO_MULTIPLIER = 0.5  -- Multiplier per combo level (1.5x, 2x, 2.5x, etc.)
-local DEFAULT_PERFECT_CLEAR_BONUS = 1000  -- Bonus if cleared without losing any balls
-local DEFAULT_EXTRA_BALL_SCORE_THRESHOLD = 5000  -- Award extra life every N points
-local DEFAULT_SCORE_POPUP_ENABLED = true  -- Show floating score popups
-
--- Victory condition defaults (Phase 10)
-local DEFAULT_DESTROY_COUNT_TARGET = 50  -- For "destroy_count" victory condition
-local DEFAULT_SCORE_TARGET = 10000  -- For "score" victory condition
-local DEFAULT_TIME_TARGET = 60  -- For "time" victory condition (seconds)
-
--- Legacy compatibility
-local PADDLE_WIDTH = (BCfg.paddle and BCfg.paddle.width) or DEFAULT_PADDLE_WIDTH
-local PADDLE_HEIGHT = (BCfg.paddle and BCfg.paddle.height) or DEFAULT_PADDLE_HEIGHT
-local PADDLE_SPEED = (BCfg.paddle and BCfg.paddle.speed) or DEFAULT_PADDLE_SPEED
-local PADDLE_FRICTION = (BCfg.paddle and BCfg.paddle.friction) or DEFAULT_PADDLE_FRICTION
-
-local BALL_RADIUS = (BCfg.ball and BCfg.ball.radius) or DEFAULT_BALL_RADIUS
-local BALL_SPEED = (BCfg.ball and BCfg.ball.speed) or DEFAULT_BALL_SPEED
-local BALL_MAX_SPEED = (BCfg.ball and BCfg.ball.max_speed) or DEFAULT_BALL_MAX_SPEED
-
-local BRICK_WIDTH = (BCfg.brick and BCfg.brick.width) or DEFAULT_BRICK_WIDTH
-local BRICK_HEIGHT = (BCfg.brick and BCfg.brick.height) or DEFAULT_BRICK_HEIGHT
-local BRICK_ROWS = (BCfg.brick and BCfg.brick.rows) or DEFAULT_BRICK_ROWS
-local BRICK_COLUMNS = (BCfg.brick and BCfg.brick.columns) or DEFAULT_BRICK_COLUMNS
-local BRICK_HEALTH = (BCfg.brick and BCfg.brick.health) or DEFAULT_BRICK_HEALTH
-local BRICK_PADDING = (BCfg.brick and BCfg.brick.padding) or DEFAULT_BRICK_PADDING
-
-local LIVES = (BCfg.game and BCfg.game.lives) or DEFAULT_LIVES
-
-function Breakout:initPaddleParameters(loader)
-    self.movement_type = loader:get('movement_type', DEFAULT_MOVEMENT_TYPE)
-    self.paddle_width = loader:get('paddle_width', DEFAULT_PADDLE_WIDTH)
-    self.paddle_speed = loader:get('paddle_speed', DEFAULT_PADDLE_SPEED)
-    self.paddle_friction = loader:get('paddle_friction', DEFAULT_PADDLE_FRICTION)
-    self.rotation_speed = loader:get('rotation_speed', DEFAULT_ROTATION_SPEED)
-    self.jump_distance = loader:get('jump_distance', DEFAULT_JUMP_DISTANCE)
-    self.jump_cooldown = loader:get('jump_cooldown', DEFAULT_JUMP_COOLDOWN)
+    self.brick_flash_map = {}
 end
 
-function Breakout:initBallParameters(loader)
-    self.ball_count = loader:get('ball_count', DEFAULT_BALL_COUNT)
-    self.ball_speed = loader:get('ball_speed', DEFAULT_BALL_SPEED)
-    self.ball_max_speed = loader:get('ball_max_speed', DEFAULT_BALL_MAX_SPEED)
-    self.ball_gravity = loader:get('ball_gravity', DEFAULT_BALL_GRAVITY)
-    self.ball_gravity_direction = loader:get('ball_gravity_direction', DEFAULT_BALL_GRAVITY_DIRECTION)
-    self.ball_speed_increase_per_bounce = loader:get('ball_speed_increase_per_bounce', DEFAULT_BALL_SPEED_INCREASE_PER_BOUNCE)
-    self.ball_homing_strength = loader:get('ball_homing_strength', DEFAULT_BALL_HOMING_STRENGTH)
-    self.ball_phase_through_bricks = loader:get('ball_phase_through_bricks', DEFAULT_BALL_PHASE_THROUGH_BRICKS)
-    self.ball_trail_length = loader:get('ball_trail_length', DEFAULT_BALL_TRAIL_LENGTH)
-    self.ball_bounce_randomness = loader:get('ball_bounce_randomness', DEFAULT_BALL_BOUNCE_RANDOMNESS)
-    self.ball_spawn_angle_variance = loader:get('ball_spawn_angle_variance', DEFAULT_BALL_SPAWN_ANGLE_VARIANCE)
-end
-
-function Breakout:initPowerupParameters(loader, runtimeCfg)
-    self.powerup_enabled = loader:get('powerup_enabled', DEFAULT_POWERUP_ENABLED)
-    self.brick_powerup_drop_chance = loader:get('brick_powerup_drop_chance', DEFAULT_BRICK_POWERUP_DROP_CHANCE)
-    self.powerup_fall_speed = loader:get('powerup_fall_speed', DEFAULT_POWERUP_FALL_SPEED)
-    self.powerup_size = loader:get('powerup_size', DEFAULT_POWERUP_SIZE)
-    self.powerup_duration = loader:get('powerup_duration', DEFAULT_POWERUP_DURATION)
-    self.powerup_types = loader:get('powerup_types', DEFAULT_POWERUP_TYPES)
-
-    -- Per-power-up configuration (deep copy of defaults)
+function Breakout:initPowerupConfig(p, runtimeCfg)
+    -- Deep copy of defaults
     self.powerup_config = {}
     for powerup_type, config in pairs(DEFAULT_POWERUP_CONFIG) do
         self.powerup_config[powerup_type] = {}
@@ -156,7 +67,7 @@ function Breakout:initPowerupParameters(loader, runtimeCfg)
             self.powerup_config[powerup_type][key] = value
         end
     end
-    
+
     -- Override with runtime config
     if runtimeCfg and runtimeCfg.powerup_config then
         for powerup_type, config in pairs(runtimeCfg.powerup_config) do
@@ -168,7 +79,7 @@ function Breakout:initPowerupParameters(loader, runtimeCfg)
             end
         end
     end
-    
+
     -- Override with variant config
     if self.variant and self.variant.powerup_config then
         for powerup_type, config in pairs(self.variant.powerup_config) do
@@ -182,97 +93,20 @@ function Breakout:initPowerupParameters(loader, runtimeCfg)
     end
 end
 
-function Breakout:initBrickParameters(loader)
-    self.brick_rows = loader:get('brick_rows', DEFAULT_BRICK_ROWS)
-    self.brick_columns = loader:get('brick_columns', DEFAULT_BRICK_COLUMNS)
-    self.brick_layout = loader:get('brick_layout', DEFAULT_BRICK_LAYOUT)
-    self.brick_health = loader:get('brick_health', DEFAULT_BRICK_HEALTH)
-    self.brick_shape = loader:get('brick_shape', DEFAULT_BRICK_SHAPE)
-    self.brick_radius = loader:get('brick_radius', DEFAULT_BRICK_RADIUS)
-    self.brick_collision_image = loader:get('brick_collision_image', DEFAULT_BRICK_COLLISION_IMAGE)
-    self.brick_alpha_threshold = loader:get('brick_alpha_threshold', DEFAULT_BRICK_ALPHA_THRESHOLD)
-end
-
-function Breakout:initBrickBehaviorParameters()
-    self.brick_fall_enabled = (self.variant and self.variant.brick_fall_enabled) or false
-    self.brick_fall_speed = (self.variant and self.variant.brick_fall_speed) or 20
-    self.brick_movement_enabled = (self.variant and self.variant.brick_movement_enabled) or false
-    self.brick_movement_speed = (self.variant and self.variant.brick_movement_speed) or 50
-    self.brick_regeneration_enabled = (self.variant and self.variant.brick_regeneration_enabled) or false
-    self.brick_regeneration_time = (self.variant and self.variant.brick_regeneration_time) or 5.0
-    self.bricks_can_overlap = (self.variant and self.variant.bricks_can_overlap) or false
-end
-
-function Breakout:initPaddleFeatures()
-    self.paddle_can_shoot = (self.variant and self.variant.paddle_can_shoot) or false
-    self.paddle_shoot_cooldown = (self.variant and self.variant.paddle_shoot_cooldown) or 0.5
-    self.paddle_shoot_damage = (self.variant and self.variant.paddle_shoot_damage) or 1
-    self.paddle_sticky = (self.variant and self.variant.paddle_sticky) or false
-    self.paddle_magnet_range = (self.variant and self.variant.paddle_magnet_range) or 0
-    self.paddle_aim_mode = (self.variant and self.variant.paddle_aim_mode) or "default"
-end
-
-function Breakout:initArenaFeatures()
-    self.ceiling_enabled = (self.variant and self.variant.ceiling_enabled ~= nil) and self.variant.ceiling_enabled or true
-    self.bottom_kill_enabled = (self.variant and self.variant.bottom_kill_enabled ~= nil) and self.variant.bottom_kill_enabled or true
-    self.wall_bounce_mode = (self.variant and self.variant.wall_bounce_mode) or "normal"
-    self.obstacles_count = (self.variant and self.variant.obstacles_count) or 0
-    self.obstacles_shape = (self.variant and self.variant.obstacles_shape) or "rectangle"
-    self.obstacles_destructible = (self.variant and self.variant.obstacles_destructible) or false
-end
-
-function Breakout:initScoringParameters(loader)
-    self.victory_condition = loader:get('victory_condition', DEFAULT_VICTORY_CONDITION)
-    self.brick_score_multiplier = loader:get('brick_score_multiplier', DEFAULT_BRICK_SCORE_MULTIPLIER)
-    self.combo_multiplier = loader:get('combo_multiplier', DEFAULT_COMBO_MULTIPLIER)
-    self.perfect_clear_bonus = loader:get('perfect_clear_bonus', DEFAULT_PERFECT_CLEAR_BONUS)
-    self.extra_ball_score_threshold = loader:get('extra_ball_score_threshold', DEFAULT_EXTRA_BALL_SCORE_THRESHOLD)
-    self.destroy_count_target = loader:get('destroy_count_target', DEFAULT_DESTROY_COUNT_TARGET)
-    self.score_target = loader:get('score_target', DEFAULT_SCORE_TARGET)
-    self.time_target = loader:get('time_target', DEFAULT_TIME_TARGET)
-    self.score_popup_enabled = loader:get('score_popup_enabled', DEFAULT_SCORE_POPUP_ENABLED)
-end
-
-function Breakout:initVisualEffects()
-    local particle_effects_enabled = (self.variant and self.variant.particle_effects_enabled ~= nil) and self.variant.particle_effects_enabled or true
-    local camera_shake_enabled = (self.variant and self.variant.camera_shake_enabled ~= nil) and self.variant.camera_shake_enabled or true
-    
-    self.camera_shake_intensity = (self.variant and self.variant.camera_shake_intensity) or 5.0
-    self.brick_flash_on_hit = (self.variant and self.variant.brick_flash_on_hit ~= nil) and self.variant.brick_flash_on_hit or true
-    self.fog_of_war_enabled = (self.variant and self.variant.fog_of_war_enabled) or false
-    self.fog_of_war_radius = (self.variant and self.variant.fog_of_war_radius) or 150
-    
-    self.fog_controller = FogOfWar:new({
-        enabled = self.fog_of_war_enabled,
-        mode = "stencil",
-        opacity = 0.8
-    })
-    
-    self.visual_effects = VisualEffects:new({
-        camera_shake_enabled = camera_shake_enabled,
-        particle_effects_enabled = particle_effects_enabled,
-        screen_flash_enabled = false,
-        shake_mode = "timer",
-        shake_decay = 0.9
-    })
-    
-    self.brick_flash_map = {}
-end
-
-function Breakout:initSystems(loader)
+function Breakout:initSystems(p)
     -- MovementController
     self.paddle_movement = MovementController:new({
         mode = "direct",
-        speed = self.paddle_speed,
-        friction = self.paddle_friction,
+        speed = p.paddle_speed,
+        friction = p.paddle_friction,
         rail_axis = "horizontal"
     })
-    
+
     -- ProjectileSystem
     self.projectile_system = ProjectileSystem:new({
         projectile_types = {
             ["ball"] = {
-                speed = BALL_SPEED,
+                speed = p.ball_speed,
                 radius = BALL_RADIUS,
                 movement_type = "bounce",
                 lifetime = 999,
@@ -286,7 +120,7 @@ function Breakout:initSystems(loader)
         pooling = false,
         max_projectiles = 50
     })
-    
+
     -- EntityController
     self.entity_controller = EntityController:new({
         entity_types = {
@@ -304,42 +138,42 @@ function Breakout:initSystems(loader)
         pooling = false,
         max_entities = 500
     })
-    
+
     -- PowerupSystem
     self.powerup_system = PowerupSystem:new({
-        enabled = self.powerup_enabled,
+        enabled = p.powerup_enabled,
         spawn_mode = "event",
-        spawn_drop_chance = self.brick_powerup_drop_chance,
-        powerup_size = self.powerup_size,
-        drop_speed = self.powerup_fall_speed,
+        spawn_drop_chance = p.brick_powerup_drop_chance,
+        powerup_size = p.powerup_size,
+        drop_speed = p.powerup_fall_speed,
         reverse_gravity = false,
-        default_duration = self.powerup_duration,
-        powerup_types = self.powerup_types,
+        default_duration = p.powerup_duration,
+        powerup_types = p.powerup_types,
         powerup_configs = self.powerup_config,
         color_map = {},
         on_collect = function(powerup) self:onPowerupCollect(powerup) end,
         on_apply = function(powerup_type, effect, config) self:applyPowerupEffect(powerup_type, effect, config) end,
         on_remove = function(powerup_type, effect) self:removePowerupEffect(powerup_type, effect) end
     })
-    
+
     -- PopupManager
     self.popup_manager = PopupManager:new()
-    
+
     -- LivesHealthSystem
-    local starting_lives = loader:get('lives', DEFAULT_LIVES)
+    local starting_lives = p.lives
     if self.cheats.advantage_modifier then
         starting_lives = starting_lives + math.floor(self.cheats.advantage_modifier or 0)
     end
-    
+
     self.health_system = LivesHealthSystem:new({
         mode = "lives",
         starting_lives = starting_lives,
         max_lives = 10,
         extra_life_enabled = true,
-        extra_life_threshold = self.extra_ball_score_threshold
+        extra_life_threshold = p.extra_ball_score_threshold
     })
     self.lives = self.health_system.lives
-    
+
     -- HUDRenderer
     self.hud = HUDRenderer:new({
         primary = {label = "Score", key = "score"},
@@ -347,53 +181,126 @@ function Breakout:initSystems(loader)
         lives = {key = "lives", max = starting_lives, style = "hearts"}
     })
     self.hud.game = self
-    
+
     -- VictoryCondition
-    local victory_config = self:buildVictoryConfig()
+    local victory_config = self:buildVictoryConfig(p)
     self.victory_checker = VictoryCondition:new(victory_config)
     self.victory_checker.game = self
 end
 
-function Breakout:buildVictoryConfig()
+function Breakout:buildVictoryConfig(p)
     local config = {}
-    
-    if self.victory_condition == "clear_bricks" or self.victory_condition == "clear_all" then
+
+    if p.victory_condition == "clear_bricks" or p.victory_condition == "clear_all" then
         config.victory = {type = "clear_all", metric = "bricks_left"}
-    elseif self.victory_condition == "destroy_count" then
-        config.victory = {type = "threshold", metric = "bricks_destroyed", target = self.destroy_count_target}
-    elseif self.victory_condition == "score" then
-        config.victory = {type = "threshold", metric = "score", target = self.score_target}
-    elseif self.victory_condition == "time" then
-        config.victory = {type = "time_survival", metric = "time_elapsed", target = self.time_target}
-    elseif self.victory_condition == "survival" then
+    elseif p.victory_condition == "destroy_count" then
+        config.victory = {type = "threshold", metric = "bricks_destroyed", target = p.destroy_count_target}
+    elseif p.victory_condition == "score" then
+        config.victory = {type = "threshold", metric = "score", target = p.score_target}
+    elseif p.victory_condition == "time" then
+        config.victory = {type = "time_survival", metric = "time_elapsed", target = p.time_target}
+    elseif p.victory_condition == "survival" then
         config.victory = {type = "endless"}
     end
-    
+
     config.loss = {type = "lives_depleted", metric = "lives"}
     config.check_loss_first = true
-    
+
     return config
 end
 
--- Now the simplified init function:
 function Breakout:init(game_data, cheats, di, variant_override)
     Breakout.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
     self.cheats = cheats or {}
 
-    -- Three-tier fallback: runtimeCfg → variant → DEFAULT
+    -- Load all parameters via SchemaLoader (variant → runtime_config → schema defaults)
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.breakout)
-    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
+    local p = SchemaLoader.load(self.variant, "breakout_schema", runtimeCfg)
 
-    -- Initialize parameters via helper functions
-    self:initPaddleParameters(loader)
-    self:initBallParameters(loader)
-    self:initPowerupParameters(loader, runtimeCfg)
-    self:initBrickParameters(loader)
-    self:initBrickBehaviorParameters()
-    self:initPaddleFeatures()
-    self:initArenaFeatures()
-    self:initScoringParameters(loader)
+    -- Store all parameters from schema
+    -- Paddle parameters
+    self.movement_type = p.movement_type
+    self.paddle_width = p.paddle_width
+    self.paddle_speed = p.paddle_speed
+    self.paddle_friction = p.paddle_friction
+    self.rotation_speed = p.rotation_speed
+    self.jump_distance = p.jump_distance
+    self.jump_cooldown = p.jump_cooldown
+    self.paddle_can_shoot = p.paddle_can_shoot
+    self.paddle_shoot_cooldown = p.paddle_shoot_cooldown
+    self.paddle_shoot_damage = p.paddle_shoot_damage
+    self.paddle_sticky = p.paddle_sticky
+    self.paddle_magnet_range = p.paddle_magnet_range
+    self.paddle_aim_mode = p.paddle_aim_mode
+
+    -- Ball parameters
+    self.ball_count = p.ball_count
+    self.ball_speed = p.ball_speed
+    self.ball_max_speed = p.ball_max_speed
+    self.ball_gravity = p.ball_gravity
+    self.ball_gravity_direction = p.ball_gravity_direction
+    self.ball_speed_increase_per_bounce = p.ball_speed_increase_per_bounce
+    self.ball_homing_strength = p.ball_homing_strength
+    self.ball_phase_through_bricks = p.ball_phase_through_bricks
+    self.ball_trail_length = p.ball_trail_length
+    self.ball_bounce_randomness = p.ball_bounce_randomness
+    self.ball_spawn_angle_variance = p.ball_spawn_angle_variance
+
+    -- Powerup parameters
+    self.powerup_enabled = p.powerup_enabled
+    self.brick_powerup_drop_chance = p.brick_powerup_drop_chance
+    self.powerup_fall_speed = p.powerup_fall_speed
+    self.powerup_size = p.powerup_size
+    self.powerup_duration = p.powerup_duration
+    self.powerup_types = p.powerup_types
+
+    -- Brick parameters
+    self.brick_rows = p.brick_rows
+    self.brick_columns = p.brick_columns
+    self.brick_layout = p.brick_layout
+    self.brick_health = p.brick_health
+    self.brick_shape = p.brick_shape
+    self.brick_radius = p.brick_radius
+    self.brick_collision_image = (p.brick_collision_image ~= "") and p.brick_collision_image or nil
+    self.brick_alpha_threshold = p.brick_alpha_threshold
+    self.brick_fall_enabled = p.brick_fall_enabled
+    self.brick_fall_speed = p.brick_fall_speed
+    self.brick_movement_enabled = p.brick_movement_enabled
+    self.brick_movement_speed = p.brick_movement_speed
+    self.brick_regeneration_enabled = p.brick_regeneration_enabled
+    self.brick_regeneration_time = p.brick_regeneration_time
+    self.bricks_can_overlap = p.bricks_can_overlap
+
+    -- Arena parameters
+    self.ceiling_enabled = p.ceiling_enabled
+    self.bottom_kill_enabled = p.bottom_kill_enabled
+    self.wall_bounce_mode = p.wall_bounce_mode
+    self.obstacles_count = p.obstacles_count
+    self.obstacles_shape = p.obstacles_shape
+    self.obstacles_destructible = p.obstacles_destructible
+
+    -- Scoring parameters
+    self.victory_condition = p.victory_condition
+    self.brick_score_multiplier = p.brick_score_multiplier
+    self.combo_multiplier = p.combo_multiplier
+    self.perfect_clear_bonus = p.perfect_clear_bonus
+    self.extra_ball_score_threshold = p.extra_ball_score_threshold
+    self.destroy_count_target = p.destroy_count_target
+    self.score_target = p.score_target
+    self.time_target = p.time_target
+    self.score_popup_enabled = p.score_popup_enabled
+
+    -- Visual parameters
+    self.particle_effects_enabled = p.particle_effects_enabled
+    self.camera_shake_enabled = p.camera_shake_enabled
+    self.camera_shake_intensity = p.camera_shake_intensity
+    self.brick_flash_on_hit = p.brick_flash_on_hit
+    self.fog_of_war_enabled = p.fog_of_war_enabled
+    self.fog_of_war_radius = p.fog_of_war_radius
+
+    -- Initialize powerup config with overrides
+    self:initPowerupConfig(p, runtimeCfg)
 
     -- Apply difficulty and cheat modifiers
     self:applyModifiers()
@@ -432,8 +339,8 @@ function Breakout:init(game_data, cheats, di, variant_override)
     }
 
     -- Initialize systems
-    self:initSystems(loader)
-    self:initVisualEffects()
+    self:initSystems(p)
+    self:initVisualEffects(p)
 
     -- Initialize game entities
     self.balls = {}

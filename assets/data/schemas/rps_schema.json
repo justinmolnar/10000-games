@@ -1,0 +1,252 @@
+{
+    "name": "rps_schema",
+    "description": "Schema for Rock Paper Scissors game parameters - all configurable values for RPS variants",
+    "parameters": {
+        "rounds_to_win": {
+            "type": "integer",
+            "default": 3,
+            "min": 1,
+            "max": 20,
+            "description": "Rounds needed to win the match"
+        },
+        "game_mode": {
+            "type": "enum",
+            "values": ["rps", "rpsls", "rpsfb"],
+            "default": "rps",
+            "description": "Game type: rps (basic), rpsls (lizard/spock), rpsfb (fire/water)"
+        },
+        "ai_pattern": {
+            "type": "enum",
+            "values": ["random", "repeat_last", "counter_player", "pattern_cycle", "mimic_player", "anti_player"],
+            "default": "random",
+            "description": "AI behavior pattern"
+        },
+        "ai_bias": {
+            "type": "number",
+            "default": 0.33,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "AI probability bias (0.33 = equal)"
+        },
+        "ai_bias_strength": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "How strongly bias affects AI choices"
+        },
+        "ai_pattern_delay": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 20,
+            "description": "Rounds before AI pattern activates"
+        },
+        "time_per_round": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 60,
+            "description": "Time limit per round in seconds (0 = unlimited)"
+        },
+        "round_result_display_time": {
+            "type": "number",
+            "default": 2.0,
+            "min": 0.5,
+            "max": 10.0,
+            "description": "How long to show round result"
+        },
+        "show_ai_pattern_hint": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show hint about AI pattern"
+        },
+        "show_player_history": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show player's throw history"
+        },
+        "score_per_round_win": {
+            "type": "integer",
+            "default": 100,
+            "min": 10,
+            "max": 1000,
+            "description": "Base points for winning a round"
+        },
+        "streak_bonus": {
+            "type": "integer",
+            "default": 50,
+            "min": 0,
+            "max": 500,
+            "description": "Bonus points per win streak"
+        },
+        "perfect_game_bonus": {
+            "type": "integer",
+            "default": 500,
+            "min": 0,
+            "max": 5000,
+            "description": "Bonus for winning without losing any rounds"
+        },
+        "score_popup_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show floating score popups"
+        },
+        "hands_mode": {
+            "type": "enum",
+            "values": ["single", "double"],
+            "default": "single",
+            "description": "Single or double hands mode"
+        },
+        "time_per_removal": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 30,
+            "description": "Time to choose which hand to remove (double mode)"
+        },
+        "both_hands_history_length": {
+            "type": "integer",
+            "default": 10,
+            "min": 1,
+            "max": 50,
+            "description": "History length for double hands mode"
+        },
+        "show_opponent_hands": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show opponent's hands during removal phase"
+        },
+        "num_opponents": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 5,
+            "description": "Number of AI opponents (battle royale)"
+        },
+        "elimination_mode": {
+            "type": "boolean",
+            "default": false,
+            "description": "Eliminated opponents don't respawn"
+        },
+        "victory_condition": {
+            "type": "enum",
+            "values": ["rounds", "first_to", "streak", "total", "time"],
+            "default": "rounds",
+            "description": "How to determine victory"
+        },
+        "first_to_target": {
+            "type": "integer",
+            "default": 5,
+            "min": 1,
+            "max": 50,
+            "description": "Target for first_to victory condition"
+        },
+        "streak_target": {
+            "type": "integer",
+            "default": 5,
+            "min": 2,
+            "max": 20,
+            "description": "Target consecutive wins for streak victory"
+        },
+        "total_wins_target": {
+            "type": "integer",
+            "default": 10,
+            "min": 1,
+            "max": 100,
+            "description": "Target total wins"
+        },
+        "time_limit": {
+            "type": "number",
+            "default": 60,
+            "min": 10,
+            "max": 600,
+            "description": "Time limit for time victory condition"
+        },
+        "lives": {
+            "type": "integer",
+            "default": 999,
+            "min": 1,
+            "max": 999,
+            "description": "Starting lives (999 = unlimited)"
+        },
+        "lose_life_on": {
+            "type": "enum",
+            "values": ["loss", "tie", "both"],
+            "default": "loss",
+            "description": "When to lose a life"
+        },
+        "special_rounds_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable special round mechanics"
+        },
+        "double_or_nothing_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Double points on win, lose points on loss"
+        },
+        "sudden_death_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Single round winner takes all"
+        },
+        "reverse_mode_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Win conditions reversed"
+        },
+        "mirror_mode_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Both must throw same to win"
+        },
+        "show_history_display": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show throw history display"
+        },
+        "history_length": {
+            "type": "integer",
+            "default": 10,
+            "min": 1,
+            "max": 50,
+            "description": "Number of throws to show in history"
+        },
+        "show_statistics": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show win/loss/tie percentages"
+        },
+        "throw_animation_style": {
+            "type": "enum",
+            "values": ["hands", "icons", "text", "emojis"],
+            "default": "hands",
+            "description": "Style of throw animation"
+        },
+        "animation_speed": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 3.0,
+            "description": "Animation speed multiplier"
+        },
+        "screen_flash_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable screen flash on win/loss"
+        },
+        "celebration_on_perfect": {
+            "type": "boolean",
+            "default": true,
+            "description": "Confetti on perfect game"
+        },
+        "difficulty_modifier": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 3.0,
+            "description": "Global difficulty multiplier"
+        }
+    }
+}

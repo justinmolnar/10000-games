@@ -1,0 +1,299 @@
+{
+    "name": "dodge_schema",
+    "description": "Schema for Dodge game parameters - all configurable values for dodge variants",
+    "parameters": {
+        "movement_type": {
+            "type": "enum",
+            "values": ["default", "asteroids", "jump"],
+            "default": "default",
+            "description": "Player movement style: default (direct), asteroids (thrust/rotate), jump (teleport hops)"
+        },
+        "movement_speed": {
+            "type": "number",
+            "default": 300,
+            "min": 100,
+            "max": 1000,
+            "description": "Base movement speed in pixels per second"
+        },
+        "rotation_speed": {
+            "type": "number",
+            "default": 8.0,
+            "min": 0.5,
+            "max": 20,
+            "description": "Rotation speed for asteroids mode (radians per second)"
+        },
+        "max_speed": {
+            "type": "number",
+            "default": 600,
+            "min": 100,
+            "max": 1500,
+            "description": "Maximum velocity cap"
+        },
+        "accel_friction": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 1.0,
+            "description": "Friction when accelerating (1.0 = instant, <1.0 = gradual buildup)"
+        },
+        "decel_friction": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 1.0,
+            "description": "Friction when decelerating (1.0 = instant stop, <1.0 = drift/slide)"
+        },
+        "bounce_damping": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0,
+            "max": 1.0,
+            "description": "Energy retained on wall bounce (0 = no bounce, 1.0 = full bounce)"
+        },
+        "reverse_mode": {
+            "type": "enum",
+            "values": ["none", "thrust", "brake"],
+            "default": "none",
+            "description": "Asteroids mode: reverse key behavior"
+        },
+        "jump_distance": {
+            "type": "number",
+            "default": 80,
+            "min": 20,
+            "max": 300,
+            "description": "Jump mode: distance per jump in pixels"
+        },
+        "jump_cooldown": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 2.0,
+            "description": "Jump mode: seconds between jumps"
+        },
+        "jump_speed": {
+            "type": "number",
+            "default": 800,
+            "min": 200,
+            "max": 2000,
+            "description": "Jump mode: speed of jump animation in pixels per second"
+        },
+        "player_size": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 3.0,
+            "description": "Player size multiplier (affects hitbox)"
+        },
+        "lives": {
+            "type": "integer",
+            "default": 10,
+            "min": 1,
+            "max": 99,
+            "description": "Starting lives/hits before game over"
+        },
+        "shield": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 10,
+            "description": "Starting shield charges (absorb hits without losing lives)"
+        },
+        "shield_recharge_time": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 60,
+            "description": "Seconds to recharge one shield (0 = no recharge)"
+        },
+        "obstacle_tracking": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0,
+            "max": 1.0,
+            "description": "How much obstacles home toward player (0 = none, 1.0 = full homing)"
+        },
+        "obstacle_speed_variance": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0,
+            "max": 1.0,
+            "description": "Random speed variation for obstacles (0 = uniform, 1.0 = 0-200% speed)"
+        },
+        "obstacle_spawn_rate": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 5.0,
+            "description": "Obstacle spawn rate multiplier (higher = more obstacles)"
+        },
+        "obstacle_spawn_pattern": {
+            "type": "enum",
+            "values": ["random", "wave", "spiral", "cluster"],
+            "default": "random",
+            "description": "How obstacles spawn into the arena"
+        },
+        "obstacle_size_variance": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0,
+            "max": 1.0,
+            "description": "Random size variation for obstacles"
+        },
+        "obstacle_trails": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 10,
+            "description": "Number of trail segments behind obstacles"
+        },
+        "disable_obstacle_fallback": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, only spawn enemy types defined in composition (no basic obstacles)"
+        },
+        "seeker_turn_rate": {
+            "type": "number",
+            "default": 54,
+            "min": 10,
+            "max": 180,
+            "description": "Turn rate for seeker/chaser enemies in degrees per second"
+        },
+        "area_gravity": {
+            "type": "number",
+            "default": 0.0,
+            "min": -500,
+            "max": 500,
+            "description": "Constant gravity force applied to player (negative = up)"
+        },
+        "wind_direction": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 360,
+            "description": "Wind direction in degrees (0 = right, 90 = down)"
+        },
+        "wind_strength": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 200,
+            "description": "Wind force applied to player"
+        },
+        "wind_type": {
+            "type": "enum",
+            "values": ["none", "constant", "gusting", "rotating"],
+            "default": "none",
+            "description": "Wind behavior pattern"
+        },
+        "fog_of_war_origin": {
+            "type": "enum",
+            "values": ["none", "player", "center", "mouse"],
+            "default": "none",
+            "description": "Center point for fog of war visibility"
+        },
+        "fog_of_war_radius": {
+            "type": "number",
+            "default": 9999,
+            "min": 50,
+            "max": 9999,
+            "description": "Visibility radius (9999 = full visibility)"
+        },
+        "camera_shake_intensity": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0,
+            "max": 20,
+            "description": "Camera shake on collision (0 = none)"
+        },
+        "player_trail_length": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 50,
+            "description": "Visual trail behind player (0 = none)"
+        },
+        "score_multiplier_mode": {
+            "type": "enum",
+            "values": ["none", "speed", "center", "edge", "combo"],
+            "default": "none",
+            "description": "How score multiplier is calculated"
+        },
+        "victory_condition": {
+            "type": "enum",
+            "values": ["dodge_count", "time"],
+            "default": "dodge_count",
+            "description": "Win by dodging N obstacles or surviving time"
+        },
+        "victory_limit": {
+            "type": "integer",
+            "default": 30,
+            "min": 5,
+            "max": 500,
+            "description": "Target dodge count or survival seconds for victory"
+        },
+        "area_size": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.3,
+            "max": 2.0,
+            "description": "Safe zone size multiplier"
+        },
+        "area_morph_type": {
+            "type": "enum",
+            "values": ["shrink", "pulsing", "shapes"],
+            "default": "shrink",
+            "description": "How safe zone changes over time"
+        },
+        "area_morph_speed": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 5.0,
+            "description": "Speed of safe zone morphing"
+        },
+        "area_movement_speed": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0,
+            "max": 5.0,
+            "description": "How fast safe zone drifts around (0 = stationary)"
+        },
+        "area_movement_type": {
+            "type": "enum",
+            "values": ["none", "random", "cardinal"],
+            "default": "random",
+            "description": "Pattern of safe zone movement"
+        },
+        "area_friction": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 1.0,
+            "description": "Safe zone movement smoothing"
+        },
+        "area_shape": {
+            "type": "enum",
+            "values": ["circle", "square", "hexagon"],
+            "default": "circle",
+            "description": "Shape of the safe zone"
+        },
+        "leaving_area_ends_game": {
+            "type": "boolean",
+            "default": false,
+            "description": "Instant death when leaving safe zone (vs taking damage)"
+        },
+        "holes_type": {
+            "type": "enum",
+            "values": ["none", "circle", "background"],
+            "default": "none",
+            "description": "Hole placement: on safe zone boundary or in arena background"
+        },
+        "holes_count": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 20,
+            "description": "Number of holes (danger zones) in arena"
+        }
+    }
+}

@@ -1,0 +1,441 @@
+{
+    "name": "breakout_schema",
+    "description": "Schema for Breakout game parameters - all configurable values for breakout variants",
+    "parameters": {
+        "movement_type": {
+            "type": "enum",
+            "values": ["direct", "velocity", "rail", "asteroids", "jump"],
+            "default": "direct",
+            "description": "Paddle movement style"
+        },
+        "paddle_width": {
+            "type": "number",
+            "default": 100,
+            "min": 30,
+            "max": 400,
+            "description": "Width of the paddle in pixels"
+        },
+        "paddle_speed": {
+            "type": "number",
+            "default": 600,
+            "min": 100,
+            "max": 1500,
+            "description": "Paddle movement speed in pixels per second"
+        },
+        "paddle_friction": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 1.0,
+            "description": "Paddle friction (1.0 = instant response, <1.0 = drift)"
+        },
+        "rotation_speed": {
+            "type": "number",
+            "default": 5.0,
+            "min": 1.0,
+            "max": 20.0,
+            "description": "Rotation speed for asteroids movement mode"
+        },
+        "jump_distance": {
+            "type": "number",
+            "default": 150,
+            "min": 50,
+            "max": 400,
+            "description": "Distance per jump for jump movement mode"
+        },
+        "jump_cooldown": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 2.0,
+            "description": "Cooldown between jumps in seconds"
+        },
+        "ball_count": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 10,
+            "description": "Number of balls at game start"
+        },
+        "ball_speed": {
+            "type": "number",
+            "default": 300,
+            "min": 100,
+            "max": 800,
+            "description": "Initial ball speed in pixels per second"
+        },
+        "ball_max_speed": {
+            "type": "number",
+            "default": 600,
+            "min": 200,
+            "max": 1500,
+            "description": "Maximum ball speed cap"
+        },
+        "ball_gravity": {
+            "type": "number",
+            "default": 0,
+            "min": -500,
+            "max": 500,
+            "description": "Gravity force applied to ball (0 = none)"
+        },
+        "ball_gravity_direction": {
+            "type": "number",
+            "default": 270,
+            "min": 0,
+            "max": 360,
+            "description": "Gravity direction in degrees (270 = down, 90 = up)"
+        },
+        "ball_speed_increase_per_bounce": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 50,
+            "description": "Speed increase per brick hit"
+        },
+        "ball_homing_strength": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Ball homing toward nearest brick (0 = none, 1 = strong)"
+        },
+        "ball_phase_through_bricks": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 20,
+            "description": "Number of bricks to pierce before bouncing"
+        },
+        "ball_trail_length": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 50,
+            "description": "Visual trail length behind ball"
+        },
+        "ball_bounce_randomness": {
+            "type": "number",
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Random angle variance on bounce (0 = none, 1 = high)"
+        },
+        "ball_spawn_angle_variance": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.0,
+            "max": 1.5,
+            "description": "Random spawn angle variance in radians"
+        },
+        "powerup_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable powerup drops from bricks"
+        },
+        "brick_powerup_drop_chance": {
+            "type": "number",
+            "default": 0.2,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Chance for brick to drop powerup (0-1)"
+        },
+        "powerup_fall_speed": {
+            "type": "number",
+            "default": 100,
+            "min": 20,
+            "max": 500,
+            "description": "Powerup fall speed in pixels per second"
+        },
+        "powerup_size": {
+            "type": "number",
+            "default": 20,
+            "min": 10,
+            "max": 50,
+            "description": "Size of powerup entities in pixels"
+        },
+        "powerup_duration": {
+            "type": "number",
+            "default": 10.0,
+            "min": 1.0,
+            "max": 60.0,
+            "description": "Default duration for temporary powerup effects"
+        },
+        "powerup_types": {
+            "type": "array",
+            "default": ["multi_ball", "paddle_extend", "paddle_shrink", "slow_motion", "fast_ball", "laser", "sticky_paddle", "extra_life", "shield", "penetrating_ball", "fireball", "magnet"],
+            "description": "Array of enabled powerup types"
+        },
+        "brick_rows": {
+            "type": "integer",
+            "default": 5,
+            "min": 1,
+            "max": 20,
+            "description": "Number of brick rows"
+        },
+        "brick_columns": {
+            "type": "integer",
+            "default": 10,
+            "min": 1,
+            "max": 20,
+            "description": "Number of brick columns"
+        },
+        "brick_layout": {
+            "type": "enum",
+            "values": ["grid", "pyramid", "circle", "random", "checkerboard"],
+            "default": "grid",
+            "description": "Brick arrangement pattern"
+        },
+        "brick_health": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 10,
+            "description": "Hits required to destroy a brick"
+        },
+        "brick_shape": {
+            "type": "enum",
+            "values": ["rectangle", "circle", "png"],
+            "default": "rectangle",
+            "description": "Shape of bricks for collision"
+        },
+        "brick_radius": {
+            "type": "number",
+            "default": 15,
+            "min": 5,
+            "max": 50,
+            "description": "Radius for circle-shaped bricks"
+        },
+        "brick_collision_image": {
+            "type": "string",
+            "default": "",
+            "description": "Path to PNG for pixel-perfect collision (empty = disabled)"
+        },
+        "brick_alpha_threshold": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Alpha threshold for PNG collision detection"
+        },
+        "brick_fall_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable bricks falling over time"
+        },
+        "brick_fall_speed": {
+            "type": "number",
+            "default": 20,
+            "min": 5,
+            "max": 200,
+            "description": "Speed of brick falling in pixels per second"
+        },
+        "brick_movement_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable horizontal brick movement"
+        },
+        "brick_movement_speed": {
+            "type": "number",
+            "default": 50,
+            "min": 10,
+            "max": 300,
+            "description": "Speed of horizontal brick movement"
+        },
+        "brick_regeneration_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable destroyed bricks to regenerate"
+        },
+        "brick_regeneration_time": {
+            "type": "number",
+            "default": 5.0,
+            "min": 1.0,
+            "max": 30.0,
+            "description": "Seconds until destroyed brick regenerates"
+        },
+        "bricks_can_overlap": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow bricks to overlap each other"
+        },
+        "paddle_can_shoot": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable paddle shooting bullets"
+        },
+        "paddle_shoot_cooldown": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 5.0,
+            "description": "Cooldown between shots in seconds"
+        },
+        "paddle_shoot_damage": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 10,
+            "description": "Damage per bullet"
+        },
+        "paddle_sticky": {
+            "type": "boolean",
+            "default": false,
+            "description": "Ball sticks to paddle on contact"
+        },
+        "paddle_magnet_range": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 500,
+            "description": "Range of paddle magnet attraction (0 = disabled)"
+        },
+        "paddle_aim_mode": {
+            "type": "enum",
+            "values": ["default", "position"],
+            "default": "default",
+            "description": "How paddle affects ball angle on hit"
+        },
+        "ceiling_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Ball bounces off top of screen"
+        },
+        "bottom_kill_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Ball lost when hitting bottom"
+        },
+        "wall_bounce_mode": {
+            "type": "enum",
+            "values": ["normal", "damped", "sticky", "wrap"],
+            "default": "normal",
+            "description": "Wall bounce behavior"
+        },
+        "obstacles_count": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 20,
+            "description": "Number of mid-field obstacles"
+        },
+        "obstacles_shape": {
+            "type": "enum",
+            "values": ["rectangle", "circle"],
+            "default": "rectangle",
+            "description": "Shape of obstacles"
+        },
+        "obstacles_destructible": {
+            "type": "boolean",
+            "default": false,
+            "description": "Obstacles can be destroyed by ball"
+        },
+        "victory_condition": {
+            "type": "enum",
+            "values": ["clear_bricks", "clear_all", "destroy_count", "score", "time", "survival"],
+            "default": "clear_bricks",
+            "description": "Win condition type"
+        },
+        "brick_score_multiplier": {
+            "type": "number",
+            "default": 10,
+            "min": 1,
+            "max": 1000,
+            "description": "Base points per brick destroyed"
+        },
+        "combo_multiplier": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.0,
+            "max": 2.0,
+            "description": "Score multiplier per combo level"
+        },
+        "perfect_clear_bonus": {
+            "type": "integer",
+            "default": 1000,
+            "min": 0,
+            "max": 50000,
+            "description": "Bonus for clearing without losing balls"
+        },
+        "extra_ball_score_threshold": {
+            "type": "integer",
+            "default": 5000,
+            "min": 0,
+            "max": 100000,
+            "description": "Score threshold for extra life (0 = disabled)"
+        },
+        "destroy_count_target": {
+            "type": "integer",
+            "default": 50,
+            "min": 5,
+            "max": 500,
+            "description": "Target bricks for destroy_count victory"
+        },
+        "score_target": {
+            "type": "integer",
+            "default": 10000,
+            "min": 100,
+            "max": 1000000,
+            "description": "Target score for score victory condition"
+        },
+        "time_target": {
+            "type": "number",
+            "default": 60,
+            "min": 10,
+            "max": 600,
+            "description": "Target seconds for time victory condition"
+        },
+        "score_popup_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show floating score popups"
+        },
+        "particle_effects_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable particle visual effects"
+        },
+        "camera_shake_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable camera shake on brick destruction"
+        },
+        "camera_shake_intensity": {
+            "type": "number",
+            "default": 5.0,
+            "min": 0.0,
+            "max": 20.0,
+            "description": "Intensity of camera shake"
+        },
+        "brick_flash_on_hit": {
+            "type": "boolean",
+            "default": true,
+            "description": "Bricks flash white when damaged"
+        },
+        "fog_of_war_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable fog of war visibility"
+        },
+        "fog_of_war_radius": {
+            "type": "number",
+            "default": 150,
+            "min": 50,
+            "max": 500,
+            "description": "Visibility radius for fog of war"
+        },
+        "lives": {
+            "type": "integer",
+            "default": 3,
+            "min": 1,
+            "max": 99,
+            "description": "Starting number of lives"
+        },
+        "difficulty_modifier": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 3.0,
+            "description": "Global difficulty multiplier for speeds"
+        }
+    }
+}

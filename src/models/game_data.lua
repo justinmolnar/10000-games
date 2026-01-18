@@ -160,7 +160,17 @@ function GameData:registerGame(game_data)
         }
     end
 
-    -- 5. Add/overwrite in the main games table
+    -- 5. Calculate unlock_cost from clone_index
+    -- Formula: base_cost * ((clone_index + 1) ^ cost_exponent)
+    -- clone_index 0 = base cost, clone_index 1 = 2^exp, clone_index 2 = 3^exp, etc.
+    local clone_index = game_data.clone_index or 0
+    if clone_index > 0 then
+        local base_cost = game_data.unlock_cost or 20
+        local cost_exponent = game_data.cost_exponent or Config.clone_cost_exponent or 1.5
+        game_data.unlock_cost = math.floor(base_cost * math.pow(clone_index + 1, cost_exponent))
+    end
+
+    -- 6. Add/overwrite in the main games table
     self.games[game_data.id] = game_data
 end
 

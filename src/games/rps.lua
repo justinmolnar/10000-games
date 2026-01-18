@@ -5,62 +5,11 @@ local popup_module = require('src.games.score_popup')
 local PopupManager = popup_module.PopupManager
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local AnimationSystem = require('src.utils.game_components.animation_system')
-local VariantLoader = require('src.utils.game_components.variant_loader')
+local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local RPS = BaseGame:extend('RPS')
-
--- Config-driven defaults with safe fallbacks
-local DEFAULT_ROUNDS_TO_WIN = 3
-local DEFAULT_GAME_MODE = "rps"
-local DEFAULT_AI_PATTERN = "random"
-local DEFAULT_AI_BIAS = 0.33  -- Equal probability for all choices
-local DEFAULT_AI_BIAS_STRENGTH = 0.5  -- How much bias affects AI
-local DEFAULT_TIME_PER_ROUND = 0  -- Unlimited
-local DEFAULT_ROUND_RESULT_DISPLAY_TIME = 2.0
-local DEFAULT_SHOW_AI_PATTERN_HINT = false
-local DEFAULT_SHOW_PLAYER_HISTORY = true
-
--- Scoring defaults
-local DEFAULT_SCORE_PER_ROUND_WIN = 100
-local DEFAULT_STREAK_BONUS = 50  -- Bonus points per consecutive win
-local DEFAULT_PERFECT_GAME_BONUS = 500
-local DEFAULT_SCORE_POPUP_ENABLED = true
-
--- Phase 6 completion: Double hands mode defaults
-local DEFAULT_HANDS_MODE = "single"  -- "single" or "double"
-local DEFAULT_TIME_PER_REMOVAL = 0  -- Unlimited time to choose which hand to remove
-local DEFAULT_BOTH_HANDS_HISTORY_LENGTH = 10  -- Show last N rounds of both-hands history
-local DEFAULT_SHOW_OPPONENT_HANDS = true  -- Show opponent's both hands during removal phase
-
--- Phase 6 completion: Multiple opponents defaults
-local DEFAULT_NUM_OPPONENTS = 1  -- 1-5 AI opponents
-local DEFAULT_ELIMINATION_MODE = false  -- If true, eliminated opponents don't respawn
-
--- Phase 6 completion: Victory conditions defaults
-local DEFAULT_VICTORY_CONDITION = "rounds"  -- "rounds", "first_to", "streak", "total", "time"
-local DEFAULT_FIRST_TO_TARGET = 5  -- First to X wins
-local DEFAULT_STREAK_TARGET = 5  -- Win X consecutive rounds
-local DEFAULT_TOTAL_WINS_TARGET = 10  -- Total wins required
-local DEFAULT_TIME_LIMIT = 60  -- Seconds (for "time" mode)
-
--- Phase 6 completion: Lives system defaults
-local DEFAULT_LIVES = 999  -- Unlimited by default
-local DEFAULT_LOSE_LIFE_ON = "loss"  -- "loss", "tie", "both"
-
--- Phase 6 completion: Special rounds defaults
-local DEFAULT_SPECIAL_ROUNDS_ENABLED = false
-local DEFAULT_DOUBLE_OR_NOTHING_ENABLED = false  -- Win = +2 points, lose = -1 point
-local DEFAULT_SUDDEN_DEATH_ENABLED = false  -- One round, winner takes all
-local DEFAULT_REVERSE_MODE_ENABLED = false  -- Win conditions reversed
-local DEFAULT_MIRROR_MODE_ENABLED = false  -- Both players must throw same thing to win
-
--- Phase 6 completion: Display defaults
-local DEFAULT_SHOW_HISTORY_DISPLAY = false  -- Show last N throws
-local DEFAULT_HISTORY_LENGTH = 10
-local DEFAULT_SHOW_STATISTICS = false  -- Show win/loss/tie percentages
-local DEFAULT_AI_PATTERN_DELAY = 0  -- Rounds before AI pattern activates
 
 -- Win matrices for different game modes
 local WIN_MATRICES = {
@@ -89,38 +38,31 @@ function RPS:init(game_data, cheats, di, variant_override)
     RPS.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
 
-    -- Three-tier fallback: runtimeCfg → variant → DEFAULT
+    -- Load all parameters via SchemaLoader (variant → runtime_config → schema defaults)
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.rps)
+    local p = SchemaLoader.load(self.variant, "rps_schema", runtimeCfg)
 
-    -- Initialize VariantLoader
-    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
-
-    -- Load parameters with three-tier fallback
-    self.rounds_to_win = loader:get('rounds_to_win', DEFAULT_ROUNDS_TO_WIN)
-
-    self.game_mode = loader:get('game_mode', DEFAULT_GAME_MODE)
-
-    self.ai_pattern = loader:get('ai_pattern', DEFAULT_AI_PATTERN)
+    -- Core game parameters
+    self.rounds_to_win = p.rounds_to_win
+    self.game_mode = p.game_mode
+    self.ai_pattern = p.ai_pattern
 
     -- AI Behavior Parameters
-    self.ai_bias = loader:get('ai_bias', DEFAULT_AI_BIAS)
-
-    self.ai_bias_strength = loader:get('ai_bias_strength', DEFAULT_AI_BIAS_STRENGTH)
+    self.ai_bias = p.ai_bias
+    self.ai_bias_strength = p.ai_bias_strength
 
     -- Timing Parameters
-    self.time_per_round = loader:get('time_per_round', DEFAULT_TIME_PER_ROUND)
-
-    self.round_result_display_time = loader:get('round_result_display_time', DEFAULT_ROUND_RESULT_DISPLAY_TIME)
+    self.time_per_round = p.time_per_round
+    self.round_result_display_time = p.round_result_display_time
 
     -- Display Parameters
-    self.show_ai_pattern_hint = loader:get('show_ai_pattern_hint', DEFAULT_SHOW_AI_PATTERN_HINT)
+    self.show_ai_pattern_hint = p.show_ai_pattern_hint
+    self.show_player_history = p.show_player_history
 
-    self.show_player_history = loader:get('show_player_history', DEFAULT_SHOW_PLAYER_HISTORY)
-
-    -- Apply difficulty_modifier from variant
-    if self.variant and self.variant.difficulty_modifier then
-        self.time_per_round = self.time_per_round * self.variant.difficulty_modifier
-        self.round_result_display_time = self.round_result_display_time * self.variant.difficulty_modifier
+    -- Apply difficulty_modifier from schema
+    if p.difficulty_modifier ~= 1.0 then
+        self.time_per_round = self.time_per_round * p.difficulty_modifier
+        self.round_result_display_time = self.round_result_display_time * p.difficulty_modifier
     end
 
     -- Apply CheatEngine modifications
@@ -132,70 +74,49 @@ function RPS:init(game_data, cheats, di, variant_override)
         self.rounds_to_win = math.max(1, self.rounds_to_win - math.floor((self.cheats.advantage_modifier or 0) / 2))
     end
     if self.cheats.performance_modifier then
-        -- Show hints when performance modifier is active
         self.show_ai_pattern_hint = true
         self.show_player_history = true
     end
 
     -- Scoring parameters
-    self.score_per_round_win = loader:get('score_per_round_win', DEFAULT_SCORE_PER_ROUND_WIN)
+    self.score_per_round_win = p.score_per_round_win
+    self.streak_bonus = p.streak_bonus
+    self.perfect_game_bonus = p.perfect_game_bonus
+    self.score_popup_enabled = p.score_popup_enabled
 
-    self.streak_bonus = loader:get('streak_bonus', DEFAULT_STREAK_BONUS)
+    -- Double hands mode parameters
+    self.hands_mode = p.hands_mode
+    self.time_per_removal = p.time_per_removal
+    self.both_hands_history_length = p.both_hands_history_length
+    self.show_opponent_hands = p.show_opponent_hands
 
-    self.perfect_game_bonus = loader:get('perfect_game_bonus', DEFAULT_PERFECT_GAME_BONUS)
+    -- Multiple opponents parameters
+    self.num_opponents = math.max(1, math.min(5, p.num_opponents))
+    self.elimination_mode = p.elimination_mode
 
-    self.score_popup_enabled = loader:get('score_popup_enabled', DEFAULT_SCORE_POPUP_ENABLED)
+    -- Victory conditions parameters
+    self.victory_condition = p.victory_condition
+    self.first_to_target = p.first_to_target
+    self.streak_target = p.streak_target
+    self.total_wins_target = p.total_wins_target
+    self.time_limit = p.time_limit
 
-    -- Phase 6 completion: Double hands mode parameters
-    self.hands_mode = loader:get('hands_mode', DEFAULT_HANDS_MODE)
+    -- Lives handled by LivesHealthSystem
+    local starting_lives = p.lives
+    self.lose_life_on = p.lose_life_on
 
-    self.time_per_removal = loader:get('time_per_removal', DEFAULT_TIME_PER_REMOVAL)
+    -- Special rounds parameters
+    self.special_rounds_enabled = p.special_rounds_enabled
+    self.double_or_nothing_enabled = p.double_or_nothing_enabled
+    self.sudden_death_enabled = p.sudden_death_enabled
+    self.reverse_mode_enabled = p.reverse_mode_enabled
+    self.mirror_mode_enabled = p.mirror_mode_enabled
 
-    self.both_hands_history_length = loader:get('both_hands_history_length', DEFAULT_BOTH_HANDS_HISTORY_LENGTH)
-
-    self.show_opponent_hands = loader:get('show_opponent_hands', DEFAULT_SHOW_OPPONENT_HANDS)
-
-    -- Phase 6 completion: Multiple opponents parameters
-    self.num_opponents = loader:get('num_opponents', DEFAULT_NUM_OPPONENTS)
-    self.num_opponents = math.max(1, math.min(5, self.num_opponents))  -- Clamp 1-5
-
-    self.elimination_mode = loader:get('elimination_mode', DEFAULT_ELIMINATION_MODE)
-
-    -- Phase 6 completion: Victory conditions parameters
-    self.victory_condition = loader:get('victory_condition', DEFAULT_VICTORY_CONDITION)
-
-    self.first_to_target = loader:get('first_to_target', DEFAULT_FIRST_TO_TARGET)
-
-    self.streak_target = loader:get('streak_target', DEFAULT_STREAK_TARGET)
-
-    self.total_wins_target = loader:get('total_wins_target', DEFAULT_TOTAL_WINS_TARGET)
-
-    self.time_limit = loader:get('time_limit', DEFAULT_TIME_LIMIT)
-
-    -- Phase 10: Lives handled by LivesHealthSystem
-    local starting_lives = loader:get('lives', DEFAULT_LIVES)
-
-    self.lose_life_on = loader:get('lose_life_on', DEFAULT_LOSE_LIFE_ON)
-
-    -- Phase 6 completion: Special rounds parameters
-    self.special_rounds_enabled = loader:get('special_rounds_enabled', DEFAULT_SPECIAL_ROUNDS_ENABLED)
-
-    self.double_or_nothing_enabled = loader:get('double_or_nothing_enabled', DEFAULT_DOUBLE_OR_NOTHING_ENABLED)
-
-    self.sudden_death_enabled = loader:get('sudden_death_enabled', DEFAULT_SUDDEN_DEATH_ENABLED)
-
-    self.reverse_mode_enabled = loader:get('reverse_mode_enabled', DEFAULT_REVERSE_MODE_ENABLED)
-
-    self.mirror_mode_enabled = loader:get('mirror_mode_enabled', DEFAULT_MIRROR_MODE_ENABLED)
-
-    -- Phase 6 completion: Display parameters
-    self.show_history_display = loader:get('show_history_display', DEFAULT_SHOW_HISTORY_DISPLAY)
-
-    self.history_length = loader:get('history_length', DEFAULT_HISTORY_LENGTH)
-
-    self.show_statistics = loader:get('show_statistics', DEFAULT_SHOW_STATISTICS)
-
-    self.ai_pattern_delay = loader:get('ai_pattern_delay', DEFAULT_AI_PATTERN_DELAY)
+    -- Display parameters
+    self.show_history_display = p.show_history_display
+    self.history_length = p.history_length
+    self.show_statistics = p.show_statistics
+    self.ai_pattern_delay = p.ai_pattern_delay
 
     -- Initialize game state
     self.player_wins = 0
@@ -266,26 +187,11 @@ function RPS:init(game_data, cheats, di, variant_override)
     -- Phase 6: Score popups managed by PopupManager
     self.popup_manager = PopupManager:new()
 
-    -- Visual effects parameters (Phase 11)
-    self.throw_animation_style = "hands"  -- "hands", "icons", "text", "emojis"
-    if self.variant and self.variant.throw_animation_style ~= nil then
-        self.throw_animation_style = self.variant.throw_animation_style
-    end
-
-    self.animation_speed = 1.0
-    if self.variant and self.variant.animation_speed ~= nil then
-        self.animation_speed = self.variant.animation_speed
-    end
-
-    local screen_flash_enabled = true
-    if self.variant and self.variant.screen_flash_enabled ~= nil then
-        screen_flash_enabled = self.variant.screen_flash_enabled
-    end
-
-    self.celebration_on_perfect = true
-    if self.variant and self.variant.celebration_on_perfect ~= nil then
-        self.celebration_on_perfect = self.variant.celebration_on_perfect
-    end
+    -- Visual effects parameters
+    self.throw_animation_style = p.throw_animation_style
+    self.animation_speed = p.animation_speed
+    local screen_flash_enabled = p.screen_flash_enabled
+    self.celebration_on_perfect = p.celebration_on_perfect
 
     -- Phase 3: Initialize VisualEffects component (screen flash + particles)
     self.visual_effects = VisualEffects:new({

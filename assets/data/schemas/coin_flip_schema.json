@@ -1,0 +1,160 @@
+{
+    "name": "coin_flip_schema",
+    "description": "Schema for Coin Flip game parameters - all configurable values for coin flip variants",
+    "parameters": {
+        "streak_target": {
+            "type": "integer",
+            "default": 10,
+            "min": 1,
+            "max": 50,
+            "description": "Consecutive correct guesses to win"
+        },
+        "coin_bias": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Probability of heads (0.5 = fair coin)"
+        },
+        "lives": {
+            "type": "integer",
+            "default": 3,
+            "min": 1,
+            "max": 99,
+            "description": "Starting lives"
+        },
+        "time_per_flip": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 60,
+            "description": "Time limit per flip in seconds (0 = unlimited)"
+        },
+        "flip_animation_speed": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 2.0,
+            "description": "Flip animation duration multiplier"
+        },
+        "show_bias_hint": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show the coin's bias to player"
+        },
+        "show_pattern_history": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show last N flip results"
+        },
+        "pattern_history_length": {
+            "type": "integer",
+            "default": 10,
+            "min": 1,
+            "max": 50,
+            "description": "Number of flips to show in history"
+        },
+        "pattern_mode": {
+            "type": "enum",
+            "values": ["random", "alternating", "clusters", "biased_random"],
+            "default": "random",
+            "description": "Pattern of coin flip results"
+        },
+        "flip_mode": {
+            "type": "enum",
+            "values": ["auto", "guess"],
+            "default": "auto",
+            "description": "auto = heads advances streak, guess = player calls it"
+        },
+        "auto_flip_interval": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 30,
+            "description": "Auto-flip every N seconds (0 = disabled)"
+        },
+        "result_announce_mode": {
+            "type": "enum",
+            "values": ["text", "voice", "both", "none"],
+            "default": "text",
+            "description": "How to announce flip results"
+        },
+        "victory_condition": {
+            "type": "enum",
+            "values": ["streak", "total", "ratio", "time"],
+            "default": "streak",
+            "description": "How to determine victory"
+        },
+        "total_correct_target": {
+            "type": "integer",
+            "default": 50,
+            "min": 5,
+            "max": 500,
+            "description": "Target correct guesses for total victory"
+        },
+        "ratio_target": {
+            "type": "number",
+            "default": 0.75,
+            "min": 0.5,
+            "max": 1.0,
+            "description": "Target accuracy ratio (0.75 = 75%)"
+        },
+        "ratio_flip_count": {
+            "type": "integer",
+            "default": 20,
+            "min": 5,
+            "max": 100,
+            "description": "Number of flips to calculate ratio over"
+        },
+        "time_limit": {
+            "type": "number",
+            "default": 120,
+            "min": 10,
+            "max": 600,
+            "description": "Time limit for time victory condition"
+        },
+        "score_per_correct": {
+            "type": "integer",
+            "default": 100,
+            "min": 10,
+            "max": 1000,
+            "description": "Base points per correct guess"
+        },
+        "streak_multiplier": {
+            "type": "number",
+            "default": 0.1,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Score multiplier per streak level (+10%)"
+        },
+        "perfect_streak_bonus": {
+            "type": "integer",
+            "default": 1000,
+            "min": 0,
+            "max": 10000,
+            "description": "Bonus for winning without any mistakes"
+        },
+        "score_popup_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show floating score popups"
+        },
+        "celebration_on_streak": {
+            "type": "boolean",
+            "default": true,
+            "description": "Confetti on streak milestones"
+        },
+        "screen_flash_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable screen flash on correct/wrong"
+        },
+        "difficulty_modifier": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 3.0,
+            "description": "Global difficulty multiplier"
+        }
+    }
+}

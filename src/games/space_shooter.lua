@@ -3,7 +3,7 @@ local Config = rawget(_G, 'DI_CONFIG') or {}
 local Collision = require('src.utils.collision')
 local MovementController = require('src.utils.game_components.movement_controller')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
-local VariantLoader = require('src.utils.game_components.variant_loader')
+local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local EntityController = require('src.utils.game_components.entity_controller')
@@ -82,8 +82,8 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     -- Apply variant difficulty modifier (from Phase 1.1-1.2)
     local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
 
-    -- Phase 7: Initialize VariantLoader for simplified parameter loading
-    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
+    -- Load ALL parameters from schema (variant → runtime_config → schema defaults)
+    local p = SchemaLoader.load(self.variant, "space_shooter_schema", runtimeCfg)
 
     -- Override file-scope constants with DI values when present
     PLAYER_WIDTH = (runtimeCfg.player and runtimeCfg.player.width) or PLAYER_WIDTH
@@ -115,254 +115,135 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
 
     self.PLAYER_MAX_DEATHS = PLAYER_MAX_DEATHS_BASE + extra_deaths
 
-    -- Phase 2: Movement Type System
-    self.movement_type = "default"
-    if self.variant and self.variant.movement_type then
-        self.movement_type = self.variant.movement_type
-    end
+    -- Movement parameters (from schema)
+    self.movement_type = p.movement_type
+    self.movement_speed = p.movement_speed
+    self.rotation_speed = p.rotation_speed
+    self.accel_friction = p.accel_friction
+    self.decel_friction = p.decel_friction
+    self.jump_distance_percent = p.jump_distance
+    self.jump_cooldown = p.jump_cooldown
+    self.jump_speed = p.jump_speed
 
-    -- Phase 2: Movement parameters with three-tier fallback
-    self.movement_speed = loader:get('movement_speed', PLAYER_SPEED)
-
-    -- Asteroids mode physics
-    self.rotation_speed = loader:get('rotation_speed', 5.0)
-
-    self.accel_friction = loader:get('accel_friction', 1.0)
-
-    self.decel_friction = loader:get('decel_friction', 1.0)
-
-    -- Jump mode parameters (distance as % of screen width)
-    self.jump_distance_percent = (runtimeCfg.player and runtimeCfg.player.jump_distance) or 0.08
-    if self.variant and self.variant.jump_distance ~= nil then
-        self.jump_distance_percent = self.variant.jump_distance
-    end
-
-    self.jump_cooldown = loader:get('jump_cooldown', 0.5)
-
-    self.jump_speed = loader:get('jump_speed', 400)
-
-    -- Phase 2: Lives system (already partially implemented, making explicit)
-    local base_lives = PLAYER_MAX_DEATHS_BASE
-    if self.variant and self.variant.lives_count ~= nil then
-        base_lives = self.variant.lives_count
-    end
+    -- Lives and shield (from schema)
+    local base_lives = p.lives_count
     self.PLAYER_MAX_DEATHS = base_lives + extra_deaths
-
-    -- Phase 2: Shield system
-    self.shield_enabled = (runtimeCfg.shield and runtimeCfg.shield.enabled) or false
-    if self.variant and self.variant.shield ~= nil then
-        self.shield_enabled = self.variant.shield
-    end
-
-    self.shield_regen_time = loader:get('shield_regen_time', 5.0)
-
-    self.shield_max_hits = (runtimeCfg.shield and runtimeCfg.shield.max_hits) or 1
-    if self.variant and self.variant.shield_hits ~= nil then
-        self.shield_max_hits = self.variant.shield_hits
-    end
-
-    -- Phase 3: Weapon System - Fire Mode
-    self.fire_mode = (runtimeCfg.weapon and runtimeCfg.weapon.fire_mode) or "manual"
-    if self.variant and self.variant.fire_mode then
-        self.fire_mode = self.variant.fire_mode
-    end
-
-    self.fire_rate = loader:get('fire_rate', 1.0)
-
-    self.burst_count = loader:get('burst_count', 3)
-
-    self.burst_delay = loader:get('burst_delay', 0.1)
-
-    self.charge_time = loader:get('charge_time', 1.0)
-
-    -- Phase 3: Bullet Pattern
-    self.bullet_pattern = (runtimeCfg.weapon and runtimeCfg.weapon.pattern) or "single"
-    if self.variant and self.variant.bullet_pattern then
-        self.bullet_pattern = self.variant.bullet_pattern
-    end
-
-    self.spread_angle = loader:get('spread_angle', 30)
-
-    -- Phase 3: Bullet Arc and Count
-    self.bullet_arc = loader:get('bullet_arc', 30)
-
-    self.bullets_per_shot = loader:get('bullets_per_shot', 1)
-
-    -- Phase 3: Bullet Behavior
-    self.bullet_speed = loader:get('bullet_speed', BULLET_SPEED)
-
-    self.bullet_homing = loader:get('bullet_homing', false)
-
-    self.homing_strength = loader:get('homing_strength', 0.0)
-
-    self.bullet_piercing = loader:get('bullet_piercing', false)
-
-    -- Phase 2: Bullet Gravity
-    self.bullet_gravity = loader:get('bullet_gravity', 0)
-
-    -- Phase 4: Ammo System
-    self.ammo_enabled = loader:get('ammo_enabled', false)
-
-    self.ammo_capacity = loader:get('ammo_capacity', 50)
-
-    self.ammo_reload_time = loader:get('ammo_reload_time', 2.0)
-
-    -- Phase 4: Overheat System
-    self.overheat_enabled = loader:get('overheat_enabled', false)
-
-    self.overheat_threshold = loader:get('overheat_threshold', 10)
-
-    self.overheat_cooldown = loader:get('overheat_cooldown', 3.0)
-
-    self.overheat_heat_dissipation = loader:get('overheat_heat_dissipation', 2.0)
-
-    -- Phase 5: Enemy spawn patterns
-    self.enemy_spawn_pattern = loader:get('enemy_spawn_pattern', "continuous")
-
-    self.enemy_spawn_rate_multiplier = loader:get('enemy_spawn_rate_multiplier', 1.0)
-
-    self.enemy_speed_multiplier = loader:get('enemy_speed_multiplier', 1.0)
-
-    -- Phase 5: Enemy formations
-    self.enemy_formation = loader:get('enemy_formation', "scattered")
-
-    -- Phase 5: Enemy bullet system
-    self.enemy_bullets_enabled = loader:get('enemy_bullets_enabled', false)
-
-    self.enemy_bullet_speed = loader:get('enemy_bullet_speed', 200)
-
-    self.enemy_fire_rate = loader:get('enemy_fire_rate', 2.0)
-
-    -- Enemy health system
-    self.enemy_health = loader:get('enemy_health', 1)
-
-    self.enemy_health_variance = loader:get('enemy_health_variance', 0.0)
-
-    self.enemy_health_min = loader:get('enemy_health_min', 1)
-
-    self.enemy_health_max = loader:get('enemy_health_max', 1)
-
-    self.use_health_range = loader:get('use_health_range', false)
-
-    -- Enemy behavior system (default, space_invaders, galaga)
-    self.enemy_behavior = loader:get('enemy_behavior', "default")
-
-    -- Wave system for special behaviors
-    self.waves_enabled = loader:get('waves_enabled', false)
-
-    -- Wave progression parameters
-    self.wave_difficulty_increase = loader:get('wave_difficulty_increase', 0.1)
-
-    self.wave_random_variance = loader:get('wave_random_variance', 0.0)
-
-    -- Enemy density (spacing multiplier)
-    self.enemy_density = loader:get('enemy_density', 1.0)
-
-    -- Space Invaders grid parameters
-    self.grid_rows = loader:get('grid_rows', 4)
-
-    self.grid_columns = loader:get('grid_columns', 8)
-
-    self.grid_speed = loader:get('grid_speed', 50)
-
-    self.grid_descent = loader:get('grid_descent', 20)
-
-    -- Galaga dive parameters
-    self.dive_frequency = loader:get('dive_frequency', 3.0)
-
-    self.max_diving_enemies = loader:get('max_diving_enemies', 1)
-
-    self.entrance_pattern = loader:get('entrance_pattern', "swoop")
-
-    self.formation_size = loader:get('formation_size', 24)
-
-    self.initial_spawn_count = loader:get('initial_spawn_count', 8)
-
-    self.galaga_spawn_interval = (runtimeCfg.enemy and runtimeCfg.enemy.spawn_interval) or 0.5
-    if self.variant and self.variant.spawn_interval ~= nil then
-        self.galaga_spawn_interval = self.variant.spawn_interval
-    end
-
-    -- Phase 5: Enemy bullet patterns (for bullet hell)
-    self.enemy_bullet_pattern = loader:get('enemy_bullet_pattern', "single")
-
-    self.enemy_bullets_per_shot = loader:get('enemy_bullets_per_shot', 1)
-
-    self.enemy_bullet_spread_angle = loader:get('enemy_bullet_spread_angle', 30)
-
-    -- Phase 5: Wave spawn parameters
-    self.wave_enemies_per_wave = loader:get('wave_enemies_per_wave', 5)
-
-    self.wave_pause_duration = loader:get('wave_pause_duration', 3.0)
-
-    -- Phase 5: Difficulty scaling
-    self.difficulty_curve = loader:get('difficulty_curve', "linear")
-
-    self.difficulty_scaling_rate = loader:get('difficulty_scaling_rate', 0.1)
-
-    -- Phase 6: Power-up system
-    self.powerup_enabled = loader:get('powerup_enabled', false)
-
-    self.powerup_spawn_rate = loader:get('powerup_spawn_rate', 15.0)
-
-    self.powerup_duration = loader:get('powerup_duration', 8.0)
-
-    self.powerup_types = loader:get('powerup_types', {"speed", "rapid_fire", "pierce", "shield"})
-
-    self.powerup_drop_speed = loader:get('powerup_drop_speed', 150)
-
-    self.powerup_size = loader:get('powerup_size', 20)
-
-    self.powerup_speed_multiplier = loader:get('powerup_speed_multiplier', 1.5)
-
-    self.powerup_rapid_fire_multiplier = loader:get('powerup_rapid_fire_multiplier', 0.5)
-
-    -- Phase 7: Environmental hazards
-    self.asteroid_density = loader:get('asteroid_density', 0)
-
-    self.asteroid_speed = loader:get('asteroid_speed', 100)
-
-    self.asteroid_size_min = loader:get('asteroid_size_min', 20)
-
-    self.asteroid_size_max = loader:get('asteroid_size_max', 50)
-
-    self.asteroids_can_be_destroyed = loader:get('asteroids_can_be_destroyed', true)
-
-    self.meteor_frequency = loader:get('meteor_frequency', 0)
-
-    self.meteor_speed = loader:get('meteor_speed', 400)
-
-    self.meteor_warning_time = loader:get('meteor_warning_time', 1.0)
-
-    self.gravity_wells_count = loader:get('gravity_wells_count', 0)
-
-    self.gravity_well_strength = loader:get('gravity_well_strength', 400)
-
-    self.gravity_well_radius = loader:get('gravity_well_radius', 150)
-
-    self.scroll_speed = loader:get('scroll_speed', 0)
-
-    -- Phase 8: Special mechanics
-    self.screen_wrap = loader:get('screen_wrap', false)
-
-    self.screen_wrap_bullets = loader:get('screen_wrap_bullets', false)
-
-    self.screen_wrap_enemies = loader:get('screen_wrap_enemies', false)
-
-    self.bullet_max_wraps = loader:get('bullet_max_wraps', 2)
-
-    self.reverse_gravity = loader:get('reverse_gravity', false)
-
-    self.blackout_zones_count = loader:get('blackout_zones_count', 0)
-
-    self.blackout_zone_radius = loader:get('blackout_zone_radius', 100)
-
-    self.blackout_zones_move = loader:get('blackout_zones_move', false)
-
-    -- Phase 8: Victory conditions
-    self.victory_condition = loader:get('victory_condition', "kills")
-
-    self.victory_limit = loader:get('victory_limit', 20)
+    self.shield_enabled = p.shield
+    self.shield_regen_time = p.shield_regen_time
+    self.shield_max_hits = p.shield_hits
+
+    -- Weapon system (from schema)
+    self.fire_mode = p.fire_mode
+    self.fire_rate = p.fire_rate
+    self.burst_count = p.burst_count
+    self.burst_delay = p.burst_delay
+    self.charge_time = p.charge_time
+    self.bullet_pattern = p.bullet_pattern
+    self.spread_angle = p.spread_angle
+    self.bullet_arc = p.bullet_arc
+    self.bullets_per_shot = p.bullets_per_shot
+    self.bullet_speed = p.bullet_speed
+    self.bullet_homing = p.bullet_homing
+    self.homing_strength = p.homing_strength
+    self.bullet_piercing = p.bullet_piercing
+    self.bullet_gravity = p.bullet_gravity
+
+    -- Ammo and overheat (from schema)
+    self.ammo_enabled = p.ammo_enabled
+    self.ammo_capacity = p.ammo_capacity
+    self.ammo_reload_time = p.ammo_reload_time
+    self.overheat_enabled = p.overheat_enabled
+    self.overheat_threshold = p.overheat_threshold
+    self.overheat_cooldown = p.overheat_cooldown
+    self.overheat_heat_dissipation = p.overheat_heat_dissipation
+
+    -- Enemy spawn and formation (from schema)
+    self.enemy_spawn_pattern = p.enemy_spawn_pattern
+    self.enemy_spawn_rate_multiplier = p.enemy_spawn_rate_multiplier
+    self.enemy_speed_multiplier = p.enemy_speed_multiplier
+    self.enemy_formation = p.enemy_formation
+    self.enemy_bullets_enabled = p.enemy_bullets_enabled
+    self.enemy_bullet_speed = p.enemy_bullet_speed
+    self.enemy_fire_rate = p.enemy_fire_rate
+
+    -- Enemy health (from schema)
+    self.enemy_health = p.enemy_health
+    self.enemy_health_variance = p.enemy_health_variance
+    self.enemy_health_min = p.enemy_health_min
+    self.enemy_health_max = p.enemy_health_max
+    self.use_health_range = p.use_health_range
+
+    -- Enemy behavior and waves (from schema)
+    self.enemy_behavior = p.enemy_behavior
+    self.waves_enabled = p.waves_enabled
+    self.wave_difficulty_increase = p.wave_difficulty_increase
+    self.wave_random_variance = p.wave_random_variance
+    self.enemy_density = p.enemy_density
+
+    -- Space Invaders grid (from schema)
+    self.grid_rows = p.grid_rows
+    self.grid_columns = p.grid_columns
+    self.grid_speed = p.grid_speed
+    self.grid_descent = p.grid_descent
+
+    -- Galaga parameters (from schema)
+    self.dive_frequency = p.dive_frequency
+    self.max_diving_enemies = p.max_diving_enemies
+    self.entrance_pattern = p.entrance_pattern
+    self.formation_size = p.formation_size
+    self.initial_spawn_count = p.initial_spawn_count
+    self.galaga_spawn_interval = p.spawn_interval
+
+    -- Enemy bullet patterns (from schema)
+    self.enemy_bullet_pattern = p.enemy_bullet_pattern
+    self.enemy_bullets_per_shot = p.enemy_bullets_per_shot
+    self.enemy_bullet_spread_angle = p.enemy_bullet_spread_angle
+
+    -- Wave spawn parameters (from schema)
+    self.wave_enemies_per_wave = p.wave_enemies_per_wave
+    self.wave_pause_duration = p.wave_pause_duration
+
+    -- Difficulty scaling (from schema)
+    self.difficulty_curve = p.difficulty_curve
+    self.difficulty_scaling_rate = p.difficulty_scaling_rate
+
+    -- Power-up system (from schema)
+    self.powerup_enabled = p.powerup_enabled
+    self.powerup_spawn_rate = p.powerup_spawn_rate
+    self.powerup_duration = p.powerup_duration
+    self.powerup_types = p.powerup_types
+    self.powerup_drop_speed = p.powerup_drop_speed
+    self.powerup_size = p.powerup_size
+    self.powerup_speed_multiplier = p.powerup_speed_multiplier
+    self.powerup_rapid_fire_multiplier = p.powerup_rapid_fire_multiplier
+
+    -- Environmental hazards (from schema)
+    self.asteroid_density = p.asteroid_density
+    self.asteroid_speed = p.asteroid_speed
+    self.asteroid_size_min = p.asteroid_size_min
+    self.asteroid_size_max = p.asteroid_size_max
+    self.asteroids_can_be_destroyed = p.asteroids_can_be_destroyed
+    self.meteor_frequency = p.meteor_frequency
+    self.meteor_speed = p.meteor_speed
+    self.meteor_warning_time = p.meteor_warning_time
+    self.gravity_wells_count = p.gravity_wells_count
+    self.gravity_well_strength = p.gravity_well_strength
+    self.gravity_well_radius = p.gravity_well_radius
+    self.scroll_speed = p.scroll_speed
+
+    -- Special mechanics (from schema)
+    self.screen_wrap = p.screen_wrap
+    self.screen_wrap_bullets = p.screen_wrap_bullets
+    self.screen_wrap_enemies = p.screen_wrap_enemies
+    self.bullet_max_wraps = p.bullet_max_wraps
+    self.reverse_gravity = p.reverse_gravity
+    self.blackout_zones_count = p.blackout_zones_count
+    self.blackout_zone_radius = p.blackout_zone_radius
+    self.blackout_zones_move = p.blackout_zones_move
+
+    -- Victory conditions (from schema)
+    self.victory_condition = p.victory_condition
+    self.victory_limit = p.victory_limit
 
     self.game_width = (SCfg.arena and SCfg.arena.width) or 800
     self.game_height = (SCfg.arena and SCfg.arena.height) or 600

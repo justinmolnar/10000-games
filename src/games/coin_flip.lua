@@ -5,91 +5,53 @@ local popup_module = require('src.games.score_popup')
 local PopupManager = popup_module.PopupManager
 local VisualEffects = require('src.utils.game_components.visual_effects')
 local AnimationSystem = require('src.utils.game_components.animation_system')
-local VariantLoader = require('src.utils.game_components.variant_loader')
+local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local CoinFlip = BaseGame:extend('CoinFlip')
-
--- Config-driven defaults with safe fallbacks
-local DEFAULT_STREAK_TARGET = 10
-local DEFAULT_COIN_BIAS = 0.5  -- Fair coin
-local DEFAULT_LIVES = 3
-local DEFAULT_TIME_PER_FLIP = 0  -- Unlimited
-local DEFAULT_FLIP_ANIMATION_SPEED = 0.5
-local DEFAULT_SHOW_BIAS_HINT = false
-local DEFAULT_PATTERN_MODE = "random"
-local DEFAULT_VICTORY_CONDITION = "streak"  -- "streak", "total", "ratio", "time"
-local DEFAULT_TOTAL_CORRECT_TARGET = 50
-local DEFAULT_RATIO_TARGET = 0.75  -- 75% accuracy
-local DEFAULT_RATIO_FLIP_COUNT = 20  -- Over last 20 flips
-local DEFAULT_TIME_LIMIT = 120  -- 2 minutes
-local DEFAULT_PATTERN_HISTORY_LENGTH = 10  -- Show last 10 flips
-local DEFAULT_SHOW_PATTERN_HISTORY = false
-local DEFAULT_AUTO_FLIP_INTERVAL = 0  -- 0 = disabled, >0 = auto flip every N seconds
-local DEFAULT_RESULT_ANNOUNCE_MODE = "text"  -- "text", "voice", "both", "none"
-
--- Scoring defaults
-local DEFAULT_SCORE_PER_CORRECT = 100
-local DEFAULT_STREAK_MULTIPLIER = 0.1  -- +10% per streak level
-local DEFAULT_PERFECT_STREAK_BONUS = 1000
-local DEFAULT_SCORE_POPUP_ENABLED = true
 
 function CoinFlip:init(game_data, cheats, di, variant_override)
     CoinFlip.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
     self.cheats = cheats or {}
 
-    -- Three-tier fallback: runtimeCfg → variant → DEFAULT
+    -- Load all parameters via SchemaLoader (variant → runtime_config → schema defaults)
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.coin_flip)
-
-    -- Initialize VariantLoader
-    local loader = VariantLoader:new(self.variant, runtimeCfg, {})
+    local p = SchemaLoader.load(self.variant, "coin_flip_schema", runtimeCfg)
 
     -- Core Mechanics Parameters
-    self.streak_target = loader:get('streak_target', DEFAULT_STREAK_TARGET)
+    self.streak_target = p.streak_target
+    self.coin_bias = p.coin_bias
 
-    self.coin_bias = loader:get('coin_bias', DEFAULT_COIN_BIAS)
-
-    -- Lives handled by LivesHealthSystem (Phase 10)
-    local starting_lives = loader:get('lives', DEFAULT_LIVES)
+    -- Lives handled by LivesHealthSystem
+    local starting_lives = p.lives
 
     -- Timing Parameters
-    self.time_per_flip = loader:get('time_per_flip', DEFAULT_TIME_PER_FLIP)
-
-    self.flip_animation_speed = loader:get('flip_animation_speed', DEFAULT_FLIP_ANIMATION_SPEED)
+    self.time_per_flip = p.time_per_flip
+    self.flip_animation_speed = p.flip_animation_speed
 
     -- Display Parameters
-    self.show_bias_hint = loader:get('show_bias_hint', DEFAULT_SHOW_BIAS_HINT)
-
-    self.show_pattern_history = loader:get('show_pattern_history', DEFAULT_SHOW_PATTERN_HISTORY)
-
-    self.pattern_history_length = loader:get('pattern_history_length', DEFAULT_PATTERN_HISTORY_LENGTH)
-
-    self.auto_flip_interval = loader:get('auto_flip_interval', DEFAULT_AUTO_FLIP_INTERVAL)
-
-    self.result_announce_mode = loader:get('result_announce_mode', DEFAULT_RESULT_ANNOUNCE_MODE)
+    self.show_bias_hint = p.show_bias_hint
+    self.show_pattern_history = p.show_pattern_history
+    self.pattern_history_length = p.pattern_history_length
+    self.auto_flip_interval = p.auto_flip_interval
+    self.result_announce_mode = p.result_announce_mode
 
     -- Pattern Mode
-    self.pattern_mode = loader:get('pattern_mode', DEFAULT_PATTERN_MODE)
-
-    -- Flip mode: "auto" = heads advance streak (default), "guess" = player calls it
-    self.flip_mode = loader:get('flip_mode', "auto")
+    self.pattern_mode = p.pattern_mode
+    self.flip_mode = p.flip_mode
 
     -- Victory Condition Parameters
-    self.victory_condition = loader:get('victory_condition', DEFAULT_VICTORY_CONDITION)
+    self.victory_condition = p.victory_condition
+    self.total_correct_target = p.total_correct_target
+    self.ratio_target = p.ratio_target
+    self.ratio_flip_count = p.ratio_flip_count
+    self.time_limit = p.time_limit
 
-    self.total_correct_target = loader:get('total_correct_target', DEFAULT_TOTAL_CORRECT_TARGET)
-
-    self.ratio_target = loader:get('ratio_target', DEFAULT_RATIO_TARGET)
-
-    self.ratio_flip_count = loader:get('ratio_flip_count', DEFAULT_RATIO_FLIP_COUNT)
-
-    self.time_limit = loader:get('time_limit', DEFAULT_TIME_LIMIT)
-
-    -- Apply difficulty_modifier from variant
-    if self.variant and self.variant.difficulty_modifier then
-        self.time_per_flip = self.time_per_flip * self.variant.difficulty_modifier
+    -- Apply difficulty_modifier
+    if p.difficulty_modifier ~= 1.0 then
+        self.time_per_flip = self.time_per_flip * p.difficulty_modifier
     end
 
     -- Apply CheatEngine modifications
@@ -101,7 +63,6 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
         starting_lives = starting_lives + (self.cheats.advantage_modifier or 0)
     end
     if self.cheats.performance_modifier then
-        -- Adjust bias toward 0.5 (fairer) based on modifier
         local bias_adjustment = (0.5 - self.coin_bias) * (self.cheats.performance_modifier or 0)
         self.coin_bias = self.coin_bias + bias_adjustment
     end
@@ -142,13 +103,10 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
     self.time_per_flip_timer = 0  -- Countdown for time pressure mode
 
     -- Scoring parameters
-    self.score_per_correct = loader:get('score_per_correct', DEFAULT_SCORE_PER_CORRECT)
-
-    self.streak_multiplier = loader:get('streak_multiplier', DEFAULT_STREAK_MULTIPLIER)
-
-    self.perfect_streak_bonus = loader:get('perfect_streak_bonus', DEFAULT_PERFECT_STREAK_BONUS)
-
-    self.score_popup_enabled = loader:get('score_popup_enabled', DEFAULT_SCORE_POPUP_ENABLED)
+    self.score_per_correct = p.score_per_correct
+    self.streak_multiplier = p.streak_multiplier
+    self.perfect_streak_bonus = p.perfect_streak_bonus
+    self.score_popup_enabled = p.score_popup_enabled
 
     -- Scoring state
     self.score = 0
@@ -167,16 +125,9 @@ function CoinFlip:init(game_data, cheats, di, variant_override)
     -- Phase 6: Score popups managed by PopupManager
     self.popup_manager = PopupManager:new()
 
-    -- Visual effects parameters (Phase 11)
-    self.celebration_on_streak = true
-    if self.variant and self.variant.celebration_on_streak ~= nil then
-        self.celebration_on_streak = self.variant.celebration_on_streak
-    end
-
-    local screen_flash_enabled = true
-    if self.variant and self.variant.screen_flash_enabled ~= nil then
-        screen_flash_enabled = self.variant.screen_flash_enabled
-    end
+    -- Visual effects parameters
+    self.celebration_on_streak = p.celebration_on_streak
+    local screen_flash_enabled = p.screen_flash_enabled
 
     -- Phase 3: Initialize VisualEffects component (screen flash + particles)
     self.visual_effects = VisualEffects:new({
