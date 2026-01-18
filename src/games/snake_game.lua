@@ -6,6 +6,7 @@ local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
 local EntityController = require('src.utils.game_components.entity_controller')
 local MovementController = require('src.utils.game_components.movement_controller')
+local ArenaController = require('src.utils.game_components.arena_controller')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
 -- Config-driven defaults with safe fallbacks
@@ -224,17 +225,29 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
     -- Track obstacle spawning timer
     self.obstacle_spawn_timer = 0
 
-    -- Shrinking arena state
-    self.arena_shrink_timer = 0
-    self.arena_shrink_interval = 5  -- Shrink every 5 seconds
-    self.arena_current_width = self.grid_width
-    self.arena_current_height = self.grid_height
-    self.arena_min_width = math.max(10, math.floor(self.grid_width * 0.3))
-    self.arena_min_height = math.max(10, math.floor(self.grid_height * 0.3))
+    -- Phase 10: ArenaController for arena shapes, shrinking, and moving walls
+    self.arena_controller = ArenaController:new({
+        width = self.grid_width,
+        height = self.grid_height,
+        shape = self.arena_shape or "rectangle",
+        grid_mode = true,
+        cell_size = 1,  -- Snake uses grid units directly
+        -- Shrinking
+        shrink = self.shrinking_arena,
+        shrink_interval = 5,
+        shrink_amount = 1,
+        min_width = math.max(10, math.floor(self.grid_width * 0.3)),
+        min_height = math.max(10, math.floor(self.grid_height * 0.3)),
+        -- Moving walls
+        moving_walls = self.moving_walls,
+        wall_move_interval = 3,
+        -- Callback for when arena shrinks (to add wall obstacles)
+        on_shrink = function(margins)
+            self:onArenaShrink(margins)
+        end
+    })
 
-    -- Moving walls state
-    self.wall_move_timer = 0
-    self.wall_move_interval = 3  -- Move walls every 3 seconds
+    -- Initialize wall offset values for view (synced from ArenaController)
     self.wall_offset_x = 0
     self.wall_offset_y = 0
 
@@ -1054,65 +1067,9 @@ function SnakeGame:updateGameLogic(dt)
     -- Check collisions between snakes
     self:checkSnakeCollisions()
 
-    -- Moving walls
-    if self.moving_walls then
-        self.wall_move_timer = self.wall_move_timer + dt
-        if self.wall_move_timer >= self.wall_move_interval then
-            self.wall_move_timer = self.wall_move_timer - self.wall_move_interval
-
-            -- Move walls randomly
-            local max_offset = math.floor(self.grid_width * 0.2)  -- 20% max offset
-            self.wall_offset_x = math.random(-max_offset, max_offset)
-            self.wall_offset_y = math.random(-max_offset, max_offset)
-        end
-    end
-
-    -- Shrinking arena
-    if self.shrinking_arena then
-        self.arena_shrink_timer = self.arena_shrink_timer + dt
-        if self.arena_shrink_timer >= self.arena_shrink_interval then
-            self.arena_shrink_timer = self.arena_shrink_timer - self.arena_shrink_interval
-
-            -- Shrink from all sides by creating new wall obstacles
-            local did_shrink = false
-            if self.arena_current_width > self.arena_min_width then
-                self.arena_current_width = self.arena_current_width - 1
-                did_shrink = true
-            end
-            if self.arena_current_height > self.arena_min_height then
-                self.arena_current_height = self.arena_current_height - 1
-                did_shrink = true
-            end
-
-            if did_shrink then
-                -- Add walls at the new boundaries
-                local margin_x = math.floor((self.grid_width - self.arena_current_width) / 2)
-                local margin_y = math.floor((self.grid_height - self.arena_current_height) / 2)
-
-                -- Add left wall
-                for y = 0, self.grid_height - 1 do
-                    table.insert(self.obstacles, {x = margin_x - 1, y = y, type = "walls"})
-                end
-
-                -- Add right wall
-                for y = 0, self.grid_height - 1 do
-                    table.insert(self.obstacles, {x = self.grid_width - margin_x, y = y, type = "walls"})
-                end
-
-                -- Add top wall
-                for x = 0, self.grid_width - 1 do
-                    table.insert(self.obstacles, {x = x, y = margin_y - 1, type = "walls"})
-                end
-
-                -- Add bottom wall
-                for x = 0, self.grid_width - 1 do
-                    table.insert(self.obstacles, {x = x, y = self.grid_height - margin_y, type = "walls"})
-                end
-
-                print(string.format("[SnakeGame] Arena shrunk to %dx%d (added wall obstacles)", self.arena_current_width, self.arena_current_height))
-            end
-        end
-    end
+    -- Phase 10: ArenaController handles moving walls and shrinking
+    self.arena_controller:update(dt)
+    self:syncArenaState()  -- Sync wall offsets and dimensions back to game object for view
 
     -- Handle smooth movement separately
     if self.movement_type == "smooth" then
@@ -2371,44 +2328,47 @@ function SnakeGame:createObstacles()
     return obstacles
 end
 
-function SnakeGame:isInsideArena(pos)
-    -- Apply moving walls offset if enabled
-    local offset_x = (self.moving_walls and self.wall_offset_x) or 0
-    local offset_y = (self.moving_walls and self.wall_offset_y) or 0
+-- Phase 10: Callback when arena shrinks (adds wall obstacles)
+function SnakeGame:onArenaShrink(margins)
+    local bounds = self.arena_controller:getBounds()
 
-    -- Check if position is inside the arena based on arena_shape
-    if self.arena_shape == "circle" then
-        local center_x = (self.grid_width / 2) + offset_x
-        local center_y = (self.grid_height / 2) + offset_y
-        local radius = math.min(self.grid_width, self.grid_height) / 2
-        local dx = pos.x - center_x
-        local dy = pos.y - center_y
-        return (dx * dx + dy * dy) <= (radius * radius)
-    elseif self.arena_shape == "hexagon" then
-        -- Hexagon: check if within hexagonal boundary
-        local center_x = (self.grid_width / 2) + offset_x
-        local center_y = (self.grid_height / 2) + offset_y
-        local size = math.min(self.grid_width, self.grid_height) / 2
-
-        local dx = math.abs(pos.x - center_x)
-        local dy = math.abs(pos.y - center_y)
-
-        -- Hexagon approximation using distance checks
-        if dx > size * 0.866 then return false end  -- 0.866 ≈ sqrt(3)/2
-        if dy > size then return false end
-        if dx * 0.577 + dy > size then return false end  -- 0.577 ≈ 1/sqrt(3)
-
-        return true
-    else
-        -- Rectangle (default) - walls shift the valid area
-        local min_x = 0 + math.max(0, offset_x)
-        local max_x = self.grid_width - 1 + math.min(0, offset_x)
-        local min_y = 0 + math.max(0, offset_y)
-        local max_y = self.grid_height - 1 + math.min(0, offset_y)
-
-        return pos.x >= min_x and pos.x <= max_x and
-               pos.y >= min_y and pos.y <= max_y
+    -- Add left wall
+    for y = 0, self.grid_height - 1 do
+        table.insert(self.obstacles, {x = margins.left - 1, y = y, type = "walls"})
     end
+
+    -- Add right wall
+    for y = 0, self.grid_height - 1 do
+        table.insert(self.obstacles, {x = self.grid_width - margins.right, y = y, type = "walls"})
+    end
+
+    -- Add top wall
+    for x = 0, self.grid_width - 1 do
+        table.insert(self.obstacles, {x = x, y = margins.top - 1, type = "walls"})
+    end
+
+    -- Add bottom wall
+    for x = 0, self.grid_width - 1 do
+        table.insert(self.obstacles, {x = x, y = self.grid_height - margins.bottom, type = "walls"})
+    end
+
+    print(string.format("[SnakeGame] Arena shrunk to %dx%d (added wall obstacles)", bounds.width, bounds.height))
+end
+
+-- Phase 10: Sync arena state from ArenaController back to game object for rendering
+function SnakeGame:syncArenaState()
+    -- Sync moving wall offsets for view
+    self.wall_offset_x = self.arena_controller.wall_offset_x
+    self.wall_offset_y = self.arena_controller.wall_offset_y
+
+    -- Sync current arena dimensions for view (shrinking arena)
+    self.grid_width = self.arena_controller.current_width
+    self.grid_height = self.arena_controller.current_height
+end
+
+-- Phase 10: Delegates to ArenaController for shape-aware bounds checking
+function SnakeGame:isInsideArena(pos)
+    return self.arena_controller:isInsideGrid(pos.x, pos.y)
 end
 
 function SnakeGame:getGirthCells(center_pos, girth_value, direction)

@@ -240,7 +240,7 @@
         },
         "area_morph_type": {
             "type": "enum",
-            "values": ["shrink", "pulsing", "shapes"],
+            "values": ["shrink", "pulsing", "shape_shifting", "deformation", "none"],
             "default": "shrink",
             "description": "How safe zone changes over time"
         },
@@ -273,7 +273,7 @@
         },
         "area_shape": {
             "type": "enum",
-            "values": ["circle", "square", "hexagon"],
+            "values": ["circle", "square", "hex"],
             "default": "circle",
             "description": "Shape of the safe zone"
         },

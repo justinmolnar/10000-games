@@ -12,6 +12,7 @@ local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local EntityController = require('src.utils.game_components.entity_controller')
 local ProjectileSystem = require('src.utils.game_components.projectile_system')
+local ArenaController = require('src.utils.game_components.arena_controller')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 -- Enemy type definitions (Phase 1.4)
@@ -411,20 +412,80 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     -- Apply area_size multiplier to initial and min radius
     local initial_radius = min_dim * INITIAL_SAFE_RADIUS_FRACTION * area_size
     local min_radius = min_dim * MIN_SAFE_RADIUS_FRACTION * area_size
+    local shrink_speed = (initial_radius - min_radius) / (SAFE_ZONE_SHRINK_SEC / self.difficulty_modifiers.complexity)
 
+    -- Phase 11: ArenaController for safe zone
+    -- Build holes array first
+    local holes = {}
+    if holes_count > 0 and holes_type ~= "none" then
+        for i = 1, holes_count do
+            local hole = { radius = 8 }
+            if holes_type == "circle" then
+                local angle = math.random() * math.pi * 2
+                hole.angle = angle
+                -- Position hole on boundary (shape-aware)
+                local hx, hy = self:getPointOnShapeBoundary(
+                    self.game_width / 2, self.game_height / 2,
+                    initial_radius, area_shape, angle
+                )
+                hole.x = hx
+                hole.y = hy
+                hole.on_boundary = true
+            elseif holes_type == "background" then
+                hole.x = math.random(hole.radius, self.game_width - hole.radius)
+                hole.y = math.random(hole.radius, self.game_height - hole.radius)
+                hole.on_boundary = false
+            end
+            table.insert(holes, hole)
+        end
+    end
+
+    self.arena_controller = ArenaController:new({
+        safe_zone = true,
+        x = self.game_width / 2,
+        y = self.game_height / 2,
+        radius = initial_radius,
+        safe_zone_radius = initial_radius,
+        safe_zone_min_radius = min_radius,
+        safe_zone_shrink_speed = shrink_speed,
+        shape = area_shape or "circle",
+        -- Morph configuration
+        morph_type = area_morph_type or "shrink",
+        morph_speed = area_morph_speed or 1.0,
+        shrink_speed = shrink_speed,
+        -- Movement configuration (map Dodge terms to ArenaController terms)
+        -- Dodge uses: "none", "random", "cardinal"
+        -- ArenaController uses: "none", "drift", "cardinal", "orbit"
+        movement = (area_movement_type == "random") and "drift" or area_movement_type,
+        movement_speed = drift_speed * area_movement_speed,
+        friction = area_friction or 0.95,
+        direction_change_interval = 2.0,
+        -- Container bounds for bouncing
+        container_width = self.game_width,
+        container_height = self.game_height,
+        bounds_padding = 0,
+        -- Initial velocity
+        vx = target_vx,
+        vy = target_vy,
+        target_vx = target_vx,
+        target_vy = target_vy,
+        -- Holes
+        holes = holes
+    })
+
+    -- Keep self.safe_zone for backward compatibility with rendering and collision code
+    -- This will be synced from arena_controller after each update
     self.safe_zone = {
         x = self.game_width / 2,
         y = self.game_height / 2,
         radius = initial_radius,
-        initial_radius = initial_radius,  -- Store for pulsing
+        initial_radius = initial_radius,
         min_radius = min_radius,
-        shrink_speed = (initial_radius - min_radius) / (SAFE_ZONE_SHRINK_SEC / self.difficulty_modifiers.complexity),
-        -- Velocity system with friction
-        vx = target_vx,  -- Current velocity
+        shrink_speed = shrink_speed,
+        vx = target_vx,
         vy = target_vy,
-        target_vx = target_vx,  -- Target velocity for friction interpolation
+        target_vx = target_vx,
         target_vy = target_vy,
-        -- Area customization properties
         area_size = area_size,
         area_morph_type = area_morph_type,
         area_morph_speed = area_morph_speed,
@@ -432,37 +493,14 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
         area_movement_type = area_movement_type,
         area_friction = area_friction,
         area_shape = area_shape,
-        -- Morph state
-        morph_time = 0,  -- Timer for pulsing/shape shifting
-        shape_index = 1,  -- Current shape index for shape shifting
-        -- Movement state
-        direction_timer = 0,  -- Timer for changing cardinal/random direction
-        direction_change_interval = 2.0  -- Change direction every 2 seconds
+        morph_time = 0,
+        shape_index = 1,
+        direction_timer = 0,
+        direction_change_interval = 2.0
     }
 
-    -- Initialize holes
-    self.holes = {}
-    if holes_count > 0 and holes_type ~= "none" then
-        for i = 1, holes_count do
-            local hole = { radius = 8 }  -- Simple circle holes for now
-
-            if holes_type == "circle" then
-                -- Position on safe zone boundary (clustered randomly)
-                local angle = math.random() * math.pi * 2
-                hole.angle = angle  -- Store angle for updating position
-                hole.x = self.safe_zone.x + math.cos(angle) * self.safe_zone.radius
-                hole.y = self.safe_zone.y + math.sin(angle) * self.safe_zone.radius
-                hole.on_boundary = true
-            elseif holes_type == "background" then
-                -- Random static position in arena
-                hole.x = math.random(hole.radius, self.game_width - hole.radius)
-                hole.y = math.random(hole.radius, self.game_height - hole.radius)
-                hole.on_boundary = false
-            end
-
-            table.insert(self.holes, hole)
-        end
-    end
+    -- Reference holes from arena_controller
+    self.holes = self.arena_controller.holes
 
     -- Game over state
     self.game_over = false
@@ -562,7 +600,17 @@ end
 function DodgeGame:setPlayArea(width, height)
     self.game_width = width
     self.game_height = height
-    
+
+    -- Update ArenaController container dimensions
+    if self.arena_controller then
+        self.arena_controller:setContainerSize(width, height)
+        -- Also update safe_zone center for backward compatibility
+        if self.safe_zone then
+            self.safe_zone.x = width / 2
+            self.safe_zone.y = height / 2
+        end
+    end
+
     -- Only clamp player if player exists
     if self.player then
         self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
@@ -602,8 +650,9 @@ function DodgeGame:updateGameLogic(dt)
     end
 
     -- NOTE: time_elapsed is already incremented in BaseGame:updateBase, don't double-increment!
-    self:updateSafeZone(dt)
-    self:updateSafeMorph(dt)
+    -- Phase 11: ArenaController handles safe zone movement and morphing
+    self.arena_controller:update(dt)
+    self:syncSafeZoneFromArena()
     self:updateShield(dt)
     self:updatePlayerTrail(dt)
     self:updateCameraShake(dt)
@@ -861,23 +910,94 @@ function DodgeGame:isPointInSquare(px, py, cx, cy, half_size)
 end
 
 function DodgeGame:isPointInHex(px, py, cx, cy, radius)
-    -- Hexagon is approximated as 6 sides
-    -- For simplicity, use distance check with adjusted radius (inscribed hex)
+    -- Pointy-top hexagon (matches view rendering)
+    -- Vertices at angles: -90°, -30°, 30°, 90°, 150°, 210°
     local dx = px - cx
     local dy = py - cy
-    local dist = math.sqrt(dx*dx + dy*dy)
-    if dist > radius then return false end
+    local abs_dx = math.abs(dx)
+    local abs_dy = math.abs(dy)
 
-    -- Hex-specific check: use 6-sided polygon
-    local angle = math.atan2(dy, dx)
-    local sector_angle = math.pi / 3  -- 60 degrees
-    local sector = math.floor((angle + math.pi) / sector_angle)
-    local sector_mid_angle = -math.pi + (sector + 0.5) * sector_angle
-    local dx_rot = dx * math.cos(-sector_mid_angle) - dy * math.sin(-sector_mid_angle)
+    -- Vertical extent: point at top/bottom, so |dy| <= radius
+    if abs_dy > radius then return false end
 
-    -- Check against flat edge of hexagon
-    local hex_flat_radius = radius * math.cos(math.pi / 6)
-    return math.abs(dx_rot) <= hex_flat_radius
+    -- Horizontal extent at widest (middle): |dx| <= radius * sqrt(3)/2
+    local hex_half_width = radius * 0.866025  -- sqrt(3)/2
+    if abs_dx > hex_half_width then return false end
+
+    -- Angled edges constraint: 0.577 * |dx| + |dy| <= radius
+    -- (0.577 = 1/sqrt(3), derived from edge geometry)
+    if abs_dx * 0.577 + abs_dy > radius then return false end
+
+    return true
+end
+
+-- Get point on shape boundary at given angle (for positioning holes, spawns, etc.)
+function DodgeGame:getPointOnShapeBoundary(cx, cy, radius, shape, angle)
+    shape = shape or "circle"
+
+    if shape == "circle" then
+        return cx + math.cos(angle) * radius, cy + math.sin(angle) * radius
+
+    elseif shape == "square" then
+        -- Find intersection of ray from center at angle with square boundary
+        local dx = math.cos(angle)
+        local dy = math.sin(angle)
+        local abs_dx = math.abs(dx)
+        local abs_dy = math.abs(dy)
+
+        local t
+        if abs_dx > abs_dy then
+            t = radius / abs_dx
+        else
+            t = radius / abs_dy
+        end
+        return cx + dx * t, cy + dy * t
+
+    elseif shape == "hex" then
+        -- Pointy-top hexagon: find intersection with hex boundary
+        local dx = math.cos(angle)
+        local dy = math.sin(angle)
+        local abs_dx = math.abs(dx)
+        local abs_dy = math.abs(dy)
+        local hex_width = radius * 0.866
+
+        -- Check which edge the ray hits first
+        local t = radius  -- default (won't be used)
+
+        -- Vertical extent (top/bottom points)
+        if abs_dy > 0.001 then
+            local t_vert = radius / abs_dy
+            local hit_x = abs_dx * t_vert
+            if hit_x <= hex_width then
+                t = t_vert
+            end
+        end
+
+        -- Horizontal extent (left/right flat edges)
+        if abs_dx > 0.001 then
+            local t_horiz = hex_width / abs_dx
+            local hit_y = abs_dy * t_horiz
+            if hit_y <= radius * 0.5 then
+                t = math.min(t, t_horiz)
+            end
+        end
+
+        -- Angled edges: 0.577 * |x| + |y| = radius
+        -- Ray: x = dx*t, y = dy*t
+        -- 0.577 * |dx*t| + |dy*t| = radius
+        -- t * (0.577 * |dx| + |dy|) = radius
+        local angled_denom = 0.577 * abs_dx + abs_dy
+        if angled_denom > 0.001 then
+            local t_angled = radius / angled_denom
+            t = math.min(t, t_angled)
+        end
+
+        return cx + dx * t, cy + dy * t
+
+    else
+        -- Default to circle
+        return cx + math.cos(angle) * radius, cy + math.sin(angle) * radius
+    end
 end
 
 function DodgeGame:checkCircleLineCollision(cx, cy, cr, x1, y1, x2, y2)
@@ -952,21 +1072,67 @@ function DodgeGame:clampPlayerPosition()
             end
 
         elseif shape == "hex" then
-            -- Hexagon clamping (approximate with circle for now, refined check for edges)
-            local max_dist = math.max(0, sz.radius - self.player.radius)
-            if dist > max_dist and dist > 0 then
-                local scale = max_dist / dist
-                self.player.x = sz.x + dxp * scale
-                self.player.y = sz.y + dyp * scale
+            -- Hexagon clamping (pointy-top hexagon)
+            local r = sz.radius - self.player.radius
+            local abs_dx = math.abs(dxp)
+            local abs_dy = math.abs(dyp)
+            local hex_width = r * 0.866  -- sqrt(3)/2
+            local clamped = false
+            local nx, ny = 0, 0
 
-                -- Bounce velocity
-                local nx = dxp / dist
-                local ny = dyp / dist
-                local dot = self.player.vx * nx + self.player.vy * ny
-                if dot > 0 then
-                    local bounce_factor = 1.0 + self.player.bounce_damping
-                    self.player.vx = self.player.vx - nx * dot * bounce_factor
-                    self.player.vy = self.player.vy - ny * dot * bounce_factor
+            -- Check if outside hex bounds (order matters - check most restrictive first)
+            if abs_dy > r then
+                -- Outside top/bottom points
+                self.player.y = sz.y + (dyp > 0 and r or -r)
+                clamped = true
+                ny = dyp > 0 and 1 or -1
+            elseif abs_dx > hex_width then
+                -- Outside left/right flat edges
+                self.player.x = sz.x + (dxp > 0 and hex_width or -hex_width)
+                clamped = true
+                nx = dxp > 0 and 1 or -1
+            elseif abs_dx * 0.577 + abs_dy > r then
+                -- Outside angled edges
+                -- The angled edge normal for pointy-top hex: (0.5, ±0.866) normalized
+                -- Determine which of the 4 angled edges we're hitting
+                local sign_x = dxp > 0 and 1 or -1
+                local sign_y = dyp > 0 and 1 or -1
+
+                -- Edge normal points outward (perpendicular to edge)
+                nx = sign_x * 0.5
+                ny = sign_y * 0.866
+
+                -- Project player onto the edge plane: find point on edge closest to player
+                -- Edge constraint: 0.577 * |x| + |y| = r
+                -- Solve for the clamped position along the edge
+                -- The edge line in the relevant quadrant passes through:
+                --   vertex1: (0, sign_y * r) and vertex2: (sign_x * hex_width, sign_y * r * 0.5)
+
+                -- Parameterize edge: P = V1 + t*(V2-V1) where t in [0,1]
+                local v1x, v1y = 0, sign_y * r
+                local v2x, v2y = sign_x * hex_width, sign_y * r * 0.5
+                local edx, edy = v2x - v1x, v2y - v1y
+
+                -- Project player position onto edge line
+                local t = ((dxp - v1x) * edx + (dyp - v1y) * edy) / (edx * edx + edy * edy)
+                t = math.max(0, math.min(1, t))
+
+                self.player.x = sz.x + v1x + t * edx
+                self.player.y = sz.y + v1y + t * edy
+                clamped = true
+            end
+
+            if clamped then
+                -- Bounce velocity off the edge normal
+                local len = math.sqrt(nx*nx + ny*ny)
+                if len > 0 then
+                    nx, ny = nx/len, ny/len
+                    local dot = self.player.vx * nx + self.player.vy * ny
+                    if dot > 0 then
+                        local bounce_factor = 1.0 + self.player.bounce_damping
+                        self.player.vx = self.player.vx - nx * dot * bounce_factor
+                        self.player.vy = self.player.vy - ny * dot * bounce_factor
+                    end
                 end
             end
         end
@@ -1200,11 +1366,21 @@ function DodgeGame:updateObjects(dt)
             end
         end
 
-        -- Splitter: split when entering safe zone circle (not only on hit)
+        -- Splitter: split when entering safe zone (shape-aware)
         if obj.type == 'splitter' and self.safe_zone then
-            local dxs = obj.x - self.safe_zone.x
-            local dys = obj.y - self.safe_zone.y
-            local inside = (dxs*dxs + dys*dys) <= (self.safe_zone.radius + obj.radius)^2
+            local sz = self.safe_zone
+            local shape = sz.area_shape or "circle"
+            local check_radius = sz.radius + obj.radius
+            local inside = false
+            if shape == "circle" then
+                local dxs = obj.x - sz.x
+                local dys = obj.y - sz.y
+                inside = (dxs*dxs + dys*dys) <= (check_radius * check_radius)
+            else
+                inside = self:isPointInCircle(obj.x, obj.y, sz.x, sz.y, check_radius) or
+                         (shape == "square" and self:isPointInSquare(obj.x, obj.y, sz.x, sz.y, check_radius)) or
+                         (shape == "hex" and self:isPointInHex(obj.x, obj.y, sz.x, sz.y, check_radius))
+            end
             if inside and not obj.was_inside then
                 local shards = (DodgeCfg.objects and DodgeCfg.objects.splitter and DodgeCfg.objects.splitter.shards_count) or 3
                 self:spawnShards(obj, shards)
@@ -1367,12 +1543,9 @@ function DodgeGame:spawnObjectOrWarning()
         self:createObject(sx, sy, angle, false)
         self.spawn_pattern_state.spiral_angle = self.spawn_pattern_state.spiral_angle + math.rad(30)
     elseif self.obstacle_spawn_pattern == "pulse_with_arena" then
-        -- Spawn from safe zone boundary outward
+        -- Spawn from safe zone boundary outward (shape-aware)
         if self.safe_zone then
-            local spawn_angle = math.random() * math.pi * 2
-            local sx = self.safe_zone.x + math.cos(spawn_angle) * self.safe_zone.radius
-            local sy = self.safe_zone.y + math.sin(spawn_angle) * self.safe_zone.radius
-            local angle = spawn_angle  -- Continue outward
+            local sx, sy, angle = self:pickPointOnSafeZoneBoundary()
             self:createObject(sx, sy, angle, false)
         else
             self:spawnSingleObject()
@@ -1608,7 +1781,7 @@ function DodgeGame:pickSpawnPointAtAngle(angle)
     return sx, sy
 end
 
--- Pick a point on a larger target ring around the safe zone
+-- Pick a point on a larger target ring around the safe zone (shape-aware)
 function DodgeGame:pickTargetPointOnRing()
     local sz = self.safe_zone
     local scale = TARGET_RING_MIN_SCALE + math.random() * (TARGET_RING_MAX_SCALE - TARGET_RING_MIN_SCALE)
@@ -1616,7 +1789,94 @@ function DodgeGame:pickTargetPointOnRing()
     local a = math.random() * math.pi * 2
     local cx = sz and sz.x or self.game_width/2
     local cy = sz and sz.y or self.game_height/2
-    return cx + math.cos(a) * r, cy + math.sin(a) * r
+    local shape = sz and sz.area_shape or "circle"
+
+    if shape == "circle" then
+        return cx + math.cos(a) * r, cy + math.sin(a) * r
+    elseif shape == "square" then
+        -- Pick point on square perimeter
+        local side = math.random(4)
+        local t = math.random() * 2 - 1  -- -1 to 1
+        if side == 1 then return cx + r, cy + t * r      -- right
+        elseif side == 2 then return cx - r, cy + t * r  -- left
+        elseif side == 3 then return cx + t * r, cy + r  -- bottom
+        else return cx + t * r, cy - r end               -- top
+    elseif shape == "hex" then
+        -- Pick point on hexagon perimeter (pointy-top)
+        local hex_width = r * 0.866  -- sqrt(3)/2
+        local edge = math.random(6)
+        local t = math.random()  -- 0 to 1 along edge
+        -- 6 edges of pointy-top hex, starting from top-right going clockwise
+        if edge == 1 then     -- top-right edge
+            return cx + hex_width * t, cy - r + r * 0.5 * t
+        elseif edge == 2 then -- right edge
+            return cx + hex_width, cy - r * 0.5 + r * t
+        elseif edge == 3 then -- bottom-right edge
+            return cx + hex_width * (1-t), cy + r * 0.5 + r * 0.5 * (1-t)
+        elseif edge == 4 then -- bottom-left edge
+            return cx - hex_width * t, cy + r - r * 0.5 * t
+        elseif edge == 5 then -- left edge
+            return cx - hex_width, cy + r * 0.5 - r * t
+        else                  -- top-left edge
+            return cx - hex_width * (1-t), cy - r * 0.5 - r * 0.5 * (1-t)
+        end
+    else
+        -- Default circle
+        return cx + math.cos(a) * r, cy + math.sin(a) * r
+    end
+end
+
+-- Pick a point on the safe zone boundary (for spawning from boundary)
+function DodgeGame:pickPointOnSafeZoneBoundary()
+    local sz = self.safe_zone
+    local r = sz.radius
+    local cx, cy = sz.x, sz.y
+    local shape = sz.area_shape or "circle"
+    local spawn_angle = math.random() * math.pi * 2
+
+    if shape == "circle" then
+        local sx = cx + math.cos(spawn_angle) * r
+        local sy = cy + math.sin(spawn_angle) * r
+        return sx, sy, spawn_angle
+    elseif shape == "square" then
+        local side = math.random(4)
+        local t = math.random() * 2 - 1
+        local sx, sy, angle
+        if side == 1 then sx, sy = cx + r, cy + t * r; angle = 0
+        elseif side == 2 then sx, sy = cx - r, cy + t * r; angle = math.pi
+        elseif side == 3 then sx, sy = cx + t * r, cy + r; angle = math.pi / 2
+        else sx, sy = cx + t * r, cy - r; angle = -math.pi / 2 end
+        return sx, sy, angle
+    elseif shape == "hex" then
+        local hex_width = r * 0.866
+        local edge = math.random(6)
+        local t = math.random()
+        local sx, sy, angle
+        if edge == 1 then
+            sx, sy = cx + hex_width * t, cy - r + r * 0.5 * t
+            angle = math.atan2(0.5, 0.866)
+        elseif edge == 2 then
+            sx, sy = cx + hex_width, cy - r * 0.5 + r * t
+            angle = 0
+        elseif edge == 3 then
+            sx, sy = cx + hex_width * (1-t), cy + r * 0.5 + r * 0.5 * (1-t)
+            angle = math.atan2(0.5, -0.866)
+        elseif edge == 4 then
+            sx, sy = cx - hex_width * t, cy + r - r * 0.5 * t
+            angle = math.atan2(-0.5, -0.866)
+        elseif edge == 5 then
+            sx, sy = cx - hex_width, cy + r * 0.5 - r * t
+            angle = math.pi
+        else
+            sx, sy = cx - hex_width * (1-t), cy - r * 0.5 - r * 0.5 * (1-t)
+            angle = math.atan2(-0.5, 0.866)
+        end
+        return sx, sy, angle
+    else
+        local sx = cx + math.cos(spawn_angle) * r
+        local sy = cy + math.sin(spawn_angle) * r
+        return sx, sy, spawn_angle
+    end
 end
 
 -- Ensure the initial heading points into the play area from the chosen edge
@@ -1759,6 +2019,30 @@ function DodgeGame:isObjectOffscreen(obj)
            obj.y < -obj.radius or obj.y > self.game_height + obj.radius
 end
 
+-- Phase 11: Sync safe zone state from ArenaController for backward compatibility
+function DodgeGame:syncSafeZoneFromArena()
+    if not self.arena_controller or not self.safe_zone then return end
+
+    local state = self.arena_controller:getState()
+    local sz = self.safe_zone
+
+    -- Sync position and velocity
+    sz.x = state.x
+    sz.y = state.y
+    sz.vx = state.vx or sz.vx
+    sz.vy = state.vy or sz.vy
+    sz.radius = state.radius
+
+    -- Sync morph state
+    sz.morph_time = state.morph_timer or sz.morph_time
+    sz.area_shape = state.shape
+
+    -- Sync holes reference (already shared, but ensure consistency)
+    self.holes = self.arena_controller.holes
+end
+
+-- NOTE: updateSafeZone is now handled by ArenaController (Phase 11)
+-- Kept for reference but no longer called
 function DodgeGame:updateSafeZone(dt)
     local sz = self.safe_zone
     if not sz then return end
@@ -1816,18 +2100,20 @@ function DodgeGame:updateSafeZone(dt)
         sz.y = math.max(sz.radius, math.min(self.game_height - sz.radius, sz.y))
     end
 
-    -- Update holes that are attached to the safe zone boundary
+    -- Update holes that are attached to the safe zone boundary (shape-aware)
     if self.holes then
+        local shape = sz.area_shape or "circle"
         for _, hole in ipairs(self.holes) do
             if hole.on_boundary then
                 -- Reposition hole on the boundary at its stored angle
-                hole.x = sz.x + math.cos(hole.angle) * sz.radius
-                hole.y = sz.y + math.sin(hole.angle) * sz.radius
+                hole.x, hole.y = self:getPointOnShapeBoundary(sz.x, sz.y, sz.radius, shape, hole.angle)
             end
         end
     end
 end
 
+-- NOTE: updateSafeMorph is now handled by ArenaController (Phase 11)
+-- Kept for reference but no longer called
 function DodgeGame:updateSafeMorph(dt)
     local sz = self.safe_zone
     if not sz then return end

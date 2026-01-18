@@ -464,8 +464,13 @@ function SnakeView:draw()
         end
     end
 
-    -- Draw obstacles
+    -- Draw obstacles (skip wall-type obstacles - they're rendered by drawArenaBoundaries)
     for _, obstacle in ipairs(game.obstacles) do
+        -- Skip wall obstacles - these are collision-only, visual walls handle rendering
+        if obstacle.type == "walls" or obstacle.type == "bounce_wall" then
+            goto continue_obstacle
+        end
+
         local sprite = game.sprites and game.sprites.obstacle
 
         if sprite then
@@ -489,9 +494,11 @@ function SnakeView:draw()
                 palette_id
             )
         end
+
+        ::continue_obstacle::
     end
 
-    -- Shrinking arena now uses actual wall obstacles instead of visual overlay
+    -- Shrinking arena wall obstacles are collision-only; visual walls rendered by drawArenaBoundaries
 
     -- Draw fog of war effect
     self:drawFogOfWar()

@@ -550,11 +550,34 @@ Note: snake_game.lua increased slightly due to MC initialization and sync calls 
 
 ### AI Notes
 
-*[To be filled after phase completion]*
+**Completed:** 2026-01-18
+
+**Summary:**
+- Created ArenaController component with comprehensive feature set
+- Supports both grid-based (Snake) and pixel-based (Dodge) arenas
+
+**Features implemented:**
+- **Shapes**: rectangle, circle, hexagon with isInside() checks
+- **Shrinking**: Timer-based rectangular shrinking with callback
+- **Safe zone mode**: Circular arena with radius, shrink speed, min radius
+- **Pulsing**: Radius oscillation with configurable speed/amplitude
+- **Movement types**: none, drift, cardinal, orbit with friction
+- **Moving walls**: Periodic random offset (Snake-specific)
+- **Holes**: Support for gaps in boundary with optional orbiting
+- **Grid mode**: isInsideGrid() for grid-based games
+
+**Key methods:**
+- `update(dt)` - Main update loop
+- `isInside(x, y)` - Point-in-arena check (shape-aware)
+- `isInsideGrid(grid_x, grid_y)` - Grid-based point check
+- `getBounds()` - Get current bounds for rendering
+- `getShrinkProgress()` - 0-1 progress toward minimum size
+- `getState()` - Full state for rendering
+- `reset()` - Reset to initial state
 
 #### Line Changes
 ```
-[filename]               +/- [n] lines
+arena_controller.lua        +458 lines (new)
 ```
 
 ---
@@ -586,11 +609,44 @@ Note: snake_game.lua increased slightly due to MC initialization and sync calls 
 
 ### AI Notes
 
-*[To be filled after phase completion]*
+**Completed:** 2026-01-18
 
-#### Line Changes
+**Summary:**
+- Snake now uses ArenaController for arena shapes, shrinking, and moving walls
+- Replaced ~60 lines of arena state/update code with ArenaController integration
+- Added `syncArenaState()` to copy wall offsets and dimensions back to game object for view
+
+**Changes made:**
+1. Added ArenaController require
+2. Replaced arena state variables with ArenaController initialization:
+   - shrinking_arena → ArenaController.shrink
+   - moving_walls → ArenaController.moving_walls
+   - arena_shape → ArenaController.shape
+3. Replaced update logic (~55 lines) with single `arena_controller:update(dt)` call
+4. Added `onArenaShrink()` callback to spawn wall obstacles when arena shrinks
+5. Replaced `isInsideArena()` function with delegation to `arena_controller:isInsideGrid()`
+6. **Bug fix:** Added `syncArenaState()` method to sync `wall_offset_x`, `wall_offset_y`, `grid_width`, `grid_height` from ArenaController back to game object (required for snake_view.lua rendering)
+
+**ArenaController configuration:**
+```lua
+self.arena_controller = ArenaController:new({
+    width = self.grid_width,
+    height = self.grid_height,
+    shape = self.arena_shape or "rectangle",
+    grid_mode = true,
+    cell_size = 1,
+    shrink = self.shrinking_arena,
+    moving_walls = self.moving_walls,
+    on_shrink = function(margins) self:onArenaShrink(margins) end
+})
+
+-- Sync values back to game object for view (after update)
+self:syncArenaState()
 ```
-[filename]               +/- [n] lines
+
+#### Line Changes (wc -l)
+```
+snake_game.lua              -40 lines (2669 → 2629)
 ```
 
 ---
@@ -623,12 +679,37 @@ Note: snake_game.lua increased slightly due to MC initialization and sync calls 
 
 ### AI Notes
 
-*[To be filled after phase completion]*
+**Completed:** 2026-01-18
+
+**Summary:**
+- Dodge now uses ArenaController for safe zone management
+- Extended ArenaController with Dodge-specific features:
+  - morph_type: "shrink", "pulsing", "shape_shifting", "deformation", "none"
+  - updateMorph() method for handling all morph types
+  - Boundary-attached holes (hole.on_boundary flag)
+  - deformation_offset for visual wobble effect
+
+**Changes made:**
+1. Added ArenaController require to dodge_game.lua
+2. Created ArenaController with safe zone configuration:
+   - Position, radius, shrink_speed, morph_type, movement
+   - Holes initialized with on_boundary support
+3. Added `syncSafeZoneFromArena()` to sync state back to self.safe_zone for backward compatibility
+4. Replaced `updateSafeZone()` and `updateSafeMorph()` calls with single `arena_controller:update()` + sync
+5. Kept original update functions (commented) for reference
+
+**Backward compatibility:**
+- `self.safe_zone` table preserved and synced from ArenaController
+- `self.holes` references ArenaController's holes array
+- Existing rendering and collision code unchanged
 
 #### Line Changes
 ```
-[filename]               +/- [n] lines
+arena_controller.lua        +62 lines (458 → 520)
+dodge_game.lua              +40 lines (1952 → 1992)
 ```
+
+Note: dodge_game.lua increased due to ArenaController init, sync function, and preserved old methods. Future cleanup could remove the old updateSafeZone/updateSafeMorph methods.
 
 ---
 
