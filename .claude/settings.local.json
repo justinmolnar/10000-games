@@ -46,7 +46,12 @@
       "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/rps.lua)",
       "Bash(git -C \"C:/Users/chate/Documents/10000-games\" show HEAD:src/games/coin_flip.lua)",
       "Bash(wc:*)",
-      "Bash(\"C:\\\\Program Files\\\\LOVE\\\\love.exe\" . --check)"
+      "Bash(\"C:\\\\Program Files\\\\LOVE\\\\love.exe\" . --check)",
+      "Bash(git -C \"C:\\\\Users\\\\chate\\\\Documents\\\\10000-games\" status)",
+      "Bash(git -C \"C:\\\\Users\\\\chate\\\\Documents\\\\10000-games\" add docs/physics_utils_refactor_plan.md src/games/breakout.lua src/utils/game_components/physics_utils.lua .vscode/tasks.json)",
+      "Bash(git -C \"C:\\\\Users\\\\chate\\\\Documents\\\\10000-games\" commit -m \"$\\(cat <<''EOF''\nPhase 5: Generic launch functions replace releaseStickyBall\n\n- Created launchAtAngle\\(entity, angle_radians, speed\\)\n- Created launchFromOffset\\(entity, offset_x, anchor_width, speed, base_angle, angle_range\\)\n- Deleted releaseStickyBall from PhysicsUtils\n- Updated breakout.lua to use generic launch function\n- Fixed sticky ball positioning to prevent ball getting trapped inside paddle\n- Fixed VS Code task to use lovec.exe for console output\n- Fixed missing bounds.x/y in paddle movement update\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"C:\\\\Users\\\\chate\\\\Documents\\\\10000-games\" add docs/physics_utils_refactor_plan.md src/games/breakout.lua src/utils/game_components/physics_utils.lua)",
+      "Bash(git -C \"C:\\\\Users\\\\chate\\\\Documents\\\\10000-games\" commit -m \"$\\(cat <<''EOF''\nPhase 5: Generic launch functions replace releaseStickyBall\n\n- Created launchAtAngle\\(entity, angle_radians, speed\\)\n- Created launchFromOffset\\(entity, offset_x, anchor_width, speed, base_angle, angle_range\\)\n- Deleted releaseStickyBall from PhysicsUtils\n- Updated breakout.lua to use generic launch function\n- Fixed sticky ball positioning to prevent ball getting trapped inside paddle\n- Fixed missing bounds.x/y in paddle movement update\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []

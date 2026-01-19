@@ -435,7 +435,13 @@ function Breakout:keypressed(key)
         if self.params.paddle_sticky then
             local Physics = self.di.components.PhysicsUtils
             for _, ball in ipairs(self.balls) do
-                Physics.releaseStickyBall(ball, self.paddle.width, 300, math.pi / 6)
+                if ball.stuck then
+                    ball.stuck = false
+                    -- Position ball above paddle before launching to avoid re-collision
+                    ball.y = self.paddle.y - ball.radius - self.paddle.height / 2 - 1
+                    Physics.launchFromOffset(ball, ball.stuck_offset_x or 0, self.paddle.width, 300)
+                    ball.magnet_immunity_timer = 0.3
+                end
             end
         end
     end

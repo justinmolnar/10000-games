@@ -357,77 +357,125 @@ function PhysicsUtils.circleVsCenteredRect(circle_x, circle_y, circle_r, rect_cx
 end
 
 -- ===================================================================
--- RESOLVE BALL VS RECT COLLISION
+-- UNIFIED COLLISION RESPONSE
 -- ===================================================================
--- Determines which side of rectangle was hit and resolves position/velocity
--- Returns: side ("top", "bottom", "left", "right"), new_x, new_y
--- Used by: Breakout brick collision response
+-- ONE function that handles ALL collision response: bouncing off rects, circles, paddles, etc.
 --
--- Usage:
---   local side = PhysicsUtils.resolveRectCollision(ball, brick.x, brick.y, brick.width, brick.height)
+-- moving: entity with x, y, vx, vy, radius (the thing that bounces)
+-- solid: what it hit - entity with shape info, or explicit {type="rect/circle", ...}
+-- config (all optional):
+--   restitution: 0.0-1.0 bounciness (default 1.0, >1.0 for boost like pinball bumpers)
+--   position_angle: "spin" or "angle" for paddle-style position-based angle
+--   surface_width: width of surface for position_angle calculation
+--   on_collide: callback(moving, solid, edge)
+--
+-- Returns: {edge="top/bottom/left/right/circle", nx, ny}
 
-function PhysicsUtils.resolveRectCollision(entity, rx, ry, rw, rh)
-    local pen_left = (entity.x + entity.radius) - rx
-    local pen_right = (rx + rw) - (entity.x - entity.radius)
-    local pen_top = (entity.y + entity.radius) - ry
-    local pen_bottom = (ry + rh) - (entity.y - entity.radius)
+function PhysicsUtils.resolveCollision(moving, solid, config)
+    config = config or {}
+    local restitution = config.restitution or 1.0
 
-    local min_pen = math.min(pen_left, pen_right, pen_top, pen_bottom)
+    -- Determine solid's shape and dimensions
+    -- Prioritize width/height over radius (paddle has both but is a rect)
+    local shape = solid.type or solid.shape or ((solid.width and solid.height) and "rect") or (solid.radius and "circle") or "rect"
+    local result = {edge = nil, nx = 0, ny = 0}
 
-    if min_pen == pen_top then
-        entity.y = ry - entity.radius - 1
-        entity.vy = -math.abs(entity.vy)
-        return "top"
-    elseif min_pen == pen_bottom then
-        entity.y = ry + rh + entity.radius + 1
-        entity.vy = math.abs(entity.vy)
-        return "bottom"
-    elseif min_pen == pen_left then
-        entity.x = rx - entity.radius - 1
-        entity.vx = -math.abs(entity.vx)
-        return "left"
+    if shape == "circle" then
+        -- Circle collision: reflect off radial normal
+        local cx = solid.cx or solid.x + (solid.radius or (solid.width or 0) / 2)
+        local cy = solid.cy or solid.y + (solid.radius or (solid.height or 0) / 2)
+        local cr = solid.radius or (solid.width or solid.size or 0) / 2
+
+        local nx, ny = PhysicsUtils.circleNormal(cx, cy, moving.x, moving.y)
+        PhysicsUtils.reflectOffNormal(moving, nx, ny)
+
+        -- Apply restitution
+        moving.vx = moving.vx * restitution
+        moving.vy = moving.vy * restitution
+
+        -- Separate
+        local separation = cr + moving.radius + 1
+        moving.x = cx + nx * separation
+        moving.y = cy + ny * separation
+
+        result.edge = "circle"
+        result.nx, result.ny = nx, ny
     else
-        entity.x = rx + rw + entity.radius + 1
-        entity.vx = math.abs(entity.vx)
-        return "right"
+        -- Rect collision: determine edge and bounce
+        local rx = solid.x or 0
+        local ry = solid.y or 0
+        local rw = solid.width or solid.size or 0
+        local rh = solid.height or solid.size or 0
+
+        -- Handle centered rects (like paddles with x at center)
+        if solid.centered or config.centered then
+            rx = rx - rw / 2
+            ry = ry - rh / 2
+        end
+
+        local pen_left = (moving.x + moving.radius) - rx
+        local pen_right = (rx + rw) - (moving.x - moving.radius)
+        local pen_top = (moving.y + moving.radius) - ry
+        local pen_bottom = (ry + rh) - (moving.y - moving.radius)
+
+        local min_pen = math.min(pen_left, pen_right, pen_top, pen_bottom)
+
+        -- Position-based angle (for paddles) - always treat as top collision
+        if config.position_angle then
+            local surface_center = rx + rw / 2
+            local surface_width = config.surface_width or rw
+            local offset = moving.x - surface_center
+            local normalized = math.max(-1, math.min(1, offset / (surface_width / 2)))
+
+            if config.position_angle == "angle" or config.position_angle == "position" then
+                local speed = math.sqrt(moving.vx * moving.vx + moving.vy * moving.vy) * restitution
+                local angle = -math.pi / 2 + normalized * (math.pi / 4)
+                moving.vx = math.cos(angle) * speed
+                moving.vy = math.sin(angle) * speed
+            else -- "spin" mode
+                moving.vy = -math.abs(moving.vy) * restitution
+                moving.vx = moving.vx * restitution + normalized * 100
+            end
+
+            -- Separate (always above for paddles)
+            moving.y = ry - moving.radius - 1
+            result.edge = "top"
+            result.ny = -1
+        else
+            -- Standard rect bounce
+            if min_pen == pen_top then
+                moving.y = ry - moving.radius - 1
+                moving.vy = -math.abs(moving.vy) * restitution
+                moving.vx = moving.vx * restitution
+                result.edge = "top"
+                result.ny = -1
+            elseif min_pen == pen_bottom then
+                moving.y = ry + rh + moving.radius + 1
+                moving.vy = math.abs(moving.vy) * restitution
+                moving.vx = moving.vx * restitution
+                result.edge = "bottom"
+                result.ny = 1
+            elseif min_pen == pen_left then
+                moving.x = rx - moving.radius - 1
+                moving.vx = -math.abs(moving.vx) * restitution
+                moving.vy = moving.vy * restitution
+                result.edge = "left"
+                result.nx = -1
+            else
+                moving.x = rx + rw + moving.radius + 1
+                moving.vx = math.abs(moving.vx) * restitution
+                moving.vy = moving.vy * restitution
+                result.edge = "right"
+                result.nx = 1
+            end
+        end
     end
-end
 
--- ===================================================================
--- RESOLVE BALL VS CIRCLE COLLISION
--- ===================================================================
--- Reflects ball off a circular obstacle and separates them
--- Used by: Circle brick collision, circular obstacles
-
-function PhysicsUtils.resolveCircleCollision(ball, cx, cy, cr)
-    local nx, ny = PhysicsUtils.circleNormal(cx, cy, ball.x, ball.y)
-    PhysicsUtils.reflectOffNormal(ball, nx, ny)
-    local separation = cr + ball.radius
-    ball.x = cx + nx * separation
-    ball.y = cy + ny * separation
-end
-
--- ===================================================================
--- PADDLE BOUNCE RESPONSE
--- ===================================================================
--- Calculates ball velocity after hitting a paddle based on hit position
--- Modes: "spin" (add horizontal based on position), "angle" (set angle based on position)
-
-function PhysicsUtils.paddleBounce(ball, paddle_x, paddle_width, mode)
-    mode = mode or "spin"
-    local offset = ball.x - paddle_x
-    local normalized = offset / (paddle_width / 2)
-    normalized = math.max(-1, math.min(1, normalized))
-
-    if mode == "angle" or mode == "position" then
-        local speed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
-        local angle = -math.pi / 2 + normalized * (math.pi / 4)
-        ball.vx = math.cos(angle) * speed
-        ball.vy = math.sin(angle) * speed
-    else
-        ball.vy = -math.abs(ball.vy)
-        ball.vx = ball.vx + normalized * 100
+    if config.on_collide then
+        config.on_collide(moving, solid, result.edge)
     end
+
+    return result
 end
 
 -- ===================================================================
@@ -481,52 +529,31 @@ function PhysicsUtils.checkCollision(e1, e2, shape1, shape2, options)
 end
 
 -- ===================================================================
--- RESOLVE BOUNCE OFF ENTITY
+-- LAUNCHING
 -- ===================================================================
--- Reflects a ball off another entity based on shape (circle or rect)
--- Handles position separation to prevent overlap
--- Used by: Ball vs brick, ball vs obstacle
---
--- Usage:
---   PhysicsUtils.resolveBounceOffEntity(ball, brick)
 
-function PhysicsUtils.resolveBounceOffEntity(ball, target)
-    local shape = target.shape or "rect"
-
-    if shape == "circle" then
-        local cx = target.x + (target.radius or target.width / 2)
-        local cy = target.y + (target.radius or target.height / 2)
-        local radius = target.radius or target.width / 2
-        PhysicsUtils.resolveCircleCollision(ball, cx, cy, radius)
-    else
-        local w = target.width or target.size or 0
-        local h = target.height or target.size or 0
-        PhysicsUtils.resolveRectCollision(ball, target.x, target.y, w, h)
-    end
+-- Launch entity at exact angle with given speed
+-- angle_radians: direction (0 = right, -pi/2 = up, pi/2 = down)
+-- Works for: projectiles, balls, launched enemies, cannons
+function PhysicsUtils.launchAtAngle(entity, angle_radians, speed)
+    entity.vx = math.cos(angle_radians) * speed
+    entity.vy = math.sin(angle_radians) * speed
 end
 
--- ===================================================================
--- RELEASE STICKY BALL
--- ===================================================================
--- Releases a ball stuck to a paddle, calculating launch angle from position
---
--- Usage:
---   PhysicsUtils.releaseStickyBall(ball, paddle_width, launch_speed, angle_range)
-
-function PhysicsUtils.releaseStickyBall(ball, paddle_width, launch_speed, angle_range)
-    if not ball.stuck then return false end
-
-    ball.stuck = false
-    local offset_x = ball.stuck_offset_x or 0
-    local max_offset = paddle_width / 2
+-- Launch entity with angle based on offset from anchor center
+-- offset_x: entity's horizontal offset from anchor center
+-- anchor_width: width of anchor (for normalizing offset)
+-- base_angle: center angle in radians (default -pi/2 = straight up)
+-- angle_range: max deviation from base_angle (default pi/6 = 30 degrees)
+-- Works for: sticky paddles, Bust-a-Move launchers, aimed turrets
+function PhysicsUtils.launchFromOffset(entity, offset_x, anchor_width, speed, base_angle, angle_range)
+    base_angle = base_angle or -math.pi / 2
+    angle_range = angle_range or math.pi / 6
+    local max_offset = anchor_width / 2
     local normalized = math.max(-1, math.min(1, offset_x / max_offset))
-    local angle = -math.pi / 2 + normalized * (angle_range or math.pi / 6)
-
-    ball.vx = math.cos(angle) * (launch_speed or 300)
-    ball.vy = math.sin(angle) * (launch_speed or 300)
-    ball.magnet_immunity_timer = 0.3  -- Prevent magnet from pulling back
-
-    return true
+    local angle = base_angle + normalized * angle_range
+    entity.vx = math.cos(angle) * speed
+    entity.vy = math.sin(angle) * speed
 end
 
 -- ===================================================================
@@ -645,11 +672,16 @@ function PhysicsUtils.updateBallPhysics(ball, dt, config)
             if config.paddle_sticky and not ball.stuck then
                 ball.stuck = true
                 ball.stuck_offset_x = ball.x - paddle.x
+                -- Position ball above paddle, not inside
+                ball.y = paddle.y - ball.radius - paddle.height / 2
                 ball.stuck_offset_y = ball.y - paddle.y
                 ball.vx, ball.vy = 0, 0
             else
-                ball.y = paddle.y - ball.radius - paddle.height / 2
-                PhysicsUtils.paddleBounce(ball, paddle.x, paddle.width, config.paddle_aim_mode)
+                PhysicsUtils.resolveCollision(ball, paddle, {
+                    centered = true,
+                    position_angle = config.paddle_aim_mode or "spin",
+                    surface_width = paddle.width
+                })
                 if config.bounce_randomness then PhysicsUtils.addBounceRandomness(ball, config.bounce_randomness, rng) end
                 if config.max_speed then PhysicsUtils.clampSpeed(ball, config.max_speed) end
             end
@@ -699,7 +731,7 @@ function PhysicsUtils.checkCircleEntityCollisions(circle, entities, config)
                 -- Resolve bounce
                 if not (circle.pierce_count and circle.pierce_count > 0) then
                     if config.resolve_bounce ~= false then
-                        PhysicsUtils.resolveBounceOffEntity(circle, entity)
+                        PhysicsUtils.resolveCollision(circle, entity)
                     end
                 else
                     circle.pierce_count = circle.pierce_count - 1

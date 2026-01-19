@@ -358,7 +358,23 @@ physics_utils.lua        917 → 729 lines (total -188 lines from phases 1-4)
 
 ### AI Notes
 
-_(To be filled after completion)_
+**Completed:** 2026-01-19
+
+Created two generic launch functions:
+- `launchAtAngle(entity, angle_radians, speed)` - direct angle launch
+- `launchFromOffset(entity, offset_x, anchor_width, speed, base_angle, angle_range)` - position-based angle
+
+Updated breakout.lua to use `launchFromOffset` instead of `releaseStickyBall`:
+- Game now handles `ball.stuck = false` and `ball.magnet_immunity_timer` directly (game-specific state)
+- Physics function is now purely about velocity calculation
+
+Deleted `releaseStickyBall` entirely.
+
+#### Line Changes
+```
+physics_utils.lua        ~+3 lines (replaced 22-line function with 26-line section including comments)
+breakout.lua             ~+3 lines (expanded logic that was hidden in physics call)
+```
 
 ---
 
@@ -432,7 +448,32 @@ They ALL do the same thing: detect surface, get normal, reflect velocity, apply 
 
 ### AI Notes
 
-_(To be filled after completion)_
+**Completed:** 2026-01-19
+
+Created unified `resolveCollision(moving, solid, config)` that handles:
+- Circle vs circle (radial normal reflection)
+- Circle vs rect (edge detection, separation)
+- Position-based angle bouncing (paddle-style, "spin" or "angle" modes)
+- Restitution (bounciness, can be >1 for bumper boost)
+- Centered rect support (for paddles where x is center)
+- on_collide callback
+
+Deleted:
+- `resolveRectCollision` (absorbed into resolveCollision)
+- `resolveCircleCollision` (absorbed into resolveCollision)
+- `paddleBounce` (absorbed into resolveCollision with position_angle config)
+- `resolveBounceOffEntity` (absorbed into resolveCollision)
+
+Updated internal callers:
+- updateBallPhysics paddle collision now uses resolveCollision with centered + position_angle
+- checkCircleEntityCollisions now uses resolveCollision
+
+Note: `bounceAxis` kept for now - used for wall bouncing, will be replaced in Phase 7.
+
+#### Line Changes
+```
+physics_utils.lua        ~-30 lines (4 functions → 1 unified function)
+```
 
 ---
 
