@@ -630,7 +630,28 @@ end
 
 ### AI Notes
 
-_(To be filled after completion)_
+**COMPLETED** - Phase 8 done.
+
+Changes made:
+1. Created `move(entity, dt)` function - simple position update from velocity
+
+2. Updated `Breakout:updateBall` to compose primitives directly:
+   - `applyGravity` for ball gravity
+   - `applyHomingForce` for homing ball variants
+   - `applyMagnetForce` for paddle magnet (with immunity timer)
+   - Inline sticky ball handling (follows paddle position)
+   - `move` for position update
+   - Inline trail update
+   - `handleBounds` for wall collisions with per-edge config
+   - Inline bottom boundary handling (shield bounce or ball death)
+   - `circleVsCenteredRect` + `resolveCollision` for paddle collision
+   - All game-specific logic now directly in Breakout instead of config callbacks
+
+3. DELETED `updateBallPhysics` from physics_utils.lua (~120 lines removed)
+
+Bug fix: The old updateBallPhysics had a bug where `config.shield_active = false` didn't actually clear `self.shield_active` in Breakout (it only modified the config copy). Now that the logic is inline in Breakout, `self.shield_active = false` works correctly.
+
+PhysicsUtils now contains only composable primitives - no game-specific orchestration.
 
 ---
 

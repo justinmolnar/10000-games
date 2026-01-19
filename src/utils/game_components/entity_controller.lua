@@ -183,8 +183,8 @@ function EntityController:spawnGrid(type_name, rows, cols, x_offset, y_offset, s
         error("Unknown entity type: " .. tostring(type_name))
     end
 
-    local width = entity_type.width or entity_type.radius * 2 or 32
-    local height = entity_type.height or entity_type.radius * 2 or 16
+    local width = entity_type.width or (entity_type.radius and entity_type.radius * 2) or 32
+    local height = entity_type.height or (entity_type.radius and entity_type.radius * 2) or 16
 
     for row = 0, rows - 1 do
         for col = 0, cols - 1 do
@@ -213,8 +213,8 @@ function EntityController:spawnPyramid(type_name, rows, max_cols, x_offset, y_of
     local entity_type = self.entity_types[type_name]
     if not entity_type then return end
 
-    local width = entity_type.width or entity_type.radius * 2 or 32
-    local height = entity_type.height or entity_type.radius * 2 or 16
+    local width = entity_type.width or (entity_type.radius and entity_type.radius * 2) or 32
+    local height = entity_type.height or (entity_type.radius and entity_type.radius * 2) or 16
 
     for row = 0, rows - 1 do
         local cols_this_row = max_cols - row
@@ -271,8 +271,8 @@ function EntityController:spawnRandom(type_name, count, bounds, rng, allow_overl
     local entity_type = self.entity_types[type_name]
     if not entity_type then return end
 
-    local width = entity_type.width or entity_type.radius * 2 or 32
-    local height = entity_type.height or entity_type.radius * 2 or 16
+    local width = entity_type.width or (entity_type.radius and entity_type.radius * 2) or 32
+    local height = entity_type.height or (entity_type.radius and entity_type.radius * 2) or 16
     local max_attempts = count * 10
     local placed = 0
 
@@ -320,8 +320,8 @@ function EntityController:spawnCheckerboard(type_name, rows, cols, x_offset, y_o
     local entity_type = self.entity_types[type_name]
     if not entity_type then return end
 
-    local width = entity_type.width or entity_type.radius * 2 or 32
-    local height = entity_type.height or entity_type.radius * 2 or 16
+    local width = entity_type.width or (entity_type.radius and entity_type.radius * 2) or 32
+    local height = entity_type.height or (entity_type.radius and entity_type.radius * 2) or 16
 
     for row = 0, rows - 1 do
         for col = 0, cols - 1 do

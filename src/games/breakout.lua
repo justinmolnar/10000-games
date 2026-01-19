@@ -362,22 +362,106 @@ function Breakout:updateBall(ball, dt)
     local Physics = self.di.components.PhysicsUtils
     local p = self.params
 
-    -- Core ball physics (gravity, homing, magnet, sticky, walls, paddle)
-    local still_active = Physics.updateBallPhysics(ball, dt, {
-        gravity = p.ball_gravity, gravity_direction = p.ball_gravity_direction,
-        homing_strength = p.ball_homing_strength,
-        homing_target_func = function() return self.entity_controller:findNearest(ball.x, ball.y, function(e) return e.alive end) end,
-        magnet_range = p.paddle_magnet_range, magnet_strength = 800,
-        sticky_enabled = p.paddle_sticky, paddle = self.paddle, paddle_sticky = p.paddle_sticky,
-        paddle_aim_mode = p.paddle_aim_mode, max_speed = p.ball_max_speed,
-        bounds = {width = self.arena_width, height = self.arena_height},
-        ceiling_enabled = p.ceiling_enabled, bottom_kill_enabled = p.bottom_kill_enabled,
-        shield_active = self.shield_active,
-        wall_bounce_mode = p.wall_bounce_mode, bounce_randomness = p.ball_bounce_randomness, rng = self.rng,
-        trail_length = p.ball_trail_length,
-        on_paddle_hit = function() self.combo = 0 end
+    -- Apply forces
+    if p.ball_gravity and p.ball_gravity > 0 then
+        Physics.applyGravity(ball, p.ball_gravity, p.ball_gravity_direction or 270, dt)
+    end
+    if p.ball_homing_strength and p.ball_homing_strength > 0 then
+        local target = self.entity_controller:findNearest(ball.x, ball.y, function(e) return e.alive end)
+        if target then
+            Physics.applyHomingForce(ball, target.x, target.y, p.ball_homing_strength, dt)
+        end
+    end
+
+    -- Magnet (with immunity timer, only when ball moving down)
+    if ball.magnet_immunity_timer and ball.magnet_immunity_timer > 0 then
+        ball.magnet_immunity_timer = ball.magnet_immunity_timer - dt
+    end
+    local magnet_immune = ball.magnet_immunity_timer and ball.magnet_immunity_timer > 0
+    if p.paddle_magnet_range and p.paddle_magnet_range > 0 and not magnet_immune and ball.vy > 0 then
+        if not ball.stuck then
+            Physics.applyMagnetForce(ball, self.paddle.x, self.paddle.y, p.paddle_magnet_range, 800, dt)
+        end
+    end
+
+    -- Clamp speed after all forces applied
+    if p.ball_max_speed then Physics.clampSpeed(ball, p.ball_max_speed) end
+
+    -- Handle sticky ball (follows paddle)
+    if ball.stuck and p.paddle_sticky then
+        ball.x = self.paddle.x + (ball.stuck_offset_x or 0)
+        ball.y = self.paddle.y + (ball.stuck_offset_y or 0)
+        return -- Still active but stuck
+    end
+
+    -- Move
+    Physics.move(ball, dt)
+
+    -- Trail
+    if p.ball_trail_length and p.ball_trail_length > 0 and ball.trail then
+        table.insert(ball.trail, 1, {x = ball.x, y = ball.y})
+        while #ball.trail > p.ball_trail_length do table.remove(ball.trail) end
+    end
+
+    -- Wall restitution from bounce mode
+    local mode_restitution = {normal = 1.0, damped = 0.9, sticky = 0.6}
+    local restitution = mode_restitution[p.wall_bounce_mode] or 1.0
+
+    -- Wall collisions (left, right, top)
+    Physics.handleBounds(ball, {width = self.arena_width, height = self.arena_height}, {
+        mode = "bounce",
+        restitution = restitution,
+        per_edge = {
+            top = p.ceiling_enabled and "bounce" or "none",
+            bottom = "none"
+        },
+        bounce_randomness = p.ball_bounce_randomness,
+        rng = self.rng,
+        on_exit = function(entity, edge)
+            if edge == "top" and not p.ceiling_enabled then
+                entity.active = false
+            end
+        end
     })
-    if not still_active then return end
+    if not ball.active then return end
+
+    -- Bottom boundary (special: ball must fully exit)
+    if ball.y - ball.radius > self.arena_height then
+        if p.bottom_kill_enabled ~= false then
+            if self.shield_active then
+                self.shield_active = false
+                ball.y = self.arena_height - ball.radius
+                ball.vy = -math.abs(ball.vy)
+            else
+                ball.active = false
+                return
+            end
+        else
+            ball.y = self.arena_height - ball.radius
+            ball.vy = -math.abs(ball.vy) * restitution
+            if p.ball_bounce_randomness then Physics.addBounceRandomness(ball, p.ball_bounce_randomness, self.rng) end
+        end
+    end
+
+    -- Paddle collision
+    if Physics.circleVsCenteredRect(ball.x, ball.y, ball.radius, self.paddle.x, self.paddle.y, self.paddle.width / 2, self.paddle.height / 2) then
+        if p.paddle_sticky and not ball.stuck then
+            ball.stuck = true
+            ball.stuck_offset_x = ball.x - self.paddle.x
+            ball.y = self.paddle.y - ball.radius - self.paddle.height / 2
+            ball.stuck_offset_y = ball.y - self.paddle.y
+            ball.vx, ball.vy = 0, 0
+        else
+            Physics.resolveCollision(ball, self.paddle, {
+                centered = true,
+                position_angle = p.paddle_aim_mode or "spin",
+                surface_width = self.paddle.width
+            })
+            if p.ball_bounce_randomness then Physics.addBounceRandomness(ball, p.ball_bounce_randomness, self.rng) end
+            if p.ball_max_speed then Physics.clampSpeed(ball, p.ball_max_speed) end
+        end
+        self.combo = 0
+    end
 
     -- Brick collisions with game-specific scoring
     local PNGCollision = self.di.components.PNGCollision
