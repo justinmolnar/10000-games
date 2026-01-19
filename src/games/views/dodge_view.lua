@@ -144,12 +144,12 @@ function DodgeView:draw()
         end
     end
 
-    -- Phase 5: Draw player trail using PhysicsUtils component
-    if game.player_trail and game.player_trail_length > 0 then
+    -- Draw player trail
+    if game.player_trail and (game.params.player_trail_length or 0) > 0 then
         game.player_trail:draw()
     end
 
-    -- Phase 2.3: Draw player (sprite or fallback to icon)
+    -- Draw player (sprite or fallback to icon)
     local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local paletteManager = self.di and self.di.paletteManager
 
@@ -225,7 +225,7 @@ function DodgeView:draw()
         end
     end
 
-    -- Phase 2.3: Draw objects/enemies (sprites or fallback to icons)
+    -- Draw objects/enemies
     for i, obj in ipairs(game.objects) do
         -- Draw obstacle trail first (behind object)
         if obj.trail_positions and #obj.trail_positions > 1 then
@@ -357,17 +357,19 @@ function DodgeView:draw()
         local fog = game.fog_controller
         fog:clearSources()
 
-        if game.fog_origin and game.fog_origin ~= "none" and game.fog_radius < 9999 then
+        local fog_origin = game.params.fog_of_war_origin
+        local fog_radius = game.params.fog_of_war_radius
+        if fog_origin and fog_origin ~= "none" and fog_radius < 9999 then
             local fog_x, fog_y
-            if game.fog_origin == "player" then
+            if fog_origin == "player" then
                 fog_x, fog_y = game.player.x, game.player.y
-            elseif game.fog_origin == "circle_center" and game.safe_zone then
+            elseif fog_origin == "circle_center" and game.safe_zone then
                 fog_x, fog_y = game.safe_zone.x, game.safe_zone.y
             else
                 fog_x, fog_y = game_width / 2, game_height / 2
             end
 
-            fog:addVisibilitySource(fog_x, fog_y, game.fog_radius)
+            fog:addVisibilitySource(fog_x, fog_y, fog_radius)
             fog:render(game_width, game_height)
         end
     end
@@ -415,7 +417,7 @@ function DodgeView:drawBackground(width, height)
     local g = love.graphics
     local game = self.game
 
-    -- Phase 2.3: Use loaded background sprite if available
+    -- Use loaded background sprite if available
     if game and game.sprites and game.sprites.background then
         -- Tile the background to fill the play area
         local bg = game.sprites.background

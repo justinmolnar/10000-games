@@ -46,7 +46,7 @@ function ScorePopup:draw()
 end
 
 -- ===================================================================
--- POPUP MANAGER (Phase 6)
+-- POPUP MANAGER
 -- ===================================================================
 -- Manages a collection of score popups
 -- Simplifies popup lifecycle management across games

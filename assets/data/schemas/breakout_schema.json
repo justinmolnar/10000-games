@@ -15,6 +15,13 @@
             "max": 400,
             "description": "Width of the paddle in pixels"
         },
+        "paddle_height": {
+            "type": "number",
+            "default": 20,
+            "min": 10,
+            "max": 100,
+            "description": "Height of the paddle in pixels"
+        },
         "paddle_speed": {
             "type": "number",
             "default": 600,
@@ -56,6 +63,13 @@
             "min": 1,
             "max": 10,
             "description": "Number of balls at game start"
+        },
+        "ball_radius": {
+            "type": "number",
+            "default": 8,
+            "min": 4,
+            "max": 30,
+            "description": "Radius of the ball in pixels"
         },
         "ball_speed": {
             "type": "number",
@@ -165,12 +179,51 @@
             "default": ["multi_ball", "paddle_extend", "paddle_shrink", "slow_motion", "fast_ball", "laser", "sticky_paddle", "extra_life", "shield", "penetrating_ball", "fireball", "magnet"],
             "description": "Array of enabled powerup types"
         },
+        "powerup_config": {
+            "type": "object",
+            "default": {
+                "multi_ball": {"count": 2, "angle_spread": 0.5236},
+                "paddle_extend": {"multiplier": 1.5, "duration": 10.0},
+                "paddle_shrink": {"multiplier": 0.5, "duration": 10.0},
+                "slow_motion": {"multiplier": 0.5, "duration": 10.0},
+                "fast_ball": {"multiplier": 1.5, "duration": 10.0},
+                "laser": {"duration": 10.0},
+                "sticky_paddle": {"duration": 10.0},
+                "extra_life": {"count": 1},
+                "shield": {},
+                "penetrating_ball": {"pierce_count": 5, "duration": 10.0},
+                "fireball": {"pierce_count": 5, "duration": 10.0},
+                "magnet": {"range": 150, "duration": 10.0}
+            },
+            "description": "Configuration for each powerup type"
+        },
         "brick_rows": {
             "type": "integer",
             "default": 5,
             "min": 1,
             "max": 20,
             "description": "Number of brick rows"
+        },
+        "brick_width": {
+            "type": "number",
+            "default": 60,
+            "min": 20,
+            "max": 200,
+            "description": "Width of each brick in pixels"
+        },
+        "brick_height": {
+            "type": "number",
+            "default": 20,
+            "min": 10,
+            "max": 100,
+            "description": "Height of each brick in pixels"
+        },
+        "brick_padding": {
+            "type": "number",
+            "default": 5,
+            "min": 0,
+            "max": 20,
+            "description": "Spacing between bricks in pixels"
         },
         "brick_columns": {
             "type": "integer",

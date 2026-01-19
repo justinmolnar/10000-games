@@ -1,0 +1,99 @@
+{
+    "name": "hidden_object_schema",
+    "description": "Schema for Hidden Object game parameters",
+    "parameters": {
+        "time_limit_base": {
+            "type": "number",
+            "default": 60,
+            "min": 10,
+            "max": 300,
+            "description": "Base time limit in seconds"
+        },
+        "objects_base": {
+            "type": "integer",
+            "default": 5,
+            "min": 1,
+            "max": 50,
+            "description": "Base number of objects to find"
+        },
+        "bonus_time_multiplier": {
+            "type": "number",
+            "default": 5,
+            "min": 0,
+            "max": 20,
+            "description": "Score multiplier for remaining time"
+        },
+        "object_base_size": {
+            "type": "number",
+            "default": 20,
+            "min": 10,
+            "max": 100,
+            "description": "Base size of hidden objects in pixels"
+        },
+        "background_grid_base": {
+            "type": "integer",
+            "default": 10,
+            "min": 5,
+            "max": 50,
+            "description": "Grid size for background generation"
+        },
+        "background_hash_1": {
+            "type": "integer",
+            "default": 17,
+            "description": "Hash value for background generation"
+        },
+        "background_hash_2": {
+            "type": "integer",
+            "default": 3,
+            "description": "Hash value for background generation"
+        },
+        "position_hash_x1": {
+            "type": "integer",
+            "default": 17,
+            "description": "Position hash X1 for deterministic placement"
+        },
+        "position_hash_x2": {
+            "type": "integer",
+            "default": 47,
+            "description": "Position hash X2 for deterministic placement"
+        },
+        "position_hash_y1": {
+            "type": "integer",
+            "default": 23,
+            "description": "Position hash Y1 for deterministic placement"
+        },
+        "position_hash_y2": {
+            "type": "integer",
+            "default": 53,
+            "description": "Position hash Y2 for deterministic placement"
+        },
+        "sprite_variant_divisor": {
+            "type": "integer",
+            "default": 5,
+            "min": 1,
+            "max": 20,
+            "description": "Divisor for sprite variant calculation"
+        },
+        "arena_width": {
+            "type": "integer",
+            "default": 800,
+            "min": 400,
+            "max": 1920,
+            "description": "Game arena width"
+        },
+        "arena_height": {
+            "type": "integer",
+            "default": 600,
+            "min": 300,
+            "max": 1080,
+            "description": "Game arena height"
+        },
+        "difficulty_modifier": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 3.0,
+            "description": "Overall difficulty multiplier"
+        }
+    }
+}

@@ -4,8 +4,7 @@ local SnakeView = Object:extend('SnakeView')
 
 function SnakeView:init(game_state, variant)
     self.game = game_state
-    self.variant = variant -- Store variant data for future use (Phase 1.3)
-    -- NOTE: In Phase 2, snake sprites and grid will use variant.sprite_set and variant.background
+    self.variant = variant
     self.GRID_SIZE = game_state.GRID_SIZE or 20
     self.di = game_state and game_state.di
     local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.snake and self.di.config.games.snake.view) or
@@ -129,7 +128,6 @@ function SnakeView:draw()
     -- Draw arena shape boundaries
     self:drawArenaBoundaries()
 
-    -- Phase 1.6 & 2.3: Use variant palette if available
     local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local snake_sprite_fallback = game.data.icon_sprite or "game_spider-0"
     local paletteManager = self.di and self.di.paletteManager
@@ -141,7 +139,7 @@ function SnakeView:draw()
         tint = paletteManager:getTintForVariant(self.variant, "SnakeGame", config.games.snake)
     end
 
-    -- Phase 2.3: Draw snake (sprite or fallback)
+    -- Draw snake (sprite or fallback)
     -- Support for girth (thickness) and invisible_tail
     local girth = game.current_girth or 1
     local segment_size = GRID_SIZE - 1
@@ -506,14 +504,12 @@ function SnakeView:draw()
     -- Reset camera transformation before drawing HUD
     love.graphics.pop()
 
-    -- Standard HUD (Phase 8)
     game.hud:draw(viewport_width, viewport_height)
 end
 
 function SnakeView:drawBackground()
     local game = self.game
 
-    -- Phase 2.3: Use loaded background sprite if available
     if game and game.sprites and game.sprites.background then
         local bg = game.sprites.background
         local bg_width = bg:getWidth()

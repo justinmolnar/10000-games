@@ -274,10 +274,25 @@ snake_view.lua           ~0 lines (refs changed to game.params.X)
 - 44 parameters covering: movement, physics, obstacles, environment, visuals, victory, safe zone
 - All variant keys in `dodge_variants.json` match schema parameter names
 
+**Cleanup Pass (2026-01-18):**
+- Deleted ~17 lines of file-scope constants (PLAYER_SIZE, OBJECT_RADIUS, BASE_SPAWN_RATE, etc.)
+- Replaced all constant references with `self.params.X or DEFAULT` pattern
+- Extracted init (~420 lines → ~200 lines) into helper methods:
+  - `setupArena()` - game dimensions, collision limits
+  - `setupPlayer()` - player table, movement controller
+  - `setupComponents()` - fog, visual effects, entity/projectile systems, HUD, victory
+  - `setupGameState()` - objects, warnings, spawn timers, enemy composition, metrics
+  - `setupSafeZone()` - arena controller, safe zone state, holes
+- Replaced all `self.X` param copies with `self.params.X` references throughout
+- Removed all "Phase X" comment references
+- Updated `dodge_view.lua` to use `game.params.fog_of_war_origin`, `game.params.fog_of_war_radius`, `game.params.player_trail_length` instead of expecting unpacked fields on game object
+- Removed Phase comments from view file
+
 #### Line Changes
 ```
 dodge_schema.json        +299 lines (new)
-dodge_game.lua           -46 lines (1980 → 1934)
+dodge_game.lua           -46 lines (1980 → 1934) [initial]
+dodge_game.lua           ~-50 lines (1934 → ~1996) [cleanup - structure improved]
 ```
 
 ---
@@ -318,10 +333,22 @@ dodge_game.lua           -46 lines (1980 → 1934)
 - Complex enums for fire_mode, bullet_pattern, enemy_formation, enemy_behavior
 - All variant keys in `space_shooter_variants.json` match schema parameter names
 
+**Cleanup Pass (2026-01-18):**
+- Deleted ~23 lines of file-scope constants (PLAYER_WIDTH, BULLET_SPEED, ENEMY_WIDTH, etc.)
+- Deleted ~28 lines of DI override block that re-assigned those same constants
+- Replaced all constant references with `self.params.X or DEFAULT` pattern
+- Extracted init (~285 lines → ~15 lines) into helper methods:
+  - `setupArena()` - game dimensions, gravity wells, blackout zones
+  - `setupPlayer()` - player table, movement controller, shield
+  - `setupComponents()` - entity/projectile/powerup systems, HUD, victory condition
+  - `setupGameState()` - enemies, bullets, wave state, grid state, galaga state, metrics
+- Fixed powerup effect functions that incorrectly assigned to expressions
+
 #### Line Changes
 ```
 space_shooter_schema.json   +643 lines (new)
-space_shooter.lua           -119 lines (2550 → 2431)
+space_shooter.lua           -119 lines (2550 → 2431) [initial]
+space_shooter.lua           -282 lines (2431 → 2149) [cleanup]
 ```
 
 ---
@@ -402,10 +429,24 @@ breakout.lua                -93 lines (1766 → 1673)
 - Replaced ~25 lines of loader:get/getNumber/getBoolean calls with p.xxx access
 - 24 parameters covering: grid, timing, scoring, constraints, visuals, fog, difficulty
 
+**Cleanup Pass (2026-01-18):**
+- Changed `local p = SchemaLoader.load(...)` to `self.params = SchemaLoader.load(...)`
+- Deleted file-scope constants (CARD_WIDTH_DEFAULT, etc.)
+- Extracted init (~244 lines → ~28 lines) into helper methods:
+  - `applyModifiers()` - speed modifier, time bonus, variant difficulty
+  - `setupGameState()` - grid, cards, timers, metrics, assets, physics constants
+  - `setupComponents()` - fog controller, entity controller, HUD, victory condition
+- Replaced all `self.X` param copies with `self.params.X` references throughout
+- Updated `memory_match_view.lua` to use `game.params.X` for read-only params:
+  - distraction_elements, gravity_enabled, card_rotation, spinning_cards
+  - perfect_bonus, time_limit, move_limit, combo_multiplier, chain_requirement
+- Removed "Phase X" comment portions (kept useful comments)
+
 #### Line Changes
 ```
 memory_match_schema.json    +164 lines (new)
-memory_match.lua            -42 lines (1068 → 1026)
+memory_match.lua            -80 lines (1027 → ~947)
+memory_match_view.lua       ~0 lines (refs changed to game.params.X)
 ```
 
 ---
@@ -442,10 +483,24 @@ memory_match.lua            -42 lines (1068 → 1026)
 - Replaced ~35 lines of loader:get calls with p.xxx access
 - 43 parameters covering: AI, timing, display, scoring, special rounds, victory conditions, visual effects
 
+**Cleanup Pass (2026-01-18):**
+- Changed `local p = SchemaLoader.load(...)` to `self.params = SchemaLoader.load(...)`
+- Extracted init (~228 lines → ~12 lines) into helper methods:
+  - `applyModifiers()` - mutable params (rounds_to_win, timing, display hints) + cheats
+  - `setupGameState()` - game state, round state, AI history, opponents, metrics, RNG
+  - `setupComponents()` - popup manager, visual effects, animation, health system, HUD, victory condition
+  - `setupVictoryCondition()` - victory config based on victory_condition param
+- Replaced all `self.X` param copies with `self.params.X` references throughout
+- Updated `rps_view.lua` to use `game.params.X` for read-only params:
+  - victory_condition, time_limit, show_statistics, ai_pattern, show_history_display
+  - hands_mode, show_opponent_hands, time_per_removal
+- Removed "Phase X" comment portions (kept useful comments)
+
 #### Line Changes
 ```
 rps_schema.json             +252 lines (new)
-rps.lua                     -94 lines (962 → 868)
+rps.lua                     -150 lines (868 → ~718)
+rps_view.lua                ~0 lines (refs changed to game.params.X)
 ```
 
 ---
@@ -482,10 +537,79 @@ rps.lua                     -94 lines (962 → 868)
 - Replaced ~25 lines of loader:get calls with p.xxx access
 - 26 parameters covering: streaks, coin bias, timing, patterns, victory conditions, scoring, visual effects
 
+**Cleanup Pass (2026-01-18):**
+- Changed `local p = SchemaLoader.load(...)` to `self.params = SchemaLoader.load(...)`
+- Extracted init (~174 lines → ~14 lines) into helper methods:
+  - `applyModifiers()` - time_per_flip, flip_animation_speed, coin_bias, starting_lives + cheats
+  - `setupGameState()` - RNG, streak/score state, flip state, pattern state, timers, metrics
+  - `setupComponents()` - popup manager, visual effects, flip animation, health system, HUD, victory condition
+  - `setupVictoryCondition()` - victory config based on victory_condition param
+- Replaced all `self.X` param copies with `self.params.X` references throughout
+- Updated `coin_flip_view.lua` to use `game.params.X` instead of `game.X` for read-only params
+- Removed all "Phase X" comment references from game and view
+
 #### Line Changes
 ```
 coin_flip_schema.json       +160 lines (new)
-coin_flip.lua               -49 lines (660 → 611)
+coin_flip.lua               -119 lines (660 → 541)
+coin_flip_view.lua          ~0 lines (refs changed to game.params.X)
+```
+
+---
+
+## Phase 6d: Hidden Object Schema + Migration
+
+**What this phase accomplishes:** Migrates Hidden Object to use SchemaLoader.
+
+**What will be noticed in-game:** Nothing. Hidden Object should play identically.
+
+### Steps
+
+6d.1. Create `assets/data/schemas/hidden_object_schema.json` with all parameters.
+
+6d.2. Modify Hidden Object's init to use SchemaLoader pattern.
+
+6d.3. Extract init into helper methods: applyModifiers(), setupGameState(), setupComponents().
+
+6d.4. Update view to use game.params.X for read-only params.
+
+6d.5. Remove all "Phase X" comments.
+
+### Testing (User)
+
+- [ ] Launch Hidden Object - finding objects, victory all work
+- [ ] No console errors
+
+### AI Notes
+
+**Completed:** 2026-01-18
+
+**Summary:**
+- Created hidden_object_schema.json with 16 parameters:
+  - time_limit_base, objects_base, bonus_time_multiplier
+  - object_base_size, background_grid_base, background_hash_1/2
+  - position_hash_x1/x2/y1/y2, sprite_variant_divisor
+  - arena_width, arena_height, difficulty_modifier
+- Changed `local p = SchemaLoader.load(...)` to `self.params = SchemaLoader.load(...)`
+- Extracted init into helper methods:
+  - `applyModifiers()` - speed_modifier_value, time_bonus_multiplier, variant_difficulty
+  - `setupGameState()` - game dimensions, time limit, object counts, metrics
+  - `setupComponents()` - entity_controller, generateObjects(), HUD
+- Replaced all constant references with self.params.X:
+  - OBJECT_BASE_SIZE → self.params.object_base_size
+  - POSITION_HASH_X1/X2/Y1/Y2 → self.params.position_hash_x1/x2/y1/y2
+  - BONUS_TIME_MULTIPLIER → self.params.bonus_time_multiplier
+  - HOCfg.objects.sprite_variant_divisor_base → self.params.sprite_variant_divisor
+- Updated hidden_object_view.lua:
+  - Removed BACKGROUND_GRID_BASE, BACKGROUND_HASH_1/2 from init
+  - Updated drawBackground() to use game.params.background_grid_base, game.params.background_hash_1/2
+- Removed all "Phase X" comment references from game and view
+
+#### Line Changes
+```
+hidden_object_schema.json   +99 lines (new)
+hidden_object.lua           ~0 lines (already small, cleaned up constants)
+hidden_object_view.lua      -6 lines (removed constant copies)
 ```
 
 ---

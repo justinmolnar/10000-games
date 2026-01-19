@@ -4,9 +4,7 @@ local SpaceShooterView = Object:extend('SpaceShooterView')
 
 function SpaceShooterView:init(game_state, variant)
     self.game = game_state
-    self.variant = variant -- Store variant data for future use (Phase 1.3)
-    -- NOTE: In Phase 2, ship sprites will be loaded from variant.sprite_set
-    -- Background will use variant.background (e.g., "stars_blue", "stars_red", "stars_purple")
+    self.variant = variant
     self.sprite_loader = nil
     self.sprite_manager = nil
     -- capture DI if passed via game_state
@@ -35,7 +33,6 @@ function SpaceShooterView:draw()
     -- Draw background
     self:drawBackground()
 
-    -- Phase 1.6 & 2.3: Use variant palette if available
     local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local player_sprite_fallback = game.data.icon_sprite or "game_mine_1-0"
     local paletteManager = self.di and self.di.paletteManager
@@ -49,16 +46,16 @@ function SpaceShooterView:draw()
 
     -- Draw player (sprite or fallback)
     if game.player then
-        local rotation = game.movement_type == "asteroids" and math.rad(game.player.angle or 0) or 0
-        -- Phase 8: Rotate 180 degrees in reverse gravity mode so player faces downward
-        if game.reverse_gravity then
+        local rotation = game.params.movement_type == "asteroids" and math.rad(game.player.angle or 0) or 0
+        -- Rotate 180 degrees in reverse gravity mode so player faces downward
+        if game.params.reverse_gravity then
             rotation = rotation + math.pi
         end
         local center_x = game.player.x
         local center_y = game.player.y
 
         -- Draw shield visual indicator (like Dodge)
-        if game.shield_enabled and game.player.shield_active then
+        if game.params.shield_enabled and game.player.shield_active then
             local shield_alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 5)
             g.setColor(0.3, 0.7, 1.0, shield_alpha)
             local shield_radius = math.max(game.player.width, game.player.height) / 2 + 5
@@ -169,7 +166,7 @@ function SpaceShooterView:draw()
         end
     end
 
-    -- Phase 6: Draw power-ups
+    -- Draw power-ups
     for _, powerup in ipairs(game.powerups) do
         -- Draw power-up based on type (different colors)
         local color = {1, 1, 1}
@@ -193,7 +190,7 @@ function SpaceShooterView:draw()
         g.circle("line", powerup.x + powerup.width/2, powerup.y + powerup.height/2, powerup.width/2)
     end
 
-    -- Phase 7: Draw asteroids
+    -- Draw asteroids
     g.setColor(0.5, 0.5, 0.5)
     for _, asteroid in ipairs(game.asteroids) do
         g.push()
@@ -208,7 +205,7 @@ function SpaceShooterView:draw()
         g.pop()
     end
 
-    -- Phase 7: Draw meteor warnings
+    -- Draw meteor warnings
     g.setColor(1, 0, 0, 0.5)
     for _, warning in ipairs(game.meteor_warnings) do
         g.circle("fill", warning.x + 15, 30, 20)
@@ -217,7 +214,7 @@ function SpaceShooterView:draw()
         g.setColor(1, 0, 0, 0.5)
     end
 
-    -- Phase 7: Draw meteors
+    -- Draw meteors
     g.setColor(1, 0.3, 0)
     for _, meteor in ipairs(game.meteors) do
         g.circle("fill", meteor.x + meteor.width/2, meteor.y + meteor.height/2, meteor.width/2)
@@ -226,7 +223,7 @@ function SpaceShooterView:draw()
         g.setColor(1, 0.3, 0)
     end
 
-    -- Phase 7: Draw gravity wells
+    -- Draw gravity wells
     g.setColor(0.5, 0, 1, 0.3)
     for _, well in ipairs(game.gravity_wells) do
         g.circle("fill", well.x, well.y, well.radius)
@@ -236,7 +233,7 @@ function SpaceShooterView:draw()
         g.setColor(0.5, 0, 1, 0.3)
     end
 
-    -- Phase 8: Draw blackout zones
+    -- Draw blackout zones
     for _, zone in ipairs(game.blackout_zones) do
         g.setColor(0, 0, 0, 0.8)  -- Dark opaque circles
         g.circle("fill", zone.x, zone.y, zone.radius)
@@ -244,7 +241,6 @@ function SpaceShooterView:draw()
         g.circle("line", zone.x, zone.y, zone.radius)
     end
 
-    -- Standard HUD (Phase 8)
     game.hud:draw(game.game_width, game.game_height)
 
     -- Additional game-specific stats (below standard HUD)
@@ -260,18 +256,18 @@ function SpaceShooterView:draw()
         hud_y = hud_y + 18
 
         -- Shield (if enabled)
-        if game.shield_enabled then
+        if game.params.shield_enabled then
             local shield_color = game.player.shield_active and {0.3, 0.7, 1.0} or {0.5, 0.5, 0.5}
             g.setColor(shield_color)
-            g.print("Shield: " .. game.player.shield_hits_remaining .. "/" .. game.shield_max_hits, lx, hud_y, 0, s, s)
+            g.print("Shield: " .. game.player.shield_hits_remaining .. "/" .. game.params.shield_max_hits, lx, hud_y, 0, s, s)
             hud_y = hud_y + 18
             g.setColor(1, 1, 1)
         end
 
         -- Ammo display
-        if game.ammo_enabled then
+        if game.params.ammo_enabled then
             if game.player.is_reloading then
-                local reload_progress = 1 - (game.player.reload_timer / game.ammo_reload_time)
+                local reload_progress = 1 - (game.player.reload_timer / game.params.ammo_reload_time)
                 g.setColor(1, 1, 0)  -- Yellow during reload
                 g.print("Reloading...", lx, hud_y, 0, s, s)
                 -- Draw reload progress bar
@@ -280,21 +276,21 @@ function SpaceShooterView:draw()
                 g.rectangle("line", bar_x, hud_y + 2, bar_width, 10)
                 g.rectangle("fill", bar_x, hud_y + 2, bar_width * reload_progress, 10)
             else
-                local ammo_color = game.player.ammo < game.ammo_capacity * 0.25 and {1, 0.5, 0} or {1, 1, 1}
+                local ammo_color = game.player.ammo < game.params.ammo_capacity * 0.25 and {1, 0.5, 0} or {1, 1, 1}
                 g.setColor(ammo_color)
-                g.print("Ammo: " .. game.player.ammo .. "/" .. game.ammo_capacity, lx, hud_y, 0, s, s)
+                g.print("Ammo: " .. game.player.ammo .. "/" .. game.params.ammo_capacity, lx, hud_y, 0, s, s)
             end
             hud_y = hud_y + 18
             g.setColor(1, 1, 1)
         end
 
         -- Overheat display
-        if game.overheat_enabled then
-            local heat_percent = game.player.heat / game.overheat_threshold
+        if game.params.overheat_enabled then
+            local heat_percent = game.player.heat / game.params.overheat_threshold
 
             if game.player.is_overheated then
                 g.setColor(1, 0, 0)  -- Red when overheated
-                local cooldown_progress = 1 - (game.player.overheat_timer / game.overheat_cooldown)
+                local cooldown_progress = 1 - (game.player.overheat_timer / game.params.overheat_cooldown)
                 g.print("OVERHEAT!", lx, hud_y, 0, s, s)
                 -- Draw cooldown bar
                 local bar_width = 60
@@ -333,7 +329,6 @@ function SpaceShooterView:drawBackground()
     local game = self.game
     local g = love.graphics
 
-    -- Phase 2.3: Use loaded background sprite if available
     if game and game.sprites and game.sprites.background then
         local bg = game.sprites.background
         local bg_width = bg:getWidth()

@@ -37,32 +37,30 @@ local WIN_MATRICES = {
 function RPS:init(game_data, cheats, di, variant_override)
     RPS.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
+    self.cheats = cheats or {}
 
-    -- Load all parameters via SchemaLoader (variant → runtime_config → schema defaults)
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.rps)
-    local p = SchemaLoader.load(self.variant, "rps_schema", runtimeCfg)
+    self.params = SchemaLoader.load(self.variant, "rps_schema", runtimeCfg)
 
-    -- Core game parameters
-    self.rounds_to_win = p.rounds_to_win
-    self.game_mode = p.game_mode
-    self.ai_pattern = p.ai_pattern
+    self:applyModifiers()
+    self:setupGameState()
+    self:setupComponents()
 
-    -- AI Behavior Parameters
-    self.ai_bias = p.ai_bias
-    self.ai_bias_strength = p.ai_bias_strength
+    self.view = RPSView:new(self)
+end
 
-    -- Timing Parameters
-    self.time_per_round = p.time_per_round
-    self.round_result_display_time = p.round_result_display_time
+function RPS:applyModifiers()
+    -- Mutable params that can be modified by cheats
+    self.rounds_to_win = self.params.rounds_to_win
+    self.time_per_round = self.params.time_per_round
+    self.round_result_display_time = self.params.round_result_display_time
+    self.show_ai_pattern_hint = self.params.show_ai_pattern_hint
+    self.show_player_history = self.params.show_player_history
 
-    -- Display Parameters
-    self.show_ai_pattern_hint = p.show_ai_pattern_hint
-    self.show_player_history = p.show_player_history
-
-    -- Apply difficulty_modifier from schema
-    if p.difficulty_modifier ~= 1.0 then
-        self.time_per_round = self.time_per_round * p.difficulty_modifier
-        self.round_result_display_time = self.round_result_display_time * p.difficulty_modifier
+    -- Apply difficulty modifier
+    if self.params.difficulty_modifier ~= 1.0 then
+        self.time_per_round = self.time_per_round * self.params.difficulty_modifier
+        self.round_result_display_time = self.round_result_display_time * self.params.difficulty_modifier
     end
 
     -- Apply CheatEngine modifications
@@ -78,47 +76,11 @@ function RPS:init(game_data, cheats, di, variant_override)
         self.show_player_history = true
     end
 
-    -- Scoring parameters
-    self.score_per_round_win = p.score_per_round_win
-    self.streak_bonus = p.streak_bonus
-    self.perfect_game_bonus = p.perfect_game_bonus
-    self.score_popup_enabled = p.score_popup_enabled
+    self.num_opponents = math.max(1, math.min(5, self.params.num_opponents))
+end
 
-    -- Double hands mode parameters
-    self.hands_mode = p.hands_mode
-    self.time_per_removal = p.time_per_removal
-    self.both_hands_history_length = p.both_hands_history_length
-    self.show_opponent_hands = p.show_opponent_hands
-
-    -- Multiple opponents parameters
-    self.num_opponents = math.max(1, math.min(5, p.num_opponents))
-    self.elimination_mode = p.elimination_mode
-
-    -- Victory conditions parameters
-    self.victory_condition = p.victory_condition
-    self.first_to_target = p.first_to_target
-    self.streak_target = p.streak_target
-    self.total_wins_target = p.total_wins_target
-    self.time_limit = p.time_limit
-
-    -- Lives handled by LivesHealthSystem
-    local starting_lives = p.lives
-    self.lose_life_on = p.lose_life_on
-
-    -- Special rounds parameters
-    self.special_rounds_enabled = p.special_rounds_enabled
-    self.double_or_nothing_enabled = p.double_or_nothing_enabled
-    self.sudden_death_enabled = p.sudden_death_enabled
-    self.reverse_mode_enabled = p.reverse_mode_enabled
-    self.mirror_mode_enabled = p.mirror_mode_enabled
-
-    -- Display parameters
-    self.show_history_display = p.show_history_display
-    self.history_length = p.history_length
-    self.show_statistics = p.show_statistics
-    self.ai_pattern_delay = p.ai_pattern_delay
-
-    -- Initialize game state
+function RPS:setupGameState()
+    -- Game state
     self.player_wins = 0
     self.ai_wins = 0
     self.ties = 0
@@ -133,7 +95,7 @@ function RPS:init(game_data, cheats, di, variant_override)
     self.waiting_for_input = true
     self.player_choice = nil
     self.ai_choice = nil
-    self.round_result = nil  -- "win", "lose", "tie"
+    self.round_result = nil
     self.result_display_time = 0
     self.show_result = false
 
@@ -141,39 +103,39 @@ function RPS:init(game_data, cheats, di, variant_override)
     self.player_history = {}
     self.ai_history = {}
 
-    -- Phase 6 completion: Double hands mode state
-    self.phase = "selection"  -- "selection" or "removal" (for double hands mode)
+    -- Double hands mode state
+    self.phase = "selection"
     self.player_left_hand = nil
     self.player_right_hand = nil
-    self.ai_left_hand = nil  -- AI's left hand
-    self.ai_right_hand = nil  -- AI's right hand
-    self.both_hands_history = {}  -- Track history of both-hands rounds
+    self.ai_left_hand = nil
+    self.ai_right_hand = nil
+    self.both_hands_history = {}
     self.removal_timer = 0
 
-    -- Phase 6 completion: Multiple opponents state
-    self.opponents = {}  -- Array of opponent data {wins, choice, eliminated, pattern, etc}
+    -- Multiple opponents state
+    self.opponents = {}
     for i = 1, self.num_opponents do
         table.insert(self.opponents, {
             id = i,
             wins = 0,
             choice = nil,
             eliminated = false,
-            pattern = self.ai_pattern,  -- Each can have different pattern
+            pattern = self.params.ai_pattern,
             history = {}
         })
     end
 
-    -- Phase 6 completion: Time limit state (for "time" victory condition)
+    -- Time limit state
     self.time_elapsed = 0
 
-    -- Phase 6 completion: History display state
-    self.throw_history = {}  -- Circular buffer of last N throws
+    -- History display state
+    self.throw_history = {}
 
-    -- Phase 6 completion: Special rounds state
-    self.current_special_round = nil  -- "double_or_nothing", "sudden_death", "reverse", "mirror"
-    self.last_special_round = nil  -- Track last special round for display during result phase
+    -- Special rounds state
+    self.current_special_round = nil
+    self.last_special_round = nil
 
-    -- Initialize metrics table for formula
+    -- Metrics
     self.metrics = {
         rounds_won = 0,
         rounds_lost = 0,
@@ -183,76 +145,68 @@ function RPS:init(game_data, cheats, di, variant_override)
         score = 0
     }
 
+    -- RNG for deterministic AI
+    self.rng = love.math.newRandomGenerator(self.seed or os.time())
+end
+
+function RPS:setupComponents()
     -- Score popups
-    -- Phase 6: Score popups managed by PopupManager
     self.popup_manager = PopupManager:new()
 
-    -- Visual effects parameters
-    self.throw_animation_style = p.throw_animation_style
-    self.animation_speed = p.animation_speed
-    local screen_flash_enabled = p.screen_flash_enabled
-    self.celebration_on_perfect = p.celebration_on_perfect
-
-    -- Phase 3: Initialize VisualEffects component (screen flash + particles)
+    -- Visual effects
     self.visual_effects = VisualEffects:new({
-        camera_shake_enabled = false,  -- RPS doesn't use camera shake
-        screen_flash_enabled = screen_flash_enabled,
+        camera_shake_enabled = false,
+        screen_flash_enabled = self.params.screen_flash_enabled,
         particle_effects_enabled = true
     })
 
-    -- Phase 4: Initialize AnimationSystem for throw animation (bounce)
+    -- Throw animation
     self.throw_animation = AnimationSystem.createBounceAnimation({
         duration = 0.5,
-        height = 20,  -- Bounce height
-        speed_multiplier = self.animation_speed,
-        on_complete = nil  -- No callback needed
+        height = 20,
+        speed_multiplier = self.params.animation_speed,
+        on_complete = nil
     })
 
-    -- Lives/Health System (Phase 10)
+    -- Lives/Health System
     self.health_system = LivesHealthSystem:new({
         mode = "lives",
-        starting_lives = starting_lives,
+        starting_lives = self.params.lives,
         max_lives = 999,
-        lose_life_on = self.lose_life_on
+        lose_life_on = self.params.lose_life_on
     })
     self.lives = self.health_system.lives
 
-    -- Initialize HUD (Phase 8: Standard HUD layout)
+    -- HUD
     self.hud = HUDRenderer:new({
         primary = {label = "Score", key = "score"},
         secondary = {label = "Win Streak", key = "current_win_streak"}
-        -- No lives display for RPS (could add rounds progress later)
     })
-    self.hud.game = self  -- Link game reference
+    self.hud.game = self
 
-    -- Create view
-    self.view = RPSView:new(self)
-
-    -- Initialize RNG with seed for deterministic AI
-    self.rng = love.math.newRandomGenerator(self.seed or os.time())
-
-    -- Try to activate special round for first throw (after RNG is initialized)
+    -- Try to activate special round for first throw
     self.current_special_round = self:activateSpecialRound()
-    if self.current_special_round then
-        print("[RPS] Special round activated for first throw:", self.current_special_round)
-    end
 
-    -- Victory Condition System (Phase 9)
+    -- Victory Condition System
+    self:setupVictoryCondition()
+end
+
+function RPS:setupVictoryCondition()
     local victory_config = {}
 
-    if self.victory_condition == "rounds" then
+    if self.params.victory_condition == "rounds" then
         victory_config.victory = {type = "threshold", metric = "player_wins", target = self.rounds_to_win}
-    elseif self.victory_condition == "first_to" then
-        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.first_to_target}
-    elseif self.victory_condition == "streak" then
-        victory_config.victory = {type = "streak", metric = "current_win_streak", target = self.streak_target}
-    elseif self.victory_condition == "total" then
-        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.total_wins_target}
-    elseif self.victory_condition == "time" then
-        victory_config.victory = {type = "time_survival", metric = "time_elapsed", target = self.time_limit}
+    elseif self.params.victory_condition == "first_to" then
+        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.params.first_to_target}
+    elseif self.params.victory_condition == "streak" then
+        victory_config.victory = {type = "streak", metric = "current_win_streak", target = self.params.streak_target}
+    elseif self.params.victory_condition == "total" then
+        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.params.total_wins_target}
+    elseif self.params.victory_condition == "time" then
+        victory_config.victory = {type = "time_survival", metric = "time_elapsed", target = self.params.time_limit}
     end
 
-    -- Loss condition: ai_wins reaches rounds_to_win OR lives depleted
+    -- Loss condition
     if self.lives < 999 then
         victory_config.loss = {type = "lives_depleted", metric = "lives"}
     else
@@ -272,11 +226,9 @@ function RPS:setPlayArea(width, height)
 end
 
 function RPS:updateGameLogic(dt)
-    -- Phase 6 completion: Check time limit (for "time" victory condition)
-    -- NOTE: time_elapsed is already incremented in BaseGame:updateBase, don't double-increment!
-    if not self.game_over and not self.victory and self.victory_condition == "time" then
-        if self.time_elapsed >= self.time_limit then
-            -- Time's up - trigger victory/game over based on who has more wins
+    -- Check time limit (for "time" victory condition)
+    if not self.game_over and not self.victory and self.params.victory_condition == "time" then
+        if self.time_elapsed >= self.params.time_limit then
             if self.player_wins > self.ai_wins then
                 self.victory = true
             else
@@ -285,8 +237,8 @@ function RPS:updateGameLogic(dt)
         end
     end
 
-    -- Phase 6 completion: Double hands removal timer
-    if self.hands_mode == "double" and self.phase == "removal" and self.time_per_removal > 0 then
+    -- Double hands removal timer
+    if self.params.hands_mode == "double" and self.phase == "removal" and self.params.time_per_removal > 0 then
         self.removal_timer = self.removal_timer - dt
         if self.removal_timer <= 0 then
             -- Time's up - randomly choose one hand to keep for both players
@@ -306,14 +258,8 @@ function RPS:updateGameLogic(dt)
         end
     end
 
-    -- Update throw animation (Phase 4 - AnimationSystem component)
     self.throw_animation:update(dt)
-
-    -- Update visual effects (Phase 3 - VisualEffects component)
     self.visual_effects:update(dt)
-
-    -- Update score popups
-    -- Phase 6: Update score popups via PopupManager
     self.popup_manager:update(dt)
 
     -- Handle result display timer
@@ -324,12 +270,9 @@ function RPS:updateGameLogic(dt)
             self.result_display_time = 0
             self.waiting_for_input = true
 
-            -- Phase 6 completion: Activate special round for NEXT round (when player is about to throw)
+            -- Activate special round for next round
             if not self.current_special_round then
                 self.current_special_round = self:activateSpecialRound()
-                if self.current_special_round then
-                    print("[RPS] Special round activated for next throw:", self.current_special_round)
-                end
             end
         end
     end
@@ -353,7 +296,7 @@ function RPS:keypressed(key)
     end
 
     -- Extended RPSLS keys
-    if self.game_mode == "rpsls" then
+    if self.params.game_mode == "rpsls" then
         if key == 'l' then
             choice = 'lizard'
         elseif key == 'v' then
@@ -362,7 +305,7 @@ function RPS:keypressed(key)
     end
 
     -- Extended RPSFB keys
-    if self.game_mode == "rpsfb" then
+    if self.params.game_mode == "rpsfb" then
         if key == 'f' then
             choice = 'fire'
         elseif key == 'w' then
@@ -370,8 +313,8 @@ function RPS:keypressed(key)
         end
     end
 
-    -- Phase 6 completion: Double hands mode - handle removal phase number keys FIRST
-    if self.hands_mode == "double" and self.phase == "removal" then
+    -- Double hands mode - handle removal phase number keys first
+    if self.params.hands_mode == "double" and self.phase == "removal" then
         local player_final = nil
         if key == '1' and self.player_left_hand then
             -- Keep left hand, remove right
@@ -403,49 +346,34 @@ function RPS:keypressed(key)
     end
 
     if choice then
-        -- Phase 6 completion: Double hands mode handling
-        if self.hands_mode == "double" then
+        if self.params.hands_mode == "double" then
             if self.phase == "selection" then
-                -- Selection phase: choosing both hands
                 if not self.player_left_hand then
                     self.player_left_hand = choice
-                    print("[RPS] Left hand selected:", choice)
                 elseif not self.player_right_hand then
                     self.player_right_hand = choice
-                    print("[RPS] Right hand selected:", choice)
-
-                    -- Generate AI's both hands
                     self.ai_left_hand = self:generateAIChoice()
                     self.ai_right_hand = self:generateAIChoice()
-                    print("[RPS] AI selected hands:", self.ai_left_hand, self.ai_right_hand)
-
-                    -- Both hands selected, move to removal phase
                     self.phase = "removal"
                     self.waiting_for_input = true
-                    self.removal_timer = self.time_per_removal
+                    self.removal_timer = self.params.time_per_removal
                 end
             end
         else
-            -- Single hands mode: standard play
             self:playRound(choice)
         end
     end
 end
 
 function RPS:playRoundMultipleOpponents(player_choice)
-    -- Phase 6 completion: Handle multiple opponents battle royale
     self.rounds_played = self.rounds_played + 1
     local player_wins_this_round = 0
     local player_losses_this_round = 0
     local player_ties_this_round = 0
 
-    -- Play against each non-eliminated opponent
     for _, opponent in ipairs(self.opponents) do
         if not opponent.eliminated then
-            -- Generate AI choice for this opponent
             opponent.choice = self:generateAIChoiceForOpponent(opponent)
-
-            -- Determine winner
             local result = self:determineWinner(player_choice, opponent.choice)
 
             if result == "win" then
@@ -453,16 +381,12 @@ function RPS:playRoundMultipleOpponents(player_choice)
             elseif result == "lose" then
                 player_losses_this_round = player_losses_this_round + 1
                 opponent.wins = opponent.wins + 1
-
-                -- Check if opponent has won enough to eliminate player
-                if self.elimination_mode and opponent.wins >= self.rounds_to_win then
+                if self.params.elimination_mode and opponent.wins >= self.rounds_to_win then
                     self.game_over = true
                 end
             else
                 player_ties_this_round = player_ties_this_round + 1
             end
-
-            -- Update opponent history
             table.insert(opponent.history, opponent.choice)
         end
     end
@@ -511,27 +435,18 @@ end
 function RPS:playRound(player_choice)
     self.player_choice = player_choice
     self.waiting_for_input = false
-
-    -- Start throw animation (Phase 4 - AnimationSystem component)
     self.throw_animation:start()
 
-    -- Phase 6 completion: Multiple opponents mode
     if self.num_opponents > 1 then
         self:playRoundMultipleOpponents(player_choice)
         return
     end
 
-    -- NOTE: Special round is activated earlier when waiting_for_input becomes true (see updateGameLogic)
-
-    -- Generate AI choice based on pattern
     self.ai_choice = self:generateAIChoice()
-
-    -- Determine winner (may be modified by special rounds)
     self.round_result = self:determineWinner(player_choice, self.ai_choice)
 
-    -- Phase 6 completion: Apply special round rules
+    -- Apply special round rules
     if self.current_special_round == "reverse" then
-        -- Reverse mode: flip win/lose
         if self.round_result == "win" then
             self.round_result = "lose"
         elseif self.round_result == "lose" then
@@ -553,32 +468,22 @@ function RPS:playRound(player_choice)
         self.player_wins = self.player_wins + 1
         self.current_win_streak = self.current_win_streak + 1
 
-        -- Award score for round win
-        local round_points = self.score_per_round_win
-
-        -- Phase 6 completion: Double or nothing special round
+        local round_points = self.params.score_per_round_win
         if self.current_special_round == "double_or_nothing" then
-            round_points = round_points * 2  -- Double points on win
+            round_points = round_points * 2
         end
-
         self.score = self.score + round_points
 
-        -- Award streak bonus (bonus × streak_length)
         local total_points = round_points
         if self.current_win_streak > 1 then
-            local streak_points = self.streak_bonus * self.current_win_streak
+            local streak_points = self.params.streak_bonus * self.current_win_streak
             self.score = self.score + streak_points
             total_points = total_points + streak_points
         end
 
-        -- Spawn score popup
-        if self.score_popup_enabled then
+        if self.params.score_popup_enabled then
             local w, h = love.graphics.getDimensions()
-            local popup_color = {1, 1, 1}  -- White for round win
-            -- Yellow for streak milestones at 3/5
-            if self.current_win_streak == 3 or self.current_win_streak == 5 then
-                popup_color = {1, 1, 0}
-            end
+            local popup_color = (self.current_win_streak == 3 or self.current_win_streak == 5) and {1, 1, 0} or {1, 1, 1}
             self.popup_manager:add(w / 2, h / 2 - 50, "+" .. math.floor(total_points), popup_color)
         end
 
@@ -586,28 +491,21 @@ function RPS:playRound(player_choice)
             self.max_win_streak = self.current_win_streak
         end
 
-        -- Visual effects: screen flash (green for win) - Phase 11
-        self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")  -- Green flash
+        self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")
 
-        -- Phase 6 completion: Sudden death special round - instant victory
         if self.current_special_round == "sudden_death" then
             self.victory = true
         end
 
-        -- Phase 6 completion: Check victory based on victory condition
         if self:checkVictoryCondition() then
             self.victory = true
-            -- Award perfect game bonus if won without losing any rounds
             if self.ai_wins == 0 then
-                self.score = self.score + self.perfect_game_bonus
-                -- Spawn green popup for perfect game
-                if self.score_popup_enabled then
+                self.score = self.score + self.params.perfect_game_bonus
+                if self.params.score_popup_enabled then
                     local w, h = love.graphics.getDimensions()
-                    self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT GAME! +" .. self.perfect_game_bonus, {0, 1, 0})
+                    self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT GAME! +" .. self.params.perfect_game_bonus, {0, 1, 0})
                 end
-
-                -- Visual effects: celebration on perfect game - Phase 11
-                if self.celebration_on_perfect then
+                if self.params.celebration_on_perfect then
                     local w, h = love.graphics.getDimensions()
                     self.visual_effects:emitConfetti(w / 2, h / 2, 30)
                 end
@@ -617,21 +515,17 @@ function RPS:playRound(player_choice)
         self.ai_wins = self.ai_wins + 1
         self.current_win_streak = 0
 
-        -- Phase 6 completion: Double or nothing special round - lose points
         if self.current_special_round == "double_or_nothing" then
-            self.score = math.max(0, self.score - self.score_per_round_win)
+            self.score = math.max(0, self.score - self.params.score_per_round_win)
         end
 
-        -- Phase 6 completion: Sudden death special round - instant game over
         if self.current_special_round == "sudden_death" then
             self.game_over = true
         end
 
-        -- Visual effects: screen flash (red for loss) - Phase 11
-        self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")  -- Red flash
+        self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")
 
-        -- Phase 10: Use LivesHealthSystem
-        if self.lives < 999 and (self.lose_life_on == "loss" or self.lose_life_on == "both") then
+        if self.lives < 999 and (self.params.lose_life_on == "loss" or self.params.lose_life_on == "both") then
             self.health_system:takeDamage(1, "round_loss")
             self.lives = self.health_system.lives
             if not self.health_system:isAlive() then
@@ -639,22 +533,13 @@ function RPS:playRound(player_choice)
             end
         end
 
-        -- Check game over
         if self.ai_wins >= self.rounds_to_win then
             self.game_over = true
         end
     else
-        -- Tie
         self.ties = self.ties + 1
 
-        -- Visual effects: screen flash (yellow for tie) - Phase 11
-        if self.screen_flash_enabled then
-            self.screen_flash_color = {1, 1, 0, 0.2}  -- Yellow flash (subtle)
-            self.screen_flash_timer = 0.15
-        end
-
-        -- Phase 10: Use LivesHealthSystem
-        if self.lives < 999 and (self.lose_life_on == "tie" or self.lose_life_on == "both") then
+        if self.lives < 999 and (self.params.lose_life_on == "tie" or self.params.lose_life_on == "both") then
             self.health_system:takeDamage(1, "round_tie")
             self.lives = self.health_system.lives
             if not self.health_system:isAlive() then
@@ -663,24 +548,20 @@ function RPS:playRound(player_choice)
         end
     end
 
-    -- Update history
     table.insert(self.player_history, player_choice)
     table.insert(self.ai_history, self.ai_choice)
 
-    -- Phase 6 completion: Update throw history for display
-    if self.show_history_display then
+    if self.params.show_history_display then
         table.insert(self.throw_history, {
             player = player_choice,
             ai = self.ai_choice,
             result = self.round_result
         })
-        -- Keep only last N throws
-        while #self.throw_history > self.history_length do
+        while #self.throw_history > self.params.history_length do
             table.remove(self.throw_history, 1)
         end
     end
 
-    -- Update metrics
     self.metrics.rounds_won = self.player_wins
     self.metrics.rounds_lost = self.ai_wins
     self.metrics.rounds_total = self.rounds_played
@@ -689,7 +570,6 @@ function RPS:playRound(player_choice)
     self.metrics.accuracy = total_decided > 0 and (self.player_wins / total_decided) or 0
     self.metrics.score = self.score
 
-    -- Phase 6 completion: Save special round for display, then clear
     self.last_special_round = self.current_special_round
     self.current_special_round = nil
 
@@ -699,98 +579,74 @@ function RPS:playRound(player_choice)
 end
 
 function RPS:generateAIChoice()
-    -- Get available choices for current game mode
     local choices = self:getAvailableChoices()
 
-    -- Phase 6 completion: AI pattern delay - use random until delay rounds have passed
-    if self.ai_pattern_delay > 0 and self.rounds_played < self.ai_pattern_delay then
+    if self.params.ai_pattern_delay > 0 and self.rounds_played < self.params.ai_pattern_delay then
         return choices[self.rng:random(1, #choices)]
     end
 
-    if self.ai_pattern == "random" then
+    local pattern = self.params.ai_pattern
+    if pattern == "random" then
         return choices[self.rng:random(1, #choices)]
-
-    elseif self.ai_pattern == "repeat_last" and #self.ai_history > 0 then
+    elseif pattern == "repeat_last" and #self.ai_history > 0 then
         return self.ai_history[#self.ai_history]
-
-    elseif self.ai_pattern == "counter_player" and #self.player_history > 0 then
-        -- Throw what beats player's last choice
+    elseif pattern == "counter_player" and #self.player_history > 0 then
         local last_player = self.player_history[#self.player_history]
-        local win_matrix = WIN_MATRICES[self.game_mode]
+        local win_matrix = WIN_MATRICES[self.params.game_mode]
         if win_matrix and win_matrix[last_player] and win_matrix[last_player].loses_to then
-            -- Pick randomly from options that beat the player's last choice
             local counters = win_matrix[last_player].loses_to
             return counters[self.rng:random(1, #counters)]
         end
         return choices[self.rng:random(1, #choices)]
-
-    elseif self.ai_pattern == "pattern_cycle" then
-        -- Cycle through choices in order
+    elseif pattern == "pattern_cycle" then
         local cycle_index = (#self.ai_history % #choices) + 1
         return choices[cycle_index]
-
-    elseif self.ai_pattern == "mimic_player" and #self.player_history > 0 then
-        -- Copy player's previous choice
+    elseif pattern == "mimic_player" and #self.player_history > 0 then
         return self.player_history[#self.player_history]
-
-    elseif self.ai_pattern == "anti_player" and #self.player_history >= 2 then
-        -- Throw what player threw 2 rounds ago
+    elseif pattern == "anti_player" and #self.player_history >= 2 then
         return self.player_history[#self.player_history - 1]
-
     else
-        -- Default to random
         return choices[self.rng:random(1, #choices)]
     end
 end
 
 function RPS:generateAIChoiceForOpponent(opponent)
-    -- Phase 6 completion: Generate AI choice for specific opponent
     local choices = self:getAvailableChoices()
 
-    -- AI pattern delay
-    if self.ai_pattern_delay > 0 and self.rounds_played < self.ai_pattern_delay then
+    if self.params.ai_pattern_delay > 0 and self.rounds_played < self.params.ai_pattern_delay then
         return choices[self.rng:random(1, #choices)]
     end
 
-    -- Use opponent-specific pattern
     if opponent.pattern == "random" then
         return choices[self.rng:random(1, #choices)]
-
     elseif opponent.pattern == "repeat_last" and #opponent.history > 0 then
         return opponent.history[#opponent.history]
-
     elseif opponent.pattern == "counter_player" and #self.player_history > 0 then
         local last_player = self.player_history[#self.player_history]
-        local win_matrix = WIN_MATRICES[self.game_mode]
+        local win_matrix = WIN_MATRICES[self.params.game_mode]
         if win_matrix and win_matrix[last_player] and win_matrix[last_player].loses_to then
             local counters = win_matrix[last_player].loses_to
             return counters[self.rng:random(1, #counters)]
         end
         return choices[self.rng:random(1, #choices)]
-
     elseif opponent.pattern == "pattern_cycle" then
         local cycle_index = (#opponent.history % #choices) + 1
         return choices[cycle_index]
-
     elseif opponent.pattern == "mimic_player" and #self.player_history > 0 then
         return self.player_history[#self.player_history]
-
     elseif opponent.pattern == "anti_player" and #self.player_history >= 2 then
         return self.player_history[#self.player_history - 1]
-
     else
         return choices[self.rng:random(1, #choices)]
     end
 end
 
 function RPS:getAvailableChoices()
-    -- Return available choices based on game mode
-    if self.game_mode == "rpsls" then
+    if self.params.game_mode == "rpsls" then
         return {"rock", "paper", "scissors", "lizard", "spock"}
-    elseif self.game_mode == "rpsfb" then
+    elseif self.params.game_mode == "rpsfb" then
         return {"rock", "paper", "scissors", "fire", "water"}
     else
-        -- Default RPS
         return {"rock", "paper", "scissors"}
     end
 end
@@ -800,25 +656,21 @@ function RPS:determineWinner(player, ai)
         return "tie"
     end
 
-    -- Get win matrix for current game mode
-    local win_matrix = WIN_MATRICES[self.game_mode]
+    local win_matrix = WIN_MATRICES[self.params.game_mode]
     if not win_matrix or not win_matrix[player] then
-        return "tie"  -- Safety fallback
+        return "tie"
     end
 
-    -- Check if player's choice beats AI's choice
     local beats_list = win_matrix[player].beats
     for _, beaten in ipairs(beats_list) do
         if beaten == ai then
             return "win"
         end
     end
-
     return "lose"
 end
 
 function RPS:checkVictoryCondition()
-    -- Phase 9: Use VictoryCondition component
     local result = self.victory_checker:check()
     if result then
         return result == "victory"
@@ -827,31 +679,27 @@ function RPS:checkVictoryCondition()
 end
 
 function RPS:activateSpecialRound()
-    -- Phase 6 completion: Randomly activate special rounds if enabled
-    if not self.special_rounds_enabled then
+    if not self.params.special_rounds_enabled then
         return nil
     end
 
     local available_specials = {}
-    if self.double_or_nothing_enabled then table.insert(available_specials, "double_or_nothing") end
-    if self.sudden_death_enabled then table.insert(available_specials, "sudden_death") end
-    if self.reverse_mode_enabled then table.insert(available_specials, "reverse") end
-    if self.mirror_mode_enabled then table.insert(available_specials, "mirror") end
+    if self.params.double_or_nothing_enabled then table.insert(available_specials, "double_or_nothing") end
+    if self.params.sudden_death_enabled then table.insert(available_specials, "sudden_death") end
+    if self.params.reverse_mode_enabled then table.insert(available_specials, "reverse") end
+    if self.params.mirror_mode_enabled then table.insert(available_specials, "mirror") end
 
     if #available_specials == 0 then
         return nil
     end
 
-    -- 50% chance to activate a special round (makes them frequent enough to notice)
     if self.rng:random() < 0.5 then
         return available_specials[self.rng:random(1, #available_specials)]
     end
-
     return nil
 end
 
 function RPS:checkComplete()
-    -- Phase 9: Use VictoryCondition component
     local result = self.victory_checker:check()
     if result then
         self.victory = (result == "victory")

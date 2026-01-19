@@ -17,164 +17,60 @@ local ProjectileSystem = require('src.utils.game_components.projectile_system')
 local PowerupSystem = require('src.utils.game_components.powerup_system')
 local Breakout = BaseGame:extend('Breakout')
 
--- Fixed constants (not configurable via variants)
-local PADDLE_HEIGHT = 20
-local BALL_RADIUS = 8
-local BRICK_WIDTH = 60
-local BRICK_HEIGHT = 20
-local BRICK_PADDING = 5
+function Breakout:setupComponents()
+    local p = self.params
 
--- Default powerup config (used when variant doesn't specify)
-local DEFAULT_POWERUP_CONFIG = {
-    multi_ball = {count = 2, angle_spread = math.pi/6},
-    paddle_extend = {multiplier = 1.5, duration = 10.0},
-    paddle_shrink = {multiplier = 0.5, duration = 10.0},
-    slow_motion = {multiplier = 0.5, duration = 10.0},
-    fast_ball = {multiplier = 1.5, duration = 10.0},
-    laser = {duration = 10.0},
-    sticky_paddle = {duration = 10.0},
-    extra_life = {count = 1},
-    shield = {},
-    penetrating_ball = {pierce_count = 5, duration = 10.0},
-    fireball = {pierce_count = 5, duration = 10.0},
-    magnet = {range = 150, duration = 10.0}
-}
-
-function Breakout:initVisualEffects(p)
-    self.fog_controller = FogOfWar:new({
-        enabled = p.fog_of_war_enabled,
-        mode = "stencil",
-        opacity = 0.8
-    })
-
-    self.visual_effects = VisualEffects:new({
-        camera_shake_enabled = p.camera_shake_enabled,
-        particle_effects_enabled = p.particle_effects_enabled,
-        screen_flash_enabled = false,
-        shake_mode = "timer",
-        shake_decay = 0.9
-    })
-
-    self.brick_flash_map = {}
-end
-
-function Breakout:initPowerupConfig(p, runtimeCfg)
-    -- Deep copy of defaults
-    self.powerup_config = {}
-    for powerup_type, config in pairs(DEFAULT_POWERUP_CONFIG) do
-        self.powerup_config[powerup_type] = {}
-        for key, value in pairs(config) do
-            self.powerup_config[powerup_type][key] = value
-        end
-    end
-
-    -- Override with runtime config
-    if runtimeCfg and runtimeCfg.powerup_config then
-        for powerup_type, config in pairs(runtimeCfg.powerup_config) do
-            if not self.powerup_config[powerup_type] then
-                self.powerup_config[powerup_type] = {}
-            end
-            for key, value in pairs(config) do
-                self.powerup_config[powerup_type][key] = value
-            end
-        end
-    end
-
-    -- Override with variant config
-    if self.variant and self.variant.powerup_config then
-        for powerup_type, config in pairs(self.variant.powerup_config) do
-            if not self.powerup_config[powerup_type] then
-                self.powerup_config[powerup_type] = {}
-            end
-            for key, value in pairs(config) do
-                self.powerup_config[powerup_type][key] = value
-            end
-        end
-    end
-end
-
-function Breakout:initSystems(p)
-    -- MovementController
     self.paddle_movement = MovementController:new({
-        mode = "direct",
-        speed = p.paddle_speed,
-        friction = p.paddle_friction,
-        rail_axis = "horizontal"
+        mode = "direct", speed = p.paddle_speed,
+        friction = p.paddle_friction, rail_axis = "horizontal"
     })
 
-    -- ProjectileSystem
     self.projectile_system = ProjectileSystem:new({
         projectile_types = {
             ["ball"] = {
-                speed = p.ball_speed,
-                radius = BALL_RADIUS,
-                movement_type = "bounce",
-                lifetime = 999,
-                team = "player",
-                bounce_top = true,
-                bounce_left = true,
-                bounce_right = true,
-                bounce_bottom = false
+                speed = p.ball_speed, radius = p.ball_radius,
+                movement_type = "bounce", lifetime = 999, team = "player",
+                bounce_top = true, bounce_left = true, bounce_right = true, bounce_bottom = false
             }
         },
-        pooling = false,
-        max_projectiles = 50
+        pooling = false, max_projectiles = 50
     })
 
-    -- EntityController
     self.entity_controller = EntityController:new({
         entity_types = {
             ["brick"] = {
-                width = BRICK_WIDTH,
-                height = BRICK_HEIGHT,
-                alive = true,
-                vx = 0,
-                vy = 0,
-                regen_timer = 0,
+                width = p.brick_width, height = p.brick_height,
+                alive = true, vx = 0, vy = 0, regen_timer = 0,
                 on_hit = function(brick, ball) self:onBrickHit(brick, ball) end
             }
         },
-        spawning = {mode = "manual"},
-        pooling = false,
-        max_entities = 500
+        spawning = {mode = "manual"}, pooling = false, max_entities = 500
     })
 
-    -- PowerupSystem
     self.powerup_system = PowerupSystem:new({
-        enabled = p.powerup_enabled,
-        spawn_mode = "event",
-        spawn_drop_chance = p.brick_powerup_drop_chance,
-        powerup_size = p.powerup_size,
-        drop_speed = p.powerup_fall_speed,
-        reverse_gravity = false,
-        default_duration = p.powerup_duration,
-        powerup_types = p.powerup_types,
-        powerup_configs = self.powerup_config,
-        color_map = {},
+        enabled = p.powerup_enabled, spawn_mode = "event",
+        spawn_drop_chance = p.brick_powerup_drop_chance, powerup_size = p.powerup_size,
+        drop_speed = p.powerup_fall_speed, reverse_gravity = false,
+        default_duration = p.powerup_duration, powerup_types = p.powerup_types,
+        powerup_configs = p.powerup_config, color_map = {},
         on_collect = function(powerup) self:onPowerupCollect(powerup) end,
         on_apply = function(powerup_type, effect, config) self:applyPowerupEffect(powerup_type, effect, config) end,
         on_remove = function(powerup_type, effect) self:removePowerupEffect(powerup_type, effect) end
     })
 
-    -- PopupManager
     self.popup_manager = PopupManager:new()
 
-    -- LivesHealthSystem
     local starting_lives = p.lives
     if self.cheats.advantage_modifier then
         starting_lives = starting_lives + math.floor(self.cheats.advantage_modifier or 0)
     end
 
     self.health_system = LivesHealthSystem:new({
-        mode = "lives",
-        starting_lives = starting_lives,
-        max_lives = 10,
-        extra_life_enabled = true,
-        extra_life_threshold = p.extra_ball_score_threshold
+        mode = "lives", starting_lives = starting_lives, max_lives = 10,
+        extra_life_enabled = true, extra_life_threshold = p.extra_ball_score_threshold
     })
     self.lives = self.health_system.lives
 
-    -- HUDRenderer
     self.hud = HUDRenderer:new({
         primary = {label = "Score", key = "score"},
         secondary = {label = "Bricks", key = "bricks_left"},
@@ -182,31 +78,30 @@ function Breakout:initSystems(p)
     })
     self.hud.game = self
 
-    -- VictoryCondition
-    local victory_config = self:buildVictoryConfig(p)
-    self.victory_checker = VictoryCondition:new(victory_config)
-    self.victory_checker.game = self
-end
+    self.fog_controller = FogOfWar:new({enabled = p.fog_of_war_enabled, mode = "stencil", opacity = 0.8})
+    self.visual_effects = VisualEffects:new({
+        camera_shake_enabled = p.camera_shake_enabled,
+        particle_effects_enabled = p.particle_effects_enabled,
+        screen_flash_enabled = false, shake_mode = "timer", shake_decay = 0.9
+    })
+    self.brick_flash_map = {}
 
-function Breakout:buildVictoryConfig(p)
-    local config = {}
-
+    local vc = {}
     if p.victory_condition == "clear_bricks" or p.victory_condition == "clear_all" then
-        config.victory = {type = "clear_all", metric = "bricks_left"}
+        vc.victory = {type = "clear_all", metric = "bricks_left"}
     elseif p.victory_condition == "destroy_count" then
-        config.victory = {type = "threshold", metric = "bricks_destroyed", target = p.destroy_count_target}
+        vc.victory = {type = "threshold", metric = "bricks_destroyed", target = p.destroy_count_target}
     elseif p.victory_condition == "score" then
-        config.victory = {type = "threshold", metric = "score", target = p.score_target}
+        vc.victory = {type = "threshold", metric = "score", target = p.score_target}
     elseif p.victory_condition == "time" then
-        config.victory = {type = "time_survival", metric = "time_elapsed", target = p.time_target}
+        vc.victory = {type = "time_survival", metric = "time_elapsed", target = p.time_target}
     elseif p.victory_condition == "survival" then
-        config.victory = {type = "endless"}
+        vc.victory = {type = "endless"}
     end
-
-    config.loss = {type = "lives_depleted", metric = "lives"}
-    config.check_loss_first = true
-
-    return config
+    vc.loss = {type = "lives_depleted", metric = "lives"}
+    vc.check_loss_first = true
+    self.victory_checker = VictoryCondition:new(vc)
+    self.victory_checker.game = self
 end
 
 function Breakout:init(game_data, cheats, di, variant_override)
@@ -214,106 +109,24 @@ function Breakout:init(game_data, cheats, di, variant_override)
     self.di = di
     self.cheats = cheats or {}
 
-    -- Load all parameters via SchemaLoader (variant → runtime_config → schema defaults)
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.breakout)
-    local p = SchemaLoader.load(self.variant, "breakout_schema", runtimeCfg)
+    self.params = SchemaLoader.load(self.variant, "breakout_schema", runtimeCfg)
 
-    -- Store all parameters from schema
-    -- Paddle parameters
-    self.movement_type = p.movement_type
-    self.paddle_width = p.paddle_width
-    self.paddle_speed = p.paddle_speed
-    self.paddle_friction = p.paddle_friction
-    self.rotation_speed = p.rotation_speed
-    self.jump_distance = p.jump_distance
-    self.jump_cooldown = p.jump_cooldown
-    self.paddle_can_shoot = p.paddle_can_shoot
-    self.paddle_shoot_cooldown = p.paddle_shoot_cooldown
-    self.paddle_shoot_damage = p.paddle_shoot_damage
-    self.paddle_sticky = p.paddle_sticky
-    self.paddle_magnet_range = p.paddle_magnet_range
-    self.paddle_aim_mode = p.paddle_aim_mode
-
-    -- Ball parameters
-    self.ball_count = p.ball_count
-    self.ball_speed = p.ball_speed
-    self.ball_max_speed = p.ball_max_speed
-    self.ball_gravity = p.ball_gravity
-    self.ball_gravity_direction = p.ball_gravity_direction
-    self.ball_speed_increase_per_bounce = p.ball_speed_increase_per_bounce
-    self.ball_homing_strength = p.ball_homing_strength
-    self.ball_phase_through_bricks = p.ball_phase_through_bricks
-    self.ball_trail_length = p.ball_trail_length
-    self.ball_bounce_randomness = p.ball_bounce_randomness
-    self.ball_spawn_angle_variance = p.ball_spawn_angle_variance
-
-    -- Powerup parameters
-    self.powerup_enabled = p.powerup_enabled
-    self.brick_powerup_drop_chance = p.brick_powerup_drop_chance
-    self.powerup_fall_speed = p.powerup_fall_speed
-    self.powerup_size = p.powerup_size
-    self.powerup_duration = p.powerup_duration
-    self.powerup_types = p.powerup_types
-
-    -- Brick parameters
-    self.brick_rows = p.brick_rows
-    self.brick_columns = p.brick_columns
-    self.brick_layout = p.brick_layout
-    self.brick_health = p.brick_health
-    self.brick_shape = p.brick_shape
-    self.brick_radius = p.brick_radius
-    self.brick_collision_image = (p.brick_collision_image ~= "") and p.brick_collision_image or nil
-    self.brick_alpha_threshold = p.brick_alpha_threshold
-    self.brick_fall_enabled = p.brick_fall_enabled
-    self.brick_fall_speed = p.brick_fall_speed
-    self.brick_movement_enabled = p.brick_movement_enabled
-    self.brick_movement_speed = p.brick_movement_speed
-    self.brick_regeneration_enabled = p.brick_regeneration_enabled
-    self.brick_regeneration_time = p.brick_regeneration_time
-    self.bricks_can_overlap = p.bricks_can_overlap
-
-    -- Arena parameters
-    self.ceiling_enabled = p.ceiling_enabled
-    self.bottom_kill_enabled = p.bottom_kill_enabled
-    self.wall_bounce_mode = p.wall_bounce_mode
-    self.obstacles_count = p.obstacles_count
-    self.obstacles_shape = p.obstacles_shape
-    self.obstacles_destructible = p.obstacles_destructible
-
-    -- Scoring parameters
-    self.victory_condition = p.victory_condition
-    self.brick_score_multiplier = p.brick_score_multiplier
-    self.combo_multiplier = p.combo_multiplier
-    self.perfect_clear_bonus = p.perfect_clear_bonus
-    self.extra_ball_score_threshold = p.extra_ball_score_threshold
-    self.destroy_count_target = p.destroy_count_target
-    self.score_target = p.score_target
-    self.time_target = p.time_target
-    self.score_popup_enabled = p.score_popup_enabled
-
-    -- Visual parameters
-    self.particle_effects_enabled = p.particle_effects_enabled
-    self.camera_shake_enabled = p.camera_shake_enabled
-    self.camera_shake_intensity = p.camera_shake_intensity
-    self.brick_flash_on_hit = p.brick_flash_on_hit
-    self.fog_of_war_enabled = p.fog_of_war_enabled
-    self.fog_of_war_radius = p.fog_of_war_radius
-
-    -- Initialize powerup config with overrides
-    self:initPowerupConfig(p, runtimeCfg)
-
-    -- Apply difficulty and cheat modifiers
     self:applyModifiers()
+    self:setupGameState()
+    self:setupPaddle()
+    self:setupComponents()
+    self:setupEntities()
 
-    -- Initialize RNG
+    self.view = BreakoutView:new(self)
+end
+
+function Breakout:setupGameState()
     self.rng = love.math.newRandomGenerator(self.seed or os.time())
-
-    -- Initialize game state
     self.arena_width = 800
     self.arena_height = 600
     self.game_over = false
     self.victory = false
-    
     self.score = 0
     self.combo = 0
     self.max_combo = 0
@@ -322,56 +135,53 @@ function Breakout:init(game_data, cheats, di, variant_override)
     self.balls_lost = 0
     self.last_extra_ball_threshold = 0
     self.time_elapsed = 0
+end
 
-    -- Initialize paddle
+function Breakout:setupPaddle()
     self.paddle = {
         x = self.arena_width / 2,
         y = self.arena_height - 50,
-        width = self.paddle_width,
-        height = PADDLE_HEIGHT,
-        radius = self.paddle_width / 2,
-        vx = 0,
-        vy = 0,
-        angle = 0,
+        width = self.params.paddle_width,
+        height = self.params.paddle_height,
+        radius = self.params.paddle_width / 2,
+        vx = 0, vy = 0, angle = 0,
         jump_cooldown_timer = 0,
         shoot_cooldown_timer = 0,
         sticky_aim_angle = -math.pi / 2
     }
+end
 
-    -- Initialize systems
-    self:initSystems(p)
-    self:initVisualEffects(p)
-
-    -- Initialize game entities
+function Breakout:setupEntities()
     self.balls = {}
     for i = 1, self.ball_count do
         self:spawnBall()
     end
-    
     self.bullets = {}
     self.obstacles = {}
     self:generateObstacles()
     self:generateBricks()
-
-    -- Legacy powerup arrays
     self.powerups = {}
     self.active_powerups = {}
     self.shield_active = false
-
-    -- Metrics
     self.metrics = {
-        bricks_destroyed = 0,
-        balls_lost = 0,
-        max_combo = 0,
-        score = 0,
-        time_elapsed = 0
+        bricks_destroyed = 0, balls_lost = 0,
+        max_combo = 0, score = 0, time_elapsed = 0
     }
-
-    -- Create view
-    self.view = BreakoutView:new(self)
 end
 
 function Breakout:applyModifiers()
+    -- Initialize mutable values from params (these get modified by cheats/powerups)
+    self.ball_speed = self.params.ball_speed
+    self.ball_max_speed = self.params.ball_max_speed
+    self.paddle_speed = self.params.paddle_speed
+    self.paddle_width = self.params.paddle_width
+    self.ball_count = self.params.ball_count
+    self.paddle_can_shoot = self.params.paddle_can_shoot
+    self.paddle_sticky = self.params.paddle_sticky
+    self.ball_phase_through_bricks = self.params.ball_phase_through_bricks
+    self.paddle_magnet_range = self.params.paddle_magnet_range
+    self.paddle_shoot_cooldown = self.params.paddle_shoot_cooldown
+
     -- Apply difficulty_modifier from variant
     if self.variant and self.variant.difficulty_modifier then
         self.ball_speed = self.ball_speed * self.variant.difficulty_modifier
@@ -397,11 +207,8 @@ function Breakout:setPlayArea(width, height)
     local old_width = self.arena_width
     local old_height = self.arena_height
 
-    -- Update arena to match viewport dimensions
     self.arena_width = width
     self.arena_height = height
-    self.viewport_width = width
-    self.viewport_height = height
 
     -- Calculate offset to center bricks (don't scale, just reposition)
     local offset_x = (width - old_width) / 2
@@ -438,17 +245,15 @@ function Breakout:setPlayArea(width, height)
         end
     end
 
-    print("[Breakout] Arena resized from", old_width, "x", old_height, "to", width, "x", height, "| Offset:", offset_x)
 end
 
 function Breakout:spawnBall()
-    local angle = -math.pi / 2 + (self.rng:random() - 0.5) * self.ball_spawn_angle_variance
+    local angle = -math.pi / 2 + (self.rng:random() - 0.5) * self.params.ball_spawn_angle_variance
 
-    -- Phase 12: Use ProjectileSystem to spawn ball
     self.projectile_system:shoot(
         "ball",
         self.paddle.x,
-        self.paddle.y - BALL_RADIUS - 10,
+        self.paddle.y - self.params.ball_radius - 10,
         angle,
         1.0,  -- speed_multiplier
         {
@@ -461,31 +266,30 @@ end
 function Breakout:generateObstacles()
     self.obstacles = {}
 
-    for i = 1, self.obstacles_count do
+    for i = 1, self.params.obstacles_count do
         local size = 40
         local obstacle = {
             x = 100 + self.rng:random() * (self.arena_width - 200),
             y = 150 + self.rng:random() * (self.arena_height * 0.4),
             size = size,
-            shape = self.obstacles_shape,
-            health = self.obstacles_destructible and 3 or math.huge,
-            max_health = self.obstacles_destructible and 3 or math.huge,
+            shape = self.params.obstacles_shape,
+            health = self.params.obstacles_destructible and 3 or math.huge,
+            max_health = self.params.obstacles_destructible and 3 or math.huge,
             alive = true
         }
         table.insert(self.obstacles, obstacle)
     end
 end
 
--- Phase 11: Helper to spawn bricks via EntityController
 function Breakout:addBrick(brick_data)
     local brick = self.entity_controller:spawn("brick", brick_data.x, brick_data.y, {
-        health = brick_data.health or self.brick_health,
-        max_health = brick_data.max_health or self.brick_health,
-        shape = brick_data.shape or self.brick_shape,
-        radius = brick_data.radius or self.brick_radius,
+        health = brick_data.health or self.params.brick_health,
+        max_health = brick_data.max_health or self.params.brick_health,
+        shape = brick_data.shape or self.params.brick_shape,
+        radius = brick_data.radius or self.params.brick_radius,
         collision_image = brick_data.collision_image or self.shared_collision_image_data,
         display_image = brick_data.display_image or self.shared_display_image,
-        alpha_threshold = brick_data.alpha_threshold or self.brick_alpha_threshold
+        alpha_threshold = brick_data.alpha_threshold or self.params.brick_alpha_threshold
     })
 
     if brick and not self:canPlaceBrick(brick) then
@@ -497,53 +301,50 @@ function Breakout:addBrick(brick_data)
 end
 
 function Breakout:generateBricks()
-    -- Phase 11: Clear existing bricks
     self.entity_controller:clear()
     self.bricks = {}  -- Keep legacy array for backward compatibility
 
     -- Load collision/display images once for all bricks (shared)
     self.shared_collision_image_data = nil
     self.shared_display_image = nil
-    if self.brick_collision_image then
-        self.shared_collision_image_data = PNGCollision.loadCollisionImage(self.brick_collision_image)
-        local success, img = pcall(love.graphics.newImage, self.brick_collision_image)
+    if self.params.brick_collision_image and self.params.brick_collision_image ~= "" then
+        self.shared_collision_image_data = PNGCollision.loadCollisionImage(self.params.brick_collision_image)
+        local success, img = pcall(love.graphics.newImage, self.params.brick_collision_image)
         if success and img then
             self.shared_display_image = img
         end
     end
 
-    if self.brick_layout == "grid" then
+    if self.params.brick_layout == "grid" then
         self:generateGridLayout()
-    elseif self.brick_layout == "pyramid" then
+    elseif self.params.brick_layout == "pyramid" then
         self:generatePyramidLayout()
-    elseif self.brick_layout == "circle" then
+    elseif self.params.brick_layout == "circle" then
         self:generateCircleLayout()
-    elseif self.brick_layout == "random" then
+    elseif self.params.brick_layout == "random" then
         self:generateRandomLayout()
-    elseif self.brick_layout == "checkerboard" then
+    elseif self.params.brick_layout == "checkerboard" then
         self:generateCheckerboardLayout()
     else
         -- Default to grid
         self:generateGridLayout()
     end
 
-    -- Phase 11: Sync bricks array with entity controller
     self.bricks = self.entity_controller:getEntities()
 
-    -- Phase 9: Count initial bricks
     self.bricks_left = #self.bricks
 end
 
 function Breakout:generateGridLayout()
-    local total_width = self.brick_columns * (BRICK_WIDTH + BRICK_PADDING)
+    local total_width = self.params.brick_columns * (self.params.brick_width + self.params.brick_padding)
     local start_x = (self.arena_width - total_width) / 2
     local start_y = 60
 
-    for row = 1, self.brick_rows do
-        for col = 1, self.brick_columns do
+    for row = 1, self.params.brick_rows do
+        for col = 1, self.params.brick_columns do
             self:addBrick({
-                x = start_x + (col - 1) * (BRICK_WIDTH + BRICK_PADDING),
-                y = start_y + (row - 1) * (BRICK_HEIGHT + BRICK_PADDING)
+                x = start_x + (col - 1) * (self.params.brick_width + self.params.brick_padding),
+                y = start_y + (row - 1) * (self.params.brick_height + self.params.brick_padding)
             })
         end
     end
@@ -552,19 +353,19 @@ end
 function Breakout:generatePyramidLayout()
     -- Triangle formation - more bricks at top, fewer at bottom (inverted pyramid)
     local start_y = 60
-    local max_cols = self.brick_columns or 10
+    local max_cols = self.params.brick_columns or 10
 
-    for row = 1, self.brick_rows do
+    for row = 1, self.params.brick_rows do
         local cols_this_row = max_cols - (row - 1)
         if cols_this_row < 1 then break end
 
-        local total_width = cols_this_row * (BRICK_WIDTH + BRICK_PADDING)
+        local total_width = cols_this_row * (self.params.brick_width + self.params.brick_padding)
         local start_x = (self.arena_width - total_width) / 2
 
         for col = 1, cols_this_row do
             self:addBrick({
-                x = start_x + (col - 1) * (BRICK_WIDTH + BRICK_PADDING),
-                y = start_y + (row - 1) * (BRICK_HEIGHT + BRICK_PADDING)
+                x = start_x + (col - 1) * (self.params.brick_width + self.params.brick_padding),
+                y = start_y + (row - 1) * (self.params.brick_height + self.params.brick_padding)
             })
         end
     end
@@ -574,7 +375,7 @@ function Breakout:generateCircleLayout()
     -- Concentric circles of bricks
     local center_x = self.arena_width / 2
     local center_y = 200
-    local rings = self.brick_rows or 5
+    local rings = self.params.brick_rows or 5
     local bricks_per_ring = 12
 
     for ring = 1, rings do
@@ -584,8 +385,8 @@ function Breakout:generateCircleLayout()
         for i = 1, bricks_this_ring do
             local angle = (i / bricks_this_ring) * math.pi * 2
             self:addBrick({
-                x = center_x + math.cos(angle) * radius - BRICK_WIDTH / 2,
-                y = center_y + math.sin(angle) * radius - BRICK_HEIGHT / 2
+                x = center_x + math.cos(angle) * radius - self.params.brick_width / 2,
+                y = center_y + math.sin(angle) * radius - self.params.brick_height / 2
             })
         end
     end
@@ -593,7 +394,7 @@ end
 
 function Breakout:generateRandomLayout()
     -- Scattered random placement
-    local brick_count = (self.brick_rows or 5) * (self.brick_columns or 10)
+    local brick_count = (self.params.brick_rows or 5) * (self.params.brick_columns or 10)
     local margin = 40
     local max_attempts = brick_count * 10  -- Prevent infinite loops
     local placed = 0
@@ -602,7 +403,7 @@ function Breakout:generateRandomLayout()
         if placed >= brick_count then break end
 
         local added = self:addBrick({
-            x = margin + self.rng:random() * (self.arena_width - BRICK_WIDTH - margin * 2),
+            x = margin + self.rng:random() * (self.arena_width - self.params.brick_width - margin * 2),
             y = margin + self.rng:random() * (self.arena_height * 0.4)  -- Top 40% of arena
         })
 
@@ -614,17 +415,17 @@ end
 
 function Breakout:generateCheckerboardLayout()
     -- Checkerboard pattern with gaps
-    local total_width = self.brick_columns * (BRICK_WIDTH + BRICK_PADDING)
+    local total_width = self.params.brick_columns * (self.params.brick_width + self.params.brick_padding)
     local start_x = (self.arena_width - total_width) / 2
     local start_y = 60
 
-    for row = 1, self.brick_rows do
-        for col = 1, self.brick_columns do
+    for row = 1, self.params.brick_rows do
+        for col = 1, self.params.brick_columns do
             -- Skip every other brick in checkerboard pattern
             if (row + col) % 2 == 0 then
                 self:addBrick({
-                    x = start_x + (col - 1) * (BRICK_WIDTH + BRICK_PADDING),
-                    y = start_y + (row - 1) * (BRICK_HEIGHT + BRICK_PADDING)
+                    x = start_x + (col - 1) * (self.params.brick_width + self.params.brick_padding),
+                    y = start_y + (row - 1) * (self.params.brick_height + self.params.brick_padding)
                 })
             end
         end
@@ -633,11 +434,10 @@ end
 
 function Breakout:canPlaceBrick(new_brick)
     -- If overlap is allowed, always allow placement
-    if self.bricks_can_overlap then
+    if self.params.bricks_can_overlap then
         return true
     end
 
-    -- Phase 11: Check if new brick overlaps with any existing brick from EntityController
     local existing_bricks = self.entity_controller:getEntities()
     for _, existing in ipairs(existing_bricks) do
         if existing ~= new_brick and existing.alive then
@@ -651,16 +451,15 @@ function Breakout:canPlaceBrick(new_brick)
 end
 
 function Breakout:updateBricks(dt)
-    -- Phase 11: Update from EntityController
     self.bricks = self.entity_controller:getEntities()
 
     for _, brick in ipairs(self.bricks) do
         -- Falling bricks
-        if self.brick_fall_enabled and brick.alive then
-            local new_y = brick.y + self.brick_fall_speed * dt
+        if self.params.brick_fall_enabled and brick.alive then
+            local new_y = brick.y + self.params.brick_fall_speed * dt
 
             -- Check collision with other bricks if overlap is disabled
-            if not self.bricks_can_overlap then
+            if not self.params.bricks_can_overlap then
                 local collides = false
                 for _, other in ipairs(self.bricks) do
                     if other ~= brick and other.alive then
@@ -684,16 +483,16 @@ function Breakout:updateBricks(dt)
         end
 
         -- Moving bricks (horizontal drift)
-        if self.brick_movement_enabled and brick.alive then
+        if self.params.brick_movement_enabled and brick.alive then
             -- Initialize velocity if not set
             if brick.vx == 0 then
-                brick.vx = self.brick_movement_speed * (self.rng:random() < 0.5 and 1 or -1)
+                brick.vx = self.params.brick_movement_speed * (self.rng:random() < 0.5 and 1 or -1)
             end
 
             local new_x = brick.x + brick.vx * dt
 
             -- Check collision with other bricks if overlap is disabled
-            if not self.bricks_can_overlap then
+            if not self.params.bricks_can_overlap then
                 local collides = false
                 for _, other in ipairs(self.bricks) do
                     if other ~= brick and other.alive then
@@ -720,12 +519,12 @@ function Breakout:updateBricks(dt)
         end
 
         -- Regenerating bricks
-        if self.brick_regeneration_enabled and not brick.alive then
+        if self.params.brick_regeneration_enabled and not brick.alive then
             brick.regen_timer = brick.regen_timer + dt
 
-            if brick.regen_timer >= self.brick_regeneration_time then
+            if brick.regen_timer >= self.params.brick_regeneration_time then
                 -- Check if regeneration position is clear if overlap is disabled
-                if not self.bricks_can_overlap then
+                if not self.params.bricks_can_overlap then
                     local space_clear = true
                     for _, other in ipairs(self.bricks) do
                         if other ~= brick and other.alive then
@@ -776,7 +575,6 @@ function Breakout:updateGameLogic(dt)
 
     -- NOTE: time_elapsed is already incremented in BaseGame:updateBase, don't double-increment!
 
-    -- Phase 12: Update ProjectileSystem (balls)
     local game_bounds = {
         x_min = 0,
         x_max = self.arena_width,
@@ -785,21 +583,18 @@ function Breakout:updateGameLogic(dt)
     }
     self.projectile_system:update(dt, game_bounds)
 
-    -- Phase 12: Sync balls array with ProjectileSystem
     self.balls = self.projectile_system:getProjectiles()
 
-    -- Phase 15: Update PowerupSystem
     local game_bounds = {width = self.arena_width, height = self.arena_height}
     self.powerup_system:update(dt, self.paddle, game_bounds)
 
-    -- Phase 15: Sync arrays for view compatibility
     self.powerups = self.powerup_system:getPowerupsForRendering()
     self.active_powerups = self.powerup_system:getActivePowerupsForHUD()
 
-    -- Update visual effects (Phase 11 - now using VisualEffects component)
+    -- Update visual effects
     self.visual_effects:update(dt)
 
-    -- Update brick flash map (Phase 11)
+    -- Update brick flash map
     for brick, flash_timer in pairs(self.brick_flash_map) do
         self.brick_flash_map[brick] = flash_timer - dt
         if self.brick_flash_map[brick] <= 0 then
@@ -807,13 +602,12 @@ function Breakout:updateGameLogic(dt)
         end
     end
 
-    -- Phase 6: Update score popups via PopupManager
     self.popup_manager:update(dt)
 
     -- Update paddle
     self:updatePaddle(dt)
 
-    -- Update sticky paddle aim (Phase 9)
+    -- Update sticky paddle aim
     if self.paddle_sticky then
         if love.keyboard.isDown('a') or love.keyboard.isDown('left') then
             self.paddle.sticky_aim_angle = self.paddle.sticky_aim_angle - 2.0 * dt
@@ -834,14 +628,14 @@ function Breakout:updateGameLogic(dt)
     for i = #self.balls, 1, -1 do
         local ball = self.balls[i]
         if ball.active then
-            -- Emit ball trail particles (Phase 11 - VisualEffects component)
+            -- Emit ball trail particles
             self.visual_effects:emitBallTrail(ball.x, ball.y, ball.vx, ball.vy)
 
             self:updateBall(ball, dt)
         end
     end
 
-    -- Update bullets (Phase 9)
+    -- Update bullets
     for i = #self.bullets, 1, -1 do
         local bullet = self.bullets[i]
         bullet.y = bullet.y + bullet.vy * dt
@@ -853,21 +647,20 @@ function Breakout:updateGameLogic(dt)
             -- Check bullet-brick collision
             for _, brick in ipairs(self.bricks) do
                 if brick.alive and self:checkBulletBrickCollision(bullet, brick) then
-                    brick.health = brick.health - self.paddle_shoot_damage
+                    brick.health = brick.health - self.params.paddle_shoot_damage
                     if brick.health <= 0 then
                         brick.alive = false
                         self.bricks_destroyed = self.bricks_destroyed + 1
-                        self.bricks_left = self.bricks_left - 1  -- Phase 9
+                        self.bricks_left = self.bricks_left - 1
 
-                        -- Phase 15: Spawn power-up via PowerupSystem
                         self.powerup_system:spawn(brick.x + brick.width / 2, brick.y + brick.height / 2)
 
-                        -- Award score for bullet kill (Phase 10 - no combo bonus for bullets)
-                        local points = self.brick_score_multiplier
+                        -- Award score for bullet kill (no combo bonus for bullets)
+                        local points = self.params.brick_score_multiplier
                         self.score = self.score + points
 
                         -- Spawn score popup (white for normal scoring)
-                        if self.score_popup_enabled then
+                        if self.params.score_popup_enabled then
                             self.popup_manager:add(brick.x + brick.width / 2, brick.y, "+" .. math.floor(points), {1, 1, 1})
                         end
 
@@ -881,7 +674,7 @@ function Breakout:updateGameLogic(dt)
         end
     end
 
-    -- Update bricks (Phase 8: falling, moving, regenerating)
+    -- Update bricks (falling, moving, regenerating)
     self:updateBricks(dt)
 
     -- Check if all balls are lost
@@ -896,7 +689,6 @@ function Breakout:updateGameLogic(dt)
         self.balls_lost = self.balls_lost + 1
         self.combo = 0  -- Reset combo on ball lost
 
-        -- Phase 10: Use LivesHealthSystem for damage
         self.health_system:takeDamage(1, "ball_lost")
         self.lives = self.health_system.lives  -- Sync for HUD/VictoryCondition
 
@@ -908,7 +700,7 @@ function Breakout:updateGameLogic(dt)
         end
     end
 
-    -- Check victory conditions (Phase 10)
+    -- Check victory conditions
     self:checkVictoryConditions()
 
     -- Update metrics
@@ -946,14 +738,14 @@ end
 
 function Breakout:updateBall(ball, dt)
     -- Apply directional gravity if enabled
-    if self.ball_gravity ~= 0 then
-        local gravity_rad = math.rad(self.ball_gravity_direction)
-        ball.vx = ball.vx + math.cos(gravity_rad) * self.ball_gravity * dt
-        ball.vy = ball.vy + math.sin(gravity_rad) * self.ball_gravity * dt
+    if self.params.ball_gravity ~= 0 then
+        local gravity_rad = math.rad(self.params.ball_gravity_direction)
+        ball.vx = ball.vx + math.cos(gravity_rad) * self.params.ball_gravity * dt
+        ball.vy = ball.vy + math.sin(gravity_rad) * self.params.ball_gravity * dt
     end
 
     -- Apply homing toward nearest brick
-    if self.ball_homing_strength > 0 then
+    if self.params.ball_homing_strength > 0 then
         local nearest_brick = self:findNearestBrick(ball.x, ball.y)
         if nearest_brick then
             local dx = nearest_brick.x - ball.x
@@ -961,19 +753,19 @@ function Breakout:updateBall(ball, dt)
             local dist = math.sqrt(dx * dx + dy * dy)
             if dist > 0 then
                 -- Apply homing force
-                local homing_force = self.ball_homing_strength * 50
+                local homing_force = self.params.ball_homing_strength * 50
                 ball.vx = ball.vx + (dx / dist) * homing_force * dt
                 ball.vy = ball.vy + (dy / dist) * homing_force * dt
             end
         end
     end
 
-    -- Update magnet immunity timer (Phase 13 - prevents magnet pulling ball after sticky release)
+    -- Update magnet immunity timer
     if ball.magnet_immunity_timer and ball.magnet_immunity_timer > 0 then
         ball.magnet_immunity_timer = ball.magnet_immunity_timer - dt
     end
 
-    -- Apply magnet paddle force (Phase 9)
+    -- Apply magnet paddle force
     -- Only attract when ball is moving downward (vy > 0) and not immune
     local magnet_immune = ball.magnet_immunity_timer and ball.magnet_immunity_timer > 0
     if self.paddle_magnet_range > 0 and not (ball.stuck and self.paddle_sticky) and ball.vy > 0 and not magnet_immune then
@@ -989,7 +781,7 @@ function Breakout:updateBall(ball, dt)
         end
     end
 
-    -- Handle sticky paddle (Phase 9)
+    -- Handle sticky paddle
     if ball.stuck and self.paddle_sticky then
         -- Ball moves with paddle
         ball.x = self.paddle.x + ball.stuck_offset_x
@@ -1002,15 +794,15 @@ function Breakout:updateBall(ball, dt)
     ball.y = ball.y + ball.vy * dt
 
     -- Update trail (store position history)
-    if self.ball_trail_length > 0 then
+    if self.params.ball_trail_length > 0 then
         table.insert(ball.trail, 1, {x = ball.x, y = ball.y})
         -- Keep trail at max length
-        while #ball.trail > self.ball_trail_length do
+        while #ball.trail > self.params.ball_trail_length do
             table.remove(ball.trail)
         end
     end
 
-    -- Wall collisions (left, right) - Phase 9 wall bounce modes
+    -- Wall collisions (left, right)
     if ball.x - ball.radius < 0 then
         ball.x = ball.radius
         self:applyWallBounce(ball, 'vx')
@@ -1019,9 +811,9 @@ function Breakout:updateBall(ball, dt)
         self:applyWallBounce(ball, 'vx')
     end
 
-    -- Top boundary - Phase 9 ceiling
+    -- Top boundary
     if ball.y - ball.radius < 0 then
-        if self.ceiling_enabled then
+        if self.params.ceiling_enabled then
             ball.y = ball.radius
             self:applyWallBounce(ball, 'vy')
         else
@@ -1031,10 +823,10 @@ function Breakout:updateBall(ball, dt)
         end
     end
 
-    -- Bottom boundary - Phase 9 bottom kill
+    -- Bottom boundary
     if ball.y - ball.radius > self.arena_height then
-        if self.bottom_kill_enabled then
-            -- Check shield power-up (Phase 13)
+        if self.params.bottom_kill_enabled then
+            -- Check shield power-up
             if self.shield_active then
                 -- Shield blocks one miss
                 self.shield_active = false
@@ -1054,20 +846,20 @@ function Breakout:updateBall(ball, dt)
     -- Paddle collision
     if self:checkBallPaddleCollision(ball) then
         if self.paddle_sticky and not ball.stuck then
-            -- Sticky paddle - catch the ball (Phase 9)
+            -- Sticky paddle - catch the ball
             ball.stuck = true
             ball.stuck_offset_x = ball.x - self.paddle.x
             ball.stuck_offset_y = ball.y - self.paddle.y
             ball.vx = 0
             ball.vy = 0
 
-            -- Reset combo when ball touches paddle (Phase 10)
+            -- Reset combo when ball touches paddle
             self.combo = 0
         else
             -- Position ball above paddle
             ball.y = self.paddle.y - ball.radius - self.paddle.height / 2
 
-            if self.paddle_aim_mode == "position" then
+            if self.params.paddle_aim_mode == "position" then
                 -- Position mode: Calculate angle based purely on hit position (like sticky paddle launch)
                 local offset_x = ball.x - self.paddle.x
                 local max_offset = self.paddle.width / 2
@@ -1087,14 +879,14 @@ function Breakout:updateBall(ball, dt)
                 ball.vx = ball.vx + hit_pos * 100
             end
 
-            -- Reset combo when ball touches paddle (Phase 10)
+            -- Reset combo when ball touches paddle
             self.combo = 0
 
             -- Apply bounce randomness after paddle hit
-            if self.ball_bounce_randomness > 0 then
+            if self.params.ball_bounce_randomness > 0 then
                 local current_speed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
                 local current_angle = math.atan2(ball.vy, ball.vx)
-                local angle_variance = (self.rng:random() - 0.5) * self.ball_bounce_randomness * math.pi
+                local angle_variance = (self.rng:random() - 0.5) * self.params.ball_bounce_randomness * math.pi
                 local new_angle = current_angle + angle_variance
                 ball.vx = math.cos(new_angle) * current_speed
                 ball.vy = math.sin(new_angle) * current_speed
@@ -1118,17 +910,16 @@ function Breakout:updateBall(ball, dt)
             if brick.health <= 0 then
                 brick.alive = false
                 self.bricks_destroyed = self.bricks_destroyed + 1
-                self.bricks_left = self.bricks_left - 1  -- Phase 9
+                self.bricks_left = self.bricks_left - 1
 
-                -- Phase 15: Spawn power-up via PowerupSystem
                 self.powerup_system:spawn(brick.x + brick.width / 2, brick.y + brick.height / 2)
 
-                -- Visual effects: brick destruction particles + camera shake (Phase 11 - VisualEffects component)
+                -- Visual effects: brick destruction particles + camera shake
                 local brick_color = {1, 0.5 + (brick.max_health - 1) * 0.1, 0}
                 self.visual_effects:emitBrickDestruction(brick.x + brick.width / 2, brick.y + brick.height / 2, brick_color)
-                self.visual_effects:shake(0.15, self.camera_shake_intensity, "timer")
+                self.visual_effects:shake(0.15, self.params.camera_shake_intensity, "timer")
 
-                -- Award score with combo multiplier (Phase 10)
+                -- Award score with combo multiplier
                 self.combo = self.combo + 1
                 if self.combo > self.max_combo then
                     self.max_combo = self.combo
@@ -1136,12 +927,12 @@ function Breakout:updateBall(ball, dt)
 
                 -- Calculate points: base * (1 + combo * combo_multiplier)
                 -- Example: combo=5, combo_multiplier=0.5 -> 1 + 5*0.5 = 3.5x multiplier
-                local combo_bonus = 1 + (self.combo * self.combo_multiplier)
-                local points = self.brick_score_multiplier * combo_bonus
+                local combo_bonus = 1 + (self.combo * self.params.combo_multiplier)
+                local points = self.params.brick_score_multiplier * combo_bonus
                 self.score = self.score + points
 
                 -- Spawn score popup
-                if self.score_popup_enabled then
+                if self.params.score_popup_enabled then
                     local popup_color = {1, 1, 1}  -- White for normal scoring
                     -- Yellow for combo milestones at 5/10/15
                     if self.combo == 5 or self.combo == 10 or self.combo == 15 then
@@ -1150,18 +941,18 @@ function Breakout:updateBall(ball, dt)
                     self.popup_manager:add(brick.x + brick.width / 2, brick.y, "+" .. math.floor(points), popup_color)
                 end
 
-                -- Check for extra ball threshold (Phase 10)
+                -- Check for extra ball threshold
                 self:checkExtraBallThreshold()
             else
-                -- Brick damaged but not destroyed: flash effect (Phase 11)
-                if self.brick_flash_on_hit then
+                -- Brick damaged but not destroyed: flash effect
+                if self.params.brick_flash_on_hit then
                     self.brick_flash_map[brick] = 0.1  -- Flash for 100ms
                 end
             end
 
             -- Check if ball should phase through or bounce
             if ball.pierce_count and ball.pierce_count > 0 then
-                -- Phase through - reduce pierce count but don't bounce
+                -- Reduce pierce count but don't bounce
                 ball.pierce_count = ball.pierce_count - 1
             else
                 -- Bounce based on brick shape
@@ -1273,9 +1064,9 @@ function Breakout:updateBall(ball, dt)
             end
 
             -- Increase ball speed if enabled
-            if self.ball_speed_increase_per_bounce > 0 then
+            if self.params.ball_speed_increase_per_bounce > 0 then
                 local current_speed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
-                local new_speed = math.min(current_speed + self.ball_speed_increase_per_bounce, self.ball_max_speed)
+                local new_speed = math.min(current_speed + self.params.ball_speed_increase_per_bounce, self.ball_max_speed)
                 if current_speed > 0 then
                     local scale = new_speed / current_speed
                     ball.vx = ball.vx * scale
@@ -1284,10 +1075,10 @@ function Breakout:updateBall(ball, dt)
             end
 
             -- Apply bounce randomness after brick hit
-            if self.ball_bounce_randomness > 0 and not (ball.pierce_count and ball.pierce_count > 0) then
+            if self.params.ball_bounce_randomness > 0 and not (ball.pierce_count and ball.pierce_count > 0) then
                 local current_speed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
                 local current_angle = math.atan2(ball.vy, ball.vx)
-                local angle_variance = (self.rng:random() - 0.5) * self.ball_bounce_randomness * math.pi
+                local angle_variance = (self.rng:random() - 0.5) * self.params.ball_bounce_randomness * math.pi
                 local new_angle = current_angle + angle_variance
                 ball.vx = math.cos(new_angle) * current_speed
                 ball.vy = math.sin(new_angle) * current_speed
@@ -1300,14 +1091,14 @@ function Breakout:updateBall(ball, dt)
         end
     end
 
-    -- Obstacle collisions (Phase 9)
+    -- Obstacle collisions
     for _, obstacle in ipairs(self.obstacles) do
         if obstacle.alive and self:checkBallObstacleCollision(ball, obstacle) then
             -- Bounce ball off obstacle
             ball.vy = -ball.vy
 
             -- Damage obstacle if destructible
-            if self.obstacles_destructible then
+            if self.params.obstacles_destructible then
                 obstacle.health = obstacle.health - 1
                 if obstacle.health <= 0 then
                     obstacle.alive = false
@@ -1402,13 +1193,13 @@ function Breakout:checkBallObstacleCollision(ball, obstacle)
 end
 
 function Breakout:applyWallBounce(ball, axis)
-    if self.wall_bounce_mode == "damped" then
+    if self.params.wall_bounce_mode == "damped" then
         -- Damped bounce - lose 10% energy per wall bounce (not compound, stays playable)
         ball[axis] = -ball[axis] * 0.9
-    elseif self.wall_bounce_mode == "sticky" then
+    elseif self.params.wall_bounce_mode == "sticky" then
         -- Sticky wall - ball loses significant energy but doesn't crawl
         ball[axis] = -ball[axis] * 0.6
-    elseif self.wall_bounce_mode == "wrap" then
+    elseif self.params.wall_bounce_mode == "wrap" then
         -- Asteroids-style wrap (not implemented for simplicity - would need repositioning logic)
         ball[axis] = -ball[axis]
     else
@@ -1417,13 +1208,13 @@ function Breakout:applyWallBounce(ball, axis)
     end
 
     -- Apply bounce randomness (rotate velocity by random angle)
-    if self.ball_bounce_randomness > 0 then
+    if self.params.ball_bounce_randomness > 0 then
         -- Get current angle and speed
         local current_speed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
         local current_angle = math.atan2(ball.vy, ball.vx)
 
         -- Add random angle variance (randomness is in radians)
-        local angle_variance = (self.rng:random() - 0.5) * self.ball_bounce_randomness * math.pi
+        local angle_variance = (self.rng:random() - 0.5) * self.params.ball_bounce_randomness * math.pi
         local new_angle = current_angle + angle_variance
 
         -- Set velocity to new angle with SAME speed
@@ -1434,7 +1225,7 @@ end
 
 function Breakout:keypressed(key)
     if key == "space" then
-        -- Shooting (Phase 9)
+        -- Shooting
         if self.paddle_can_shoot and self.paddle.shoot_cooldown_timer <= 0 then
             local bullet = {
                 x = self.paddle.x,
@@ -1447,7 +1238,7 @@ function Breakout:keypressed(key)
             self.paddle.shoot_cooldown_timer = self.paddle_shoot_cooldown
         end
 
-        -- Release sticky ball (Phase 9)
+        -- Release sticky ball
         if self.paddle_sticky then
             for _, ball in ipairs(self.balls) do
                 if ball.stuck then
@@ -1481,29 +1272,25 @@ function Breakout:checkBulletBrickCollision(bullet, brick)
 end
 
 function Breakout:checkExtraBallThreshold()
-    -- Phase 10: Use LivesHealthSystem for extra life awards
     if self.health_system:checkExtraLifeAward(self.score) then
         self.lives = self.health_system.lives  -- Sync for HUD/VictoryCondition
 
         -- Spawn green popup for extra life
-        if self.score_popup_enabled then
+        if self.params.score_popup_enabled then
             self.popup_manager:add(self.arena_width / 2, self.arena_height / 2, "EXTRA LIFE!", {0, 1, 0})
         end
     end
 end
 
 function Breakout:checkVictoryConditions()
-    -- Phase 9: Use VictoryCondition component
-    print("DEBUG VICTORY CHECK: bricks_left=" .. tostring(self.bricks_left) .. ", balls=" .. tostring(#self.balls))
     local result = self.victory_checker:check()
     if result then
-        print("DEBUG VICTORY RESULT: " .. tostring(result))
         -- Award perfect clear bonus if all bricks cleared with no balls lost
-        if result == "victory" and (self.victory_condition == "clear_bricks" or self.victory_condition == "clear_all") then
-            if self.balls_lost == 0 and self.perfect_clear_bonus > 0 then
-                self.score = self.score + self.perfect_clear_bonus
-                if self.score_popup_enabled then
-                    self.popup_manager:add(self.arena_width / 2, self.arena_height / 2, "PERFECT CLEAR! +" .. self.perfect_clear_bonus, {0, 1, 0})
+        if result == "victory" and (self.params.victory_condition == "clear_bricks" or self.params.victory_condition == "clear_all") then
+            if self.balls_lost == 0 and self.params.perfect_clear_bonus > 0 then
+                self.score = self.score + self.params.perfect_clear_bonus
+                if self.params.score_popup_enabled then
+                    self.popup_manager:add(self.arena_width / 2, self.arena_height / 2, "PERFECT CLEAR! +" .. self.params.perfect_clear_bonus, {0, 1, 0})
                 end
             end
         end
@@ -1517,7 +1304,6 @@ function Breakout:checkComplete()
     return self.victory or self.game_over
 end
 
--- Phase 11: Brick hit callback (separate method to avoid 60-upvalue limit)
 function Breakout:onBrickHit(brick, ball)
     brick.health = brick.health - 1
     if brick.health <= 0 then
@@ -1527,9 +1313,7 @@ function Breakout:onBrickHit(brick, ball)
     end
 end
 
--- Phase 15: Powerup hooks (separate methods to avoid 60-upvalue limit)
 function Breakout:onPowerupCollect(powerup)
-    print("[Breakout] Collected power-up:", powerup.type)
 end
 
 function Breakout:applyPowerupEffect(powerup_type, effect, config)
@@ -1637,7 +1421,6 @@ function Breakout:applyPowerupEffect(powerup_type, effect, config)
 end
 
 function Breakout:removePowerupEffect(powerup_type, effect)
-    print("[Breakout] Removing power-up effect:", powerup_type)
 
     if powerup_type == "paddle_extend" or powerup_type == "paddle_shrink" then
         self.paddle.width = effect.original_width

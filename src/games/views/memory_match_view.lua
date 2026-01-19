@@ -4,9 +4,7 @@ local MemoryMatchView = Object:extend('MemoryMatchView')
 
 function MemoryMatchView:init(game_state, variant)
     self.game = game_state
-    self.variant = variant -- Store variant data for future use (Phase 1.3)
-    -- NOTE: In Phase 2, card icons will be loaded from variant.sprite_set
-    -- e.g., "icons_1" (classic), "icons_2" (animals), "icons_3" (gems), "icons_4" (tech)
+    self.variant = variant
     self.CARD_WIDTH = game_state.CARD_WIDTH or 60
     self.CARD_HEIGHT = game_state.CARD_HEIGHT or 80
     self.CARD_SPACING = game_state.CARD_SPACING or 10
@@ -41,11 +39,11 @@ function MemoryMatchView:draw()
     love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
 
     -- Distraction elements (if enabled)
-    if game.distraction_elements then
+    if game.params.distraction_elements then
         self:drawDistractionParticles()
     end
 
-    -- Phase 1.6 & 2.3: Use variant palette if available
+    -- Use variant palette if available
     local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local card_sprite_fallback = game.data.icon_sprite or "game_freecell-0"
     local paletteManager = self.di and self.di.paletteManager
@@ -53,16 +51,16 @@ function MemoryMatchView:draw()
     -- Get mouse position for fog of war (use tracked position from game, not screen position)
     local mouse_x, mouse_y = game.mouse_x, game.mouse_y
 
-    -- Phase 2.3: Draw cards (sprite or fallback)
+    -- Draw cards
     for i, card in ipairs(game.cards) do
         -- Skip matched cards in gravity mode (they disappear)
-        if game.gravity_enabled and game.matched_pairs[card.value] then
+        if game.params.gravity_enabled and game.matched_pairs[card.value] then
             goto continue
         end
 
         -- Use physics position if gravity enabled, grid position otherwise
         local x, y
-        if game.gravity_enabled then
+        if game.params.gravity_enabled then
             x = card.x
             y = card.y
         else
@@ -74,16 +72,16 @@ function MemoryMatchView:draw()
 
         -- Card rotation effect (separate from flip animation)
         local rotation = 0
-        if game.card_rotation and not game.memorize_phase then
+        if game.params.card_rotation and not game.memorize_phase then
             rotation = (love.timer.getTime() + i * 0.3) * 0.5
         end
-        if game.spinning_cards and not game.memorize_phase then
+        if game.params.spinning_cards and not game.memorize_phase then
             rotation = love.timer.getTime() * 3 + i * 0.5
         end
 
         -- Shuffle animation (only in non-gravity mode)
         local draw_x, draw_y = x, y
-        if not game.gravity_enabled and game.is_shuffling and game.shuffle_start_positions and game.shuffle_start_positions[i] then
+        if not game.params.gravity_enabled and game.is_shuffling and game.shuffle_start_positions and game.shuffle_start_positions[i] then
             local progress = math.min(1, game.shuffle_animation_timer / game.shuffle_animation_duration)
             local start_x = game.shuffle_start_positions[i].x
             local start_y = game.shuffle_start_positions[i].y
@@ -195,7 +193,6 @@ function MemoryMatchView:draw()
         ::continue::
     end
     
-    -- Standard HUD (Phase 8)
     game.hud:draw(game.game_width, game.game_height)
 
     -- Additional game-specific stats (below standard HUD)
@@ -215,7 +212,7 @@ function MemoryMatchView:draw()
         end
 
         -- Perfect matches (if enabled)
-        if game.perfect_bonus > 0 and game.metrics.perfect > 0 then
+        if game.params.perfect_bonus > 0 and game.metrics.perfect > 0 then
             love.graphics.setColor(0.5, 1, 0.5)
             love.graphics.print("Perfect: " .. game.metrics.perfect, lx, hud_y, 0, s, s)
             hud_y = hud_y + 18
@@ -223,7 +220,7 @@ function MemoryMatchView:draw()
         end
 
         -- Time remaining (if time limit)
-        if game.time_limit > 0 then
+        if game.params.time_limit > 0 then
             love.graphics.setColor(game.time_remaining < 10 and {1, 0.3, 0.3} or {1, 1, 0.5})
             love.graphics.print("Time Left: " .. string.format("%.1f", game.time_remaining), lx, hud_y, 0, s, s)
             hud_y = hud_y + 18
@@ -231,8 +228,8 @@ function MemoryMatchView:draw()
         end
 
         -- Move limit
-        if game.move_limit > 0 then
-            local moves_left = game.move_limit - game.moves_made
+        if game.params.move_limit > 0 then
+            local moves_left = game.params.move_limit - game.moves_made
             love.graphics.setColor(moves_left < 5 and {1, 0.3, 0.3} or {1, 1, 1})
             love.graphics.print("Moves Left: " .. moves_left, lx, hud_y, 0, s, s)
             hud_y = hud_y + 18
@@ -240,7 +237,7 @@ function MemoryMatchView:draw()
         end
 
         -- Combo counter
-        if game.combo_multiplier > 0 and game.current_combo > 0 then
+        if game.params.combo_multiplier > 0 and game.current_combo > 0 then
             love.graphics.setColor(0.2, 1, 0.2)
             love.graphics.print("Combo: x" .. game.current_combo, lx, hud_y, 0, s, s)
             hud_y = hud_y + 18
@@ -248,10 +245,10 @@ function MemoryMatchView:draw()
         end
 
         -- Chain requirement
-        if game.chain_requirement > 0 and game.chain_target then
+        if game.params.chain_requirement > 0 and game.chain_target then
             love.graphics.setColor(1, 1, 0.2)
             love.graphics.print("Find: " .. game.chain_target, lx, hud_y, 0, s, s)
-            love.graphics.print("Chain: " .. game.chain_progress .. "/" .. game.chain_requirement, lx, hud_y + 15, 0, s * 0.8, s * 0.8)
+            love.graphics.print("Chain: " .. game.chain_progress .. "/" .. game.params.chain_requirement, lx, hud_y + 15, 0, s * 0.8, s * 0.8)
             hud_y = hud_y + 35
             love.graphics.setColor(1, 1, 1)
         end

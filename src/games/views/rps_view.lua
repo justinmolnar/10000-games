@@ -10,20 +10,12 @@ function RPSView:draw()
     local w = self.game.viewport_width or love.graphics.getWidth()
     local h = self.game.viewport_height or love.graphics.getHeight()
 
-    -- Background
     love.graphics.setColor(0.15, 0.1, 0.15)
     love.graphics.rectangle('fill', 0, 0, w, h)
 
-    -- Visual effects: screen flash + particles (Phase 3 - VisualEffects component)
     self.game.visual_effects:drawScreenFlash(w, h)
-
-    -- Phase 6: Draw score popups via PopupManager
     self.game.popup_manager:draw()
-
-    -- Draw particles (Phase 3 - VisualEffects component)
     self.game.visual_effects:drawParticles()
-
-    -- Standard HUD (Phase 8)
     self.game.hud:draw(w, h)
 
     -- Title
@@ -35,7 +27,6 @@ function RPSView:draw()
     love.graphics.setColor(0.5, 1, 0.5)
     love.graphics.print("Player: " .. self.game.player_wins, 20, 110)
 
-    -- Phase 6 completion: Multiple opponents display
     if self.game.num_opponents > 1 then
         love.graphics.setColor(1, 0.5, 0.5)
         love.graphics.print("Opponents:", 20, 130)
@@ -61,24 +52,21 @@ function RPSView:draw()
     love.graphics.print("Rounds: " .. self.game.rounds_played, 20, 180)
     love.graphics.print("Max Streak: " .. self.game.max_win_streak, 20, 200)
 
-    -- Phase 6 completion: Lives display
     local y_offset = 260
     if self.game.lives < 999 then
         love.graphics.print("Lives: " .. self.game.lives, 20, y_offset)
         y_offset = y_offset + 20
     end
 
-    -- Phase 6 completion: Time limit display
-    if self.game.victory_condition == "time" then
-        local time_left = math.max(0, self.game.time_limit - self.game.time_elapsed)
+    if self.game.params.victory_condition == "time" then
+        local time_left = math.max(0, self.game.params.time_limit - self.game.time_elapsed)
         love.graphics.setColor(time_left < 10 and {1, 0, 0} or {1, 1, 1})
         love.graphics.print("Time: " .. math.floor(time_left) .. "s", 20, y_offset)
         y_offset = y_offset + 20
         love.graphics.setColor(1, 1, 1)
     end
 
-    -- Phase 6 completion: Statistics display
-    if self.game.show_statistics then
+    if self.game.params.show_statistics then
         local total = self.game.player_wins + self.game.ai_wins + self.game.ties
         if total > 0 then
             love.graphics.setColor(0.7, 0.7, 0.7)
@@ -87,8 +75,7 @@ function RPSView:draw()
         end
     end
 
-    -- Phase 6 completion: Special round indicator
-    -- Show current_special_round during waiting, last_special_round during result display
+    -- Special round indicator
     local special_to_show = nil
     if self.game.waiting_for_input and self.game.current_special_round then
         special_to_show = self.game.current_special_round
@@ -119,16 +106,14 @@ function RPSView:draw()
         love.graphics.setColor(1, 1, 1)
     end
 
-    -- Phase 6 completion: AI pattern hint
     if self.game.show_ai_pattern_hint then
         love.graphics.setColor(1, 0.7, 0.3)
-        love.graphics.print("AI Pattern: " .. self.game.ai_pattern, 20, y_offset)
+        love.graphics.print("AI Pattern: " .. self.game.params.ai_pattern, 20, y_offset)
         y_offset = y_offset + 20
         love.graphics.setColor(1, 1, 1)
     end
 
-    -- Phase 6 completion: History display
-    if self.game.show_history_display and #self.game.throw_history > 0 then
+    if self.game.params.show_history_display and #self.game.throw_history > 0 then
         love.graphics.setColor(0.6, 0.6, 0.6)
         love.graphics.print("History:", w - 200, 20)
         for i, throw in ipairs(self.game.throw_history) do
@@ -145,8 +130,7 @@ function RPSView:draw()
         love.graphics.setColor(1, 1, 1)
     end
 
-    -- Phase 6 completion: Double hands mode UI
-    if self.game.hands_mode == "double" then
+    if self.game.params.hands_mode == "double" then
         local center_x = w / 2
         if self.game.phase == "selection" then
             love.graphics.setColor(1, 1, 0)
@@ -162,13 +146,12 @@ function RPSView:draw()
             love.graphics.print("[1] Keep: " .. (self.game.player_left_hand or ""):upper(), center_x - 150, h - 70)
             love.graphics.print("[2] Keep: " .. (self.game.player_right_hand or ""):upper(), center_x + 20, h - 70)
 
-            -- Phase 6 completion: Show opponent's hands if enabled
-            if self.game.show_opponent_hands and self.game.ai_left_hand and self.game.ai_right_hand then
+            if self.game.params.show_opponent_hands and self.game.ai_left_hand and self.game.ai_right_hand then
                 love.graphics.setColor(1, 0.7, 0.7)
                 love.graphics.print("AI Hands: " .. self.game.ai_left_hand:upper() .. " | " .. self.game.ai_right_hand:upper(), center_x - 100, h - 45, 0, 0.9, 0.9)
             end
 
-            if self.game.time_per_removal > 0 then
+            if self.game.params.time_per_removal > 0 then
                 local time_left = math.ceil(self.game.removal_timer)
                 love.graphics.setColor(time_left <= 3 and {1, 0, 0} or {1, 1, 1})
                 love.graphics.print("Time: " .. time_left .. "s", center_x - 40, h - 20)
@@ -177,19 +160,16 @@ function RPSView:draw()
         love.graphics.setColor(1, 1, 1)
     end
 
-    -- Display area (center)
     local center_x = w / 2
     local center_y = h / 2
 
-    -- Throw animation bounce effect (Phase 4 - AnimationSystem component)
+    -- Throw animation bounce effect
     local bounce_offset = 0
     if self.game.throw_animation:isActive() then
         bounce_offset = -self.game.throw_animation:getOffset()  -- Negative for upward bounce
     end
 
-    -- Show throws
     if self.game.show_result then
-        -- Phase 6 completion: Multiple opponents mode - show differently
         if self.game.num_opponents > 1 then
             -- Show player throw in center
             love.graphics.push()

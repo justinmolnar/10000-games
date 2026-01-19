@@ -14,16 +14,9 @@ function CoinFlipView:draw()
     love.graphics.setColor(0.1, 0.1, 0.15)
     love.graphics.rectangle('fill', 0, 0, w, h)
 
-    -- Visual effects: screen flash + particles (Phase 3 - VisualEffects component)
     self.game.visual_effects:drawScreenFlash(w, h)
-
-    -- Phase 6: Draw score popups via PopupManager
     self.game.popup_manager:draw()
-
-    -- Draw particles (Phase 3 - VisualEffects component)
     self.game.visual_effects:drawParticles()
-
-    -- Standard HUD (Phase 8)
     self.game.hud:draw(w, h)
 
     -- Title
@@ -32,7 +25,7 @@ function CoinFlipView:draw()
 
     -- Additional stats (below HUD standard elements)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Target Streak: " .. self.game.streak_target, 20, 90)
+    love.graphics.print("Target Streak: " .. self.game.params.streak_target, 20, 90)
     love.graphics.print("Max Streak: " .. self.game.max_streak, 20, 110)
     love.graphics.print("Total Flips: " .. self.game.flips_total, 20, 130)
     love.graphics.print("Correct: " .. self.game.correct_total, 20, 150)
@@ -43,21 +36,21 @@ function CoinFlipView:draw()
         love.graphics.print("Accuracy: " .. accuracy .. "%", 20, 190)
     end
 
-    -- Pattern history display (Phase 5 completion)
-    if self.game.show_pattern_history and #self.game.pattern_history > 0 then
+    -- Pattern history display
+    if self.game.params.show_pattern_history and #self.game.pattern_history > 0 then
         local history_str = table.concat(self.game.pattern_history, " ")
         love.graphics.setColor(0.7, 0.7, 0.7)
         love.graphics.print("History: " .. history_str, 20, 270)
     end
 
-    -- Auto-flip countdown (Phase 5 completion)
-    if self.game.auto_flip_interval > 0 and self.game.waiting_for_guess and not self.game.game_over and not self.game.victory then
+    -- Auto-flip countdown
+    if self.game.params.auto_flip_interval > 0 and self.game.waiting_for_guess and not self.game.game_over and not self.game.victory then
         love.graphics.setColor(1, 1, 0.3)
         local countdown = math.ceil(self.game.auto_flip_timer)
         love.graphics.print("Auto-flip in: " .. countdown .. "s", w - 150, 10)
     end
 
-    -- Time per flip countdown (Phase 5 completion)
+    -- Time per flip countdown
     if self.game.time_per_flip > 0 and self.game.waiting_for_guess and not self.game.game_over and not self.game.victory then
         local time_left = math.ceil(self.game.time_per_flip_timer)
         local color = time_left <= 3 and {1, 0, 0} or {1, 1, 1}  -- Red if low
@@ -70,12 +63,12 @@ function CoinFlipView:draw()
     local coin_y = h / 2
     local coin_radius = 80
 
-    -- Flip animation (Phase 11) - Apply rotation if flipping
+    -- Flip animation
     love.graphics.push()
     love.graphics.translate(coin_x, coin_y)
 
     if self.game.flip_animation:isActive() then
-        -- Rotate around Y-axis (create 3D flip illusion by scaling X) - Phase 4: AnimationSystem
+        -- Rotate around Y-axis (create 3D flip illusion by scaling X)
         local rotation_progress = self.game.flip_animation:getRotation() % (math.pi * 2)
         local scale_x = math.abs(math.cos(rotation_progress))
         love.graphics.scale(scale_x, 1)
@@ -100,7 +93,7 @@ function CoinFlipView:draw()
 
     -- Show result message
     if self.game.show_result then
-        if self.game.flip_mode == "auto" then
+        if self.game.params.flip_mode == "auto" then
             -- Auto mode: HEADS = success, TAILS = miss
             if self.game.last_result == 'heads' then
                 love.graphics.setColor(0, 1, 0)
@@ -125,7 +118,7 @@ function CoinFlipView:draw()
     -- Instructions
     if self.game.waiting_for_guess and not self.game.game_over and not self.game.victory then
         love.graphics.setColor(1, 1, 1, 0.8)
-        if self.game.flip_mode == "auto" then
+        if self.game.params.flip_mode == "auto" then
             love.graphics.printf("[SPACE] Flip Coin", 0, h - 60, w, 'center', 0, 1.5, 1.5)
             love.graphics.setColor(0.7, 0.7, 0.7, 0.6)
             love.graphics.printf("Heads = Advance Streak | Tails = Reset", 0, h - 30, w, 'center')
@@ -141,7 +134,7 @@ function CoinFlipView:draw()
         love.graphics.setColor(0, 1, 0)
         love.graphics.printf("VICTORY!", 0, h / 2 - 40, w, 'center', 0, 3, 3)
         love.graphics.setColor(1, 1, 1)
-        love.graphics.printf("Streak of " .. self.game.streak_target .. " reached!", 0, h / 2 + 20, w, 'center', 0, 1.5, 1.5)
+        love.graphics.printf("Streak of " .. self.game.params.streak_target .. " reached!", 0, h / 2 + 20, w, 'center', 0, 1.5, 1.5)
     end
 
     -- Game Over message

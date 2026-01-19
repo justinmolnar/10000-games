@@ -8,45 +8,46 @@ local VictoryCondition = require('src.utils.game_components.victory_condition')
 local EntityController = require('src.utils.game_components.entity_controller')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
--- Fixed constants
-local CARD_WIDTH_DEFAULT = 60
-local CARD_HEIGHT_DEFAULT = 80
-local CARD_SPACING_DEFAULT = 10
-
 function MemoryMatch:init(game_data, cheats, di, variant_override)
     MemoryMatch.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
+    self.cheats = cheats or {}
 
-    -- Load all parameters via SchemaLoader (variant → runtime_config → schema defaults)
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match)
-    local p = SchemaLoader.load(self.variant, "memory_match_schema", runtimeCfg)
+    self.params = SchemaLoader.load(self.variant, "memory_match_schema", runtimeCfg)
 
-    -- Update display name from variant (so window title shows correct name)
     if self.variant and self.variant.name then
         self.data.display_name = self.variant.name
-        print("[MemoryMatch:init] Updated display name to: " .. self.variant.name)
     end
 
-    -- Apply variant difficulty modifier
-    local variant_difficulty = p.difficulty_modifier
+    self:applyModifiers()
+    self:setupGameState()
+    self:setupComponents()
 
-    local speed_modifier_value = self.cheats.speed_modifier or 1.0
-    local time_bonus_multiplier = 1.0 + (1.0 - speed_modifier_value)
+    self.view = MemoryMatchView:new(self, self.variant)
+end
 
-    -- Card dimensions will be set after loading sprites (to match sprite size)
+function MemoryMatch:applyModifiers()
+    self.speed_modifier_value = self.cheats.speed_modifier or 1.0
+    self.time_bonus_multiplier = 1.0 + (1.0 - self.speed_modifier_value)
+    self.variant_difficulty = self.params.difficulty_modifier
+end
+
+function MemoryMatch:setupGameState()
+    -- Card dimensions (set after loading sprites)
     self.CARD_WIDTH = nil
     self.CARD_HEIGHT = nil
     self.base_sprite_width = nil
     self.base_sprite_height = nil
-    self.CARD_SPACING = CARD_SPACING_DEFAULT
+    self.CARD_SPACING = 10
     self.CARD_ICON_PADDING = 10
     self.grid_padding = 10
 
     self.game_width = 800
     self.game_height = 600
 
-    -- Grid & Layout parameters
-    local card_count_override = p.card_count
+    -- Calculate pairs from card_count or complexity
+    local card_count_override = self.params.card_count
     local per_complexity = 6
     local pairs_count
     local total_cards
@@ -56,146 +57,93 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
         if total_cards % 2 ~= 0 then total_cards = total_cards - 1 end
         pairs_count = total_cards / 2
     else
-        pairs_count = math.floor(per_complexity * self.difficulty_modifiers.complexity * variant_difficulty)
+        pairs_count = math.floor(per_complexity * self.difficulty_modifiers.complexity * self.variant_difficulty)
         total_cards = pairs_count * 2
     end
 
     self.total_pairs = pairs_count
+    self.pairs_count_for_sprites = pairs_count
 
-    -- Grid columns (0 = auto-calculate square, non-zero = explicit)
-    self.columns = p.columns
-
-    -- Always calculate grid_cols and grid_rows for proper rectangular layouts
-    if self.columns == 0 then
+    -- Grid layout
+    if self.params.columns == 0 then
         self.grid_cols = math.ceil(math.sqrt(total_cards))
         self.grid_rows = math.ceil(total_cards / self.grid_cols)
     else
-        self.grid_cols = self.columns
-        self.grid_rows = math.ceil(total_cards / self.columns)
+        self.grid_cols = self.params.columns
+        self.grid_rows = math.ceil(total_cards / self.params.columns)
     end
-
     self.grid_size = math.max(self.grid_cols, self.grid_rows)
 
-    print("============ MEMORY MATCH INIT ============")
-    print("Total cards: " .. total_cards)
-    print("Grid: " .. self.grid_cols .. " cols x " .. self.grid_rows .. " rows")
-    print("Grid positions: " .. (self.grid_cols * self.grid_rows))
-    print("===========================================")
-
-    -- Match requirement (2-4 cards)
-    self.match_requirement = p.match_requirement
-
-    -- Store pairs_count for later use
-    self.pairs_count_for_sprites = pairs_count
-
+    -- Card selection state
     self.selected_indices = {}
     self.matched_pairs = {}
 
-    -- Timing parameters
-    self.flip_speed = p.flip_speed
-    self.reveal_duration = p.reveal_duration
-
-    local memorize_time_var = p.memorize_time
-
+    -- Timing state
+    local memorize_time_var = self.params.memorize_time
     self.memorize_phase = memorize_time_var > 0
-    self.memorize_timer = ((memorize_time_var / self.difficulty_modifiers.time_limit) * time_bonus_multiplier) / variant_difficulty
+    self.memorize_timer = ((memorize_time_var / self.difficulty_modifiers.time_limit) * self.time_bonus_multiplier) / self.variant_difficulty
     self.match_check_timer = 0
     self.memorize_time_initial = self.memorize_timer
 
-    self.auto_shuffle_interval = p.auto_shuffle_interval
-    self.shuffle_timer = self.auto_shuffle_interval
-
-    self.auto_shuffle_count = p.auto_shuffle_count
-
+    self.shuffle_timer = self.params.auto_shuffle_interval
     self.is_shuffling = false
     self.shuffle_animation_timer = 0
     self.shuffle_animation_duration = 1.0
 
-    print(string.format("[MemoryMatch:init] Shuffle config: interval=%d seconds, count=%d cards",
-        self.auto_shuffle_interval, self.auto_shuffle_count))
-
-    -- Constraints parameters
-    self.time_limit = p.time_limit
-    self.time_remaining = self.time_limit
-
-    self.move_limit = p.move_limit
+    -- Constraint state
+    self.time_remaining = self.params.time_limit
     self.moves_made = 0
 
-    -- Scoring parameters
-    self.mismatch_penalty = p.mismatch_penalty
-    self.combo_multiplier = p.combo_multiplier
+    -- Combo state
     self.current_combo = 0
-    self.speed_bonus = p.speed_bonus
-    self.perfect_bonus = p.perfect_bonus
 
-    -- Visual Effects parameters
-    self.gravity_enabled = p.gravity_enabled
-    self.card_rotation = p.card_rotation
-    self.spinning_cards = p.spinning_cards
-    self.fog_of_war = p.fog_of_war
-
-    self.fog_inner_radius = p.fog_inner_radius
-    self.fog_darkness = p.fog_darkness
-
-    -- Initialize FogOfWar component (alpha mode for per-card fog)
-    self.fog_controller = FogOfWar:new({
-        enabled = self.fog_of_war > 0,
-        mode = "alpha",
-        opacity = self.fog_darkness,
-        inner_radius_multiplier = self.fog_inner_radius,
-        outer_radius = self.fog_of_war
-    })
-
-    self.distraction_elements = p.distraction_elements
-    self.distraction_particles = {}
-
-    -- Challenge Mode parameters
-    self.chain_requirement = p.chain_requirement
+    -- Challenge mode state
     self.chain_target = nil
     self.chain_progress = 0
-
-    if self.chain_requirement > 0 then
+    if self.params.chain_requirement > 0 then
         self:selectNextChainTarget()
     end
 
-    -- Initialize metrics
+    -- Distraction particles
+    self.distraction_particles = {}
+
+    -- Metrics
     self.metrics.matches = 0
     self.metrics.perfect = 0
     self.metrics.time = 0
-    self.metrics.combo = 0  -- Track highest combo
+    self.metrics.combo = 0
     self.metrics.moves = 0
-    self.metrics.score = 0  -- Total score including bonuses
+    self.metrics.score = 0
 
     -- Match announcement
-    self.match_announcement = nil  -- Name to show
-    self.match_announcement_timer = 0  -- How long to show it
-    self.icon_filenames = {}  -- Map icon_id to filename
+    self.match_announcement = nil
+    self.match_announcement_timer = 0
+    self.icon_filenames = {}
 
-    -- Mouse tracking for fog of war (in game viewport coordinates)
+    -- Mouse tracking for fog of war
     self.mouse_x = 0
     self.mouse_y = 0
 
     -- Physics constants for gravity mode
-    self.GRAVITY_ACCEL = 600  -- Pixels per second squared
-    self.FLOOR_BOUNCE = 0.3   -- Bounce damping
+    self.GRAVITY_ACCEL = 600
+    self.FLOOR_BOUNCE = 0.3
     self.CARD_MASS = 1.0
 
-    -- Phase 2.3: Load sprite assets FIRST to determine card dimensions
+    -- Load sprite assets to determine card dimensions
     self:loadAssets()
 
     -- Set default card dimensions if sprites didn't provide them
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match)
     if not self.CARD_WIDTH or not self.CARD_HEIGHT then
-        self.CARD_WIDTH = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.width) or CARD_WIDTH
-        self.CARD_HEIGHT = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.height) or CARD_HEIGHT
+        self.CARD_WIDTH = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.width) or 60
+        self.CARD_HEIGHT = (runtimeCfg and runtimeCfg.cards and runtimeCfg.cards.height) or 80
         self.base_sprite_width = self.CARD_WIDTH
         self.base_sprite_height = self.CARD_HEIGHT
-        print("[MemoryMatch:init] Using fallback card dimensions:", self.CARD_WIDTH, self.CARD_HEIGHT)
     end
 
-    -- NOW calculate grid position (needs CARD_WIDTH and CARD_HEIGHT)
     self:calculateGridPosition()
 
-    -- Phase 11: EntityController for cards
+    -- EntityController must be created before cards
     self.entity_controller = EntityController:new({
         entity_types = {
             ["card"] = {
@@ -208,11 +156,24 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
         max_entities = 100
     })
 
-    -- Create cards after sprites are loaded and dimensions are set
+    -- Create cards
     self.cards = {}
-    self:createCards(pairs_count)
+    self:createCards(self.total_pairs)
+end
 
-    -- Standard HUD (Phase 8)
+function MemoryMatch:setupComponents()
+    -- FogOfWar component
+    self.fog_controller = FogOfWar:new({
+        enabled = self.params.fog_of_war > 0,
+        mode = "alpha",
+        opacity = self.params.fog_darkness,
+        inner_radius_multiplier = self.params.fog_inner_radius,
+        outer_radius = self.params.fog_of_war
+    })
+
+    -- Note: entity_controller created in setupGameState() before createCards()
+
+    -- HUD
     self.hud = HUDRenderer:new({
         primary = {label = "Matches", key = "metrics.matches"},
         secondary = {label = "Moves", key = "metrics.moves"},
@@ -220,30 +181,21 @@ function MemoryMatch:init(game_data, cheats, di, variant_override)
     })
     self.hud.game = self
 
-    -- Victory Condition System (Phase 9)
+    -- Victory Condition
     local victory_config = {
         victory = {type = "threshold", metric = "metrics.matches", target = self.total_pairs},
         loss = {type = "none"},
         check_loss_first = false
     }
-
-    -- Add loss conditions if applicable
-    if self.time_limit > 0 then
+    if self.params.time_limit > 0 then
         victory_config.loss = {type = "time_expired", metric = "time_remaining"}
-    elseif self.move_limit > 0 then
+    elseif self.params.move_limit > 0 then
         victory_config.loss = {type = "move_limit", moves_metric = "moves_made", limit_metric = "move_limit"}
     end
-
     self.victory_checker = VictoryCondition:new(victory_config)
     self.victory_checker.game = self
-
-    -- Audio/visual variant data (Phase 1.3)
-    self.view = MemoryMatchView:new(self, self.variant)
-    print("[MemoryMatch:init] Initialized with card dimensions:", self.CARD_WIDTH, self.CARD_HEIGHT)
-    print("[MemoryMatch:init] Variant:", self.variant and self.variant.name or "Default")
 end
 
--- Phase 2.3: Asset loading with fallback - SCANS DIRECTORY FOR ALL IMAGES
 function MemoryMatch:loadAssets()
     self.sprites = {}
 
@@ -356,7 +308,6 @@ function MemoryMatch:loadAssets()
     print(string.format("[MemoryMatch:loadAssets] Loaded %d sprites for variant: %s",
         self:countLoadedSprites(), self.variant.name or "Unknown"))
 
-    -- Phase 3.3: Load audio - using BaseGame helper
     self:loadAudio()
 end
 
@@ -382,7 +333,7 @@ function MemoryMatch:setPlayArea(width, height)
         self:calculateGridPosition()
 
         -- Update card positions for non-gravity mode
-        if self.cards and not self.gravity_enabled then
+        if self.cards and not self.params.gravity_enabled then
             for i, card in ipairs(self.cards) do
                 local row = math.floor((i-1) / self.grid_cols)
                 local col = (i-1) % self.grid_cols
@@ -412,11 +363,11 @@ function MemoryMatch:calculateGridPosition()
     local hud_height = 10  -- Top margin
     hud_height = hud_height + 20  -- Matches row (always shown)
     hud_height = hud_height + 20  -- Time row (always shown)
-    if self.chain_requirement > 0 then hud_height = hud_height + 20 end
-    if self.perfect_bonus > 0 then hud_height = hud_height + 20 end
-    if self.time_limit > 0 then hud_height = hud_height + 20 end
-    if self.move_limit > 0 then hud_height = hud_height + 20 end
-    if self.combo_multiplier > 1 then hud_height = hud_height + 20 end
+    if self.params.chain_requirement > 0 then hud_height = hud_height + 20 end
+    if self.params.perfect_bonus > 0 then hud_height = hud_height + 20 end
+    if self.params.time_limit > 0 then hud_height = hud_height + 20 end
+    if self.params.move_limit > 0 then hud_height = hud_height + 20 end
+    if self.params.combo_multiplier > 1 then hud_height = hud_height + 20 end
     hud_height = hud_height + 20  -- Bottom margin for HUD
 
     -- Calculate available space (minus padding and HUD)
@@ -503,7 +454,7 @@ function MemoryMatch:updateGameLogic(dt)
         end
 
         -- Time limit countdown
-        if self.time_limit > 0 then
+        if self.params.time_limit > 0 then
             self.time_remaining = math.max(0, self.time_remaining - dt)
             if self.time_remaining <= 0 then
                 self.is_failed = true  -- Time's up
@@ -511,13 +462,11 @@ function MemoryMatch:updateGameLogic(dt)
         end
 
         -- Auto-shuffle timer
-        if self.auto_shuffle_interval > 0 and not self.is_shuffling then
+        if self.params.auto_shuffle_interval > 0 and not self.is_shuffling then
             self.shuffle_timer = self.shuffle_timer - dt
             if self.shuffle_timer <= 0 then
-                print(string.format("[MemoryMatch] Shuffle timer triggered! (interval: %d, count: %d)",
-                    self.auto_shuffle_interval, self.auto_shuffle_count))
                 self:startShuffle()
-                self.shuffle_timer = self.auto_shuffle_interval
+                self.shuffle_timer = self.params.auto_shuffle_interval
             end
         end
 
@@ -534,13 +483,13 @@ function MemoryMatch:updateGameLogic(dt)
         -- Update flip animations for all cards
         for i, card in ipairs(self.cards) do
             if card.flip_state == "flipping_up" then
-                card.flip_progress = math.min(1, card.flip_progress + dt / self.flip_speed)
+                card.flip_progress = math.min(1, card.flip_progress + dt / self.params.flip_speed)
                 if card.flip_progress >= 1 then
                     card.flip_state = "face_up"
                     card.flip_progress = 1
                 end
             elseif card.flip_state == "flipping_down" then
-                card.flip_progress = math.max(0, card.flip_progress - dt / self.flip_speed)
+                card.flip_progress = math.max(0, card.flip_progress - dt / self.params.flip_speed)
                 if card.flip_progress <= 0 then
                     card.flip_state = "face_down"
                     card.flip_progress = 0
@@ -549,7 +498,7 @@ function MemoryMatch:updateGameLogic(dt)
         end
 
         -- Gravity physics
-        if self.gravity_enabled then
+        if self.params.gravity_enabled then
             for i, card in ipairs(self.cards) do
                 if not self.matched_pairs[card.value] then
                     -- Apply gravity
@@ -598,7 +547,7 @@ function MemoryMatch:updateGameLogic(dt)
                 if all_match then
                     -- Check chain requirement
                     local chain_valid = true
-                    if self.chain_requirement > 0 and self.chain_target then
+                    if self.params.chain_requirement > 0 and self.chain_target then
                         chain_valid = (first_value == self.chain_target)
                     end
 
@@ -611,7 +560,7 @@ function MemoryMatch:updateGameLogic(dt)
                         if self.icon_filenames[first_value] then
                             local filename = self.icon_filenames[first_value]
                             self.match_announcement = filename:upper() .. "!"
-                            self.match_announcement_timer = 2.0  -- Show for 2 seconds
+                            self.match_announcement_timer = 2.0
 
                             -- Speak the match via TTS
                             if self.di and self.di.ttsManager then
@@ -632,19 +581,17 @@ function MemoryMatch:updateGameLogic(dt)
 
                         if is_perfect then
                             self.metrics.perfect = self.metrics.perfect + 1
-                            -- Apply perfect bonus to score
-                            if self.perfect_bonus > 0 then
-                                self.metrics.score = self.metrics.score + self.perfect_bonus
+                            if self.params.perfect_bonus > 0 then
+                                self.metrics.score = self.metrics.score + self.params.perfect_bonus
                             end
                         end
 
-                        -- Combo system - ALWAYS track combo for power formula
+                        -- Combo system
                         self.current_combo = self.current_combo + 1
                         self.metrics.combo = math.max(self.metrics.combo, self.current_combo)
 
-                        -- Apply combo bonus to score (only if combo_multiplier is set)
-                        if self.combo_multiplier > 0 then
-                            local combo_bonus = math.floor(10 * self.combo_multiplier * self.current_combo)
+                        if self.params.combo_multiplier > 0 then
+                            local combo_bonus = math.floor(10 * self.params.combo_multiplier * self.current_combo)
                             self.metrics.score = self.metrics.score + combo_bonus
                         end
 
@@ -652,9 +599,9 @@ function MemoryMatch:updateGameLogic(dt)
                         self.metrics.score = self.metrics.score + 10
 
                         -- Chain requirement progress
-                        if self.chain_requirement > 0 then
+                        if self.params.chain_requirement > 0 then
                             self.chain_progress = self.chain_progress + 1
-                            if self.chain_progress >= self.chain_requirement then
+                            if self.chain_progress >= self.params.chain_requirement then
                                 self.chain_progress = 0
                             end
                             self:selectNextChainTarget()
@@ -664,7 +611,7 @@ function MemoryMatch:updateGameLogic(dt)
                     else
                         -- Wrong chain target - flip cards back down
                         self.current_combo = 0
-                        if self.mismatch_penalty > 0 then
+                        if self.params.mismatch_penalty > 0 then
                             self:applyMismatchPenalty()
                         end
                         -- Start flip down animation
@@ -676,7 +623,7 @@ function MemoryMatch:updateGameLogic(dt)
                 else
                     -- Cards don't match - flip back down
                     self.current_combo = 0
-                    if self.mismatch_penalty > 0 then
+                    if self.params.mismatch_penalty > 0 then
                         self:applyMismatchPenalty()
                     end
                     -- Start flip down animation
@@ -708,19 +655,18 @@ function MemoryMatch:mousepressed(x, y, button)
     self.mouse_x = x
     self.mouse_y = y
 
-    if self.memorize_phase or self.match_check_timer > 0 or #self.selected_indices >= self.match_requirement then return end
+    if self.memorize_phase or self.match_check_timer > 0 or #self.selected_indices >= self.params.match_requirement then return end
 
     -- Check move limit
-    if self.move_limit > 0 and self.moves_made >= self.move_limit then
+    if self.params.move_limit > 0 and self.moves_made >= self.params.move_limit then
         self.is_failed = true
-        print("[MemoryMatch] Game over: Move limit exceeded (" .. self.moves_made .. "/" .. self.move_limit .. ")")
         return
     end
 
     for i, card in ipairs(self.cards) do
         -- Use physics position if gravity enabled, grid position otherwise
         local card_x, card_y
-        if self.gravity_enabled then
+        if self.params.gravity_enabled then
             card_x = card.x
             card_y = card.y
         else
@@ -741,11 +687,10 @@ function MemoryMatch:mousepressed(x, y, button)
                 card.flip_state = "flipping_up"
                 card.flip_progress = 0
 
-                -- Phase 3.3: Play flip sound
                 self:playSound("flip_card", 0.7)
 
-                if #self.selected_indices == self.match_requirement then
-                    self.match_check_timer = self.reveal_duration
+                if #self.selected_indices == self.params.match_requirement then
+                    self.match_check_timer = self.params.reveal_duration
                 end
                 break
             end
@@ -755,7 +700,7 @@ end
 
 function MemoryMatch:createCards(pairs_count)
     for i = 1, pairs_count do
-        for j = 1, self.match_requirement do
+        for j = 1, self.params.match_requirement do
             local card_index = #self.cards + 1
             local row = math.floor((card_index-1) / self.grid_cols)
             local col = (card_index-1) % self.grid_cols
@@ -766,7 +711,7 @@ function MemoryMatch:createCards(pairs_count)
 
             -- In gravity mode, spawn cards at top with random X spread
             local init_x, init_y, init_vx, init_vy
-            if self.gravity_enabled then
+            if self.params.gravity_enabled then
                 init_x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING) + (math.random() - 0.5) * 20
                 init_y = -self.CARD_HEIGHT - row * 30  -- Start above screen
                 init_vx = (math.random() - 0.5) * 50
@@ -778,8 +723,6 @@ function MemoryMatch:createCards(pairs_count)
                 init_vy = 0
             end
 
-            -- Spawn entity via controller (Phase 11)
-            -- This registers the card with the entity system so getEntities() works
             local card = self.entity_controller:spawn("card", init_x, init_y, {
                 value = i,
                 attempts = {},
@@ -822,7 +765,7 @@ function MemoryMatch:shuffleCards()
         card.grid_col = col
 
         -- Reset to grid position if not in gravity mode
-        if not self.gravity_enabled then
+        if not self.params.gravity_enabled then
             card.x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING)
             card.y = self.start_y + row * (self.CARD_HEIGHT + self.CARD_SPACING)
             card.vx = 0
@@ -841,14 +784,12 @@ end
 function MemoryMatch:checkComplete()
     if self.memorize_phase then return false end
 
-    -- Phase 9: Check penalty failure first
     if self.is_failed then
         self.victory = false
         self.game_over = true
         return true
     end
 
-    -- Phase 9: Use VictoryCondition component
     local result = self.victory_checker:check()
     if result then
         self.victory = (result == "victory")
@@ -858,17 +799,12 @@ function MemoryMatch:checkComplete()
     return false
 end
 
--- Phase 3.3: Override onComplete to play success sound
 function MemoryMatch:onComplete()
     -- Calculate speed bonus if time limit exists
-    if self.time_limit > 0 and self.speed_bonus > 0 then
-        local time_bonus = math.floor(self.time_remaining * self.speed_bonus)
+    if self.params.time_limit > 0 and self.params.speed_bonus > 0 then
+        local time_bonus = math.floor(self.time_remaining * self.params.speed_bonus)
         self.metrics.score = self.metrics.score + time_bonus
-        print(string.format("[MemoryMatch] Speed bonus: %d points (%d seconds * %d)",
-            time_bonus, math.floor(self.time_remaining), self.speed_bonus))
     end
-
-    print(string.format("[MemoryMatch] Final score: %d points", self.metrics.score))
 
     -- All matches found = win
     self:playSound("success", 1.0)
@@ -923,7 +859,7 @@ function MemoryMatch:startShuffle()
     end
 
     -- Determine how many cards to shuffle
-    local shuffle_count = self.auto_shuffle_count
+    local shuffle_count = self.params.auto_shuffle_count
     if shuffle_count == 0 or shuffle_count > #face_down_indices then
         shuffle_count = #face_down_indices  -- Shuffle all
     end
@@ -987,9 +923,8 @@ function MemoryMatch:completeShuffle()
     self.shuffle_start_positions = nil
 end
 
--- Helper function: Select next chain target
 function MemoryMatch:selectNextChainTarget()
-    if self.chain_requirement == 0 then return end
+    if self.params.chain_requirement == 0 then return end
 
     -- Find unmatched card values
     local unmatched = {}
@@ -1006,22 +941,15 @@ function MemoryMatch:selectNextChainTarget()
     end
 end
 
--- Helper function: Apply mismatch penalty
 function MemoryMatch:applyMismatchPenalty()
-    if self.time_limit > 0 then
-        -- Reduce time remaining
-        self.time_remaining = math.max(0, self.time_remaining - self.mismatch_penalty)
-        -- Check if time ran out due to penalty
+    if self.params.time_limit > 0 then
+        self.time_remaining = math.max(0, self.time_remaining - self.params.mismatch_penalty)
         if self.time_remaining <= 0 then
             self.is_failed = true
-            print("[MemoryMatch] Game over: Time penalty exceeded time limit")
         end
-    elseif self.mismatch_penalty > 0 then
-        -- No time limit, but penalty exists - treat any penalty as instant fail
+    elseif self.params.mismatch_penalty > 0 then
         self.is_failed = true
-        print("[MemoryMatch] Game over: Mismatch penalty with no time limit (instant fail)")
     end
-    -- Could also apply score penalty here if scoring system is added
 end
 
 return MemoryMatch

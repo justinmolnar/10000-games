@@ -8,7 +8,7 @@ end
 function BreakoutView:draw()
     love.graphics.push()
 
-    -- Apply camera shake (Phase 11 - VisualEffects component)
+    -- Apply camera shake
     self.game.visual_effects:applyCameraShake()
 
     love.graphics.setColor(0.1, 0.1, 0.15)
@@ -19,7 +19,7 @@ function BreakoutView:draw()
         if brick.alive then
             love.graphics.push()
 
-            -- Check if brick is flashing (Phase 11)
+            -- Check if brick is flashing
             local is_flashing = self.game.brick_flash_map[brick] and self.game.brick_flash_map[brick] > 0
 
             -- Color based on health
@@ -100,7 +100,7 @@ function BreakoutView:draw()
         end
     end
 
-    -- Draw bullets (Phase 9)
+    -- Draw bullets
     for _, bullet in ipairs(self.game.bullets) do
         love.graphics.push()
         love.graphics.setColor(1, 1, 0.3)
@@ -112,7 +112,7 @@ function BreakoutView:draw()
         love.graphics.pop()
     end
 
-    -- Draw obstacles (Phase 9)
+    -- Draw obstacles
     for _, obstacle in ipairs(self.game.obstacles) do
         if obstacle.alive then
             love.graphics.push()
@@ -149,7 +149,7 @@ function BreakoutView:draw()
         end
     end
 
-    -- Draw power-ups (Phase 13)
+    -- Draw power-ups
     for _, powerup in ipairs(self.game.powerups) do
         love.graphics.push()
 
@@ -191,20 +191,20 @@ function BreakoutView:draw()
         love.graphics.pop()
     end
 
-    -- Phase 6: Draw score popups via PopupManager
+    -- Draw score popups
     self.game.popup_manager:draw()
 
-    -- Draw particles (Phase 11 - VisualEffects component)
+    -- Draw particles
     self.game.visual_effects:drawParticles()
 
-    -- Draw fog of war (Phase 11) - uses stencil, not canvases
-    if self.game.fog_of_war_enabled then
+    -- Draw fog of war
+    if self.game.params.fog_of_war_enabled then
         self:drawFogOfWar()
     end
 
     love.graphics.pop()  -- End camera shake transform
 
-    -- Standard HUD (Phase 8) - NOT affected by camera shake or fog
+    -- Standard HUD - NOT affected by camera shake or fog
     self.game.hud:draw(self.game.arena_width, self.game.arena_height)
 
     -- Additional game-specific stats (below standard HUD)
@@ -219,7 +219,7 @@ function BreakoutView:draw()
         love.graphics.setColor(1, 1, 1)
     end
 
-    -- Active power-ups (Phase 13)
+    -- Active power-ups
     if self.game.shield_active then
         love.graphics.setColor(0, 1, 1)  -- Cyan
         love.graphics.print("SHIELD ACTIVE", 10, y_offset)
@@ -287,12 +287,12 @@ function BreakoutView:drawFogOfWar()
     -- Add visibility around each ball
     for _, ball in ipairs(self.game.balls) do
         if ball.active then
-            fog:addVisibilitySource(ball.x, ball.y, self.game.fog_of_war_radius)
+            fog:addVisibilitySource(ball.x, ball.y, self.game.params.fog_of_war_radius)
         end
     end
 
     -- Add visibility around paddle
-    fog:addVisibilitySource(self.game.paddle.x, self.game.paddle.y, self.game.fog_of_war_radius)
+    fog:addVisibilitySource(self.game.paddle.x, self.game.paddle.y, self.game.params.fog_of_war_radius)
 
     if _G.DEBUG_FOG then
         print(string.format("[BreakoutView] About to call fog:render() with %d sources", #fog.visibility_sources))
