@@ -163,7 +163,18 @@ breakout.lua             +5 lines (calls updated)
 
 ### AI Notes
 
-_(To be filled after completion)_
+**Completed:** 2026-01-19
+
+Deleted 4 dead code functions:
+- `clampToBounds` (lines 133-141)
+- `pointInRect` (lines 362-364)
+- `updateBallWithBounds` (lines 451-498)
+- `checkEntityCollision` (lines 534-584)
+
+#### Line Changes
+```
+physics_utils.lua        -87 lines
+```
 
 ---
 
@@ -194,7 +205,21 @@ _(To be filled after completion)_
 
 ### AI Notes
 
-_(To be filled after completion)_
+**Completed:** 2026-01-19
+
+Renamed functions:
+- `ballVsRect` → `circleVsRect` (updated params from bx,by,br to cx,cy,cr)
+- `ballVsCenteredRect` → `circleVsCenteredRect` (clearer param names)
+- `checkBallEntityCollisions` → `checkCircleEntityCollisions` (updated internal `ball` refs to `circle`)
+
+Updated internal callers in physics_utils.lua (2 calls to circleVsRect, 1 to circleVsCenteredRect).
+Updated breakout.lua external callers (2 calls to checkCircleEntityCollisions).
+
+#### Line Changes
+```
+physics_utils.lua        ~0 lines (renames only)
+breakout.lua             ~0 lines (renames only)
+```
 
 ---
 
@@ -225,7 +250,28 @@ _(To be filled after completion)_
 
 ### AI Notes
 
-_(To be filled after completion)_
+**Completed:** 2026-01-19
+
+Created `src/utils/table_utils.lua` with:
+- `updateTimerMap(map, dt)` - decrements timers, removes expired
+- `countActive(entities, filter)` - counts matching entities
+
+Added `TableUtils` to `di.components` in main.lua.
+
+Updated breakout.lua:
+- Added `local TableUtils = self.di.components.TableUtils` in updateGameLogic
+- Changed `Physics.updateTimerMap` → `TableUtils.updateTimerMap`
+- Changed `Physics.countActive` → `TableUtils.countActive`
+
+Deleted both functions from physics_utils.lua.
+
+#### Line Changes
+```
+table_utils.lua          +21 lines (new)
+main.lua                 +1 line
+breakout.lua             +1 line (TableUtils local)
+physics_utils.lua        -32 lines
+```
 
 ---
 
@@ -261,7 +307,25 @@ _(To be filled after completion)_
 
 ### AI Notes
 
-_(To be filled after completion)_
+**Completed:** 2026-01-19
+
+All primitives are already exposed - PhysicsUtils uses module-level function definitions (`PhysicsUtils.X`) and returns the table at the end, so all functions are accessible externally.
+
+Verified exposed primitives (22 functions total):
+- Forces: applyGravity, applyHomingForce, applyMagnetForce
+- Speed: clampSpeed, increaseSpeed
+- Bounce: bounceAxis, addBounceRandomness, reflectOffNormal
+- Collision detection: circleCollision, rectCollision, circleVsRect, circleVsCenteredRect, checkCollision
+- Collision response: resolveRectCollision, resolveCircleCollision, resolveBounceOffEntity
+- Utilities: circleNormal, wrapPosition, bounceOffWalls, createTrailSystem
+- Breakout-specific (to be decomposed): updateBallPhysics, checkCircleEntityCollisions, paddleBounce, releaseStickyBall
+
+All functions have header comments explaining purpose and usage.
+
+#### Line Changes
+```
+physics_utils.lua        917 → 729 lines (total -188 lines from phases 1-4)
+```
 
 ---
 

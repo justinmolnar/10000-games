@@ -254,6 +254,7 @@ function Breakout:updateGameLogic(dt)
     end
 
     local Physics = self.di.components.PhysicsUtils
+    local TableUtils = self.di.components.TableUtils
 
     local game_bounds = {
         x_min = 0,
@@ -274,7 +275,7 @@ function Breakout:updateGameLogic(dt)
     -- Update visual effects
     self.visual_effects:update(dt)
 
-    Physics.updateTimerMap(self.brick_flash_map, dt)
+    TableUtils.updateTimerMap(self.brick_flash_map, dt)
 
     self.popup_manager:update(dt)
 
@@ -325,7 +326,7 @@ function Breakout:updateGameLogic(dt)
     self:updateBricks(dt)
 
     -- Check if all balls are lost
-    if Physics.countActive(self.balls) == 0 then
+    if TableUtils.countActive(self.balls) == 0 then
         self.balls_lost = self.balls_lost + 1
         self.combo = 0  -- Reset combo on ball lost
 
@@ -380,7 +381,7 @@ function Breakout:updateBall(ball, dt)
 
     -- Brick collisions with game-specific scoring
     local PNGCollision = self.di.components.PNGCollision
-    Physics.checkBallEntityCollisions(ball, self.bricks, {
+    Physics.checkCircleEntityCollisions(ball, self.bricks, {
         check_func = function(b, brick)
             return brick.collision_image
                 and PNGCollision.checkBall(brick.collision_image, brick.x, brick.y, b.x, b.y, b.radius, brick.alpha_threshold or 0.5)
@@ -393,7 +394,7 @@ function Breakout:updateBall(ball, dt)
     })
 
     -- Obstacle collisions
-    Physics.checkBallEntityCollisions(ball, self.obstacles, {
+    Physics.checkCircleEntityCollisions(ball, self.obstacles, {
         bounce_randomness = p.ball_bounce_randomness, rng = self.rng
     })
 end

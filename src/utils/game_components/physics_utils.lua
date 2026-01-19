@@ -122,25 +122,6 @@ function PhysicsUtils.bounceOffWalls(x, y, vx, vy, radius, bounds_width, bounds_
 end
 
 -- ===================================================================
--- CLAMP TO BOUNDS
--- ===================================================================
--- Constrains entity position to stay within bounds (no wrap, no bounce)
--- Used by: Most games for player movement constraints
---
--- Usage:
---   local new_x, new_y = PhysicsUtils.clampToBounds(x, y, width, height, bounds_w, bounds_h)
-
-function PhysicsUtils.clampToBounds(x, y, entity_width, entity_height, bounds_width, bounds_height)
-    local half_w = entity_width / 2
-    local half_h = entity_height / 2
-
-    local new_x = math.max(half_w, math.min(x, bounds_width - half_w))
-    local new_y = math.max(half_h, math.min(y, bounds_height - half_h))
-
-    return new_x, new_y
-end
-
--- ===================================================================
 -- DIRECTIONAL GRAVITY
 -- ===================================================================
 -- Applies gravity force in any direction (not just down)
@@ -351,41 +332,28 @@ function PhysicsUtils.rectCollision(x1, y1, width1, height1, x2, y2, width2, hei
 end
 
 -- ===================================================================
--- POINT IN RECTANGLE
+-- CIRCLE VS RECTANGLE COLLISION
 -- ===================================================================
--- Checks if a point is inside a rectangle
--- Used by: UI interactions, hitbox checks
+-- Checks if a circle collides with an axis-aligned rectangle
+-- Used by: Any game with circular entities vs rectangular ones
 --
 -- Usage:
---   local inside = PhysicsUtils.pointInRect(px, py, rx, ry, rw, rh)
+--   local hit = PhysicsUtils.circleVsRect(circle.x, circle.y, circle.radius, rect.x, rect.y, rect.width, rect.height)
 
-function PhysicsUtils.pointInRect(px, py, rx, ry, rw, rh)
-    return px >= rx and px <= rx + rw and py >= ry and py <= ry + rh
+function PhysicsUtils.circleVsRect(cx, cy, cr, rx, ry, rw, rh)
+    return cx + cr > rx and cx - cr < rx + rw and
+           cy + cr > ry and cy - cr < ry + rh
 end
 
 -- ===================================================================
--- BALL VS RECTANGLE COLLISION
+-- CIRCLE VS CENTERED RECT COLLISION
 -- ===================================================================
--- Checks if a ball (circle) collides with an axis-aligned rectangle
--- Used by: Breakout (ball vs brick/paddle), any ball game
---
--- Usage:
---   local hit = PhysicsUtils.ballVsRect(ball.x, ball.y, ball.radius, rect.x, rect.y, rect.width, rect.height)
+-- Checks circle vs rectangle where rect position is center (not top-left)
+-- Used by: Entities with center-based positioning
 
-function PhysicsUtils.ballVsRect(bx, by, br, rx, ry, rw, rh)
-    return bx + br > rx and bx - br < rx + rw and
-           by + br > ry and by - br < ry + rh
-end
-
--- ===================================================================
--- BALL VS CENTERED RECT COLLISION
--- ===================================================================
--- Checks ball vs rectangle where rect position is center (not top-left)
--- Used by: Paddle collision (center-based positioning)
-
-function PhysicsUtils.ballVsCenteredRect(bx, by, br, cx, cy, hw, hh)
-    return bx + br > cx - hw and bx - br < cx + hw and
-           by + br > cy - hh and by - br < cy + hh
+function PhysicsUtils.circleVsCenteredRect(circle_x, circle_y, circle_r, rect_cx, rect_cy, half_w, half_h)
+    return circle_x + circle_r > rect_cx - half_w and circle_x - circle_r < rect_cx + half_w and
+           circle_y + circle_r > rect_cy - half_h and circle_y - circle_r < rect_cy + half_h
 end
 
 -- ===================================================================
@@ -440,64 +408,6 @@ function PhysicsUtils.resolveCircleCollision(ball, cx, cy, cr)
 end
 
 -- ===================================================================
--- UPDATE BALL WITH WALL BOUNDS
--- ===================================================================
--- Handles ball movement and wall collisions with configurable boundaries
--- Used by: Any game with bouncing balls
---
--- Usage:
---   PhysicsUtils.updateBallWithBounds(ball, dt, bounds, config, rng)
-
-function PhysicsUtils.updateBallWithBounds(ball, dt, bounds, config, rng)
-    config = config or {}
-    local bounce_mode = config.bounce_mode or "normal"
-    local randomness = config.randomness or 0
-    local ceiling = config.ceiling ~= false
-    local floor_kill = config.floor_kill ~= false
-
-    -- Update position
-    ball.x = ball.x + ball.vx * dt
-    ball.y = ball.y + ball.vy * dt
-
-    -- Left/right walls
-    if ball.x - ball.radius < bounds.x_min then
-        ball.x = bounds.x_min + ball.radius
-        PhysicsUtils.bounceAxis(ball, 'vx', bounce_mode)
-        if randomness > 0 and rng then PhysicsUtils.addBounceRandomness(ball, randomness, rng) end
-    elseif ball.x + ball.radius > bounds.x_max then
-        ball.x = bounds.x_max - ball.radius
-        PhysicsUtils.bounceAxis(ball, 'vx', bounce_mode)
-        if randomness > 0 and rng then PhysicsUtils.addBounceRandomness(ball, randomness, rng) end
-    end
-
-    -- Top (ceiling)
-    if ball.y - ball.radius < bounds.y_min then
-        if ceiling then
-            ball.y = bounds.y_min + ball.radius
-            PhysicsUtils.bounceAxis(ball, 'vy', bounce_mode)
-            if randomness > 0 and rng then PhysicsUtils.addBounceRandomness(ball, randomness, rng) end
-        else
-            ball.active = false
-            return false
-        end
-    end
-
-    -- Bottom (floor)
-    if ball.y + ball.radius > bounds.y_max then
-        if floor_kill then
-            ball.active = false
-            return false
-        else
-            ball.y = bounds.y_max - ball.radius
-            PhysicsUtils.bounceAxis(ball, 'vy', bounce_mode)
-            if randomness > 0 and rng then PhysicsUtils.addBounceRandomness(ball, randomness, rng) end
-        end
-    end
-
-    return true
-end
-
--- ===================================================================
 -- PADDLE BOUNCE RESPONSE
 -- ===================================================================
 -- Calculates ball velocity after hitting a paddle based on hit position
@@ -518,69 +428,6 @@ function PhysicsUtils.paddleBounce(ball, paddle_x, paddle_width, mode)
         ball.vy = -math.abs(ball.vy)
         ball.vx = ball.vx + normalized * 100
     end
-end
-
--- ===================================================================
--- GENERIC ENTITY COLLISION
--- ===================================================================
--- Checks collision between any two entities based on their shape properties
--- Automatically detects: circle (has radius), rect (has width/height), centered rect (has width/height and centered=true)
--- Used by: Any game needing collision between varied entity shapes
---
--- Usage:
---   local hit = PhysicsUtils.checkEntityCollision(ball, brick)
---   local hit = PhysicsUtils.checkEntityCollision(ball, paddle, {paddle_centered = true})
-
-function PhysicsUtils.checkEntityCollision(e1, e2, options)
-    options = options or {}
-
-    -- Determine shapes
-    local e1_circle = e1.radius and not e1.width
-    local e2_circle = e2.radius and not e2.width
-
-    -- Get effective positions and sizes
-    local x1, y1, r1, w1, h1
-    local x2, y2, r2, w2, h2
-
-    if e1_circle then
-        x1, y1, r1 = e1.x, e1.y, e1.radius
-    else
-        w1, h1 = e1.width or e1.size or 0, e1.height or e1.size or 0
-        if options.e1_centered then
-            x1, y1 = e1.x - w1/2, e1.y - h1/2
-        else
-            x1, y1 = e1.x, e1.y
-        end
-    end
-
-    if e2_circle then
-        x2, y2, r2 = e2.x, e2.y, e2.radius
-    else
-        w2, h2 = e2.width or e2.size or 0, e2.height or e2.size or 0
-        if options.e2_centered then
-            x2, y2 = e2.x - w2/2, e2.y - h2/2
-        else
-            x2, y2 = e2.x, e2.y
-        end
-    end
-
-    -- Circle vs Circle
-    if e1_circle and e2_circle then
-        return PhysicsUtils.circleCollision(x1, y1, r1, x2, y2, r2)
-    end
-
-    -- Circle vs Rect
-    if e1_circle and not e2_circle then
-        return PhysicsUtils.ballVsRect(x1, y1, r1, x2, y2, w2, h2)
-    end
-
-    -- Rect vs Circle
-    if not e1_circle and e2_circle then
-        return PhysicsUtils.ballVsRect(x2, y2, r2, x1, y1, w1, h1)
-    end
-
-    -- Rect vs Rect
-    return PhysicsUtils.rectCollision(x1, y1, w1, h1, x2, y2, w2, h2)
 end
 
 -- ===================================================================
@@ -615,7 +462,7 @@ function PhysicsUtils.checkCollision(e1, e2, shape1, shape2, options)
     if shape1 == "circle" and shape2 ~= "circle" then
         local r1 = e1.radius or (e1.width or e1.size or 0) / 2
         local w2, h2 = e2.width or e2.size or 0, e2.height or e2.size or 0
-        return PhysicsUtils.ballVsRect(x1, y1, r1, x2, y2, w2, h2)
+        return PhysicsUtils.circleVsRect(x1, y1, r1, x2, y2, w2, h2)
     end
 
     -- Rect vs Circle
@@ -624,7 +471,7 @@ function PhysicsUtils.checkCollision(e1, e2, shape1, shape2, options)
         local w1, h1 = e1.width or e1.size or 0, e1.height or e1.size or 0
         local cx2 = x2 + (e2.width and e2.width/2 or 0)
         local cy2 = y2 + (e2.height and e2.height/2 or 0)
-        return PhysicsUtils.ballVsRect(cx2, cy2, r2, x1, y1, w1, h1)
+        return PhysicsUtils.circleVsRect(cx2, cy2, r2, x1, y1, w1, h1)
     end
 
     -- Rect vs Rect
@@ -659,24 +506,6 @@ function PhysicsUtils.resolveBounceOffEntity(ball, target)
 end
 
 -- ===================================================================
--- COUNT ACTIVE ENTITIES
--- ===================================================================
--- Counts entities matching a filter in an array
--- Used by: Checking active balls, alive enemies, etc.
---
--- Usage:
---   local count = PhysicsUtils.countActive(balls, function(b) return b.active end)
-
-function PhysicsUtils.countActive(entities, filter)
-    local count = 0
-    filter = filter or function(e) return e.active end
-    for _, e in ipairs(entities) do
-        if filter(e) then count = count + 1 end
-    end
-    return count
-end
-
--- ===================================================================
 -- RELEASE STICKY BALL
 -- ===================================================================
 -- Releases a ball stuck to a paddle, calculating launch angle from position
@@ -698,22 +527,6 @@ function PhysicsUtils.releaseStickyBall(ball, paddle_width, launch_speed, angle_
     ball.magnet_immunity_timer = 0.3  -- Prevent magnet from pulling back
 
     return true
-end
-
--- ===================================================================
--- UPDATE TIMER MAP
--- ===================================================================
--- Decrements timers in a table and removes expired entries
--- Used for: flash effects, cooldowns, etc.
---
--- Usage:
---   PhysicsUtils.updateTimerMap(self.brick_flash_map, dt)
-
-function PhysicsUtils.updateTimerMap(map, dt)
-    for key, timer in pairs(map) do
-        map[key] = timer - dt
-        if map[key] <= 0 then map[key] = nil end
-    end
 end
 
 -- ===================================================================
@@ -828,7 +641,7 @@ function PhysicsUtils.updateBallPhysics(ball, dt, config)
     -- Paddle collision
     local paddle = config.paddle
     if paddle then
-        if PhysicsUtils.ballVsCenteredRect(ball.x, ball.y, ball.radius, paddle.x, paddle.y, paddle.width / 2, paddle.height / 2) then
+        if PhysicsUtils.circleVsCenteredRect(ball.x, ball.y, ball.radius, paddle.x, paddle.y, paddle.width / 2, paddle.height / 2) then
             if config.paddle_sticky and not ball.stuck then
                 ball.stuck = true
                 ball.stuck_offset_x = ball.x - paddle.x
@@ -848,9 +661,9 @@ function PhysicsUtils.updateBallPhysics(ball, dt, config)
 end
 
 -- ===================================================================
--- BALL VS ENTITIES COLLISION
+-- CIRCLE VS ENTITIES COLLISION
 -- ===================================================================
--- Check ball against array of entities and call callbacks
+-- Check circle entity against array of entities and call callbacks
 -- Returns true if collision occurred
 --
 -- config: {
@@ -858,20 +671,20 @@ end
 --   pierce_enabled, resolve_bounce
 -- }
 
-function PhysicsUtils.checkBallEntityCollisions(ball, entities, config)
+function PhysicsUtils.checkCircleEntityCollisions(circle, entities, config)
     config = config or {}
     local hit_any = false
 
     for _, entity in ipairs(entities) do
         if entity.alive then
-            local hit = config.check_func and config.check_func(ball, entity) or PhysicsUtils.checkCollision(ball, entity, "circle", entity.shape)
+            local hit = config.check_func and config.check_func(circle, entity) or PhysicsUtils.checkCollision(circle, entity, "circle", entity.shape)
 
             if hit then
                 hit_any = true
 
                 -- Call hit callback
                 if config.on_hit then
-                    config.on_hit(entity, ball)
+                    config.on_hit(entity, circle)
                 end
 
                 -- Check if destroyed
@@ -879,31 +692,31 @@ function PhysicsUtils.checkBallEntityCollisions(ball, entities, config)
                     entity.health = entity.health - 1
                     if entity.health <= 0 then
                         entity.alive = false
-                        if config.on_destroy then config.on_destroy(entity, ball) end
+                        if config.on_destroy then config.on_destroy(entity, circle) end
                     end
                 end
 
                 -- Resolve bounce
-                if not (ball.pierce_count and ball.pierce_count > 0) then
+                if not (circle.pierce_count and circle.pierce_count > 0) then
                     if config.resolve_bounce ~= false then
-                        PhysicsUtils.resolveBounceOffEntity(ball, entity)
+                        PhysicsUtils.resolveBounceOffEntity(circle, entity)
                     end
                 else
-                    ball.pierce_count = ball.pierce_count - 1
+                    circle.pierce_count = circle.pierce_count - 1
                 end
 
                 -- Speed increase
                 if config.speed_increase and config.max_speed then
-                    PhysicsUtils.increaseSpeed(ball, config.speed_increase, config.max_speed)
+                    PhysicsUtils.increaseSpeed(circle, config.speed_increase, config.max_speed)
                 end
 
                 -- Bounce randomness
-                if config.bounce_randomness and not (ball.pierce_count and ball.pierce_count > 0) then
-                    PhysicsUtils.addBounceRandomness(ball, config.bounce_randomness, config.rng)
+                if config.bounce_randomness and not (circle.pierce_count and circle.pierce_count > 0) then
+                    PhysicsUtils.addBounceRandomness(circle, config.bounce_randomness, config.rng)
                 end
 
                 -- Break unless piercing
-                if not (ball.pierce_count and ball.pierce_count > 0) then
+                if not (circle.pierce_count and circle.pierce_count > 0) then
                     break
                 end
             end

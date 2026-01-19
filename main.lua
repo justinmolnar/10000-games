@@ -119,6 +119,7 @@ function love.load()
         Collision = require('src.utils.collision'),
         PNGCollision = require('src.utils.png_collision'),
         PhysicsUtils = require('src.utils.game_components.physics_utils'),
+        TableUtils = require('src.utils.table_utils'),
     }
 
     -- == 3. Instantiate Models with DI ==
