@@ -232,16 +232,146 @@ function PowerupSystem:collect(powerup)
     local effect = {
         duration_remaining = duration,
         config = config,
-        type = powerup_type
+        type = powerup_type,
+        originals = {}  -- Store original values for reverting
     }
 
     self.active_powerups[powerup_type] = effect
 
-    -- Call application hook (game-specific logic)
+    -- Apply declarative effects if game reference exists
+    if self.game and config.effects then
+        self:applyDeclarativeEffects(effect, config)
+    end
+
+    -- Call application hook (game-specific logic for non-declarative effects)
     self.on_apply(powerup_type, effect, config)
 
     -- Call collection hook
     self.on_collect(powerup)
+end
+
+--[[
+    Apply declarative effects from config
+
+    Supported effect types:
+    - multiply_param: Multiply a game param {param = "name", multiplier = 1.5}
+    - enable_param: Set param to true {param = "name"}
+    - set_param: Set param to value {param = "name", value = X}
+    - set_flag: Set a game flag {flag = "name", value = true}
+    - add_lives: Add lives {count = 1}
+    - multiply_entity_speed: Multiply speed of entities {entities = "balls", multiplier = 0.5}
+    - multiply_entity_field: Multiply entity field {entity = "paddle", field = "width", multiplier = 1.5}
+    - spawn_projectiles: Spawn extra projectiles {type = "ball", count = 2, angle_spread = 0.5}
+]]
+function PowerupSystem:applyDeclarativeEffects(effect, config)
+    local game = self.game
+    if not game then return end
+
+    for _, eff in ipairs(config.effects or {}) do
+        if eff.type == "multiply_param" and game.params then
+            effect.originals[eff.param] = game.params[eff.param]
+            game.params[eff.param] = game.params[eff.param] * (eff.multiplier or 1)
+
+        elseif eff.type == "enable_param" and game.params then
+            effect.originals[eff.param] = game.params[eff.param]
+            game.params[eff.param] = true
+
+        elseif eff.type == "set_param" and game.params then
+            effect.originals[eff.param] = game.params[eff.param]
+            game.params[eff.param] = eff.value
+
+        elseif eff.type == "set_flag" then
+            effect.originals["flag_" .. eff.flag] = game[eff.flag]
+            game[eff.flag] = eff.value ~= false
+
+        elseif eff.type == "add_lives" and game.health_system then
+            game.health_system:addLife(eff.count or 1)
+            if game.lives then game.lives = game.health_system.lives end
+
+        elseif eff.type == "multiply_entity_speed" then
+            local entities = game[eff.entities]
+            if entities then
+                effect.originals["speed_" .. eff.entities] = eff.multiplier
+                for _, e in ipairs(entities) do
+                    if e.vx then e.vx = e.vx * (eff.multiplier or 1) end
+                    if e.vy then e.vy = e.vy * (eff.multiplier or 1) end
+                end
+            end
+
+        elseif eff.type == "multiply_entity_field" then
+            local entity = game[eff.entity]
+            if entity and entity[eff.field] then
+                effect.originals["entity_" .. eff.entity .. "_" .. eff.field] = entity[eff.field]
+                entity[eff.field] = entity[eff.field] * (eff.multiplier or 1)
+            end
+
+        elseif eff.type == "set_entity_field" then
+            local entities = game[eff.entities]
+            if entities then
+                for _, e in ipairs(entities) do
+                    if e.active then e[eff.field] = eff.value end
+                end
+            end
+
+        elseif eff.type == "spawn_projectiles" and game.projectile_system then
+            local source_entities = game[eff.source or "balls"]
+            if source_entities then
+                for _, src in ipairs(source_entities) do
+                    if src.active then
+                        local speed = math.sqrt((src.vx or 0)^2 + (src.vy or 0)^2)
+                        local angle = math.atan2(src.vy or 0, src.vx or 0)
+                        for i = 1, (eff.count or 2) do
+                            local offset = ((i - 0.5 - (eff.count or 2)/2) / (eff.count or 2)) * (eff.angle_spread or math.pi/6)
+                            game.projectile_system:shoot(eff.projectile_type or "ball", src.x, src.y, angle + offset,
+                                speed / (game.params.ball_speed or 300), {radius = src.radius, trail = {}})
+                        end
+                        break  -- Only spawn from first active source
+                    end
+                end
+            end
+        end
+    end
+end
+
+--[[
+    Remove declarative effects (restore original values)
+]]
+function PowerupSystem:removeDeclarativeEffects(effect, config)
+    local game = self.game
+    if not game then return end
+
+    for _, eff in ipairs(config.effects or {}) do
+        if eff.type == "multiply_param" or eff.type == "enable_param" or eff.type == "set_param" then
+            if game.params and effect.originals[eff.param] ~= nil then
+                game.params[eff.param] = effect.originals[eff.param]
+            end
+
+        elseif eff.type == "set_flag" then
+            local key = "flag_" .. eff.flag
+            if effect.originals[key] ~= nil then
+                game[eff.flag] = effect.originals[key]
+            end
+
+        elseif eff.type == "multiply_entity_speed" then
+            local entities = game[eff.entities]
+            local orig_mult = effect.originals["speed_" .. eff.entities]
+            if entities and orig_mult then
+                local reverse = 1 / orig_mult
+                for _, e in ipairs(entities) do
+                    if e.vx then e.vx = e.vx * reverse end
+                    if e.vy then e.vy = e.vy * reverse end
+                end
+            end
+
+        elseif eff.type == "multiply_entity_field" then
+            local entity = game[eff.entity]
+            local key = "entity_" .. eff.entity .. "_" .. eff.field
+            if entity and effect.originals[key] ~= nil then
+                entity[eff.field] = effect.originals[key]
+            end
+        end
+        -- Note: add_lives, spawn_projectiles, set_entity_field are not reverted
+    end
 end
 
 --[[
@@ -252,6 +382,12 @@ end
 function PowerupSystem:removeEffect(powerup_type)
     local effect = self.active_powerups[powerup_type]
     if not effect then return end
+
+    -- Remove declarative effects first
+    local config = self.powerup_configs[powerup_type] or {}
+    if self.game and config.effects then
+        self:removeDeclarativeEffects(effect, config)
+    end
 
     -- Call removal hook (game-specific cleanup)
     self.on_remove(powerup_type, effect)

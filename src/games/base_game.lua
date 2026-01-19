@@ -16,6 +16,23 @@ function BaseGame:init(game_data, cheats, di, variant_override)
     self.completed = false
     self.time_elapsed = 0
 
+    -- Common game state (used by most games)
+    self.rng = love.math.newRandomGenerator(os.time())
+    self.game_over = false
+    self.victory = false
+    self.score = 0
+
+    -- Common arena state
+    self.arena_width = 800
+    self.arena_height = 600
+    self.combo = 0
+    self.max_combo = 0
+
+    -- Common entity arrays
+    self.bullets = {}
+    self.powerups = {}
+    self.active_powerups = {}
+
     -- Reset all metrics tracked by this game
     for _, metric in ipairs(self.data.metrics_tracked) do
         self.metrics[metric] = 0
@@ -79,6 +96,73 @@ function BaseGame:init(game_data, cheats, di, variant_override)
     end
 end
 
+-- Apply cheats to params using a mapping
+-- Example: self:applyCheats({speed_modifier = {"paddle_speed", "ball_speed"}, advantage_modifier = {"paddle_width"}})
+function BaseGame:applyCheats(mappings)
+    if not self.cheats or not self.params then return end
+
+    if self.cheats.speed_modifier and mappings.speed_modifier then
+        for _, param in ipairs(mappings.speed_modifier) do
+            if self.params[param] then
+                self.params[param] = self.params[param] * self.cheats.speed_modifier
+            end
+        end
+    end
+
+    if self.cheats.advantage_modifier and mappings.advantage_modifier then
+        for _, param in ipairs(mappings.advantage_modifier) do
+            if self.params[param] then
+                self.params[param] = self.params[param] * (1 + self.cheats.advantage_modifier * 0.1)
+            end
+        end
+        -- Also add to lives if present
+        if self.params.lives then
+            self.params.lives = self.params.lives + math.floor(self.cheats.advantage_modifier)
+        end
+    end
+
+    if self.cheats.performance_modifier and mappings.performance_modifier then
+        for _, param in ipairs(mappings.performance_modifier) do
+            if self.params[param] then
+                self.params[param] = self.params[param] + math.floor(self.cheats.performance_modifier / 3)
+            end
+        end
+    end
+end
+
+-- Create components from schema definitions
+-- Schema should have a "components" section with type and config for each component
+function BaseGame:createComponentsFromSchema()
+    local C = self.di and self.di.components
+    if not C or not self.params or not self.params.components then return end
+
+    for name, def in pairs(self.params.components) do
+        local config = self:resolveConfig(def.config or {})
+        local ComponentClass = C[def.type]
+        if ComponentClass then
+            self[name] = ComponentClass:new(config)
+            if self[name].game == nil then
+                self[name].game = self
+            end
+        end
+    end
+end
+
+-- Resolve "$param_name" references in config to actual param values
+function BaseGame:resolveConfig(config)
+    local resolved = {}
+    for k, v in pairs(config) do
+        if type(v) == "string" and v:sub(1, 1) == "$" then
+            resolved[k] = self.params[v:sub(2)]
+        elseif type(v) == "table" then
+            resolved[k] = self:resolveConfig(v)
+        else
+            resolved[k] = v
+        end
+    end
+    return resolved
+end
+
 -- Variable timestep update (for normal gameplay)
 function BaseGame:updateBase(dt)
     if not self.completed then
@@ -134,6 +218,43 @@ end
 function BaseGame:updateGameLogic(dt)
     -- Override in subclasses to implement game-specific update logic
     -- This is called from both updateBase (variable dt) and fixedUpdate (fixed dt)
+end
+
+-- Resize play area and reposition entities
+function BaseGame:setPlayArea(width, height)
+    local old_width = self.arena_width
+    local offset_x = (width - old_width) / 2
+
+    self.arena_width = width
+    self.arena_height = height
+
+    -- Reposition entities if they exist
+    if self.entity_controller then
+        for _, entity in ipairs(self.entity_controller:getEntities()) do
+            entity.x = entity.x + offset_x
+        end
+    end
+
+    -- Reposition paddle if exists
+    if self.paddle then
+        self.paddle.y = height - 50
+        self.paddle.x = math.max(self.paddle.width / 2, math.min(self.paddle.x, width - self.paddle.width / 2))
+    end
+
+    -- Reposition balls if they exist
+    if self.balls then
+        for _, ball in ipairs(self.balls) do
+            ball.x = math.max(ball.radius, math.min(width - ball.radius, ball.x + offset_x))
+            ball.y = math.max(ball.radius, math.min(height - ball.radius, ball.y))
+        end
+    end
+
+    -- Reposition obstacles if they exist
+    if self.obstacles then
+        for _, obstacle in ipairs(self.obstacles) do
+            obstacle.x = obstacle.x + offset_x
+        end
+    end
 end
 
 function BaseGame:draw()
@@ -221,8 +342,8 @@ function BaseGame:isVMRenderMode()
 end
 
 function BaseGame:checkComplete()
-    -- Override in subclasses
-    return false
+    -- Default implementation - most games use victory/game_over flags
+    return self.victory or self.game_over
 end
 
 function BaseGame:onComplete()
@@ -252,6 +373,40 @@ end
 -- Completion ratio: override in games to report progress toward their core goal (0..1)
 function BaseGame:getCompletionRatio()
     return 1.0
+end
+
+-- Generic powerup effect helpers
+-- Usage: effect.original = self:multiplyParam("paddle_width", 1.5)
+function BaseGame:multiplyParam(param_name, multiplier)
+    local original = self.params[param_name]
+    self.params[param_name] = original * multiplier
+    return original
+end
+
+function BaseGame:restoreParam(param_name, original_value)
+    self.params[param_name] = original_value
+end
+
+function BaseGame:enableParam(param_name)
+    local original = self.params[param_name]
+    self.params[param_name] = true
+    return original
+end
+
+function BaseGame:setParam(param_name, value)
+    local original = self.params[param_name]
+    self.params[param_name] = value
+    return original
+end
+
+-- Multiply velocity of all entities in an array
+function BaseGame:multiplyEntitySpeed(entities, multiplier)
+    for _, e in ipairs(entities) do
+        if e.active and e.vx and e.vy then
+            e.vx = e.vx * multiplier
+            e.vy = e.vy * multiplier
+        end
+    end
 end
 
 -- Phase 3.3: Audio helpers (graceful fallback if no audio assets)

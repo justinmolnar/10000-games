@@ -103,6 +103,24 @@ function love.load()
         attributionManager = attribution_manager,
     }
 
+    -- Game components available via DI (avoid requires in each game file)
+    di.components = {
+        MovementController = require('src.utils.game_components.movement_controller'),
+        FogOfWar = require('src.utils.game_components.fog_of_war'),
+        VisualEffects = require('src.utils.game_components.visual_effects'),
+        HUDRenderer = require('src.utils.game_components.hud_renderer'),
+        VictoryCondition = require('src.utils.game_components.victory_condition'),
+        LivesHealthSystem = require('src.utils.game_components.lives_health_system'),
+        EntityController = require('src.utils.game_components.entity_controller'),
+        ProjectileSystem = require('src.utils.game_components.projectile_system'),
+        PowerupSystem = require('src.utils.game_components.powerup_system'),
+        SchemaLoader = require('src.utils.game_components.schema_loader'),
+        PopupManager = require('src.games.score_popup').PopupManager,
+        Collision = require('src.utils.collision'),
+        PNGCollision = require('src.utils.png_collision'),
+        PhysicsUtils = require('src.utils.game_components.physics_utils'),
+    }
+
     -- == 3. Instantiate Models with DI ==
     player_data = PlayerData:new(statistics, di)
     di.playerData = player_data

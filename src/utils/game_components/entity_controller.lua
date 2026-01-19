@@ -198,6 +198,143 @@ function EntityController:spawnGrid(type_name, rows, cols, x_offset, y_offset, s
 end
 
 --[[
+    Spawn entities in a pyramid/triangle layout
+
+    @param type_name string
+    @param rows number
+    @param max_cols number - Columns in first row (decreases each row)
+    @param x_offset number
+    @param y_offset number
+    @param spacing_x number
+    @param spacing_y number
+    @param arena_width number - For centering
+]]
+function EntityController:spawnPyramid(type_name, rows, max_cols, x_offset, y_offset, spacing_x, spacing_y, arena_width)
+    local entity_type = self.entity_types[type_name]
+    if not entity_type then return end
+
+    local width = entity_type.width or entity_type.radius * 2 or 32
+    local height = entity_type.height or entity_type.radius * 2 or 16
+
+    for row = 0, rows - 1 do
+        local cols_this_row = max_cols - row
+        if cols_this_row < 1 then break end
+
+        local total_width = cols_this_row * (width + spacing_x)
+        local start_x = (arena_width - total_width) / 2
+
+        for col = 0, cols_this_row - 1 do
+            local x = start_x + col * (width + spacing_x)
+            local y = y_offset + row * (height + spacing_y)
+            self:spawn(type_name, x, y)
+        end
+    end
+end
+
+--[[
+    Spawn entities in concentric circles
+
+    @param type_name string
+    @param rings number
+    @param center_x number
+    @param center_y number
+    @param base_count number - Entities in innermost ring
+    @param ring_spacing number - Distance between rings
+]]
+function EntityController:spawnCircle(type_name, rings, center_x, center_y, base_count, ring_spacing)
+    base_count = base_count or 12
+    ring_spacing = ring_spacing or 40
+
+    for ring = 1, rings do
+        local radius = ring * ring_spacing
+        local count = base_count + (ring - 1) * 2
+
+        for i = 1, count do
+            local angle = (i / count) * math.pi * 2
+            local x = center_x + math.cos(angle) * radius
+            local y = center_y + math.sin(angle) * radius
+            self:spawn(type_name, x, y)
+        end
+    end
+end
+
+--[[
+    Spawn entities in random positions (with optional overlap checking)
+
+    @param type_name string
+    @param count number
+    @param bounds table - {x, y, width, height}
+    @param rng RandomGenerator
+    @param allow_overlap boolean (default false)
+]]
+function EntityController:spawnRandom(type_name, count, bounds, rng, allow_overlap)
+    local entity_type = self.entity_types[type_name]
+    if not entity_type then return end
+
+    local width = entity_type.width or entity_type.radius * 2 or 32
+    local height = entity_type.height or entity_type.radius * 2 or 16
+    local max_attempts = count * 10
+    local placed = 0
+
+    for _ = 1, max_attempts do
+        if placed >= count then break end
+
+        local x = bounds.x + rng:random() * (bounds.width - width)
+        local y = bounds.y + rng:random() * (bounds.height - height)
+
+        local can_place = true
+        if not allow_overlap then
+            for _, entity in ipairs(self.entities) do
+                if entity.active then
+                    local overlap = x < entity.x + (entity.width or 0) and
+                                   x + width > entity.x and
+                                   y < entity.y + (entity.height or 0) and
+                                   y + height > entity.y
+                    if overlap then
+                        can_place = false
+                        break
+                    end
+                end
+            end
+        end
+
+        if can_place then
+            self:spawn(type_name, x, y)
+            placed = placed + 1
+        end
+    end
+end
+
+--[[
+    Spawn entities in a checkerboard pattern
+
+    @param type_name string
+    @param rows number
+    @param cols number
+    @param x_offset number
+    @param y_offset number
+    @param spacing_x number
+    @param spacing_y number
+]]
+function EntityController:spawnCheckerboard(type_name, rows, cols, x_offset, y_offset, spacing_x, spacing_y)
+    local entity_type = self.entity_types[type_name]
+    if not entity_type then return end
+
+    local width = entity_type.width or entity_type.radius * 2 or 32
+    local height = entity_type.height or entity_type.radius * 2 or 16
+
+    for row = 0, rows - 1 do
+        for col = 0, cols - 1 do
+            if (row + col) % 2 == 0 then
+                local x = x_offset + col * (width + spacing_x)
+                local y = y_offset + row * (height + spacing_y)
+                self:spawn(type_name, x, y)
+            end
+        end
+    end
+end
+
+--[[
     Update all entities (movement, timers, spawning logic)
 ]]
 function EntityController:update(dt, game_state)
@@ -495,6 +632,129 @@ end
 ]]
 function EntityController:getTotalCount()
     return self.entity_count
+end
+
+--[[
+    Find nearest entity to a point (optionally filtered)
+
+    @param x number
+    @param y number
+    @param filter function(entity) - optional, return true to include
+    @return entity, distance
+]]
+function EntityController:findNearest(x, y, filter)
+    local nearest = nil
+    local min_dist = math.huge
+
+    for _, entity in ipairs(self.entities) do
+        if entity.active and not entity.marked_for_removal then
+            if not filter or filter(entity) then
+                local ex = entity.x + (entity.width or 0) / 2
+                local ey = entity.y + (entity.height or 0) / 2
+                local dx = ex - x
+                local dy = ey - y
+                local dist = math.sqrt(dx * dx + dy * dy)
+                if dist < min_dist then
+                    min_dist = dist
+                    nearest = entity
+                end
+            end
+        end
+    end
+
+    return nearest, min_dist
+end
+
+--[[
+    Update entity behaviors (falling, moving, regenerating)
+    Call this in game update loop for entities that need these behaviors
+
+    @param dt number
+    @param config table - {fall_speed, move_speed, regen_time, bounds, can_overlap}
+    @param collision_check function(entity, x, y) - returns true if position collides
+]]
+function EntityController:updateBehaviors(dt, config, collision_check)
+    config = config or {}
+
+    for _, entity in ipairs(self.entities) do
+        if not entity.active or entity.marked_for_removal then
+            goto continue
+        end
+
+        -- Falling behavior
+        if config.fall_enabled and entity.alive then
+            local new_y = entity.y + (config.fall_speed or 50) * dt
+            local can_move = true
+
+            if not config.can_overlap and collision_check then
+                can_move = not collision_check(entity, entity.x, new_y)
+            end
+
+            if can_move then
+                entity.y = new_y
+            end
+
+            -- Check if reached bottom threshold
+            if config.fall_death_y and entity.y > config.fall_death_y then
+                if config.on_fall_death then
+                    config.on_fall_death(entity)
+                end
+            end
+        end
+
+        -- Horizontal movement behavior
+        if config.move_enabled and entity.alive then
+            if entity.vx == 0 then
+                entity.vx = (config.move_speed or 50) * (math.random() < 0.5 and 1 or -1)
+            end
+
+            local new_x = entity.x + entity.vx * dt
+            local can_move = true
+
+            if not config.can_overlap and collision_check then
+                can_move = not collision_check(entity, new_x, entity.y)
+                if not can_move then
+                    entity.vx = -entity.vx
+                end
+            end
+
+            if can_move then
+                entity.x = new_x
+            end
+
+            -- Bounce off walls
+            if config.bounds then
+                if entity.x < config.bounds.x_min then
+                    entity.vx = math.abs(entity.vx)
+                    entity.x = config.bounds.x_min
+                elseif entity.x + (entity.width or 0) > config.bounds.x_max then
+                    entity.vx = -math.abs(entity.vx)
+                    entity.x = config.bounds.x_max - (entity.width or 0)
+                end
+            end
+        end
+
+        -- Regeneration behavior
+        if config.regen_enabled and not entity.alive then
+            entity.regen_timer = (entity.regen_timer or 0) + dt
+
+            if entity.regen_timer >= (config.regen_time or 5) then
+                local can_regen = true
+
+                if not config.can_overlap and collision_check then
+                    can_regen = not collision_check(entity, entity.x, entity.y)
+                end
+
+                if can_regen then
+                    entity.alive = true
+                    entity.health = entity.max_health or 1
+                    entity.regen_timer = 0
+                end
+            end
+        end
+
+        ::continue::
+    end
 end
 
 return EntityController
