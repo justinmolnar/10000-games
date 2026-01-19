@@ -1026,13 +1026,12 @@ function DodgeGame:updateObjects(dt)
             if obj.has_entered then
                 local next_x = obj.x + obj.vx * dt
                 local next_y = obj.y + obj.vy * dt
-                local old_vx, old_vy = obj.vx, obj.vy
-                obj.vx, obj.vy = PhysicsUtils.bounceOffWalls(
-                    next_x, next_y, obj.vx, obj.vy, obj.radius,
-                    self.game_width, self.game_height, 1.0
-                )
-                -- Track bounces if velocity changed
-                if obj.vx ~= old_vx or obj.vy ~= old_vy then
+                -- Use handleBounds with temp entity for prediction-based bounce check
+                local temp = {x = next_x, y = next_y, vx = obj.vx, vy = obj.vy, radius = obj.radius}
+                local bounds_result = PhysicsUtils.handleBounds(temp, {width = self.game_width, height = self.game_height})
+                if bounds_result.hit then
+                    obj.vx = temp.vx
+                    obj.vy = temp.vy
                     obj.bounce_count = obj.bounce_count + 1
                 end
 

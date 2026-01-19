@@ -91,34 +91,90 @@ function PhysicsUtils.wrapPosition(x, y, entity_width, entity_height, bounds_wid
 end
 
 -- ===================================================================
--- BOUNCE PHYSICS
+-- UNIFIED BOUNDS HANDLING
 -- ===================================================================
--- Reflects velocity when colliding with boundaries
--- Used by: Dodge (wall bounce), Breakout (ball bounce)
+-- ONE function for all boundary behavior: bounce, wrap, clamp, callbacks
 --
--- Usage:
---   local new_vx, new_vy = PhysicsUtils.bounceOffWalls(x, y, vx, vy, radius, bounds_w, bounds_h, restitution)
+-- entity: has x, y, vx, vy, and radius or width/height
+-- bounds: {left, right, top, bottom} or {width, height} (assumes 0,0 origin)
+-- config:
+--   mode: "bounce" | "wrap" | "clamp" | "none" (default for all edges)
+--   restitution: for bounce mode (default 1.0)
+--   per_edge: {left="bounce", right="wrap", top="bounce", bottom="none"} overrides
+--   on_exit: callback(entity, edge) when entity exits/hits boundary
+--   bounce_randomness: optional randomness to add after bounce
+--   rng: random generator for bounce_randomness
+--
+-- Returns: {hit=bool, edges={left=bool, right=bool, top=bool, bottom=bool}}
 
-function PhysicsUtils.bounceOffWalls(x, y, vx, vy, radius, bounds_width, bounds_height, restitution)
-    restitution = restitution or 1.0  -- Default: perfect elastic collision
-    local new_vx = vx
-    local new_vy = vy
+function PhysicsUtils.handleBounds(entity, bounds, config)
+    config = config or {}
+    local mode = config.mode or "bounce"
+    local restitution = config.restitution or 1.0
+    local per_edge = config.per_edge or {}
 
-    -- Left/right walls
-    if x - radius < 0 then
-        new_vx = math.abs(vx) * restitution
-    elseif x + radius > bounds_width then
-        new_vx = -math.abs(vx) * restitution
+    -- Normalize bounds format
+    local left = bounds.left or bounds.x or 0
+    local top = bounds.top or bounds.y or 0
+    local right = bounds.right or (left + (bounds.width or 800))
+    local bottom = bounds.bottom or (top + (bounds.height or 600))
+
+    -- Get entity size
+    local radius = entity.radius or 0
+    local half_w = radius > 0 and radius or (entity.width or 0) / 2
+    local half_h = radius > 0 and radius or (entity.height or 0) / 2
+
+    local result = {hit = false, edges = {left = false, right = false, top = false, bottom = false}}
+
+    local function handleEdge(edge, axis, pos_field, vel_field, boundary, inside_dir)
+        local edge_mode = per_edge[edge] or mode
+        if edge_mode == "none" then
+            -- Just report the exit, don't modify anything
+            result.hit = true
+            result.edges[edge] = true
+            if config.on_exit then config.on_exit(entity, edge) end
+            return
+        end
+
+        result.hit = true
+        result.edges[edge] = true
+
+        if edge_mode == "bounce" then
+            entity[pos_field] = boundary + inside_dir * half_w
+            entity[vel_field] = inside_dir * math.abs(entity[vel_field]) * restitution
+            if config.bounce_randomness and config.rng then
+                PhysicsUtils.addBounceRandomness(entity, config.bounce_randomness, config.rng)
+            end
+        elseif edge_mode == "wrap" then
+            if inside_dir > 0 then
+                -- Exited left/top, wrap to right/bottom
+                entity[pos_field] = (edge == "left" or edge == "right") and (right - half_w) or (bottom - half_h)
+            else
+                -- Exited right/bottom, wrap to left/top
+                entity[pos_field] = (edge == "left" or edge == "right") and (left + half_w) or (top + half_h)
+            end
+        elseif edge_mode == "clamp" then
+            entity[pos_field] = boundary + inside_dir * half_w
+            entity[vel_field] = 0
+        end
+
+        if config.on_exit then config.on_exit(entity, edge) end
     end
 
-    -- Top/bottom walls
-    if y - radius < 0 then
-        new_vy = math.abs(vy) * restitution
-    elseif y + radius > bounds_height then
-        new_vy = -math.abs(vy) * restitution
+    -- Check each edge
+    if entity.x - half_w < left then
+        handleEdge("left", "x", "x", "vx", left, 1)
+    elseif entity.x + half_w > right then
+        handleEdge("right", "x", "x", "vx", right, -1)
     end
 
-    return new_vx, new_vy
+    if entity.y - half_h < top then
+        handleEdge("top", "y", "y", "vy", top, 1)
+    elseif entity.y + half_h > bottom then
+        handleEdge("bottom", "y", "y", "vy", bottom, -1)
+    end
+
+    return result
 end
 
 -- ===================================================================
@@ -214,27 +270,6 @@ function PhysicsUtils.addBounceRandomness(entity, randomness, rng)
     local new_angle = angle + variance
     entity.vx = math.cos(new_angle) * speed
     entity.vy = math.sin(new_angle) * speed
-end
-
--- ===================================================================
--- BOUNCE WITH MODES
--- ===================================================================
--- Enhanced wall bounce with different physics modes
--- Modes: "normal" (elastic), "damped" (loses energy), "sticky" (high friction)
--- Used by: Breakout, Pong variants, pinball
---
--- Usage:
---   PhysicsUtils.bounceAxis(ball, 'vx', "damped")
-
-function PhysicsUtils.bounceAxis(entity, axis, mode)
-    mode = mode or "normal"
-    if mode == "damped" then
-        entity[axis] = -entity[axis] * 0.9
-    elseif mode == "sticky" then
-        entity[axis] = -entity[axis] * 0.6
-    else
-        entity[axis] = -entity[axis]
-    end
 end
 
 -- ===================================================================
@@ -621,33 +656,35 @@ function PhysicsUtils.updateBallPhysics(ball, dt, config)
     end
 
     local bounds = config.bounds or {width = 800, height = 600}
-    local mode = config.wall_bounce_mode or "normal"
     local rng = config.rng
 
-    -- Wall collisions (left, right)
-    if ball.x - ball.radius < 0 then
-        ball.x = ball.radius
-        PhysicsUtils.bounceAxis(ball, 'vx', mode)
-        if config.bounce_randomness then PhysicsUtils.addBounceRandomness(ball, config.bounce_randomness, rng) end
-    elseif ball.x + ball.radius > bounds.width then
-        ball.x = bounds.width - ball.radius
-        PhysicsUtils.bounceAxis(ball, 'vx', mode)
-        if config.bounce_randomness then PhysicsUtils.addBounceRandomness(ball, config.bounce_randomness, rng) end
-    end
+    -- Convert wall_bounce_mode to restitution
+    local mode_restitution = {normal = 1.0, damped = 0.9, sticky = 0.6}
+    local restitution = mode_restitution[config.wall_bounce_mode] or 1.0
 
-    -- Top boundary
-    if ball.y - ball.radius < 0 then
-        if config.ceiling_enabled then
-            ball.y = ball.radius
-            PhysicsUtils.bounceAxis(ball, 'vy', mode)
-            if config.bounce_randomness then PhysicsUtils.addBounceRandomness(ball, config.bounce_randomness, rng) end
-        else
-            ball.active = false
-            return false
+    -- Wall collisions (left, right, top via handleBounds)
+    local bounds_result = PhysicsUtils.handleBounds(ball, {width = bounds.width, height = bounds.height}, {
+        mode = "bounce",
+        restitution = restitution,
+        per_edge = {
+            top = config.ceiling_enabled and "bounce" or "none",
+            bottom = "none"  -- Handle separately (special kill/shield logic)
+        },
+        bounce_randomness = config.bounce_randomness,
+        rng = rng,
+        on_exit = function(entity, edge)
+            if edge == "top" and not config.ceiling_enabled then
+                entity.active = false
+            end
         end
+    })
+
+    -- Early exit if ball deactivated by top wall
+    if not ball.active then
+        return false
     end
 
-    -- Bottom boundary
+    -- Bottom boundary (special: check if ball fully exited, not just touching)
     if ball.y - ball.radius > bounds.height then
         if config.bottom_kill_enabled ~= false then
             if config.shield_active then
@@ -660,7 +697,7 @@ function PhysicsUtils.updateBallPhysics(ball, dt, config)
             end
         else
             ball.y = bounds.height - ball.radius
-            PhysicsUtils.bounceAxis(ball, 'vy', mode)
+            ball.vy = -math.abs(ball.vy) * restitution
             if config.bounce_randomness then PhysicsUtils.addBounceRandomness(ball, config.bounce_randomness, rng) end
         end
     end

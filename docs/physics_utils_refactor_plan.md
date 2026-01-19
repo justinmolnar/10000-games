@@ -468,7 +468,7 @@ Updated internal callers:
 - updateBallPhysics paddle collision now uses resolveCollision with centered + position_angle
 - checkCircleEntityCollisions now uses resolveCollision
 
-Note: `bounceAxis` kept for now - used for wall bouncing, will be replaced in Phase 7.
+Note: `bounceAxis` deleted in Phase 7 - replaced by handleBounds with restitution.
 
 #### Line Changes
 ```
@@ -529,7 +529,32 @@ PhysicsUtils.handleBounds(ball, arena, {
 
 ### AI Notes
 
-_(To be filled after completion)_
+**COMPLETED** - Phase 7 done.
+
+Changes made:
+1. Created `handleBounds(entity, bounds, config)` function with:
+   - Modes: bounce, wrap, clamp, none (per-edge configurable)
+   - Restitution support for bounce mode
+   - Per-edge behavior via `per_edge` table
+   - `on_exit` callback when entity exits/hits boundary
+   - `bounce_randomness` integration with rng support
+   - Support for both {width, height} and {left, right, top, bottom} bounds formats
+
+2. Updated `updateBallPhysics` to use `handleBounds`:
+   - Left/right walls use bounce mode
+   - Top uses ceiling_enabled toggle (bounce or none with deactivate callback)
+   - Bottom handled separately (special fully-exited check for kill/shield logic)
+   - Converted wall_bounce_mode (normal/damped/sticky) to restitution values
+
+3. Updated `dodge_game.lua`:
+   - Bouncer objects now use handleBounds with temp entity for prediction-based bounce checking
+   - Maintains same behavior (check next position, reverse velocity if would bounce)
+
+4. DELETED functions:
+   - `bounceOffWalls` - replaced by handleBounds
+   - `bounceAxis` - absorbed into handleBounds via restitution
+
+Note: Bottom boundary in updateBallPhysics kept separate because it checks if ball fully exited (y - radius > height) vs touching (y + radius > height). This different threshold handles the shield bounce and kill logic correctly.
 
 ---
 
