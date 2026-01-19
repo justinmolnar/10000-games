@@ -355,7 +355,7 @@ end
 function Breakout:updatePaddle(dt)
     self.paddle_movement:update(dt, self.paddle, {
         left = self:isKeyDown('a', 'left'), right = self:isKeyDown('d', 'right')
-    }, {width = self.arena_width, height = self.arena_height})
+    }, {x = 0, y = 0, width = self.arena_width, height = self.arena_height})
 end
 
 function Breakout:updateBall(ball, dt)
