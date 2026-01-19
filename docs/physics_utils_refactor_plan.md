@@ -700,7 +700,28 @@ PhysicsUtils.checkCollisions(ball, self.bricks, {
 
 ### AI Notes
 
-_(To be filled after completion)_
+**COMPLETED** - Phase 9 done.
+
+Changes made:
+1. Created generic `checkCollisions(entity, targets, config)` function:
+   - `filter`: function to include/exclude targets (default: target.alive)
+   - `check_func`: custom collision check (default: checkCollision)
+   - `on_hit`: callback(entity, target) for game-specific logic
+   - `resolve`: auto-resolve via resolveCollision (default true)
+   - `stop_on_first`: stop after first hit (default true)
+
+2. Updated Breakout brick collisions to use `checkCollisions`:
+   - Health tracking moved to on_hit callback
+   - on_destroy logic moved to on_hit callback
+   - Speed increase moved to on_hit callback
+   - Bounce randomness moved to on_hit callback
+
+3. Updated Breakout obstacle collisions to use `checkCollisions`:
+   - Bounce randomness in on_hit callback
+
+4. DELETED `checkCircleEntityCollisions` (~55 lines removed, replaced with ~45 line generic version)
+
+All game-specific collision logic now lives in Breakout, not PhysicsUtils.
 
 ---
 

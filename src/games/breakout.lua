@@ -463,24 +463,49 @@ function Breakout:updateBall(ball, dt)
         self.combo = 0
     end
 
-    -- Brick collisions with game-specific scoring
+    -- Brick collisions
     local PNGCollision = self.di.components.PNGCollision
-    Physics.checkCircleEntityCollisions(ball, self.bricks, {
+    Physics.checkCollisions(ball, self.bricks, {
+        filter = function(brick) return brick.alive end,
         check_func = function(b, brick)
             return brick.collision_image
                 and PNGCollision.checkBall(brick.collision_image, brick.x, brick.y, b.x, b.y, b.radius, brick.alpha_threshold or 0.5)
                 or Physics.checkCollision(b, brick, "circle", brick.shape)
         end,
-        on_destroy = function(brick) self:onBrickDestroyed(brick, ball) end,
-        on_hit = function(brick) if p.brick_flash_on_hit then self.brick_flash_map[brick] = 0.1 end end,
-        speed_increase = p.ball_speed_increase_per_bounce, max_speed = p.ball_max_speed,
-        bounce_randomness = p.ball_bounce_randomness, rng = self.rng
+        on_hit = function(b, brick)
+            -- Flash effect
+            if p.brick_flash_on_hit then self.brick_flash_map[brick] = 0.1 end
+            -- Health and destruction
+            if brick.health then
+                brick.health = brick.health - 1
+                if brick.health <= 0 then
+                    brick.alive = false
+                    self:onBrickDestroyed(brick, b)
+                end
+            end
+            -- Speed increase
+            if p.ball_speed_increase_per_bounce and p.ball_max_speed then
+                Physics.increaseSpeed(b, p.ball_speed_increase_per_bounce, p.ball_max_speed)
+            end
+            -- Bounce randomness
+            if p.ball_bounce_randomness then
+                Physics.addBounceRandomness(b, p.ball_bounce_randomness, self.rng)
+            end
+        end
     })
 
     -- Obstacle collisions
-    Physics.checkCircleEntityCollisions(ball, self.obstacles, {
-        bounce_randomness = p.ball_bounce_randomness, rng = self.rng
+    Physics.checkCollisions(ball, self.obstacles, {
+        filter = function(obs) return obs.alive end,
+        on_hit = function(b, obs)
+            if p.ball_bounce_randomness then
+                Physics.addBounceRandomness(b, p.ball_bounce_randomness, self.rng)
+            end
+        end
     })
+
+    -- Final speed clamp (safety)
+    if p.ball_max_speed then Physics.clampSpeed(ball, p.ball_max_speed) end
 end
 
 function Breakout:onBrickDestroyed(brick, ball)

@@ -417,8 +417,9 @@ function PhysicsUtils.resolveCollision(moving, solid, config)
 
     if shape == "circle" then
         -- Circle collision: reflect off radial normal
-        local cx = solid.cx or solid.x + (solid.radius or (solid.width or 0) / 2)
-        local cy = solid.cy or solid.y + (solid.radius or (solid.height or 0) / 2)
+        -- Use width/height for center offset if available (x,y is usually top-left)
+        local cx = solid.cx or solid.x + (solid.width or solid.radius * 2 or 0) / 2
+        local cy = solid.cy or solid.y + (solid.height or solid.radius * 2 or 0) / 2
         local cr = solid.radius or (solid.width or solid.size or 0) / 2
 
         local nx, ny = PhysicsUtils.circleNormal(cx, cy, moving.x, moving.y)
@@ -603,62 +604,44 @@ function PhysicsUtils.move(entity, dt)
 end
 
 -- ===================================================================
--- CIRCLE VS ENTITIES COLLISION
+-- GENERIC COLLISION CHECKING
 -- ===================================================================
--- Check circle entity against array of entities and call callbacks
--- Returns true if collision occurred
+-- Check one entity against array of targets
 --
--- config: {
---   check_func, on_hit, on_destroy, bounce_randomness, speed_increase, max_speed, rng,
---   pierce_enabled, resolve_bounce
--- }
+-- entity: the moving thing (must have x, y, and radius or width/height)
+-- targets: array of things to check against
+-- config:
+--   filter: function(target) return true to include (default: target.alive)
+--   check_func: custom collision check function(entity, target) (default: checkCollision)
+--   on_hit: callback(entity, target) called for each hit
+--   resolve: true to auto-resolve via resolveCollision (default true)
+--   resolve_config: config passed to resolveCollision
+--   stop_on_first: stop after first hit (default true for non-piercing)
+--
+-- Returns: true if any collision occurred
 
-function PhysicsUtils.checkCircleEntityCollisions(circle, entities, config)
+function PhysicsUtils.checkCollisions(entity, targets, config)
     config = config or {}
     local hit_any = false
+    local stop_on_first = config.stop_on_first ~= false
 
-    for _, entity in ipairs(entities) do
-        if entity.alive then
-            local hit = config.check_func and config.check_func(circle, entity) or PhysicsUtils.checkCollision(circle, entity, "circle", entity.shape)
+    for _, target in ipairs(targets) do
+        local include = config.filter and config.filter(target) or target.alive
+        if include then
+            local hit = config.check_func and config.check_func(entity, target) or PhysicsUtils.checkCollision(entity, target)
 
             if hit then
                 hit_any = true
 
-                -- Call hit callback
                 if config.on_hit then
-                    config.on_hit(entity, circle)
+                    config.on_hit(entity, target)
                 end
 
-                -- Check if destroyed
-                if entity.health then
-                    entity.health = entity.health - 1
-                    if entity.health <= 0 then
-                        entity.alive = false
-                        if config.on_destroy then config.on_destroy(entity, circle) end
-                    end
+                if config.resolve ~= false then
+                    PhysicsUtils.resolveCollision(entity, target, config.resolve_config)
                 end
 
-                -- Resolve bounce
-                if not (circle.pierce_count and circle.pierce_count > 0) then
-                    if config.resolve_bounce ~= false then
-                        PhysicsUtils.resolveCollision(circle, entity)
-                    end
-                else
-                    circle.pierce_count = circle.pierce_count - 1
-                end
-
-                -- Speed increase
-                if config.speed_increase and config.max_speed then
-                    PhysicsUtils.increaseSpeed(circle, config.speed_increase, config.max_speed)
-                end
-
-                -- Bounce randomness
-                if config.bounce_randomness and not (circle.pierce_count and circle.pierce_count > 0) then
-                    PhysicsUtils.addBounceRandomness(circle, config.bounce_randomness, config.rng)
-                end
-
-                -- Break unless piercing
-                if not (circle.pierce_count and circle.pierce_count > 0) then
+                if stop_on_first then
                     break
                 end
             end
