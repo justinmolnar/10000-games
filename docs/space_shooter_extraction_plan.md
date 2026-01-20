@@ -219,7 +219,19 @@ end
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+
+1. **PhysicsUtils** (`physics_utils.lua`):
+   - Added `applyGravityWell(entity, well, dt, strength_multiplier)` function (~15 lines)
+   - Uses inverse distance falloff (stronger at center) matching original behavior
+   - Accepts optional strength_multiplier for weaker effects on bullets
+
+2. **space_shooter.lua**:
+   - Replaced 40-line applyGravityWells() with 18-line version using PhysicsUtils
+   - DELETED ~22 lines of inline gravity math
+
+**Lines removed from space_shooter.lua: ~22 lines**
+**Lines added to PhysicsUtils: ~15 lines (reusable by other games)**
 
 ---
 

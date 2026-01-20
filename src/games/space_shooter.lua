@@ -1472,45 +1472,21 @@ end
 
 --Gravity well system
 function SpaceShooter:applyGravityWells(dt)
-    -- Apply gravity to player
+    local PhysicsUtils = self.di.components.PhysicsUtils
+
     for _, well in ipairs(self.gravity_wells) do
-        local dx = well.x - (self.player.x + self.player.width / 2)
-        local dy = well.y - (self.player.y + self.player.height / 2)
-        local distance = math.sqrt(dx * dx + dy * dy)
+        -- Apply to player
+        PhysicsUtils.applyGravityWell(self.player, well, dt)
 
-        if distance < well.radius and distance > 0 then
-            -- Calculate pull strength (inverse square law, clamped)
-            local pull_factor = math.min(1.0, well.radius / distance)
-            local pull = well.strength * pull_factor * dt
-
-            -- Apply pull to player position
-            local angle = math.atan2(dy, dx)
-            self.player.x = self.player.x + math.cos(angle) * pull * dt
-            self.player.y = self.player.y + math.sin(angle) * pull * dt
-
-            -- Keep player in bounds
-            self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
-            self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
+        -- Apply to player bullets (weaker effect)
+        for _, bullet in ipairs(self.player_bullets) do
+            PhysicsUtils.applyGravityWell(bullet, well, dt, 0.7)
         end
     end
 
-    -- Apply gravity to player bullets
-    for _, bullet in ipairs(self.player_bullets) do
-        for _, well in ipairs(self.gravity_wells) do
-            local dx = well.x - bullet.x
-            local dy = well.y - bullet.y
-            local distance = math.sqrt(dx * dx + dy * dy)
-
-            if distance < well.radius and distance > 0 then
-                local pull_factor = math.min(1.0, well.radius / distance)
-                local pull = well.strength * pull_factor * dt * 0.7  -- Slightly weaker effect on bullets
-
-                local angle = math.atan2(dy, dx)
-                bullet.x = bullet.x + math.cos(angle) * pull
-                bullet.y = bullet.y + math.sin(angle) * pull
-            end
-        end
-    end
+    -- Keep player in bounds
+    self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+    self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
 end
 
 --Vertical scrolling

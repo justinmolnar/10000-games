@@ -35,6 +35,36 @@ function PhysicsUtils.applyMagnetForce(entity, target_x, target_y, range, streng
     end
 end
 
+-- Apply gravity well pull (modifies velocity like homing - entities curve toward well)
+-- strength_multiplier: optional multiplier (default 1.0)
+-- For entities with vx/vy: modifies velocity (bullets curve smoothly)
+-- For entities without vx/vy: modifies position directly (player gets pulled)
+function PhysicsUtils.applyGravityWell(entity, well, dt, strength_multiplier)
+    strength_multiplier = strength_multiplier or 1.0
+    local entity_cx = entity.x + (entity.width or 0) / 2
+    local entity_cy = entity.y + (entity.height or 0) / 2
+    local dx = well.x - entity_cx
+    local dy = well.y - entity_cy
+    local dist = math.sqrt(dx * dx + dy * dy)
+
+    if dist < well.radius and dist > 0 then
+        -- Stronger pull when closer (inverse distance)
+        local pull_factor = math.min(1.0, well.radius / dist)
+        local force = well.strength * pull_factor * strength_multiplier * dt
+        local dir_x, dir_y = dx / dist, dy / dist
+
+        -- If entity has velocity, modify it (bullets) - they'll curve
+        if entity.vx ~= nil then
+            entity.vx = entity.vx + dir_x * force
+            entity.vy = entity.vy + dir_y * force
+        else
+            -- No velocity, modify position directly (player)
+            entity.x = entity.x + dir_x * force * dt
+            entity.y = entity.y + dir_y * force * dt
+        end
+    end
+end
+
 -- Apply multiple forces from params config
 -- params: {gravity, gravity_direction, homing_strength, magnet_range}
 -- findTarget: optional function() returning {x, y} or nil for homing
