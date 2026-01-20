@@ -153,7 +153,25 @@ end
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+
+1. **Schema updated** (`space_shooter_schema.json`):
+   - Changed health_system mode from "lives" to "shield"
+   - Added shield_enabled: "$shield", shield_max_hits: "$shield_hits", shield_regen_time: "$shield_regen_time", shield_regen_delay: 0
+
+2. **space_shooter.lua changes**:
+   - Added `self.health_system:update(dt)` call in updateGameLogic()
+   - DELETED 12-line inline shield regen block from updatePlayer()
+   - Replaced handlePlayerDamage() to use `health_system:takeDamage(1)` - reduced from 14 lines to 10 lines
+   - DELETED shield_active, shield_regen_timer, shield_hits_remaining from setupPlayer() extra fields
+
+3. **space_shooter_view.lua changes**:
+   - Changed `game.params.shield_enabled` → `game.params.shield`
+   - Changed `game.player.shield_active` → `game.health_system:isShieldActive()`
+   - Changed `game.player.shield_hits_remaining` → `game.health_system:getShieldHitsRemaining()`
+   - Changed `game.params.shield_max_hits` → `game.params.shield_hits`
+
+**Lines removed from space_shooter.lua: ~15 lines**
 
 ---
 

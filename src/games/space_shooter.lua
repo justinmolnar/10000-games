@@ -61,10 +61,7 @@ function SpaceShooter:setupPlayer()
             charge_progress = 0, is_charging = false,
             burst_remaining = 0, burst_timer = 0,
             ammo = self.params.ammo_capacity, reload_timer = 0, is_reloading = false,
-            heat = 0, is_overheated = false, overheat_timer = 0,
-            shield_active = self.params.shield or false,
-            shield_regen_timer = 0,
-            shield_hits_remaining = self.params.shield_hits or 0
+            heat = 0, is_overheated = false, overheat_timer = 0
         }
     })
 
@@ -286,6 +283,9 @@ function SpaceShooter:setPlayArea(width, height)
 end
 
 function SpaceShooter:updateGameLogic(dt)
+    --Update health system (shield regeneration)
+    self.health_system:update(dt)
+
     --Update EntityController (enemies, asteroids, powerups)
     self.entity_controller:update(dt)
 
@@ -419,18 +419,7 @@ function SpaceShooter:updatePlayer(dt)
     -- Update movement via MovementController
     self.movement_controller:update(dt, self.player, input, bounds)
 
-    -- Shield regeneration
-    if self.params.shield and self.player.shield_hits_remaining < self.params.shield_hits then
-        self.player.shield_regen_timer = self.player.shield_regen_timer + dt
-        if self.player.shield_regen_timer >= self.params.shield_regen_time then
-            self.player.shield_hits_remaining = self.player.shield_hits_remaining + 1
-            self.player.shield_regen_timer = 0
-            -- Reactivate shield if it was down
-            if not self.player.shield_active then
-                self.player.shield_active = true
-            end
-        end
-    end
+    -- Shield regeneration handled by health_system (updated in updateGameLogic)
 
     --Fire Mode Handling
     self.projectile_system:updateFireMode(dt, self.player, self.params.fire_mode, {
@@ -811,19 +800,18 @@ function SpaceShooter:checkCollision(a, b)
 end
 
 function SpaceShooter:handlePlayerDamage()
-    if self.params.shield and self.player.shield_active then
-        self.player.shield_hits_remaining = self.player.shield_hits_remaining - 1
-        if self.player.shield_hits_remaining <= 0 then
-            self.player.shield_active = false
-            self.player.shield_regen_timer = 0
-        end
-        self:playSound("hit", 1.0)
-        return true  -- Damage absorbed by shield
+    -- Use health_system for shield absorption
+    local absorbed = self.health_system:takeDamage(1)
+    self:playSound("hit", 1.0)
+
+    if absorbed then
+        return true  -- Shield absorbed damage
     else
+        -- Shield was down or disabled, take real damage
         self.deaths = self.deaths + 1
+        self.lives = self.lives - 1  -- Update for HUD display
         self.combo = 0
-        self:playSound("hit", 1.0)
-        return false  -- Took real damage
+        return false
     end
 end
 

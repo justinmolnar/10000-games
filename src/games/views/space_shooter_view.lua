@@ -55,7 +55,7 @@ function SpaceShooterView:draw()
         local center_y = game.player.y
 
         -- Draw shield visual indicator (like Dodge)
-        if game.params.shield_enabled and game.player.shield_active then
+        if game.params.shield and game.health_system:isShieldActive() then
             local shield_alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 5)
             g.setColor(0.3, 0.7, 1.0, shield_alpha)
             local shield_radius = math.max(game.player.width, game.player.height) / 2 + 5
@@ -256,10 +256,10 @@ function SpaceShooterView:draw()
         hud_y = hud_y + 18
 
         -- Shield (if enabled)
-        if game.params.shield_enabled then
-            local shield_color = game.player.shield_active and {0.3, 0.7, 1.0} or {0.5, 0.5, 0.5}
+        if game.params.shield then
+            local shield_color = game.health_system:isShieldActive() and {0.3, 0.7, 1.0} or {0.5, 0.5, 0.5}
             g.setColor(shield_color)
-            g.print("Shield: " .. game.player.shield_hits_remaining .. "/" .. game.params.shield_max_hits, lx, hud_y, 0, s, s)
+            g.print("Shield: " .. game.health_system:getShieldHitsRemaining() .. "/" .. game.params.shield_hits, lx, hud_y, 0, s, s)
             hud_y = hud_y + 18
             g.setColor(1, 1, 1)
         end
