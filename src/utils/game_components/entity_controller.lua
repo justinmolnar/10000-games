@@ -98,6 +98,23 @@ function EntityController:new(config)
     return instance
 end
 
+-- Load collision image for an entity type (for PNG-based collision detection)
+-- Requires di.components.PNGCollision to be available
+function EntityController:loadCollisionImage(type_name, image_path, alpha_threshold, di)
+    local entity_type = self.entity_types[type_name]
+    if not entity_type then return false end
+
+    if di and di.components and di.components.PNGCollision then
+        entity_type.collision_image = di.components.PNGCollision.loadCollisionImage(image_path)
+    end
+
+    local success, img = pcall(love.graphics.newImage, image_path)
+    if success then entity_type.display_image = img end
+
+    entity_type.alpha_threshold = alpha_threshold or 0.5
+    return true
+end
+
 --[[
     Spawn a new entity of given type
 
@@ -703,6 +720,20 @@ function EntityController:findNearest(x, y, filter)
     end
 
     return nearest, min_dist
+end
+
+-- Get a collision check function for entity-to-entity rect collision
+function EntityController:getRectCollisionCheck(PhysicsUtils)
+    return function(entity, x, y)
+        for _, other in ipairs(self.entities) do
+            if other ~= entity and other.alive then
+                if PhysicsUtils.rectCollision(x, y, entity.width, entity.height, other.x, other.y, other.width, other.height) then
+                    return true
+                end
+            end
+        end
+        return false
+    end
 end
 
 --[[

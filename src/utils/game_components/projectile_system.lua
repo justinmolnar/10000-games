@@ -152,6 +152,15 @@ end
     Update all projectiles (movement, lifetime, homing)
 ]]
 function ProjectileSystem:update(dt, game_bounds)
+    -- Normalize bounds format: accept {x,y,width,height} or {x_min,x_max,y_min,y_max}
+    local b_x_min, b_x_max, b_y_min, b_y_max
+    if game_bounds then
+        b_x_min = game_bounds.x_min or game_bounds.x or 0
+        b_x_max = game_bounds.x_max or (game_bounds.x or 0) + (game_bounds.width or 800)
+        b_y_min = game_bounds.y_min or game_bounds.y or 0
+        b_y_max = game_bounds.y_max or (game_bounds.y or 0) + (game_bounds.height or 600)
+    end
+
     for i = #self.projectiles, 1, -1 do
         local proj = self.projectiles[i]
 
@@ -223,21 +232,21 @@ function ProjectileSystem:update(dt, game_bounds)
                     local radius = proj.radius or 5
 
                     -- Bounce off left/right walls (unless bounce_left/bounce_right is false)
-                    if proj.bounce_left ~= false and next_x - radius < game_bounds.x_min then
+                    if proj.bounce_left ~= false and next_x - radius < b_x_min then
                         proj.vx = -proj.vx
                         proj.angle = math.atan2(proj.vy, proj.vx)
                     end
-                    if proj.bounce_right ~= false and next_x + radius > game_bounds.x_max then
+                    if proj.bounce_right ~= false and next_x + radius > b_x_max then
                         proj.vx = -proj.vx
                         proj.angle = math.atan2(proj.vy, proj.vx)
                     end
 
                     -- Bounce off top/bottom walls (unless bounce_top/bounce_bottom is false)
-                    if proj.bounce_top ~= false and next_y - radius < game_bounds.y_min then
+                    if proj.bounce_top ~= false and next_y - radius < b_y_min then
                         proj.vy = -proj.vy
                         proj.angle = math.atan2(proj.vy, proj.vx)
                     end
-                    if proj.bounce_bottom ~= false and next_y + radius > game_bounds.y_max then
+                    if proj.bounce_bottom ~= false and next_y + radius > b_y_max then
                         proj.vy = -proj.vy
                         proj.angle = math.atan2(proj.vy, proj.vx)
                     end
@@ -256,8 +265,8 @@ function ProjectileSystem:update(dt, game_bounds)
 
             -- Out of bounds check
             if game_bounds then
-                if proj.x < game_bounds.x_min - 100 or proj.x > game_bounds.x_max + 100 or
-                   proj.y < game_bounds.y_min - 100 or proj.y > game_bounds.y_max + 100 then
+                if proj.x < b_x_min - 100 or proj.x > b_x_max + 100 or
+                   proj.y < b_y_min - 100 or proj.y > b_y_max + 100 then
                     self:removeProjectile(proj)
                 end
             end
@@ -291,21 +300,32 @@ function ProjectileSystem:checkCollisions(targets, callback, team_filter)
                 if target.active or target.alive then
                     local collided = false
 
-                    -- Circle collision
-                    if proj.radius and target.radius then
-                        local dx = proj.x - target.x
-                        local dy = proj.y - target.y
-                        local dist_sq = dx * dx + dy * dy
-                        local radius_sum = proj.radius + target.radius
-                        collided = dist_sq < radius_sum * radius_sum
+                    -- Determine projectile bounds (prefer width/height over radius)
+                    local proj_has_rect = proj.width and proj.height
+                    local target_has_rect = target.width and target.height
 
-                    -- Circle-rect collision
-                    elseif proj.radius and target.width and target.height then
+                    if proj_has_rect and target_has_rect then
+                        -- Rect-rect collision (projectile centered on x,y)
+                        local px = proj.x - proj.width / 2
+                        local py = proj.y - proj.height / 2
+                        collided = px < target.x + target.width and px + proj.width > target.x and
+                                   py < target.y + target.height and py + proj.height > target.y
+
+                    elseif proj.radius and target_has_rect then
+                        -- Circle-rect collision
                         local closest_x = math.max(target.x, math.min(proj.x, target.x + target.width))
                         local closest_y = math.max(target.y, math.min(proj.y, target.y + target.height))
                         local dx = proj.x - closest_x
                         local dy = proj.y - closest_y
                         collided = (dx * dx + dy * dy) < (proj.radius * proj.radius)
+
+                    elseif proj.radius and target.radius then
+                        -- Circle-circle collision
+                        local dx = proj.x - target.x
+                        local dy = proj.y - target.y
+                        local dist_sq = dx * dx + dy * dy
+                        local radius_sum = proj.radius + target.radius
+                        collided = dist_sq < radius_sum * radius_sum
                     end
 
                     if collided then

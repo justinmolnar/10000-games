@@ -69,6 +69,9 @@ function VictoryCondition:new(config)
     -- Multi-victory configs (for games with multiple win paths)
     instance.multi_victory = config.multi_victory or nil
 
+    -- Victory bonuses (applied when victory is achieved)
+    instance.bonuses = config.bonuses or {}
+
     -- Game reference (set after creation)
     instance.game = nil
 
@@ -87,16 +90,35 @@ function VictoryCondition:check()
         if loss then return "loss" end
 
         local victory = self:checkVictory()
-        if victory then return "victory" end
+        if victory then
+            self:applyBonuses()
+            return "victory"
+        end
     else
         local victory = self:checkVictory()
-        if victory then return "victory" end
+        if victory then
+            self:applyBonuses()
+            return "victory"
+        end
 
         local loss = self:checkLoss()
         if loss then return "loss" end
     end
 
     return nil
+end
+
+-- Apply victory bonuses
+function VictoryCondition:applyBonuses()
+    if not self.bonuses or #self.bonuses == 0 then return end
+
+    for _, bonus in ipairs(self.bonuses) do
+        if bonus.condition and bonus.apply then
+            if bonus.condition(self.game) then
+                bonus.apply(self.game)
+            end
+        end
+    end
 end
 
 -- Check victory conditions

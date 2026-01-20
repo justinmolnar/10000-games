@@ -35,6 +35,77 @@ function PhysicsUtils.applyMagnetForce(entity, target_x, target_y, range, streng
     end
 end
 
+-- Apply multiple forces from params config
+-- params: {gravity, gravity_direction, homing_strength, magnet_range}
+-- findTarget: optional function() returning {x, y} or nil for homing
+-- magnetTarget: optional {x, y} for magnet force
+function PhysicsUtils.applyForces(entity, params, dt, findTarget, magnetTarget)
+    if params.gravity and params.gravity > 0 then
+        PhysicsUtils.applyGravity(entity, params.gravity, params.gravity_direction or 270, dt)
+    end
+    if params.homing_strength and params.homing_strength > 0 and findTarget then
+        local target = findTarget()
+        if target then
+            PhysicsUtils.applyHomingForce(entity, target.x, target.y, params.homing_strength, dt)
+        end
+    end
+    -- Magnet with immunity timer
+    if entity.magnet_immunity_timer and entity.magnet_immunity_timer > 0 then
+        entity.magnet_immunity_timer = entity.magnet_immunity_timer - dt
+    end
+    local magnet_immune = entity.magnet_immunity_timer and entity.magnet_immunity_timer > 0
+    if params.magnet_range and params.magnet_range > 0 and not magnet_immune and magnetTarget then
+        if not entity.stuck and entity.vy > 0 then
+            PhysicsUtils.applyMagnetForce(entity, magnetTarget.x, magnetTarget.y, params.magnet_range, 800, dt)
+        end
+    end
+end
+
+-- Handle kill plane on any edge with optional shield
+-- edge: "bottom", "top", "left", "right"
+-- boundary: the coordinate of the kill plane
+-- Returns true if entity was killed, false otherwise
+function PhysicsUtils.handleKillPlane(entity, edge, boundary, config)
+    config = config or {}
+    local radius = entity.radius or 0
+    local pos, vel, inside_dir
+
+    if edge == "bottom" then
+        if entity.y - radius <= boundary then return false end
+        pos, vel, inside_dir = "y", "vy", -1
+    elseif edge == "top" then
+        if entity.y + radius >= boundary then return false end
+        pos, vel, inside_dir = "y", "vy", 1
+    elseif edge == "right" then
+        if entity.x - radius <= boundary then return false end
+        pos, vel, inside_dir = "x", "vx", -1
+    elseif edge == "left" then
+        if entity.x + radius >= boundary then return false end
+        pos, vel, inside_dir = "x", "vx", 1
+    else
+        return false
+    end
+
+    if config.kill_enabled == false then
+        entity[pos] = boundary + inside_dir * radius
+        entity[vel] = inside_dir * math.abs(entity[vel]) * (config.restitution or 1.0)
+        if config.bounce_randomness and config.rng then
+            PhysicsUtils.addBounceRandomness(entity, config.bounce_randomness, config.rng)
+        end
+        return false
+    end
+
+    if config.shield_active then
+        if config.on_shield_use then config.on_shield_use() end
+        entity[pos] = boundary + inside_dir * radius
+        entity[vel] = inside_dir * math.abs(entity[vel])
+        return false
+    end
+
+    entity.active = false
+    return true
+end
+
 -- ╔═══════════════════════════════════════════════════════════════════╗
 -- ║                          MOVEMENT                                  ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
@@ -72,6 +143,17 @@ function PhysicsUtils.addBounceRandomness(entity, randomness, rng)
     local new_angle = angle + variance
     entity.vx = math.cos(new_angle) * speed
     entity.vy = math.sin(new_angle) * speed
+end
+
+-- Apply common bounce effects (speed increase, randomness)
+-- params: {speed_increase, max_speed, bounce_randomness}
+function PhysicsUtils.applyBounceEffects(entity, params, rng)
+    if params.speed_increase and params.max_speed then
+        PhysicsUtils.increaseSpeed(entity, params.speed_increase, params.max_speed)
+    end
+    if params.bounce_randomness and rng then
+        PhysicsUtils.addBounceRandomness(entity, params.bounce_randomness, rng)
+    end
 end
 
 -- Returns true if entity is attached and position was updated, false otherwise
@@ -362,6 +444,59 @@ function PhysicsUtils.handleBounds(entity, bounds, config)
     end
 
     return result
+end
+
+-- ╔═══════════════════════════════════════════════════════════════════╗
+-- ║                      PADDLE COLLISION                              ║
+-- ╚═══════════════════════════════════════════════════════════════════╝
+
+-- Handle paddle collision with sticky/bounce/randomness
+-- config: {sticky, aim_mode, bounce_randomness, max_speed, rng, on_hit}
+-- Returns true if collision occurred
+function PhysicsUtils.handlePaddleCollision(entity, paddle, config)
+    config = config or {}
+    local half_w = paddle.width / 2
+    local half_h = paddle.height / 2
+
+    if not PhysicsUtils.circleVsCenteredRect(entity.x, entity.y, entity.radius, paddle.x, paddle.y, half_w, half_h) then
+        return false
+    end
+
+    if config.sticky and not entity.stuck then
+        PhysicsUtils.attachToEntity(entity, paddle, -entity.radius - half_h)
+    else
+        PhysicsUtils.resolveCollision(entity, paddle, {
+            centered = true,
+            position_angle = config.aim_mode or "spin",
+            surface_width = paddle.width
+        })
+        if config.bounce_randomness and config.rng then
+            PhysicsUtils.addBounceRandomness(entity, config.bounce_randomness, config.rng)
+        end
+        if config.max_speed then
+            PhysicsUtils.clampSpeed(entity, config.max_speed)
+        end
+    end
+
+    if config.on_hit then config.on_hit(entity, paddle) end
+    return true
+end
+
+-- Release all stuck entities from anchor, launching them
+-- config: {launch_speed, immunity_timer, base_angle, angle_range}
+function PhysicsUtils.releaseStuckEntities(entities, anchor, config)
+    config = config or {}
+    local launch_speed = config.launch_speed or 300
+    local immunity_timer = config.immunity_timer or 0.3
+
+    for _, entity in ipairs(entities) do
+        if entity.stuck then
+            entity.stuck = false
+            entity.y = anchor.y - entity.radius - (anchor.height or 0) / 2 - 1
+            PhysicsUtils.launchFromOffset(entity, entity.stuck_offset_x or 0, anchor.width, launch_speed, config.base_angle, config.angle_range)
+            entity.magnet_immunity_timer = immunity_timer
+        end
+    end
 end
 
 -- ╔═══════════════════════════════════════════════════════════════════╗

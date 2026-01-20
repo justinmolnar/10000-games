@@ -457,10 +457,17 @@ end
     @return boolean - True if colliding
 ]]
 function PowerupSystem:checkCollision(powerup, entity)
-    return powerup.x + powerup.width > entity.x and
-           powerup.x < entity.x + entity.width and
-           powerup.y + powerup.height > entity.y and
-           powerup.y < entity.y + entity.height
+    -- Handle center-based entities (like paddles where x,y is center)
+    local ex, ey = entity.x, entity.y
+    if entity.centered then
+        ex = entity.x - (entity.width or 0) / 2
+        ey = entity.y - (entity.height or 0) / 2
+    end
+
+    return powerup.x + powerup.width > ex and
+           powerup.x < ex + (entity.width or 0) and
+           powerup.y + powerup.height > ey and
+           powerup.y < ey + (entity.height or 0)
 end
 
 --[[

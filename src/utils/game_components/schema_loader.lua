@@ -94,6 +94,14 @@ function SchemaLoader._populateParams(schema, variant, runtime_config)
         end
     end
 
+    -- Copy additional schema sections (components, entity_types, projectile_types, etc.)
+    local extra_sections = {"components", "entity_types", "projectile_types", "victory_conditions", "powerup_effect_configs"}
+    for _, section in ipairs(extra_sections) do
+        if schema[section] then
+            params[section] = schema[section]
+        end
+    end
+
     return params
 end
 

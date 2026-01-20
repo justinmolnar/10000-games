@@ -197,6 +197,24 @@
             },
             "description": "Configuration for each powerup type"
         },
+        "powerup_effect_configs": {
+            "type": "object",
+            "default": {
+                "multi_ball": {"effects": [{"type": "spawn_projectiles", "source": "balls", "count": 2, "angle_spread": 0.5236}]},
+                "paddle_extend": {"effects": [{"type": "multiply_entity_field", "entity": "paddle", "field": "width", "multiplier": 1.5}]},
+                "paddle_shrink": {"effects": [{"type": "multiply_entity_field", "entity": "paddle", "field": "width", "multiplier": 0.5}]},
+                "slow_motion": {"effects": [{"type": "multiply_param", "param": "ball_speed", "multiplier": 0.5}, {"type": "multiply_entity_speed", "entities": "balls", "multiplier": 0.5}]},
+                "fast_ball": {"effects": [{"type": "multiply_param", "param": "ball_speed", "multiplier": 1.5}, {"type": "multiply_entity_speed", "entities": "balls", "multiplier": 1.5}]},
+                "laser": {"effects": [{"type": "enable_param", "param": "paddle_can_shoot"}]},
+                "sticky_paddle": {"effects": [{"type": "enable_param", "param": "paddle_sticky"}]},
+                "extra_life": {"effects": [{"type": "add_lives", "count": 1}]},
+                "shield": {"effects": [{"type": "set_flag", "flag": "shield_active", "value": true}]},
+                "penetrating_ball": {"effects": [{"type": "set_param", "param": "ball_phase_through_bricks", "value": 5}, {"type": "set_entity_field", "entities": "balls", "field": "pierce_count", "value": 5}]},
+                "fireball": {"effects": [{"type": "set_param", "param": "ball_phase_through_bricks", "value": 5}, {"type": "set_entity_field", "entities": "balls", "field": "pierce_count", "value": 5}]},
+                "magnet": {"effects": [{"type": "set_param", "param": "paddle_magnet_range", "value": 150}]}
+            },
+            "description": "Effect configurations for powerup system"
+        },
         "brick_rows": {
             "type": "integer",
             "default": 5,
@@ -490,5 +508,105 @@
             "max": 3.0,
             "description": "Global difficulty multiplier for speeds"
         }
+    },
+    "components": {
+        "paddle_movement": {
+            "type": "MovementController",
+            "config": {
+                "mode": "direct",
+                "speed": "$paddle_speed",
+                "friction": "$paddle_friction",
+                "rail_axis": "horizontal"
+            }
+        },
+        "popup_manager": {
+            "type": "PopupManager",
+            "config": {}
+        },
+        "health_system": {
+            "type": "LivesHealthSystem",
+            "config": {
+                "mode": "lives",
+                "starting_lives": "$lives",
+                "max_lives": 10,
+                "extra_life_enabled": true,
+                "extra_life_threshold": "$extra_ball_score_threshold"
+            }
+        },
+        "hud": {
+            "type": "HUDRenderer",
+            "config": {
+                "primary": {"label": "Score", "key": "score"},
+                "secondary": {"label": "Bricks", "key": "bricks_left"},
+                "lives": {"key": "lives", "style": "hearts"}
+            }
+        },
+        "fog_controller": {
+            "type": "FogOfWar",
+            "config": {
+                "enabled": "$fog_of_war_enabled",
+                "mode": "stencil",
+                "opacity": 0.8
+            }
+        },
+        "visual_effects": {
+            "type": "VisualEffects",
+            "config": {
+                "camera_shake_enabled": "$camera_shake_enabled",
+                "particle_effects_enabled": "$particle_effects_enabled",
+                "screen_flash_enabled": false,
+                "shake_mode": "timer",
+                "shake_decay": 0.9
+            }
+        }
+    },
+    "projectile_types": {
+        "ball": {
+            "speed": "$ball_speed",
+            "radius": "$ball_radius",
+            "movement_type": "bounce",
+            "lifetime": 999,
+            "team": "player",
+            "bounce_top": true,
+            "bounce_left": true,
+            "bounce_right": true,
+            "bounce_bottom": false
+        },
+        "paddle_bullet": {
+            "speed": 400,
+            "radius": 2,
+            "width": 4,
+            "height": 10,
+            "movement_type": "linear",
+            "lifetime": 5,
+            "team": "paddle_bullet"
+        }
+    },
+    "entity_types": {
+        "brick": {
+            "width": "$brick_width",
+            "height": "$brick_height",
+            "health": "$brick_health",
+            "max_health": "$brick_health",
+            "shape": "$brick_shape",
+            "radius": "$brick_radius",
+            "alive": true,
+            "vx": 0,
+            "vy": 0,
+            "regen_timer": 0
+        },
+        "obstacle": {
+            "size": 40,
+            "shape": "$obstacles_shape",
+            "alive": true
+        }
+    },
+    "victory_conditions": {
+        "clear_bricks": {"victory": {"type": "clear_all", "metric": "bricks_left"}},
+        "clear_all": {"victory": {"type": "clear_all", "metric": "bricks_left"}},
+        "destroy_count": {"victory": {"type": "threshold", "metric": "bricks_destroyed", "target": "$destroy_count_target"}},
+        "score": {"victory": {"type": "threshold", "metric": "score", "target": "$score_target"}},
+        "time": {"victory": {"type": "time_survival", "metric": "time_elapsed", "target": "$time_target"}},
+        "survival": {"victory": {"type": "endless"}}
     }
 }

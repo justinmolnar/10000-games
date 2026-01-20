@@ -485,7 +485,14 @@ end
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+1. Added `bonuses` config to VictoryCondition:new()
+2. Added `applyBonuses()` method to VictoryCondition that iterates bonuses and calls condition/apply functions
+3. Modified VictoryCondition:check() to call applyBonuses() when victory is achieved
+4. Added perfect_clear bonus config to Breakout's victory_checker
+5. Simplified Breakout:checkVictoryConditions() from 7 lines to 4 lines
+
+Lines removed from breakout.lua: ~3 lines (net, after adding bonus config)
 
 ---
 

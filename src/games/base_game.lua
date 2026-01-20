@@ -148,6 +148,93 @@ function BaseGame:createComponentsFromSchema()
     end
 end
 
+-- Create ProjectileSystem from schema projectile_types
+function BaseGame:createProjectileSystemFromSchema(extra_config)
+    local C = self.di and self.di.components
+    if not C or not self.params or not self.params.projectile_types then return nil end
+
+    local resolved_types = {}
+    for name, type_def in pairs(self.params.projectile_types) do
+        resolved_types[name] = self:resolveConfig(type_def)
+    end
+
+    local config = extra_config or {}
+    config.projectile_types = resolved_types
+
+    self.projectile_system = C.ProjectileSystem:new(config)
+    return self.projectile_system
+end
+
+-- Create EntityController from schema entity_types
+-- callbacks = {brick = {on_hit = fn, on_death = fn}, obstacle = {...}}
+function BaseGame:createEntityControllerFromSchema(callbacks, extra_config)
+    local C = self.di and self.di.components
+    if not C or not self.params or not self.params.entity_types then return nil end
+
+    local resolved_types = {}
+    for name, type_def in pairs(self.params.entity_types) do
+        resolved_types[name] = self:resolveConfig(type_def)
+        -- Merge in callbacks for this type
+        if callbacks and callbacks[name] then
+            for k, v in pairs(callbacks[name]) do
+                resolved_types[name][k] = v
+            end
+        end
+    end
+
+    local config = extra_config or {}
+    config.entity_types = resolved_types
+
+    self.entity_controller = C.EntityController:new(config)
+    return self.entity_controller
+end
+
+-- Create PowerupSystem from schema powerup_effect_configs
+function BaseGame:createPowerupSystemFromSchema(extra_config)
+    local C = self.di and self.di.components
+    if not C or not self.params then return nil end
+
+    local p = self.params
+    local config = extra_config or {}
+
+    config.enabled = p.powerup_enabled
+    config.spawn_mode = config.spawn_mode or "event"
+    config.spawn_drop_chance = p.brick_powerup_drop_chance
+    config.powerup_size = p.powerup_size
+    config.drop_speed = p.powerup_fall_speed
+    config.default_duration = p.powerup_duration
+    config.powerup_types = p.powerup_types
+    config.powerup_configs = p.powerup_effect_configs
+
+    self.powerup_system = C.PowerupSystem:new(config)
+    self.powerup_system.game = self
+    return self.powerup_system
+end
+
+-- Create VictoryCondition from schema victory_conditions mapping
+-- bonuses = optional array of bonus configs
+function BaseGame:createVictoryConditionFromSchema(bonuses)
+    local C = self.di and self.di.components
+    if not C or not self.params then return nil end
+
+    local vc_map = self.params.victory_conditions
+    local vc_key = self.params.victory_condition or "clear_bricks"
+
+    local vc_config = {}
+    if vc_map and vc_map[vc_key] then
+        vc_config = self:resolveConfig(vc_map[vc_key])
+    end
+
+    -- Default loss condition
+    vc_config.loss = vc_config.loss or {type = "lives_depleted", metric = "lives"}
+    vc_config.check_loss_first = true
+    vc_config.bonuses = bonuses
+
+    self.victory_checker = C.VictoryCondition:new(vc_config)
+    self.victory_checker.game = self
+    return self.victory_checker
+end
+
 -- Resolve "$param_name" references in config to actual param values
 function BaseGame:resolveConfig(config)
     local resolved = {}
@@ -370,6 +457,124 @@ function BaseGame:getResults()
     }
 end
 
+-- Sync metrics from game state fields
+-- mapping = {metric_name = "field_name", ...}
+function BaseGame:syncMetrics(mapping)
+    for metric, field in pairs(mapping) do
+        self.metrics[metric] = self[field]
+    end
+end
+
+-- Handle entity depletion (no balls, no lives, etc.)
+-- config: {loss_counter, damage, combo_reset, on_respawn, on_game_over}
+-- Returns true if game over, false if respawned
+function BaseGame:handleEntityDepleted(count_func, config)
+    config = config or {}
+    local count = type(count_func) == "function" and count_func() or count_func
+
+    if count > 0 then return false end
+
+    -- Increment loss counter if specified
+    if config.loss_counter then
+        self[config.loss_counter] = (self[config.loss_counter] or 0) + 1
+    end
+
+    -- Reset combo if requested
+    if config.combo_reset then
+        self.combo = 0
+    end
+
+    -- Take damage
+    local damage = config.damage or 1
+    self.health_system:takeDamage(damage, config.damage_reason or "entity_lost")
+    self.lives = self.health_system.lives
+
+    -- Check death
+    if not self.health_system:isAlive() then
+        self.game_over = true
+        if config.on_game_over then config.on_game_over(self) end
+        return true
+    else
+        -- Respawn
+        if config.on_respawn then config.on_respawn(self) end
+        return false
+    end
+end
+
+-- Handle entity destroyed (brick, enemy, etc.) with scoring, effects, powerups
+-- config: {
+--   destroyed_counter = "field_name",  -- field to increment
+--   remaining_counter = "field_name",  -- field to decrement
+--   spawn_powerup = true,              -- spawn powerup at entity center
+--   effects = {particles = true, shake = 0.15},  -- visual effects
+--   scoring = {base = "param_name", combo_mult = "param_name"},  -- combo scoring
+--   popup = {enabled = "param_name", milestone_combos = {5, 10, 15}},
+--   color_func = function(entity) return {r,g,b} end,  -- optional particle color
+--   extra_life_check = true
+-- }
+function BaseGame:handleEntityDestroyed(entity, config)
+    config = config or {}
+    local cx = entity.x + (entity.width or 0) / 2
+    local cy = entity.y + (entity.height or 0) / 2
+
+    -- Update counters
+    if config.destroyed_counter then
+        self[config.destroyed_counter] = (self[config.destroyed_counter] or 0) + 1
+    end
+    if config.remaining_counter then
+        self[config.remaining_counter] = (self[config.remaining_counter] or 0) - 1
+    end
+
+    -- Spawn powerup
+    if config.spawn_powerup and self.powerup_system then
+        self.powerup_system:spawn(cx, cy)
+    end
+
+    -- Visual effects
+    if config.effects and self.visual_effects then
+        if config.effects.particles then
+            local color = config.color_func and config.color_func(entity) or {1, 0.5, 0}
+            self.visual_effects:emitBrickDestruction(cx, cy, color)
+        end
+        if config.effects.shake then
+            local intensity = self.params.camera_shake_intensity or 5
+            self.visual_effects:shake(config.effects.shake, intensity, "timer")
+        end
+    end
+
+    -- Combo scoring
+    if config.scoring then
+        self.combo = (self.combo or 0) + 1
+        self.max_combo = math.max(self.max_combo or 0, self.combo)
+
+        local base = self.params[config.scoring.base] or 10
+        local combo_mult = self.params[config.scoring.combo_mult] or 0
+        local points = base * (1 + self.combo * combo_mult)
+        self.score = (self.score or 0) + points
+
+        -- Score popup
+        if config.popup and self.params[config.popup.enabled] and self.popup_manager then
+            local milestones = config.popup.milestone_combos or {}
+            local is_milestone = false
+            for _, m in ipairs(milestones) do
+                if self.combo == m then is_milestone = true; break end
+            end
+            local color = is_milestone and {1, 1, 0} or {1, 1, 1}
+            self.popup_manager:add(cx, entity.y, "+" .. math.floor(points), color)
+        end
+    end
+
+    -- Extra life check
+    if config.extra_life_check and self.health_system then
+        if self.health_system:checkExtraLifeAward(self.score) then
+            self.lives = self.health_system.lives
+            if config.popup and self.params[config.popup.enabled] and self.popup_manager then
+                self.popup_manager:add(self.arena_width / 2, self.arena_height / 2, "EXTRA LIFE!", {0, 1, 0})
+            end
+        end
+    end
+end
+
 -- Completion ratio: override in games to report progress toward their core goal (0..1)
 function BaseGame:getCompletionRatio()
     return 1.0
@@ -397,6 +602,54 @@ function BaseGame:setParam(param_name, value)
     local original = self.params[param_name]
     self.params[param_name] = value
     return original
+end
+
+-- Flash system for temporary visual feedback on entities
+function BaseGame:flashEntity(entity, duration)
+    self.flash_map = self.flash_map or {}
+    self.flash_map[entity] = duration or 0.1
+end
+
+function BaseGame:updateFlashMap(dt)
+    if not self.flash_map then return end
+    local TableUtils = self.di and self.di.components and self.di.components.TableUtils
+    if TableUtils then
+        TableUtils.updateTimerMap(self.flash_map, dt)
+    else
+        for entity, timer in pairs(self.flash_map) do
+            self.flash_map[entity] = timer - dt
+            if self.flash_map[entity] <= 0 then
+                self.flash_map[entity] = nil
+            end
+        end
+    end
+end
+
+function BaseGame:isFlashing(entity)
+    return self.flash_map and self.flash_map[entity] and self.flash_map[entity] > 0
+end
+
+-- Create paddle entity from params
+function BaseGame:createPaddle(extra_fields)
+    local p = self.params or {}
+    self.paddle = {
+        x = self.arena_width / 2,
+        y = self.arena_height - 50,
+        width = p.paddle_width or 100,
+        height = p.paddle_height or 20,
+        radius = (p.paddle_width or 100) / 2,
+        centered = true,  -- x,y is center, not top-left
+        vx = 0, vy = 0, angle = 0,
+        jump_cooldown_timer = 0,
+        shoot_cooldown_timer = 0,
+        sticky_aim_angle = -math.pi / 2
+    }
+    if extra_fields then
+        for k, v in pairs(extra_fields) do
+            self.paddle[k] = v
+        end
+    end
+    return self.paddle
 end
 
 -- Multiply velocity of all entities in an array

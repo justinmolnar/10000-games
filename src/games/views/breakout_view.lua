@@ -20,7 +20,7 @@ function BreakoutView:draw()
             love.graphics.push()
 
             -- Check if brick is flashing
-            local is_flashing = self.game.brick_flash_map[brick] and self.game.brick_flash_map[brick] > 0
+            local is_flashing = self.game:isFlashing(brick)
 
             -- Color based on health
             local health_percent = brick.health / brick.max_health
