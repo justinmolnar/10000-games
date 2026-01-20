@@ -47,6 +47,7 @@ local ProjectileSystem = Object:extend('ProjectileSystem')
 ProjectileSystem.MOVEMENT_TYPES = {
     LINEAR = "linear",
     HOMING = "homing",
+    HOMING_NEAREST = "homing_nearest",
     SINE_WAVE = "sine_wave",
     BOUNCE = "bounce",
     ARC = "arc"
@@ -149,6 +150,80 @@ function ProjectileSystem:shoot(type_name, x, y, angle, speed_multiplier, custom
 end
 
 --[[
+    Shoot multiple projectiles in a pattern
+
+    @param type_name string - Key from projectile_types
+    @param x number - Spawn X position
+    @param y number - Spawn Y position
+    @param base_angle number - Base direction in radians
+    @param pattern string - Pattern name: "single", "double", "triple", "spread", "spiral", "wave", "ring"
+    @param config table (optional) - Pattern config {count, arc, offset, time, speed_multiplier}
+    @return table - Array of spawned projectiles
+]]
+function ProjectileSystem:shootPattern(type_name, x, y, base_angle, pattern, config)
+    config = config or {}
+    local projectiles = {}
+    pattern = pattern or "single"
+
+    if pattern == "single" then
+        table.insert(projectiles, self:shoot(type_name, x, y, base_angle, config.speed_multiplier, config.custom))
+
+    elseif pattern == "double" then
+        local offset = config.offset or 5
+        local perp_x = -math.sin(base_angle) * offset
+        local perp_y = math.cos(base_angle) * offset
+        table.insert(projectiles, self:shoot(type_name, x - perp_x, y - perp_y, base_angle, config.speed_multiplier, config.custom))
+        table.insert(projectiles, self:shoot(type_name, x + perp_x, y + perp_y, base_angle, config.speed_multiplier, config.custom))
+
+    elseif pattern == "triple" then
+        local spread = math.rad(config.spread or 15)
+        table.insert(projectiles, self:shoot(type_name, x, y, base_angle, config.speed_multiplier, config.custom))
+        table.insert(projectiles, self:shoot(type_name, x, y, base_angle - spread, config.speed_multiplier, config.custom))
+        table.insert(projectiles, self:shoot(type_name, x, y, base_angle + spread, config.speed_multiplier, config.custom))
+
+    elseif pattern == "spread" then
+        local count = config.count or 5
+        local arc = math.rad(config.arc or 60)
+        local start_angle = base_angle - arc / 2
+        local step = count > 1 and (arc / (count - 1)) or 0
+        for i = 0, count - 1 do
+            table.insert(projectiles, self:shoot(type_name, x, y, start_angle + step * i, config.speed_multiplier, config.custom))
+        end
+
+    elseif pattern == "spiral" then
+        local count = config.count or 6
+        local time = config.time or 0
+        local rotation_speed = config.rotation_speed or 200
+        local angle_step = (math.pi * 2) / count
+        local spiral_offset = math.rad((time * rotation_speed) % 360)
+        for i = 0, count - 1 do
+            table.insert(projectiles, self:shoot(type_name, x, y, base_angle + (i * angle_step) + spiral_offset, config.speed_multiplier, config.custom))
+        end
+
+    elseif pattern == "wave" then
+        -- Three bullets with wave movement
+        local wave_custom = config.custom or {}
+        wave_custom.movement_type = "sine_wave"
+        table.insert(projectiles, self:shoot(type_name, x, y, base_angle, config.speed_multiplier, wave_custom))
+        local left = {}; for k,v in pairs(wave_custom) do left[k] = v end
+        left.sine_phase = -math.pi / 3
+        table.insert(projectiles, self:shoot(type_name, x, y, base_angle, config.speed_multiplier, left))
+        local right = {}; for k,v in pairs(wave_custom) do right[k] = v end
+        right.sine_phase = math.pi / 3
+        table.insert(projectiles, self:shoot(type_name, x, y, base_angle, config.speed_multiplier, right))
+
+    elseif pattern == "ring" then
+        local count = config.count or 8
+        local angle_step = (math.pi * 2) / count
+        for i = 0, count - 1 do
+            table.insert(projectiles, self:shoot(type_name, x, y, base_angle + (i * angle_step), config.speed_multiplier, config.custom))
+        end
+    end
+
+    return projectiles
+end
+
+--[[
     Update all projectiles (movement, lifetime, homing)
 ]]
 function ProjectileSystem:update(dt, game_bounds)
@@ -178,26 +253,45 @@ function ProjectileSystem:update(dt, game_bounds)
                 proj.y = proj.y + proj.vy * dt
 
             elseif proj.movement_type == ProjectileSystem.MOVEMENT_TYPES.HOMING then
-                -- Homing behavior
+                -- Homing behavior (fixed target)
                 if proj.homing_target and proj.homing_target.active then
                     local dx = proj.homing_target.x - proj.x
                     local dy = proj.homing_target.y - proj.y
                     local target_angle = math.atan2(dy, dx)
-
-                    -- Turn towards target
                     local angle_diff = target_angle - proj.angle
-                    -- Normalize to [-pi, pi]
                     while angle_diff > math.pi do angle_diff = angle_diff - 2 * math.pi end
                     while angle_diff < -math.pi do angle_diff = angle_diff + 2 * math.pi end
-
                     proj.angle = proj.angle + angle_diff * proj.homing_turn_rate * dt
-
-                    -- Update velocity
                     local speed = math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy)
                     proj.vx = math.cos(proj.angle) * speed
                     proj.vy = math.sin(proj.angle) * speed
                 end
+                proj.x = proj.x + proj.vx * dt
+                proj.y = proj.y + proj.vy * dt
 
+            elseif proj.movement_type == ProjectileSystem.MOVEMENT_TYPES.HOMING_NEAREST then
+                -- Homing behavior (find nearest from target list each frame)
+                local targets = proj.homing_targets or self.homing_targets or {}
+                local closest, closest_dist = nil, math.huge
+                for _, t in ipairs(targets) do
+                    if t.active ~= false then
+                        local dx, dy = t.x - proj.x, t.y - proj.y
+                        local dist = dx * dx + dy * dy
+                        if dist < closest_dist then closest, closest_dist = t, dist end
+                    end
+                end
+                if closest then
+                    local dx, dy = closest.x - proj.x, closest.y - proj.y
+                    local target_angle = math.atan2(dy, dx)
+                    local current_angle = proj.angle or math.atan2(proj.vy or 0, proj.vx or 0)
+                    local angle_diff = target_angle - current_angle
+                    while angle_diff > math.pi do angle_diff = angle_diff - 2 * math.pi end
+                    while angle_diff < -math.pi do angle_diff = angle_diff + 2 * math.pi end
+                    proj.angle = current_angle + angle_diff * (proj.homing_turn_rate or 3) * dt
+                    local speed = math.sqrt((proj.vx or 0) * (proj.vx or 0) + (proj.vy or 0) * (proj.vy or 0))
+                    proj.vx = math.cos(proj.angle) * speed
+                    proj.vy = math.sin(proj.angle) * speed
+                end
                 proj.x = proj.x + proj.vx * dt
                 proj.y = proj.y + proj.vy * dt
 
@@ -424,6 +518,13 @@ function ProjectileSystem:getProjectiles()
 end
 
 --[[
+    Set targets list for HOMING_NEAREST projectiles
+]]
+function ProjectileSystem:setHomingTargets(targets)
+    self.homing_targets = targets
+end
+
+--[[
     Get projectiles by team
 ]]
 function ProjectileSystem:getProjectilesByTeam(team)
@@ -434,6 +535,69 @@ function ProjectileSystem:getProjectilesByTeam(team)
         end
     end
     return result
+end
+
+--[[
+    Update fire mode state and trigger shooting
+    Handles: manual, auto, charge, burst modes
+
+    @param dt number - Delta time
+    @param entity table - Entity with fire state (fire_cooldown, auto_fire_timer, etc.)
+    @param mode string - "manual", "auto", "charge", "burst"
+    @param config table - {cooldown, fire_rate, charge_time, burst_count, burst_delay}
+    @param is_fire_pressed boolean - Is fire key held
+    @param on_fire function(charge_multiplier) - Called when should fire
+]]
+function ProjectileSystem:updateFireMode(dt, entity, mode, config, is_fire_pressed, on_fire)
+    config = config or {}
+
+    if mode == "manual" then
+        entity.fire_cooldown = (entity.fire_cooldown or 0) - dt
+        if is_fire_pressed and entity.fire_cooldown <= 0 then
+            on_fire(1.0)
+            entity.fire_cooldown = config.cooldown or 0.2
+        end
+
+    elseif mode == "auto" then
+        entity.auto_fire_timer = (entity.auto_fire_timer or 0) - dt
+        if is_fire_pressed and entity.auto_fire_timer <= 0 then
+            on_fire(1.0)
+            entity.auto_fire_timer = 1.0 / (config.fire_rate or 5)
+        end
+
+    elseif mode == "charge" then
+        if is_fire_pressed then
+            if not entity.is_charging then
+                entity.is_charging = true
+                entity.charge_progress = 0
+            end
+            entity.charge_progress = math.min((entity.charge_progress or 0) + dt, config.charge_time or 1)
+        else
+            if entity.is_charging then
+                local charge_mult = entity.charge_progress / (config.charge_time or 1)
+                on_fire(charge_mult)
+                entity.is_charging = false
+                entity.charge_progress = 0
+            end
+        end
+
+    elseif mode == "burst" then
+        if (entity.burst_remaining or 0) > 0 then
+            entity.burst_timer = (entity.burst_timer or 0) + dt
+            if entity.burst_timer >= (config.burst_delay or 0.05) then
+                on_fire(1.0)
+                entity.burst_remaining = entity.burst_remaining - 1
+                entity.burst_timer = 0
+            end
+        else
+            entity.fire_cooldown = (entity.fire_cooldown or 0) - dt
+            if is_fire_pressed and entity.fire_cooldown <= 0 then
+                entity.burst_remaining = config.burst_count or 3
+                entity.burst_timer = 0
+                entity.fire_cooldown = config.cooldown or 0.5
+            end
+        end
+    end
 end
 
 return ProjectileSystem

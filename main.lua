@@ -106,6 +106,7 @@ function love.load()
     -- Game components available via DI (avoid requires in each game file)
     di.components = {
         MovementController = require('src.utils.game_components.movement_controller'),
+        PatternMovement = require('src.utils.game_components.pattern_movement'),
         FogOfWar = require('src.utils.game_components.fog_of_war'),
         VisualEffects = require('src.utils.game_components.visual_effects'),
         HUDRenderer = require('src.utils.game_components.hud_renderer'),

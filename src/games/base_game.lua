@@ -629,27 +629,38 @@ function BaseGame:isFlashing(entity)
     return self.flash_map and self.flash_map[entity] and self.flash_map[entity] > 0
 end
 
--- Create paddle entity from params
-function BaseGame:createPaddle(extra_fields)
+-- Create player entity from params
+function BaseGame:createPlayer(config)
+    config = config or {}
     local p = self.params or {}
-    self.paddle = {
-        x = self.arena_width / 2,
-        y = self.arena_height - 50,
-        width = p.paddle_width or 100,
-        height = p.paddle_height or 20,
-        radius = (p.paddle_width or 100) / 2,
-        centered = true,  -- x,y is center, not top-left
+    local entity_name = config.entity_name or "player"
+    local width = config.width or p.player_width or p.paddle_width or 100
+    local height = config.height or p.player_height or p.paddle_height or 20
+
+    local player = {
+        x = config.x or self.arena_width / 2,
+        y = config.y or self.arena_height - 50,
+        width = width,
+        height = height,
+        radius = config.radius or math.max(width, height) / 2,
+        centered = true,
         vx = 0, vy = 0, angle = 0,
         jump_cooldown_timer = 0,
         shoot_cooldown_timer = 0,
         sticky_aim_angle = -math.pi / 2
     }
-    if extra_fields then
-        for k, v in pairs(extra_fields) do
-            self.paddle[k] = v
+    if config.extra then
+        for k, v in pairs(config.extra) do
+            player[k] = v
         end
     end
-    return self.paddle
+    self[entity_name] = player
+    return player
+end
+
+-- Alias for paddle-based games
+function BaseGame:createPaddle(extra_fields)
+    return self:createPlayer({entity_name = "paddle", extra = extra_fields})
 end
 
 -- Multiply velocity of all entities in an array

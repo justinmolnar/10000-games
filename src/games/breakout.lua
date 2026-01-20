@@ -15,6 +15,29 @@ local BaseGame = require('src.games.base_game')
 local BreakoutView = require('src.games.views.breakout_view')
 local Breakout = BaseGame:extend('Breakout')
 
+--------------------------------------------------------------------------------
+-- Initialization
+--------------------------------------------------------------------------------
+
+function Breakout:init(game_data, cheats, di, variant_override)
+    Breakout.super.init(self, game_data, cheats, di, variant_override)
+
+    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.breakout)
+    self.params = self.di.components.SchemaLoader.load(self.variant, "breakout_schema", runtimeCfg)
+
+    self:applyCheats({
+        speed_modifier = {"paddle_speed", "ball_speed", "ball_max_speed"},
+        advantage_modifier = {"paddle_width"},
+        performance_modifier = {"ball_count"}
+    })
+
+    self.bricks_destroyed, self.bricks_left, self.balls_lost, self.last_extra_ball_threshold = 0, 0, 0, 0
+    self:createPaddle()
+    self:setupComponents()
+    self:setupEntities()
+    self.view = BreakoutView:new(self)
+end
+
 function Breakout:setupComponents()
     local p = self.params
     local game = self
@@ -62,25 +85,6 @@ function Breakout:setupComponents()
     self:createPowerupSystemFromSchema({reverse_gravity = false})
 end
 
-function Breakout:init(game_data, cheats, di, variant_override)
-    Breakout.super.init(self, game_data, cheats, di, variant_override)
-
-    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.breakout)
-    self.params = self.di.components.SchemaLoader.load(self.variant, "breakout_schema", runtimeCfg)
-
-    self:applyCheats({
-        speed_modifier = {"paddle_speed", "ball_speed", "ball_max_speed"},
-        advantage_modifier = {"paddle_width"},
-        performance_modifier = {"ball_count"}
-    })
-
-    self.bricks_destroyed, self.bricks_left, self.balls_lost, self.last_extra_ball_threshold = 0, 0, 0, 0
-    self:createPaddle()
-    self:setupComponents()
-    self:setupEntities()
-    self.view = BreakoutView:new(self)
-end
-
 function Breakout:setupEntities()
     self.balls = {}
     self.obstacles = {}
@@ -91,6 +95,10 @@ function Breakout:setupEntities()
     self.metrics = {bricks_destroyed = 0, balls_lost = 0, max_combo = 0, score = 0, time_elapsed = 0}
 end
 
+--------------------------------------------------------------------------------
+-- Entity Spawning
+--------------------------------------------------------------------------------
+
 function Breakout:spawnBall()
     local angle = -math.pi / 2 + (self.rng:random() - 0.5) * self.params.ball_spawn_angle_variance
 
@@ -99,10 +107,10 @@ function Breakout:spawnBall()
         self.paddle.x,
         self.paddle.y - self.params.ball_radius - 10,
         angle,
-        1.0,  -- speed_multiplier
+        1.0,
         {
-            pierce_count = self.params.ball_phase_through_bricks,  -- For phase-through bricks
-            trail = {}  -- Position history for trail rendering
+            pierce_count = self.params.ball_phase_through_bricks,
+            trail = {}
         }
     )
 end
@@ -146,18 +154,9 @@ function Breakout:generateBricks()
     self.bricks_left = #self.bricks
 end
 
-function Breakout:updateBricks(dt)
-    self.bricks = self.entity_controller:getEntities()
-    local p = self.params
-    self.entity_controller:updateBehaviors(dt, {
-        fall_enabled = p.brick_fall_enabled, fall_speed = p.brick_fall_speed,
-        fall_death_y = self.paddle.y - 30, on_fall_death = function() self.game_over = true end,
-        move_enabled = p.brick_movement_enabled, move_speed = p.brick_movement_speed,
-        bounds = {x_min = 0, x_max = self.arena_width},
-        regen_enabled = p.brick_regeneration_enabled, regen_time = p.brick_regeneration_time,
-        can_overlap = p.bricks_can_overlap
-    }, self.entity_controller:getRectCollisionCheck(self.di.components.PhysicsUtils))
-end
+--------------------------------------------------------------------------------
+-- Update Loop
+--------------------------------------------------------------------------------
 
 function Breakout:updateGameLogic(dt)
     if self.game_over or self.victory then return end
@@ -165,23 +164,24 @@ function Breakout:updateGameLogic(dt)
     local Physics, TableUtils = self.di.components.PhysicsUtils, self.di.components.TableUtils
     local bounds = {x = 0, y = 0, width = self.arena_width, height = self.arena_height}
 
+    -- Update systems
     self.projectile_system:update(dt, bounds)
     self.balls = self.projectile_system:getProjectilesByTeam("player")
     self.powerup_system:update(dt, self.paddle, bounds)
-
     self.powerups, self.active_powerups = self.powerup_system:getPowerupsForRendering(), self.powerup_system:getActivePowerupsForHUD()
     self.visual_effects:update(dt)
     self:updateFlashMap(dt)
     self.popup_manager:update(dt)
 
+    -- Update paddle
     self.paddle_movement:update(dt, self.paddle, {left = self:isKeyDown('a', 'left'), right = self:isKeyDown('d', 'right')}, bounds)
-    -- Sticky paddle: player can aim the launch angle while ball is stuck
     if self.params.paddle_sticky then
         local aim_delta = (self:isKeyDown('d', 'right') and 2 or 0) - (self:isKeyDown('a', 'left') and 2 or 0)
         self.paddle.sticky_aim_angle = math.max(-math.pi * 0.95, math.min(-math.pi * 0.05, self.paddle.sticky_aim_angle + aim_delta * dt))
     end
     if self.paddle.shoot_cooldown_timer > 0 then self.paddle.shoot_cooldown_timer = self.paddle.shoot_cooldown_timer - dt end
 
+    -- Update balls
     for _, ball in ipairs(self.balls) do
         if ball.active then
             self.visual_effects:emitBallTrail(ball.x, ball.y, ball.vx, ball.vy)
@@ -189,18 +189,19 @@ function Breakout:updateGameLogic(dt)
         end
     end
 
-    -- Paddle bullets hitting bricks (when paddle_can_shoot is enabled)
+    -- Paddle bullets hitting bricks
     self.projectile_system:checkCollisions(self.bricks, function(_, brick)
         if brick.alive then self.entity_controller:hitEntity(brick, self.params.paddle_shoot_damage, _) end
     end, "paddle_bullet")
-    self:updateBricks(dt)
 
-    -- Ball lost: take damage, reset combo, respawn or game over
+    -- Update bricks and check for ball loss
+    self:updateBricks(dt)
     self:handleEntityDepleted(function() return TableUtils.countActive(self.balls) end, {
         loss_counter = "balls_lost", combo_reset = true, damage_reason = "ball_lost",
         on_respawn = function(g) g:spawnBall() end
     })
 
+    -- Check victory/loss
     local result = self.victory_checker:check()
     if result then self.victory, self.game_over = result == "victory", result == "loss" end
     self:syncMetrics({bricks_destroyed = "bricks_destroyed", balls_lost = "balls_lost", max_combo = "max_combo", score = "score", time_elapsed = "time_elapsed"})
@@ -253,7 +254,7 @@ function Breakout:updateBall(ball, dt)
         on_hit = function() game.combo = 0 end
     })
 
-    -- Brick collisions (supports PNG collision masks for irregular shapes)
+    -- Brick collisions
     local PNGCollision = self.di.components.PNGCollision
     Physics.checkCollisions(ball, self.bricks, {
         filter = function(brick) return brick.alive end,
@@ -276,6 +277,23 @@ function Breakout:updateBall(ball, dt)
     if p.ball_max_speed then Physics.clampSpeed(ball, p.ball_max_speed) end
 end
 
+function Breakout:updateBricks(dt)
+    self.bricks = self.entity_controller:getEntities()
+    local p = self.params
+    self.entity_controller:updateBehaviors(dt, {
+        fall_enabled = p.brick_fall_enabled, fall_speed = p.brick_fall_speed,
+        fall_death_y = self.paddle.y - 30, on_fall_death = function() self.game_over = true end,
+        move_enabled = p.brick_movement_enabled, move_speed = p.brick_movement_speed,
+        bounds = {x_min = 0, x_max = self.arena_width},
+        regen_enabled = p.brick_regeneration_enabled, regen_time = p.brick_regeneration_time,
+        can_overlap = p.bricks_can_overlap
+    }, self.entity_controller:getRectCollisionCheck(self.di.components.PhysicsUtils))
+end
+
+--------------------------------------------------------------------------------
+-- Event Callbacks
+--------------------------------------------------------------------------------
+
 function Breakout:onBrickDestroyed(brick)
     self:handleEntityDestroyed(brick, {
         destroyed_counter = "bricks_destroyed",
@@ -289,6 +307,10 @@ function Breakout:onBrickDestroyed(brick)
     })
 end
 
+--------------------------------------------------------------------------------
+-- Input
+--------------------------------------------------------------------------------
+
 function Breakout:keypressed(key)
     if key == "space" then
         -- Shooting
@@ -301,6 +323,10 @@ function Breakout:keypressed(key)
         self.di.components.PhysicsUtils.releaseStuckEntities(self.balls, self.paddle, {launch_speed = 300})
     end
 end
+
+--------------------------------------------------------------------------------
+-- Rendering
+--------------------------------------------------------------------------------
 
 function Breakout:draw()
     self.view:draw()

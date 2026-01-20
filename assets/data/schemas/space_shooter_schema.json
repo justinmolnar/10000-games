@@ -4,8 +4,8 @@
     "parameters": {
         "movement_type": {
             "type": "enum",
-            "values": ["default", "asteroids", "rail", "jump"],
-            "default": "default",
+            "values": ["direct", "asteroids", "rail", "jump"],
+            "default": "rail",
             "description": "Player movement style"
         },
         "movement_speed": {
@@ -638,6 +638,249 @@
             "min": 1,
             "max": 500,
             "description": "Target kills or survival seconds"
+        },
+        "player_width": {
+            "type": "number",
+            "default": 30,
+            "min": 10,
+            "max": 100,
+            "description": "Player ship width"
+        },
+        "player_height": {
+            "type": "number",
+            "default": 30,
+            "min": 10,
+            "max": 100,
+            "description": "Player ship height"
+        },
+        "player_start_y_offset": {
+            "type": "number",
+            "default": 50,
+            "min": 20,
+            "max": 200,
+            "description": "Player distance from bottom/top edge"
+        },
+        "enemy_width": {
+            "type": "number",
+            "default": 30,
+            "min": 10,
+            "max": 100,
+            "description": "Enemy ship width"
+        },
+        "enemy_height": {
+            "type": "number",
+            "default": 30,
+            "min": 10,
+            "max": 100,
+            "description": "Enemy ship height"
+        },
+        "enemy_base_speed": {
+            "type": "number",
+            "default": 100,
+            "min": 20,
+            "max": 500,
+            "description": "Base enemy movement speed"
+        },
+        "spawn_base_rate": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 5.0,
+            "description": "Base spawn rate in seconds"
+        },
+        "enemy_start_y_offset": {
+            "type": "number",
+            "default": -30,
+            "min": -100,
+            "max": 0,
+            "description": "Enemy spawn Y offset (negative = above screen)"
+        },
+        "enemy_shoot_rate_min": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 5.0,
+            "description": "Minimum enemy shoot rate"
+        },
+        "enemy_shoot_rate_max": {
+            "type": "number",
+            "default": 3.0,
+            "min": 0.5,
+            "max": 10.0,
+            "description": "Maximum enemy shoot rate"
+        },
+        "enemy_shoot_rate_complexity": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0,
+            "max": 2.0,
+            "description": "How much complexity affects shoot rate"
+        },
+        "zigzag_frequency": {
+            "type": "number",
+            "default": 2,
+            "min": 0.5,
+            "max": 10,
+            "description": "Zigzag movement frequency"
+        },
+        "bullet_width": {
+            "type": "number",
+            "default": 4,
+            "min": 2,
+            "max": 20,
+            "description": "Player bullet width"
+        },
+        "bullet_height": {
+            "type": "number",
+            "default": 8,
+            "min": 2,
+            "max": 30,
+            "description": "Player bullet height"
+        },
+        "fire_cooldown": {
+            "type": "number",
+            "default": 0.2,
+            "min": 0.05,
+            "max": 2.0,
+            "description": "Cooldown between shots"
+        }
+    },
+    "enemy_types": {
+        "basic": {
+            "name": "basic",
+            "movement_pattern": "straight",
+            "speed_multiplier": 1.0,
+            "shoot_rate_multiplier": 1.0,
+            "health": 1,
+            "description": "Standard enemy ship"
+        },
+        "weaver": {
+            "name": "weaver",
+            "movement_pattern": "zigzag",
+            "speed_multiplier": 0.8,
+            "shoot_rate_multiplier": 1.2,
+            "health": 1,
+            "description": "Weaves through space while shooting"
+        },
+        "bomber": {
+            "name": "bomber",
+            "movement_pattern": "straight",
+            "speed_multiplier": 0.6,
+            "shoot_rate_multiplier": 2.0,
+            "health": 2,
+            "description": "Slow but fires rapidly"
+        },
+        "kamikaze": {
+            "name": "kamikaze",
+            "movement_pattern": "dive",
+            "speed_multiplier": 1.5,
+            "shoot_rate_multiplier": 0.0,
+            "health": 1,
+            "description": "Dives directly at player without shooting"
+        }
+    },
+    "components": {
+        "movement_controller": {
+            "type": "MovementController",
+            "config": {
+                "mode": "$movement_type",
+                "speed": "$movement_speed",
+                "friction": 1.0,
+                "accel_friction": "$accel_friction",
+                "decel_friction": "$decel_friction",
+                "rotation_speed": "$rotation_speed",
+                "rail_axis": "horizontal",
+                "reverse_mode": "none",
+                "jump_cooldown": "$jump_cooldown",
+                "jump_speed": "$jump_speed"
+            }
+        },
+        "hud": {
+            "type": "HUDRenderer",
+            "config": {
+                "primary": {"label": "Kills", "key": "kills"},
+                "secondary": {"label": "Time", "key": "time_elapsed", "format": "float"},
+                "lives": {"key": "lives", "style": "hearts"}
+            }
+        },
+        "visual_effects": {
+            "type": "VisualEffects",
+            "config": {
+                "camera_shake_enabled": false,
+                "particle_effects_enabled": true,
+                "screen_flash_enabled": false
+            }
+        },
+        "popup_manager": {
+            "type": "PopupManager",
+            "config": {}
+        },
+        "health_system": {
+            "type": "LivesHealthSystem",
+            "config": {
+                "mode": "lives",
+                "starting_lives": "$lives_count",
+                "max_lives": 99
+            }
+        }
+    },
+    "projectile_types": {
+        "player_bullet": {
+            "speed": "$bullet_speed",
+            "damage": 1,
+            "radius": 3,
+            "width": "$bullet_width",
+            "height": "$bullet_height",
+            "movement_type": "linear",
+            "lifetime": 5.0,
+            "team": "player"
+        },
+        "enemy_bullet": {
+            "speed": "$enemy_bullet_speed",
+            "damage": 1,
+            "radius": 4,
+            "width": 8,
+            "height": 8,
+            "movement_type": "linear",
+            "lifetime": 10.0,
+            "team": "enemy"
+        }
+    },
+    "entity_types": {
+        "enemy": {
+            "width": "$enemy_width",
+            "height": "$enemy_height",
+            "health": "$enemy_health",
+            "alive": true
+        },
+        "asteroid": {
+            "width": 30,
+            "height": 30,
+            "alive": true
+        },
+        "meteor": {
+            "width": 30,
+            "height": 30,
+            "alive": true
+        },
+        "meteor_warning": {
+            "width": 30,
+            "height": 30,
+            "alive": true
+        }
+    },
+    "victory_conditions": {
+        "kills": {
+            "victory": {"type": "threshold", "metric": "kills", "target": "$victory_limit"},
+            "loss": {"type": "threshold", "metric": "deaths", "target": "$lives_count"}
+        },
+        "time": {
+            "victory": {"type": "time_survival", "metric": "survival_time", "target": "$victory_limit"},
+            "loss": {"type": "threshold", "metric": "deaths", "target": "$lives_count"}
+        },
+        "survival": {
+            "victory": {"type": "endless"},
+            "loss": {"type": "threshold", "metric": "deaths", "target": "$lives_count"}
         }
     }
 }
