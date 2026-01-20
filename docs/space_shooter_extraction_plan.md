@@ -386,7 +386,28 @@ end
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+
+1. **updateBullets()**: Replaced inline enemy bullets vs player loop with `projectile_system:checkCollisions({self.player}, callback, "enemy")` - 6 lines → 3 lines
+
+2. **updateAsteroids()**: Restructured collision handling:
+   - Movement and off-screen check in one loop
+   - Player collision via `entity_controller:checkCollision()` with type filter
+   - Bullet collision via `projectile_system:checkCollisions()`
+   - Enemy collision kept inline (using Collision.checkAABB directly)
+   - ~27 lines → ~22 lines
+
+3. **updateMeteors()**: Similar restructure:
+   - Movement and off-screen check in one loop
+   - Player collision via `entity_controller:checkCollision()`
+   - Bullet collision via `projectile_system:checkCollisions()`
+   - ~24 lines → ~14 lines
+
+4. **updateEnemies()**: Inlined Collision.checkAABB for enemy vs player (was only remaining use of helper)
+
+5. **DELETED checkCollision() helper** - 4 lines removed, no longer needed
+
+**Lines removed from space_shooter.lua: ~20 lines**
 
 ---
 

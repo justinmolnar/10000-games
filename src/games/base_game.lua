@@ -646,6 +646,8 @@ function BaseGame:createPlayer(config)
         height = height,
         radius = config.radius or math.max(width, height) / 2,
         centered = true,
+        active = true,
+        alive = true,
         vx = 0, vy = 0, angle = 0,
         jump_cooldown_timer = 0,
         shoot_cooldown_timer = 0,

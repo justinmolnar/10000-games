@@ -459,6 +459,7 @@
     "fire_mode": "auto",
     "fire_rate": 9.0,
     "bullet_pattern": "spread",
+    "bullets_per_shot": 5,
     "lives_count": 10,
     "difficulty_modifier": 1.8,
     "palette": "gray",

@@ -497,7 +497,11 @@ function SpaceShooter:updateEnemies(dt)
         end
 
         -- Check collision with player
-        if self:checkCollision(enemy, self.player) then
+        local collided = self.di.components.Collision.checkAABB(
+            enemy.x, enemy.y, enemy.width, enemy.height,
+            self.player.x, self.player.y, self.player.width, self.player.height
+        )
+        if collided then
             self:handlePlayerDamage()
             self.entity_controller:removeEntity(enemy)
         elseif self.params.enemy_bullets_enabled or (self.can_shoot_back and (enemy.shoot_rate_multiplier or 1.0) > 0) then
@@ -528,13 +532,10 @@ function SpaceShooter:updateBullets(dt)
         game.entity_controller:hitEntity(enemy, 1, bullet)
     end, "player")
 
-    -- Enemy bullets vs player
-    for _, bullet in ipairs(self.enemy_bullets) do
-        if self:checkCollision(bullet, self.player) then
-            self.projectile_system:removeProjectile(bullet)
-            self:handlePlayerDamage()
-        end
-    end
+    -- Enemy bullets vs player (ProjectileSystem handles bullet removal)
+    self.projectile_system:checkCollisions({self.player}, function(bullet, player)
+        game:handlePlayerDamage()
+    end, "enemy")
 
     -- Screen wrap for player bullets if enabled
     if self.params.screen_wrap_bullets then
@@ -620,16 +621,19 @@ function SpaceShooter:playerShoot(charge_multiplier)
 end
 
 function SpaceShooter:getBulletSpawnPosition(angle)
+    -- Player uses corner-based coords, calculate center
+    local center_x = self.player.x + self.player.width / 2
+    local center_y = self.player.y + self.player.height / 2
     local rad = math.rad(angle)
     if self.params.movement_type == "asteroids" then
         local offset_distance = self.player.height / 2
-        return self.player.x + math.sin(rad) * offset_distance,
-               self.player.y - math.cos(rad) * offset_distance
+        return center_x + math.sin(rad) * offset_distance,
+               center_y - math.cos(rad) * offset_distance
     else
         local spawn_y = self.params.reverse_gravity
-            and (self.player.y + self.player.height/2)
-            or (self.player.y - self.player.height/2)
-        return self.player.x, spawn_y
+            and (self.player.y + self.player.height)
+            or self.player.y
+        return center_x, spawn_y
     end
 end
 
@@ -788,8 +792,8 @@ function SpaceShooter:spawnVariantEnemy()
 
     -- Special initialization for dive pattern (kamikaze)
     if enemy_def.movement_pattern == 'dive' then
-        extra.target_x = self.player.x
-        extra.target_y = self.player.y
+        extra.target_x = self.player.x + self.player.width / 2
+        extra.target_y = self.player.y + self.player.height / 2
     end
 
     self.entity_controller:spawn("enemy",
@@ -797,11 +801,6 @@ function SpaceShooter:spawnVariantEnemy()
         spawn_y,
         extra
     )
-end
-
-function SpaceShooter:checkCollision(a, b)
-    if not a or not b then return false end
-    return self.di.components.Collision.checkAABB(a.x, a.y, a.width or 0, a.height or 0, b.x, b.y, b.width or 0, b.height or 0)
 end
 
 function SpaceShooter:handlePlayerDamage()
@@ -1247,7 +1246,7 @@ function SpaceShooter:updateGalagaFormation(dt)
             -- Create dive path (swoop down toward player, then off-screen)
             diver.dive_path = {
                 {x = diver.x, y = diver.y},
-                {x = self.player.x, y = self.player.y},  -- Dive toward player
+                {x = self.player.x + self.player.width / 2, y = self.player.y + self.player.height / 2},  -- Dive toward player center
                 {x = diver.x, y = self.game_height + 50}  -- Exit off bottom
             }
             self.galaga_state.diving_count = self.galaga_state.diving_count + 1
@@ -1370,39 +1369,47 @@ function SpaceShooter:updateAsteroids(dt)
 
     local speed_direction = self.params.reverse_gravity and -1 or 1
     local speed = (self.params.asteroid_speed + self.params.scroll_speed) * speed_direction
+    local game = self
 
+    -- Update movement and check off-screen
     for _, asteroid in ipairs(self.asteroids) do
         asteroid.y = asteroid.y + speed * dt
         asteroid.rotation = asteroid.rotation + asteroid.rotation_speed * dt
 
-        if self:checkCollision(asteroid, self.player) then
-            self:handlePlayerDamage()
-            self.entity_controller:removeEntity(asteroid)
-        elseif self.params.asteroids_can_be_destroyed then
-            for _, bullet in ipairs(self.player_bullets) do
-                if self:checkCollision(asteroid, bullet) then
-                    self.entity_controller:removeEntity(asteroid)
-                    if not self.params.bullet_piercing then
-                        self.projectile_system:removeProjectile(bullet)
-                    end
-                    break
-                end
-            end
-        end
-
-        -- Check collision with enemies
-        for _, enemy in ipairs(self.enemies) do
-            if self:checkCollision(asteroid, enemy) then
-                self.entity_controller:removeEntity(enemy)
-                self.entity_controller:removeEntity(asteroid)
-                break
-            end
-        end
-
-        -- Remove if off screen
         local off_screen = self.params.reverse_gravity and (asteroid.y + asteroid.height < 0) or (asteroid.y > self.game_height + asteroid.height)
         if off_screen then
             self.entity_controller:removeEntity(asteroid)
+        end
+    end
+
+    -- Asteroid vs player collision
+    self.entity_controller:checkCollision(self.player, function(entity)
+        if entity.type_name == "asteroid" then
+            game:handlePlayerDamage()
+            game.entity_controller:removeEntity(entity)
+        end
+    end)
+
+    -- Asteroid vs player bullets (if destroyable)
+    if self.params.asteroids_can_be_destroyed then
+        self.projectile_system:checkCollisions(self.asteroids, function(bullet, asteroid)
+            game.entity_controller:removeEntity(asteroid)
+        end, "player")
+    end
+
+    -- Asteroid vs enemies
+    for _, asteroid in ipairs(self.asteroids) do
+        if asteroid.active then
+            for _, enemy in ipairs(self.enemies) do
+                if enemy.active and self.di.components.Collision.checkAABB(
+                    asteroid.x, asteroid.y, asteroid.width, asteroid.height,
+                    enemy.x, enemy.y, enemy.width, enemy.height
+                ) then
+                    self.entity_controller:removeEntity(enemy)
+                    self.entity_controller:removeEntity(asteroid)
+                    break
+                end
+            end
         end
     end
 end
@@ -1440,29 +1447,30 @@ function SpaceShooter:updateMeteors(dt)
     end
 
     local speed_direction = self.params.reverse_gravity and -1 or 1
+    local game = self
+
+    -- Update movement and check off-screen
     for _, meteor in ipairs(self.meteors) do
         meteor.y = meteor.y + (meteor.speed + self.params.scroll_speed) * speed_direction * dt
-
-        if self:checkCollision(meteor, self.player) then
-            self:handlePlayerDamage()
-            self.entity_controller:removeEntity(meteor)
-        else
-            for _, bullet in ipairs(self.player_bullets) do
-                if self:checkCollision(meteor, bullet) then
-                    self.entity_controller:removeEntity(meteor)
-                    if not self.params.bullet_piercing then
-                        self.projectile_system:removeProjectile(bullet)
-                    end
-                    break
-                end
-            end
-        end
 
         local off_screen = self.params.reverse_gravity and (meteor.y + meteor.height < 0) or (meteor.y > self.game_height + meteor.height)
         if off_screen then
             self.entity_controller:removeEntity(meteor)
         end
     end
+
+    -- Meteor vs player collision
+    self.entity_controller:checkCollision(self.player, function(entity)
+        if entity.type_name == "meteor" then
+            game:handlePlayerDamage()
+            game.entity_controller:removeEntity(entity)
+        end
+    end)
+
+    -- Meteor vs player bullets
+    self.projectile_system:checkCollisions(self.meteors, function(bullet, meteor)
+        game.entity_controller:removeEntity(meteor)
+    end, "player")
 end
 
 function SpaceShooter:spawnMeteorWave()

@@ -51,8 +51,9 @@ function SpaceShooterView:draw()
         if game.params.reverse_gravity then
             rotation = rotation + math.pi
         end
-        local center_x = game.player.x
-        local center_y = game.player.y
+        -- Player uses corner-based coords, calculate center for drawing
+        local center_x = game.player.x + game.player.width / 2
+        local center_y = game.player.y + game.player.height / 2
 
         -- Draw shield visual indicator (like Dodge)
         if game.params.shield and game.health_system:isShieldActive() then
@@ -93,7 +94,7 @@ function SpaceShooterView:draw()
         end
     end
 
-    -- Draw enemies (sprite or fallback)
+    -- Draw enemies (sprite or fallback) - enemies use corner-based coords
     local enemy_sprite_fallback = self.sprite_manager:getMetricSprite(game.data, "kills") or "game_mine_2-0"
     for _, enemy in ipairs(game.enemies) do
         local sprite_key = enemy.type and ("enemy_" .. enemy.type) or nil
@@ -101,15 +102,15 @@ function SpaceShooterView:draw()
             local sprite = game.sprites[sprite_key]
             -- Apply tint when drawing sprite
             g.setColor(tint[1], tint[2], tint[3])
-            g.draw(sprite, enemy.x - enemy.width/2, enemy.y - enemy.height/2, 0,
+            g.draw(sprite, enemy.x, enemy.y, 0,
                 enemy.width / sprite:getWidth(), enemy.height / sprite:getHeight())
             g.setColor(1, 1, 1)  -- Reset color
         else
             -- Fallback to icon
             self.sprite_loader:drawSprite(
                 enemy_sprite_fallback,
-                enemy.x - enemy.width/2,
-                enemy.y - enemy.height/2,
+                enemy.x,
+                enemy.y,
                 enemy.width,
                 enemy.height,
                 {1, 1, 1},
