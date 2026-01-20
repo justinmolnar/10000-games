@@ -22,13 +22,21 @@ function Breakout:setupComponents()
         pooling = false, max_projectiles = 50
     })
 
+    local game = self
     self.entity_controller = C.EntityController:new({
         entity_types = {
             ["brick"] = {
                 width = p.brick_width, height = p.brick_height,
                 health = p.brick_health, max_health = p.brick_health,
                 shape = p.brick_shape, radius = p.brick_radius,
-                alive = true, vx = 0, vy = 0, regen_timer = 0
+                alive = true, vx = 0, vy = 0, regen_timer = 0,
+                on_hit = function(brick)
+                    if p.brick_flash_on_hit then game.brick_flash_map[brick] = 0.1 end
+                end,
+                on_death = function(brick)
+                    brick.alive = false
+                    game:onBrickDestroyed(brick)
+                end
             },
             ["obstacle"] = {
                 size = 40, shape = p.obstacles_shape,
@@ -313,8 +321,7 @@ function Breakout:updateGameLogic(dt)
         else
             for _, brick in ipairs(self.bricks) do
                 if brick.alive and Physics.rectCollision(bullet.x - bullet.width / 2, bullet.y - bullet.height / 2, bullet.width, bullet.height, brick.x, brick.y, brick.width, brick.height) then
-                    brick.health = brick.health - self.params.paddle_shoot_damage
-                    if brick.health <= 0 then self:onBrickDestroyed(brick, nil) end
+                    self.entity_controller:hitEntity(brick, self.params.paddle_shoot_damage, bullet)
                     table.remove(self.bullets, i)
                     break
                 end
@@ -387,8 +394,8 @@ function Breakout:updateBall(ball, dt)
     -- Clamp speed after all forces applied
     if p.ball_max_speed then Physics.clampSpeed(ball, p.ball_max_speed) end
 
-    -- Handle sticky ball (follows paddle)
-    if ball.stuck and p.paddle_sticky then
+    -- Handle sticky ball (follows paddle until launched, even if powerup expires)
+    if ball.stuck then
         ball.x = self.paddle.x + (ball.stuck_offset_x or 0)
         ball.y = self.paddle.y + (ball.stuck_offset_y or 0)
         return -- Still active but stuck
@@ -473,21 +480,12 @@ function Breakout:updateBall(ball, dt)
                 or Physics.checkCollision(b, brick, "circle", brick.shape)
         end,
         on_hit = function(b, brick)
-            -- Flash effect
-            if p.brick_flash_on_hit then self.brick_flash_map[brick] = 0.1 end
-            -- Health and destruction
-            if brick.health then
-                brick.health = brick.health - 1
-                if brick.health <= 0 then
-                    brick.alive = false
-                    self:onBrickDestroyed(brick, b)
-                end
-            end
-            -- Speed increase
+            -- Hit brick via EntityController (triggers on_hit and on_death callbacks)
+            self.entity_controller:hitEntity(brick, 1, b)
+            -- Ball effects
             if p.ball_speed_increase_per_bounce and p.ball_max_speed then
                 Physics.increaseSpeed(b, p.ball_speed_increase_per_bounce, p.ball_max_speed)
             end
-            -- Bounce randomness
             if p.ball_bounce_randomness then
                 Physics.addBounceRandomness(b, p.ball_bounce_randomness, self.rng)
             end
@@ -508,7 +506,7 @@ function Breakout:updateBall(ball, dt)
     if p.ball_max_speed then Physics.clampSpeed(ball, p.ball_max_speed) end
 end
 
-function Breakout:onBrickDestroyed(brick, ball)
+function Breakout:onBrickDestroyed(brick)
     self.bricks_destroyed = self.bricks_destroyed + 1
     self.bricks_left = self.bricks_left - 1
     self.powerup_system:spawn(brick.x + brick.width / 2, brick.y + brick.height / 2)
@@ -540,17 +538,15 @@ function Breakout:keypressed(key)
             self.paddle.shoot_cooldown_timer = self.params.paddle_shoot_cooldown
         end
 
-        -- Release sticky balls
-        if self.params.paddle_sticky then
-            local Physics = self.di.components.PhysicsUtils
-            for _, ball in ipairs(self.balls) do
-                if ball.stuck then
-                    ball.stuck = false
-                    -- Position ball above paddle before launching to avoid re-collision
-                    ball.y = self.paddle.y - ball.radius - self.paddle.height / 2 - 1
-                    Physics.launchFromOffset(ball, ball.stuck_offset_x or 0, self.paddle.width, 300)
-                    ball.magnet_immunity_timer = 0.3
-                end
+        -- Release any stuck balls (even if sticky powerup has expired)
+        local Physics = self.di.components.PhysicsUtils
+        for _, ball in ipairs(self.balls) do
+            if ball.stuck then
+                ball.stuck = false
+                -- Position ball above paddle before launching to avoid re-collision
+                ball.y = self.paddle.y - ball.radius - self.paddle.height / 2 - 1
+                Physics.launchFromOffset(ball, ball.stuck_offset_x or 0, self.paddle.width, 300)
+                ball.magnet_immunity_timer = 0.3
             end
         end
     end

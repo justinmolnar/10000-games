@@ -109,6 +109,7 @@ function PowerupSystem:new(config)
     -- State
     instance.powerups = {}  -- Falling powerup entities
     instance.active_powerups = {}  -- Active effects {type = {duration_remaining, ...}}
+    instance.base_values = {}  -- True original values before ANY powerup modified them
 
     -- Hooks (game-specific callbacks)
     instance.on_spawn = config.on_spawn or function(powerup) end
@@ -269,7 +270,12 @@ function PowerupSystem:applyDeclarativeEffects(effect, config)
 
     for _, eff in ipairs(config.effects or {}) do
         if eff.type == "multiply_param" and game.params then
-            effect.originals[eff.param] = game.params[eff.param]
+            local key = "param_" .. eff.param
+            -- Store TRUE original only if no powerup has modified this param yet
+            if self.base_values[key] == nil then
+                self.base_values[key] = game.params[eff.param]
+            end
+            effect.originals[key] = true  -- Mark that this effect modified this param
             game.params[eff.param] = game.params[eff.param] * (eff.multiplier or 1)
 
         elseif eff.type == "enable_param" and game.params then
@@ -301,7 +307,12 @@ function PowerupSystem:applyDeclarativeEffects(effect, config)
         elseif eff.type == "multiply_entity_field" then
             local entity = game[eff.entity]
             if entity and entity[eff.field] then
-                effect.originals["entity_" .. eff.entity .. "_" .. eff.field] = entity[eff.field]
+                local key = "entity_" .. eff.entity .. "_" .. eff.field
+                -- Store TRUE original only if no powerup has modified this field yet
+                if self.base_values[key] == nil then
+                    self.base_values[key] = entity[eff.field]
+                end
+                effect.originals[key] = true  -- Mark that this effect modified this field
                 entity[eff.field] = entity[eff.field] * (eff.multiplier or 1)
             end
 
@@ -341,7 +352,31 @@ function PowerupSystem:removeDeclarativeEffects(effect, config)
     if not game then return end
 
     for _, eff in ipairs(config.effects or {}) do
-        if eff.type == "multiply_param" or eff.type == "enable_param" or eff.type == "set_param" then
+        if eff.type == "multiply_param" and game.params then
+            local key = "param_" .. eff.param
+            if effect.originals[key] and self.base_values[key] ~= nil then
+                -- Restore to base value first
+                game.params[eff.param] = self.base_values[key]
+                -- Re-apply multipliers from ALL other active powerups that modify this param
+                local any_other_using = false
+                for other_type, other_effect in pairs(self.active_powerups) do
+                    if other_type ~= effect.type and other_effect.originals and other_effect.originals[key] then
+                        any_other_using = true
+                        local other_config = self.powerup_configs[other_type] or {}
+                        for _, other_eff in ipairs(other_config.effects or {}) do
+                            if other_eff.type == "multiply_param" and other_eff.param == eff.param then
+                                game.params[eff.param] = game.params[eff.param] * (other_eff.multiplier or 1)
+                            end
+                        end
+                    end
+                end
+                -- Clear base if no other powerup is using this param
+                if not any_other_using then
+                    self.base_values[key] = nil
+                end
+            end
+
+        elseif eff.type == "enable_param" or eff.type == "set_param" then
             if game.params and effect.originals[eff.param] ~= nil then
                 game.params[eff.param] = effect.originals[eff.param]
             end
@@ -366,8 +401,27 @@ function PowerupSystem:removeDeclarativeEffects(effect, config)
         elseif eff.type == "multiply_entity_field" then
             local entity = game[eff.entity]
             local key = "entity_" .. eff.entity .. "_" .. eff.field
-            if entity and effect.originals[key] ~= nil then
-                entity[eff.field] = effect.originals[key]
+            if entity and effect.originals[key] and self.base_values[key] ~= nil then
+                -- Restore to base value first
+                entity[eff.field] = self.base_values[key]
+                -- Re-apply multipliers from ALL other active powerups that modify this field
+                local any_other_using = false
+                for other_type, other_effect in pairs(self.active_powerups) do
+                    if other_type ~= effect.type and other_effect.originals and other_effect.originals[key] then
+                        any_other_using = true
+                        local other_config = self.powerup_configs[other_type] or {}
+                        for _, other_eff in ipairs(other_config.effects or {}) do
+                            if other_eff.type == "multiply_entity_field" and
+                               other_eff.entity == eff.entity and other_eff.field == eff.field then
+                                entity[eff.field] = entity[eff.field] * (other_eff.multiplier or 1)
+                            end
+                        end
+                    end
+                end
+                -- Clear base if no other powerup is using this field
+                if not any_other_using then
+                    self.base_values[key] = nil
+                end
             end
         end
         -- Note: add_lives, spawn_projectiles, set_entity_field are not reverted
@@ -437,6 +491,8 @@ function PowerupSystem:clear(clear_active)
         for powerup_type, effect in pairs(self.active_powerups) do
             self:removeEffect(powerup_type)
         end
+        -- Clear base values tracking
+        self.base_values = {}
     end
 end
 
