@@ -388,9 +388,7 @@ function Breakout:updateBall(ball, dt)
     if p.ball_max_speed then Physics.clampSpeed(ball, p.ball_max_speed) end
 
     -- Handle sticky ball (follows paddle until launched, even if powerup expires)
-    if ball.stuck then
-        ball.x = self.paddle.x + (ball.stuck_offset_x or 0)
-        ball.y = self.paddle.y + (ball.stuck_offset_y or 0)
+    if Physics.handleAttachment(ball, self.paddle, "stuck_offset_x", "stuck_offset_y") then
         return -- Still active but stuck
     end
 

@@ -352,7 +352,12 @@ end
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+1. Added `PhysicsUtils.handleAttachment(entity, parent, offset_x_key, offset_y_key)` to physics_utils.lua
+2. Returns true if entity is attached and position was updated, false otherwise
+3. Replaced 4-line inline attachment code in Breakout:updateBall() with single `Physics.handleAttachment()` call
+
+Lines removed from breakout.lua: ~3 lines
 
 ---
 

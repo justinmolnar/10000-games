@@ -74,6 +74,14 @@ function PhysicsUtils.addBounceRandomness(entity, randomness, rng)
     entity.vy = math.sin(new_angle) * speed
 end
 
+-- Returns true if entity is attached and position was updated, false otherwise
+function PhysicsUtils.handleAttachment(entity, parent, offset_x_key, offset_y_key)
+    if not entity.stuck then return false end
+    entity.x = parent.x + (entity[offset_x_key] or 0)
+    entity.y = parent.y + (entity[offset_y_key] or 0)
+    return true
+end
+
 -- ╔═══════════════════════════════════════════════════════════════════╗
 -- ║                      COLLISION DETECTION                           ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
