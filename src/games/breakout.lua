@@ -17,6 +17,10 @@ function Breakout:setupComponents()
                 speed = p.ball_speed, radius = p.ball_radius,
                 movement_type = "bounce", lifetime = 999, team = "player",
                 bounce_top = true, bounce_left = true, bounce_right = true, bounce_bottom = false
+            },
+            ["paddle_bullet"] = {
+                speed = 400, radius = 2, width = 4, height = 10,
+                movement_type = "linear", lifetime = 5, team = "paddle_bullet"
             }
         },
         pooling = false, max_projectiles = 50
@@ -132,7 +136,6 @@ function Breakout:init(game_data, cheats, di, variant_override)
 end
 
 function Breakout:setupGameState()
-    if self.seed then self.rng = love.math.newRandomGenerator(self.seed) end
     self.bricks_destroyed = 0
     self.bricks_left = 0
     self.balls_lost = 0
@@ -272,7 +275,7 @@ function Breakout:updateGameLogic(dt)
     }
     self.projectile_system:update(dt, game_bounds)
 
-    self.balls = self.projectile_system:getProjectiles()
+    self.balls = self.projectile_system:getProjectilesByTeam("player")
 
     local game_bounds = {width = self.arena_width, height = self.arena_height}
     self.powerup_system:update(dt, self.paddle, game_bounds)
@@ -312,22 +315,12 @@ function Breakout:updateGameLogic(dt)
         end
     end
 
-    -- Update bullets
-    for i = #self.bullets, 1, -1 do
-        local bullet = self.bullets[i]
-        bullet.y = bullet.y + bullet.vy * dt
-        if bullet.y < 0 then
-            table.remove(self.bullets, i)
-        else
-            for _, brick in ipairs(self.bricks) do
-                if brick.alive and Physics.rectCollision(bullet.x - bullet.width / 2, bullet.y - bullet.height / 2, bullet.width, bullet.height, brick.x, brick.y, brick.width, brick.height) then
-                    self.entity_controller:hitEntity(brick, self.params.paddle_shoot_damage, bullet)
-                    table.remove(self.bullets, i)
-                    break
-                end
-            end
+    -- Check bullet-brick collisions
+    self.projectile_system:checkCollisions(self.bricks, function(bullet, brick)
+        if brick.alive then
+            self.entity_controller:hitEntity(brick, self.params.paddle_shoot_damage, bullet)
         end
-    end
+    end, "paddle_bullet")
 
     -- Update bricks (falling, moving, regenerating)
     self:updateBricks(dt)
@@ -534,7 +527,7 @@ function Breakout:keypressed(key)
     if key == "space" then
         -- Shooting
         if self.params.paddle_can_shoot and self.paddle.shoot_cooldown_timer <= 0 then
-            table.insert(self.bullets, {x = self.paddle.x, y = self.paddle.y - self.paddle.height / 2 - 5, vy = -400, width = 4, height = 10})
+            self.projectile_system:shoot("paddle_bullet", self.paddle.x, self.paddle.y - self.paddle.height / 2 - 5, -math.pi / 2)
             self.paddle.shoot_cooldown_timer = self.params.paddle_shoot_cooldown
         end
 

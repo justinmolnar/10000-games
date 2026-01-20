@@ -93,7 +93,8 @@ if self.seed then self.rng = love.math.newRandomGenerator(self.seed) end
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Deleted line 135: `if self.seed then self.rng = love.math.newRandomGenerator(self.seed) end`
+BaseGame already initializes self.rng at line 20.
 
 ---
 
@@ -159,7 +160,14 @@ end, "player")
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+1. Added "paddle_bullet" type to projectile_system with team "paddle_bullet" (to avoid double-processing with balls)
+2. Changed keypressed() to use `self.projectile_system:shoot("paddle_bullet", ...)`
+3. Deleted 16-line inline bullet update loop from updateGameLogic()
+4. Added `self.projectile_system:checkCollisions(self.bricks, ..., "paddle_bullet")` for bullet-brick collision
+5. Updated breakout_view.lua to get bullets from `projectile_system:getProjectilesByTeam("paddle_bullet")`
+
+Lines removed from breakout.lua: ~15 lines
 
 ---
 
