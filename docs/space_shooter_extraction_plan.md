@@ -457,7 +457,7 @@ end
 
 ### AI Notes
 
-*(To be filled after completion)*
+**Combined with Phase 6.** See Phase 6 notes.
 
 ---
 
@@ -518,7 +518,21 @@ self.entity_controller:updateBehaviors(dt, {
 
 ### AI Notes
 
-*(To be filled after completion)*
+**Completed (combined phases 5 & 6).** Changes made:
+
+1. **EntityController.updateBehaviors()** - Added two new behaviors:
+   - `shooting_enabled` + `on_shoot` callback - Generic entity shooting at shoot_rate
+   - `remove_offscreen` with bounds config - Removes entities that leave screen
+
+2. **space_shooter.lua updateEnemies()** - Simplified from ~48 lines to ~30 lines:
+   - Movement logic condensed (still uses PatternMovement)
+   - Player collision via `entity_controller:checkCollision()` with type filter
+   - Shooting via `updateBehaviors({shooting_enabled, on_shoot})`
+   - Off-screen removal via `updateBehaviors({remove_offscreen})`
+   - Grid/galaga enemies marked with `skip_offscreen_removal = true`
+
+**Lines removed from space_shooter.lua: ~18 lines**
+**Lines added to EntityController: ~20 lines (reusable by all games)**
 
 ---
 

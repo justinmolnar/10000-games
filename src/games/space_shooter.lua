@@ -475,51 +475,41 @@ end
 function SpaceShooter:updateEnemies(dt)
     local PatternMovement = self.di.components.PatternMovement
     local bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height}
+    local game = self
 
+    -- Update movement for standard patterns (grid/galaga managed elsewhere)
     for _, enemy in ipairs(self.enemies) do
-        -- Handle movement (skip special behaviors managed elsewhere)
         if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'galaga_entering' and enemy.movement_pattern ~= 'formation' then
-            -- Calculate effective speed
-            local speed = enemy.speed_override or self.enemy_speed
-            if enemy.is_variant_enemy and enemy.speed_multiplier then
-                speed = speed * enemy.speed_multiplier
-            end
-            speed = speed * self.params.enemy_speed_multiplier
-
-            -- Set up pattern properties
+            local speed = (enemy.speed_override or self.enemy_speed) * self.params.enemy_speed_multiplier
+            if enemy.is_variant_enemy and enemy.speed_multiplier then speed = speed * enemy.speed_multiplier end
             enemy.speed = speed
             enemy.direction = self.params.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
             enemy.zigzag_frequency = self.params.zigzag_frequency or 2
             enemy.zigzag_amplitude = speed * 0.5
-
-            -- Use PatternMovement for standard patterns
+            enemy.skip_offscreen_removal = false
             PatternMovement.update(dt, enemy, bounds)
-        end
-
-        -- Check collision with player
-        local collided = self.di.components.Collision.checkAABB(
-            enemy.x, enemy.y, enemy.width, enemy.height,
-            self.player.x, self.player.y, self.player.width, self.player.height
-        )
-        if collided then
-            self:handlePlayerDamage()
-            self.entity_controller:removeEntity(enemy)
-        elseif self.params.enemy_bullets_enabled or (self.can_shoot_back and (enemy.shoot_rate_multiplier or 1.0) > 0) then
-            enemy.shoot_timer = enemy.shoot_timer - dt
-            if enemy.shoot_timer <= 0 then
-                self:enemyShoot(enemy)
-                enemy.shoot_timer = enemy.shoot_rate
-            end
-        end
-
-        -- Remove off-screen enemies (skip special behaviors)
-        if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'galaga_entering' and enemy.movement_pattern ~= 'formation' then
-            local off_screen = self.params.reverse_gravity and (enemy.y + enemy.height < 0) or (enemy.y > self.game_height)
-            if off_screen then
-                self.entity_controller:removeEntity(enemy)
-            end
+        else
+            enemy.skip_offscreen_removal = true  -- Grid/galaga manage their own removal
         end
     end
+
+    -- Player collision via EntityController
+    self.entity_controller:checkCollision(self.player, function(entity)
+        if entity.type_name == "enemy" then
+            game:handlePlayerDamage()
+            game.entity_controller:removeEntity(entity)
+        end
+    end)
+
+    -- Shooting and off-screen removal via behaviors
+    local offscreen_bounds = self.params.reverse_gravity
+        and {top = self.game_height, bottom = -100}
+        or {top = -100, bottom = self.game_height}
+    self.entity_controller:updateBehaviors(dt, {
+        shooting_enabled = self.params.enemy_bullets_enabled or self.can_shoot_back,
+        on_shoot = function(enemy) game:enemyShoot(enemy) end,
+        remove_offscreen = offscreen_bounds
+    })
 end
 
 function SpaceShooter:updateBullets(dt)

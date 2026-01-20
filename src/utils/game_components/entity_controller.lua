@@ -824,6 +824,30 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             end
         end
 
+        -- Shooting behavior
+        if config.shooting_enabled and entity.shoot_rate and entity.shoot_rate > 0 then
+            entity.shoot_timer = (entity.shoot_timer or entity.shoot_rate) - dt
+            if entity.shoot_timer <= 0 then
+                if config.on_shoot then
+                    config.on_shoot(entity)
+                end
+                entity.shoot_timer = entity.shoot_rate
+            end
+        end
+
+        -- Off-screen removal behavior
+        if config.remove_offscreen and not entity.skip_offscreen_removal then
+            local bounds = config.remove_offscreen
+            local off_bottom = entity.y > (bounds.bottom or bounds.height or 600)
+            local off_top = entity.y + (entity.height or 0) < (bounds.top or 0)
+            local off_left = entity.x + (entity.width or 0) < (bounds.left or 0)
+            local off_right = entity.x > (bounds.right or bounds.width or 800)
+
+            if off_bottom or off_top or off_left or off_right then
+                self:removeEntity(entity)
+            end
+        end
+
         ::continue::
     end
 end
