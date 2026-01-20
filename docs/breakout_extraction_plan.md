@@ -245,7 +245,12 @@ ec:spawnLayout("brick", p.brick_layout, {
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+1. Added `spawnLayout(type_name, layout, config)` method to EntityController (after line 335)
+2. Replaced 13-line if/elseif chain in Breakout:generateBricks() with single `spawnLayout()` call
+3. spawnLayout accepts config with: rows, cols, x, y, spacing_x, spacing_y, arena_width, center_x, center_y, bounds, rng, can_overlap
+
+Lines removed from breakout.lua: ~12 lines
 
 ---
 

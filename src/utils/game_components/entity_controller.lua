@@ -335,6 +335,46 @@ function EntityController:spawnCheckerboard(type_name, rows, cols, x_offset, y_o
 end
 
 --[[
+    Spawn entities using a named layout pattern
+    Dispatches to spawnGrid, spawnPyramid, spawnCircle, spawnRandom, or spawnCheckerboard
+
+    @param type_name string - Entity type to spawn
+    @param layout string - "grid", "pyramid", "circle", "random", "checkerboard"
+    @param config table - Layout configuration:
+        - rows, cols: Grid dimensions
+        - x, y: Starting position offset
+        - spacing_x, spacing_y: Spacing between entities
+        - arena_width: For centering (pyramid)
+        - bounds: {x, y, width, height} for random spawning
+        - rng: Random generator for random spawning
+        - can_overlap: Allow overlapping (random)
+        - center_x, center_y: Center point (circle)
+        - base_count, ring_spacing: Circle parameters
+]]
+function EntityController:spawnLayout(type_name, layout, config)
+    config = config or {}
+    local rows = config.rows or 5
+    local cols = config.cols or 10
+    local start_x = config.x or 0
+    local start_y = config.y or 60
+    local spacing_x = config.spacing_x or 2
+    local spacing_y = config.spacing_y or 2
+
+    if layout == "pyramid" then
+        self:spawnPyramid(type_name, rows, cols, start_x, start_y, spacing_x, spacing_y, config.arena_width or 800)
+    elseif layout == "circle" then
+        self:spawnCircle(type_name, rows, config.center_x or 400, config.center_y or 200, config.base_count or 12, config.ring_spacing or 40)
+    elseif layout == "random" then
+        local bounds = config.bounds or {x = 40, y = 40, width = 720, height = 200}
+        self:spawnRandom(type_name, rows * cols, bounds, config.rng, config.can_overlap or false)
+    elseif layout == "checkerboard" then
+        self:spawnCheckerboard(type_name, rows, cols, start_x, start_y, spacing_x, spacing_y)
+    else -- "grid" is default
+        self:spawnGrid(type_name, rows, cols, start_x, start_y, spacing_x, spacing_y)
+    end
+end
+
+--[[
     Update all entities (movement, timers, spawning logic)
 ]]
 function EntityController:update(dt, game_state)

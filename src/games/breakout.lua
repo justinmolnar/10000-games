@@ -205,25 +205,25 @@ function Breakout:generateBricks()
     end
 
     local p = self.params
-    local ec = self.entity_controller
     local total_width = p.brick_columns * (p.brick_width + p.brick_padding)
     local start_x = (self.arena_width - total_width) / 2
 
-    if p.brick_layout == "pyramid" then
-        ec:spawnPyramid("brick", p.brick_rows, p.brick_columns, start_x, 60, p.brick_padding, p.brick_padding, self.arena_width)
-    elseif p.brick_layout == "circle" then
-        ec:spawnCircle("brick", p.brick_rows, self.arena_width / 2, 200, 12, 40)
-    elseif p.brick_layout == "random" then
-        ec:spawnRandom("brick", p.brick_rows * p.brick_columns,
-            {x = 40, y = 40, width = self.arena_width - 80, height = self.arena_height * 0.4},
-            self.rng, p.bricks_can_overlap)
-    elseif p.brick_layout == "checkerboard" then
-        ec:spawnCheckerboard("brick", p.brick_rows, p.brick_columns, start_x, 60, p.brick_padding, p.brick_padding)
-    else -- grid (default)
-        ec:spawnGrid("brick", p.brick_rows, p.brick_columns, start_x, 60, p.brick_padding, p.brick_padding)
-    end
+    self.entity_controller:spawnLayout("brick", p.brick_layout, {
+        rows = p.brick_rows,
+        cols = p.brick_columns,
+        x = start_x,
+        y = 60,
+        spacing_x = p.brick_padding,
+        spacing_y = p.brick_padding,
+        arena_width = self.arena_width,
+        center_x = self.arena_width / 2,
+        center_y = 200,
+        bounds = {x = 40, y = 40, width = self.arena_width - 80, height = self.arena_height * 0.4},
+        rng = self.rng,
+        can_overlap = p.bricks_can_overlap
+    })
 
-    self.bricks = ec:getEntities()
+    self.bricks = self.entity_controller:getEntities()
     self.bricks_left = #self.bricks
 end
 
