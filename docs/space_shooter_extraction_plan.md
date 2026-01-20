@@ -881,17 +881,17 @@ end
 
 ### AI Notes
 
-Completed. Used existing `spriteSetLoader` from DI (same as DodgeGame uses).
+Completed. Used existing `spriteSetLoader` from DI.
 
-1. **loadAssets()** - Simplified from ~70 lines to ~20 lines:
-   - Deleted inline `tryLoad()` function (~28 lines)
-   - Deleted `countLoadedSprites()` helper (~6 lines)
-   - Now uses `self.di.spriteSetLoader:getSprite(sprite_set, key, fallback)`
+1. **loadAssets()** - Simplified from ~70 lines to ~15 lines:
+   - Deleted inline `tryLoad()` function
+   - Deleted `countLoadedSprites()` and `hasSprite()` helpers
+   - Now uses `spriteSetLoader:getSprite()` for player and enemy sprites
+   - Missing sprites (background, bullets, power_up) left as nil for view fallbacks
 
-2. **Deleted `hasSprite()`** - Was defined but never used (~3 lines)
+2. **sprite_sets.json** - Added "fighter_1" sprite set with existing files
 
-**Lines removed from space_shooter.lua: ~56 lines**
-**Lines added: 0 (used existing spriteSetLoader from DI)**
+**Lines removed from space_shooter.lua: ~40 lines**
 
 ---
 
@@ -924,7 +924,25 @@ Completed. Used existing `spriteSetLoader` from DI (same as DodgeGame uses).
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Final review found no significant dead code to remove.
+
+**Final line count: 1439 lines** (down from ~1616, reduced by ~177 lines)
+
+**What remains is game-specific logic that cannot be further abstracted:**
+- Enemy behavior modes (Space Invaders, Galaga, default spawning)
+- Formation patterns (V, wall, spiral)
+- Difficulty scaling
+- Wave management
+- Environmental hazards (asteroids, meteors, gravity wells, blackout zones)
+
+**Key wins from refactor:**
+1. Used existing components properly (PatternMovement.bezier, PhysicsUtils.applyGravityWell, spriteSetLoader)
+2. Declarative powerup effects via schema
+3. LivesHealthSystem SHIELD mode for player shields
+4. EntityController behaviors for shooting and grid movement
+5. ProjectileSystem for collision detection
+
+**Note:** The original goal of ~200-300 lines was unrealistic. SpaceShooter has many variant modes (Space Invaders, Galaga, continuous, waves, clusters) and environmental features that require game-specific logic.
 
 ---
 
