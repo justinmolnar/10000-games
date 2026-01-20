@@ -498,6 +498,18 @@
             "max": 1.0,
             "description": "Rapid fire cooldown multiplier"
         },
+        "powerup_effect_configs": {
+            "type": "object",
+            "default": {
+                "speed": {"effects": [{"type": "multiply_param", "param": "movement_speed", "multiplier": "$powerup_speed_multiplier"}]},
+                "rapid_fire": {"effects": [{"type": "multiply_param", "param": "fire_cooldown", "multiplier": "$powerup_rapid_fire_multiplier"}]},
+                "pierce": {"effects": [{"type": "enable_param", "param": "bullet_piercing"}]},
+                "shield": {"effects": [{"type": "heal_shield"}]},
+                "triple_shot": {"effects": [{"type": "set_param", "param": "bullet_pattern", "value": "triple"}]},
+                "spread_shot": {"effects": [{"type": "set_param", "param": "bullet_pattern", "value": "spread"}, {"type": "set_param", "param": "bullets_per_shot", "value": 5}]}
+            },
+            "description": "Declarative effect configurations for powerup types"
+        },
         "asteroid_density": {
             "type": "number",
             "default": 0,

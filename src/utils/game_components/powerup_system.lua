@@ -260,6 +260,7 @@ end
     - set_param: Set param to value {param = "name", value = X}
     - set_flag: Set a game flag {flag = "name", value = true}
     - add_lives: Add lives {count = 1}
+    - heal_shield: Restore shield hits {amount = X} (defaults to max)
     - multiply_entity_speed: Multiply speed of entities {entities = "balls", multiplier = 0.5}
     - multiply_entity_field: Multiply entity field {entity = "paddle", field = "width", multiplier = 1.5}
     - spawn_projectiles: Spawn extra projectiles {type = "ball", count = 2, angle_spread = 0.5}
@@ -293,6 +294,19 @@ function PowerupSystem:applyDeclarativeEffects(effect, config)
         elseif eff.type == "add_lives" and game.health_system then
             game.health_system:addLife(eff.count or 1)
             if game.lives then game.lives = game.health_system.lives end
+
+        elseif eff.type == "heal_shield" and game.health_system then
+            -- Enable shield system if not already (for powerup granting temporary shield)
+            if not game.health_system.shield_enabled then
+                game.health_system.shield_enabled = true
+                game.health_system.shield_active = true
+                game.health_system.shield_hits_remaining = game.health_system.shield_max_hits or 3
+                if game.params then game.params.shield = true end
+                effect.originals["shield_enabled"] = false  -- Track for removal
+            end
+            -- Restore shield to full
+            local amount = eff.amount or game.health_system.shield_max_hits or 1
+            game.health_system:heal(amount)
 
         elseif eff.type == "multiply_entity_speed" then
             local entities = game[eff.entities]
@@ -422,6 +436,15 @@ function PowerupSystem:removeDeclarativeEffects(effect, config)
                 if not any_other_using then
                     self.base_values[key] = nil
                 end
+            end
+
+        elseif eff.type == "heal_shield" then
+            -- Disable shield if it was enabled by this powerup
+            if effect.originals["shield_enabled"] == false and game.health_system then
+                game.health_system.shield_enabled = false
+                game.health_system.shield_active = false
+                game.health_system.shield_hits_remaining = 0
+                if game.params then game.params.shield = false end
             end
         end
         -- Note: add_lives, spawn_projectiles, set_entity_field are not reverted

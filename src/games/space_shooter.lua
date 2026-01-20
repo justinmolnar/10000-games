@@ -106,8 +106,13 @@ function SpaceShooter:setupComponents()
     -- Victory condition from schema (loss target uses params.lives_count which includes cheat modifier)
     self:createVictoryConditionFromSchema()
 
-    -- Powerup system from schema
-    self:createPowerupSystemFromSchema({reverse_gravity = p.reverse_gravity})
+    -- Powerup system from schema (timer-based spawning)
+    self:createPowerupSystemFromSchema({
+        spawn_mode = "timer",
+        spawn_drop_chance = 1.0,  -- Timer mode always spawns (rate controls frequency)
+        reverse_gravity = p.reverse_gravity,
+        on_collect = function(powerup) self:playSound("powerup", 1.0) end
+    })
 end
 
 function SpaceShooter:setupGameState()
@@ -1537,43 +1542,6 @@ function SpaceShooter:updateBlackoutZones(dt)
             zone.vy = -zone.vy
             zone.y = math.max(zone.radius, math.min(self.game_height - zone.radius, zone.y))
         end
-    end
-end
-
---Powerup hooks (separate methods to avoid 60-upvalue limit)
-function SpaceShooter:onPowerupCollect(powerup)
-    self:playSound("powerup", 1.0)
-end
-
-function SpaceShooter:applyPowerupEffect(powerup_type, effect, config)
-    if powerup_type == "speed" then
-        effect.original = self:multiplyParam("player_speed", self.params.powerup_speed_multiplier)
-    elseif powerup_type == "rapid_fire" then
-        effect.original = self:multiplyParam("fire_cooldown", self.params.powerup_rapid_fire_multiplier)
-    elseif powerup_type == "pierce" then
-        effect.original = self:enableParam("bullet_piercing")
-    elseif powerup_type == "shield" then
-        if self.params.shield then
-            self.player.shield_active = true
-            self.player.shield_hits_remaining = self.params.shield_hits
-        end
-    elseif powerup_type == "triple_shot" then
-        effect.original = self:setParam("bullet_pattern", "triple")
-    elseif powerup_type == "spread_shot" then
-        effect.original = self:setParam("bullet_pattern", "spread")
-    end
-end
-
-function SpaceShooter:removePowerupEffect(powerup_type, effect)
-    if effect.original == nil then return end
-    if powerup_type == "speed" then
-        self:restoreParam("player_speed", effect.original)
-    elseif powerup_type == "rapid_fire" then
-        self:restoreParam("fire_cooldown", effect.original)
-    elseif powerup_type == "pierce" then
-        self:restoreParam("bullet_piercing", effect.original)
-    elseif powerup_type == "triple_shot" or powerup_type == "spread_shot" then
-        self:restoreParam("bullet_pattern", effect.original)
     end
 end
 

@@ -199,12 +199,14 @@ function BaseGame:createPowerupSystemFromSchema(extra_config)
 
     config.enabled = p.powerup_enabled
     config.spawn_mode = config.spawn_mode or "event"
-    config.spawn_drop_chance = p.brick_powerup_drop_chance
+    config.spawn_drop_chance = config.spawn_drop_chance or p.brick_powerup_drop_chance or p.powerup_drop_chance or 1.0
+    config.spawn_rate = p.powerup_spawn_rate
     config.powerup_size = p.powerup_size
     config.drop_speed = p.powerup_fall_speed
     config.default_duration = p.powerup_duration
     config.powerup_types = p.powerup_types
-    config.powerup_configs = p.powerup_effect_configs
+    -- Resolve $param references in powerup configs
+    config.powerup_configs = p.powerup_effect_configs and self:resolveConfig(p.powerup_effect_configs) or nil
 
     self.powerup_system = C.PowerupSystem:new(config)
     self.powerup_system.game = self

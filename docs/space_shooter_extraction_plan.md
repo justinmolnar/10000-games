@@ -301,7 +301,28 @@ end
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+
+1. **PowerupSystem** (`powerup_system.lua`):
+   - Added `heal_shield` effect type that calls `health_system:heal()` to restore shield
+
+2. **Schema** (`space_shooter_schema.json`):
+   - Added `powerup_effect_configs` with declarative effects for all 6 powerup types:
+     - speed: multiply_param player_speed
+     - rapid_fire: multiply_param fire_cooldown
+     - pierce: enable_param bullet_piercing
+     - shield: heal_shield (new effect type)
+     - triple_shot: set_param bullet_pattern
+     - spread_shot: set_param bullet_pattern
+
+3. **space_shooter.lua**:
+   - Updated createPowerupSystemFromSchema call to include on_collect callback for sound
+   - DELETED onPowerupCollect() - sound now in callback
+   - DELETED applyPowerupEffect() - 18 lines
+   - DELETED removePowerupEffect() - 12 lines
+
+**Lines removed from space_shooter.lua: ~35 lines**
+**Lines added to PowerupSystem: ~4 lines (reusable heal_shield effect)**
 
 ---
 
