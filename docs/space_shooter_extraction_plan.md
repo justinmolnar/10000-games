@@ -810,7 +810,31 @@ self.entity_controller:updateBehaviors(dt, {
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. The key insight: **use PatternMovement.updateBezier() instead of inline math**.
+
+Initially tried adding `formation_behavior` to EntityController but this was wrong - just moved Galaga-specific code into a component without real abstraction.
+
+**Correct approach taken:**
+
+1. **spawnGalagaEnemy()** - Updated to use PatternMovement-compatible properties:
+   - `formation_state` instead of `galaga_state`
+   - `home_x/y` instead of `formation_x/y`
+   - `bezier_path`, `bezier_t`, `bezier_duration`, `bezier_complete` for PatternMovement
+
+2. **updateGalagaFormation()** - Replaced ~20 lines of inline bezier math with 2 calls:
+   - `PatternMovement.updateBezier(dt, enemy, nil)` for entering state
+   - `PatternMovement.updateBezier(dt, enemy, nil)` for diving state
+   - Wave management, dive triggering, state transitions remain game-specific (as they should)
+
+3. **updateEnemies()** - Updated to exclude 'bezier' pattern (handled by updateGalagaFormation)
+
+**What this demonstrates:**
+- Real abstraction = using existing generic tools (PatternMovement.bezier)
+- Game-specific logic (wave timing, dive triggers) stays in the game
+- Don't create "behaviors" that only one game uses
+
+**Lines removed from space_shooter.lua: ~20 lines (inline bezier math)**
+**Lines added to EntityController: 0 (used existing PatternMovement)**
 
 ---
 

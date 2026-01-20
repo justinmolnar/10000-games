@@ -477,9 +477,9 @@ function SpaceShooter:updateEnemies(dt)
     local bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height}
     local game = self
 
-    -- Update movement for standard patterns (grid/galaga managed elsewhere)
+    -- Update movement for standard patterns (grid/formation managed elsewhere)
     for _, enemy in ipairs(self.enemies) do
-        if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'galaga_entering' and enemy.movement_pattern ~= 'formation' then
+        if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'bezier' and enemy.movement_pattern ~= 'formation' then
             local speed = (enemy.speed_override or self.enemy_speed) * self.params.enemy_speed_multiplier
             if enemy.is_variant_enemy and enemy.speed_multiplier then speed = speed * enemy.speed_multiplier end
             enemy.speed = speed
@@ -1078,29 +1078,28 @@ end
 function SpaceShooter:spawnGalagaEnemy(formation_slot, wave_modifiers)
     wave_modifiers = wave_modifiers or {}
     local wave_health = wave_modifiers.health or self.params.enemy_health
-    local wave_dive_frequency = wave_modifiers.dive_frequency or self.params.dive_frequency
 
     local entrance_side = math.random() > 0.5 and "left" or "right"
     local start_x = entrance_side == "left" and -50 or (self.game_width + 50)
     local start_y = -50
 
-    -- Build entrance path
-    local entrance_path
+    -- Build entrance path based on entrance_pattern param
+    local bezier_path
     if self.params.entrance_pattern == "swoop" then
-        entrance_path = {
+        bezier_path = {
             {x = start_x, y = start_y},
             {x = self.game_width / 2, y = self.game_height * 0.6},
             {x = formation_slot.x, y = formation_slot.y}
         }
     elseif self.params.entrance_pattern == "loop" then
         local mid_x = entrance_side == "left" and self.game_width * 0.3 or self.game_width * 0.7
-        entrance_path = {
+        bezier_path = {
             {x = start_x, y = start_y},
             {x = mid_x, y = self.game_height * 0.5},
             {x = formation_slot.x, y = formation_slot.y}
         }
     else
-        entrance_path = {
+        bezier_path = {
             {x = start_x, y = start_y},
             {x = (start_x + formation_slot.x) / 2, y = self.game_height * 0.3},
             {x = formation_slot.x, y = formation_slot.y}
@@ -1110,75 +1109,65 @@ function SpaceShooter:spawnGalagaEnemy(formation_slot, wave_modifiers)
     formation_slot.occupied = true
 
     self.entity_controller:spawn("enemy", start_x, start_y, {
-        movement_pattern = 'galaga_entering',
-        galaga_state = 'entering',
+        movement_pattern = 'bezier',
+        formation_state = 'entering',
         formation_slot = formation_slot,
-        formation_x = formation_slot.x,
-        formation_y = formation_slot.y,
-        entrance_t = 0,
-        entrance_duration = 2.0,
-        entrance_path = entrance_path,
-        shoot_timer = math.random() * 3.0,
-        shoot_rate = 2.5,
-        health = wave_health,
-        wave_dive_frequency = wave_dive_frequency
+        home_x = formation_slot.x,
+        home_y = formation_slot.y,
+        bezier_path = bezier_path,
+        bezier_t = 0,
+        bezier_duration = 2.0,
+        bezier_complete = false,
+        health = wave_health
     })
 end
 
 -- Galaga: Update formation and dive mechanics
 function SpaceShooter:updateGalagaFormation(dt)
+    local PatternMovement = self.di.components.PatternMovement
+
     -- Wave system: Check if we need to start a new wave
     if self.params.waves_enabled then
         if self.galaga_state.wave_active then
-            -- Check if all galaga enemies are dead
             local galaga_enemies_alive = false
             for _, enemy in ipairs(self.enemies) do
-                if enemy.galaga_state then
+                if enemy.formation_state then
                     galaga_enemies_alive = true
                     break
                 end
             end
 
             if not galaga_enemies_alive and #self.galaga_state.formation_positions > 0 then
-                -- Wave complete, start pause
                 self.galaga_state.wave_active = false
                 self.galaga_state.wave_pause_timer = self.params.wave_pause_duration
-                -- Clear formation for next wave
                 self.galaga_state.formation_positions = {}
             end
         else
-            -- In pause between waves
             self.galaga_state.wave_pause_timer = self.galaga_state.wave_pause_timer - dt
             if self.galaga_state.wave_pause_timer <= 0 then
-                -- Calculate wave modifiers for new wave
                 local wave_multiplier = 1.0 + (self.galaga_state.wave_number * self.params.wave_difficulty_increase)
                 local variance = self.params.wave_random_variance
-                local random_factor = 1.0
-                if variance > 0 then
-                    random_factor = 1.0 + ((math.random() - 0.5) * 2 * variance)
-                end
+                local random_factor = variance > 0 and (1.0 + ((math.random() - 0.5) * 2 * variance)) or 1.0
 
-                local wave_modifiers = {
+                self.galaga_state.wave_modifiers = {
                     health = math.max(1, math.floor(self.params.enemy_health * wave_multiplier + 0.5)),
-                    dive_frequency = self.params.dive_frequency / (wave_multiplier * random_factor)  -- Faster dives = harder
+                    dive_frequency = self.params.dive_frequency / (wave_multiplier * random_factor)
                 }
 
-                -- Start new wave
                 self:initGalagaFormation()
                 self.galaga_state.wave_number = self.galaga_state.wave_number + 1
                 self.galaga_state.spawned_count = 0
                 self.galaga_state.spawn_timer = 0
-                self.galaga_state.wave_modifiers = wave_modifiers  -- Store for gradual spawning
+                self.galaga_state.diving_count = 0
+                self.galaga_state.dive_timer = 0
 
-                -- Spawn initial batch of enemies with modifiers
                 local initial_count = math.min(self.params.initial_spawn_count, #self.galaga_state.formation_positions)
                 for i = 1, initial_count do
-                    local slot = self.galaga_state.formation_positions[i]
-                    self:spawnGalagaEnemy(slot, wave_modifiers)
+                    self:spawnGalagaEnemy(self.galaga_state.formation_positions[i], self.galaga_state.wave_modifiers)
                     self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
                 end
             end
-            return  -- Don't update formation during pause
+            return
         end
     end
 
@@ -1187,29 +1176,24 @@ function SpaceShooter:updateGalagaFormation(dt)
         self:initGalagaFormation()
         self.galaga_state.spawned_count = 0
         self.galaga_state.spawn_timer = 0
-        self.galaga_state.wave_modifiers = {}  -- No modifiers for first wave
+        self.galaga_state.wave_modifiers = {}
 
-        -- Spawn initial batch of enemies
         local initial_count = math.min(self.params.initial_spawn_count, #self.galaga_state.formation_positions)
         for i = 1, initial_count do
-            local slot = self.galaga_state.formation_positions[i]
-            self:spawnGalagaEnemy(slot, self.galaga_state.wave_modifiers)
+            self:spawnGalagaEnemy(self.galaga_state.formation_positions[i], self.galaga_state.wave_modifiers)
             self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
         end
     end
 
-    -- Gradual enemy spawning until formation is full
+    -- Gradual enemy spawning
     local unoccupied_slots = {}
     for _, slot in ipairs(self.galaga_state.formation_positions) do
-        if not slot.occupied then
-            table.insert(unoccupied_slots, slot)
-        end
+        if not slot.occupied then table.insert(unoccupied_slots, slot) end
     end
 
     if #unoccupied_slots > 0 and self.galaga_state.spawned_count < self.params.formation_size then
         self.galaga_state.spawn_timer = self.galaga_state.spawn_timer - dt
         if self.galaga_state.spawn_timer <= 0 then
-            -- Spawn one enemy into a random unoccupied slot
             local slot = unoccupied_slots[math.random(1, #unoccupied_slots)]
             self:spawnGalagaEnemy(slot, self.galaga_state.wave_modifiers)
             self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
@@ -1217,83 +1201,55 @@ function SpaceShooter:updateGalagaFormation(dt)
         end
     end
 
-    -- Update dive timer
+    -- Dive attack timer
+    local dive_freq = (self.galaga_state.wave_modifiers and self.galaga_state.wave_modifiers.dive_frequency) or self.params.dive_frequency
     self.galaga_state.dive_timer = self.galaga_state.dive_timer - dt
     if self.galaga_state.dive_timer <= 0 and self.galaga_state.diving_count < self.params.max_diving_enemies then
-        -- Pick a random enemy in formation to dive
         local candidates = {}
         for _, enemy in ipairs(self.enemies) do
-            if enemy.galaga_state == 'in_formation' then
-                table.insert(candidates, enemy)
-            end
+            if enemy.formation_state == 'in_formation' then table.insert(candidates, enemy) end
         end
 
         if #candidates > 0 then
-            local diver = candidates[math.random(1, #candidates)]
-            diver.galaga_state = 'diving'
-            diver.dive_t = 0
-            diver.dive_duration = 3.0
-            -- Create dive path (swoop down toward player, then off-screen)
-            diver.dive_path = {
+            local diver = candidates[math.random(#candidates)]
+            diver.formation_state = 'diving'
+            diver.movement_pattern = 'bezier'
+            diver.bezier_t = 0
+            diver.bezier_complete = false
+            diver.bezier_duration = 3.0
+            diver.bezier_path = {
                 {x = diver.x, y = diver.y},
-                {x = self.player.x + self.player.width / 2, y = self.player.y + self.player.height / 2},  -- Dive toward player center
-                {x = diver.x, y = self.game_height + 50}  -- Exit off bottom
+                {x = self.player.x + self.player.width / 2, y = self.player.y + self.player.height / 2},
+                {x = diver.x, y = self.game_height + 50}
             }
             self.galaga_state.diving_count = self.galaga_state.diving_count + 1
         end
-
-        self.galaga_state.dive_timer = self.params.dive_frequency
+        self.galaga_state.dive_timer = dive_freq
     end
 
-    -- Update enemy positions based on state
-    for i = #self.enemies, 1, -1 do
-        local enemy = self.enemies[i]
-
-        if enemy.galaga_state == 'entering' then
-            -- Move along entrance path
-            enemy.entrance_t = enemy.entrance_t + (dt / enemy.entrance_duration)
-            if enemy.entrance_t >= 1.0 then
-                -- Reached formation
-                enemy.galaga_state = 'in_formation'
-                enemy.x = enemy.formation_x
-                enemy.y = enemy.formation_y
+    -- Update enemy states (use PatternMovement.updateBezier instead of inline math)
+    for _, enemy in ipairs(self.enemies) do
+        if enemy.formation_state == 'entering' then
+            PatternMovement.updateBezier(dt, enemy, nil)
+            if enemy.bezier_complete then
+                enemy.formation_state = 'in_formation'
+                enemy.x, enemy.y = enemy.home_x, enemy.home_y
                 enemy.movement_pattern = 'formation'
-            else
-                -- Quadratic bezier interpolation
-                local t = enemy.entrance_t
-                local p0 = enemy.entrance_path[1]
-                local p1 = enemy.entrance_path[2]
-                local p2 = enemy.entrance_path[3]
-                enemy.x = (1-t)*(1-t)*p0.x + 2*(1-t)*t*p1.x + t*t*p2.x
-                enemy.y = (1-t)*(1-t)*p0.y + 2*(1-t)*t*p1.y + t*t*p2.y
             end
 
-        elseif enemy.galaga_state == 'in_formation' then
-            -- Stay at formation position
-            enemy.x = enemy.formation_x
-            enemy.y = enemy.formation_y
+        elseif enemy.formation_state == 'in_formation' then
+            enemy.x, enemy.y = enemy.home_x, enemy.home_y
 
-        elseif enemy.galaga_state == 'diving' then
-            -- Move along dive path
-            enemy.dive_t = enemy.dive_t + (dt / enemy.dive_duration)
-            if enemy.dive_t >= 1.0 then
-                -- Dive complete - respawn with new entrance
+        elseif enemy.formation_state == 'diving' then
+            PatternMovement.updateBezier(dt, enemy, nil)
+            if enemy.bezier_complete then
                 self.entity_controller:removeEntity(enemy)
                 self.galaga_state.diving_count = self.galaga_state.diving_count - 1
-                -- Mark formation slot as unoccupied
                 if enemy.formation_slot then
                     enemy.formation_slot.occupied = false
-                    -- Respawn enemy after a delay (handled by checking unoccupied slots)
+                    -- Respawn with new entrance animation
                     self:spawnGalagaEnemy(enemy.formation_slot, self.galaga_state.wave_modifiers)
                 end
-            else
-                -- Quadratic bezier interpolation
-                local t = enemy.dive_t
-                local p0 = enemy.dive_path[1]
-                local p1 = enemy.dive_path[2]
-                local p2 = enemy.dive_path[3]
-                enemy.x = (1-t)*(1-t)*p0.x + 2*(1-t)*t*p1.x + t*t*p2.x
-                enemy.y = (1-t)*(1-t)*p0.y + 2*(1-t)*t*p1.y + t*t*p2.y
             end
         end
     end

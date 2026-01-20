@@ -909,6 +909,7 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             end
         end
     end
+
 end
 
 return EntityController
