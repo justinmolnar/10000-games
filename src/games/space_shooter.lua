@@ -171,86 +171,24 @@ function SpaceShooter:setupGameState()
     }
 end
 
---Asset loading with fallback
+--Asset loading using spriteSetLoader
 function SpaceShooter:loadAssets()
     self.sprites = {}
+    local sprite_set = (self.variant and self.variant.sprite_set) or "fighter_1"
+    local fallback = "fighter_1"
+    local loader = self.di and self.di.spriteSetLoader
 
-    local game_type = "space_shooter"
-    local fallback_sprite_set = "fighter_1"  -- Config default
+    if loader then
+        self.sprites.player = loader:getSprite(sprite_set, "player", fallback)
+        -- bullets, background, power_up - leave nil for view fallbacks
 
-    -- Use variant sprite_set or fall back to config default
-    local sprite_set = (self.variant and self.variant.sprite_set) or fallback_sprite_set
-
-    local base_path = "assets/sprites/games/" .. game_type .. "/" .. sprite_set .. "/"
-    local fallback_path = "assets/sprites/games/" .. game_type .. "/" .. fallback_sprite_set .. "/"
-
-    local function tryLoad(filename, sprite_key)
-        -- Try variant sprite_set first
-        local filepath = base_path .. filename
-        local success, result = pcall(function()
-            return love.graphics.newImage(filepath)
-        end)
-
-        if success then
-            self.sprites[sprite_key] = result
-            print("[SpaceShooter:loadAssets] Loaded: " .. filepath)
-            return
+        for enemy_type in pairs(self.params.enemy_types) do
+            local key = "enemy_" .. enemy_type
+            self.sprites[key] = loader:getSprite(sprite_set, key, fallback)
         end
-
-        -- Fall back to default sprite_set (fighter_1) if not already using it
-        if sprite_set ~= fallback_sprite_set then
-            local fallback_filepath = fallback_path .. filename
-            local fallback_success, fallback_result = pcall(function()
-                return love.graphics.newImage(fallback_filepath)
-            end)
-
-            if fallback_success then
-                self.sprites[sprite_key] = fallback_result
-                print("[SpaceShooter:loadAssets] Loaded fallback: " .. fallback_filepath)
-                return
-            end
-        end
-
-        print("[SpaceShooter:loadAssets] Missing: " .. filepath .. " (no fallback available)")
     end
 
-    -- Load player ship sprite
-    tryLoad("player.png", "player")
-
-    -- Load enemy type sprites
-    for enemy_type, _ in pairs(self.params.enemy_types) do
-        local filename = "enemy_" .. enemy_type .. ".png"
-        local sprite_key = "enemy_" .. enemy_type
-        tryLoad(filename, sprite_key)
-    end
-
-    -- Load bullet sprites
-    tryLoad("bullet_player.png", "bullet_player")
-    tryLoad("bullet_enemy.png", "bullet_enemy")
-
-    -- Load power-up sprite
-    tryLoad("power_up.png", "power_up")
-
-    -- Load background
-    tryLoad("background.png", "background")
-
-    print(string.format("[SpaceShooter:loadAssets] Loaded %d sprites for variant: %s",
-        self:countLoadedSprites(), self.variant.name or "Unknown"))
-
-    --Load audio - using BaseGame helper
     self:loadAudio()
-end
-
-function SpaceShooter:countLoadedSprites()
-    local count = 0
-    for _ in pairs(self.sprites) do
-        count = count + 1
-    end
-    return count
-end
-
-function SpaceShooter:hasSprite(sprite_key)
-    return self.sprites and self.sprites[sprite_key] ~= nil
 end
 
 function SpaceShooter:setPlayArea(width, height)

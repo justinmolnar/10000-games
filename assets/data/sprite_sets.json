@@ -37,6 +37,18 @@
       }
     },
     {
+      "id": "fighter_1",
+      "sprites": {
+        "player": "assets/sprites/games/space_shooter/fighter_1/player.png",
+        "bullet_player": "assets/sprites/games/space_shooter/fighter_1/bullet.png",
+        "bullet_enemy": "assets/sprites/games/space_shooter/fighter_1/bullet.png",
+        "enemy_basic": "assets/sprites/games/space_shooter/fighter_1/enemy.png",
+        "enemy_fast": "assets/sprites/games/space_shooter/fighter_1/enemy.png",
+        "enemy_tank": "assets/sprites/games/space_shooter/fighter_1/enemy.png",
+        "enemy_shooter": "assets/sprites/games/space_shooter/fighter_1/enemy.png"
+      }
+    },
+    {
       "id": "hidden_object_base",
       "sprites": {
         "background": "assets/sprites/games/hidden_object/base/background.png",

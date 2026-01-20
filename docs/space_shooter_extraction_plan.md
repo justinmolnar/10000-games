@@ -881,7 +881,17 @@ end
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Used existing `spriteSetLoader` from DI (same as DodgeGame uses).
+
+1. **loadAssets()** - Simplified from ~70 lines to ~20 lines:
+   - Deleted inline `tryLoad()` function (~28 lines)
+   - Deleted `countLoadedSprites()` helper (~6 lines)
+   - Now uses `self.di.spriteSetLoader:getSprite(sprite_set, key, fallback)`
+
+2. **Deleted `hasSprite()`** - Was defined but never used (~3 lines)
+
+**Lines removed from space_shooter.lua: ~56 lines**
+**Lines added: 0 (used existing spriteSetLoader from DI)**
 
 ---
 
