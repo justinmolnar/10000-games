@@ -369,6 +369,14 @@ end
 -- ║                          UTILITIES                                 ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
+function PhysicsUtils.updateTrail(entity, max_length)
+    if not entity.trail or not max_length or max_length <= 0 then return end
+    table.insert(entity.trail, 1, {x = entity.x, y = entity.y})
+    while #entity.trail > max_length do
+        table.remove(entity.trail)
+    end
+end
+
 function PhysicsUtils.wrapPosition(x, y, entity_width, entity_height, bounds_width, bounds_height)
     local new_x = x
     local new_y = y

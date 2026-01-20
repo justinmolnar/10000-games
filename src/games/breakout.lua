@@ -398,10 +398,7 @@ function Breakout:updateBall(ball, dt)
     Physics.move(ball, dt)
 
     -- Trail
-    if p.ball_trail_length and p.ball_trail_length > 0 and ball.trail then
-        table.insert(ball.trail, 1, {x = ball.x, y = ball.y})
-        while #ball.trail > p.ball_trail_length do table.remove(ball.trail) end
-    end
+    Physics.updateTrail(ball, p.ball_trail_length)
 
     -- Wall restitution from bounce mode
     local mode_restitution = {normal = 1.0, damped = 0.9, sticky = 0.6}

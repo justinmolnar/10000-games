@@ -297,7 +297,11 @@ Physics.updateTrail(ball, p.ball_trail_length or 0)
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+1. Added `PhysicsUtils.updateTrail(entity, max_length)` function to physics_utils.lua
+2. Replaced 4-line inline trail code in Breakout:updateBall() with single `Physics.updateTrail(ball, p.ball_trail_length)`
+
+Lines removed from breakout.lua: ~3 lines
 
 ---
 
