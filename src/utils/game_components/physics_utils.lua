@@ -82,6 +82,16 @@ function PhysicsUtils.handleAttachment(entity, parent, offset_x_key, offset_y_ke
     return true
 end
 
+-- Attach an entity to a parent, storing position offsets and zeroing velocity
+function PhysicsUtils.attachToEntity(entity, parent, y_offset)
+    y_offset = y_offset or 0
+    entity.stuck = true
+    entity.stuck_offset_x = entity.x - parent.x
+    entity.y = parent.y + y_offset
+    entity.stuck_offset_y = entity.y - parent.y
+    entity.vx, entity.vy = 0, 0
+end
+
 -- ╔═══════════════════════════════════════════════════════════════════╗
 -- ║                      COLLISION DETECTION                           ║
 -- ╚═══════════════════════════════════════════════════════════════════╝

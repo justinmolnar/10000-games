@@ -409,7 +409,12 @@ else ...
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+1. Added `PhysicsUtils.attachToEntity(entity, parent, y_offset)` to physics_utils.lua
+2. Sets entity.stuck = true, calculates offsets, positions entity, zeros velocity
+3. Replaced 5-line inline attach code in Breakout:updateBall() with single `Physics.attachToEntity()` call
+
+Lines removed from breakout.lua: ~4 lines
 
 ---
 

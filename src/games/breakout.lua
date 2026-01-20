@@ -441,11 +441,7 @@ function Breakout:updateBall(ball, dt)
     -- Paddle collision
     if Physics.circleVsCenteredRect(ball.x, ball.y, ball.radius, self.paddle.x, self.paddle.y, self.paddle.width / 2, self.paddle.height / 2) then
         if p.paddle_sticky and not ball.stuck then
-            ball.stuck = true
-            ball.stuck_offset_x = ball.x - self.paddle.x
-            ball.y = self.paddle.y - ball.radius - self.paddle.height / 2
-            ball.stuck_offset_y = ball.y - self.paddle.y
-            ball.vx, ball.vy = 0, 0
+            Physics.attachToEntity(ball, self.paddle, -ball.radius - self.paddle.height / 2)
         else
             Physics.resolveCollision(ball, self.paddle, {
                 centered = true,
