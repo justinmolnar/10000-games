@@ -8,6 +8,14 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter)
     self.params = self.di.components.SchemaLoader.load(self.variant, "space_shooter_schema", runtimeCfg)
 
+    self:applyCheats({
+        speed_modifier = {"movement_speed", "bullet_speed", "enemy_base_speed"},
+        advantage_modifier = {"player_width", "player_height"}
+    })
+    -- Extra lives from advantage cheat
+    local extra_deaths = (self.cheats.advantage_modifier or {}).deaths or 0
+    self.params.lives_count = self.params.lives_count + extra_deaths
+
     self:setupArena()
     self:setupPlayer()
     self:setupComponents()
@@ -45,35 +53,20 @@ function SpaceShooter:setupArena()
 end
 
 function SpaceShooter:setupPlayer()
-    -- Apply cheat modifier to lives_count before components use it
-    local extra_deaths = (self.cheats.advantage_modifier or {}).deaths or 0
-    self.params.lives_count = self.params.lives_count + extra_deaths
     self.PLAYER_MAX_DEATHS = self.params.lives_count
-
     local y_offset = self.params.player_start_y_offset or 50
     local player_y = self.params.reverse_gravity and y_offset or (self.game_height - y_offset)
 
-    -- Create player using BaseGame helper
     self:createPlayer({
         y = player_y,
         extra = {
-            fire_cooldown = 0, auto_fire_timer = 0,
-            charge_progress = 0, is_charging = false,
-            burst_remaining = 0, burst_timer = 0,
-            ammo = self.params.ammo_capacity, reload_timer = 0, is_reloading = false,
-            heat = 0, is_overheated = false, overheat_timer = 0
+            fire_cooldown = 0, auto_fire_timer = 0, charge_progress = 0, is_charging = false,
+            burst_remaining = 0, burst_timer = 0, ammo = self.params.ammo_capacity,
+            reload_timer = 0, is_reloading = false, heat = 0, is_overheated = false, overheat_timer = 0,
+            angle = 0, vx = 0, vy = 0, jump_timer = 0, is_jumping = false, jump_progress = 0,
+            jump_start_x = 0, jump_start_y = 0, jump_target_x = 0, jump_target_y = 0
         }
     })
-
-    -- Movement-specific state
-    local mt = self.params.movement_type
-    if mt == "asteroids" then
-        self.player.angle, self.player.vx, self.player.vy = 0, 0, 0
-    elseif mt == "jump" then
-        self.player.jump_timer, self.player.is_jumping, self.player.jump_progress = 0, false, 0
-        self.player.jump_start_x, self.player.jump_start_y = 0, 0
-        self.player.jump_target_x, self.player.jump_target_y = 0, 0
-    end
 end
 
 function SpaceShooter:setupComponents()
@@ -121,54 +114,59 @@ function SpaceShooter:setupGameState()
     local base_speed = self.params.enemy_base_speed or 100
     local base_rate = self.params.spawn_base_rate or 1.0
 
-    self.enemies = {}
-    self.player_bullets = {}
-    self.enemy_bullets = {}
-    self.powerups = {}
-    self.active_powerups = {}
-    self.asteroids = {}
-    self.asteroid_spawn_timer = 0
-    self.meteors = {}
-    self.meteor_warnings = {}
+    -- Entity collections are synced from components every frame in updateGameLogic
+    self.survival_time, self.scroll_offset, self.difficulty_scale = 0, 0, 1.0
+    self.spawn_timer, self.asteroid_spawn_timer = 0, 0
     self.meteor_timer = self.params.meteor_frequency > 0 and (60 / self.params.meteor_frequency) or 0
-    self.scroll_offset = 0
-    self.survival_time = 0
-    self.difficulty_scale = 1.0
+    self.kills, self.deaths = 0, 0
 
     self.enemy_speed = ((base_speed * self.difficulty_modifiers.speed) * speed_modifier) * variant_difficulty
     self.spawn_rate = (base_rate / self.difficulty_modifiers.count) / variant_difficulty
-    self.spawn_timer = 0
     self.can_shoot_back = self.difficulty_modifiers.complexity > 2
     self.target_kills = self.params.victory_limit or 20
 
+    -- Build enemy composition from variant
     self.enemy_composition = {}
     if self.variant and self.variant.enemies then
         for _, ed in ipairs(self.variant.enemies) do
             self.enemy_composition[ed.type] = ed.multiplier
         end
     end
+end
 
-    self.kills = 0
-    self.deaths = 0
+-- Lazy initialization for mode-specific state
+function SpaceShooter:getWaveState()
+    if not self.wave_state then
+        self.wave_state = {
+            active = false, enemies_remaining = 0, pause_timer = 0,
+            enemies_per_wave = self.params.wave_enemies_per_wave,
+            pause_duration = self.params.wave_pause_duration
+        }
+    end
+    return self.wave_state
+end
 
-    self.wave_state = {
-        active = false, enemies_remaining = 0, pause_timer = 0,
-        enemies_per_wave = self.params.wave_enemies_per_wave,
-        pause_duration = self.params.wave_pause_duration
-    }
+function SpaceShooter:getGridState()
+    if not self.grid_state then
+        self.grid_state = {
+            x = 0, y = 50, direction = 1, speed_multiplier = 1.0,
+            initialized = false, wave_active = false, wave_pause_timer = 0,
+            initial_enemy_count = 0, wave_number = 0
+        }
+    end
+    return self.grid_state
+end
 
-    self.grid_state = {
-        x = 0, y = 50, direction = 1, speed_multiplier = 1.0,
-        initialized = false, wave_active = false, wave_pause_timer = 0,
-        initial_enemy_count = 0, wave_number = 0
-    }
-
-    self.galaga_state = {
-        formation_positions = {}, dive_timer = self.params.dive_frequency,
-        diving_count = 0, entrance_queue = {}, wave_active = false,
-        wave_pause_timer = 0, initial_enemy_count = 0, wave_number = 0,
-        spawn_timer = 0.0, spawned_count = 0, wave_modifiers = {}
-    }
+function SpaceShooter:getGalagaState()
+    if not self.galaga_state then
+        self.galaga_state = {
+            formation_positions = {}, dive_timer = self.params.dive_frequency,
+            diving_count = 0, entrance_queue = {}, wave_active = false,
+            wave_pause_timer = 0, initial_enemy_count = 0, wave_number = 0,
+            spawn_timer = 0.0, spawned_count = 0, wave_modifiers = {}
+        }
+    end
+    return self.galaga_state
 end
 
 --Asset loading using spriteSetLoader
@@ -206,7 +204,7 @@ function SpaceShooter:setPlayArea(width, height)
     end
 
     -- Recalculate Galaga formation if using Galaga behavior
-    if self.params.enemy_behavior == "galaga" and #self.galaga_state.formation_positions > 0 then
+    if self.params.enemy_behavior == "galaga" and self.galaga_state and #self.galaga_state.formation_positions > 0 then
         -- Store which slots were occupied
         local occupied_slots = {}
         for i, slot in ipairs(self.galaga_state.formation_positions) do
@@ -333,34 +331,15 @@ function SpaceShooter:updateGameLogic(dt)
 end
 
 function SpaceShooter:updatePlayer(dt)
-    --Movement type system (using MovementController)
-    -- Build input table from keyboard state
-    local input = {
-        left = self:isKeyDown('left', 'a'),
-        right = self:isKeyDown('right', 'd'),
-        up = self:isKeyDown('up', 'w'),
-        down = self:isKeyDown('down', 's'),
-        jump = false  -- Not used in space shooter
-    }
-
-    -- Build bounds table
-    local bounds = {
-        x = 0,
-        y = 0,
-        width = self.game_width,
-        height = self.game_height,
-        wrap_x = self.params.screen_wrap,
-        wrap_y = self.params.screen_wrap
-    }
-
-    -- Add time_elapsed for jump mode cooldown tracking
-    if not self.player.time_elapsed then
-        self.player.time_elapsed = 0
-    end
-    self.player.time_elapsed = self.player.time_elapsed + dt
-
-    -- Update movement via MovementController
-    self.movement_controller:update(dt, self.player, input, bounds)
+    -- Movement via MovementController
+    self.player.time_elapsed = (self.player.time_elapsed or 0) + dt
+    self.movement_controller:update(dt, self.player, {
+        left = self:isKeyDown('left', 'a'), right = self:isKeyDown('right', 'd'),
+        up = self:isKeyDown('up', 'w'), down = self:isKeyDown('down', 's')
+    }, {
+        x = 0, y = 0, width = self.game_width, height = self.game_height,
+        wrap_x = self.params.screen_wrap, wrap_y = self.params.screen_wrap
+    })
 
     -- Shield regeneration handled by health_system (updated in updateGameLogic)
 
@@ -375,36 +354,25 @@ function SpaceShooter:updatePlayer(dt)
         self:playerShoot(charge_mult)
     end)
 
-    --Ammo reload system
+    -- Ammo reload system
     if self.params.ammo_enabled then
-        if self.player.is_reloading then
+        if self.player.is_reloading and (self.player.reload_timer - dt) <= 0 then
+            self.player.is_reloading, self.player.ammo = false, self.params.ammo_capacity
+        elseif self.player.is_reloading then
             self.player.reload_timer = self.player.reload_timer - dt
-            if self.player.reload_timer <= 0 then
-                self.player.is_reloading = false
-                self.player.ammo = self.params.ammo_capacity
-            end
-        end
-
-        -- Check for manual reload (R key)
-        if self:isKeyDown('r') and not self.player.is_reloading and self.player.ammo < self.params.ammo_capacity then
-            self.player.is_reloading = true
-            self.player.reload_timer = self.params.ammo_reload_time
+        elseif self:isKeyDown('r') and self.player.ammo < self.params.ammo_capacity then
+            self.player.is_reloading, self.player.reload_timer = true, self.params.ammo_reload_time
         end
     end
 
-    --Overheat cooldown system
+    -- Overheat cooldown system
     if self.params.overheat_enabled then
-        if self.player.is_overheated then
+        if self.player.is_overheated and (self.player.overheat_timer - dt) <= 0 then
+            self.player.is_overheated, self.player.heat = false, 0
+        elseif self.player.is_overheated then
             self.player.overheat_timer = self.player.overheat_timer - dt
-            if self.player.overheat_timer <= 0 then
-                self.player.is_overheated = false
-                self.player.heat = 0
-            end
-        else
-            -- Passive heat dissipation when not shooting
-            if self.player.heat > 0 then
-                self.player.heat = math.max(0, self.player.heat - dt * self.params.overheat_heat_dissipation)
-            end
+        elseif self.player.heat > 0 then
+            self.player.heat = math.max(0, self.player.heat - dt * self.params.overheat_heat_dissipation)
         end
     end
 end
@@ -440,8 +408,10 @@ function SpaceShooter:updateEnemies(dt)
     end)
 
     -- Shooting and off-screen removal via behaviors
+    -- Normal: spawn at top (y=-30), move down, remove when y > game_height
+    -- Reverse: spawn at bottom (y=game_height), move up, remove when y < -100
     local offscreen_bounds = self.params.reverse_gravity
-        and {top = self.game_height, bottom = -100}
+        and {top = -100, bottom = self.game_height + 500}  -- only top removal matters
         or {top = -100, bottom = self.game_height}
     self.entity_controller:updateBehaviors(dt, {
         shooting_enabled = self.params.enemy_bullets_enabled or self.can_shoot_back,
@@ -643,9 +613,8 @@ function SpaceShooter:spawnEnemy()
     --Apply speed multiplier and difficulty scaling
     local adjusted_speed = self.enemy_speed * self.params.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
 
-    --Reverse gravity - spawn at bottom, move up
+    --Reverse gravity - spawn at bottom, move up (direction change in updateEnemies handles movement)
     local spawn_y = self.params.reverse_gravity and self.game_height or (self.params.enemy_start_y_offset or -30)
-    local speed_direction = self.params.reverse_gravity and -1 or 1
 
     --Spawn via EntityController
     self.entity_controller:spawn("enemy",
@@ -655,7 +624,7 @@ function SpaceShooter:spawnEnemy()
             width = (self.params.enemy_width or 30),
             height = (self.params.enemy_height or 30),
             movement_pattern = movement,
-            speed_override = adjusted_speed * speed_direction,  --Reverse direction if needed
+            speed_override = adjusted_speed,  -- Direction handled by enemy.direction in updateEnemies
             shoot_timer = math.random() * ((self.params.enemy_shoot_rate_max or 3.0) - (self.params.enemy_shoot_rate_min or 1.0)) + (self.params.enemy_shoot_rate_min or 1.0),
             shoot_rate = math.max(0.5, ((self.params.enemy_shoot_rate_max or 3.0) - self.difficulty_modifiers.complexity * (self.params.enemy_shoot_rate_complexity or 0.5))) / self.params.enemy_fire_rate,
             health = self:calculateEnemyHealth()
@@ -698,7 +667,6 @@ function SpaceShooter:spawnVariantEnemy()
     end
 
     local spawn_y = self.params.reverse_gravity and self.game_height or (self.params.enemy_start_y_offset or -30)
-    local speed_multiplier = self.params.reverse_gravity and -1 or 1
     local enemy_type_multiplier = enemy_def.health or 1
     local final_health = self:calculateEnemyHealth(nil, enemy_type_multiplier)
 
@@ -712,7 +680,7 @@ function SpaceShooter:spawnVariantEnemy()
         is_variant_enemy = true,
         health = final_health,
         max_health = final_health,
-        speed_multiplier = (enemy_def.speed_multiplier or 1.0) * speed_multiplier,
+        speed_multiplier = enemy_def.speed_multiplier or 1.0,  -- Direction handled by enemy.direction
         shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0,
         shoot_timer = base_rate,
         shoot_rate = shoot_rate
@@ -798,12 +766,11 @@ function SpaceShooter:spawnFormation(formation_type)
     local base_shoot_rate = math.max(0.5, ((self.params.enemy_shoot_rate_max or 3.0) - self.difficulty_modifiers.complexity * (self.params.enemy_shoot_rate_complexity or 0.5))) / self.params.enemy_fire_rate
 
     local spawn_y_base = self.params.reverse_gravity and self.game_height or (self.params.enemy_start_y_offset or -30)
-    local speed_multiplier = self.params.reverse_gravity and -1 or 1
 
     local function spawnEnemy(x, y, shoot_timer)
         self.entity_controller:spawn("enemy", x, y, {
             movement_pattern = 'straight',
-            speed_override = adjusted_speed * speed_multiplier,
+            speed_override = adjusted_speed,  -- Direction handled by enemy.direction in updateEnemies
             shoot_timer = shoot_timer,
             shoot_rate = base_shoot_rate,
             health = self.params.enemy_health
@@ -839,6 +806,7 @@ end
 
 -- Space Invaders: Initialize grid
 function SpaceShooter:initSpaceInvadersGrid()
+    self:getGridState()  -- Lazy init
     local wave_multiplier = 1.0 + (self.grid_state.wave_number * self.params.wave_difficulty_increase)
     local variance = self.params.wave_random_variance
     local random_factor = variance > 0 and (1.0 + ((math.random() - 0.5) * 2 * variance)) or 1.0
@@ -873,6 +841,7 @@ end
 
 -- Space Invaders: Update grid movement
 function SpaceShooter:updateSpaceInvadersGrid(dt)
+    self:getGridState()  -- Lazy init
     -- Wave system: Check if we need to start a new wave
     if self.params.waves_enabled then
         if self.grid_state.wave_active then
@@ -971,6 +940,7 @@ end
 
 -- Galaga: Initialize formation positions
 function SpaceShooter:initGalagaFormation()
+    self:getGalagaState()  -- Lazy init
     -- Create formation grid at top of screen with proper wrapping
     local base_spacing_x = 60  -- Base horizontal spacing between enemies
     local spacing_x = base_spacing_x * self.params.enemy_density
@@ -1062,6 +1032,7 @@ end
 
 -- Galaga: Update formation and dive mechanics
 function SpaceShooter:updateGalagaFormation(dt)
+    self:getGalagaState()  -- Lazy init
     local PatternMovement = self.di.components.PatternMovement
 
     -- Wave system: Check if we need to start a new wave
@@ -1195,6 +1166,7 @@ end
 
 --Wave spawning logic
 function SpaceShooter:updateWaveSpawning(dt)
+    self:getWaveState()  -- Lazy init
     if self.wave_state.active then
         -- Spawn enemies in current wave
         self.spawn_timer = self.spawn_timer - dt
