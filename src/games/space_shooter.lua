@@ -920,8 +920,6 @@ function SpaceShooter:initSpaceInvadersGrid()
                 movement_pattern = 'grid',
                 grid_row = row,
                 grid_col = col,
-                shoot_timer = math.random() * 3.0,
-                shoot_rate = 2.0,
                 health = wave_health,
                 wave_speed = wave_speed
             })
@@ -932,6 +930,7 @@ function SpaceShooter:initSpaceInvadersGrid()
     self.grid_state.initial_enemy_count = wave_rows * wave_columns
     self.grid_state.wave_active = true
     self.grid_state.wave_number = self.grid_state.wave_number + 1
+    self.grid_state.shoot_timer = 1.0  -- Initial delay before first shot
 end
 
 -- Space Invaders: Update grid movement
@@ -949,44 +948,27 @@ function SpaceShooter:updateSpaceInvadersGrid(dt)
             end
 
             if not grid_enemies_alive and self.grid_state.initialized then
-                -- Wave complete, start pause
                 self.grid_state.wave_active = false
                 self.grid_state.wave_pause_timer = self.params.wave_pause_duration
-                self.grid_state.initialized = false  -- Reset for next wave
+                self.grid_state.initialized = false
+                self.entity_controller.grid_movement_state = nil  -- Reset for next wave
             end
         else
-            -- In pause between waves
             self.grid_state.wave_pause_timer = self.grid_state.wave_pause_timer - dt
             if self.grid_state.wave_pause_timer <= 0 then
-                -- Start new wave
                 self:initSpaceInvadersGrid()
             end
-            return  -- Don't update grid during pause
+            return
         end
     end
 
-    -- Initialize grid if not yet done (first spawn or new wave)
+    -- Initialize grid if not yet done
     if not self.grid_state.initialized then
         self:initSpaceInvadersGrid()
     end
 
-    -- Calculate speed multiplier based on remaining enemies
-    local initial_count = self.grid_state.initial_enemy_count
-    local current_count = 0
-    for _, enemy in ipairs(self.enemies) do
-        if enemy.movement_pattern == 'grid' then
-            current_count = current_count + 1
-        end
-    end
-
-    if current_count > 0 and initial_count > 0 then
-        -- Speed increases as enemies die (fewer enemies = faster movement)
-        self.grid_state.speed_multiplier = 1 + (1 - (current_count / initial_count)) * 2
-    end
-
-    -- Move the entire grid (use wave-specific speed if available)
+    -- Get wave-specific speed
     local base_speed = self.params.grid_speed
-    -- Check if any enemy has wave_speed (they all should if from same wave)
     for _, enemy in ipairs(self.enemies) do
         if enemy.movement_pattern == 'grid' and enemy.wave_speed then
             base_speed = enemy.wave_speed
@@ -994,39 +976,57 @@ function SpaceShooter:updateSpaceInvadersGrid(dt)
         end
     end
 
-    local move_speed = base_speed * self.grid_state.speed_multiplier * dt
-    local grid_moved = false
+    -- Use EntityController behavior for grid movement
+    self.entity_controller:updateBehaviors(dt, {
+        grid_unit_movement = {
+            speed = base_speed,
+            speed_scaling = true,
+            speed_scale_factor = 2,
+            initial_count = self.grid_state.initial_enemy_count,
+            bounds_left = 0,
+            bounds_right = self.game_width,
+            bounds_bottom = self.game_height + 50,
+            descent = self.params.grid_descent
+        }
+    })
 
-    for _, enemy in ipairs(self.enemies) do
-        if enemy.movement_pattern == 'grid' then
-            enemy.x = enemy.x + (move_speed * self.grid_state.direction)
-            grid_moved = true
-        end
-    end
-
-    if not grid_moved then return end
-
-    -- Check if grid hit edge
-    local hit_edge = false
-    for _, enemy in ipairs(self.enemies) do
-        if enemy.movement_pattern == 'grid' then
-            if self.grid_state.direction > 0 and enemy.x + (self.params.enemy_width or 30) >= self.game_width then
-                hit_edge = true
-                break
-            elseif self.grid_state.direction < 0 and enemy.x <= 0 then
-                hit_edge = true
-                break
+    -- Grid shooting: global timer, one random bottom-row enemy shoots
+    if self.params.enemy_bullets_enabled then
+        self.grid_state.shoot_timer = (self.grid_state.shoot_timer or 2.0) - dt
+        if self.grid_state.shoot_timer <= 0 then
+            -- Find bottom-most enemy in each column, pick one randomly to shoot
+            local columns = {}
+            for _, enemy in ipairs(self.enemies) do
+                if enemy.movement_pattern == 'grid' and enemy.active then
+                    local col = enemy.grid_col
+                    if not columns[col] or enemy.grid_row > columns[col].grid_row then
+                        columns[col] = enemy
+                    end
+                end
             end
-        end
-    end
 
-    -- Reverse direction and descend if hit edge
-    if hit_edge then
-        self.grid_state.direction = -self.grid_state.direction
-        for _, enemy in ipairs(self.enemies) do
-            if enemy.movement_pattern == 'grid' then
-                enemy.y = enemy.y + self.params.grid_descent
+            -- Collect shooters and pick one
+            local shooters = {}
+            for _, enemy in pairs(columns) do
+                table.insert(shooters, enemy)
             end
+
+            if #shooters > 0 then
+                local shooter = shooters[math.random(#shooters)]
+                self:enemyShoot(shooter)
+            end
+
+            -- Reset timer - shoots faster as fewer enemies remain (count ALL grid enemies)
+            local total_grid_enemies = 0
+            for _, enemy in ipairs(self.enemies) do
+                if enemy.movement_pattern == 'grid' and enemy.active then
+                    total_grid_enemies = total_grid_enemies + 1
+                end
+            end
+            local base_interval = 2.5  -- Base seconds between shots
+            local min_interval = 0.5   -- Minimum interval when few enemies left
+            local ratio = total_grid_enemies / math.max(1, self.grid_state.initial_enemy_count)
+            self.grid_state.shoot_timer = min_interval + (base_interval - min_interval) * ratio
         end
     end
 end

@@ -638,7 +638,25 @@ self.entity_controller:updateBehaviors(dt, {
 
 ### AI Notes
 
-*(To be filled after completion)*
+Completed. Changes made:
+
+1. **EntityController.updateBehaviors()** - Added `grid_unit_movement` behavior (~35 lines):
+   - Moves all entities with `movement_pattern == 'grid'` as a unit
+   - Speed scaling based on remaining entities
+   - Edge detection and direction reversal
+   - Descent on edge hit
+
+2. **space_shooter.lua updateSpaceInvadersGrid()** - Simplified from ~95 lines to ~50 lines:
+   - Wave management logic kept (wave completion, pause, restart)
+   - Grid movement now uses `updateBehaviors({grid_unit_movement})`
+   - Resets `entity_controller.grid_movement_state` between waves
+
+3. **initSpaceInvadersGrid()** - Kept as-is (~32 lines):
+   - Has wave-specific difficulty scaling (rows, columns, health, speed)
+   - Would require component changes to use spawnGrid with custom params
+
+**Lines removed from space_shooter.lua: ~45 lines**
+**Lines added to EntityController: ~35 lines (reusable by any game)**
 
 ---
 

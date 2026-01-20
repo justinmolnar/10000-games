@@ -850,6 +850,65 @@ function EntityController:updateBehaviors(dt, config, collision_check)
 
         ::continue::
     end
+
+    -- Grid unit movement (all entities move as one unit, Space Invaders style)
+    if config.grid_unit_movement then
+        local gum = config.grid_unit_movement
+
+        -- Count only grid entities
+        local grid_count = 0
+        for _, e in ipairs(self.entities) do
+            if e.active and not e.marked_for_removal and e.movement_pattern == 'grid' then
+                grid_count = grid_count + 1
+            end
+        end
+
+        self.grid_movement_state = self.grid_movement_state or {
+            direction = 1,
+            initial_count = gum.initial_count or grid_count
+        }
+        local state = self.grid_movement_state
+
+        -- Speed increases as entities die
+        local speed_mult = 1.0
+        if gum.speed_scaling and state.initial_count > 0 and grid_count > 0 then
+            speed_mult = 1 + (1 - grid_count / state.initial_count) * (gum.speed_scale_factor or 2)
+        end
+
+        local base_speed = gum.speed or 50
+        local move = base_speed * speed_mult * dt * state.direction
+        local hit_edge = false
+
+        for _, e in ipairs(self.entities) do
+            if e.active and not e.marked_for_removal and e.movement_pattern == 'grid' then
+                e.x = e.x + move
+                if e.x <= (gum.bounds_left or 0) or
+                   e.x + (e.width or 0) >= (gum.bounds_right or 800) then
+                    hit_edge = true
+                end
+            end
+        end
+
+        if hit_edge then
+            state.direction = -state.direction
+            if gum.descent then
+                for _, e in ipairs(self.entities) do
+                    if e.active and e.movement_pattern == 'grid' then
+                        e.y = e.y + gum.descent
+                    end
+                end
+            end
+        end
+
+        -- Remove grid entities that go off the bottom
+        if gum.bounds_bottom then
+            for _, e in ipairs(self.entities) do
+                if e.active and e.movement_pattern == 'grid' and e.y > gum.bounds_bottom then
+                    self:removeEntity(e)
+                end
+            end
+        end
+    end
 end
 
 return EntityController

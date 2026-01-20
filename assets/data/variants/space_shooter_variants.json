@@ -659,6 +659,7 @@
     "clone_index": 44,
     "name": "Space Invaders Classic",
     "enemy_behavior": "space_invaders",
+    "enemy_bullets_enabled": true,
     "waves_enabled": true,
     "wave_pause_duration": 2.0,
     "wave_difficulty_increase": 0.15,
