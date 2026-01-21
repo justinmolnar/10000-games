@@ -414,7 +414,19 @@ function EntityController:spawnLayout(type_name, layout, config)
             self:spawn(type_name, center_x + math.cos(angle) * radius, center_y + math.sin(angle) * radius * 0.3, config.extra)
         end
     else -- "grid" is default
-        self:spawnGrid(type_name, rows, cols, start_x, start_y, spacing_x, spacing_y)
+        for row = 1, rows do
+            for col = 1, cols do
+                local x = start_x + (col - 1) * spacing_x
+                local y = start_y + (row - 1) * spacing_y
+                local extra = {}
+                if config.extra then
+                    for k, v in pairs(config.extra) do extra[k] = v end
+                end
+                extra.grid_row = row
+                extra.grid_col = col
+                self:spawn(type_name, x, y, extra)
+            end
+        end
     end
 end
 

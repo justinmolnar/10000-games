@@ -795,19 +795,13 @@ function SpaceShooter:initSpaceInvadersGrid()
 
     local spacing_x = (self.game_width / (wave_columns + 1)) * self.params.enemy_density
     local spacing_y = 50 * self.params.enemy_density
-    local start_y = 80
 
-    for row = 1, wave_rows do
-        for col = 1, wave_columns do
-            self.entity_controller:spawn("enemy", spacing_x * col, start_y + (row - 1) * spacing_y, {
-                movement_pattern = 'grid',
-                grid_row = row,
-                grid_col = col,
-                health = wave_health,
-                wave_speed = wave_speed
-            })
-        end
-    end
+    self.entity_controller:spawnLayout("enemy", "grid", {
+        rows = wave_rows, cols = wave_columns,
+        x = spacing_x, y = 80,
+        spacing_x = spacing_x, spacing_y = spacing_y,
+        extra = {movement_pattern = 'grid', health = wave_health, wave_speed = wave_speed}
+    })
 
     self.grid_state.initialized = true
     self.grid_state.initial_enemy_count = wave_rows * wave_columns
