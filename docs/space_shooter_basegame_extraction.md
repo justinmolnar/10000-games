@@ -135,8 +135,8 @@ Extract all shooting logic to BaseGame.
      - Delete enemyShoot() (19 lines) - call BaseGame:entityShoot
 
 ### Lines Changed
-- base_game.lua: +55 lines
-- space_shooter.lua: -73 lines
+- base_game.lua: +79 lines (actual)
+- space_shooter.lua: -77 lines (actual: 1098 → 1021)
 
 ### Testing (User)
 - [ ] Player shoots in correct direction
@@ -146,7 +146,22 @@ Extract all shooting logic to BaseGame.
 - [ ] Bullet patterns work (spread, triple, etc.)
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Functions added to BaseGame:
+- `playerShoot(charge_multiplier)` - handles asteroids mode (rotational) and normal mode, spawn position calculation, pattern config from params
+- `entityShoot(entity, bullet_type)` - generic entity shooting, reverse_gravity aware
+
+Functions deleted from space_shooter:
+- `playerShoot()` (33 lines) - now inherited from BaseGame
+- `getBulletSpawnPosition()` (16 lines) - logic moved into BaseGame:playerShoot
+- `convertToStandardAngle()` (5 lines) - logic moved into BaseGame:playerShoot
+- `enemyShoot()` (19 lines) - replaced by BaseGame:entityShoot
+
+Callers updated:
+- `updatePlayer()` - still calls self:playerShoot (inherits from BaseGame)
+- `updateEnemies()` - changed to self:entityShoot
+- `updateSpaceInvadersGrid()` - changed to self:entityShoot
 
 ---
 

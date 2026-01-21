@@ -377,7 +377,7 @@ function SpaceShooter:updateEnemies(dt)
         or {top = -100, bottom = self.game_height}
     self.entity_controller:updateBehaviors(dt, {
         shooting_enabled = self.params.enemy_bullets_enabled or (self.difficulty_modifiers.complexity > 2),
-        on_shoot = function(enemy) game:enemyShoot(enemy) end,
+        on_shoot = function(enemy) game:entityShoot(enemy) end,
         remove_offscreen = offscreen_bounds
     })
 end
@@ -413,83 +413,6 @@ function SpaceShooter:draw()
     else
          love.graphics.print("Error: View not loaded!", 10, 100)
     end
-end
-
-function SpaceShooter:playerShoot(charge_multiplier)
-    charge_multiplier = charge_multiplier or 1.0
-
-    if not self.projectile_system:canShoot() then return end
-
-    --Bullet pattern - calculate base angle and spawn position, then use shootPattern
-    local base_angle = self.params.movement_type == "asteroids" and self.player.angle or 0
-    local spawn_x, spawn_y = self:getBulletSpawnPosition(base_angle)
-    local standard_angle = self:convertToStandardAngle(base_angle)
-
-    local pattern = self.params.bullet_pattern or "single"
-    local config = {
-        speed_multiplier = charge_multiplier,
-        count = self.params.bullets_per_shot,
-        arc = self.params.bullet_arc,
-        spread = 15,
-        offset = 5,
-        time = love.timer.getTime(),
-        custom = {
-            width = self.params.bullet_width,
-            height = self.params.bullet_height,
-            piercing = self.params.bullet_piercing,
-            movement_type = (self.params.bullet_homing and self.params.homing_strength > 0) and "homing_nearest" or nil,
-            homing_turn_rate = self.params.homing_strength
-        }
-    }
-
-    self.projectile_system:shootPattern("player_bullet", spawn_x, spawn_y, standard_angle, pattern, config)
-    self.projectile_system:onShoot()
-
-    --Play shoot sound
-    self:playSound("shoot", 0.6)
-end
-
-function SpaceShooter:getBulletSpawnPosition(angle)
-    -- Player uses corner-based coords, calculate center
-    local center_x = self.player.x + self.player.width / 2
-    local center_y = self.player.y + self.player.height / 2
-    local rad = math.rad(angle)
-    if self.params.movement_type == "asteroids" then
-        local offset_distance = self.player.height / 2
-        return center_x + math.sin(rad) * offset_distance,
-               center_y - math.cos(rad) * offset_distance
-    else
-        local spawn_y = self.params.reverse_gravity
-            and (self.player.y + self.player.height)
-            or self.player.y
-        return center_x, spawn_y
-    end
-end
-
-function SpaceShooter:convertToStandardAngle(angle)
-    local rad = math.rad(angle)
-    local direction_multiplier = self.params.reverse_gravity and 1 or -1
-    return math.atan2(math.cos(rad) * direction_multiplier, math.sin(rad))
-end
-
-function SpaceShooter:enemyShoot(enemy)
-    local center_x = enemy.x + enemy.width/2
-    local center_y = enemy.y + enemy.height
-    local base_angle = self.params.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
-    local enemy_bullet_size = 8
-
-    local pattern = self.params.enemy_bullet_pattern or "single"
-    local config = {
-        count = self.params.enemy_bullets_per_shot,
-        arc = self.params.enemy_bullet_spread_angle,
-        custom = {
-            width = enemy_bullet_size,
-            height = enemy_bullet_size,
-            speed = self.params.enemy_bullet_speed
-        }
-    }
-
-    self.projectile_system:shootPattern("enemy_bullet", center_x, center_y, base_angle, pattern, config)
 end
 
 function SpaceShooter:spawnEnemy()
@@ -705,7 +628,7 @@ function SpaceShooter:updateSpaceInvadersGrid(dt)
 
             if #shooters > 0 then
                 local shooter = shooters[math.random(#shooters)]
-                self:enemyShoot(shooter)
+                self:entityShoot(shooter)
             end
 
             -- Reset timer - shoots faster as fewer enemies remain (count ALL grid enemies)
