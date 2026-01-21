@@ -551,7 +551,28 @@ Organize space_shooter.lua to match breakout.lua structure.
 - [ ] No behavior changes
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Added module docblock (14 lines) describing:
+- Game modes (continuous, Space Invaders, Galaga)
+- Hazard types (asteroids, meteors, gravity wells, blackout zones)
+- Schema-driven configuration
+
+Added 9 section headers using breakout pattern:
+- Initialization (init, setupComponents, setupEntities, setPlayArea)
+- Update Loop (updateGameLogic, updatePlayer, updateEnemies, updateBullets)
+- Entity Spawning (spawnEnemy)
+- Event Callbacks (onEnemyDestroyed)
+- Space Invaders Mode (initSpaceInvadersGrid, updateSpaceInvadersGrid)
+- Galaga Mode (initGalagaFormation, spawnGalagaEnemy, updateGalagaFormation)
+- Default Wave Mode (updateWaveSpawning)
+- Hazards (updateHazards, applyGravityWells, updateBlackoutZones)
+- Rendering (draw)
+
+Removed old inline comments replaced by section headers.
+Moved draw() to end (Rendering section).
+
+Final line count: 890 → 932 (+42 lines for organization)
 
 ---
 

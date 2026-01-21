@@ -1,6 +1,25 @@
+--[[
+    Space Shooter - Vertical scrolling shooter
+
+    Enemies descend from top, player shoots to destroy. Supports modes:
+    - Continuous spawning (default)
+    - Space Invaders mode (grid movement, descent)
+    - Galaga mode (formations, entrance animations, dive attacks)
+
+    Plus hazards (asteroids, meteors, gravity wells, blackout zones),
+    powerups, and various bullet patterns.
+
+    Most configuration comes from space_shooter_schema.json via SchemaLoader.
+    Components are created from schema definitions in setupComponents().
+]]
+
 local BaseGame = require('src.games.base_game')
 local SpaceShooterView = require('src.games.views.space_shooter_view')
 local SpaceShooter = BaseGame:extend('SpaceShooter')
+
+--------------------------------------------------------------------------------
+-- Initialization
+--------------------------------------------------------------------------------
 
 function SpaceShooter:init(game_data, cheats, di, variant_override)
     SpaceShooter.super.init(self, game_data, cheats, di, variant_override)
@@ -176,6 +195,10 @@ function SpaceShooter:setPlayArea(width, height)
         end
     end
 end
+
+--------------------------------------------------------------------------------
+-- Update Loop
+--------------------------------------------------------------------------------
 
 function SpaceShooter:updateGameLogic(dt)
     self.health_system:update(dt)
@@ -366,9 +389,9 @@ function SpaceShooter:updateBullets(dt)
     -- Note: Screen wrap for player bullets is now handled by ProjectileSystem via wrap_enabled/max_wraps
 end
 
-function SpaceShooter:draw()
-    self.view:draw()
-end
+--------------------------------------------------------------------------------
+-- Entity Spawning
+--------------------------------------------------------------------------------
 
 function SpaceShooter:spawnEnemy()
     local p = self.params
@@ -421,6 +444,10 @@ function SpaceShooter:spawnEnemy()
     end
 end
 
+--------------------------------------------------------------------------------
+-- Event Callbacks
+--------------------------------------------------------------------------------
+
 function SpaceShooter:onEnemyDestroyed(enemy)
     self:handleEntityDestroyed(enemy, {
         destroyed_counter = "kills",
@@ -430,8 +457,10 @@ function SpaceShooter:onEnemyDestroyed(enemy)
     self:playSound("enemy_explode", 1.0)
 end
 
---Formation spawning
--- Space Invaders: Initialize grid
+--------------------------------------------------------------------------------
+-- Space Invaders Mode
+--------------------------------------------------------------------------------
+
 function SpaceShooter:initSpaceInvadersGrid()
     -- wave_number is 1-based when using waves, 0 otherwise; use max to ensure non-negative
     local wave_multiplier = 1.0 + (math.max(0, self.grid_state.wave_number - 1) * self.params.wave_difficulty_increase)
@@ -460,7 +489,6 @@ function SpaceShooter:initSpaceInvadersGrid()
     self.grid_state.shoot_timer = 1.0  -- Initial delay before first shot
 end
 
--- Space Invaders: Update grid movement
 function SpaceShooter:updateSpaceInvadersGrid(dt)
     local game = self
 
@@ -559,7 +587,10 @@ function SpaceShooter:updateSpaceInvadersGrid(dt)
     end
 end
 
--- Galaga: Initialize formation positions
+--------------------------------------------------------------------------------
+-- Galaga Mode
+--------------------------------------------------------------------------------
+
 function SpaceShooter:initGalagaFormation()
     -- Create formation grid at top of screen with proper wrapping
     local base_spacing_x = 60  -- Base horizontal spacing between enemies
@@ -602,7 +633,6 @@ function SpaceShooter:initGalagaFormation()
     self.galaga_state.wave_active = true
 end
 
--- Galaga: Spawn enemy with entrance pattern (uses BaseGame:spawnEntity)
 function SpaceShooter:spawnGalagaEnemy(formation_slot, wave_modifiers)
     wave_modifiers = wave_modifiers or {}
     local entrance_side = math.random() > 0.5 and "left" or "right"
@@ -625,7 +655,6 @@ function SpaceShooter:spawnGalagaEnemy(formation_slot, wave_modifiers)
     })
 end
 
--- Galaga: Update formation and dive mechanics
 function SpaceShooter:updateGalagaFormation(dt)
     local PatternMovement = self.di.components.PatternMovement
     local game = self
@@ -761,6 +790,10 @@ function SpaceShooter:updateGalagaFormation(dt)
     end
 end
 
+--------------------------------------------------------------------------------
+-- Default Wave Mode
+--------------------------------------------------------------------------------
+
 function SpaceShooter:updateWaveSpawning(dt)
     local game = self
     local result = self:updateWaveState(self.wave_state, {
@@ -782,7 +815,10 @@ function SpaceShooter:updateWaveSpawning(dt)
     end
 end
 
---Hazards: Asteroids and Meteors use generic behaviors
+--------------------------------------------------------------------------------
+-- Hazards
+--------------------------------------------------------------------------------
+
 function SpaceShooter:updateHazards(dt)
     local p = self.params
     local game = self
@@ -851,7 +887,6 @@ function SpaceShooter:updateHazards(dt)
     self.projectile_system:checkCollisions(self.meteors, function(_, m) game.entity_controller:removeEntity(m) end, "player")
 end
 
---Gravity well system
 function SpaceShooter:applyGravityWells(dt)
     local PhysicsUtils = self.di.components.PhysicsUtils
     local wells_config = {gravity_wells = self.gravity_wells}
@@ -870,7 +905,6 @@ function SpaceShooter:applyGravityWells(dt)
     self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
 end
 
---Blackout zones movement
 function SpaceShooter:updateBlackoutZones(dt)
     for _, zone in ipairs(self.blackout_zones) do
         zone.x = zone.x + zone.vx * dt
@@ -886,6 +920,14 @@ function SpaceShooter:updateBlackoutZones(dt)
             zone.y = math.max(zone.radius, math.min(self.game_height - zone.radius, zone.y))
         end
     end
+end
+
+--------------------------------------------------------------------------------
+-- Rendering
+--------------------------------------------------------------------------------
+
+function SpaceShooter:draw()
+    self.view:draw()
 end
 
 return SpaceShooter
