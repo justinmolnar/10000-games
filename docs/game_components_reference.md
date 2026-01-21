@@ -338,3 +338,98 @@ Generic enemy/obstacle spawning and management with pooling.
 
 ---
 
+## BaseGame
+Base class for all minigames. Provides common state, fixed timestep, demo playback, and schema-based component creation.
+
+### Initialization & State
+- **init(game_data, cheats, di, variant_override)** - Initialize game with data, cheats, DI container, optional variant override.
+- **updateBase(dt)** - Variable timestep update (for normal gameplay). Tracks time_elapsed, checks completion.
+- **updateWithFixedTimestep(dt)** - Accumulator-based fixed timestep wrapper. Calls fixedUpdate() at fixed_dt intervals.
+- **fixedUpdate(dt)** - Deterministic update at fixed_dt (default 1/60). Calls updateGameLogic(dt).
+- **updateGameLogic(dt)** - Override in subclasses for game-specific logic.
+- **setPlayArea(width, height)** - Resize arena and reposition entities.
+- **checkComplete()** - Default: returns victory or game_over.
+- **onComplete()** - Called when game completes. Sets completed = true.
+- **getCompletionRatio()** - Override to report progress 0..1 toward goal.
+- **getMetrics()** / **calculatePerformance()** / **getResults()** - Get metrics and token calculation.
+
+### Schema-Based Component Creation
+- **createComponentsFromSchema()** - Create components from params.components definitions. Each entry has {type, config}.
+- **createProjectileSystemFromSchema(extra_config)** - Create ProjectileSystem from params.projectile_types.
+- **createEntityControllerFromSchema(callbacks, extra_config)** - Create EntityController from params.entity_types. Callbacks = {type_name = {on_hit = fn, on_death = fn}}.
+- **createPowerupSystemFromSchema(extra_config)** - Create PowerupSystem from params.powerup_effect_configs.
+- **createVictoryConditionFromSchema(bonuses)** - Create VictoryCondition from params.victory_conditions mapping.
+- **resolveConfig(config)** - Resolve "$param_name" references to actual param values.
+
+### Cheat Application
+- **applyCheats(mappings)** - Apply cheats to params. Mappings = {speed_modifier = {"param1", "param2"}, advantage_modifier = {...}, performance_modifier = {...}}.
+
+### Entity Management Helpers
+- **createPlayer(config)** - Create player entity from params. Config: {entity_name, x, y, width, height, radius, extra}.
+- **createPaddle(extra_fields)** - Alias for createPlayer with entity_name = "paddle".
+- **syncMetrics(mapping)** - Sync game fields to metrics. Mapping = {metric_name = "field_name"}.
+- **handleEntityDepleted(count_func, config)** - Handle depletion (no balls, etc.). Config: {loss_counter, damage, combo_reset, damage_reason, on_respawn, on_game_over}. Returns true if game over.
+- **handleEntityDestroyed(entity, config)** - Handle destruction with effects. Config: {destroyed_counter, remaining_counter, spawn_powerup, effects = {particles, shake}, scoring = {base, combo_mult}, popup = {enabled, milestone_combos}, color_func, extra_life_check}.
+
+### Param Manipulation (for powerups)
+- **multiplyParam(param_name, multiplier)** - Multiply param, return original value.
+- **restoreParam(param_name, original_value)** - Restore param to original.
+- **enableParam(param_name)** - Set param to true, return original.
+- **setParam(param_name, value)** - Set param to value, return original.
+- **multiplyEntitySpeed(entities, multiplier)** - Multiply vx/vy of all entities.
+
+### Flash Feedback System
+- **flashEntity(entity, duration)** - Start flash timer for entity (default 0.1s).
+- **updateFlashMap(dt)** - Update flash timers. Call in updateGameLogic().
+- **isFlashing(entity)** - Check if entity is currently flashing.
+
+### Input & Demo Playback
+- **setPlaybackMode(enabled)** - Enable/disable demo playback mode.
+- **isInPlaybackMode()** - Check if in playback mode.
+- **isKeyDown(...)** - Check key state (virtual during playback, real otherwise).
+- **setVMRenderMode(enabled)** / **isVMRenderMode()** - VM render mode (hides HUD).
+
+### Audio
+- **loadAudio()** - Load music and SFX from variant.
+- **playMusic()** / **stopMusic()** - Music control.
+- **playSound(action, volume)** - Play SFX from loaded pack.
+
+---
+
+## Common Patterns
+
+### Damage/Lives Pattern (from Phase 3)
+Games should use LivesHealthSystem for damage handling:
+```lua
+function MyGame:takeDamage()
+    local absorbed = self.health_system:takeDamage(1)
+    self:playSound("hit", 1.0)
+    if not absorbed then
+        self.deaths = self.deaths + 1
+        self.lives = self.health_system.lives
+        self.combo = 0
+    end
+end
+```
+
+### Compute-on-Demand Pattern
+Instead of pre-calculating values in init, compute them when needed:
+```lua
+function MyGame:getEnemySpeed()
+    local base = self.params.enemy_speed
+    local difficulty = self.difficulty_modifiers.speed or 1
+    return base * difficulty
+end
+```
+
+### Direct Param Access in Views
+Views should access params directly, not via shim fields:
+```lua
+-- Good: Use params directly
+g.print("Target: " .. game.params.victory_limit)
+-- Bad: Don't create shim fields
+g.print("Target: " .. game.target_kills)
+```
+
+---
+

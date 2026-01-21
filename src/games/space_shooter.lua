@@ -283,12 +283,9 @@ function SpaceShooter:updateGameLogic(dt)
     self.powerups = self.powerup_system:getPowerupsForRendering()
     self.active_powerups = self.powerup_system:getActivePowerupsForHUD()
 
-    --Environmental hazards
-    if self.params.asteroid_density > 0 then
-        self:updateAsteroids(dt)
-    end
-    if self.params.meteor_frequency > 0 then
-        self:updateMeteors(dt)
+    --Environmental hazards (asteroids, meteors via generic behaviors)
+    if self.params.asteroid_density > 0 or self.params.meteor_frequency > 0 then
+        self:updateHazards(dt)
     end
     if #self.gravity_wells > 0 then
         self:applyGravityWells(dt)
@@ -985,130 +982,73 @@ function SpaceShooter:updateDifficulty(dt)
     self.difficulty_scale = math.min(self.difficulty_scale, 5.0)
 end
 
---Asteroid system
-function SpaceShooter:updateAsteroids(dt)
-    -- Spawn asteroids based on density
-    self.asteroid_spawn_timer = self.asteroid_spawn_timer - dt
-    local spawn_interval = 1.0 / self.params.asteroid_density
-    if self.asteroid_spawn_timer <= 0 then
-        self:spawnAsteroid()
-        self.asteroid_spawn_timer = spawn_interval
-    end
-
-    local speed_direction = self.params.reverse_gravity and -1 or 1
-    local speed = (self.params.asteroid_speed + self.params.scroll_speed) * speed_direction
+--Hazards: Asteroids and Meteors use generic behaviors
+function SpaceShooter:updateHazards(dt)
+    local p = self.params
     local game = self
+    local direction = p.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
+    local offscreen = p.reverse_gravity and {top = -100} or {bottom = self.game_height + 50}
 
-    -- Update movement and check off-screen
-    for _, asteroid in ipairs(self.asteroids) do
-        asteroid.y = asteroid.y + speed * dt
-        asteroid.rotation = asteroid.rotation + asteroid.rotation_speed * dt
-
-        local off_screen = self.params.reverse_gravity and (asteroid.y + asteroid.height < 0) or (asteroid.y > self.game_height + asteroid.height)
-        if off_screen then
-            self.entity_controller:removeEntity(asteroid)
+    -- Spawn asteroids on timer
+    if p.asteroid_density > 0 then
+        self.asteroid_spawn_timer = self.asteroid_spawn_timer - dt
+        if self.asteroid_spawn_timer <= 0 then
+            local size = math.random(p.asteroid_size_min, p.asteroid_size_max)
+            local spawn_y = p.reverse_gravity and self.game_height or -size
+            self.entity_controller:spawn("asteroid", math.random(0, self.game_width - size), spawn_y, {
+                width = size, height = size,
+                movement_pattern = 'straight', speed = p.asteroid_speed, direction = direction,
+                rotation = math.random() * math.pi * 2, rotation_speed = (math.random() - 0.5) * 2
+            })
+            self.asteroid_spawn_timer = 1.0 / p.asteroid_density
         end
     end
 
-    -- Asteroid vs player collision
-    self.entity_controller:checkCollision(self.player, function(entity)
-        if entity.type_name == "asteroid" then
-            game:takeDamage()
-            game.entity_controller:removeEntity(entity)
+    -- Spawn meteor warnings on timer, convert to meteors when expired
+    if p.meteor_frequency > 0 then
+        self.meteor_timer = self.meteor_timer - dt
+        if self.meteor_timer <= 0 then
+            for i = 1, math.random(3, 5) do
+                self.entity_controller:spawn("meteor_warning", math.random(0, self.game_width - 30), 0, {
+                    time_remaining = p.meteor_warning_time, spawned = false
+                })
+            end
+            self.meteor_timer = 60 / p.meteor_frequency
         end
-    end)
-
-    -- Asteroid vs player bullets (if destroyable)
-    if self.params.asteroids_can_be_destroyed then
-        self.projectile_system:checkCollisions(self.asteroids, function(bullet, asteroid)
-            game.entity_controller:removeEntity(asteroid)
-        end, "player")
-    end
-
-    -- Asteroid vs enemies
-    for _, asteroid in ipairs(self.asteroids) do
-        if asteroid.active then
-            for _, enemy in ipairs(self.enemies) do
-                if enemy.active and self.di.components.Collision.checkAABB(
-                    asteroid.x, asteroid.y, asteroid.width, asteroid.height,
-                    enemy.x, enemy.y, enemy.width, enemy.height
-                ) then
-                    self.entity_controller:removeEntity(enemy)
-                    self.entity_controller:removeEntity(asteroid)
-                    break
-                end
+        for _, w in ipairs(self.meteor_warnings) do
+            w.time_remaining = w.time_remaining - dt
+            if w.time_remaining <= 0 and not w.spawned then
+                local spawn_y = p.reverse_gravity and self.game_height or -30
+                self.entity_controller:spawn("meteor", w.x, spawn_y, {
+                    movement_pattern = 'straight', speed = p.meteor_speed, direction = direction
+                })
+                w.spawned = true
+                self.entity_controller:removeEntity(w)
             end
         end
     end
-end
 
-function SpaceShooter:spawnAsteroid()
-    local size = math.random(self.params.asteroid_size_min, self.params.asteroid_size_max)
-    local spawn_y = self.params.reverse_gravity and self.game_height or -size
-    self.entity_controller:spawn("asteroid", math.random(0, self.game_width - size), spawn_y, {
-        width = size,
-        height = size,
-        rotation = math.random() * math.pi * 2,
-        rotation_speed = (math.random() - 0.5) * 2
+    -- Movement, rotation, offscreen via behaviors (works for asteroids + meteors)
+    self.entity_controller:updateBehaviors(dt, {
+        pattern_movement = {
+            PatternMovement = self.di.components.PatternMovement,
+            bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height}
+        },
+        rotation = true,
+        remove_offscreen = offscreen
     })
-end
 
---Meteor shower system
-function SpaceShooter:updateMeteors(dt)
-    self.meteor_timer = self.meteor_timer - dt
-    if self.meteor_timer <= 0 then
-        self:spawnMeteorWave()
-        self.meteor_timer = 60 / self.params.meteor_frequency
-    end
-
-    -- Update warnings and spawn meteors when ready
-    for _, warning in ipairs(self.meteor_warnings) do
-        warning.time_remaining = warning.time_remaining - dt
-        if warning.time_remaining <= 0 and not warning.spawned then
-            local spawn_y = self.params.reverse_gravity and self.game_height or -30
-            self.entity_controller:spawn("meteor", warning.x, spawn_y, {
-                speed = self.params.meteor_speed
-            })
-            warning.spawned = true
-            self.entity_controller:removeEntity(warning)
-        end
-    end
-
-    local speed_direction = self.params.reverse_gravity and -1 or 1
-    local game = self
-
-    -- Update movement and check off-screen
-    for _, meteor in ipairs(self.meteors) do
-        meteor.y = meteor.y + (meteor.speed + self.params.scroll_speed) * speed_direction * dt
-
-        local off_screen = self.params.reverse_gravity and (meteor.y + meteor.height < 0) or (meteor.y > self.game_height + meteor.height)
-        if off_screen then
-            self.entity_controller:removeEntity(meteor)
-        end
-    end
-
-    -- Meteor vs player collision
+    -- Collisions: hazards vs player, hazards vs bullets
     self.entity_controller:checkCollision(self.player, function(entity)
-        if entity.type_name == "meteor" then
+        if entity.type_name == "asteroid" or entity.type_name == "meteor" then
             game:takeDamage()
             game.entity_controller:removeEntity(entity)
         end
     end)
-
-    -- Meteor vs player bullets
-    self.projectile_system:checkCollisions(self.meteors, function(bullet, meteor)
-        game.entity_controller:removeEntity(meteor)
-    end, "player")
-end
-
-function SpaceShooter:spawnMeteorWave()
-    local count = math.random(3, 5)
-    for i = 1, count do
-        self.entity_controller:spawn("meteor_warning", math.random(0, self.game_width - 30), 0, {
-            time_remaining = self.params.meteor_warning_time,
-            spawned = false
-        })
+    if p.asteroids_can_be_destroyed then
+        self.projectile_system:checkCollisions(self.asteroids, function(_, a) game.entity_controller:removeEntity(a) end, "player")
     end
+    self.projectile_system:checkCollisions(self.meteors, function(_, m) game.entity_controller:removeEntity(m) end, "player")
 end
 
 --Gravity well system

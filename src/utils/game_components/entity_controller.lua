@@ -901,6 +901,25 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             end
         end
 
+        -- Pattern movement behavior (calls PatternMovement.update for non-dominated patterns)
+        if config.pattern_movement then
+            local dominated = entity.movement_pattern == 'grid' or
+                             entity.movement_pattern == 'formation'
+            if not dominated and entity.movement_pattern then
+                local pm = config.pattern_movement
+                if pm.speed then entity.speed = entity.speed or pm.speed end
+                if pm.direction then entity.direction = entity.direction or pm.direction end
+                if pm.PatternMovement then
+                    pm.PatternMovement.update(dt, entity, pm.bounds)
+                end
+            end
+        end
+
+        -- Rotation behavior (entities spin based on rotation_speed)
+        if config.rotation and entity.rotation_speed then
+            entity.rotation = (entity.rotation or 0) + entity.rotation_speed * dt
+        end
+
         -- Off-screen removal behavior
         if config.remove_offscreen and not entity.skip_offscreen_removal then
             local bounds = config.remove_offscreen
