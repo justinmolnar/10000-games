@@ -909,32 +909,27 @@ end
 function SpaceShooter:spawnGalagaEnemy(formation_slot, wave_modifiers)
     wave_modifiers = wave_modifiers or {}
     local wave_health = wave_modifiers.health or self.params.enemy_health
+    local PatternMovement = self.di.components.PatternMovement
 
     local entrance_side = math.random() > 0.5 and "left" or "right"
     local start_x = entrance_side == "left" and -50 or (self.game_width + 50)
-    local start_y = -50
+    local start_y = -50  -- Off-screen above
+    local pattern = self.params.entrance_pattern or "swoop"
 
-    -- Build entrance path based on entrance_pattern param
     local bezier_path
-    if self.params.entrance_pattern == "swoop" then
-        bezier_path = {
-            {x = start_x, y = start_y},
-            {x = self.game_width / 2, y = self.game_height * 0.6},
-            {x = formation_slot.x, y = formation_slot.y}
-        }
-    elseif self.params.entrance_pattern == "loop" then
+    if pattern == "loop" then
         local mid_x = entrance_side == "left" and self.game_width * 0.3 or self.game_width * 0.7
-        bezier_path = {
-            {x = start_x, y = start_y},
-            {x = mid_x, y = self.game_height * 0.5},
-            {x = formation_slot.x, y = formation_slot.y}
-        }
+        bezier_path = PatternMovement.buildPath("loop", {
+            start_x = start_x, start_y = start_y,
+            mid_x = mid_x, mid_y = self.game_height * 0.5,
+            end_x = formation_slot.x, end_y = formation_slot.y
+        })
     else
-        bezier_path = {
-            {x = start_x, y = start_y},
-            {x = (start_x + formation_slot.x) / 2, y = self.game_height * 0.3},
-            {x = formation_slot.x, y = formation_slot.y}
-        }
+        bezier_path = PatternMovement.buildPath("swoop", {
+            start_x = start_x, start_y = start_y,
+            end_x = formation_slot.x, end_y = formation_slot.y,
+            curve_y = self.game_height * (pattern == "swoop" and 0.6 or 0.3)
+        })
     end
 
     formation_slot.occupied = true
@@ -1049,11 +1044,12 @@ function SpaceShooter:updateGalagaFormation(dt)
             diver.bezier_t = 0
             diver.bezier_complete = false
             diver.bezier_duration = 3.0
-            diver.bezier_path = {
-                {x = diver.x, y = diver.y},
-                {x = self.player.x + self.player.width / 2, y = self.player.y + self.player.height / 2},
-                {x = diver.x, y = self.game_height + 50}
-            }
+            diver.bezier_path = PatternMovement.buildPath("dive", {
+                start_x = diver.x, start_y = diver.y,
+                target_x = self.player.x + self.player.width / 2,
+                target_y = self.player.y + self.player.height / 2,
+                exit_x = diver.x, exit_y = self.game_height + 50
+            })
             self.galaga_state.diving_count = self.galaga_state.diving_count + 1
         end
         self.galaga_state.dive_timer = dive_freq

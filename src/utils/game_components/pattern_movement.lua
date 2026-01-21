@@ -278,4 +278,41 @@ function PatternMovement.initPattern(entity, pattern, config)
     return entity
 end
 
+--[[
+    Build a bezier path for common patterns
+
+    @param pattern string - "swoop", "dive", "loop", "arc", or "straight"
+    @param p table - Parameters: start_x, start_y, end_x, end_y, curve_y, target_x, target_y, exit_x, exit_y, mid_x, mid_y
+    @return table - Array of {x, y} control points
+]]
+function PatternMovement.buildPath(pattern, p)
+    if pattern == "swoop" then
+        return {
+            {x = p.start_x, y = p.start_y},
+            {x = (p.start_x + p.end_x) / 2, y = p.curve_y or (p.end_y + 100)},
+            {x = p.end_x, y = p.end_y}
+        }
+    elseif pattern == "dive" then
+        return {
+            {x = p.start_x, y = p.start_y},
+            {x = p.target_x, y = p.target_y},
+            {x = p.exit_x or p.start_x, y = p.exit_y}
+        }
+    elseif pattern == "loop" then
+        return {
+            {x = p.start_x, y = p.start_y},
+            {x = p.mid_x, y = p.mid_y or p.curve_y},
+            {x = p.end_x, y = p.end_y}
+        }
+    elseif pattern == "arc" then
+        return {
+            {x = p.start_x, y = p.start_y},
+            {x = p.mid_x, y = p.mid_y},
+            {x = p.end_x, y = p.end_y}
+        }
+    else
+        return {{x = p.start_x, y = p.start_y}, {x = p.end_x, y = p.end_y}}
+    end
+end
+
 return PatternMovement

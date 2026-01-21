@@ -195,8 +195,10 @@ Autonomous movement patterns for enemies, powerups, hazards.
 - **updateBounce(dt, entity, bounds)** - Move with velocity, bounce off bounds. Entity needs: vx, vy.
 - **isOffScreen(entity, bounds, margin)** - Check if entity is outside bounds.
 - **initPattern(entity, pattern, config)** - Initialize pattern-specific fields with defaults.
+- **buildPath(pattern, params)** - Build bezier path for common patterns. Returns array of {x,y} control points. Params: start_x, start_y, end_x, end_y, curve_y, target_x, target_y, exit_x, exit_y, mid_x, mid_y.
 
 **Patterns:** "straight", "zigzag", "wave", "dive", "bezier", "orbit", "bounce"
+**Path patterns (buildPath):** "swoop", "dive", "loop", "arc"
 
 ---
 
