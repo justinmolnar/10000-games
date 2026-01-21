@@ -372,8 +372,11 @@ Extract wave state, simplify mode-specific code.
 6.5. **Delete updateWaveSpawning() (21 lines)** - uses updateWaveState directly
 
 ### Lines Changed
-- base_game.lua: +25 lines
-- space_shooter.lua: -100 lines (wave management portions across functions)
+- base_game.lua: +30 lines (actual)
+- space_shooter.lua: +2 lines (actual: 906 → 908)
+
+Note: Line reduction was minimal because wave logic was restructured to use callbacks
+rather than deleted. The benefit is standardized wave management pattern across modes.
 
 ### Testing (User)
 - [ ] Space Invaders waves (spawn, clear, pause, next)
@@ -382,7 +385,19 @@ Extract wave state, simplify mode-specific code.
 - [ ] Difficulty increases per wave
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Added to BaseGame:
+- `updateWaveState(state, config, dt)` - generic wave state management with count_func, on_depleted, on_start callbacks
+
+Updated in space_shooter:
+- `updateWaveSpawning()` - now uses updateWaveState for wave timing
+- `updateSpaceInvadersGrid()` - now uses updateWaveState for wave transitions
+- `updateGalagaFormation()` - now uses updateWaveState for wave transitions
+
+The refactoring standardizes wave management across all three modes (default, Space Invaders, Galaga)
+using the same BaseGame helper. Line count didn't decrease because the mode-specific logic
+(wave_modifiers calculation, enemy counting, state resets) remains in callbacks.
 
 ---
 

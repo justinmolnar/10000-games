@@ -976,6 +976,17 @@ function EntityController:updateBehaviors(dt, config, collision_check)
 
         if hit_edge then
             state.direction = -state.direction
+            -- Clamp all grid entities back inside bounds to prevent repeated edge triggers
+            for _, e in ipairs(self.entities) do
+                if e.active and e.movement_pattern == 'grid' then
+                    local w = e.width or 0
+                    if e.x <= (gum.bounds_left or 0) then
+                        e.x = (gum.bounds_left or 0) + 1
+                    elseif e.x + w >= (gum.bounds_right or 800) then
+                        e.x = (gum.bounds_right or 800) - w - 1
+                    end
+                end
+            end
             if gum.descent then
                 for _, e in ipairs(self.entities) do
                     if e.active and e.movement_pattern == 'grid' then

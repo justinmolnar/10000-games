@@ -452,7 +452,8 @@ end
 --Formation spawning
 -- Space Invaders: Initialize grid
 function SpaceShooter:initSpaceInvadersGrid()
-    local wave_multiplier = 1.0 + (self.grid_state.wave_number * self.params.wave_difficulty_increase)
+    -- wave_number is 1-based when using waves, 0 otherwise; use max to ensure non-negative
+    local wave_multiplier = 1.0 + (math.max(0, self.grid_state.wave_number - 1) * self.params.wave_difficulty_increase)
     local variance = self.params.wave_random_variance
     local random_factor = variance > 0 and (1.0 + ((math.random() - 0.5) * 2 * variance)) or 1.0
 
@@ -474,37 +475,38 @@ function SpaceShooter:initSpaceInvadersGrid()
     self.grid_state.initialized = true
     self.grid_state.initial_enemy_count = wave_rows * wave_columns
     self.grid_state.wave_active = true
-    self.grid_state.wave_number = self.grid_state.wave_number + 1
+    -- Note: wave_number is incremented by updateWaveState, not here
     self.grid_state.shoot_timer = 1.0  -- Initial delay before first shot
 end
 
 -- Space Invaders: Update grid movement
 function SpaceShooter:updateSpaceInvadersGrid(dt)
-    -- Wave system: Check if we need to start a new wave
-    if self.params.waves_enabled then
-        if self.grid_state.wave_active then
-            -- Check if all grid enemies are dead
-            local grid_enemies_alive = false
-            for _, enemy in ipairs(self.enemies) do
-                if enemy.movement_pattern == 'grid' then
-                    grid_enemies_alive = true
-                    break
-                end
-            end
+    local game = self
 
-            if not grid_enemies_alive and self.grid_state.initialized then
-                self.grid_state.wave_active = false
-                self.grid_state.wave_pause_timer = self.params.wave_pause_duration
-                self.grid_state.initialized = false
-                self.entity_controller.grid_movement_state = nil  -- Reset for next wave
-            end
-        else
-            self.grid_state.wave_pause_timer = self.grid_state.wave_pause_timer - dt
-            if self.grid_state.wave_pause_timer <= 0 then
-                self:initSpaceInvadersGrid()
-            end
-            return
-        end
+    -- Wave system using BaseGame helper
+    if self.params.waves_enabled then
+        -- Map grid_state to wave state format (active field)
+        self.grid_state.active = self.grid_state.wave_active
+        self.grid_state.pause_timer = self.grid_state.wave_pause_timer
+
+        local result = self:updateWaveState(self.grid_state, {
+            count_func = function()
+                for _, enemy in ipairs(game.enemies) do
+                    if enemy.movement_pattern == 'grid' then return 1 end
+                end
+                return 0
+            end,
+            on_depleted = function()
+                game.grid_state.initialized = false
+                game.entity_controller.grid_movement_state = nil
+            end,
+            on_start = function() game:initSpaceInvadersGrid() end
+        }, dt)
+
+        -- Sync back to grid_state fields
+        self.grid_state.wave_active = self.grid_state.active
+        self.grid_state.wave_pause_timer = self.grid_state.pause_timer
+        if result == "paused" then return end
     end
 
     -- Initialize grid if not yet done
@@ -645,53 +647,55 @@ end
 -- Galaga: Update formation and dive mechanics
 function SpaceShooter:updateGalagaFormation(dt)
     local PatternMovement = self.di.components.PatternMovement
+    local game = self
 
-    -- Wave system: Check if we need to start a new wave
+    -- Wave system using BaseGame helper
     if self.params.waves_enabled then
-        if self.galaga_state.wave_active then
-            local galaga_enemies_alive = false
-            for _, enemy in ipairs(self.enemies) do
-                if enemy.formation_state then
-                    galaga_enemies_alive = true
-                    break
-                end
-            end
+        -- Map galaga_state to wave state format
+        self.galaga_state.active = self.galaga_state.wave_active
+        self.galaga_state.pause_timer = self.galaga_state.wave_pause_timer
 
-            if not galaga_enemies_alive and #self.galaga_state.formation_positions > 0 then
-                self.galaga_state.wave_active = false
-                self.galaga_state.wave_pause_timer = self.params.wave_pause_duration
-                self.galaga_state.formation_positions = {}
-            end
-        else
-            self.galaga_state.wave_pause_timer = self.galaga_state.wave_pause_timer - dt
-            if self.galaga_state.wave_pause_timer <= 0 then
-                local wave_multiplier = 1.0 + (self.galaga_state.wave_number * self.params.wave_difficulty_increase)
-                local variance = self.params.wave_random_variance
+        local result = self:updateWaveState(self.galaga_state, {
+            count_func = function()
+                for _, enemy in ipairs(game.enemies) do
+                    if enemy.formation_state then return 1 end
+                end
+                return 0
+            end,
+            on_depleted = function()
+                game.galaga_state.formation_positions = {}
+            end,
+            on_start = function(wave_num)
+                local wave_multiplier = 1.0 + ((wave_num - 1) * game.params.wave_difficulty_increase)
+                local variance = game.params.wave_random_variance
                 local random_factor = variance > 0 and (1.0 + ((math.random() - 0.5) * 2 * variance)) or 1.0
 
-                self.galaga_state.wave_modifiers = {
-                    health = math.max(1, math.floor(self.params.enemy_health * wave_multiplier + 0.5)),
-                    dive_frequency = self.params.dive_frequency / (wave_multiplier * random_factor)
+                game.galaga_state.wave_modifiers = {
+                    health = math.max(1, math.floor(game.params.enemy_health * wave_multiplier + 0.5)),
+                    dive_frequency = game.params.dive_frequency / (wave_multiplier * random_factor)
                 }
 
-                self:initGalagaFormation()
-                self.galaga_state.wave_number = self.galaga_state.wave_number + 1
-                self.galaga_state.spawned_count = 0
-                self.galaga_state.spawn_timer = 0
-                self.galaga_state.diving_count = 0
-                self.galaga_state.dive_timer = 0
+                game:initGalagaFormation()
+                game.galaga_state.spawned_count = 0
+                game.galaga_state.spawn_timer = 0
+                game.galaga_state.diving_count = 0
+                game.galaga_state.dive_timer = 0
 
-                local initial_count = math.min(self.params.initial_spawn_count, #self.galaga_state.formation_positions)
+                local initial_count = math.min(game.params.initial_spawn_count, #game.galaga_state.formation_positions)
                 for i = 1, initial_count do
-                    self:spawnGalagaEnemy(self.galaga_state.formation_positions[i], self.galaga_state.wave_modifiers)
-                    self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
+                    game:spawnGalagaEnemy(game.galaga_state.formation_positions[i], game.galaga_state.wave_modifiers)
+                    game.galaga_state.spawned_count = game.galaga_state.spawned_count + 1
                 end
             end
-            return
-        end
+        }, dt)
+
+        -- Sync back
+        self.galaga_state.wave_active = self.galaga_state.active
+        self.galaga_state.wave_pause_timer = self.galaga_state.pause_timer
+        if result == "paused" then return end
     end
 
-    -- Initialize formation if needed (first spawn)
+    -- Initialize formation if needed (first spawn, non-wave mode)
     if #self.galaga_state.formation_positions == 0 then
         self:initGalagaFormation()
         self.galaga_state.spawned_count = 0
@@ -777,23 +781,22 @@ function SpaceShooter:updateGalagaFormation(dt)
 end
 
 function SpaceShooter:updateWaveSpawning(dt)
-    if self.wave_state.active then
+    local game = self
+    local result = self:updateWaveState(self.wave_state, {
+        count_func = function() return self.wave_state.enemies_remaining end,
+        on_start = function(wave_num)
+            game.wave_state.enemies_remaining = math.floor(game.params.wave_enemies_per_wave * game.difficulty_scale)
+            game.spawn_timer = 0
+        end
+    }, dt)
+
+    -- Spawn enemies during active wave
+    if result == "active" and self.wave_state.enemies_remaining > 0 then
         self.spawn_timer = self.spawn_timer - dt
-        if self.spawn_timer <= 0 and self.wave_state.enemies_remaining > 0 then
+        if self.spawn_timer <= 0 then
             self:spawnEnemy()
             self.wave_state.enemies_remaining = self.wave_state.enemies_remaining - 1
             self.spawn_timer = 0.3
-            if self.wave_state.enemies_remaining <= 0 then
-                self.wave_state.active = false
-                self.wave_state.pause_timer = self.params.wave_pause_duration
-            end
-        end
-    else
-        self.wave_state.pause_timer = self.wave_state.pause_timer - dt
-        if self.wave_state.pause_timer <= 0 then
-            self.wave_state.active = true
-            self.wave_state.enemies_remaining = math.floor(self.params.wave_enemies_per_wave * self.difficulty_scale)
-            self.spawn_timer = 0
         end
     end
 end

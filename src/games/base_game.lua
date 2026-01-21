@@ -762,6 +762,36 @@ function BaseGame:updateScrolling(dt)
     self.scroll_offset = (self.scroll_offset or 0) + self.params.scroll_speed * dt
 end
 
+-- Generic wave state management
+-- state: {active, pause_timer, wave_number, ...}
+-- config: {count_func, on_depleted, on_start, pause_duration}
+-- Returns: "active" if wave running, "paused" if between waves, "started" if new wave just began
+function BaseGame:updateWaveState(state, config, dt)
+    local pause_duration = config.pause_duration or (self.params and self.params.wave_pause_duration) or 2.0
+
+    if state.active then
+        -- Check if wave is depleted
+        local count = config.count_func and config.count_func() or 0
+        if count <= 0 then
+            state.active = false
+            state.pause_timer = pause_duration
+            if config.on_depleted then config.on_depleted() end
+            return "paused"
+        end
+        return "active"
+    else
+        -- Wave paused, count down
+        state.pause_timer = (state.pause_timer or 0) - dt
+        if state.pause_timer <= 0 then
+            state.active = true
+            state.wave_number = (state.wave_number or 0) + 1
+            if config.on_start then config.on_start(state.wave_number) end
+            return "started"
+        end
+        return "paused"
+    end
+end
+
 -- Player shooting with spawn position and angle calculation
 -- Handles asteroids mode (rotational) and normal mode (up/down based on reverse_gravity)
 function BaseGame:playerShoot(charge_multiplier)
