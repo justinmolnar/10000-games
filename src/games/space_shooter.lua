@@ -12,61 +12,18 @@ function SpaceShooter:init(game_data, cheats, di, variant_override)
         speed_modifier = {"movement_speed", "bullet_speed", "enemy_base_speed"},
         advantage_modifier = {"player_width", "player_height"}
     })
-    -- Extra lives from advantage cheat
     local extra_deaths = (self.cheats.advantage_modifier or {}).deaths or 0
     self.params.lives_count = self.params.lives_count + extra_deaths
 
-    self:setupArena()
-    self:setupPlayer()
-    self:setupComponents()
-    self:setupGameState()
-
-    self.view = SpaceShooterView:new(self, self.variant)
-    self:loadAssets()
-end
-
-function SpaceShooter:setupArena()
     local cfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter) or {}
     self.game_width = (cfg.arena and cfg.arena.width) or 800
     self.game_height = (cfg.arena and cfg.arena.height) or 600
-    self.gravity_wells = {}
-    self.blackout_zones = {}
 
-    for i = 1, self.params.gravity_wells_count do
-        table.insert(self.gravity_wells, {
-            x = math.random(50, self.game_width - 50),
-            y = math.random(50, self.game_height - 50),
-            radius = self.params.gravity_well_radius,
-            strength = self.params.gravity_well_strength
-        })
-    end
+    self:setupComponents()
+    self:setupEntities()
 
-    for i = 1, self.params.blackout_zones_count do
-        table.insert(self.blackout_zones, {
-            x = math.random(self.params.blackout_zone_radius, self.game_width - self.params.blackout_zone_radius),
-            y = math.random(self.params.blackout_zone_radius, self.game_height - self.params.blackout_zone_radius),
-            radius = self.params.blackout_zone_radius,
-            vx = self.params.blackout_zones_move and (math.random() - 0.5) * 50 or 0,
-            vy = self.params.blackout_zones_move and (math.random() - 0.5) * 50 or 0
-        })
-    end
-end
-
-function SpaceShooter:setupPlayer()
-    self.PLAYER_MAX_DEATHS = self.params.lives_count
-    local y_offset = self.params.player_start_y_offset or 50
-    local player_y = self.params.reverse_gravity and y_offset or (self.game_height - y_offset)
-
-    self:createPlayer({
-        y = player_y,
-        extra = {
-            fire_cooldown = 0, auto_fire_timer = 0, charge_progress = 0, is_charging = false,
-            burst_remaining = 0, burst_timer = 0, ammo = self.params.ammo_capacity,
-            reload_timer = 0, is_reloading = false, heat = 0, is_overheated = false, overheat_timer = 0,
-            angle = 0, vx = 0, vy = 0, jump_timer = 0, is_jumping = false, jump_progress = 0,
-            jump_start_x = 0, jump_start_y = 0, jump_target_x = 0, jump_target_y = 0
-        }
-    })
+    self.view = SpaceShooterView:new(self, self.variant)
+    self:loadAssets()
 end
 
 function SpaceShooter:setupComponents()
@@ -121,87 +78,75 @@ function SpaceShooter:setupComponents()
     })
 end
 
-function SpaceShooter:setupGameState()
-    local variant_difficulty = self.variant and self.variant.difficulty_modifier or 1.0
-    local speed_modifier = self.cheats.speed_modifier or 1.0
-    local base_speed = self.params.enemy_base_speed or 100
-    local base_rate = self.params.spawn_base_rate or 1.0
+function SpaceShooter:setupEntities()
+    local p = self.params
 
-    -- Entity collections are synced from components every frame in updateGameLogic
+    -- Create player
+    local y_offset = p.player_start_y_offset
+    local player_y = p.reverse_gravity and y_offset or (self.game_height - y_offset)
+    self:createPlayer({
+        y = player_y,
+        extra = {
+            fire_cooldown = 0, auto_fire_timer = 0, charge_progress = 0, is_charging = false,
+            burst_remaining = 0, burst_timer = 0, ammo = p.ammo_capacity,
+            reload_timer = 0, is_reloading = false, heat = 0, is_overheated = false, overheat_timer = 0,
+            angle = 0, vx = 0, vy = 0, jump_timer = 0, is_jumping = false, jump_progress = 0,
+            jump_start_x = 0, jump_start_y = 0, jump_target_x = 0, jump_target_y = 0
+        }
+    })
+
+    -- Game state
     self.survival_time, self.scroll_offset, self.difficulty_scale = 0, 0, 1.0
     self.spawn_timer, self.asteroid_spawn_timer = 0, 0
-    self.meteor_timer = self.params.meteor_frequency > 0 and (60 / self.params.meteor_frequency) or 0
+    self.meteor_timer = p.meteor_frequency > 0 and (60 / p.meteor_frequency) or 0
     self.kills, self.deaths = 0, 0
+    self.enemies, self.asteroids, self.meteors, self.meteor_warnings = {}, {}, {}, {}
 
-    self.enemy_speed = ((base_speed * self.difficulty_modifiers.speed) * speed_modifier) * variant_difficulty
-    self.spawn_rate = (base_rate / self.difficulty_modifiers.count) / variant_difficulty
-    self.can_shoot_back = self.difficulty_modifiers.complexity > 2
-    self.target_kills = self.params.victory_limit or 20
-
-    -- Build enemy composition from variant
-    self.enemy_composition = {}
-    if self.variant and self.variant.enemies then
-        for _, ed in ipairs(self.variant.enemies) do
-            self.enemy_composition[ed.type] = ed.multiplier
-        end
+    -- Environmental hazards
+    self.gravity_wells, self.blackout_zones = {}, {}
+    for i = 1, p.gravity_wells_count do
+        table.insert(self.gravity_wells, {
+            x = math.random(50, self.game_width - 50), y = math.random(50, self.game_height - 50),
+            radius = p.gravity_well_radius, strength = p.gravity_well_strength
+        })
     end
+    for i = 1, p.blackout_zones_count do
+        table.insert(self.blackout_zones, {
+            x = math.random(p.blackout_zone_radius, self.game_width - p.blackout_zone_radius),
+            y = math.random(p.blackout_zone_radius, self.game_height - p.blackout_zone_radius),
+            radius = p.blackout_zone_radius,
+            vx = p.blackout_zones_move and (math.random() - 0.5) * 50 or 0,
+            vy = p.blackout_zones_move and (math.random() - 0.5) * 50 or 0
+        })
+    end
+
+    -- Mode-specific state (initialized upfront like breakout)
+    self.wave_state = {active = false, enemies_remaining = 0, pause_timer = 0}
+    self.grid_state = {initialized = false, wave_active = false, wave_pause_timer = 0, initial_enemy_count = 0, wave_number = 0}
+    self.galaga_state = {formation_positions = {}, dive_timer = p.dive_frequency, diving_count = 0, wave_active = false, wave_pause_timer = 0, initial_enemy_count = 0, wave_number = 0, spawn_timer = 0, spawned_count = 0, wave_modifiers = {}}
 
     -- Build weighted configs for variant enemy spawning
     self.enemy_weighted_configs = {}
-    for enemy_type, multiplier in pairs(self.enemy_composition) do
-        local enemy_def = self.params.enemy_types[enemy_type]
-        if enemy_def then
-            local health = self:calculateEnemyHealth(nil, enemy_def.health or 1)
-            table.insert(self.enemy_weighted_configs, {
-                weight = multiplier,
-                movement_pattern = enemy_def.movement_pattern,
-                enemy_type = enemy_def.name,
-                type = enemy_type,
-                health = health,
-                max_health = health,
-                speed_multiplier = enemy_def.speed_multiplier or 1.0,
-                shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0
-            })
+    if self.variant and self.variant.enemies then
+        for _, ed in ipairs(self.variant.enemies) do
+            local enemy_def = p.enemy_types[ed.type]
+            if enemy_def then
+                local health = self:calculateEnemyHealth(nil, enemy_def.health or 1)
+                table.insert(self.enemy_weighted_configs, {
+                    weight = ed.multiplier, movement_pattern = enemy_def.movement_pattern,
+                    enemy_type = enemy_def.name, type = ed.type, health = health, max_health = health,
+                    speed_multiplier = enemy_def.speed_multiplier or 1.0, shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0
+                })
+            end
         end
     end
 end
 
--- Lazy initialization for mode-specific state
-function SpaceShooter:getWaveState()
-    if not self.wave_state then
-        self.wave_state = {
-            active = false, enemies_remaining = 0, pause_timer = 0,
-            enemies_per_wave = self.params.wave_enemies_per_wave,
-            pause_duration = self.params.wave_pause_duration
-        }
-    end
-    return self.wave_state
+function SpaceShooter:getEnemySpeed()
+    local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
+    return self.params.enemy_base_speed * self.difficulty_modifiers.speed * (self.cheats.speed_modifier or 1.0) * variant_diff
 end
 
-function SpaceShooter:getGridState()
-    if not self.grid_state then
-        self.grid_state = {
-            x = 0, y = 50, direction = 1, speed_multiplier = 1.0,
-            initialized = false, wave_active = false, wave_pause_timer = 0,
-            initial_enemy_count = 0, wave_number = 0
-        }
-    end
-    return self.grid_state
-end
-
-function SpaceShooter:getGalagaState()
-    if not self.galaga_state then
-        self.galaga_state = {
-            formation_positions = {}, dive_timer = self.params.dive_frequency,
-            diving_count = 0, entrance_queue = {}, wave_active = false,
-            wave_pause_timer = 0, initial_enemy_count = 0, wave_number = 0,
-            spawn_timer = 0.0, spawned_count = 0, wave_modifiers = {}
-        }
-    end
-    return self.galaga_state
-end
-
---Asset loading using spriteSetLoader
 function SpaceShooter:loadAssets()
     self.sprites = {}
     local sprite_set = (self.variant and self.variant.sprite_set) or "fighter_1"
@@ -228,7 +173,7 @@ function SpaceShooter:setPlayArea(width, height)
     -- Only update player position if player exists
     if self.player then
         self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
-        local y_offset = self.params.player_start_y_offset or 50
+        local y_offset = self.params.player_start_y_offset
         self.player.y = self.params.reverse_gravity and y_offset or (self.game_height - y_offset)
         print("[SpaceShooter] Play area updated to:", width, height)
     else
@@ -256,10 +201,10 @@ function SpaceShooter:setPlayArea(width, height)
 end
 
 function SpaceShooter:updateGameLogic(dt)
-    --Update health system (shield regeneration)
     self.health_system:update(dt)
+    self.lives = self.health_system.lives
 
-    --Update EntityController (enemies, asteroids, powerups)
+    --Update EntityController
     self.entity_controller:update(dt)
 
     --Sync arrays with EntityController
@@ -311,22 +256,18 @@ function SpaceShooter:updateGameLogic(dt)
         if self.params.enemy_spawn_pattern == "waves" then
             self:updateWaveSpawning(dt)
         elseif self.params.enemy_spawn_pattern == "continuous" then
-            -- Apply spawn rate multiplier and difficulty scaling
-            local adjusted_spawn_rate = self.spawn_rate / (self.params.enemy_spawn_rate_multiplier * self.difficulty_scale)
             self.spawn_timer = self.spawn_timer - dt
             if self.spawn_timer <= 0 then
                 self:spawnEnemy()
-                self.spawn_timer = adjusted_spawn_rate
+                local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
+                self.spawn_timer = self.params.spawn_base_rate / (self.difficulty_modifiers.count * variant_diff * self.params.enemy_spawn_rate_multiplier * self.difficulty_scale)
             end
         elseif self.params.enemy_spawn_pattern == "clusters" then
             self.spawn_timer = self.spawn_timer - dt
             if self.spawn_timer <= 0 then
-                -- Spawn a cluster of 3-5 enemies
-                local cluster_size = math.random(3, 5)
-                for i = 1, cluster_size do
-                    self:spawnEnemy()
-                end
-                self.spawn_timer = (self.spawn_rate * 2) / self.params.enemy_spawn_rate_multiplier  -- Longer delay between clusters
+                for i = 1, math.random(3, 5) do self:spawnEnemy() end
+                local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
+                self.spawn_timer = (self.params.spawn_base_rate * 2) / (self.difficulty_modifiers.count * variant_diff * self.params.enemy_spawn_rate_multiplier)
             end
         end
     end
@@ -408,11 +349,11 @@ function SpaceShooter:updateEnemies(dt)
     -- Update movement for standard patterns (grid/formation managed elsewhere)
     for _, enemy in ipairs(self.enemies) do
         if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'bezier' and enemy.movement_pattern ~= 'formation' then
-            local speed = (enemy.speed_override or self.enemy_speed) * self.params.enemy_speed_multiplier
+            local speed = (enemy.speed_override or self:getEnemySpeed()) * self.params.enemy_speed_multiplier
             if enemy.is_variant_enemy and enemy.speed_multiplier then speed = speed * enemy.speed_multiplier end
             enemy.speed = speed
             enemy.direction = self.params.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
-            enemy.zigzag_frequency = self.params.zigzag_frequency or 2
+            enemy.zigzag_frequency = self.params.zigzag_frequency
             enemy.zigzag_amplitude = speed * 0.5
             enemy.skip_offscreen_removal = false
             PatternMovement.update(dt, enemy, bounds)
@@ -424,7 +365,7 @@ function SpaceShooter:updateEnemies(dt)
     -- Player collision via EntityController
     self.entity_controller:checkCollision(self.player, function(entity)
         if entity.type_name == "enemy" then
-            game:handlePlayerDamage()
+            game:takeDamage()
             game.entity_controller:removeEntity(entity)
         end
     end)
@@ -436,7 +377,7 @@ function SpaceShooter:updateEnemies(dt)
         and {top = -100, bottom = self.game_height + 500}  -- only top removal matters
         or {top = -100, bottom = self.game_height}
     self.entity_controller:updateBehaviors(dt, {
-        shooting_enabled = self.params.enemy_bullets_enabled or self.can_shoot_back,
+        shooting_enabled = self.params.enemy_bullets_enabled or (self.difficulty_modifiers.complexity > 2),
         on_shoot = function(enemy) game:enemyShoot(enemy) end,
         remove_offscreen = offscreen_bounds
     })
@@ -454,7 +395,7 @@ function SpaceShooter:updateBullets(dt)
 
     -- Enemy bullets vs player (ProjectileSystem handles bullet removal)
     self.projectile_system:checkCollisions({self.player}, function(bullet, player)
-        game:handlePlayerDamage()
+        game:takeDamage()
     end, "enemy")
 
     -- Screen wrap for player bullets if enabled
@@ -488,14 +429,14 @@ function SpaceShooter:playerShoot(charge_multiplier)
     local pattern = self.params.bullet_pattern or "single"
     local config = {
         speed_multiplier = charge_multiplier,
-        count = self.params.bullets_per_shot or 5,
-        arc = self.params.bullet_arc or 60,
+        count = self.params.bullets_per_shot,
+        arc = self.params.bullet_arc,
         spread = 15,
         offset = 5,
         time = love.timer.getTime(),
         custom = {
-            width = self.params.bullet_width or 4,
-            height = self.params.bullet_height or 8,
+            width = self.params.bullet_width,
+            height = self.params.bullet_height,
             piercing = self.params.bullet_piercing,
             movement_type = (self.params.bullet_homing and self.params.homing_strength > 0) and "homing_nearest" or nil,
             homing_turn_rate = self.params.homing_strength
@@ -540,8 +481,8 @@ function SpaceShooter:enemyShoot(enemy)
 
     local pattern = self.params.enemy_bullet_pattern or "single"
     local config = {
-        count = self.params.enemy_bullets_per_shot or 3,
-        arc = self.params.enemy_bullet_spread_angle or 45,
+        count = self.params.enemy_bullets_per_shot,
+        arc = self.params.enemy_bullet_spread_angle,
         custom = {
             width = enemy_bullet_size,
             height = enemy_bullet_size,
@@ -552,139 +493,62 @@ function SpaceShooter:enemyShoot(enemy)
     self.projectile_system:shootPattern("enemy_bullet", center_x, center_y, base_angle, pattern, config)
 end
 
--- Calculate enemy health with variance/range support
-function SpaceShooter:calculateEnemyHealth(base_health, enemy_type_health_multiplier)
+function SpaceShooter:calculateEnemyHealth(base_health, multiplier)
     base_health = base_health or self.params.enemy_health
-    enemy_type_health_multiplier = enemy_type_health_multiplier or 1
-
-    local final_health
-
-    if self.use_health_range then
-        -- Use random range (min to max)
-        final_health = math.random(self.params.enemy_health_min, self.params.enemy_health_max)
-    else
-        -- Use base health with optional variance
-        if self.params.enemy_health_variance > 0 then
-            local variance_factor = 1.0 + ((math.random() - 0.5) * 2 * self.params.enemy_health_variance)
-            final_health = base_health * variance_factor
-        else
-            final_health = base_health
-        end
-    end
-
-    -- Apply enemy type multiplier (e.g., bomber has 2x health)
-    final_health = final_health * enemy_type_health_multiplier
-
-    -- Ensure at least 1 health
-    return math.max(1, math.floor(final_health + 0.5))
+    local health = self.params.use_health_range and math.random(self.params.enemy_health_min, self.params.enemy_health_max)
+        or (self.params.enemy_health_variance > 0 and base_health * (1 + (math.random() - 0.5) * 2 * self.params.enemy_health_variance) or base_health)
+    return math.max(1, math.floor(health * (multiplier or 1) + 0.5))
 end
 
 function SpaceShooter:spawnEnemy()
-    --Check if variant has enemy composition
-    if self:hasVariantEnemies() and math.random() < 0.5 then
-        -- 50% chance to spawn variant-specific enemy
-        return self:spawnVariantEnemy()
-    end
+    if self:hasVariantEnemies() and math.random() < 0.5 then return self:spawnVariantEnemy() end
 
-    --Formation-based spawning via EntityController.spawnLayout
-    local spawn_y_base = self.params.reverse_gravity and self.game_height or (self.params.enemy_start_y_offset or -30)
-    local adjusted_speed = self.enemy_speed * self.params.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
-    local base_shoot_rate = math.max(0.5, ((self.params.enemy_shoot_rate_max or 3.0) - self.difficulty_modifiers.complexity * (self.params.enemy_shoot_rate_complexity or 0.5))) / self.params.enemy_fire_rate
-    local enemy_extra = {
-        movement_pattern = 'straight',
-        speed_override = adjusted_speed,
-        shoot_rate = base_shoot_rate,
-        health = self.params.enemy_health
-    }
+    local p = self.params
+    local spawn_y = p.reverse_gravity and self.game_height or p.enemy_start_y_offset
+    local speed = self:getEnemySpeed() * p.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
+    local shoot_rate = math.max(0.5, (p.enemy_shoot_rate_max - self.difficulty_modifiers.complexity * p.enemy_shoot_rate_complexity)) / p.enemy_fire_rate
+    local extra = {movement_pattern = 'straight', speed_override = speed, shoot_rate = shoot_rate, health = p.enemy_health}
 
-    if self.params.enemy_formation == "v_formation" then
-        self.entity_controller:spawnLayout("enemy", "v_shape", {
-            count = 5, center_x = self.game_width / 2, y = spawn_y_base, spacing_x = 60, extra = enemy_extra
+    if p.enemy_formation == "v_formation" then
+        self.entity_controller:spawnLayout("enemy", "v_shape", {count = 5, center_x = self.game_width / 2, y = spawn_y, spacing_x = 60, extra = extra})
+    elseif p.enemy_formation == "wall" then
+        self.entity_controller:spawnLayout("enemy", "line", {count = 6, x = self.game_width / 7, y = spawn_y, spacing_x = self.game_width / 7, extra = extra})
+    elseif p.enemy_formation == "spiral" then
+        self.entity_controller:spawnLayout("enemy", "spiral", {count = 8, center_x = self.game_width / 2, center_y = spawn_y, radius = 100, extra = extra})
+    else
+        local movement = self.difficulty_modifiers.complexity >= 2 and (math.random() > 0.5 and 'zigzag' or 'straight') or 'straight'
+        self.entity_controller:spawn("enemy", math.random(0, self.game_width - p.enemy_width), spawn_y, {
+            width = p.enemy_width, height = p.enemy_height, movement_pattern = movement, speed_override = speed,
+            shoot_timer = math.random() * (p.enemy_shoot_rate_max - p.enemy_shoot_rate_min) + p.enemy_shoot_rate_min,
+            shoot_rate = shoot_rate, health = self:calculateEnemyHealth()
         })
-        return
-    elseif self.params.enemy_formation == "wall" then
-        local spacing = self.game_width / 7
-        self.entity_controller:spawnLayout("enemy", "line", {
-            count = 6, x = spacing, y = spawn_y_base, spacing_x = spacing, extra = enemy_extra
-        })
-        return
-    elseif self.params.enemy_formation == "spiral" then
-        self.entity_controller:spawnLayout("enemy", "spiral", {
-            count = 8, center_x = self.game_width / 2, center_y = spawn_y_base, radius = 100, extra = enemy_extra
-        })
-        return
     end
-
-    -- Default enemy spawning (scattered)
-    local movement = 'straight'
-    if self.difficulty_modifiers.complexity >= 2 then
-        movement = math.random() > 0.5 and 'zigzag' or 'straight'
-    end
-
-    --Apply speed multiplier and difficulty scaling
-    local adjusted_speed = self.enemy_speed * self.params.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
-
-    --Reverse gravity - spawn at bottom, move up (direction change in updateEnemies handles movement)
-    local spawn_y = self.params.reverse_gravity and self.game_height or (self.params.enemy_start_y_offset or -30)
-
-    --Spawn via EntityController
-    self.entity_controller:spawn("enemy",
-        math.random(0, self.game_width - (self.params.enemy_width or 30)),
-        spawn_y,
-        {
-            width = (self.params.enemy_width or 30),
-            height = (self.params.enemy_height or 30),
-            movement_pattern = movement,
-            speed_override = adjusted_speed,  -- Direction handled by enemy.direction in updateEnemies
-            shoot_timer = math.random() * ((self.params.enemy_shoot_rate_max or 3.0) - (self.params.enemy_shoot_rate_min or 1.0)) + (self.params.enemy_shoot_rate_min or 1.0),
-            shoot_rate = math.max(0.5, ((self.params.enemy_shoot_rate_max or 3.0) - self.difficulty_modifiers.complexity * (self.params.enemy_shoot_rate_complexity or 0.5))) / self.params.enemy_fire_rate,
-            health = self:calculateEnemyHealth()
-        }
-    )
 end
 
---Check if variant has enemies defined
 function SpaceShooter:hasVariantEnemies()
-    return self.enemy_composition and next(self.enemy_composition) ~= nil
+    return #self.enemy_weighted_configs > 0
 end
 
---Spawn an enemy from variant composition
 function SpaceShooter:spawnVariantEnemy()
     if #self.enemy_weighted_configs == 0 then return self:spawnEnemy() end
-
-    local spawn_y = self.params.reverse_gravity and self.game_height or (self.params.enemy_start_y_offset or -30)
-    local spawn_x = math.random(0, self.game_width - (self.params.enemy_width or 30))
-    local base_rate = math.random() * ((self.params.enemy_shoot_rate_max or 3.0) - (self.params.enemy_shoot_rate_min or 1.0)) + (self.params.enemy_shoot_rate_min or 1.0)
-    local base_shoot_rate = math.max(0.5, (self.params.enemy_shoot_rate_max or 3.0) - self.difficulty_modifiers.complexity * (self.params.enemy_shoot_rate_complexity or 0.5))
-
-    local enemy = self.entity_controller:spawnWeighted("enemy", self.enemy_weighted_configs, spawn_x, spawn_y, {
-        is_variant_enemy = true,
-        shoot_timer = base_rate
-    })
-
+    local p = self.params
+    local spawn_y = p.reverse_gravity and self.game_height or p.enemy_start_y_offset
+    local shoot_rate = math.max(0.5, p.enemy_shoot_rate_max - self.difficulty_modifiers.complexity * p.enemy_shoot_rate_complexity)
+    local enemy = self.entity_controller:spawnWeighted("enemy", self.enemy_weighted_configs,
+        math.random(0, self.game_width - p.enemy_width), spawn_y,
+        {is_variant_enemy = true, shoot_timer = math.random() * (p.enemy_shoot_rate_max - p.enemy_shoot_rate_min) + p.enemy_shoot_rate_min})
     if enemy then
-        enemy.shoot_rate = base_shoot_rate / (enemy.shoot_rate_multiplier or 1.0)
+        enemy.shoot_rate = shoot_rate / (enemy.shoot_rate_multiplier or 1.0)
         if enemy.movement_pattern == 'dive' then
-            enemy.target_x = self.player.x + self.player.width / 2
-            enemy.target_y = self.player.y + self.player.height / 2
+            enemy.target_x, enemy.target_y = self.player.x + self.player.width / 2, self.player.y + self.player.height / 2
         end
     end
 end
 
-function SpaceShooter:handlePlayerDamage()
-    -- Use health_system for shield absorption
+function SpaceShooter:takeDamage()
     local absorbed = self.health_system:takeDamage(1)
     self:playSound("hit", 1.0)
-
-    if absorbed then
-        return true  -- Shield absorbed damage
-    else
-        -- Shield was down or disabled, take real damage
-        self.deaths = self.deaths + 1
-        self.lives = self.lives - 1  -- Update for HUD display
-        self.combo = 0
-        return false
-    end
+    if not absorbed then self.deaths, self.lives, self.combo = self.deaths + 1, self.health_system.lives, 0 end
 end
 
 function SpaceShooter:onEnemyDestroyed(enemy)
@@ -735,7 +599,6 @@ end
 --Formation spawning
 -- Space Invaders: Initialize grid
 function SpaceShooter:initSpaceInvadersGrid()
-    self:getGridState()  -- Lazy init
     local wave_multiplier = 1.0 + (self.grid_state.wave_number * self.params.wave_difficulty_increase)
     local variance = self.params.wave_random_variance
     local random_factor = variance > 0 and (1.0 + ((math.random() - 0.5) * 2 * variance)) or 1.0
@@ -764,7 +627,6 @@ end
 
 -- Space Invaders: Update grid movement
 function SpaceShooter:updateSpaceInvadersGrid(dt)
-    self:getGridState()  -- Lazy init
     -- Wave system: Check if we need to start a new wave
     if self.params.waves_enabled then
         if self.grid_state.wave_active then
@@ -863,7 +725,6 @@ end
 
 -- Galaga: Initialize formation positions
 function SpaceShooter:initGalagaFormation()
-    self:getGalagaState()  -- Lazy init
     -- Create formation grid at top of screen with proper wrapping
     local base_spacing_x = 60  -- Base horizontal spacing between enemies
     local spacing_x = base_spacing_x * self.params.enemy_density
@@ -950,7 +811,6 @@ end
 
 -- Galaga: Update formation and dive mechanics
 function SpaceShooter:updateGalagaFormation(dt)
-    self:getGalagaState()  -- Lazy init
     local PatternMovement = self.di.components.PatternMovement
 
     -- Wave system: Check if we need to start a new wave
@@ -1083,31 +943,24 @@ function SpaceShooter:updateGalagaFormation(dt)
     end
 end
 
---Wave spawning logic
 function SpaceShooter:updateWaveSpawning(dt)
-    self:getWaveState()  -- Lazy init
     if self.wave_state.active then
-        -- Spawn enemies in current wave
         self.spawn_timer = self.spawn_timer - dt
         if self.spawn_timer <= 0 and self.wave_state.enemies_remaining > 0 then
             self:spawnEnemy()
             self.wave_state.enemies_remaining = self.wave_state.enemies_remaining - 1
-            self.spawn_timer = 0.3  -- Quick spawn within wave
-
+            self.spawn_timer = 0.3
             if self.wave_state.enemies_remaining <= 0 then
-                -- Wave complete, start pause
                 self.wave_state.active = false
-                self.wave_state.pause_timer = self.wave_state.pause_duration
+                self.wave_state.pause_timer = self.params.wave_pause_duration
             end
         end
     else
-        -- In pause between waves
         self.wave_state.pause_timer = self.wave_state.pause_timer - dt
         if self.wave_state.pause_timer <= 0 then
-            -- Start new wave
             self.wave_state.active = true
-            self.wave_state.enemies_remaining = math.floor(self.wave_state.enemies_per_wave * self.difficulty_scale)
-            self.spawn_timer = 0  -- Spawn immediately
+            self.wave_state.enemies_remaining = math.floor(self.params.wave_enemies_per_wave * self.difficulty_scale)
+            self.spawn_timer = 0
         end
     end
 end
@@ -1160,7 +1013,7 @@ function SpaceShooter:updateAsteroids(dt)
     -- Asteroid vs player collision
     self.entity_controller:checkCollision(self.player, function(entity)
         if entity.type_name == "asteroid" then
-            game:handlePlayerDamage()
+            game:takeDamage()
             game.entity_controller:removeEntity(entity)
         end
     end)
@@ -1237,7 +1090,7 @@ function SpaceShooter:updateMeteors(dt)
     -- Meteor vs player collision
     self.entity_controller:checkCollision(self.player, function(entity)
         if entity.type_name == "meteor" then
-            game:handlePlayerDamage()
+            game:takeDamage()
             game.entity_controller:removeEntity(entity)
         end
     end)

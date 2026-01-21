@@ -253,7 +253,7 @@ function SpaceShooterView:draw()
         g.setColor(1, 1, 1)
 
         -- Kills progress
-        g.print("Kills: " .. (game.kills or 0) .. "/" .. game.target_kills, lx, hud_y, 0, s, s)
+        g.print("Kills: " .. (game.kills or 0) .. "/" .. game.params.victory_limit, lx, hud_y, 0, s, s)
         hud_y = hud_y + 18
 
         -- Shield (if enabled)

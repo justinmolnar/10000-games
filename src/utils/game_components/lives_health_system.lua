@@ -131,7 +131,7 @@ function LivesHealthSystem:takeDamage(amount, source)
         return false
     end
 
-    -- Shield mode: absorb damage with shield
+    -- Shield mode: absorb damage with shield if active
     if self.mode == LivesHealthSystem.MODES.SHIELD and self.shield_enabled and self.shield_active then
         self.shield_hits_remaining = self.shield_hits_remaining - amount
         self.shield_damage_timer = 0  -- Reset regen delay
@@ -145,16 +145,15 @@ function LivesHealthSystem:takeDamage(amount, source)
             end
         end
 
-        -- Trigger damage callback
         if self.on_damage then
             self.on_damage(amount, source)
         end
 
-        return true
+        return true  -- Shield absorbed
     end
 
-    -- Lives mode: lose lives
-    if self.mode == LivesHealthSystem.MODES.LIVES then
+    -- Lives mode OR shield mode with shield down: lose lives
+    if self.mode == LivesHealthSystem.MODES.LIVES or self.mode == LivesHealthSystem.MODES.SHIELD then
         self.lives = self.lives - amount
 
         -- Trigger damage callback
