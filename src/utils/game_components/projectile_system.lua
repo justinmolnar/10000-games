@@ -68,7 +68,78 @@ function ProjectileSystem:new(config)
     -- Object pool
     instance.projectile_pool = {}
 
+    -- Ammo system: {enabled, capacity, reload_time}
+    instance.ammo = config.ammo
+    instance.ammo_current = instance.ammo and instance.ammo.capacity or 0
+    instance.reload_timer = 0
+    instance.is_reloading = false
+
+    -- Heat system: {enabled, max, cooldown, dissipation}
+    instance.heat = config.heat
+    instance.heat_current = 0
+    instance.overheat_timer = 0
+    instance.is_overheated = false
+
     return instance
+end
+
+function ProjectileSystem:canShoot()
+    if self.ammo and self.ammo.enabled then
+        if self.is_reloading then return false end
+        if self.ammo_current <= 0 then
+            self.is_reloading = true
+            self.reload_timer = self.ammo.reload_time
+            return false
+        end
+    end
+    if self.heat and self.heat.enabled and self.is_overheated then
+        return false
+    end
+    return true
+end
+
+function ProjectileSystem:onShoot()
+    if self.ammo and self.ammo.enabled then
+        self.ammo_current = self.ammo_current - 1
+    end
+    if self.heat and self.heat.enabled then
+        self.heat_current = self.heat_current + 1
+        if self.heat_current >= self.heat.max then
+            self.is_overheated = true
+            self.overheat_timer = self.heat.cooldown
+            self.heat_current = self.heat.max
+        end
+    end
+end
+
+function ProjectileSystem:updateResources(dt)
+    if self.ammo and self.ammo.enabled then
+        if self.is_reloading then
+            self.reload_timer = self.reload_timer - dt
+            if self.reload_timer <= 0 then
+                self.is_reloading = false
+                self.ammo_current = self.ammo.capacity
+            end
+        end
+    end
+    if self.heat and self.heat.enabled then
+        if self.is_overheated then
+            self.overheat_timer = self.overheat_timer - dt
+            if self.overheat_timer <= 0 then
+                self.is_overheated = false
+                self.heat_current = 0
+            end
+        elseif self.heat_current > 0 then
+            self.heat_current = math.max(0, self.heat_current - dt * (self.heat.dissipation or 1))
+        end
+    end
+end
+
+function ProjectileSystem:reload()
+    if self.ammo and self.ammo.enabled and not self.is_reloading and self.ammo_current < self.ammo.capacity then
+        self.is_reloading = true
+        self.reload_timer = self.ammo.reload_time
+    end
 end
 
 --[[

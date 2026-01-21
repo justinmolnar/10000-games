@@ -84,7 +84,20 @@ function SpaceShooter:setupComponents()
     end
 
     -- Projectile system from schema
-    self:createProjectileSystemFromSchema({pooling = true, max_projectiles = 500})
+    self:createProjectileSystemFromSchema({
+        pooling = true, max_projectiles = 500,
+        ammo = self.params.ammo_enabled and {
+            enabled = true,
+            capacity = self.params.ammo_capacity,
+            reload_time = self.params.ammo_reload_time
+        } or nil,
+        heat = self.params.overheat_enabled and {
+            enabled = true,
+            max = self.params.overheat_threshold,
+            cooldown = self.params.overheat_cooldown,
+            dissipation = self.params.overheat_heat_dissipation
+        } or nil
+    })
 
     -- Entity controller from schema with callbacks
     self:createEntityControllerFromSchema({
@@ -354,27 +367,17 @@ function SpaceShooter:updatePlayer(dt)
         self:playerShoot(charge_mult)
     end)
 
-    -- Ammo reload system
-    if self.params.ammo_enabled then
-        if self.player.is_reloading and (self.player.reload_timer - dt) <= 0 then
-            self.player.is_reloading, self.player.ammo = false, self.params.ammo_capacity
-        elseif self.player.is_reloading then
-            self.player.reload_timer = self.player.reload_timer - dt
-        elseif self:isKeyDown('r') and self.player.ammo < self.params.ammo_capacity then
-            self.player.is_reloading, self.player.reload_timer = true, self.params.ammo_reload_time
-        end
-    end
+    -- Ammo/heat via ProjectileSystem
+    self.projectile_system:updateResources(dt)
+    if self:isKeyDown('r') then self.projectile_system:reload() end
 
-    -- Overheat cooldown system
-    if self.params.overheat_enabled then
-        if self.player.is_overheated and (self.player.overheat_timer - dt) <= 0 then
-            self.player.is_overheated, self.player.heat = false, 0
-        elseif self.player.is_overheated then
-            self.player.overheat_timer = self.player.overheat_timer - dt
-        elseif self.player.heat > 0 then
-            self.player.heat = math.max(0, self.player.heat - dt * self.params.overheat_heat_dissipation)
-        end
-    end
+    -- Sync state to player for HUD
+    self.player.ammo = self.projectile_system.ammo_current
+    self.player.is_reloading = self.projectile_system.is_reloading
+    self.player.reload_timer = self.projectile_system.reload_timer
+    self.player.heat = self.projectile_system.heat_current
+    self.player.is_overheated = self.projectile_system.is_overheated
+    self.player.overheat_timer = self.projectile_system.overheat_timer
 end
 
 
@@ -456,39 +459,7 @@ end
 function SpaceShooter:playerShoot(charge_multiplier)
     charge_multiplier = charge_multiplier or 1.0
 
-    --Ammo system check
-    if self.params.ammo_enabled then
-        if self.player.is_reloading then
-            return -- Can't shoot while reloading
-        end
-
-        if self.player.ammo <= 0 then
-            -- Auto-reload when empty
-            self.player.is_reloading = true
-            self.player.reload_timer = self.params.ammo_reload_time
-            return
-        end
-
-        -- Consume ammo
-        self.player.ammo = self.player.ammo - 1
-    end
-
-    --Overheat system check
-    if self.params.overheat_enabled then
-        if self.player.is_overheated then
-            return -- Can't shoot while overheated
-        end
-
-        -- Increase heat
-        self.player.heat = self.player.heat + 1
-
-        -- Check for overheat
-        if self.player.heat >= self.params.overheat_threshold then
-            self.player.is_overheated = true
-            self.player.overheat_timer = self.params.overheat_cooldown
-            self.player.heat = self.params.overheat_threshold
-        end
-    end
+    if not self.projectile_system:canShoot() then return end
 
     --Bullet pattern - calculate base angle and spawn position, then use shootPattern
     local base_angle = self.params.movement_type == "asteroids" and self.player.angle or 0
@@ -513,6 +484,7 @@ function SpaceShooter:playerShoot(charge_multiplier)
     }
 
     self.projectile_system:shootPattern("player_bullet", spawn_x, spawn_y, standard_angle, pattern, config)
+    self.projectile_system:onShoot()
 
     --Play shoot sound
     self:playSound("shoot", 0.6)

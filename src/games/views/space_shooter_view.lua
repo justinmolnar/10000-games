@@ -291,7 +291,7 @@ function SpaceShooterView:draw()
 
             if game.player.is_overheated then
                 g.setColor(1, 0, 0)  -- Red when overheated
-                local cooldown_progress = 1 - (game.player.overheat_timer / game.params.overheat_cooldown)
+                local cooldown_progress = game.player.overheat_timer / game.params.overheat_cooldown
                 g.print("OVERHEAT!", lx, hud_y, 0, s, s)
                 -- Draw cooldown bar
                 local bar_width = 60
