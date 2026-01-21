@@ -807,7 +807,9 @@ function BaseGame:playerShoot(charge_multiplier)
             height = p.bullet_height,
             piercing = p.bullet_piercing,
             movement_type = (p.bullet_homing and p.homing_strength and p.homing_strength > 0) and "homing_nearest" or nil,
-            homing_turn_rate = p.homing_strength
+            homing_turn_rate = p.homing_strength,
+            wrap_enabled = p.screen_wrap_bullets,
+            max_wraps = p.bullet_max_wraps
         }
     }
 

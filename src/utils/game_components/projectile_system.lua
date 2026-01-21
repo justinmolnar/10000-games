@@ -428,10 +428,35 @@ function ProjectileSystem:update(dt, game_bounds)
                 proj.y = proj.y + proj.vy * dt
             end
 
-            -- Out of bounds check
+            -- Out of bounds check (with optional wrap support)
             if game_bounds then
-                if proj.x < b_x_min - 100 or proj.x > b_x_max + 100 or
-                   proj.y < b_y_min - 100 or proj.y > b_y_max + 100 then
+                if proj.wrap_enabled then
+                    -- Screen wrap instead of removal
+                    local wrapped = false
+                    local width = proj.width or (proj.radius and proj.radius * 2) or 10
+                    local height = proj.height or (proj.radius and proj.radius * 2) or 10
+                    if proj.x < b_x_min - width then
+                        proj.x = b_x_max
+                        wrapped = true
+                    elseif proj.x > b_x_max then
+                        proj.x = b_x_min - width
+                        wrapped = true
+                    end
+                    if proj.y < b_y_min - height then
+                        proj.y = b_y_max
+                        wrapped = true
+                    elseif proj.y > b_y_max then
+                        proj.y = b_y_min - height
+                        wrapped = true
+                    end
+                    if wrapped then
+                        proj.wrap_count = (proj.wrap_count or 0) + 1
+                        if proj.max_wraps and proj.wrap_count > proj.max_wraps then
+                            self:removeProjectile(proj)
+                        end
+                    end
+                elseif proj.x < b_x_min - 100 or proj.x > b_x_max + 100 or
+                       proj.y < b_y_min - 100 or proj.y > b_y_max + 100 then
                     self:removeProjectile(proj)
                 end
             end

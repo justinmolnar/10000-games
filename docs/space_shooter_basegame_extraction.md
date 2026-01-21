@@ -309,20 +309,37 @@ Add missing features to components, delete workarounds.
      - Remove manual wrap loop in updateBullets() (7 lines)
 
 ### Lines Changed
-- physics_utils.lua: +12 lines
-- projectile_system.lua: +18 lines
-- entity_controller.lua: +15 lines
-- space_shooter.lua: -62 lines
+- physics_utils.lua: +7 lines (actual)
+- projectile_system.lua: +25 lines (actual)
+- base_game.lua: +2 lines (actual)
+- space_shooter.lua: -33 lines (actual: 939 → 906)
 
 ### Testing (User)
 - [ ] Gravity wells affect player and bullets
 - [ ] Bullets wrap correctly
 - [ ] Bullets removed after max wraps
-- [ ] Meteor warnings become meteors
 - [ ] Blackout zones bounce
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Component enhancements:
+- `PhysicsUtils.applyForces()` - added gravity_wells config support with optional strength multiplier
+- `ProjectileSystem.update()` - added wrap_enabled/max_wraps support for screen wrapping bullets
+
+BaseGame changes:
+- `playerShoot()` - passes wrap_enabled/max_wraps from params to bullet config
+
+Functions deleted from space_shooter:
+- `applyScreenWrap()` (24 lines) - ProjectileSystem now handles wrapping
+- Manual wrap loop in updateBullets (7 lines) - no longer needed
+
+Functions simplified in space_shooter:
+- `applyGravityWells()` - now uses PhysicsUtils.applyForces with gravity_wells config
+
+Kept as-is (game-specific):
+- `updateBlackoutZones()` - simple bounce logic, not worth extracting
+- Meteor warning system - works fine, delayed_spawn would over-engineer it
 
 ---
 

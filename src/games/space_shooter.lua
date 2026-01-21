@@ -378,15 +378,7 @@ function SpaceShooter:updateBullets(dt)
     self.projectile_system:checkCollisions({self.player}, function(bullet, player)
         game:takeDamage()
     end, "enemy")
-
-    -- Screen wrap for player bullets if enabled
-    if self.params.screen_wrap_bullets then
-        for _, bullet in ipairs(self.player_bullets) do
-            if self:applyScreenWrap(bullet, self.params.bullet_max_wraps) then
-                self.projectile_system:removeProjectile(bullet)
-            end
-        end
-    end
+    -- Note: Screen wrap for player bullets is now handled by ProjectileSystem via wrap_enabled/max_wraps
 end
 
 function SpaceShooter:draw()
@@ -878,45 +870,20 @@ end
 --Gravity well system
 function SpaceShooter:applyGravityWells(dt)
     local PhysicsUtils = self.di.components.PhysicsUtils
+    local wells_config = {gravity_wells = self.gravity_wells}
 
-    for _, well in ipairs(self.gravity_wells) do
-        -- Apply to player
-        PhysicsUtils.applyGravityWell(self.player, well, dt)
+    -- Apply to player (full strength)
+    PhysicsUtils.applyForces(self.player, wells_config, dt)
 
-        -- Apply to player bullets (weaker effect)
-        for _, bullet in ipairs(self.player_bullets) do
-            PhysicsUtils.applyGravityWell(bullet, well, dt, 0.7)
-        end
+    -- Apply to player bullets (weaker effect)
+    wells_config.gravity_well_strength_multiplier = 0.7
+    for _, bullet in ipairs(self.player_bullets) do
+        PhysicsUtils.applyForces(bullet, wells_config, dt)
     end
 
     -- Keep player in bounds
     self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
     self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
-end
-
---Screen wrap helper
--- Returns true if object should be destroyed (exceeded max wraps)
-function SpaceShooter:applyScreenWrap(obj, max_wraps)
-    local PhysicsUtils = self.di.components.PhysicsUtils
-    max_wraps = max_wraps or 999  -- Default to effectively unlimited
-
-    local old_x, old_y = obj.x, obj.y
-    obj.x, obj.y = PhysicsUtils.wrapPosition(
-        obj.x, obj.y, obj.width, obj.height,
-        self.game_width, self.game_height
-    )
-
-    local wrapped = (obj.x ~= old_x or obj.y ~= old_y)
-
-    -- Increment wrap count if object wrapped
-    if wrapped and obj.wrap_count ~= nil then
-        obj.wrap_count = obj.wrap_count + 1
-        if obj.wrap_count > max_wraps then
-            return true  -- Should be destroyed
-        end
-    end
-
-    return false  -- Keep alive
 end
 
 --Blackout zones movement

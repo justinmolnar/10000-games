@@ -66,7 +66,7 @@ function PhysicsUtils.applyGravityWell(entity, well, dt, strength_multiplier)
 end
 
 -- Apply multiple forces from params config
--- params: {gravity, gravity_direction, homing_strength, magnet_range}
+-- params: {gravity, gravity_direction, homing_strength, magnet_range, gravity_wells}
 -- findTarget: optional function() returning {x, y} or nil for homing
 -- magnetTarget: optional {x, y} for magnet force
 function PhysicsUtils.applyForces(entity, params, dt, findTarget, magnetTarget)
@@ -87,6 +87,13 @@ function PhysicsUtils.applyForces(entity, params, dt, findTarget, magnetTarget)
     if params.magnet_range and params.magnet_range > 0 and not magnet_immune and magnetTarget then
         if not entity.stuck and entity.vy > 0 then
             PhysicsUtils.applyMagnetForce(entity, magnetTarget.x, magnetTarget.y, params.magnet_range, 800, dt)
+        end
+    end
+    -- Gravity wells: array of {x, y, radius, strength}
+    if params.gravity_wells then
+        local strength_mult = params.gravity_well_strength_multiplier or 1.0
+        for _, well in ipairs(params.gravity_wells) do
+            PhysicsUtils.applyGravityWell(entity, well, dt, strength_mult)
         end
     end
 end
