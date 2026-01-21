@@ -145,6 +145,25 @@ function SpaceShooter:setupGameState()
             self.enemy_composition[ed.type] = ed.multiplier
         end
     end
+
+    -- Build weighted configs for variant enemy spawning
+    self.enemy_weighted_configs = {}
+    for enemy_type, multiplier in pairs(self.enemy_composition) do
+        local enemy_def = self.params.enemy_types[enemy_type]
+        if enemy_def then
+            local health = self:calculateEnemyHealth(nil, enemy_def.health or 1)
+            table.insert(self.enemy_weighted_configs, {
+                weight = multiplier,
+                movement_pattern = enemy_def.movement_pattern,
+                enemy_type = enemy_def.name,
+                type = enemy_type,
+                health = health,
+                max_health = health,
+                speed_multiplier = enemy_def.speed_multiplier or 1.0,
+                shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0
+            })
+        end
+    end
 end
 
 -- Lazy initialization for mode-specific state
@@ -631,64 +650,25 @@ end
 
 --Spawn an enemy from variant composition
 function SpaceShooter:spawnVariantEnemy()
-    if not self:hasVariantEnemies() then
-        return self:spawnEnemy()
-    end
-
-    -- Pick a random enemy type from composition
-    local enemy_types = {}
-    local total_weight = 0
-    for enemy_type, multiplier in pairs(self.enemy_composition) do
-        table.insert(enemy_types, {type = enemy_type, weight = multiplier})
-        total_weight = total_weight + multiplier
-    end
-
-    local r = math.random() * total_weight
-    local chosen_type = enemy_types[1].type -- fallback
-    for _, entry in ipairs(enemy_types) do
-        r = r - entry.weight
-        if r <= 0 then
-            chosen_type = entry.type
-            break
-        end
-    end
-
-    local enemy_def = self.params.enemy_types[chosen_type]
-    if not enemy_def then
-        return self:spawnEnemy()
-    end
+    if #self.enemy_weighted_configs == 0 then return self:spawnEnemy() end
 
     local spawn_y = self.params.reverse_gravity and self.game_height or (self.params.enemy_start_y_offset or -30)
-    local enemy_type_multiplier = enemy_def.health or 1
-    local final_health = self:calculateEnemyHealth(nil, enemy_type_multiplier)
-
+    local spawn_x = math.random(0, self.game_width - (self.params.enemy_width or 30))
     local base_rate = math.random() * ((self.params.enemy_shoot_rate_max or 3.0) - (self.params.enemy_shoot_rate_min or 1.0)) + (self.params.enemy_shoot_rate_min or 1.0)
-    local shoot_rate = (math.max(0.5, ((self.params.enemy_shoot_rate_max or 3.0) - self.difficulty_modifiers.complexity * (self.params.enemy_shoot_rate_complexity or 0.5)))) / (enemy_def.shoot_rate_multiplier or 1.0)
+    local base_shoot_rate = math.max(0.5, (self.params.enemy_shoot_rate_max or 3.0) - self.difficulty_modifiers.complexity * (self.params.enemy_shoot_rate_complexity or 0.5))
 
-    local extra = {
-        movement_pattern = enemy_def.movement_pattern,
-        enemy_type = enemy_def.name,
-        type = chosen_type,
+    local enemy = self.entity_controller:spawnWeighted("enemy", self.enemy_weighted_configs, spawn_x, spawn_y, {
         is_variant_enemy = true,
-        health = final_health,
-        max_health = final_health,
-        speed_multiplier = enemy_def.speed_multiplier or 1.0,  -- Direction handled by enemy.direction
-        shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0,
-        shoot_timer = base_rate,
-        shoot_rate = shoot_rate
-    }
+        shoot_timer = base_rate
+    })
 
-    -- Special initialization for dive pattern (kamikaze)
-    if enemy_def.movement_pattern == 'dive' then
-        extra.target_x = self.player.x + self.player.width / 2
-        extra.target_y = self.player.y + self.player.height / 2
+    if enemy then
+        enemy.shoot_rate = base_shoot_rate / (enemy.shoot_rate_multiplier or 1.0)
+        if enemy.movement_pattern == 'dive' then
+            enemy.target_x = self.player.x + self.player.width / 2
+            enemy.target_y = self.player.y + self.player.height / 2
+        end
     end
-
-    self.entity_controller:spawn("enemy",
-        math.random(0, self.game_width - (self.params.enemy_width or 30)),
-        spawn_y,
-        extra
-    )
 end
 
 function SpaceShooter:handlePlayerDamage()

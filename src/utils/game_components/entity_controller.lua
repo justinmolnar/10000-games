@@ -431,6 +431,33 @@ function EntityController:spawnLayout(type_name, layout, config)
 end
 
 --[[
+    Spawn entity using weighted random selection from configs
+
+    @param type_name string - Entity type to spawn
+    @param weighted_configs table - Array of {weight, ...properties}
+    @param x number - Spawn X position
+    @param y number - Spawn Y position
+    @param base_extra table - Base properties merged into chosen config
+]]
+function EntityController:spawnWeighted(type_name, weighted_configs, x, y, base_extra)
+    local total = 0
+    for _, cfg in ipairs(weighted_configs) do total = total + (cfg.weight or 1) end
+
+    local r = math.random() * total
+    local chosen = weighted_configs[1]
+    for _, cfg in ipairs(weighted_configs) do
+        r = r - (cfg.weight or 1)
+        if r <= 0 then chosen = cfg; break end
+    end
+
+    local extra = {}
+    for k, v in pairs(base_extra or {}) do extra[k] = v end
+    for k, v in pairs(chosen) do if k ~= "weight" then extra[k] = v end end
+
+    return self:spawn(type_name, x, y, extra)
+end
+
+--[[
     Update all entities (movement, timers, spawning logic)
 ]]
 function EntityController:update(dt, game_state)
