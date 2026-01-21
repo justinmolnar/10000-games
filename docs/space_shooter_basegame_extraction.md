@@ -599,6 +599,57 @@ Final line count: 890 → 932 (+42 lines for organization)
 
 ---
 
+## Phase 9: Hazard Extraction (Post-Audit)
+
+After audit revealed generic patterns incorrectly labeled as "game-specific".
+
+### Steps
+
+9.1. **Add EntityController behaviors:**
+     - `bounce_movement` - entities with movement_pattern='bounce' bounce off bounds
+     - `delayed_spawn` - entities convert after timer (warning → meteor)
+     - `timer_spawn` - spawn entities on timers (asteroids)
+
+9.2. **Move hazards to EntityController:**
+     - gravity_well and blackout_zone as entity types
+     - Spawn via entity_controller:spawn instead of manual arrays
+     - Sync to self.gravity_wells/blackout_zones for view compatibility
+
+9.3. **Delete wrapper functions:**
+     - applyGravityWells() - call PhysicsUtils.applyForces directly
+     - updateBlackoutZones() - use bounce_movement behavior
+
+9.4. **Simplify updateHazards:**
+     - Use timer_spawn for asteroids
+     - Use delayed_spawn for meteor warning → meteor
+
+9.5. **Move enemy speed calculation to spawn time:**
+     - Set speed, direction, zigzag_frequency, zigzag_amplitude at spawn
+     - Remove per-frame recalculation from updateEnemies
+
+### Lines Changed
+- entity_controller.lua: +45 lines (new behaviors)
+- space_shooter.lua: -33 lines (932 → 899)
+
+### AI Notes
+**Completed.**
+
+New EntityController behaviors:
+- `bounce_movement` - bounces entities with movement_pattern='bounce' off {width, height} bounds
+- `delayed_spawn` - converts entities after timer, calls on_spawn(entity, config)
+- `timer_spawn` - spawns entities on interval: {type_name = {interval, on_spawn}}
+
+Deleted from space_shooter:
+- `applyGravityWells()` (17 lines) - inlined as 6 lines in updateGameLogic
+- `updateBlackoutZones()` (17 lines) - uses bounce_movement behavior
+
+Simplified:
+- `setupEntities()` - uses entity_controller:spawn for gravity_well/blackout_zone
+- `updateHazards()` - uses timer_spawn and delayed_spawn behaviors
+- `updateEnemies()` - removed per-frame speed calculation (10 lines)
+
+---
+
 ## Verification
 
 After ALL phases complete:

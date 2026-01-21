@@ -920,6 +920,35 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             entity.rotation = (entity.rotation or 0) + entity.rotation_speed * dt
         end
 
+        -- Bounce movement (uses PatternMovement-compatible fields: vx, vy, radius)
+        if config.bounce_movement and entity.movement_pattern == 'bounce' then
+            local bm = config.bounce_movement
+            entity.x = entity.x + (entity.vx or 0) * dt
+            entity.y = entity.y + (entity.vy or 0) * dt
+            local r = entity.radius or 0
+            if entity.x < r or entity.x > (bm.width or 800) - r then
+                entity.vx = -(entity.vx or 0)
+                entity.x = math.max(r, math.min((bm.width or 800) - r, entity.x))
+            end
+            if entity.y < r or entity.y > (bm.height or 600) - r then
+                entity.vy = -(entity.vy or 0)
+                entity.y = math.max(r, math.min((bm.height or 600) - r, entity.y))
+            end
+        end
+
+        -- Delayed spawn behavior (e.g., meteor warning → meteor)
+        if config.delayed_spawn and entity.delayed_spawn then
+            entity.delayed_spawn.timer = (entity.delayed_spawn.timer or 0) - dt
+            if entity.delayed_spawn.timer <= 0 and not entity.delayed_spawn.spawned then
+                local ds = entity.delayed_spawn
+                if ds.spawn_type and config.delayed_spawn.on_spawn then
+                    config.delayed_spawn.on_spawn(entity, ds)
+                end
+                entity.delayed_spawn.spawned = true
+                self:removeEntity(entity)
+            end
+        end
+
         -- Off-screen removal behavior
         if config.remove_offscreen and not entity.skip_offscreen_removal then
             local bounds = config.remove_offscreen
@@ -934,6 +963,39 @@ function EntityController:updateBehaviors(dt, config, collision_check)
         end
 
         ::continue::
+    end
+
+    -- Timer-based spawning (for hazards like asteroids)
+    if config.timer_spawn then
+        local ts = config.timer_spawn
+        self.spawn_timers = self.spawn_timers or {}
+        for type_name, spawn_cfg in pairs(ts) do
+            self.spawn_timers[type_name] = (self.spawn_timers[type_name] or 0) - dt
+            if self.spawn_timers[type_name] <= 0 then
+                if spawn_cfg.on_spawn then
+                    spawn_cfg.on_spawn(self, type_name)
+                end
+                self.spawn_timers[type_name] = spawn_cfg.interval or 1.0
+            end
+        end
+    end
+
+    -- Gradual spawn to slots (for formations)
+    if config.gradual_spawn then
+        local gs = config.gradual_spawn
+        gs.timer = (gs.timer or 0) - dt
+        if gs.timer <= 0 and gs.slots and gs.on_spawn then
+            local unoccupied = {}
+            for _, slot in ipairs(gs.slots) do
+                if not slot.occupied then table.insert(unoccupied, slot) end
+            end
+            if #unoccupied > 0 and (not gs.max_count or gs.spawned_count < gs.max_count) then
+                local slot = unoccupied[math.random(#unoccupied)]
+                gs.on_spawn(slot)
+                gs.spawned_count = (gs.spawned_count or 0) + 1
+                gs.timer = gs.interval or 0.5
+            end
+        end
     end
 
     -- Grid unit movement (all entities move as one unit, Space Invaders style)

@@ -331,6 +331,10 @@ Generic enemy/obstacle spawning and management with pooling.
 - `move_enabled` - Entities move horizontally, bounce off walls
 - `regen_enabled` - Dead entities regenerate after regen_time
 - `shooting_enabled` - Entities fire at shoot_rate, calls on_shoot
+- `rotation` - Entities rotate based on rotation_speed
+- `bounce_movement` - Entities with movement_pattern='bounce' bounce off {width, height} bounds
+- `delayed_spawn` - Entities with delayed_spawn={timer, spawn_type} convert after timer expires, calls on_spawn(entity, config)
+- `timer_spawn` - Spawn entities on timers: {type_name = {interval, on_spawn(ec, type_name)}}
 - `remove_offscreen` - Remove entities outside bounds {top, bottom, left, right}
 - `grid_unit_movement` - Space Invaders style: all grid entities move as unit, speed up as count drops
 

@@ -266,37 +266,33 @@ function SpaceShooterView:draw()
             g.setColor(1, 1, 1)
         end
 
-        -- Ammo display
-        if game.params.ammo_enabled then
-            if game.player.is_reloading then
-                local reload_progress = 1 - (game.player.reload_timer / game.params.ammo_reload_time)
-                g.setColor(1, 1, 0)  -- Yellow during reload
+        -- Ammo display (read from projectile_system directly)
+        local ps = game.projectile_system
+        if game.params.ammo_enabled and ps then
+            if ps.is_reloading then
+                local reload_progress = 1 - (ps.reload_timer / game.params.ammo_reload_time)
+                g.setColor(1, 1, 0)
                 g.print("Reloading...", lx, hud_y, 0, s, s)
-                -- Draw reload progress bar
-                local bar_width = 60
-                local bar_x = lx + 80
+                local bar_width, bar_x = 60, lx + 80
                 g.rectangle("line", bar_x, hud_y + 2, bar_width, 10)
                 g.rectangle("fill", bar_x, hud_y + 2, bar_width * reload_progress, 10)
             else
-                local ammo_color = game.player.ammo < game.params.ammo_capacity * 0.25 and {1, 0.5, 0} or {1, 1, 1}
+                local ammo_color = ps.ammo_current < game.params.ammo_capacity * 0.25 and {1, 0.5, 0} or {1, 1, 1}
                 g.setColor(ammo_color)
-                g.print("Ammo: " .. game.player.ammo .. "/" .. game.params.ammo_capacity, lx, hud_y, 0, s, s)
+                g.print("Ammo: " .. ps.ammo_current .. "/" .. game.params.ammo_capacity, lx, hud_y, 0, s, s)
             end
             hud_y = hud_y + 18
             g.setColor(1, 1, 1)
         end
 
-        -- Overheat display
-        if game.params.overheat_enabled then
-            local heat_percent = game.player.heat / game.params.overheat_threshold
-
-            if game.player.is_overheated then
-                g.setColor(1, 0, 0)  -- Red when overheated
-                local cooldown_progress = game.player.overheat_timer / game.params.overheat_cooldown
+        -- Overheat display (read from projectile_system directly)
+        if game.params.overheat_enabled and ps then
+            local heat_percent = ps.heat_current / game.params.overheat_threshold
+            if ps.is_overheated then
+                g.setColor(1, 0, 0)
+                local cooldown_progress = ps.overheat_timer / game.params.overheat_cooldown
                 g.print("OVERHEAT!", lx, hud_y, 0, s, s)
-                -- Draw cooldown bar
-                local bar_width = 60
-                local bar_x = lx + 80
+                local bar_width, bar_x = 60, lx + 80
                 g.rectangle("line", bar_x, hud_y + 2, bar_width, 10)
                 g.rectangle("fill", bar_x, hud_y + 2, bar_width * cooldown_progress, 10)
             else

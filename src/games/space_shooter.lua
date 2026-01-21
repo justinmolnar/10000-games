@@ -83,7 +83,9 @@ function SpaceShooter:setupComponents()
                 game:onEnemyDestroyed(enemy)
             end
         },
-        asteroid = {}
+        asteroid = {},
+        gravity_well = {radius = p.gravity_well_radius, strength = p.gravity_well_strength},
+        blackout_zone = {radius = p.blackout_zone_radius, movement_pattern = 'bounce'}
     }, {spawning = {mode = "manual"}, pooling = true, max_entities = 1000})
 
     -- Victory condition from schema (loss target uses params.lives_count which includes cheat modifier)
@@ -122,21 +124,19 @@ function SpaceShooter:setupEntities()
     self.kills, self.deaths = 0, 0
     self.enemies, self.asteroids, self.meteors, self.meteor_warnings = {}, {}, {}, {}
 
-    -- Environmental hazards
-    self.gravity_wells, self.blackout_zones = {}, {}
+    -- Spawn environmental hazards via EntityController
     for i = 1, p.gravity_wells_count do
-        table.insert(self.gravity_wells, {
-            x = math.random(50, self.game_width - 50), y = math.random(50, self.game_height - 50),
-            radius = p.gravity_well_radius, strength = p.gravity_well_strength
-        })
+        self.entity_controller:spawn("gravity_well",
+            math.random(50, self.game_width - 50),
+            math.random(50, self.game_height - 50))
     end
     for i = 1, p.blackout_zones_count do
-        table.insert(self.blackout_zones, {
-            x = math.random(p.blackout_zone_radius, self.game_width - p.blackout_zone_radius),
-            y = math.random(p.blackout_zone_radius, self.game_height - p.blackout_zone_radius),
-            radius = p.blackout_zone_radius,
-            vx = p.blackout_zones_move and (math.random() - 0.5) * 50 or 0,
-            vy = p.blackout_zones_move and (math.random() - 0.5) * 50 or 0
+        local r = p.blackout_zone_radius
+        self.entity_controller:spawn("blackout_zone",
+            math.random(r, self.game_width - r),
+            math.random(r, self.game_height - r), {
+            vx = p.blackout_zones_move and (math.random() - 0.5) * 100 or 0,
+            vy = p.blackout_zones_move and (math.random() - 0.5) * 100 or 0
         })
     end
 
@@ -242,7 +242,14 @@ function SpaceShooter:updateGameLogic(dt)
     else
         -- Default enemy spawning based on pattern
         if self.params.enemy_spawn_pattern == "waves" then
-            self:updateWaveSpawning(dt)
+            local result = self:updateWaveState(self.wave_state, {
+                count_func = function() return self.wave_state.enemies_remaining end,
+                on_start = function() self.wave_state.enemies_remaining = math.floor(self.params.wave_enemies_per_wave * self.difficulty_scale); self.spawn_timer = 0 end
+            }, dt)
+            if result == "active" and self.wave_state.enemies_remaining > 0 then
+                self.spawn_timer = self.spawn_timer - dt
+                if self.spawn_timer <= 0 then self:spawnEnemy(); self.wave_state.enemies_remaining = self.wave_state.enemies_remaining - 1; self.spawn_timer = 0.3 end
+            end
         elseif self.params.enemy_spawn_pattern == "continuous" then
             self.spawn_timer = self.spawn_timer - dt
             if self.spawn_timer <= 0 then
@@ -275,16 +282,29 @@ function SpaceShooter:updateGameLogic(dt)
     if self.params.asteroid_density > 0 or self.params.meteor_frequency > 0 then
         self:updateHazards(dt)
     end
+
+    -- Gravity wells affect player and bullets (sync for view)
+    self.gravity_wells = self.entity_controller:getEntitiesByType("gravity_well")
+    self.blackout_zones = self.entity_controller:getEntitiesByType("blackout_zone")
     if #self.gravity_wells > 0 then
-        self:applyGravityWells(dt)
-    end
-    if self.params.scroll_speed > 0 then
-        self:updateScrolling(dt)
+        local PhysicsUtils = self.di.components.PhysicsUtils
+        PhysicsUtils.applyForces(self.player, {gravity_wells = self.gravity_wells}, dt)
+        for _, bullet in ipairs(self.player_bullets) do
+            PhysicsUtils.applyForces(bullet, {gravity_wells = self.gravity_wells, gravity_well_strength_multiplier = 0.7}, dt)
+        end
+        self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
+        self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
     end
 
-    --Update blackout zones
-    if #self.blackout_zones > 0 and self.params.blackout_zones_move then
-        self:updateBlackoutZones(dt)
+    -- Blackout zones bounce off walls
+    if self.params.blackout_zones_move then
+        self.entity_controller:updateBehaviors(dt, {
+            bounce_movement = {width = self.game_width, height = self.game_height}
+        })
+    end
+
+    if self.params.scroll_speed > 0 then
+        self:updateScrolling(dt)
     end
 end
 
@@ -315,14 +335,6 @@ function SpaceShooter:updatePlayer(dt)
     -- Ammo/heat via ProjectileSystem
     self.projectile_system:updateResources(dt)
     if self:isKeyDown('r') then self.projectile_system:reload() end
-
-    -- Sync state to player for HUD
-    self.player.ammo = self.projectile_system.ammo_current
-    self.player.is_reloading = self.projectile_system.is_reloading
-    self.player.reload_timer = self.projectile_system.reload_timer
-    self.player.heat = self.projectile_system.heat_current
-    self.player.is_overheated = self.projectile_system.is_overheated
-    self.player.overheat_timer = self.projectile_system.overheat_timer
 end
 
 
@@ -331,23 +343,13 @@ function SpaceShooter:updateEnemies(dt)
     local bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height}
     local game = self
 
-    -- Update movement for standard patterns (grid/formation managed elsewhere)
-    local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
+    -- Update movement for standard patterns (speed/direction set at spawn time)
     for _, enemy in ipairs(self.enemies) do
         if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'bezier' and enemy.movement_pattern ~= 'formation' then
-            local base_speed = enemy.speed_override or self:getScaledValue(self.params.enemy_base_speed, {
-                multipliers = {self.difficulty_modifiers.speed, self.cheats.speed_modifier or 1.0, variant_diff}
-            })
-            local speed = base_speed * self.params.enemy_speed_multiplier
-            if enemy.is_variant_enemy and enemy.speed_multiplier then speed = speed * enemy.speed_multiplier end
-            enemy.speed = speed
-            enemy.direction = self.params.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
-            enemy.zigzag_frequency = self.params.zigzag_frequency
-            enemy.zigzag_amplitude = speed * 0.5
             enemy.skip_offscreen_removal = false
             PatternMovement.update(dt, enemy, bounds)
         else
-            enemy.skip_offscreen_removal = true  -- Grid/galaga manage their own removal
+            enemy.skip_offscreen_removal = true
         end
     end
 
@@ -402,7 +404,8 @@ function SpaceShooter:spawnEnemy()
     })
     local speed = base_speed * p.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
     local shoot_rate = math.max(0.5, (p.enemy_shoot_rate_max - self.difficulty_modifiers.complexity * p.enemy_shoot_rate_complexity)) / p.enemy_fire_rate
-    local extra = {movement_pattern = 'straight', speed_override = speed, shoot_rate = shoot_rate, health = p.enemy_health}
+    local direction = p.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
+    local extra = {movement_pattern = 'straight', speed = speed, direction = direction, zigzag_frequency = p.zigzag_frequency, zigzag_amplitude = speed * 0.5, shoot_rate = shoot_rate, health = p.enemy_health}
 
     -- Formation spawning
     if p.enemy_formation == "v_formation" then
@@ -421,7 +424,9 @@ function SpaceShooter:spawnEnemy()
         local health = math.floor(self:getScaledValue(p.enemy_health, health_config) + 0.5)
 
         local spawn_extra = {
-            width = p.enemy_width, height = p.enemy_height, movement_pattern = movement, speed_override = speed,
+            width = p.enemy_width, height = p.enemy_height, movement_pattern = movement,
+            speed = speed, direction = p.reverse_gravity and (-math.pi / 2) or (math.pi / 2),
+            zigzag_frequency = p.zigzag_frequency, zigzag_amplitude = speed * 0.5,
             shoot_timer = math.random() * (p.enemy_shoot_rate_max - p.enemy_shoot_rate_min) + p.enemy_shoot_rate_min,
             shoot_rate = shoot_rate, health = health, is_variant_enemy = use_weighted
         }
@@ -462,15 +467,12 @@ end
 --------------------------------------------------------------------------------
 
 function SpaceShooter:initSpaceInvadersGrid()
-    -- wave_number is 1-based when using waves, 0 otherwise; use max to ensure non-negative
-    local wave_multiplier = 1.0 + (math.max(0, self.grid_state.wave_number - 1) * self.params.wave_difficulty_increase)
-    local variance = self.params.wave_random_variance
-    local random_factor = variance > 0 and (1.0 + ((math.random() - 0.5) * 2 * variance)) or 1.0
-
-    local wave_rows = math.max(1, math.floor(self.params.grid_rows * wave_multiplier * random_factor + 0.5))
-    local wave_columns = math.max(2, math.floor(self.params.grid_columns * wave_multiplier * random_factor + 0.5))
-    local wave_speed = self.params.grid_speed * wave_multiplier * random_factor
-    local wave_health = math.max(1, math.floor(self.params.enemy_health * wave_multiplier + 0.5))
+    local wave_mult = 1.0 + (math.max(0, self.grid_state.wave_number - 1) * self.params.wave_difficulty_increase)
+    local cfg = {multipliers = {wave_mult}, variance = self.params.wave_random_variance}
+    local wave_rows = math.floor(self:getScaledValue(self.params.grid_rows, {multipliers = {wave_mult}, variance = self.params.wave_random_variance, bounds = {min = 1}}) + 0.5)
+    local wave_columns = math.floor(self:getScaledValue(self.params.grid_columns, {multipliers = {wave_mult}, variance = self.params.wave_random_variance, bounds = {min = 2}}) + 0.5)
+    local wave_speed = self:getScaledValue(self.params.grid_speed, cfg)
+    local wave_health = math.floor(self:getScaledValue(self.params.enemy_health, {multipliers = {wave_mult}, bounds = {min = 1}}) + 0.5)
 
     local spacing_x = (self.game_width / (wave_columns + 1)) * self.params.enemy_density
     local spacing_y = 50 * self.params.enemy_density
@@ -633,28 +635,6 @@ function SpaceShooter:initGalagaFormation()
     self.galaga_state.wave_active = true
 end
 
-function SpaceShooter:spawnGalagaEnemy(formation_slot, wave_modifiers)
-    wave_modifiers = wave_modifiers or {}
-    local entrance_side = math.random() > 0.5 and "left" or "right"
-    local start_x = entrance_side == "left" and -50 or (self.game_width + 50)
-
-    formation_slot.occupied = true
-
-    self:spawnEntity("enemy", {
-        x = formation_slot.x,
-        y = formation_slot.y,
-        entrance = {
-            pattern = self.params.entrance_pattern or "swoop",
-            start = {x = start_x, y = -50}
-        },
-        extra = {
-            formation_state = 'entering',
-            formation_slot = formation_slot,
-            health = wave_modifiers.health or self.params.enemy_health
-        }
-    })
-end
-
 function SpaceShooter:updateGalagaFormation(dt)
     local PatternMovement = self.di.components.PatternMovement
     local game = self
@@ -676,13 +656,10 @@ function SpaceShooter:updateGalagaFormation(dt)
                 game.galaga_state.formation_positions = {}
             end,
             on_start = function(wave_num)
-                local wave_multiplier = 1.0 + ((wave_num - 1) * game.params.wave_difficulty_increase)
-                local variance = game.params.wave_random_variance
-                local random_factor = variance > 0 and (1.0 + ((math.random() - 0.5) * 2 * variance)) or 1.0
-
+                local wave_mult = 1.0 + ((wave_num - 1) * game.params.wave_difficulty_increase)
                 game.galaga_state.wave_modifiers = {
-                    health = math.max(1, math.floor(game.params.enemy_health * wave_multiplier + 0.5)),
-                    dive_frequency = game.params.dive_frequency / (wave_multiplier * random_factor)
+                    health = math.floor(game:getScaledValue(game.params.enemy_health, {multipliers = {wave_mult}, bounds = {min = 1}}) + 0.5),
+                    dive_frequency = game.params.dive_frequency / game:getScaledValue(1, {multipliers = {wave_mult}, variance = game.params.wave_random_variance})
                 }
 
                 game:initGalagaFormation()
@@ -693,7 +670,11 @@ function SpaceShooter:updateGalagaFormation(dt)
 
                 local initial_count = math.min(game.params.initial_spawn_count, #game.galaga_state.formation_positions)
                 for i = 1, initial_count do
-                    game:spawnGalagaEnemy(game.galaga_state.formation_positions[i], game.galaga_state.wave_modifiers)
+                    local slot = game.galaga_state.formation_positions[i]
+                    local side = math.random() > 0.5 and "left" or "right"
+                    game:spawnEntity("enemy", {x = slot.x, y = slot.y, formation_slot = slot,
+                        entrance = (game.params.entrance_pattern or "swoop") .. "_" .. side,
+                        extra = {formation_state = 'entering', health = game.galaga_state.wave_modifiers.health or game.params.enemy_health}})
                     game.galaga_state.spawned_count = game.galaga_state.spawned_count + 1
                 end
             end
@@ -714,26 +695,29 @@ function SpaceShooter:updateGalagaFormation(dt)
 
         local initial_count = math.min(self.params.initial_spawn_count, #self.galaga_state.formation_positions)
         for i = 1, initial_count do
-            self:spawnGalagaEnemy(self.galaga_state.formation_positions[i], self.galaga_state.wave_modifiers)
+            local slot = self.galaga_state.formation_positions[i]
+            local side = math.random() > 0.5 and "left" or "right"
+            self:spawnEntity("enemy", {x = slot.x, y = slot.y, formation_slot = slot,
+                entrance = (self.params.entrance_pattern or "swoop") .. "_" .. side,
+                extra = {formation_state = 'entering', health = self.galaga_state.wave_modifiers.health or self.params.enemy_health}})
             self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
         end
     end
 
-    -- Gradual enemy spawning
-    local unoccupied_slots = {}
-    for _, slot in ipairs(self.galaga_state.formation_positions) do
-        if not slot.occupied then table.insert(unoccupied_slots, slot) end
+    -- Gradual enemy spawning via EntityController behavior
+    local game = self
+    self.galaga_state.gradual_spawn = self.galaga_state.gradual_spawn or {timer = 0, spawned_count = self.galaga_state.spawned_count}
+    self.galaga_state.gradual_spawn.slots = self.galaga_state.formation_positions
+    self.galaga_state.gradual_spawn.max_count = self.params.formation_size
+    self.galaga_state.gradual_spawn.interval = self.params.spawn_interval
+    self.galaga_state.gradual_spawn.on_spawn = function(slot)
+        local side = math.random() > 0.5 and "left" or "right"
+        game:spawnEntity("enemy", {x = slot.x, y = slot.y, formation_slot = slot,
+            entrance = (game.params.entrance_pattern or "swoop") .. "_" .. side,
+            extra = {formation_state = 'entering', health = game.galaga_state.wave_modifiers.health or game.params.enemy_health}})
+        game.galaga_state.spawned_count = game.galaga_state.spawned_count + 1
     end
-
-    if #unoccupied_slots > 0 and self.galaga_state.spawned_count < self.params.formation_size then
-        self.galaga_state.spawn_timer = self.galaga_state.spawn_timer - dt
-        if self.galaga_state.spawn_timer <= 0 then
-            local slot = unoccupied_slots[math.random(1, #unoccupied_slots)]
-            self:spawnGalagaEnemy(slot, self.galaga_state.wave_modifiers)
-            self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
-            self.galaga_state.spawn_timer = self.params.spawn_interval
-        end
-    end
+    self.entity_controller:updateBehaviors(dt, {gradual_spawn = self.galaga_state.gradual_spawn})
 
     -- Dive attack timer
     local dive_freq = (self.galaga_state.wave_modifiers and self.galaga_state.wave_modifiers.dive_frequency) or self.params.dive_frequency
@@ -782,35 +766,13 @@ function SpaceShooter:updateGalagaFormation(dt)
                 self.galaga_state.diving_count = self.galaga_state.diving_count - 1
                 if enemy.formation_slot then
                     enemy.formation_slot.occupied = false
-                    -- Respawn with new entrance animation
-                    self:spawnGalagaEnemy(enemy.formation_slot, self.galaga_state.wave_modifiers)
+                    local slot = enemy.formation_slot
+                    local side = math.random() > 0.5 and "left" or "right"
+                    self:spawnEntity("enemy", {x = slot.x, y = slot.y, formation_slot = slot,
+                        entrance = (self.params.entrance_pattern or "swoop") .. "_" .. side,
+                        extra = {formation_state = 'entering', health = self.galaga_state.wave_modifiers.health or self.params.enemy_health}})
                 end
             end
-        end
-    end
-end
-
---------------------------------------------------------------------------------
--- Default Wave Mode
---------------------------------------------------------------------------------
-
-function SpaceShooter:updateWaveSpawning(dt)
-    local game = self
-    local result = self:updateWaveState(self.wave_state, {
-        count_func = function() return self.wave_state.enemies_remaining end,
-        on_start = function(wave_num)
-            game.wave_state.enemies_remaining = math.floor(game.params.wave_enemies_per_wave * game.difficulty_scale)
-            game.spawn_timer = 0
-        end
-    }, dt)
-
-    -- Spawn enemies during active wave
-    if result == "active" and self.wave_state.enemies_remaining > 0 then
-        self.spawn_timer = self.spawn_timer - dt
-        if self.spawn_timer <= 0 then
-            self:spawnEnemy()
-            self.wave_state.enemies_remaining = self.wave_state.enemies_remaining - 1
-            self.spawn_timer = 0.3
         end
     end
 end
@@ -825,47 +787,43 @@ function SpaceShooter:updateHazards(dt)
     local direction = p.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
     local offscreen = p.reverse_gravity and {top = -100} or {bottom = self.game_height + 50}
 
-    -- Spawn asteroids on timer
-    if p.asteroid_density > 0 then
-        self.asteroid_spawn_timer = self.asteroid_spawn_timer - dt
-        if self.asteroid_spawn_timer <= 0 then
-            local size = math.random(p.asteroid_size_min, p.asteroid_size_max)
-            local spawn_y = p.reverse_gravity and self.game_height or -size
-            self.entity_controller:spawn("asteroid", math.random(0, self.game_width - size), spawn_y, {
-                width = size, height = size,
-                movement_pattern = 'straight', speed = p.asteroid_speed, direction = direction,
-                rotation = math.random() * math.pi * 2, rotation_speed = (math.random() - 0.5) * 2
-            })
-            self.asteroid_spawn_timer = 1.0 / p.asteroid_density
-        end
-    end
-
-    -- Spawn meteor warnings on timer, convert to meteors when expired
+    -- Spawn meteor warnings on timer (delayed_spawn converts to meteors)
     if p.meteor_frequency > 0 then
         self.meteor_timer = self.meteor_timer - dt
         if self.meteor_timer <= 0 then
             for i = 1, math.random(3, 5) do
                 self.entity_controller:spawn("meteor_warning", math.random(0, self.game_width - 30), 0, {
-                    time_remaining = p.meteor_warning_time, spawned = false
+                    delayed_spawn = {timer = p.meteor_warning_time, spawn_type = "meteor"}
                 })
             end
             self.meteor_timer = 60 / p.meteor_frequency
         end
-        for _, w in ipairs(self.meteor_warnings) do
-            w.time_remaining = w.time_remaining - dt
-            if w.time_remaining <= 0 and not w.spawned then
-                local spawn_y = p.reverse_gravity and self.game_height or -30
-                self.entity_controller:spawn("meteor", w.x, spawn_y, {
-                    movement_pattern = 'straight', speed = p.meteor_speed, direction = direction
-                })
-                w.spawned = true
-                self.entity_controller:removeEntity(w)
-            end
-        end
     end
 
-    -- Movement, rotation, offscreen via behaviors (works for asteroids + meteors)
+    -- Behaviors: asteroid spawning, meteor delayed_spawn, movement, rotation, offscreen
     self.entity_controller:updateBehaviors(dt, {
+        timer_spawn = p.asteroid_density > 0 and {
+            asteroid = {
+                interval = 1.0 / p.asteroid_density,
+                on_spawn = function(ec, type_name)
+                    local size = math.random(p.asteroid_size_min, p.asteroid_size_max)
+                    local spawn_y = p.reverse_gravity and game.game_height or -size
+                    ec:spawn("asteroid", math.random(0, game.game_width - size), spawn_y, {
+                        width = size, height = size,
+                        movement_pattern = 'straight', speed = p.asteroid_speed, direction = direction,
+                        rotation = math.random() * math.pi * 2, rotation_speed = (math.random() - 0.5) * 2
+                    })
+                end
+            }
+        } or nil,
+        delayed_spawn = {
+            on_spawn = function(warning, ds)
+                local spawn_y = p.reverse_gravity and game.game_height or -30
+                game.entity_controller:spawn("meteor", warning.x, spawn_y, {
+                    movement_pattern = 'straight', speed = p.meteor_speed, direction = direction
+                })
+            end
+        },
         pattern_movement = {
             PatternMovement = self.di.components.PatternMovement,
             bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height}
@@ -885,41 +843,6 @@ function SpaceShooter:updateHazards(dt)
         self.projectile_system:checkCollisions(self.asteroids, function(_, a) game.entity_controller:removeEntity(a) end, "player")
     end
     self.projectile_system:checkCollisions(self.meteors, function(_, m) game.entity_controller:removeEntity(m) end, "player")
-end
-
-function SpaceShooter:applyGravityWells(dt)
-    local PhysicsUtils = self.di.components.PhysicsUtils
-    local wells_config = {gravity_wells = self.gravity_wells}
-
-    -- Apply to player (full strength)
-    PhysicsUtils.applyForces(self.player, wells_config, dt)
-
-    -- Apply to player bullets (weaker effect)
-    wells_config.gravity_well_strength_multiplier = 0.7
-    for _, bullet in ipairs(self.player_bullets) do
-        PhysicsUtils.applyForces(bullet, wells_config, dt)
-    end
-
-    -- Keep player in bounds
-    self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
-    self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
-end
-
-function SpaceShooter:updateBlackoutZones(dt)
-    for _, zone in ipairs(self.blackout_zones) do
-        zone.x = zone.x + zone.vx * dt
-        zone.y = zone.y + zone.vy * dt
-
-        -- Bounce off walls
-        if zone.x < zone.radius or zone.x > self.game_width - zone.radius then
-            zone.vx = -zone.vx
-            zone.x = math.max(zone.radius, math.min(self.game_width - zone.radius, zone.x))
-        end
-        if zone.y < zone.radius or zone.y > self.game_height - zone.radius then
-            zone.vy = -zone.vy
-            zone.y = math.max(zone.radius, math.min(self.game_height - zone.radius, zone.y))
-        end
-    end
 end
 
 --------------------------------------------------------------------------------

@@ -907,36 +907,46 @@ function BaseGame:spawnEntity(type_name, config)
     local y = config.y or 0
     local extra = config.extra or {}
 
-    -- Handle entrance animation
+    -- Handle formation slot (mark occupied, store reference)
+    if config.formation_slot then
+        config.formation_slot.occupied = true
+        extra.formation_slot = config.formation_slot
+    end
+
+    -- Handle entrance animation (named presets: "swoop_left", "swoop_right", "loop_left", etc.)
     if config.entrance then
         local PatternMovement = self.di and self.di.components and self.di.components.PatternMovement
         if PatternMovement then
-            local ent = config.entrance
-            local pattern = ent.pattern or "swoop"
-            local start_x = ent.start and ent.start.x or x
+            local ent = type(config.entrance) == "string" and {pattern = config.entrance} or config.entrance
+            local pattern = ent.pattern or "swoop_left"
+
+            -- Parse named presets (pattern_side)
+            local base_pattern, side = pattern:match("^(%w+)_(%w+)$")
+            if not base_pattern then base_pattern, side = pattern, "left" end
+
+            local start_x = ent.start and ent.start.x or (side == "left" and -50 or (self.game_width + 50))
             local start_y = ent.start and ent.start.y or -50
-            local target_x = ent.target and ent.target.x or x
-            local target_y = ent.target and ent.target.y or y
+            local target_x, target_y = x, y
 
             local bezier_path
-            if pattern == "loop" then
-                local mid_x = start_x < self.arena_width / 2 and self.arena_width * 0.3 or self.arena_width * 0.7
+            if base_pattern == "loop" then
+                local mid_x = side == "left" and self.game_width * 0.3 or self.game_width * 0.7
                 bezier_path = PatternMovement.buildPath("loop", {
                     start_x = start_x, start_y = start_y,
-                    mid_x = mid_x, mid_y = self.arena_height * 0.5,
+                    mid_x = mid_x, mid_y = self.game_height * 0.5,
                     end_x = target_x, end_y = target_y
                 })
-            elseif pattern == "dive" then
+            elseif base_pattern == "dive" then
                 bezier_path = PatternMovement.buildPath("dive", {
                     start_x = start_x, start_y = start_y,
                     target_x = target_x, target_y = target_y,
-                    exit_x = start_x, exit_y = self.arena_height + 50
+                    exit_x = start_x, exit_y = self.game_height + 50
                 })
             else -- swoop
                 bezier_path = PatternMovement.buildPath("swoop", {
                     start_x = start_x, start_y = start_y,
                     end_x = target_x, end_y = target_y,
-                    curve_y = self.arena_height * 0.5
+                    curve_y = self.game_height * 0.5
                 })
             end
 
