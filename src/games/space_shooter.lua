@@ -4,6 +4,7 @@ local SpaceShooter = BaseGame:extend('SpaceShooter')
 
 function SpaceShooter:init(game_data, cheats, di, variant_override)
     SpaceShooter.super.init(self, game_data, cheats, di, variant_override)
+    self.default_sprite_set = "fighter_1"
 
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter)
     self.params = self.di.components.SchemaLoader.load(self.variant, "space_shooter_schema", runtimeCfg)
@@ -143,25 +144,6 @@ function SpaceShooter:setupEntities()
             end
         end
     end
-end
-
-function SpaceShooter:loadAssets()
-    self.sprites = {}
-    local sprite_set = (self.variant and self.variant.sprite_set) or "fighter_1"
-    local fallback = "fighter_1"
-    local loader = self.di and self.di.spriteSetLoader
-
-    if loader then
-        self.sprites.player = loader:getSprite(sprite_set, "player", fallback)
-        -- bullets, background, power_up - leave nil for view fallbacks
-
-        for enemy_type in pairs(self.params.enemy_types) do
-            local key = "enemy_" .. enemy_type
-            self.sprites[key] = loader:getSprite(sprite_set, key, fallback)
-        end
-    end
-
-    self:loadAudio()
 end
 
 function SpaceShooter:setPlayArea(width, height)
@@ -473,42 +455,6 @@ function SpaceShooter:onEnemyDestroyed(enemy)
         effects = {particles = false}
     })
     self:playSound("enemy_explode", 1.0)
-end
-
-function SpaceShooter:checkComplete()
-    --Use VictoryCondition component
-    local result = self.victory_checker:check()
-    if result then
-        self.victory = (result == "victory")
-        self.game_over = (result == "loss")
-        return true
-    end
-    return false
-end
-
---Override onComplete to play success sound and stop music
-function SpaceShooter:onComplete()
-    --Victory determined by VictoryCondition component
-    local is_win = self.victory
-
-    if is_win then
-        self:playSound("success", 1.0)
-    else
-        -- Lost due to too many deaths
-        self:playSound("death", 1.0)
-    end
-
-    -- Stop music
-    self:stopMusic()
-
-    -- Call parent onComplete
-    SpaceShooter.super.onComplete(self)
-end
-
-function SpaceShooter:keypressed(key)
-    -- Call parent to handle virtual key tracking for demo playback
-    SpaceShooter.super.keypressed(self, key)
-    return false
 end
 
 --Formation spawning

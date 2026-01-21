@@ -431,11 +431,31 @@ function BaseGame:isVMRenderMode()
 end
 
 function BaseGame:checkComplete()
-    -- Default implementation - most games use victory/game_over flags
+    -- If victory_checker exists, use it to check and set flags
+    if self.victory_checker then
+        local result = self.victory_checker:check()
+        if result then
+            self.victory = (result == "victory")
+            self.game_over = (result == "loss")
+            return true
+        end
+        return false
+    end
+    -- Default: check victory/game_over flags directly
     return self.victory or self.game_over
 end
 
 function BaseGame:onComplete()
+    -- Play win/lose sound
+    if self.victory then
+        self:playSound(self.params and self.params.win_sound or "success", 1.0)
+    else
+        self:playSound(self.params and self.params.lose_sound or "death", 1.0)
+    end
+
+    -- Stop music
+    self:stopMusic()
+
     self.completed = true
 end
 
@@ -907,7 +927,31 @@ function BaseGame:spawnEntity(type_name, config)
     end
 end
 
--- Phase 3.3: Audio helpers (graceful fallback if no audio assets)
+-- Load sprites from variant sprite_set (override default_sprite_set in subclass if needed)
+function BaseGame:loadAssets()
+    self.sprites = self.sprites or {}
+    local sprite_set = (self.variant and self.variant.sprite_set) or self.default_sprite_set
+    local fallback = self.default_sprite_set or sprite_set
+    local loader = self.di and self.di.spriteSetLoader
+
+    if loader and sprite_set then
+        -- Load player sprite
+        self.sprites.player = loader:getSprite(sprite_set, "player", fallback)
+
+        -- Load entity type sprites if params.enemy_types exists
+        if self.params and self.params.enemy_types then
+            for enemy_type in pairs(self.params.enemy_types) do
+                local key = "enemy_" .. enemy_type
+                self.sprites[key] = loader:getSprite(sprite_set, key, fallback)
+            end
+        end
+    end
+
+    -- Load audio after sprites
+    self:loadAudio()
+end
+
+-- Audio helpers (graceful fallback if no audio assets)
 function BaseGame:loadAudio()
     local audioManager = self.di and self.di.audioManager
 

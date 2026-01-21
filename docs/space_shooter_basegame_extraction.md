@@ -253,8 +253,8 @@ Extract game completion and asset loading.
      - Delete keypressed() (5 lines) - parent handles demo tracking
 
 ### Lines Changed
-- base_game.lua: +35 lines
-- space_shooter.lua: -51 lines
+- base_game.lua: +44 lines (actual)
+- space_shooter.lua: -55 lines (actual: 993 → 938)
 
 ### Testing (User)
 - [ ] Victory sound on win
@@ -264,7 +264,21 @@ Extract game completion and asset loading.
 - [ ] Demo recording works
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Functions added/updated in BaseGame:
+- `checkComplete()` - enhanced to auto-use victory_checker if it exists, sets victory/game_over flags
+- `onComplete()` - enhanced to play win_sound or "success" / lose_sound or "death", stops music
+- `loadAssets()` - loads sprites from variant sprite_set, loads enemy type sprites, calls loadAudio
+
+Functions deleted from space_shooter:
+- `loadAssets()` (18 lines) - now inherited from BaseGame
+- `checkComplete()` (10 lines) - now inherited from BaseGame
+- `onComplete()` (17 lines) - now inherited from BaseGame
+- `keypressed()` (5 lines) - parent already handles demo tracking
+
+Also updated breakout.lua:
+- Removed redundant victory_checker:check() call since BaseGame:checkComplete() handles it automatically
 
 ---
 
