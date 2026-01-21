@@ -386,6 +386,33 @@ function EntityController:spawnLayout(type_name, layout, config)
         self:spawnRandom(type_name, rows * cols, bounds, config.rng, config.can_overlap or false)
     elseif layout == "checkerboard" then
         self:spawnCheckerboard(type_name, rows, cols, start_x, start_y, spacing_x, spacing_y)
+    elseif layout == "v_shape" then
+        local count = config.count or 5
+        local center_x = config.center_x or 400
+        local y = config.y or 0
+        local spacing = config.spacing_x or 60
+        for i = 1, count do
+            local offset = (i - math.ceil(count / 2)) * spacing
+            local y_offset = math.abs(offset) * 0.5
+            self:spawn(type_name, center_x + offset, y - y_offset, config.extra)
+        end
+    elseif layout == "line" then
+        local count = config.count or 6
+        local x = config.x or 0
+        local y = config.y or 0
+        local spacing = config.spacing_x or 100
+        for i = 1, count do
+            self:spawn(type_name, x + (i - 1) * spacing, y, config.extra)
+        end
+    elseif layout == "spiral" then
+        local count = config.count or 8
+        local center_x = config.center_x or 400
+        local center_y = config.center_y or 100
+        local radius = config.radius or 100
+        for i = 1, count do
+            local angle = (i / count) * math.pi * 2
+            self:spawn(type_name, center_x + math.cos(angle) * radius, center_y + math.sin(angle) * radius * 0.3, config.extra)
+        end
     else -- "grid" is default
         self:spawnGrid(type_name, rows, cols, start_x, start_y, spacing_x, spacing_y)
     end

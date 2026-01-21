@@ -595,13 +595,33 @@ function SpaceShooter:spawnEnemy()
         return self:spawnVariantEnemy()
     end
 
-    --Formation-based spawning
+    --Formation-based spawning via EntityController.spawnLayout
+    local spawn_y_base = self.params.reverse_gravity and self.game_height or (self.params.enemy_start_y_offset or -30)
+    local adjusted_speed = self.enemy_speed * self.params.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
+    local base_shoot_rate = math.max(0.5, ((self.params.enemy_shoot_rate_max or 3.0) - self.difficulty_modifiers.complexity * (self.params.enemy_shoot_rate_complexity or 0.5))) / self.params.enemy_fire_rate
+    local enemy_extra = {
+        movement_pattern = 'straight',
+        speed_override = adjusted_speed,
+        shoot_rate = base_shoot_rate,
+        health = self.params.enemy_health
+    }
+
     if self.params.enemy_formation == "v_formation" then
-        return self:spawnFormation("v")
+        self.entity_controller:spawnLayout("enemy", "v_shape", {
+            count = 5, center_x = self.game_width / 2, y = spawn_y_base, spacing_x = 60, extra = enemy_extra
+        })
+        return
     elseif self.params.enemy_formation == "wall" then
-        return self:spawnFormation("wall")
+        local spacing = self.game_width / 7
+        self.entity_controller:spawnLayout("enemy", "line", {
+            count = 6, x = spacing, y = spawn_y_base, spacing_x = spacing, extra = enemy_extra
+        })
+        return
     elseif self.params.enemy_formation == "spiral" then
-        return self:spawnFormation("spiral")
+        self.entity_controller:spawnLayout("enemy", "spiral", {
+            count = 8, center_x = self.game_width / 2, center_y = spawn_y_base, radius = 100, extra = enemy_extra
+        })
+        return
     end
 
     -- Default enemy spawning (scattered)
@@ -761,49 +781,6 @@ function SpaceShooter:keypressed(key)
 end
 
 --Formation spawning
-function SpaceShooter:spawnFormation(formation_type)
-    local adjusted_speed = self.enemy_speed * self.params.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
-    local base_shoot_rate = math.max(0.5, ((self.params.enemy_shoot_rate_max or 3.0) - self.difficulty_modifiers.complexity * (self.params.enemy_shoot_rate_complexity or 0.5))) / self.params.enemy_fire_rate
-
-    local spawn_y_base = self.params.reverse_gravity and self.game_height or (self.params.enemy_start_y_offset or -30)
-
-    local function spawnEnemy(x, y, shoot_timer)
-        self.entity_controller:spawn("enemy", x, y, {
-            movement_pattern = 'straight',
-            speed_override = adjusted_speed,  -- Direction handled by enemy.direction in updateEnemies
-            shoot_timer = shoot_timer,
-            shoot_rate = base_shoot_rate,
-            health = self.params.enemy_health
-        })
-    end
-
-    if formation_type == "v" then
-        local center_x = self.game_width / 2
-        local spacing = 60
-        for i = 1, 5 do
-            local offset = (i - 3) * spacing
-            local y_offset = math.abs(offset) * 0.5
-            local spawn_y = self.params.reverse_gravity and (spawn_y_base + y_offset) or (spawn_y_base - y_offset)
-            spawnEnemy(center_x + offset - (self.params.enemy_width or 30)/2, spawn_y, math.random() * 2.0)
-        end
-    elseif formation_type == "wall" then
-        local num_enemies = 6
-        local spacing = self.game_width / (num_enemies + 1)
-        for i = 1, num_enemies do
-            spawnEnemy(spacing * i - (self.params.enemy_width or 30)/2, spawn_y_base, i * 0.2)
-        end
-    elseif formation_type == "spiral" then
-        local num_enemies = 8
-        local center_x = self.game_width / 2
-        local radius = 100
-        for i = 1, num_enemies do
-            local angle = (i / num_enemies) * math.pi * 2
-            local y_offset = math.sin(angle) * radius * 0.3
-            spawnEnemy(center_x + math.cos(angle) * radius - (self.params.enemy_width or 30)/2, spawn_y_base + y_offset, i * 0.15)
-        end
-    end
-end
-
 -- Space Invaders: Initialize grid
 function SpaceShooter:initSpaceInvadersGrid()
     self:getGridState()  -- Lazy init
