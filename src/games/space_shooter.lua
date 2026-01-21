@@ -150,14 +150,11 @@ function SpaceShooter:setPlayArea(width, height)
     self.game_width = width
     self.game_height = height
 
-    -- Only update player position if player exists
+    -- Update player position if player exists
     if self.player then
         self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
         local y_offset = self.params.player_start_y_offset
         self.player.y = self.params.reverse_gravity and y_offset or (self.game_height - y_offset)
-        print("[SpaceShooter] Play area updated to:", width, height)
-    else
-        print("[SpaceShooter] setPlayArea called before init completed")
     end
 
     -- Recalculate Galaga formation if using Galaga behavior
@@ -187,23 +184,11 @@ function SpaceShooter:updateGameLogic(dt)
     --Update EntityController
     self.entity_controller:update(dt)
 
-    --Sync arrays with EntityController
-    local entities = self.entity_controller:getEntities()
-    self.enemies = {}
-    self.asteroids = {}
-    self.meteors = {}
-    self.meteor_warnings = {}
-    for _, entity in ipairs(entities) do
-        if entity.type_name == "enemy" then
-            table.insert(self.enemies, entity)
-        elseif entity.type_name == "asteroid" then
-            table.insert(self.asteroids, entity)
-        elseif entity.type_name == "meteor" then
-            table.insert(self.meteors, entity)
-        elseif entity.type_name == "meteor_warning" then
-            table.insert(self.meteor_warnings, entity)
-        end
-    end
+    --Sync arrays with EntityController (using getEntitiesByType for clarity)
+    self.enemies = self.entity_controller:getEntitiesByType("enemy")
+    self.asteroids = self.entity_controller:getEntitiesByType("asteroid")
+    self.meteors = self.entity_controller:getEntitiesByType("meteor")
+    self.meteor_warnings = self.entity_controller:getEntitiesByType("meteor_warning")
 
     --Update ProjectileSystem (bullets)
     local game_bounds = {
@@ -382,11 +367,7 @@ function SpaceShooter:updateBullets(dt)
 end
 
 function SpaceShooter:draw()
-    if self.view then
-        self.view:draw()
-    else
-         love.graphics.print("Error: View not loaded!", 10, 100)
-    end
+    self.view:draw()
 end
 
 function SpaceShooter:spawnEnemy()
