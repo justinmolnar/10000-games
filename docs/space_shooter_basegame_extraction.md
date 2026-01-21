@@ -76,8 +76,8 @@ Add generic scaling/utility to BaseGame, delete space_shooter versions.
      - Delete updateScrolling() (6 lines) - call BaseGame version
 
 ### Lines Changed
-- base_game.lua: +45 lines
-- space_shooter.lua: -35 lines
+- base_game.lua: +64 lines (actual)
+- space_shooter.lua: -26 lines (actual: 1124 → 1098)
 
 ### Testing (User)
 - [ ] Enemy speed scales with difficulty
@@ -86,7 +86,23 @@ Add generic scaling/utility to BaseGame, delete space_shooter versions.
 - [ ] Background scrolls (if variant enables it)
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Functions added to BaseGame:
+- `getScaledValue(base, config)` - handles multipliers, variance, range, bounds
+- `updateDifficulty(dt)` - linear/exponential/wave curves with configurable rate
+- `updateScrolling(dt)` - updates scroll_offset if scroll_speed > 0
+
+Functions deleted from space_shooter:
+- `getEnemySpeed()` (4 lines) - replaced with inline getScaledValue calls
+- `calculateEnemyHealth()` (6 lines) - replaced with inline getScaledValue calls
+- `updateDifficulty()` (18 lines) - now inherited from BaseGame
+- `updateScrolling()` (7 lines) - now inherited from BaseGame
+
+Callers updated:
+- `updateEnemies()` - uses getScaledValue for enemy speed
+- `spawnEnemy()` - uses getScaledValue for speed and health
+- `setupEntities()` - uses getScaledValue for variant enemy health
 
 ---
 

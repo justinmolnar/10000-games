@@ -677,6 +677,71 @@ function BaseGame:multiplyEntitySpeed(entities, multiplier)
     end
 end
 
+-- Scale a value with multipliers, variance, range, and bounds
+-- config: {multipliers = {}, variance = 0, range = {min, max}, bounds = {min, max}}
+function BaseGame:getScaledValue(base, config)
+    config = config or {}
+    local value = base
+
+    -- Apply multipliers
+    if config.multipliers then
+        for _, mult in ipairs(config.multipliers) do
+            value = value * mult
+        end
+    end
+
+    -- Apply range (use random in range instead of base)
+    if config.range then
+        value = config.range.min + math.random() * (config.range.max - config.range.min)
+        -- Reapply multipliers to the random value
+        if config.multipliers then
+            for _, mult in ipairs(config.multipliers) do
+                value = value * mult
+            end
+        end
+    -- Apply variance (random +/- percentage)
+    elseif config.variance and config.variance > 0 then
+        local variance_factor = 1 + (math.random() - 0.5) * 2 * config.variance
+        value = value * variance_factor
+    end
+
+    -- Apply bounds
+    if config.bounds then
+        if config.bounds.min then value = math.max(config.bounds.min, value) end
+        if config.bounds.max then value = math.min(config.bounds.max, value) end
+    end
+
+    return value
+end
+
+-- Update difficulty scaling based on params.difficulty_curve
+function BaseGame:updateDifficulty(dt)
+    if not self.params then return end
+
+    local rate = self.params.difficulty_scaling_rate or 0.01
+    local curve = self.params.difficulty_curve or "linear"
+    local max_scale = self.params.difficulty_max or 5.0
+
+    self.difficulty_scale = self.difficulty_scale or 1.0
+
+    if curve == "linear" then
+        self.difficulty_scale = self.difficulty_scale + rate * dt
+    elseif curve == "exponential" then
+        self.difficulty_scale = self.difficulty_scale * (1 + rate * dt)
+    elseif curve == "wave" then
+        local time_factor = self.time_elapsed * 0.5
+        self.difficulty_scale = 1.0 + math.sin(time_factor) * 0.5
+    end
+
+    self.difficulty_scale = math.min(self.difficulty_scale, max_scale)
+end
+
+-- Update scrolling background offset
+function BaseGame:updateScrolling(dt)
+    if not self.params or not self.params.scroll_speed or self.params.scroll_speed <= 0 then return end
+    self.scroll_offset = (self.scroll_offset or 0) + self.params.scroll_speed * dt
+end
+
 -- Phase 3.3: Audio helpers (graceful fallback if no audio assets)
 function BaseGame:loadAudio()
     local audioManager = self.di and self.di.audioManager

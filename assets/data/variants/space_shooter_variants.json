@@ -704,6 +704,26 @@
     "difficulty_modifier": 1.4,
     "palette": "cyan",
     "flavor_text": "Formation fighters - waves get tougher with more health and faster dives!"
+  },
+  {
+    "clone_index": 46,
+    "name": "IMPOSSIBLE MODE (Test)",
+    "difficulty_modifier": 10.0,
+    "enemy_base_speed": 500,
+    "enemy_spawn_rate_multiplier": 5.0,
+    "enemy_health": 10,
+    "enemy_bullets_enabled": true,
+    "enemy_bullet_pattern": "ring",
+    "enemy_bullets_per_shot": 16,
+    "enemy_fire_rate": 0.3,
+    "difficulty_curve": "exponential",
+    "difficulty_scaling_rate": 0.5,
+    "lives_count": 1,
+    "fire_mode": "manual",
+    "bullet_speed": 200,
+    "movement_speed": 100,
+    "palette": "red",
+    "flavor_text": "TEST VARIANT - Should be unplayably hard to verify difficulty scaling"
   }
 ]
 }

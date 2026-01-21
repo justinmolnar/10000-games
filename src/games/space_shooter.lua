@@ -131,7 +131,10 @@ function SpaceShooter:setupEntities()
         for _, ed in ipairs(self.variant.enemies) do
             local enemy_def = p.enemy_types[ed.type]
             if enemy_def then
-                local health = self:calculateEnemyHealth(nil, enemy_def.health or 1)
+                local health_config = p.use_health_range
+                    and {range = {min = p.enemy_health_min, max = p.enemy_health_max}, multipliers = {enemy_def.health or 1}, bounds = {min = 1}}
+                    or {variance = p.enemy_health_variance, multipliers = {enemy_def.health or 1}, bounds = {min = 1}}
+                local health = math.floor(self:getScaledValue(p.enemy_health, health_config) + 0.5)
                 table.insert(self.enemy_weighted_configs, {
                     weight = ed.multiplier, movement_pattern = enemy_def.movement_pattern,
                     enemy_type = enemy_def.name, type = ed.type, health = health, max_health = health,
@@ -140,11 +143,6 @@ function SpaceShooter:setupEntities()
             end
         end
     end
-end
-
-function SpaceShooter:getEnemySpeed()
-    local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
-    return self.params.enemy_base_speed * self.difficulty_modifiers.speed * (self.cheats.speed_modifier or 1.0) * variant_diff
 end
 
 function SpaceShooter:loadAssets()
@@ -344,9 +342,13 @@ function SpaceShooter:updateEnemies(dt)
     local game = self
 
     -- Update movement for standard patterns (grid/formation managed elsewhere)
+    local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
     for _, enemy in ipairs(self.enemies) do
         if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'bezier' and enemy.movement_pattern ~= 'formation' then
-            local speed = (enemy.speed_override or self:getEnemySpeed()) * self.params.enemy_speed_multiplier
+            local base_speed = enemy.speed_override or self:getScaledValue(self.params.enemy_base_speed, {
+                multipliers = {self.difficulty_modifiers.speed, self.cheats.speed_modifier or 1.0, variant_diff}
+            })
+            local speed = base_speed * self.params.enemy_speed_multiplier
             if enemy.is_variant_enemy and enemy.speed_multiplier then speed = speed * enemy.speed_multiplier end
             enemy.speed = speed
             enemy.direction = self.params.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
@@ -490,19 +492,16 @@ function SpaceShooter:enemyShoot(enemy)
     self.projectile_system:shootPattern("enemy_bullet", center_x, center_y, base_angle, pattern, config)
 end
 
-function SpaceShooter:calculateEnemyHealth(base_health, multiplier)
-    base_health = base_health or self.params.enemy_health
-    local health = self.params.use_health_range and math.random(self.params.enemy_health_min, self.params.enemy_health_max)
-        or (self.params.enemy_health_variance > 0 and base_health * (1 + (math.random() - 0.5) * 2 * self.params.enemy_health_variance) or base_health)
-    return math.max(1, math.floor(health * (multiplier or 1) + 0.5))
-end
-
 function SpaceShooter:spawnEnemy()
     if self:hasVariantEnemies() and math.random() < 0.5 then return self:spawnVariantEnemy() end
 
     local p = self.params
     local spawn_y = p.reverse_gravity and self.game_height or p.enemy_start_y_offset
-    local speed = self:getEnemySpeed() * p.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
+    local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
+    local base_speed = self:getScaledValue(p.enemy_base_speed, {
+        multipliers = {self.difficulty_modifiers.speed, self.cheats.speed_modifier or 1.0, variant_diff}
+    })
+    local speed = base_speed * p.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
     local shoot_rate = math.max(0.5, (p.enemy_shoot_rate_max - self.difficulty_modifiers.complexity * p.enemy_shoot_rate_complexity)) / p.enemy_fire_rate
     local extra = {movement_pattern = 'straight', speed_override = speed, shoot_rate = shoot_rate, health = p.enemy_health}
 
@@ -514,10 +513,14 @@ function SpaceShooter:spawnEnemy()
         self.entity_controller:spawnLayout("enemy", "spiral", {count = 8, center_x = self.game_width / 2, center_y = spawn_y, radius = 100, extra = extra})
     else
         local movement = self.difficulty_modifiers.complexity >= 2 and (math.random() > 0.5 and 'zigzag' or 'straight') or 'straight'
+        local health_config = p.use_health_range
+            and {range = {min = p.enemy_health_min, max = p.enemy_health_max}, bounds = {min = 1}}
+            or {variance = p.enemy_health_variance, bounds = {min = 1}}
+        local health = math.floor(self:getScaledValue(p.enemy_health, health_config) + 0.5)
         self.entity_controller:spawn("enemy", math.random(0, self.game_width - p.enemy_width), spawn_y, {
             width = p.enemy_width, height = p.enemy_height, movement_pattern = movement, speed_override = speed,
             shoot_timer = math.random() * (p.enemy_shoot_rate_max - p.enemy_shoot_rate_min) + p.enemy_shoot_rate_min,
-            shoot_rate = shoot_rate, health = self:calculateEnemyHealth()
+            shoot_rate = shoot_rate, health = health
         })
     end
 end
@@ -962,26 +965,6 @@ function SpaceShooter:updateWaveSpawning(dt)
     end
 end
 
---Difficulty scaling
-function SpaceShooter:updateDifficulty(dt)
-    local scaling_factor = self.params.difficulty_scaling_rate * dt
-
-    if self.params.difficulty_curve == "linear" then
-        -- Steady linear increase
-        self.difficulty_scale = self.difficulty_scale + scaling_factor
-    elseif self.params.difficulty_curve == "exponential" then
-        -- Exponential growth (multiplicative)
-        self.difficulty_scale = self.difficulty_scale * (1 + scaling_factor)
-    elseif self.params.difficulty_curve == "wave" then
-        -- Sine wave difficulty (alternating hard/easy)
-        local time_factor = self.time_elapsed * 0.5
-        self.difficulty_scale = 1.0 + math.sin(time_factor) * 0.5
-    end
-
-    -- Cap difficulty scale to reasonable values
-    self.difficulty_scale = math.min(self.difficulty_scale, 5.0)
-end
-
 --Hazards: Asteroids and Meteors use generic behaviors
 function SpaceShooter:updateHazards(dt)
     local p = self.params
@@ -1068,14 +1051,6 @@ function SpaceShooter:applyGravityWells(dt)
     -- Keep player in bounds
     self.player.x = math.max(0, math.min(self.game_width - self.player.width, self.player.x))
     self.player.y = math.max(0, math.min(self.game_height - self.player.height, self.player.y))
-end
-
---Vertical scrolling
-function SpaceShooter:updateScrolling(dt)
-    self.scroll_offset = self.scroll_offset + self.params.scroll_speed * dt
-
-    -- Scroll effect already applied in enemy/asteroid movement
-    -- This function can be extended for visual background scrolling
 end
 
 --Screen wrap helper
