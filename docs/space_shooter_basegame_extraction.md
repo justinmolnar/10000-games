@@ -194,8 +194,8 @@ Extract spawning and damage to BaseGame.
      - Simplify takeDamage() (5 lines) - call BaseGame version
 
 ### Lines Changed
-- base_game.lua: +50 lines
-- space_shooter.lua: -89 lines
+- base_game.lua: +85 lines (actual)
+- space_shooter.lua: -28 lines (actual: 1021 → 993)
 
 ### Testing (User)
 - [ ] Regular enemies spawn
@@ -205,7 +205,22 @@ Extract spawning and damage to BaseGame.
 - [ ] Lives decrement on hit
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Functions added to BaseGame:
+- `takeDamage(amount, sound)` - centralized damage handling with health_system, sound, deaths counter, lives sync, combo reset
+- `spawnEntity(type_name, config)` - handles weighted configs and entrance animations via bezier paths
+
+Functions deleted from space_shooter:
+- `takeDamage()` - now inherited from BaseGame
+- `hasVariantEnemies()` - internal logic now in spawnEntity weighted_configs handling
+- `spawnVariantEnemy()` - internal logic now in spawnEntity weighted_configs handling
+
+Functions simplified in space_shooter:
+- `spawnEnemy()` - now uses spawnEntity for single enemy spawns with weighted configs
+- `spawnGalagaEnemy()` - reduced from ~42 lines to ~21 lines, uses spawnEntity with entrance config
+
+Note: Actual line reduction was less than estimated because spawnEnemy/spawnGalagaEnemy were simplified rather than fully deleted - formation spawning and post-spawn setup logic remains game-specific.
 
 ---
 

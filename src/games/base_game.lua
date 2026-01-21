@@ -822,6 +822,91 @@ function BaseGame:entityShoot(entity, bullet_type)
     self.projectile_system:shootPattern(bullet_type, center_x, center_y, angle, pattern, config)
 end
 
+-- Take damage with sound and state updates
+-- amount: damage amount (default 1)
+-- sound: sound to play (default "hit")
+function BaseGame:takeDamage(amount, sound)
+    if not self.health_system then return end
+
+    amount = amount or 1
+    sound = sound or "hit"
+
+    local absorbed = self.health_system:takeDamage(amount)
+    self:playSound(sound, 1.0)
+
+    if not absorbed then
+        self.deaths = (self.deaths or 0) + 1
+        self.lives = self.health_system.lives
+        self.combo = 0
+    end
+
+    return absorbed
+end
+
+-- Spawn entity with optional weighted configs and entrance animation
+-- type_name: entity type (e.g. "enemy")
+-- config: {x, y, weighted_configs, entrance, extra}
+--   entrance: {pattern, start, target, duration} for bezier entrance animation
+function BaseGame:spawnEntity(type_name, config)
+    if not self.entity_controller then return nil end
+
+    config = config or {}
+    local x = config.x or 0
+    local y = config.y or 0
+    local extra = config.extra or {}
+
+    -- Handle entrance animation
+    if config.entrance then
+        local PatternMovement = self.di and self.di.components and self.di.components.PatternMovement
+        if PatternMovement then
+            local ent = config.entrance
+            local pattern = ent.pattern or "swoop"
+            local start_x = ent.start and ent.start.x or x
+            local start_y = ent.start and ent.start.y or -50
+            local target_x = ent.target and ent.target.x or x
+            local target_y = ent.target and ent.target.y or y
+
+            local bezier_path
+            if pattern == "loop" then
+                local mid_x = start_x < self.arena_width / 2 and self.arena_width * 0.3 or self.arena_width * 0.7
+                bezier_path = PatternMovement.buildPath("loop", {
+                    start_x = start_x, start_y = start_y,
+                    mid_x = mid_x, mid_y = self.arena_height * 0.5,
+                    end_x = target_x, end_y = target_y
+                })
+            elseif pattern == "dive" then
+                bezier_path = PatternMovement.buildPath("dive", {
+                    start_x = start_x, start_y = start_y,
+                    target_x = target_x, target_y = target_y,
+                    exit_x = start_x, exit_y = self.arena_height + 50
+                })
+            else -- swoop
+                bezier_path = PatternMovement.buildPath("swoop", {
+                    start_x = start_x, start_y = start_y,
+                    end_x = target_x, end_y = target_y,
+                    curve_y = self.arena_height * 0.5
+                })
+            end
+
+            extra.movement_pattern = 'bezier'
+            extra.bezier_path = bezier_path
+            extra.bezier_t = 0
+            extra.bezier_duration = ent.duration or 2.0
+            extra.bezier_complete = false
+            extra.home_x = target_x
+            extra.home_y = target_y
+            x, y = start_x, start_y
+        end
+    end
+
+    -- Spawn with weighted configs or regular spawn
+    if config.weighted_configs and #config.weighted_configs > 0 then
+        return self.entity_controller:spawnWeighted(type_name, config.weighted_configs, x, y, extra)
+    else
+        return self.entity_controller:spawn(type_name, x, y, extra)
+    end
+end
+
 -- Phase 3.3: Audio helpers (graceful fallback if no audio assets)
 function BaseGame:loadAudio()
     local audioManager = self.di and self.di.audioManager

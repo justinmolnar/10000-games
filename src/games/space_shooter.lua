@@ -416,8 +416,6 @@ function SpaceShooter:draw()
 end
 
 function SpaceShooter:spawnEnemy()
-    if self:hasVariantEnemies() and math.random() < 0.5 then return self:spawnVariantEnemy() end
-
     local p = self.params
     local spawn_y = p.reverse_gravity and self.game_height or p.enemy_start_y_offset
     local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
@@ -428,6 +426,7 @@ function SpaceShooter:spawnEnemy()
     local shoot_rate = math.max(0.5, (p.enemy_shoot_rate_max - self.difficulty_modifiers.complexity * p.enemy_shoot_rate_complexity)) / p.enemy_fire_rate
     local extra = {movement_pattern = 'straight', speed_override = speed, shoot_rate = shoot_rate, health = p.enemy_health}
 
+    -- Formation spawning
     if p.enemy_formation == "v_formation" then
         self.entity_controller:spawnLayout("enemy", "v_shape", {count = 5, center_x = self.game_width / 2, y = spawn_y, spacing_x = 60, extra = extra})
     elseif p.enemy_formation == "wall" then
@@ -435,43 +434,36 @@ function SpaceShooter:spawnEnemy()
     elseif p.enemy_formation == "spiral" then
         self.entity_controller:spawnLayout("enemy", "spiral", {count = 8, center_x = self.game_width / 2, center_y = spawn_y, radius = 100, extra = extra})
     else
+        -- Single enemy spawn - use weighted configs if available (50% chance)
+        local use_weighted = #self.enemy_weighted_configs > 0 and math.random() < 0.5
         local movement = self.difficulty_modifiers.complexity >= 2 and (math.random() > 0.5 and 'zigzag' or 'straight') or 'straight'
         local health_config = p.use_health_range
             and {range = {min = p.enemy_health_min, max = p.enemy_health_max}, bounds = {min = 1}}
             or {variance = p.enemy_health_variance, bounds = {min = 1}}
         local health = math.floor(self:getScaledValue(p.enemy_health, health_config) + 0.5)
-        self.entity_controller:spawn("enemy", math.random(0, self.game_width - p.enemy_width), spawn_y, {
+
+        local spawn_extra = {
             width = p.enemy_width, height = p.enemy_height, movement_pattern = movement, speed_override = speed,
             shoot_timer = math.random() * (p.enemy_shoot_rate_max - p.enemy_shoot_rate_min) + p.enemy_shoot_rate_min,
-            shoot_rate = shoot_rate, health = health
+            shoot_rate = shoot_rate, health = health, is_variant_enemy = use_weighted
+        }
+
+        local enemy = self:spawnEntity("enemy", {
+            x = math.random(0, self.game_width - p.enemy_width),
+            y = spawn_y,
+            weighted_configs = use_weighted and self.enemy_weighted_configs or nil,
+            extra = spawn_extra
         })
-    end
-end
 
-function SpaceShooter:hasVariantEnemies()
-    return #self.enemy_weighted_configs > 0
-end
-
-function SpaceShooter:spawnVariantEnemy()
-    if #self.enemy_weighted_configs == 0 then return self:spawnEnemy() end
-    local p = self.params
-    local spawn_y = p.reverse_gravity and self.game_height or p.enemy_start_y_offset
-    local shoot_rate = math.max(0.5, p.enemy_shoot_rate_max - self.difficulty_modifiers.complexity * p.enemy_shoot_rate_complexity)
-    local enemy = self.entity_controller:spawnWeighted("enemy", self.enemy_weighted_configs,
-        math.random(0, self.game_width - p.enemy_width), spawn_y,
-        {is_variant_enemy = true, shoot_timer = math.random() * (p.enemy_shoot_rate_max - p.enemy_shoot_rate_min) + p.enemy_shoot_rate_min})
-    if enemy then
-        enemy.shoot_rate = shoot_rate / (enemy.shoot_rate_multiplier or 1.0)
-        if enemy.movement_pattern == 'dive' then
-            enemy.target_x, enemy.target_y = self.player.x + self.player.width / 2, self.player.y + self.player.height / 2
+        -- Post-spawn setup for variant enemies
+        if enemy and use_weighted then
+            enemy.shoot_rate = shoot_rate / (enemy.shoot_rate_multiplier or 1.0)
+            if enemy.movement_pattern == 'dive' then
+                enemy.target_x = self.player.x + self.player.width / 2
+                enemy.target_y = self.player.y + self.player.height / 2
+            end
         end
     end
-end
-
-function SpaceShooter:takeDamage()
-    local absorbed = self.health_system:takeDamage(1)
-    self:playSound("hit", 1.0)
-    if not absorbed then self.deaths, self.lives, self.combo = self.deaths + 1, self.health_system.lives, 0 end
 end
 
 function SpaceShooter:onEnemyDestroyed(enemy)
@@ -689,46 +681,26 @@ function SpaceShooter:initGalagaFormation()
     self.galaga_state.wave_active = true
 end
 
--- Galaga: Spawn enemy with entrance pattern
+-- Galaga: Spawn enemy with entrance pattern (uses BaseGame:spawnEntity)
 function SpaceShooter:spawnGalagaEnemy(formation_slot, wave_modifiers)
     wave_modifiers = wave_modifiers or {}
-    local wave_health = wave_modifiers.health or self.params.enemy_health
-    local PatternMovement = self.di.components.PatternMovement
-
     local entrance_side = math.random() > 0.5 and "left" or "right"
     local start_x = entrance_side == "left" and -50 or (self.game_width + 50)
-    local start_y = -50  -- Off-screen above
-    local pattern = self.params.entrance_pattern or "swoop"
-
-    local bezier_path
-    if pattern == "loop" then
-        local mid_x = entrance_side == "left" and self.game_width * 0.3 or self.game_width * 0.7
-        bezier_path = PatternMovement.buildPath("loop", {
-            start_x = start_x, start_y = start_y,
-            mid_x = mid_x, mid_y = self.game_height * 0.5,
-            end_x = formation_slot.x, end_y = formation_slot.y
-        })
-    else
-        bezier_path = PatternMovement.buildPath("swoop", {
-            start_x = start_x, start_y = start_y,
-            end_x = formation_slot.x, end_y = formation_slot.y,
-            curve_y = self.game_height * (pattern == "swoop" and 0.6 or 0.3)
-        })
-    end
 
     formation_slot.occupied = true
 
-    self.entity_controller:spawn("enemy", start_x, start_y, {
-        movement_pattern = 'bezier',
-        formation_state = 'entering',
-        formation_slot = formation_slot,
-        home_x = formation_slot.x,
-        home_y = formation_slot.y,
-        bezier_path = bezier_path,
-        bezier_t = 0,
-        bezier_duration = 2.0,
-        bezier_complete = false,
-        health = wave_health
+    self:spawnEntity("enemy", {
+        x = formation_slot.x,
+        y = formation_slot.y,
+        entrance = {
+            pattern = self.params.entrance_pattern or "swoop",
+            start = {x = start_x, y = -50}
+        },
+        extra = {
+            formation_state = 'entering',
+            formation_slot = formation_slot,
+            health = wave_modifiers.health or self.params.enemy_health
+        }
     })
 end
 
