@@ -23,27 +23,12 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
 end
 
 function SnakeGame:setupArena()
-    self.is_fixed_arena = (self.variant and self.variant.arena_size ~= nil)
-    local base_w = self.params.arena_base_width
-    local base_h = self.params.arena_base_height
-
-    if self.is_fixed_arena then
-        self.game_width = math.floor(base_w * self.params.arena_size)
-        self.game_height = math.floor(base_h * self.params.arena_size)
-    else
-        self.game_width, self.game_height = base_w, base_h
-    end
-    self.grid_width = math.floor(self.game_width / (self.GRID_SIZE * (self.is_fixed_arena and 1 or (self.params.camera_zoom or 1))))
-    self.grid_height = math.floor(self.game_height / (self.GRID_SIZE * (self.is_fixed_arena and 1 or (self.params.camera_zoom or 1))))
-    self.lock_aspect_ratio = (self.is_fixed_arena and self.params.camera_mode == "fixed")
-    print(string.format("[setupArena] base=%dx%d game=%dx%d grid=%dx%d GRID_SIZE=%d fixed=%s zoom=%s wall_mode=%s",
-        base_w, base_h, self.game_width, self.game_height, self.grid_width, self.grid_height,
-        self.GRID_SIZE, tostring(self.is_fixed_arena), tostring(self.params.camera_zoom), tostring(self.params.wall_mode)))
-end
-
-function SnakeGame:_getStartingDirection()
-    local dirs = {right = {x=1,y=0}, left = {x=-1,y=0}, up = {x=0,y=-1}, down = {x=0,y=1}}
-    return dirs[self.params.starting_direction] or dirs.right
+    self:setupArenaDimensions()
+    self.grid_width = math.floor(self.game_width / (self.GRID_SIZE * self.camera_zoom))
+    self.grid_height = math.floor(self.game_height / (self.GRID_SIZE * self.camera_zoom))
+    print(string.format("[setupArena] game=%dx%d grid=%dx%d GRID_SIZE=%d fixed=%s zoom=%s wall_mode=%s",
+        self.game_width, self.game_height, self.grid_width, self.grid_height,
+        self.GRID_SIZE, tostring(self.is_fixed_arena), tostring(self.camera_zoom), tostring(self.params.wall_mode)))
 end
 
 function SnakeGame:_initSmoothState(x, y)
@@ -56,7 +41,7 @@ function SnakeGame:_initSmoothState(x, y)
 end
 
 function SnakeGame:_createSnakeEntity(x, y)
-    local dir = self:_getStartingDirection()
+    local dir = BaseGame.CARDINAL_DIRECTIONS[self.params.starting_direction] or BaseGame.CARDINAL_DIRECTIONS.right
     local snake = {
         body = {{x = x, y = y}},
         direction = dir,

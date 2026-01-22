@@ -1,6 +1,14 @@
 local Object = require('class')
 local BaseGame = Object:extend('BaseGame')
 
+-- Cardinal direction lookup table
+BaseGame.CARDINAL_DIRECTIONS = {
+    right = {x = 1, y = 0},
+    left = {x = -1, y = 0},
+    up = {x = 0, y = -1},
+    down = {x = 0, y = 1}
+}
+
 function BaseGame:init(game_data, cheats, di, variant_override)
     -- Store game definition
     self.data = game_data
@@ -94,6 +102,26 @@ function BaseGame:init(game_data, cheats, di, variant_override)
             intro_cutscene = nil
         }
     end
+end
+
+-- Setup arena dimensions from variant and params
+-- Sets: is_fixed_arena, game_width, game_height, lock_aspect_ratio
+-- Expects params to have: arena_base_width, arena_base_height, camera_zoom, camera_mode
+-- Expects variant to optionally have: arena_size
+function BaseGame:setupArenaDimensions()
+    self.is_fixed_arena = (self.variant and self.variant.arena_size ~= nil)
+    local base_w = self.params.arena_base_width or 800
+    local base_h = self.params.arena_base_height or 600
+
+    if self.is_fixed_arena then
+        self.game_width = math.floor(base_w * self.params.arena_size)
+        self.game_height = math.floor(base_h * self.params.arena_size)
+    else
+        self.game_width, self.game_height = base_w, base_h
+    end
+
+    self.camera_zoom = self.is_fixed_arena and 1 or (self.params.camera_zoom or 1)
+    self.lock_aspect_ratio = (self.is_fixed_arena and self.params.camera_mode == "fixed")
 end
 
 -- Apply cheats to params using a mapping
@@ -710,6 +738,24 @@ function BaseGame:getCardinalDirection(from_x, from_y, to_x, to_y)
         return dx > 0 and 1 or -1, 0
     else
         return 0, dy > 0 and 1 or -1
+    end
+end
+
+-- Returns nearest cardinal direction {x, y} from angle in radians
+function BaseGame:getCardinalFromAngle(angle)
+    -- Normalize angle to 0-2π
+    angle = angle % (2 * math.pi)
+    if angle < 0 then angle = angle + 2 * math.pi end
+
+    -- Map angle to cardinal: right=0, down=π/2, left=π, up=3π/2
+    if angle < math.pi / 4 or angle >= 7 * math.pi / 4 then
+        return BaseGame.CARDINAL_DIRECTIONS.right
+    elseif angle < 3 * math.pi / 4 then
+        return BaseGame.CARDINAL_DIRECTIONS.down
+    elseif angle < 5 * math.pi / 4 then
+        return BaseGame.CARDINAL_DIRECTIONS.left
+    else
+        return BaseGame.CARDINAL_DIRECTIONS.up
     end
 end
 

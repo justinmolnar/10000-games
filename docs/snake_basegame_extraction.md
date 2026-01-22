@@ -88,7 +88,18 @@ Add direction constants and arena setup to BaseGame.
 - [ ] Camera zoom works
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Changes made:
+- Added `BaseGame.CARDINAL_DIRECTIONS` constant (8 lines)
+- Added `BaseGame:getCardinalFromAngle(angle)` function (15 lines)
+- Added `BaseGame:setupArenaDimensions()` function (15 lines)
+- Deleted `SnakeGame:_getStartingDirection()` (4 lines)
+- Simplified `SnakeGame:setupArena()` to use `setupArenaDimensions()` (-12 lines)
+
+**Line count change:**
+- snake_game.lua: 1960 → 1944 (-16 lines)
+- base_game.lua: +38 lines
 
 ---
 
