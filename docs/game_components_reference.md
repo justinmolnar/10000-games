@@ -245,7 +245,7 @@ Physics helpers: forces, movement, collision detection/response.
 **Utilities:**
 - **updateTrail(entity, max_length)** - Add current position to trail array.
 - **wrapPosition(x, y, ew, eh, bw, bh)** - Screen wrap position.
-- **createTrailSystem(config)** - Create trail object with addPoint/clear/draw methods.
+- **createTrailSystem(config)** - Create trail object. Config: max_length (point count limit), track_distance (enable distance tracking), color, line_width. Methods: addPoint(x, y, dist), clear(), draw(), getPoints(), getPointCount(), getDistance(), trimToDistance(target).
 
 ---
 

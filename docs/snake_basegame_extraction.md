@@ -185,7 +185,28 @@ Use existing trail system, simplify smooth state.
 - [ ] Self-collision detection works in smooth mode
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Enhanced existing `createTrailSystem` in PhysicsUtils instead of creating new system:
+- Added `track_distance` config option for distance-based length tracking
+- Added `addPoint(x, y, dist)` - accumulates distance when tracking enabled
+- Added `trimToDistance(target)` - trims trail based on actual distance
+- Added `getDistance()` and `getPoints()` accessors
+- Made `max_length` optional (only trims by count if specified)
+
+Updated snake_game.lua:
+- `_initSmoothState()` now creates trail system with `track_distance = true`
+- Replaced manual trail array operations with trail system methods
+- Self-intersection check stays in snake (uses `getPoints()` for iteration)
+- Player snake trail management also updated
+
+Updated snake_view.lua:
+- Uses `smooth_trail:getPoints()` instead of direct array access
+
+**Line count change:**
+- snake_game.lua: 1751 → 1713 (-38 lines)
+- physics_utils.lua: +~20 lines (enhanced existing function)
+- snake_view.lua: -~10 lines (simplified)
 
 ---
 

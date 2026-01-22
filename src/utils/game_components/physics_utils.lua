@@ -589,22 +589,42 @@ function PhysicsUtils.wrapPosition(x, y, entity_width, entity_height, bounds_wid
 end
 
 function PhysicsUtils.createTrailSystem(config)
+    config = config or {}
     local trail = {
-        max_length = config.max_length or 10,
+        max_length = config.max_length,
+        track_distance = config.track_distance or false,
         color = config.color or {1, 1, 1, 1},
         line_width = config.line_width or 2,
-        buffer = {}
+        buffer = {},
+        distance = 0
     }
 
-    function trail:addPoint(x, y)
+    function trail:addPoint(x, y, dist)
         table.insert(self.buffer, {x = x, y = y})
-        while #self.buffer > self.max_length do
-            table.remove(self.buffer, 1)
+        if self.track_distance and dist then
+            self.distance = self.distance + dist
+        end
+        if self.max_length then
+            while #self.buffer > self.max_length do
+                table.remove(self.buffer, 1)
+            end
+        end
+    end
+
+    function trail:trimToDistance(target)
+        while self.distance > target and #self.buffer > 1 do
+            local removed = table.remove(self.buffer, 1)
+            if #self.buffer > 0 then
+                local next_pt = self.buffer[1]
+                local dx, dy = next_pt.x - removed.x, next_pt.y - removed.y
+                self.distance = self.distance - math.sqrt(dx*dx + dy*dy)
+            end
         end
     end
 
     function trail:clear()
         self.buffer = {}
+        self.distance = 0
     end
 
     function trail:draw()
@@ -612,8 +632,7 @@ function PhysicsUtils.createTrailSystem(config)
         love.graphics.push()
         love.graphics.setLineWidth(self.line_width)
         for i = 1, #self.buffer - 1 do
-            local p1 = self.buffer[i]
-            local p2 = self.buffer[i + 1]
+            local p1, p2 = self.buffer[i], self.buffer[i + 1]
             local alpha = (i / #self.buffer) * self.color[4]
             love.graphics.setColor(self.color[1], self.color[2], self.color[3], alpha)
             love.graphics.line(p1.x, p1.y, p2.x, p2.y)
@@ -622,9 +641,9 @@ function PhysicsUtils.createTrailSystem(config)
         love.graphics.pop()
     end
 
-    function trail:getLength()
-        return #self.buffer
-    end
+    function trail:getPointCount() return #self.buffer end
+    function trail:getDistance() return self.distance end
+    function trail:getPoints() return self.buffer end
 
     return trail
 end

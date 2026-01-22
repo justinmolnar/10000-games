@@ -32,8 +32,8 @@
             "type": "number",
             "default": 0.01,
             "min": 0.001,
-            "max": 1,
-            "description": "Initial trail length for smooth movement mode"
+            "max": 20,
+            "description": "Initial trail length for smooth movement mode (grid units)"
         },
         "turn_speed": {
             "type": "number",

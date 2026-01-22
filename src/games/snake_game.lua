@@ -1,5 +1,6 @@
 local BaseGame = require('src.games.base_game')
 local SnakeView = require('src.games.views.snake_view')
+local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
 function SnakeGame:init(game_data, cheats, di, variant_override)
@@ -34,7 +35,7 @@ end
 function SnakeGame:_initSmoothState(x, y)
     return {
         smooth_x = x + 0.5, smooth_y = y + 0.5, smooth_angle = 0,
-        smooth_trail = {}, smooth_trail_length = 0,
+        smooth_trail = PhysicsUtils.createTrailSystem({track_distance = true}),
         smooth_target_length = self.params.smooth_initial_length,
         smooth_turn_left = false, smooth_turn_right = false
     }
@@ -867,10 +868,10 @@ function SnakeGame:updateSmoothMovement(dt)
         local old_x, old_y = self.snake.smooth_x, self.snake.smooth_y
         self.snake.smooth_x, self.snake.smooth_y = self:wrapPosition(
             self.snake.smooth_x, self.snake.smooth_y, self.grid_width, self.grid_height)
-        -- Clear trail on wrap to avoid line across screen
-        if old_x ~= self.snake.smooth_x or old_y ~= self.snake.smooth_y then
-            self.snake.smooth_trail = {}
-            self.snake.smooth_trail_length = 0
+        -- Clear trail on wrap to avoid line across screen (use threshold to detect actual wrap, not float noise)
+        local wrap_threshold = 1.0
+        if math.abs(old_x - self.snake.smooth_x) > wrap_threshold or math.abs(old_y - self.snake.smooth_y) > wrap_threshold then
+            self.snake.smooth_trail:clear()
         end
     elseif self.params.wall_mode == "death" then
         -- Check boundaries and shaped arenas
@@ -895,21 +896,9 @@ function SnakeGame:updateSmoothMovement(dt)
     end
     -- Note: Bounce mode handled by obstacle collision below
 
-    -- Add current position to trail
-    table.insert(self.snake.smooth_trail, {x = self.snake.smooth_x, y = self.snake.smooth_y})
-    self.snake.smooth_trail_length = self.snake.smooth_trail_length + math.sqrt(dx*dx + dy*dy)  -- dx/dy already in grid units
-
-    -- Trim trail to target length
-    while self.snake.smooth_trail_length > self.snake.smooth_target_length and #self.snake.smooth_trail > 1 do
-        local removed = table.remove(self.snake.smooth_trail, 1)
-        if #self.snake.smooth_trail > 0 then
-            local next_point = self.snake.smooth_trail[1]
-            local segment_dx = next_point.x - removed.x
-            local segment_dy = next_point.y - removed.y
-            local segment_length = math.sqrt(segment_dx*segment_dx + segment_dy*segment_dy)  -- Already in grid units
-            self.snake.smooth_trail_length = self.snake.smooth_trail_length - segment_length
-        end
-    end
+    -- Add current position to trail and trim to target length
+    self.snake.smooth_trail:addPoint(self.snake.smooth_x, self.snake.smooth_y, math.sqrt(dx*dx + dy*dy))
+    self.snake.smooth_trail:trimToDistance(self.snake.smooth_target_length)
 
     -- Check collision with obstacles (radius-based for smooth movement)
     local head_grid_x = math.floor(self.snake.smooth_x)
@@ -989,11 +978,10 @@ function SnakeGame:updateSmoothMovement(dt)
                 self.snake.smooth_x = self.snake.smooth_x - math.cos(self.snake.smooth_angle - math.pi) * 0.2
                 self.snake.smooth_y = self.snake.smooth_y - math.sin(self.snake.smooth_angle - math.pi) * 0.2
 
-                -- Clear some trail
-                if #self.snake.smooth_trail > 5 then
-                    for i = 1, 3 do
-                        table.remove(self.snake.smooth_trail)
-                    end
+                -- Clear some trail on bounce
+                local points = self.snake.smooth_trail:getPoints()
+                if #points > 5 then
+                    for i = 1, 3 do table.remove(points) end
                 end
 
                 break  -- Only bounce once per frame
@@ -1007,32 +995,19 @@ function SnakeGame:updateSmoothMovement(dt)
     end
 
     -- Check collision with own trail (self-collision)
-    -- Skip trail collision if phase_through_tail is enabled
     if not self.params.phase_through_tail then
-        -- Skip the trail section close to the head to avoid false collision with neck
-        -- Calculate how much trail length to skip (in grid units) - girth_scale defined above
-        local skip_trail_length = 1.0 * girth_scale  -- Skip more trail for girthier snakes
-        local trail_collision_distance = 0.1 + (girth_scale * 0.3)  -- Scales with girth (0.4 at girth 1, 1.6 at girth 5)
-
-        local checked_length = 0
-        for i = #self.snake.smooth_trail, 1, -1 do
-            -- Accumulate length from newest to oldest trail point
-            if i < #self.snake.smooth_trail then
-                local curr = self.snake.smooth_trail[i]
-                local next_pt = self.snake.smooth_trail[i + 1]
-                local seg_dx = next_pt.x - curr.x
-                local seg_dy = next_pt.y - curr.y
-                checked_length = checked_length + math.sqrt(seg_dx*seg_dx + seg_dy*seg_dy)
+        local skip_length = 1.0 * girth_scale
+        local collision_dist = 0.1 + (girth_scale * 0.3)
+        local points = self.snake.smooth_trail:getPoints()
+        local checked = 0
+        for i = #points, 1, -1 do
+            if i < #points then
+                local curr, next_pt = points[i], points[i + 1]
+                checked = checked + math.sqrt((next_pt.x - curr.x)^2 + (next_pt.y - curr.y)^2)
             end
-
-            -- Only check collision once we're past the skip zone
-            if checked_length > skip_trail_length then
-                local trail_point = self.snake.smooth_trail[i]
-                local dx = self.snake.smooth_x - trail_point.x
-                local dy = self.snake.smooth_y - trail_point.y
-                local distance = math.sqrt(dx*dx + dy*dy)
-
-                if distance < trail_collision_distance then
+            if checked > skip_length then
+                local pt = points[i]
+                if math.sqrt((self.snake.smooth_x - pt.x)^2 + (self.snake.smooth_y - pt.y)^2) < collision_dist then
                     self:playSound("death", 1.0)
                     self:onComplete()
                     return
@@ -1192,20 +1167,8 @@ function SnakeGame:updateSmoothMovement(dt)
 
             -- Update trail
             if psnake.alive then
-                table.insert(psnake.smooth_trail, {x = psnake.smooth_x, y = psnake.smooth_y})
-                psnake.smooth_trail_length = psnake.smooth_trail_length + math.sqrt(dx*dx + dy*dy)
-
-                -- Trim trail
-                while psnake.smooth_trail_length > psnake.smooth_target_length and #psnake.smooth_trail > 1 do
-                    local removed = table.remove(psnake.smooth_trail, 1)
-                    if #psnake.smooth_trail > 0 then
-                        local next_point = psnake.smooth_trail[1]
-                        local segment_dx = next_point.x - removed.x
-                        local segment_dy = next_point.y - removed.y
-                        local segment_length = math.sqrt(segment_dx*segment_dx + segment_dy*segment_dy)
-                        psnake.smooth_trail_length = psnake.smooth_trail_length - segment_length
-                    end
-                end
+                psnake.smooth_trail:addPoint(psnake.smooth_x, psnake.smooth_y, math.sqrt(dx*dx + dy*dy))
+                psnake.smooth_trail:trimToDistance(psnake.smooth_target_length)
 
                 -- Update body position for camera
                 if psnake.body and #psnake.body > 0 then

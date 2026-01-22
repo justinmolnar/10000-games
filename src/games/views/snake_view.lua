@@ -147,32 +147,21 @@ function SnakeView:draw()
     -- Check for smooth movement mode (analog turning with trail)
     if game.params.movement_type == "smooth" then
         -- Draw trail
-        if #game.snake.smooth_trail > 0 then
+        local trail_points = game.snake.smooth_trail:getPoints()
+        if #trail_points > 0 then
             love.graphics.setColor(0.3, 0.8, 0.3)
             love.graphics.setLineWidth(segment_size * girth)
 
             -- Draw trail as connected line segments
-            for i = 1, #game.snake.smooth_trail - 1 do
-                local p1 = game.snake.smooth_trail[i]
-                local p2 = game.snake.smooth_trail[i + 1]
-                love.graphics.line(
-                    p1.x * GRID_SIZE,
-                    p1.y * GRID_SIZE,
-                    p2.x * GRID_SIZE,
-                    p2.y * GRID_SIZE
-                )
+            for i = 1, #trail_points - 1 do
+                local p1, p2 = trail_points[i], trail_points[i + 1]
+                love.graphics.line(p1.x * GRID_SIZE, p1.y * GRID_SIZE, p2.x * GRID_SIZE, p2.y * GRID_SIZE)
             end
 
             -- Connect last trail point to head
-            if #game.snake.smooth_trail > 0 then
-                local last = game.snake.smooth_trail[#game.snake.smooth_trail]
-                love.graphics.line(
-                    last.x * GRID_SIZE,
-                    last.y * GRID_SIZE,
-                    game.snake.smooth_x * GRID_SIZE,
-                    game.snake.smooth_y * GRID_SIZE
-                )
-            end
+            local last = trail_points[#trail_points]
+            love.graphics.line(last.x * GRID_SIZE, last.y * GRID_SIZE,
+                game.snake.smooth_x * GRID_SIZE, game.snake.smooth_y * GRID_SIZE)
 
             love.graphics.setLineWidth(1)
             love.graphics.setColor(1, 1, 1)
@@ -330,32 +319,19 @@ function SnakeView:draw()
             if psnake.alive then
                 if game.params.movement_type == "smooth" and psnake.smooth_x then
                     -- Draw smooth trail
-                    if #psnake.smooth_trail > 0 then
+                    local trail_points = psnake.smooth_trail:getPoints()
+                    if #trail_points > 0 then
                         love.graphics.setColor(0.3, 0.3, 1)  -- Blue tint
                         love.graphics.setLineWidth(segment_size * girth)
 
-                        -- Draw trail
-                        for j = 1, #psnake.smooth_trail - 1 do
-                            local p1 = psnake.smooth_trail[j]
-                            local p2 = psnake.smooth_trail[j + 1]
-                            love.graphics.line(
-                                p1.x * GRID_SIZE,
-                                p1.y * GRID_SIZE,
-                                p2.x * GRID_SIZE,
-                                p2.y * GRID_SIZE
-                            )
+                        for j = 1, #trail_points - 1 do
+                            local p1, p2 = trail_points[j], trail_points[j + 1]
+                            love.graphics.line(p1.x * GRID_SIZE, p1.y * GRID_SIZE, p2.x * GRID_SIZE, p2.y * GRID_SIZE)
                         end
 
-                        -- Connect last trail point to head
-                        if #psnake.smooth_trail > 0 then
-                            local last = psnake.smooth_trail[#psnake.smooth_trail]
-                            love.graphics.line(
-                                last.x * GRID_SIZE,
-                                last.y * GRID_SIZE,
-                                psnake.smooth_x * GRID_SIZE,
-                                psnake.smooth_y * GRID_SIZE
-                            )
-                        end
+                        local last = trail_points[#trail_points]
+                        love.graphics.line(last.x * GRID_SIZE, last.y * GRID_SIZE,
+                            psnake.smooth_x * GRID_SIZE, psnake.smooth_y * GRID_SIZE)
 
                         love.graphics.setLineWidth(1)
                     end
