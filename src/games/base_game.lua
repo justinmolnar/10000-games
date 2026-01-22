@@ -375,7 +375,9 @@ function BaseGame:setPlayArea(width, height)
 end
 
 function BaseGame:draw()
-    -- Override in subclasses
+    if self.view then
+        self.view:draw()
+    end
 end
 
 function BaseGame:keypressed(key)

@@ -415,8 +415,7 @@ function SnakeGame:updateGameLogic(dt)
             self.metrics.snake_length = #self.snake.body
             -- Die if shrunk to nothing
             if #self.snake.body == 0 then
-                self:playSound("death", 1.0)
-                self:onComplete()
+                                self:onComplete()
                 return
             end
         end
@@ -490,8 +489,7 @@ function SnakeGame:updateGameLogic(dt)
             new_head.x, new_head.y = self:wrapPosition(new_head.x, new_head.y, self.grid_width, self.grid_height)
         elseif self.params.wall_mode == "death" then
             if not self:isInsideArena(new_head) then
-                self:playSound("death", 1.0)
-                self:onComplete()
+                                self:onComplete()
                 return
             end
         elseif self.params.wall_mode == "bounce" then
@@ -505,8 +503,7 @@ function SnakeGame:updateGameLogic(dt)
 
         -- Check collision (with phase_through_tail support)
         if self:checkCollision(new_head, true) then
-            self:playSound("death", 1.0)
-            self:onComplete()
+                        self:onComplete()
             return
         end
 
@@ -599,43 +596,6 @@ function SnakeGame:updateGameLogic(dt)
             ::continue::
         end
     end
-end
-
-function SnakeGame:checkComplete()
-    local result = self.victory_checker:check()
-    if result then
-        self.victory = (result == "victory")
-        self.game_over = (result == "loss")
-        return true
-    end
-    return false
-end
-
-function SnakeGame:onComplete()
-    -- Determine if win based on victory condition
-    local is_win = false
-    if self.params.victory_condition == "length" then
-        is_win = self.metrics.snake_length >= self.params.victory_limit
-    elseif self.params.victory_condition == "time" then
-        is_win = self.time_elapsed >= self.params.victory_limit
-    end
-
-    if is_win then
-        self:playSound("success", 1.0)
-    end
-    -- Note: death sound already played inline at collision detection
-
-    -- Stop music
-    self:stopMusic()
-
-    -- Call parent onComplete
-    SnakeGame.super.onComplete(self)
-end
-
-function SnakeGame:draw()
-   if self.view then
-       self.view:draw()
-   end
 end
 
 function SnakeGame:keypressed(key)
@@ -736,8 +696,7 @@ function SnakeGame:_updateSmoothSnake(snake, entity_id, dt, head_radius, food_ra
         end
         if out_of_bounds then
             if is_primary then
-                self:playSound("death", 1.0)
-                self:onComplete()
+                                self:onComplete()
             else
                 snake.alive = false
             end
@@ -759,8 +718,7 @@ function SnakeGame:_updateSmoothSnake(snake, entity_id, dt, head_radius, food_ra
                 break
             else
                 if is_primary then
-                    self:playSound("death", 1.0)
-                    self:onComplete()
+                                        self:onComplete()
                 else
                     snake.alive = false
                 end
@@ -782,8 +740,7 @@ function SnakeGame:_updateSmoothSnake(snake, entity_id, dt, head_radius, food_ra
             end
             if checked > skip_dist then
                 if PhysicsUtils.circleCollision(snake.smooth_x, snake.smooth_y, coll_dist, points[i].x, points[i].y, 0) then
-                    self:playSound("death", 1.0)
-                    self:onComplete()
+                                        self:onComplete()
                     return
                 end
             end
@@ -966,8 +923,7 @@ function SnakeGame:checkSnakeCollisions()
                 if self.params.snake_collision_mode == "both_die" then
                     self.snake.alive = false
                     ai_snake.alive = false
-                    self:playSound("death", 1.0)
-                    self:onComplete()
+                                        self:onComplete()
                 elseif self.params.snake_collision_mode == "big_eats_small" then
                     if #self.snake.body > #ai_snake.body then
                         -- Player wins, absorb AI snake
@@ -979,8 +935,7 @@ function SnakeGame:checkSnakeCollisions()
                     else
                         -- AI wins, player dies
                         self.snake.alive = false
-                        self:playSound("death", 1.0)
-                        self:onComplete()
+                                                self:onComplete()
                     end
                 end
                 -- phase_through: do nothing
@@ -991,8 +946,7 @@ function SnakeGame:checkSnakeCollisions()
                 if player_head.x == segment.x and player_head.y == segment.y then
                     if self.params.snake_collision_mode ~= "phase_through" then
                         self.snake.alive = false
-                        self:playSound("death", 1.0)
-                        self:onComplete()
+                                                self:onComplete()
                     end
                     break
                 end
@@ -1107,8 +1061,7 @@ function SnakeGame:collectFood(food, snake)
                 if #body > 1 then table.remove(body) end
             end
         end
-        self:playSound("death", 0.5)
-    else
+            else
         if is_smooth then
             snake.smooth_target_length = snake.smooth_target_length + growth
         else
