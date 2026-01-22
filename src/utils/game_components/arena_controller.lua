@@ -653,4 +653,31 @@ function ArenaController:drawBoundary(scale, color)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- Get grid cells outside the playable area (for rendering walls)
+-- Returns array of {x, y} grid positions
+function ArenaController:getBoundaryCells(grid_width, grid_height)
+    local cells = {}
+    local margins = self:getShrinkMargins()
+
+    for y = 0, grid_height - 1 do
+        for x = 0, grid_width - 1 do
+            local outside = false
+
+            if self.safe_zone_mode then
+                -- Shaped arenas: check if outside shape
+                outside = not self:isInsideGrid(x, y)
+            else
+                -- Rectangle: edge cells (0 and grid_width-1) are walls, plus shrink margins
+                outside = x <= margins.left or x >= grid_width - 1 - margins.right or
+                          y <= margins.top or y >= grid_height - 1 - margins.bottom
+            end
+
+            if outside then
+                table.insert(cells, {x = x, y = y})
+            end
+        end
+    end
+    return cells
+end
+
 return ArenaController
