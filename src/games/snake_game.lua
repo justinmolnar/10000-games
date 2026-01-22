@@ -28,9 +28,6 @@ function SnakeGame:setupArena()
     self:setupArenaDimensions()
     self.grid_width = math.floor(self.game_width / (self.GRID_SIZE * self.camera_zoom))
     self.grid_height = math.floor(self.game_height / (self.GRID_SIZE * self.camera_zoom))
-    print(string.format("[setupArena] game=%dx%d grid=%dx%d GRID_SIZE=%d fixed=%s zoom=%s wall_mode=%s",
-        self.game_width, self.game_height, self.grid_width, self.grid_height,
-        self.GRID_SIZE, tostring(self.is_fixed_arena), tostring(self.camera_zoom), tostring(self.params.wall_mode)))
 end
 
 function SnakeGame:_initSmoothState(x, y)
@@ -161,8 +158,6 @@ function SnakeGame:setupSnake()
     self.pending_growth = 0
     self.shrink_timer, self.obstacle_spawn_timer = 0, 0
     self.ai_snakes = {}
-    -- TODO: These are transitional - will be removed once all references use getFoods()/getObstacles()
-    self.foods, self.obstacles = {}, {}
 
     for i = 1, self.params.ai_snake_count do
         table.insert(self.ai_snakes, self:createAISnake(i))
@@ -248,31 +243,14 @@ end
 
 function SnakeGame:setPlayArea(width, height)
     self.viewport_width, self.viewport_height = width, height
-    print(string.format("[setPlayArea] viewport=%dx%d game=%dx%d grid=%dx%d fixed=%s",
-        width, height, self.game_width or 0, self.game_height or 0, self.grid_width or 0, self.grid_height or 0, tostring(self.is_fixed_arena)))
 
-    if self.is_fixed_arena then
-        self:_initializeObstacles()
-        print(string.format("[setPlayArea fixed] total obstacles=%d", #self:getObstacles()))
-        if self._snake_needs_spawn then
-            self:_spawnSnakeSafe()
-            self._snake_needs_spawn = false
-        end
-        if self.snake and #self.snake.body > 0 and self:_checkSpawnSafety(self.snake.body[1]) then
-            local x, y = self:findSafePosition(0, self.grid_width - 1, 0, self.grid_height - 1,
-                function(x, y) return not self:_checkSpawnSafety({x = x, y = y}) end)
-            self:_repositionSnakeAt(x, y)
-        end
-        self:_repositionAISnakesInArena(0, self.grid_width - 1, 0, self.grid_height - 1)
-        self:_spawnInitialFood()
-    else
+    if not self.is_fixed_arena then
         self.game_width, self.game_height = width, height
         if self.GRID_SIZE then
             local effective_tile_size = self.GRID_SIZE * (self.params.camera_zoom or 1.0)
             self.grid_width = math.floor(self.game_width / effective_tile_size)
             self.grid_height = math.floor(self.game_height / effective_tile_size)
 
-            -- Update arena_controller with new grid dimensions
             self.arena_controller.base_width = self.grid_width
             self.arena_controller.base_height = self.grid_height
             self.arena_controller.current_width = self.grid_width
@@ -280,20 +258,21 @@ function SnakeGame:setPlayArea(width, height)
 
             self:_clampPositionsToSafe(0, self.grid_width - 1, 0, self.grid_height - 1)
             self:_regenerateEdgeObstacles()
-            if self._snake_needs_spawn then
-                self:_spawnSnakeSafe()
-                self._snake_needs_spawn = false
-            end
-            if self.snake and #self.snake.body > 0 and self:_checkSpawnSafety(self.snake.body[1]) then
-                local x, y = self:findSafePosition(0, self.grid_width - 1, 0, self.grid_height - 1,
-                    function(x, y) return not self:_checkSpawnSafety({x = x, y = y}) end)
-                self:_repositionSnakeAt(x, y)
-            end
-            self:_repositionAISnakesInArena(0, self.grid_width - 1, 0, self.grid_height - 1)
-            self:_spawnInitialFood()
-            print(string.format("[setPlayArea END] game=%dx%d grid=%dx%d", self.game_width, self.game_height, self.grid_width, self.grid_height))
         end
     end
+
+    self:_initializeObstacles()
+    if self._snake_needs_spawn then
+        self:_spawnSnakeSafe()
+        self._snake_needs_spawn = false
+    end
+    if self.snake and #self.snake.body > 0 and self:_checkSpawnSafety(self.snake.body[1]) then
+        local x, y = self:findSafePosition(0, self.grid_width - 1, 0, self.grid_height - 1,
+            function(x, y) return not self:_checkSpawnSafety({x = x, y = y}) end)
+        self:_repositionSnakeAt(x, y)
+    end
+    self:_repositionAISnakesInArena(0, self.grid_width - 1, 0, self.grid_height - 1)
+    self:_spawnInitialFood()
 end
 
 function SnakeGame:updateGameLogic(dt)
