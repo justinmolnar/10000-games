@@ -426,7 +426,7 @@ function SnakeView:draw()
     love.graphics.setColor(1, 1, 1)
 
     -- Draw foods (multiple foods support with palette-swapped colors)
-    for _, food in ipairs(game.foods or {}) do
+    for _, food in ipairs(game:getFoods()) do
         -- Determine color based on food type (palette swap)
         local food_color = {1, 1, 1}  -- Normal
         local food_icon = "check-0"
@@ -464,7 +464,7 @@ function SnakeView:draw()
 
     -- Draw obstacles (skip wall-type obstacles for rectangles - they're rendered by drawArenaBoundaries)
     local arena_shape = game.params.arena_shape or "rectangle"
-    for _, obstacle in ipairs(game.obstacles) do
+    for _, obstacle in ipairs(game:getObstacles()) do
         -- Skip wall obstacles for rectangle arenas only - shaped arenas need their walls drawn as obstacles
         if (obstacle.type == "walls" or obstacle.type == "bounce_wall") and arena_shape == "rectangle" then
             goto continue_obstacle

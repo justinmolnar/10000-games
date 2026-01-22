@@ -323,6 +323,164 @@ function EntityController:spawnRandom(type_name, count, bounds, rng, allow_overl
 end
 
 --[[
+    Spawn entity near an existing entity (cluster spawning)
+
+    @param type_name string - Entity type to spawn
+    @param ref_entity table - Reference entity to spawn near (or nil to pick random existing)
+    @param radius number - Max distance from reference (default 3)
+    @param bounds table - {min_x, max_x, min_y, max_y} to clamp position
+    @param is_valid_fn function(x, y) - Optional validation function
+    @param custom_params table - Optional params to pass to spawn
+    @return entity or nil
+]]
+function EntityController:spawnCluster(type_name, ref_entity, radius, bounds, is_valid_fn, custom_params)
+    radius = radius or 3
+
+    -- If no reference provided, pick random existing entity of same type
+    if not ref_entity then
+        local existing = self:getEntitiesByType(type_name)
+        if #existing == 0 then return nil end
+        ref_entity = existing[math.random(#existing)]
+    end
+
+    local max_attempts = 50
+    for _ = 1, max_attempts do
+        local offset_x = math.random(-radius, radius)
+        local offset_y = math.random(-radius, radius)
+        local x = ref_entity.x + offset_x
+        local y = ref_entity.y + offset_y
+
+        -- Clamp to bounds if provided
+        if bounds then
+            x = math.max(bounds.min_x or 0, math.min(bounds.max_x or 9999, x))
+            y = math.max(bounds.min_y or 0, math.min(bounds.max_y or 9999, y))
+        end
+
+        -- Check validation function
+        local valid = true
+        if is_valid_fn then
+            valid = is_valid_fn(x, y)
+        end
+
+        if valid then
+            return self:spawn(type_name, x, y, custom_params)
+        end
+    end
+
+    return nil
+end
+
+-- Spawn pattern functions: each returns x, y given bounds, config, and state
+EntityController.SPAWN_PATTERNS = {
+    random = function(bounds)
+        if bounds.is_grid then
+            return math.random(bounds.min_x, bounds.max_x), math.random(bounds.min_y, bounds.max_y)
+        end
+        return bounds.min_x + math.random() * (bounds.max_x - bounds.min_x),
+               bounds.min_y + math.random() * (bounds.max_y - bounds.min_y)
+    end,
+
+    cluster = function(bounds, config, state, controller)
+        local ref = config.ref_entity
+        if not ref then
+            local existing = controller:getEntitiesByCategory(config.category)
+            if #existing > 0 then ref = existing[math.random(#existing)] end
+        end
+        if not ref then return EntityController.SPAWN_PATTERNS.random(bounds) end
+        local r = config.radius or 3
+        return ref.x + math.random(-r, r), ref.y + math.random(-r, r)
+    end,
+
+    line = function(bounds, config)
+        local pos = config.position or math.floor((bounds.min_y + bounds.max_y) / 2)
+        local variance = config.variance or 2
+        if config.axis == "x" then
+            return pos + math.random(-variance, variance), math.random(bounds.min_y, bounds.max_y)
+        end
+        return math.random(bounds.min_x, bounds.max_x), pos + math.random(-variance, variance)
+    end,
+
+    spiral = function(bounds, config, state)
+        state.spiral = state.spiral or {angle = 0, radius = 2, expanding = true}
+        local s = state.spiral
+        local cx = config.center_x or (bounds.min_x + bounds.max_x) / 2
+        local cy = config.center_y or (bounds.min_y + bounds.max_y) / 2
+        local min_r, max_r = config.min_radius or 2, config.max_radius or math.min(bounds.max_x - bounds.min_x, bounds.max_y - bounds.min_y) * 0.4
+        s.angle = s.angle + 0.5
+        s.radius = s.radius + (s.expanding and 0.5 or -0.5)
+        if s.radius >= max_r then s.expanding = false elseif s.radius <= min_r then s.expanding = true end
+        return math.floor(cx + math.cos(s.angle) * s.radius), math.floor(cy + math.sin(s.angle) * s.radius)
+    end,
+}
+
+function EntityController:spawnWithPattern(type_name, pattern, config, custom_params)
+    config = config or {}
+    local bounds = config.bounds or {min_x = 0, max_x = 100, min_y = 0, max_y = 100}
+    local pattern_fn = EntityController.SPAWN_PATTERNS[pattern] or EntityController.SPAWN_PATTERNS.random
+    self.pattern_state = self.pattern_state or {}
+
+    for _ = 1, config.max_attempts or 50 do
+        local x, y = pattern_fn(bounds, config, self.pattern_state, self)
+        x = math.max(bounds.min_x, math.min(bounds.max_x, x))
+        y = math.max(bounds.min_y, math.min(bounds.max_y, y))
+        if not config.is_valid_fn or config.is_valid_fn(x, y) then
+            return self:spawn(type_name, x, y, custom_params)
+        end
+    end
+    return nil
+end
+
+--[[
+    Spawn entity with min_distance_from constraint
+
+    @param type_name string
+    @param bounds table - {min_x, max_x, min_y, max_y}
+    @param constraints table - {min_distance_from = {x, y, distance}, is_valid_fn = function}
+    @param custom_params table - Optional params to pass to spawn
+    @return entity or nil
+]]
+function EntityController:spawnWithConstraints(type_name, bounds, constraints, custom_params)
+    constraints = constraints or {}
+    local max_attempts = constraints.max_attempts or 100
+    local is_grid = bounds.is_grid
+
+    for _ = 1, max_attempts do
+        local x, y
+        if is_grid then
+            x = math.random(bounds.min_x, bounds.max_x)
+            y = math.random(bounds.min_y, bounds.max_y)
+        else
+            x = bounds.min_x + math.random() * (bounds.max_x - bounds.min_x)
+            y = bounds.min_y + math.random() * (bounds.max_y - bounds.min_y)
+        end
+
+        local valid = true
+
+        -- Check min_distance_from constraint
+        if constraints.min_distance_from and valid then
+            local mdf = constraints.min_distance_from
+            local dx = x - mdf.x
+            local dy = y - mdf.y
+            local dist = math.sqrt(dx * dx + dy * dy)
+            if dist < mdf.distance then
+                valid = false
+            end
+        end
+
+        -- Check custom validation function
+        if constraints.is_valid_fn and valid then
+            valid = constraints.is_valid_fn(x, y)
+        end
+
+        if valid then
+            return self:spawn(type_name, x, y, custom_params)
+        end
+    end
+
+    return nil
+end
+
+--[[
     Spawn entities in a checkerboard pattern
 
     @param type_name string
@@ -731,6 +889,33 @@ function EntityController:getEntitiesByType(type_name)
     local result = {}
     for _, entity in ipairs(self.entities) do
         if entity.active and entity.type_name == type_name and not entity.marked_for_removal then
+            table.insert(result, entity)
+        end
+    end
+    return result
+end
+
+--[[
+    Get all entities matching a category (entities with entity.category == category)
+    Useful when multiple entity types share a category (e.g., food_normal, food_bad, food_golden all have category "food")
+]]
+function EntityController:getEntitiesByCategory(category)
+    local result = {}
+    for _, entity in ipairs(self.entities) do
+        if entity.active and entity.category == category and not entity.marked_for_removal then
+            table.insert(result, entity)
+        end
+    end
+    return result
+end
+
+--[[
+    Get all entities matching a filter function
+]]
+function EntityController:getEntitiesByFilter(filter_fn)
+    local result = {}
+    for _, entity in ipairs(self.entities) do
+        if entity.active and not entity.marked_for_removal and filter_fn(entity) then
             table.insert(result, entity)
         end
     end

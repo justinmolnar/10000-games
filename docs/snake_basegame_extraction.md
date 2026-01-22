@@ -139,7 +139,23 @@ Define entities in schema, use EntityController for food and obstacles.
 - [ ] Moving obstacles bounce
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+Changes made:
+- Added `EntityController.SPAWN_PATTERNS` table with data-driven pattern functions (random, cluster, line, spiral)
+- Added `EntityController:spawnWithPattern(type_name, pattern, config, custom_params)` method
+- Added `EntityController:getEntitiesByCategory(category)` and `getEntitiesByFilter(filter_fn)` methods
+- Updated snake_schema.json with flat entity_types: food_normal, food_bad, food_golden, obstacle_static, obstacle_moving
+- Added snake_game helpers: getFoods(), getObstacles(), removeFood(), removeObstacle(), _getFoodType(), spawnFoodEntity(), spawnObstacleEntity()
+- Replaced ~40 self.foods references with self:getFoods()
+- Replaced ~25 self.obstacles references with self:getObstacles()
+- Deleted spawnFood() function (98 lines)
+- Deleted createObstacles() function (32 lines)
+
+**Line count change:**
+- snake_game.lua: 1944 → 1751 (-193 lines)
+- entity_controller.lua: +~60 lines
+- snake_schema.json: entity_types restructured (flat format)
 
 ---
 

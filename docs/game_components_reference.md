@@ -322,7 +322,16 @@ Generic enemy/obstacle spawning and management with pooling.
 - **getActiveCount()** / **getTotalCount()** - Get counts.
 - **getEntities()** - Get all active entities.
 - **getEntitiesByType(type_name)** - Get entities of specific type.
+- **getEntitiesByCategory(category)** - Get entities where entity.category matches.
+- **getEntitiesByFilter(filter_fn)** - Get entities where filter_fn(entity) returns true.
 - **findNearest(x, y, filter)** - Find nearest entity. Returns entity, distance.
+- **spawnWithPattern(type_name, pattern, config, custom_params)** - Spawn using pattern from SPAWN_PATTERNS. Config: bounds, is_valid_fn, max_attempts, plus pattern-specific options.
+
+**SPAWN_PATTERNS** - Data-driven spawn pattern functions:
+- `random` - Random position within bounds
+- `cluster` - Near existing entity of same category (config: ref_entity, radius)
+- `line` - Along an axis (config: axis, position, variance)
+- `spiral` - Expanding/contracting spiral (config: center_x, center_y, min_radius, max_radius)
 - **loadCollisionImage(type_name, image_path, alpha_threshold, di)** - Load PNG for pixel collision.
 - **getRectCollisionCheck(PhysicsUtils)** - Get collision check function for rect-rect.
 
@@ -352,6 +361,7 @@ Base class for all minigames. Provides common state, fixed timestep, demo playba
 - **fixedUpdate(dt)** - Deterministic update at fixed_dt (default 1/60). Calls updateGameLogic(dt).
 - **updateGameLogic(dt)** - Override in subclasses for game-specific logic.
 - **setPlayArea(width, height)** - Resize arena and reposition entities.
+- **setupArenaDimensions()** - Calculate game_width/height from arena_base_width/height × arena_size. Sets is_fixed_arena, handles camera_zoom, lock_aspect_ratio.
 - **checkComplete()** - Default: returns victory or game_over.
 - **onComplete()** - Called when game completes. Sets completed = true.
 - **getCompletionRatio()** - Override to report progress 0..1 toward goal.
@@ -383,6 +393,8 @@ Base class for all minigames. Provides common state, fixed timestep, demo playba
 - **multiplyEntitySpeed(entities, multiplier)** - Multiply vx/vy of all entities.
 
 ### Position & Direction Helpers
+- **CARDINAL_DIRECTIONS** - Constant table: {right={x=1,y=0}, left={x=-1,y=0}, up={x=0,y=-1}, down={x=0,y=1}}.
+- **getCardinalFromAngle(angle)** - Returns nearest cardinal direction {x, y} from angle in radians.
 - **getCardinalDirection(from_x, from_y, to_x, to_y)** - Returns dir_x, dir_y (-1, 0, or 1) pointing from A toward B. Works with grid or pixel coordinates.
 - **wrapPosition(x, y, width, height)** - Wrap position within bounds. Returns wrapped x, y. Works for grid (0 to width-1) or pixel coordinates.
 - **findSafePosition(min_x, max_x, min_y, max_y, is_safe_fn, max_attempts)** - Random search for safe position. Returns x, y, found. Auto-detects grid (integer bounds) vs continuous (float bounds). Use is_safe_fn callback to reject positions overlapping walls, obstacles, water, etc.

@@ -375,13 +375,36 @@
         }
     },
     "entity_types": {
-        "food": {
-            "type": "food",
-            "size": 1
+        "food_normal": {
+            "category": "food",
+            "type": "normal",
+            "size": 1,
+            "growth": 1
         },
-        "obstacle": {
+        "food_bad": {
+            "category": "food",
+            "type": "bad",
+            "size": 1,
+            "growth": -1
+        },
+        "food_golden": {
+            "category": "food",
+            "type": "golden",
+            "size": 3,
+            "growth": 3
+        },
+        "obstacle_static": {
+            "category": "obstacle",
             "type": "static_blocks",
-            "size": 1
+            "size": 1,
+            "movement_type": "static"
+        },
+        "obstacle_moving": {
+            "category": "obstacle",
+            "type": "moving_blocks",
+            "size": 1,
+            "movement_type": "linear",
+            "speed": 2
         }
     },
     "victory_conditions": {
