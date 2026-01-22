@@ -697,6 +697,46 @@ function BaseGame:multiplyEntitySpeed(entities, multiplier)
     end
 end
 
+-- Returns cardinal direction (-1, 0, or 1) from point A to point B
+-- Works with grid or pixel coordinates
+function BaseGame:getCardinalDirection(from_x, from_y, to_x, to_y)
+    local dx, dy = to_x - from_x, to_y - from_y
+    if dx == 0 and dy == 0 then
+        local dirs = {{1,0}, {-1,0}, {0,1}, {0,-1}}
+        local d = dirs[math.random(#dirs)]
+        return d[1], d[2]
+    end
+    if math.abs(dx) > math.abs(dy) then
+        return dx > 0 and 1 or -1, 0
+    else
+        return 0, dy > 0 and 1 or -1
+    end
+end
+
+-- Wrap position within bounds (for grid or pixel coordinates)
+-- Returns wrapped x, y. For grid: 0 to width-1. For pixels: 0 to width.
+function BaseGame:wrapPosition(x, y, width, height)
+    return (x + width) % width, (y + height) % height
+end
+
+-- Find safe position using random search
+-- Auto-detects grid (integer bounds) vs continuous (float bounds)
+function BaseGame:findSafePosition(min_x, max_x, min_y, max_y, is_safe_fn, max_attempts)
+    max_attempts = max_attempts or 500
+    local is_grid = (min_x % 1 == 0) and (max_x % 1 == 0) and (min_y % 1 == 0) and (max_y % 1 == 0)
+
+    for _ = 1, max_attempts do
+        local x = is_grid and math.random(min_x, max_x) or (min_x + math.random() * (max_x - min_x))
+        local y = is_grid and math.random(min_y, max_y) or (min_y + math.random() * (max_y - min_y))
+        if is_safe_fn(x, y) then
+            return x, y, true
+        end
+    end
+    local cx, cy = (min_x + max_x) / 2, (min_y + max_y) / 2
+    if is_grid then cx, cy = math.floor(cx), math.floor(cy) end
+    return cx, cy, false
+end
+
 -- Scale a value with multipliers, variance, range, and bounds
 -- config: {multipliers = {}, variance = 0, range = {min, max}, bounds = {min, max}}
 function BaseGame:getScaledValue(base, config)

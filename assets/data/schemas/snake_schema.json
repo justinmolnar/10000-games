@@ -15,6 +15,26 @@
             "max": 30,
             "description": "Base movement speed (cells per second for grid, units per second for smooth)"
         },
+        "starting_direction": {
+            "type": "enum",
+            "values": ["right", "left", "up", "down"],
+            "default": "right",
+            "description": "Initial snake movement direction"
+        },
+        "multi_snake_spacing": {
+            "type": "integer",
+            "default": 3,
+            "min": 1,
+            "max": 10,
+            "description": "Grid spacing between snakes in multi-snake mode"
+        },
+        "smooth_initial_length": {
+            "type": "number",
+            "default": 0.01,
+            "min": 0.001,
+            "max": 1,
+            "description": "Initial trail length for smooth movement mode"
+        },
         "turn_speed": {
             "type": "number",
             "default": 180,
@@ -94,6 +114,20 @@
             "max": 3.0,
             "description": "Arena size multiplier (1.0 = base size)"
         },
+        "arena_base_width": {
+            "type": "integer",
+            "default": 800,
+            "min": 400,
+            "max": 1920,
+            "description": "Base arena width in pixels"
+        },
+        "arena_base_height": {
+            "type": "integer",
+            "default": 600,
+            "min": 300,
+            "max": 1080,
+            "description": "Base arena height in pixels"
+        },
         "arena_shape": {
             "type": "enum",
             "values": ["rectangle", "circle", "hexagon"],
@@ -105,10 +139,45 @@
             "default": false,
             "description": "Arena shrinks over time (battle royale style)"
         },
+        "shrink_interval": {
+            "type": "number",
+            "default": 5,
+            "min": 1,
+            "max": 30,
+            "description": "Seconds between arena shrink events"
+        },
+        "shrink_amount": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 5,
+            "description": "Grid cells to shrink by each interval"
+        },
+        "min_arena_ratio": {
+            "type": "number",
+            "default": 0.3,
+            "min": 0.1,
+            "max": 0.9,
+            "description": "Minimum arena size as ratio of original (for shrinking)"
+        },
+        "min_arena_cells": {
+            "type": "integer",
+            "default": 10,
+            "min": 5,
+            "max": 20,
+            "description": "Absolute minimum arena dimension in cells"
+        },
         "moving_walls": {
             "type": "boolean",
             "default": false,
             "description": "Arena boundaries shift periodically"
+        },
+        "wall_move_interval": {
+            "type": "number",
+            "default": 3,
+            "min": 1,
+            "max": 20,
+            "description": "Seconds between wall movement events"
         },
         "food_count": {
             "type": "integer",
@@ -265,6 +334,66 @@
             "values": ["uniform", "segmented"],
             "default": "uniform",
             "description": "Uniform sprites or distinct head/body/tail"
+        }
+    },
+    "components": {
+        "movement_controller": {
+            "type": "MovementController",
+            "config": {
+                "mode": "grid",
+                "cells_per_second": "$snake_speed",
+                "allow_reverse": false
+            }
+        },
+        "hud": {
+            "type": "HUDRenderer",
+            "config": {
+                "primary": {"label": "Length", "key": "metrics.snake_length"},
+                "secondary": {"label": "Time", "key": "metrics.survival_time", "format": "float"}
+            }
+        },
+        "arena_controller": {
+            "type": "ArenaController",
+            "config": {
+                "shape": "$arena_shape",
+                "grid_mode": true,
+                "cell_size": 1,
+                "shrink": "$shrinking_arena",
+                "shrink_interval": "$shrink_interval",
+                "shrink_amount": "$shrink_amount",
+                "moving_walls": "$moving_walls",
+                "wall_move_interval": "$wall_move_interval"
+            }
+        },
+        "fog_controller": {
+            "type": "FogOfWar",
+            "config": {
+                "enabled": true,
+                "mode": "stencil",
+                "opacity": 0.8
+            }
+        }
+    },
+    "entity_types": {
+        "food": {
+            "type": "food",
+            "size": 1
+        },
+        "obstacle": {
+            "type": "static_blocks",
+            "size": 1
+        }
+    },
+    "victory_conditions": {
+        "length": {
+            "victory": {"type": "threshold", "metric": "metrics.snake_length", "target": "$victory_limit"},
+            "loss": {"type": "death_event", "flag": "completed"},
+            "check_loss_first": true
+        },
+        "time": {
+            "victory": {"type": "time_survival", "metric": "time_elapsed", "target": "$victory_limit"},
+            "loss": {"type": "death_event", "flag": "completed"},
+            "check_loss_first": true
         }
     }
 }

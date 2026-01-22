@@ -68,34 +68,34 @@ function SnakeView:draw()
     -- Calculate camera focus point based on camera mode
     local focus_x, focus_y = game.game_width / 2, game.game_height / 2
 
-    if camera_mode == "follow_head" and #game.snake > 0 then
+    if camera_mode == "follow_head" and #game.snake.body > 0 then
         -- Follow snake head
-        if game.params.movement_type == "smooth" and game.smooth_x then
+        if game.params.movement_type == "smooth" and game.snake.smooth_x then
             -- Use smooth float position for smooth camera following
-            focus_x = game.smooth_x * GRID_SIZE
-            focus_y = game.smooth_y * GRID_SIZE
+            focus_x = game.snake.smooth_x * GRID_SIZE
+            focus_y = game.snake.smooth_y * GRID_SIZE
         else
             -- Use grid position for classic mode
-            local head = game.snake[1]
+            local head = game.snake.body[1]
             focus_x = head.x * GRID_SIZE + GRID_SIZE / 2
             focus_y = head.y * GRID_SIZE + GRID_SIZE / 2
         end
 
-    elseif camera_mode == "center_of_mass" and #game.snake > 0 then
+    elseif camera_mode == "center_of_mass" and #game.snake.body > 0 then
         -- Center on snake's center of mass
-        if game.params.movement_type == "smooth" and game.smooth_x then
+        if game.params.movement_type == "smooth" and game.snake.smooth_x then
             -- For smooth mode, just use head position (trail doesn't have discrete segments)
-            focus_x = game.smooth_x * GRID_SIZE
-            focus_y = game.smooth_y * GRID_SIZE
+            focus_x = game.snake.smooth_x * GRID_SIZE
+            focus_y = game.snake.smooth_y * GRID_SIZE
         else
             -- Classic mode: average all segment positions
             local sum_x, sum_y = 0, 0
-            for _, segment in ipairs(game.snake) do
+            for _, segment in ipairs(game.snake.body) do
                 sum_x = sum_x + segment.x
                 sum_y = sum_y + segment.y
             end
-            focus_x = (sum_x / #game.snake) * GRID_SIZE + GRID_SIZE / 2
-            focus_y = (sum_y / #game.snake) * GRID_SIZE + GRID_SIZE / 2
+            focus_x = (sum_x / #game.snake.body) * GRID_SIZE + GRID_SIZE / 2
+            focus_y = (sum_y / #game.snake.body) * GRID_SIZE + GRID_SIZE / 2
         end
 
     end
@@ -141,20 +141,20 @@ function SnakeView:draw()
 
     -- Draw snake (sprite or fallback)
     -- Support for girth (thickness) and invisible_tail
-    local girth = game.current_girth or 1
+    local girth = game.params.girth or 1
     local segment_size = GRID_SIZE - 1
 
     -- Check for smooth movement mode (analog turning with trail)
     if game.params.movement_type == "smooth" then
         -- Draw trail
-        if #game.smooth_trail > 0 then
+        if #game.snake.smooth_trail > 0 then
             love.graphics.setColor(0.3, 0.8, 0.3)
             love.graphics.setLineWidth(segment_size * girth)
 
             -- Draw trail as connected line segments
-            for i = 1, #game.smooth_trail - 1 do
-                local p1 = game.smooth_trail[i]
-                local p2 = game.smooth_trail[i + 1]
+            for i = 1, #game.snake.smooth_trail - 1 do
+                local p1 = game.snake.smooth_trail[i]
+                local p2 = game.snake.smooth_trail[i + 1]
                 love.graphics.line(
                     p1.x * GRID_SIZE,
                     p1.y * GRID_SIZE,
@@ -164,13 +164,13 @@ function SnakeView:draw()
             end
 
             -- Connect last trail point to head
-            if #game.smooth_trail > 0 then
-                local last = game.smooth_trail[#game.smooth_trail]
+            if #game.snake.smooth_trail > 0 then
+                local last = game.snake.smooth_trail[#game.snake.smooth_trail]
                 love.graphics.line(
                     last.x * GRID_SIZE,
                     last.y * GRID_SIZE,
-                    game.smooth_x * GRID_SIZE,
-                    game.smooth_y * GRID_SIZE
+                    game.snake.smooth_x * GRID_SIZE,
+                    game.snake.smooth_y * GRID_SIZE
                 )
             end
 
@@ -179,8 +179,8 @@ function SnakeView:draw()
         end
 
         -- Draw head at smooth position with rotation
-        local head_x = game.smooth_x * GRID_SIZE
-        local head_y = game.smooth_y * GRID_SIZE
+        local head_x = game.snake.smooth_x * GRID_SIZE
+        local head_y = game.snake.smooth_y * GRID_SIZE
 
         -- Scale head size by girth
         local head_size = segment_size * girth
@@ -200,12 +200,12 @@ function SnakeView:draw()
             love.graphics.setColor(1, 1, 1)
             local sx = head_size / sprite:getWidth()
             local sy = head_size / sprite:getHeight()
-            love.graphics.draw(sprite, head_x, head_y, game.smooth_angle, sx, sy, sprite:getWidth()/2, sprite:getHeight()/2)
+            love.graphics.draw(sprite, head_x, head_y, game.snake.smooth_angle, sx, sy, sprite:getWidth()/2, sprite:getHeight()/2)
         else
             -- Fallback rectangle
             love.graphics.push()
             love.graphics.translate(head_x, head_y)
-            love.graphics.rotate(game.smooth_angle)
+            love.graphics.rotate(game.snake.smooth_angle)
             love.graphics.setColor(0.2, 1, 0.2)
             love.graphics.rectangle("fill", -head_size/2, -head_size/2, head_size, head_size)
             love.graphics.pop()
@@ -216,7 +216,7 @@ function SnakeView:draw()
         goto skip_normal_snake
     end
 
-    for i, segment in ipairs(game.snake) do
+    for i, segment in ipairs(game.snake.body) do
         -- Skip drawing tail segments if invisible_tail is enabled (except head)
         if game.params.invisible_tail and i > 1 then
             goto continue
@@ -234,11 +234,11 @@ function SnakeView:draw()
             if i == 1 then
                 -- Head
                 sprite_name = "seg_head"
-                dir = game.direction
+                dir = game.snake.direction
                 rotation = math.atan2(dir.y, dir.x)  -- Right=0, Down=π/2, Left=π, Up=-π/2
-            elseif i == #game.snake then
+            elseif i == #game.snake.body then
                 -- Tail - point away from previous segment
-                local prev = game.snake[i-1]
+                local prev = game.snake.body[i-1]
                 local dx = segment.x - prev.x
                 local dy = segment.y - prev.y
                 dir = {x = dx, y = dy}
@@ -246,7 +246,7 @@ function SnakeView:draw()
                 rotation = math.atan2(dy, dx)
             else
                 -- Body - point toward next segment
-                local next_seg = game.snake[i+1]
+                local next_seg = game.snake.body[i+1]
                 local dx = next_seg.x - segment.x
                 local dy = next_seg.y - segment.y
                 dir = {x = dx, y = dy}
@@ -258,18 +258,18 @@ function SnakeView:draw()
             sprite_name = "segment"
             if i == 1 then
                 -- Head points in direction snake is moving
-                dir = game.direction
+                dir = game.snake.direction
                 rotation = math.atan2(dir.y, dir.x)
-            elseif i == #game.snake then
+            elseif i == #game.snake.body then
                 -- Tail points away from previous segment
-                local prev = game.snake[i-1]
+                local prev = game.snake.body[i-1]
                 local dx = segment.x - prev.x
                 local dy = segment.y - prev.y
                 dir = {x = dx, y = dy}
                 rotation = math.atan2(dy, dx)
             else
                 -- Body points toward next segment
-                local next_seg = game.snake[i+1]
+                local next_seg = game.snake.body[i+1]
                 local dx = next_seg.x - segment.x
                 local dy = next_seg.y - segment.y
                 dir = {x = dx, y = dy}
@@ -462,10 +462,11 @@ function SnakeView:draw()
         end
     end
 
-    -- Draw obstacles (skip wall-type obstacles - they're rendered by drawArenaBoundaries)
+    -- Draw obstacles (skip wall-type obstacles for rectangles - they're rendered by drawArenaBoundaries)
+    local arena_shape = game.params.arena_shape or "rectangle"
     for _, obstacle in ipairs(game.obstacles) do
-        -- Skip wall obstacles - these are collision-only, visual walls handle rendering
-        if obstacle.type == "walls" or obstacle.type == "bounce_wall" then
+        -- Skip wall obstacles for rectangle arenas only - shaped arenas need their walls drawn as obstacles
+        if (obstacle.type == "walls" or obstacle.type == "bounce_wall") and arena_shape == "rectangle" then
             goto continue_obstacle
         end
 
@@ -553,8 +554,8 @@ function SnakeView:drawArenaBoundaries()
     local arena_shape = game.params.arena_shape or "rectangle"
 
     -- Get moving walls offset
-    local offset_x = (game.moving_walls and game.wall_offset_x) or 0
-    local offset_y = (game.moving_walls and game.wall_offset_y) or 0
+    local offset_x = (game.params.moving_walls and game.arena_controller.wall_offset_x) or 0
+    local offset_y = (game.params.moving_walls and game.arena_controller.wall_offset_y) or 0
 
     -- For arenas with wall_mode death/bounce, draw edge walls (accounting for moving walls)
     if (game.params.wall_mode == "death" or game.params.wall_mode == "bounce") and arena_shape == "rectangle" then
@@ -610,7 +611,7 @@ function SnakeView:drawFogOfWar()
     local fog_radius = 150
 
     if fog_mode == "player" then
-        local head = game.snake[1]
+        local head = game.snake.body[1]
         if head then
             local head_x = head.x * GRID_SIZE + GRID_SIZE / 2
             local head_y = head.y * GRID_SIZE + GRID_SIZE / 2

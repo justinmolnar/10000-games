@@ -382,6 +382,11 @@ Base class for all minigames. Provides common state, fixed timestep, demo playba
 - **setParam(param_name, value)** - Set param to value, return original.
 - **multiplyEntitySpeed(entities, multiplier)** - Multiply vx/vy of all entities.
 
+### Position & Direction Helpers
+- **getCardinalDirection(from_x, from_y, to_x, to_y)** - Returns dir_x, dir_y (-1, 0, or 1) pointing from A toward B. Works with grid or pixel coordinates.
+- **wrapPosition(x, y, width, height)** - Wrap position within bounds. Returns wrapped x, y. Works for grid (0 to width-1) or pixel coordinates.
+- **findSafePosition(min_x, max_x, min_y, max_y, is_safe_fn, max_attempts)** - Random search for safe position. Returns x, y, found. Auto-detects grid (integer bounds) vs continuous (float bounds). Use is_safe_fn callback to reject positions overlapping walls, obstacles, water, etc.
+
 ### Flash Feedback System
 - **flashEntity(entity, duration)** - Start flash timer for entity (default 0.1s).
 - **updateFlashMap(dt)** - Update flash timers. Call in updateGameLogic().
