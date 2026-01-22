@@ -125,6 +125,13 @@ Reusable movement for multiple modes. All deterministic for demo playback.
 - **initGridState(entity_id, dir_x, dir_y)** - Initialize grid state with starting direction.
 - **setSpeed(speed)** - Dynamically change cells_per_second.
 - **getGridState(entity)** / **setGridDirection()** / **resetGridState()** - Grid state management.
+- **findGridBounceDirection(head, current_dir, is_blocked_fn)** - Find perpendicular direction for bouncing off walls.
+
+**Smooth mode (continuous angle-based movement):**
+- **initSmoothState(entity_id, angle)** - Initialize smooth state with starting angle.
+- **setSmoothTurn(entity_id, left, right)** - Set turn flags (call on key press/release).
+- **getSmoothState(entity_id)** / **getSmoothAngle(entity_id)** / **setSmoothAngle(entity_id, angle)** - State accessors.
+- **updateSmooth(dt, entity_id, entity, bounds, speed, turn_speed_deg)** - Update angle and position. Entity {x, y} modified. Bounds {width, height, wrap_x, wrap_y}. Returns dx, dy, wrapped, out_of_bounds.
 
 **Helpers:**
 - **applyBounds(entity, bounds)** - Clamp or wrap entity to bounds.
@@ -150,6 +157,7 @@ Manages play area bounds, shapes, shrinking, pulsing, movement, holes.
 - **reset()** - Reset to initial state.
 - **setContainerSize(w, h)** - Update container dimensions.
 - **getState()** - Get full state for rendering.
+- **drawBoundary(scale, color)** - Draw arena boundary line for circle/hexagon shapes. Scale = pixels per unit (e.g., GRID_SIZE).
 
 **Morph types:** "none", "shrink", "pulsing", "shape_shifting", "deformation"
 **Movement types:** "none", "drift", "cardinal", "follow", "orbit"

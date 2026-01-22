@@ -247,7 +247,24 @@ Unify grid and smooth movement - no separate code paths.
 - [ ] Input handling works for both modes
 
 ### AI Notes
-(To be filled after completion)
+**Completed.**
+
+MovementController additions (+105 lines):
+- `smooth_state` storage and methods: `initSmoothState`, `setSmoothTurn`, `getSmoothState/Angle/setSmoothAngle`
+- `updateSmooth(dt, entity_id, entity, bounds, speed, turn_speed_deg)` - rotation, movement, bounds handling
+- `findGridBounceDirection(head, current_dir, is_blocked_fn)` - generic perpendicular bounce
+
+snake_game.lua changes (-405 lines):
+- Refactored `updateSmoothMovement` into `_updateSmoothSnake` helper using MovementController
+- Uses `PhysicsUtils.circleCollision` for all smooth collision checks
+- Grid bounce uses `findGridBounceDirection` with `_isWallAt` predicate
+- Consolidated `collectFood` for both grid and smooth modes
+- Simplified `updateAISnake` using `getCardinalDirection` and `EntityController:findNearest`
+- Input handlers use MovementController state directly
+
+**Line count change:**
+- snake_game.lua: 1713 → 1308 (-405 lines)
+- movement_controller.lua: +105 lines
 
 ---
 

@@ -440,7 +440,9 @@ function ArenaController:getBounds()
 end
 
 -- Check if a position is inside the arena
-function ArenaController:isInside(x, y)
+-- margin: optional entity radius to shrink effective bounds (for edge collision)
+function ArenaController:isInside(x, y, margin)
+    margin = margin or 0
     -- Apply moving walls offset
     local offset_x = self.wall_offset_x
     local offset_y = self.wall_offset_y
@@ -449,7 +451,7 @@ function ArenaController:isInside(x, y)
         -- Shape-aware safe zone collision
         local dx = x - self.x
         local dy = y - self.y
-        local effective_radius = self:getEffectiveRadius()
+        local effective_radius = self:getEffectiveRadius() - margin
         local inside_shape = false
 
         if self.shape == "circle" then
@@ -462,7 +464,7 @@ function ArenaController:isInside(x, y)
             local half = effective_radius
             inside_shape = math.abs(dx) <= half and math.abs(dy) <= half
 
-        elseif self.shape == "hex" then
+        elseif self.shape == "hex" or self.shape == "hexagon" then
             -- Hexagon: pointy-top hexagon math
             local abs_dx = math.abs(dx)
             local abs_dy = math.abs(dy)
@@ -533,13 +535,14 @@ function ArenaController:isInside(x, y)
 end
 
 -- Check if a grid position is inside (for grid-based games like Snake)
-function ArenaController:isInsideGrid(grid_x, grid_y)
+-- margin: optional entity radius to shrink effective arena (for edge collision)
+function ArenaController:isInsideGrid(grid_x, grid_y, margin)
     if self.grid_mode then
         local px = grid_x * self.cell_size + self.cell_size / 2
         local py = grid_y * self.cell_size + self.cell_size / 2
-        return self:isInside(px, py)
+        return self:isInside(px, py, margin)
     else
-        return self:isInside(grid_x, grid_y)
+        return self:isInside(grid_x, grid_y, margin)
     end
 end
 
@@ -617,6 +620,37 @@ function ArenaController:getState()
         wall_offset_y = self.wall_offset_y,
         holes = self.holes
     }
+end
+
+-- Draw arena boundary (for non-rectangle shapes)
+-- scale: pixels per unit (e.g., GRID_SIZE for grid-based games)
+function ArenaController:drawBoundary(scale, color)
+    scale = scale or 1
+    color = color or {0.5, 0.5, 0.5, 0.8}
+
+    love.graphics.setColor(color)
+    love.graphics.setLineWidth(3)
+
+    -- Use same center and radius as collision detection (isInside)
+    local cx = self.x * scale
+    local cy = self.y * scale
+    local radius = self:getEffectiveRadius() * scale
+
+    if self.shape == "circle" then
+        love.graphics.circle("line", cx, cy, radius)
+    elseif self.shape == "hexagon" or self.shape == "hex" then
+        local vertices = {}
+        for i = 0, 5 do
+            local angle = math.pi / 6 + i * math.pi / 3
+            table.insert(vertices, cx + math.cos(angle) * radius)
+            table.insert(vertices, cy + math.sin(angle) * radius)
+        end
+        love.graphics.polygon("line", vertices)
+    end
+    -- Rectangle uses edge walls, no boundary line needed
+
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 return ArenaController

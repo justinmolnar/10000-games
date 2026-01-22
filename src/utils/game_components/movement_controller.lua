@@ -69,6 +69,9 @@ function MovementController:new(params)
     -- Internal grid state (stored per entity)
     self.grid_state = {}  -- Keyed by entity ID
 
+    -- Internal smooth state (stored per entity)
+    self.smooth_state = {}  -- Keyed by entity ID
+
     return self
 end
 
@@ -692,6 +695,119 @@ end
 -- Set the movement speed (cells per second) dynamically
 function MovementController:setSpeed(speed)
     self.cells_per_second = speed
+end
+
+-- ============================================================================
+-- Smooth movement mode (continuous angle-based movement)
+-- For games requiring analog steering with constant forward motion.
+-- Parallel to grid methods - use one or the other based on game mode.
+-- ============================================================================
+
+-- Initialize smooth state for an entity
+function MovementController:initSmoothState(entity_id, angle)
+    entity_id = entity_id or "default"
+    self.smooth_state[entity_id] = {
+        angle = angle or 0,
+        turn_left = false,
+        turn_right = false
+    }
+end
+
+-- Set turn flags (call on key press/release)
+function MovementController:setSmoothTurn(entity_id, left, right)
+    entity_id = entity_id or "default"
+    local state = self.smooth_state[entity_id]
+    if state then
+        state.turn_left = left
+        state.turn_right = right
+    end
+end
+
+-- Get smooth state
+function MovementController:getSmoothState(entity_id)
+    entity_id = entity_id or "default"
+    return self.smooth_state[entity_id]
+end
+
+-- Get/set angle directly
+function MovementController:getSmoothAngle(entity_id)
+    entity_id = entity_id or "default"
+    local state = self.smooth_state[entity_id]
+    return state and state.angle or 0
+end
+
+function MovementController:setSmoothAngle(entity_id, angle)
+    entity_id = entity_id or "default"
+    local state = self.smooth_state[entity_id]
+    if state then state.angle = angle end
+end
+
+-- Update smooth movement
+-- entity: {x, y} - position will be modified
+-- bounds: {width, height, wrap_x, wrap_y}
+-- speed: units per second
+-- turn_speed_deg: degrees per second
+-- Returns: dx, dy, wrapped, out_of_bounds
+function MovementController:updateSmooth(dt, entity_id, entity, bounds, speed, turn_speed_deg)
+    entity_id = entity_id or "default"
+    local state = self.smooth_state[entity_id]
+    if not state then return 0, 0, false, false end
+
+    -- Apply rotation
+    local turn_rate = math.rad(turn_speed_deg or 180) * dt
+    if state.turn_left then state.angle = state.angle - turn_rate end
+    if state.turn_right then state.angle = state.angle + turn_rate end
+
+    -- Normalize angle to -pi to pi
+    while state.angle > math.pi do state.angle = state.angle - 2 * math.pi end
+    while state.angle < -math.pi do state.angle = state.angle + 2 * math.pi end
+
+    -- Calculate movement
+    local move_speed = (speed or 8) * dt
+    local dx = math.cos(state.angle) * move_speed
+    local dy = math.sin(state.angle) * move_speed
+
+    entity.x = entity.x + dx
+    entity.y = entity.y + dy
+
+    -- Handle bounds
+    local wrapped, out_of_bounds = false, false
+
+    if bounds.wrap_x then
+        if entity.x < 0 then entity.x = entity.x + bounds.width; wrapped = true end
+        if entity.x >= bounds.width then entity.x = entity.x - bounds.width; wrapped = true end
+    else
+        if entity.x < 0 or entity.x >= bounds.width then out_of_bounds = true end
+    end
+
+    if bounds.wrap_y then
+        if entity.y < 0 then entity.y = entity.y + bounds.height; wrapped = true end
+        if entity.y >= bounds.height then entity.y = entity.y - bounds.height; wrapped = true end
+    else
+        if entity.y < 0 or entity.y >= bounds.height then out_of_bounds = true end
+    end
+
+    return dx, dy, wrapped, out_of_bounds
+end
+
+-- Find perpendicular bounce direction for grid movement
+-- current_dir: {x, y} current direction
+-- is_blocked_fn: function(x, y) returns true if position is blocked
+-- head: {x, y} current position
+function MovementController:findGridBounceDirection(head, current_dir, is_blocked_fn)
+    local dirs = current_dir.x ~= 0
+        and {{x = 0, y = -1}, {x = 0, y = 1}}
+        or {{x = -1, y = 0}, {x = 1, y = 0}}
+    local possible = {}
+    for _, d in ipairs(dirs) do
+        if not is_blocked_fn(head.x + d.x, head.y + d.y) then
+            table.insert(possible, d)
+        end
+    end
+    if #possible > 0 then
+        return possible[math.random(#possible)]
+    end
+    return {x = -current_dir.x, y = -current_dir.y}
 end
 
 -- Helper: Apply bounds clamping with optional wrapping

@@ -567,8 +567,10 @@ function SnakeView:drawArenaBoundaries()
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- Shaped arenas (circle/hexagon) show their boundaries via wall blocks only
-    -- Rectangle: no special boundary (uses screen edges)
+    -- Shaped arenas (circle/hexagon) - draw boundary via ArenaController
+    if arena_shape ~= "rectangle" and game.arena_controller then
+        game.arena_controller:drawBoundary(GRID_SIZE)
+    end
 end
 
 function SnakeView:drawFogOfWar()
