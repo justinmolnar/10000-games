@@ -41,20 +41,6 @@ function SnakeGame:_initSmoothState(x, y)
     }
 end
 
-function SnakeGame:_createSnakeEntity(x, y)
-    local dir = BaseGame.CARDINAL_DIRECTIONS[self.params.starting_direction] or BaseGame.CARDINAL_DIRECTIONS.right
-    local snake = {
-        body = {{x = x, y = y}},
-        direction = dir,
-        next_direction = {x = dir.x, y = dir.y},
-        alive = true
-    }
-    if self.params.movement_type == "smooth" then
-        for k, v in pairs(self:_initSmoothState(x, y)) do snake[k] = v end
-    end
-    return snake
-end
-
 function SnakeGame:_checkSpawnSafety(pos)
     -- Returns true if position would kill the snake
     if self.params.arena_shape == "circle" or self.params.arena_shape == "hexagon" then
@@ -148,11 +134,21 @@ end
 
 function SnakeGame:setupSnake()
     local cx, cy = math.floor(self.grid_width / 2), math.floor(self.grid_height / 2)
+    local dir = BaseGame.CARDINAL_DIRECTIONS[self.params.starting_direction] or BaseGame.CARDINAL_DIRECTIONS.right
 
     self.player_snakes = {}
     for i = 1, self.params.snake_count do
         local sx, sy = cx + (i - 1) * self.params.multi_snake_spacing, cy
-        table.insert(self.player_snakes, self:_createSnakeEntity(sx, sy))
+        local snake = {
+            body = {{x = sx, y = sy}},
+            direction = {x = dir.x, y = dir.y},
+            next_direction = {x = dir.x, y = dir.y},
+            alive = true
+        }
+        if self.params.movement_type == "smooth" then
+            for k, v in pairs(self:_initSmoothState(sx, sy)) do snake[k] = v end
+        end
+        table.insert(self.player_snakes, snake)
     end
     self.snake = self.player_snakes[1]
     self._snake_needs_spawn = true
@@ -161,12 +157,7 @@ function SnakeGame:setupSnake()
     self.pending_growth = 0
     self.shrink_timer, self.obstacle_spawn_timer = 0, 0
     self.ai_snakes = {}
-    -- TODO: These are transitional - will be removed once all references use getFoods()/getObstacles()
     self.foods, self.obstacles = {}, {}
-
-    for i = 1, self.params.ai_snake_count do
-        table.insert(self.ai_snakes, self:createAISnake(i))
-    end
 end
 
 function SnakeGame:setupComponents()
@@ -198,6 +189,11 @@ function SnakeGame:setupComponents()
         end
     end
     self.metrics.snake_length, self.metrics.survival_time = 1, 0
+
+    -- Create AI snakes (after arena_controller exists for isInsideArena)
+    for i = 1, self.params.ai_snake_count do
+        table.insert(self.ai_snakes, self:createAISnake(i))
+    end
 end
 
 -- Entity helpers - delegate to EntityController
@@ -461,7 +457,9 @@ function SnakeGame:updateGameLogic(dt)
     end
 
     -- Update AI snakes
-    self:updateAISnakes(dt)
+    for _, ai_snake in ipairs(self.ai_snakes) do
+        if ai_snake.alive then self:updateAISnake(ai_snake, dt) end
+    end
 
     -- Check collisions between snakes
     self:checkSnakeCollisions()
@@ -841,32 +839,14 @@ function SnakeGame:_findBounceAngle(x, y, current_angle)
 end
 
 function SnakeGame:createAISnake(index)
-    -- Spawn AI snake at random position away from player
-    local spawn_x, spawn_y
-    local max_attempts = 200
-    local attempt = 0
-    repeat
-        attempt = attempt + 1
-        spawn_x = math.random(0, self.grid_width - 1)
-        spawn_y = math.random(0, self.grid_height - 1)
+    local player_head = self.snake.body[1]
+    local spawn_x, spawn_y, found = self:findSafePosition(0, self.grid_width - 1, 0, self.grid_height - 1,
+        function(x, y)
+            local dist = math.abs(x - player_head.x) + math.abs(y - player_head.y)
+            return dist > 10 and self:isInsideArena({x = x, y = y}) and not self:checkCollision({x = x, y = y}, true)
+        end, 200)
 
-        -- Ensure spawn is far enough from player
-        local player_head = self.snake.body[1]
-        local dist = math.abs(spawn_x - player_head.x) + math.abs(spawn_y - player_head.y)
-
-        -- Check if position is inside shaped arenas
-        local inside_arena = true
-        if self.params.arena_shape == "circle" or self.params.arena_shape == "hexagon" then
-            inside_arena = self:isInsideArena({x = spawn_x, y = spawn_y})
-        end
-
-        if dist > 10 and not self:checkCollision({x = spawn_x, y = spawn_y}, true) and inside_arena then
-            break
-        end
-    until attempt >= max_attempts
-
-    -- Fallback: spawn near center if no valid position found
-    if attempt >= max_attempts then
+    if not found then
         spawn_x = math.floor(self.grid_width / 2) + (index * 2)
         spawn_y = math.floor(self.grid_height / 2)
     end
@@ -877,17 +857,8 @@ function SnakeGame:createAISnake(index)
         move_timer = 0,
         length = 1,
         alive = true,
-        behavior = self.params.ai_behavior,
-        target_food = nil  -- Cached food target
+        behavior = self.params.ai_behavior
     }
-end
-
-function SnakeGame:updateAISnakes(dt)
-    for _, ai_snake in ipairs(self.ai_snakes) do
-        if ai_snake.alive then
-            self:updateAISnake(ai_snake, dt)
-        end
-    end
 end
 
 function SnakeGame:updateAISnake(ai_snake, dt)

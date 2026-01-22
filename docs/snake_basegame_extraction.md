@@ -303,7 +303,27 @@ Player and AI snakes as unified entity type.
 - [ ] Snake collisions work (both_die, big_eats_small)
 
 ### AI Notes
-(To be filled after completion)
+**Completed with smaller scope than planned.**
+
+The original plan assumed AI logic needed extraction to EntityController. In practice:
+- The existing helpers (`findNearest`, `getCardinalDirection`, `wrapPosition`, `findSafePosition`) already covered most needs
+- Body segment management is snake-specific (not generic) - stays in snake_game
+- No new EntityController methods needed
+
+**Changes made:**
+- Added `snake_player` and `snake_ai` entity types to snake_schema.json
+- Inlined `_createSnakeEntity` into `setupSnake` (cleaner, no separate factory)
+- Simplified `createAISnake` using `findSafePosition` (41 → 19 lines)
+- Inlined `updateAISnakes` loop (deleted 7-line wrapper function)
+- `updateAISnake` unchanged - already uses existing helpers
+- `checkSnakeCollisions` unchanged - snake-specific collision modes
+
+**Line count change:**
+- snake_game.lua: 1308 → 1285 (-23 lines)
+- entity_controller.lua: unchanged
+- snake_schema.json: +10 lines (entity types)
+
+**Key insight:** Not everything needs extraction. Snake body management is genuinely snake-specific. The goal is using existing generic helpers, not creating new ones for every pattern.
 
 ---
 

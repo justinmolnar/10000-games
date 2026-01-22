@@ -405,6 +405,16 @@
             "size": 1,
             "movement_type": "linear",
             "speed": 2
+        },
+        "snake_player": {
+            "category": "snake",
+            "is_player": true,
+            "body_type": "segments"
+        },
+        "snake_ai": {
+            "category": "snake",
+            "is_player": false,
+            "body_type": "segments"
         }
     },
     "victory_conditions": {
