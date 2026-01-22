@@ -312,88 +312,52 @@ function SnakeView:draw()
 
     ::skip_normal_snake::
 
-    -- Draw additional player snakes (multi-snake control)
-    if game.player_snakes and #game.player_snakes > 1 then
-        for i = 2, #game.player_snakes do
-            local psnake = game.player_snakes[i]
-            if psnake.alive then
-                if game.params.movement_type == "smooth" and psnake.smooth_x then
-                    -- Draw smooth trail
-                    local trail_points = psnake.smooth_trail:getPoints()
-                    if #trail_points > 0 then
-                        love.graphics.setColor(0.3, 0.3, 1)  -- Blue tint
-                        love.graphics.setLineWidth(segment_size * girth)
+    -- Draw additional player snakes and AI snakes (all in game.snakes, index 2+)
+    for i = 2, #(game.snakes or {}) do
+        local psnake = game.snakes[i]
+        if psnake.alive then
+            local is_ai = psnake.behavior ~= nil
+            local tint = is_ai and {1, 0.3, 0.3} or {0.3, 0.3, 1}  -- Red for AI, Blue for player
 
-                        for j = 1, #trail_points - 1 do
-                            local p1, p2 = trail_points[j], trail_points[j + 1]
-                            love.graphics.line(p1.x * GRID_SIZE, p1.y * GRID_SIZE, p2.x * GRID_SIZE, p2.y * GRID_SIZE)
-                        end
+            if game.params.movement_type == "smooth" and psnake.smooth_x and not is_ai then
+                -- Draw smooth trail
+                local trail_points = psnake.smooth_trail and psnake.smooth_trail:getPoints() or {}
+                if #trail_points > 0 then
+                    love.graphics.setColor(tint)
+                    love.graphics.setLineWidth(segment_size * girth)
 
-                        local last = trail_points[#trail_points]
-                        love.graphics.line(last.x * GRID_SIZE, last.y * GRID_SIZE,
-                            psnake.smooth_x * GRID_SIZE, psnake.smooth_y * GRID_SIZE)
-
-                        love.graphics.setLineWidth(1)
+                    for j = 1, #trail_points - 1 do
+                        local p1, p2 = trail_points[j], trail_points[j + 1]
+                        love.graphics.line(p1.x * GRID_SIZE, p1.y * GRID_SIZE, p2.x * GRID_SIZE, p2.y * GRID_SIZE)
                     end
 
-                    -- Draw smooth head
-                    local head_x = psnake.smooth_x * GRID_SIZE
-                    local head_y = psnake.smooth_y * GRID_SIZE
-                    local head_size = segment_size * girth
+                    local last = trail_points[#trail_points]
+                    love.graphics.line(last.x * GRID_SIZE, last.y * GRID_SIZE,
+                        psnake.smooth_x * GRID_SIZE, psnake.smooth_y * GRID_SIZE)
 
-                    love.graphics.push()
-                    love.graphics.translate(head_x, head_y)
-                    love.graphics.rotate(psnake.smooth_angle)
-                    love.graphics.setColor(0.3, 0.3, 1)  -- Blue tint
-                    love.graphics.rectangle("fill", -head_size/2, -head_size/2, head_size, head_size)
-                    love.graphics.pop()
-                else
-                    -- Grid-based drawing
-                    for _, segment in ipairs(psnake.body) do
-                        local draw_x = segment.x * GRID_SIZE
-                        local draw_y = segment.y * GRID_SIZE
-                        local segment_size = GRID_SIZE - 1
-
-                        -- Draw with blue tint
-                        love.graphics.setColor(0.3, 0.3, 1)
-                        love.graphics.rectangle("fill", draw_x, draw_y, segment_size, segment_size)
-                    end
+                    love.graphics.setLineWidth(1)
                 end
-            end
-        end
-        love.graphics.setColor(1, 1, 1)
-    end
 
-    -- Draw AI snakes
-    for _, ai_snake in ipairs(game.ai_snakes or {}) do
-        if ai_snake.alive then
-            for i, segment in ipairs(ai_snake.body) do
-                local draw_x = segment.x * GRID_SIZE
-                local draw_y = segment.y * GRID_SIZE
-                local segment_size = GRID_SIZE - 1
+                -- Draw smooth head
+                local head_x = psnake.smooth_x * GRID_SIZE
+                local head_y = psnake.smooth_y * GRID_SIZE
+                local head_size = segment_size * girth
 
-                -- Draw AI snake with different color (red tint)
-                if sprite_key and game.sprites and game.sprites.body_horizontal then
-                    local sprite = game.sprites.body_horizontal
-                    if paletteManager and palette_id then
-                        paletteManager:drawSpriteWithPalette(
-                            sprite,
-                            draw_x,
-                            draw_y,
-                            segment_size,
-                            segment_size,
-                            palette_id,
-                            {1, 0.3, 0.3}  -- Red tint for AI
-                        )
-                    else
-                        love.graphics.setColor(1, 0.3, 0.3)
-                        love.graphics.draw(sprite, draw_x, draw_y, 0,
-                            segment_size / sprite:getWidth(), segment_size / sprite:getHeight())
-                    end
-                else
-                    -- Fallback rectangle
-                    love.graphics.setColor(0.8, 0.2, 0.2)
-                    love.graphics.rectangle("fill", draw_x, draw_y, segment_size, segment_size)
+                love.graphics.push()
+                love.graphics.translate(head_x, head_y)
+                love.graphics.rotate(psnake.smooth_angle or 0)
+                love.graphics.setColor(tint)
+                love.graphics.rectangle("fill", -head_size/2, -head_size/2, head_size, head_size)
+                love.graphics.pop()
+            else
+                -- Grid-based drawing
+                for _, segment in ipairs(psnake.body) do
+                    local draw_x = segment.x * GRID_SIZE
+                    local draw_y = segment.y * GRID_SIZE
+                    local seg_size = GRID_SIZE - 1
+
+                    love.graphics.setColor(tint)
+                    love.graphics.rectangle("fill", draw_x, draw_y, seg_size, seg_size)
                 end
             end
         end

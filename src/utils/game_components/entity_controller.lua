@@ -322,6 +322,13 @@ function EntityController:spawnRandom(type_name, count, bounds, rng, allow_overl
     end
 end
 
+-- Spawn multiple entities using a spawner function
+function EntityController:spawnMultiple(count, spawner_fn)
+    for _ = 1, count do
+        spawner_fn()
+    end
+end
+
 --[[
     Spawn entity near an existing entity (cluster spawning)
 

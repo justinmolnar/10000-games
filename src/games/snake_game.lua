@@ -1,7 +1,24 @@
+--[[
+    Snake Game - Classic snake with extensive variants
+
+    Supports grid-based and smooth (analog) movement modes.
+    Features: multiple snakes, AI snakes, food types, obstacles,
+    arena shapes, wall modes, girth expansion.
+
+    Configuration from snake_schema.json via SchemaLoader.
+    Components created from schema in setupComponents().
+
+    Snake-specific: girth system (width expansion perpendicular to movement)
+]]
+
 local BaseGame = require('src.games.base_game')
 local SnakeView = require('src.games.views.snake_view')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local SnakeGame = BaseGame:extend('SnakeGame')
+
+--------------------------------------------------------------------------------
+-- Initialization
+--------------------------------------------------------------------------------
 
 function SnakeGame:init(game_data, cheats, di, variant_override)
     SnakeGame.super.init(self, game_data, cheats, di, variant_override)
@@ -16,13 +33,18 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
     })
 
     self:setupArena()
-    self:createEntityControllerFromSchema()  -- Create entity_controller before setupSnake (AI uses it)
+    self:createEntityControllerFromSchema()
+    self:createComponentsFromSchema()  -- Creates arena_controller early, needed by setupSnake
     self:setupSnake()
-    self:setupComponents()
+    self:setupComponents()  -- Configures arena_controller and movement_controller (needs self.snakes)
 
     self.view = SnakeView:new(self, self.variant)
     self:loadAssets()
 end
+
+--------------------------------------------------------------------------------
+-- Setup
+--------------------------------------------------------------------------------
 
 function SnakeGame:setupArena()
     self:setupArenaDimensions()
@@ -38,13 +60,15 @@ function SnakeGame:_initSmoothState(x, y)
     }
 end
 
-function SnakeGame:_createSnakeEntity(x, y)
+function SnakeGame:_createSnakeEntity(x, y, behavior)
     local dir = BaseGame.CARDINAL_DIRECTIONS[self.params.starting_direction] or BaseGame.CARDINAL_DIRECTIONS.right
     local snake = {
         body = {{x = x, y = y}},
         direction = dir,
         next_direction = {x = dir.x, y = dir.y},
-        alive = true
+        alive = true,
+        behavior = behavior,  -- nil for player-controlled, or "aggressive"/"defensive"/"food_focused"
+        move_timer = 0
     }
     if self.params.movement_type == "smooth" then
         for k, v in pairs(self:_initSmoothState(x, y)) do snake[k] = v end
@@ -83,16 +107,15 @@ function SnakeGame:_repositionSnakeAt(spawn_x, spawn_y)
     self.movement_controller:initGridState("snake", dir_x, dir_y)
 end
 
-function SnakeGame:_repositionAISnakesInArena(min_x, max_x, min_y, max_y)
+function SnakeGame:_repositionSnakesInArena(min_x, max_x, min_y, max_y)
     if not (self.params.arena_shape == "circle" or self.params.arena_shape == "hexagon") then return end
-    if not self.ai_snakes then return end
-    for _, ai_snake in ipairs(self.ai_snakes) do
-        if ai_snake.alive and ai_snake.body and #ai_snake.body > 0 then
-            if not self:isInsideArena(ai_snake.body[1]) then
+    for _, snake in ipairs(self.snakes) do
+        if snake.alive and snake.body and #snake.body > 0 then
+            if not self:isInsideArena(snake.body[1]) then
                 local x, y = self:findSafePosition(min_x, max_x, min_y, max_y, function(x, y)
                     return self:isInsideArena({x = x, y = y}) and not self:checkCollision({x = x, y = y}, false)
                 end, 100)
-                ai_snake.body[1].x, ai_snake.body[1].y = x, y
+                snake.body[1].x, snake.body[1].y = x, y
             end
         end
     end
@@ -102,18 +125,14 @@ function SnakeGame:_initializeObstacles()
     self:createEdgeObstacles()
     if not self._obstacles_created then
         local count = math.floor(self.params.obstacle_count * self.difficulty_modifiers.complexity)
-        for _ = 1, count do
-            self:spawnObstacleEntity()
-        end
+        self.entity_controller:spawnMultiple(count, function() self:spawnObstacleEntity() end)
         self._obstacles_created = true
     end
 end
 
 function SnakeGame:_spawnInitialFood()
     if #self:getFoods() == 0 and not self._foods_spawned then
-        for _ = 1, self.params.food_count do
-            self:spawnFoodEntity()
-        end
+        self.entity_controller:spawnMultiple(self.params.food_count, function() self:spawnFoodEntity() end)
         self._foods_spawned = true
     end
 end
@@ -134,11 +153,15 @@ function SnakeGame:_clampPositionsToSafe(min_x, max_x, min_y, max_y)
 end
 
 function SnakeGame:_regenerateEdgeObstacles()
-    -- Remove wall entities
+    -- Collect wall entities first (can't remove while iterating)
+    local to_remove = {}
     for _, obs in ipairs(self:getObstacles()) do
         if obs.type == "walls" or obs.type == "bounce_wall" then
-            self:removeObstacle(obs)
+            table.insert(to_remove, obs)
         end
+    end
+    for _, obs in ipairs(to_remove) do
+        self:removeObstacle(obs)
     end
     self:_initializeObstacles()
 end
@@ -146,27 +169,36 @@ end
 function SnakeGame:setupSnake()
     local cx, cy = math.floor(self.grid_width / 2), math.floor(self.grid_height / 2)
 
-    self.player_snakes = {}
+    self.snakes = {}
+    -- Player-controlled snakes
     for i = 1, self.params.snake_count do
         local sx, sy = cx + (i - 1) * self.params.multi_snake_spacing, cy
-        table.insert(self.player_snakes, self:_createSnakeEntity(sx, sy))
+        table.insert(self.snakes, self:_createSnakeEntity(sx, sy, nil))
     end
-    self.snake = self.player_snakes[1]
+    self.snake = self.snakes[1]
     self._snake_needs_spawn = true
 
     self.segments_for_next_girth = self.params.girth_growth
     self.pending_growth = 0
     self.shrink_timer, self.obstacle_spawn_timer = 0, 0
-    self.ai_snakes = {}
 
+    -- AI snakes (same entity, just with behavior set)
     for i = 1, self.params.ai_snake_count do
-        table.insert(self.ai_snakes, self:createAISnake(i))
+        local spawn_x, spawn_y = self:findSafePosition(0, self.grid_width - 1, 0, self.grid_height - 1,
+            function(x, y)
+                local dist = math.abs(x - cx) + math.abs(y - cy)
+                return dist > 10 and self:isInsideArena({x = x, y = y}) and not self:checkCollision({x = x, y = y}, false)
+            end, 200)
+        if not spawn_x then
+            spawn_x = cx + ((self.params.snake_count + i) * 2)
+            spawn_y = cy
+        end
+        table.insert(self.snakes, self:_createSnakeEntity(spawn_x, spawn_y, self.params.ai_behavior))
     end
 end
 
 function SnakeGame:setupComponents()
-    self:createComponentsFromSchema()
-    -- Note: entity_controller already created in init before setupSnake
+    -- Note: createComponentsFromSchema called earlier in init (arena_controller needed by setupSnake)
     self:createVictoryConditionFromSchema()
 
     -- Set computed arena values (must set base_width/current_width, not just width)
@@ -184,7 +216,7 @@ function SnakeGame:setupComponents()
     self.arena_controller.safe_zone_mode = (self.params.arena_shape ~= "rectangle")
     self.arena_controller.on_shrink = function(margins) self:onArenaShrink(margins) end
 
-    for i, psnake in ipairs(self.player_snakes) do
+    for i, psnake in ipairs(self.snakes) do
         local entity_id = (i == 1) and "snake" or ("snake_" .. i)
         if self.params.movement_type == "smooth" then
             self.movement_controller:initSmoothState(entity_id, psnake.smooth_angle or 0)
@@ -195,7 +227,10 @@ function SnakeGame:setupComponents()
     self.metrics.snake_length, self.metrics.survival_time = 1, 0
 end
 
--- Entity helpers - delegate to EntityController
+--------------------------------------------------------------------------------
+-- Entity Helpers
+--------------------------------------------------------------------------------
+
 function SnakeGame:getFoods()
     return self.entity_controller:getEntitiesByCategory("food")
 end
@@ -219,10 +254,22 @@ function SnakeGame:_getFoodType()
 end
 
 function SnakeGame:spawnFoodEntity()
-    local bounds = {min_x = 0, max_x = self.grid_width - 1, min_y = 0, max_y = self.grid_height - 1, is_grid = true}
+    -- Safeguard: ensure valid grid dimensions
+    if not self.grid_width or not self.grid_height or self.grid_width < 3 or self.grid_height < 3 then
+        return nil
+    end
+    -- Spawn inside the playable area (avoid boundary cells where walls exist)
+    local margin = (self.params.wall_mode == "wrap") and 0 or 1
+    local bounds = {
+        min_x = margin,
+        max_x = self.grid_width - 1 - margin,
+        min_y = margin,
+        max_y = self.grid_height - 1 - margin,
+        is_grid = true
+    }
     return self.entity_controller:spawnWithPattern(self:_getFoodType(), self.params.food_spawn_pattern or "random", {
         bounds = bounds,
-        is_valid_fn = function(x, y) return not self:checkCollision({x = x, y = y}, true) end,
+        is_valid_fn = function(x, y) return not self:checkCollision({x = x, y = y}, false) end,
         category = "food",
         position = math.floor(self.grid_height / 2)  -- for line pattern
     }, {lifetime = 0, category = "food"})
@@ -240,6 +287,10 @@ function SnakeGame:spawnObstacleEntity()
         is_valid_fn = function(x, y) return not self:checkCollision({x = x, y = y}, false) end
     }, custom)
 end
+
+--------------------------------------------------------------------------------
+-- Game Loop
+--------------------------------------------------------------------------------
 
 function SnakeGame:setPlayArea(width, height)
     self.viewport_width, self.viewport_height = width, height
@@ -259,9 +310,11 @@ function SnakeGame:setPlayArea(width, height)
             self:_clampPositionsToSafe(0, self.grid_width - 1, 0, self.grid_height - 1)
             self:_regenerateEdgeObstacles()
         end
+    else
+        -- Fixed arena: initialize obstacles once (non-fixed already did via _regenerateEdgeObstacles)
+        self:_initializeObstacles()
     end
 
-    self:_initializeObstacles()
     if self._snake_needs_spawn then
         self:_spawnSnakeSafe()
         self._snake_needs_spawn = false
@@ -271,7 +324,7 @@ function SnakeGame:setPlayArea(width, height)
             function(x, y) return not self:_checkSpawnSafety({x = x, y = y}) end)
         self:_repositionSnakeAt(x, y)
     end
-    self:_repositionAISnakesInArena(0, self.grid_width - 1, 0, self.grid_height - 1)
+    self:_repositionSnakesInArena(0, self.grid_width - 1, 0, self.grid_height - 1)
     self:_spawnInitialFood()
 end
 
@@ -327,7 +380,7 @@ function SnakeGame:updateGameLogic(dt)
                     local collected = false
 
                     -- Check all player snakes
-                    for _, player_snake in ipairs(self.player_snakes or {self.snake}) do
+                    for _, player_snake in ipairs(self.snakes or {self.snake}) do
                         if player_snake.alive ~= false then
                             local snake_body = player_snake.body or player_snake
                             for _, segment in ipairs(snake_body) do
@@ -339,23 +392,6 @@ function SnakeGame:updateGameLogic(dt)
                                 end
                             end
                             if collected then break end
-                        end
-                    end
-
-                    -- Check AI snakes
-                    if not collected and self.ai_snakes then
-                        for _, ai_snake in ipairs(self.ai_snakes) do
-                            if ai_snake.alive and ai_snake.body then
-                                for _, segment in ipairs(ai_snake.body) do
-                                    if segment.x == food.x and segment.y == food.y then
-                                        -- Food moved into AI snake
-                                        ai_snake.length = ai_snake.length + 1
-                                        collected = true
-                                        break
-                                    end
-                                end
-                                if collected then break end
-                            end
                         end
                     end
 
@@ -433,9 +469,6 @@ function SnakeGame:updateGameLogic(dt)
         end
     end
 
-    -- Update AI snakes
-    self:updateAISnakes(dt)
-
     -- Check collisions between snakes
     self:checkSnakeCollisions()
 
@@ -443,10 +476,13 @@ function SnakeGame:updateGameLogic(dt)
     self.grid_width = self.arena_controller.current_width
     self.grid_height = self.arena_controller.current_height
 
-    -- Handle smooth movement separately
+    -- Update AI snakes (always use grid movement regardless of movement_type)
+    self:updateAISnakesGrid(dt)
+
+    -- Handle smooth movement for player snakes
     if self.params.movement_type == "smooth" then
         self:updateSmoothMovement(dt)
-        return  -- Skip grid-based movement
+        return  -- Skip grid-based player movement
     end
 
     -- Apply max speed cap
@@ -458,124 +494,125 @@ function SnakeGame:updateGameLogic(dt)
 
     -- Check if it's time to move using MovementController's timing
     if self.movement_controller:tickGrid(dt, "snake") then
-        self.snake.direction = self.movement_controller:applyQueuedDirection("snake")
-        local head = self.snake.body[1]
+        -- Update player snakes (AI snakes handled by updateAISnakesGrid)
+        for _, snake in ipairs(self.snakes) do
+            if not snake.alive or snake.behavior then goto continue end
 
-        -- Calculate new head position based on wall_mode
-        local new_head = {x = head.x + self.snake.direction.x, y = head.y + self.snake.direction.y}
-
-        if self.params.wall_mode == "wrap" then
-            new_head.x, new_head.y = self:wrapPosition(new_head.x, new_head.y, self.grid_width, self.grid_height)
-        elseif self.params.wall_mode == "death" then
-            if not self:isInsideArena(new_head) then
-                                self:onComplete()
-                return
+            -- Determine direction from input
+            if snake == self.snake then
+                snake.direction = self.movement_controller:applyQueuedDirection("snake")
+            else
+                snake.direction = snake.next_direction
             end
-        elseif self.params.wall_mode == "bounce" then
-            if self:_isWallAt(new_head.x, new_head.y) then
-                self.snake.direction = self.movement_controller:findGridBounceDirection(
-                    head, self.snake.direction, function(x, y) return self:_isWallAt(x, y) end)
-                self.movement_controller:initGridState("snake", self.snake.direction.x, self.snake.direction.y)
-                new_head = {x = head.x + self.snake.direction.x, y = head.y + self.snake.direction.y}
-            end
-        end
 
-        -- Check collision (with phase_through_tail support)
-        if self:checkCollision(new_head, true) then
-                        self:onComplete()
-            return
-        end
-
-        table.insert(self.snake.body, 1, new_head)
-
-        -- Check food collision (girth-aware)
-        for _, food in ipairs(self:getFoods()) do
-            if self:checkGirthCollision(new_head, self.params.girth, self.snake.direction, food, food.size or 1, nil) then
-                self:collectFood(food, self.snake)
-                self:removeFood(food)
-                if self.params.food_spawn_mode == "continuous" then
-                    self:spawnFoodEntity()
-                elseif self.params.food_spawn_mode == "batch" and #self:getFoods() == 0 then
-                    for _ = 1, self.params.food_count do self:spawnFoodEntity() end
-                end
-                break
-            end
-        end
-
-        -- Handle tail growth/removal
-        if self.pending_growth > 0 then
-            -- Don't remove tail - we're growing
-            self.pending_growth = self.pending_growth - 1
-        elseif #self.snake.body < self.params.max_length_cap then
-            -- Remove tail if we're not at max length and not growing
-            table.remove(self.snake.body)
-        else
-            -- At max length cap - maintain current length
-            table.remove(self.snake.body)
-        end
-
-        -- Update snake length metric to match actual snake
-        self.metrics.snake_length = #self.snake.body
-
-        -- Move additional player snakes (for multi-snake control)
-        for i = 2, #self.player_snakes do
-            local psnake = self.player_snakes[i]
-            if psnake.alive then
-                -- Update direction
-                psnake.direction = psnake.next_direction
-
-                local phead = psnake.body[1]
-
-                -- Calculate new head position
-                local wrap_x, wrap_y = self:wrapPosition(
-                    phead.x + psnake.direction.x,
-                    phead.y + psnake.direction.y,
-                    self.grid_width, self.grid_height)
-                local new_phead = {x = wrap_x, y = wrap_y}
-
-                -- Check collision with obstacles
-                if self:checkCollision(new_phead, false) then
-                    psnake.alive = false
-                    goto continue
-                end
-
-                -- Check collision with own body
-                for j = 2, #psnake.body do
-                    if new_phead.x == psnake.body[j].x and new_phead.y == psnake.body[j].y then
-                        psnake.alive = false
-                        goto continue
-                    end
-                end
-
-                -- Add new head
-                table.insert(psnake.body, 1, new_phead)
-
-                -- Check food collision
-                local ate_food = false
-                for _, food in ipairs(self:getFoods()) do
-                    if new_phead.x == food.x and new_phead.y == food.y then
-                        ate_food = true
-                        self:collectFood(food, psnake)
-                        self:removeFood(food)
-                        if self.params.food_spawn_mode == "continuous" then
-                            self:spawnFoodEntity()
-                        elseif self.params.food_spawn_mode == "batch" and #self:getFoods() == 0 then
-                            for _ = 1, self.params.food_count do self:spawnFoodEntity() end
-                        end
-                        break
-                    end
-                end
-
-                -- Remove tail if not growing
-                if not ate_food then
-                    table.remove(psnake.body)
-                end
-            end
+            -- Use shared movement logic
+            self:_moveGridSnake(snake)
 
             ::continue::
         end
     end
 end
+
+function SnakeGame:updateAISnakesGrid(dt)
+    for _, snake in ipairs(self.snakes) do
+        if not snake.behavior or not snake.alive then goto continue end
+
+        snake.move_timer = snake.move_timer + dt
+        if snake.move_timer < 1 / self.params.ai_speed then goto continue end
+        snake.move_timer = snake.move_timer - (1 / self.params.ai_speed)
+
+        -- Compute direction from behavior
+        local head = snake.body[1]
+        if snake.behavior == "aggressive" then
+            snake.direction.x, snake.direction.y = self:getCardinalDirection(head.x, head.y, self.snake.body[1].x, self.snake.body[1].y)
+        elseif snake.behavior == "defensive" then
+            local dx, dy = self:getCardinalDirection(head.x, head.y, self.snake.body[1].x, self.snake.body[1].y)
+            snake.direction.x, snake.direction.y = -dx, -dy
+        else -- food_focused
+            local nearest = self.entity_controller:findNearest(head.x, head.y, function(e) return e.category == "food" end)
+            if nearest then
+                snake.direction.x, snake.direction.y = self:getCardinalDirection(head.x, head.y, nearest.x, nearest.y)
+            end
+        end
+
+        -- Use shared movement logic
+        self:_moveGridSnake(snake)
+
+        ::continue::
+    end
+end
+
+function SnakeGame:_moveGridSnake(snake)
+    local head = snake.body[1]
+    local new_head = {x = head.x + snake.direction.x, y = head.y + snake.direction.y}
+    local is_primary = (snake == self.snake)
+
+    -- Wall handling
+    if self.params.wall_mode == "wrap" then
+        new_head.x, new_head.y = self:wrapPosition(new_head.x, new_head.y, self.grid_width, self.grid_height)
+    elseif self.params.wall_mode == "death" then
+        if not self:isInsideArena(new_head) then
+            if is_primary then self:onComplete(); return end
+            snake.alive = false; return
+        end
+    elseif self.params.wall_mode == "bounce" then
+        if self:_isWallAt(new_head.x, new_head.y) then
+            snake.direction = self.movement_controller:findGridBounceDirection(
+                head, snake.direction, function(x, y) return self:_isWallAt(x, y) end)
+            if is_primary then
+                self.movement_controller:initGridState("snake", snake.direction.x, snake.direction.y)
+            end
+            new_head = {x = head.x + snake.direction.x, y = head.y + snake.direction.y}
+        end
+    end
+
+    -- Collision
+    if self:checkCollision(new_head, is_primary) then
+        if is_primary then self:onComplete(); return end
+        snake.alive = false; return
+    end
+    if not is_primary then
+        for j = 2, #snake.body do
+            if new_head.x == snake.body[j].x and new_head.y == snake.body[j].y then
+                snake.alive = false; return
+            end
+        end
+    end
+
+    -- Move
+    table.insert(snake.body, 1, new_head)
+
+    -- Food
+    local ate = false
+    for _, food in ipairs(self:getFoods()) do
+        local hit = is_primary
+            and self:checkGirthCollision(new_head, self.params.girth, snake.direction, food, food.size or 1, nil)
+            or (new_head.x == food.x and new_head.y == food.y)
+        if hit then
+            ate = true
+            self:collectFood(food, snake)
+            self:removeFood(food)
+            if self.params.food_spawn_mode == "continuous" then self:spawnFoodEntity()
+            elseif self.params.food_spawn_mode == "batch" and #self:getFoods() == 0 then
+                self.entity_controller:spawnMultiple(self.params.food_count, function() self:spawnFoodEntity() end)
+            end
+            break
+        end
+    end
+
+    -- Tail
+    if is_primary then
+        if self.pending_growth > 0 then self.pending_growth = self.pending_growth - 1
+        else table.remove(snake.body) end
+        self.metrics.snake_length = #snake.body
+    else
+        if not ate then table.remove(snake.body) end
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Input Handling
+--------------------------------------------------------------------------------
 
 function SnakeGame:keypressed(key)
     SnakeGame.super.keypressed(self, key)
@@ -584,7 +621,7 @@ function SnakeGame:keypressed(key)
         local left = (key == 'left' or key == 'a')
         local right = (key == 'right' or key == 'd')
         if left or right then
-            for i, psnake in ipairs(self.player_snakes) do
+            for i, psnake in ipairs(self.snakes) do
                 local state = self.movement_controller:getSmoothState((i == 1) and "snake" or ("snake_" .. i))
                 if state then
                     if left then state.turn_left = true end
@@ -601,9 +638,9 @@ function SnakeGame:keypressed(key)
         elseif key == 'down' or key == 's' then dir = {x = 0, y = 1}
         end
         if dir and self.movement_controller:queueGridDirection("snake", dir.x, dir.y, self.snake.direction) then
-            for i = 2, #self.player_snakes do
-                if self.player_snakes[i].alive then
-                    self.player_snakes[i].next_direction = {x = dir.x, y = dir.y}
+            for i = 2, #self.snakes do
+                if self.snakes[i].alive then
+                    self.snakes[i].next_direction = {x = dir.x, y = dir.y}
                 end
             end
             return true
@@ -619,7 +656,7 @@ function SnakeGame:keyreleased(key)
         local left = (key == 'left' or key == 'a')
         local right = (key == 'right' or key == 'd')
         if left or right then
-            for i = 1, #self.player_snakes do
+            for i = 1, #self.snakes do
                 local state = self.movement_controller:getSmoothState((i == 1) and "snake" or ("snake_" .. i))
                 if state then
                     if left then state.turn_left = false end
@@ -630,6 +667,10 @@ function SnakeGame:keyreleased(key)
     end
 end
 
+--------------------------------------------------------------------------------
+-- Smooth Movement
+--------------------------------------------------------------------------------
+
 function SnakeGame:updateSmoothMovement(dt)
     local girth = self.params.girth or 1
     local head_radius = 0.3 + (girth * 0.5)
@@ -638,10 +679,10 @@ function SnakeGame:updateSmoothMovement(dt)
     -- Update main snake
     self:_updateSmoothSnake(self.snake, "snake", dt, head_radius, food_radius, true)
 
-    -- Update additional player snakes
-    for i = 2, #self.player_snakes do
-        local psnake = self.player_snakes[i]
-        if psnake.alive and psnake.smooth_x then
+    -- Update additional player snakes (skip AI - they use grid via updateAISnakesGrid)
+    for i = 2, #self.snakes do
+        local psnake = self.snakes[i]
+        if psnake.alive and psnake.smooth_x and not psnake.behavior then
             self:_updateSmoothSnake(psnake, "snake_" .. i, dt, head_radius, food_radius, false)
         end
     end
@@ -772,160 +813,38 @@ function SnakeGame:_findBounceAngle(x, y, current_angle)
     return checkSpace(angle1) >= checkSpace(angle2) and angle1 or angle2
 end
 
-function SnakeGame:createAISnake(index)
-    -- Spawn AI snake at random position away from player
-    local spawn_x, spawn_y
-    local max_attempts = 200
-    local attempt = 0
-    repeat
-        attempt = attempt + 1
-        spawn_x = math.random(0, self.grid_width - 1)
-        spawn_y = math.random(0, self.grid_height - 1)
-
-        -- Ensure spawn is far enough from player
-        local player_head = self.snake.body[1]
-        local dist = math.abs(spawn_x - player_head.x) + math.abs(spawn_y - player_head.y)
-
-        -- Check if position is inside shaped arenas
-        local inside_arena = true
-        if self.params.arena_shape == "circle" or self.params.arena_shape == "hexagon" then
-            inside_arena = self:isInsideArena({x = spawn_x, y = spawn_y})
-        end
-
-        if dist > 10 and not self:checkCollision({x = spawn_x, y = spawn_y}, true) and inside_arena then
-            break
-        end
-    until attempt >= max_attempts
-
-    -- Fallback: spawn near center if no valid position found
-    if attempt >= max_attempts then
-        spawn_x = math.floor(self.grid_width / 2) + (index * 2)
-        spawn_y = math.floor(self.grid_height / 2)
-    end
-
-    return {
-        body = {{x = spawn_x, y = spawn_y}},
-        direction = {x = 1, y = 0},
-        move_timer = 0,
-        length = 1,
-        alive = true,
-        behavior = self.params.ai_behavior,
-        target_food = nil  -- Cached food target
-    }
-end
-
-function SnakeGame:updateAISnakes(dt)
-    for _, ai_snake in ipairs(self.ai_snakes) do
-        if ai_snake.alive then
-            self:updateAISnake(ai_snake, dt)
-        end
-    end
-end
-
-function SnakeGame:updateAISnake(ai_snake, dt)
-    ai_snake.move_timer = ai_snake.move_timer + dt
-    if ai_snake.move_timer < 1 / self.params.ai_speed then return end
-    ai_snake.move_timer = ai_snake.move_timer - (1 / self.params.ai_speed)
-
-    local head = ai_snake.body[1]
-
-    -- AI direction based on behavior
-    local target_x, target_y
-    if ai_snake.behavior == "aggressive" then
-        target_x, target_y = self.snake.body[1].x, self.snake.body[1].y
-    elseif ai_snake.behavior == "defensive" then
-        local dx, dy = self:getCardinalDirection(head.x, head.y, self.snake.body[1].x, self.snake.body[1].y)
-        ai_snake.direction = {x = -dx, y = -dy}
-        target_x, target_y = nil, nil
-    else -- food_focused
-        local nearest = self.entity_controller:findNearest(head.x, head.y, function(e) return e.category == "food" end)
-        if nearest then target_x, target_y = nearest.x, nearest.y end
-    end
-    if target_x then
-        local dx, dy = self:getCardinalDirection(head.x, head.y, target_x, target_y)
-        ai_snake.direction = {x = dx, y = dy}
-    end
-
-    -- Calculate new position
-    local new_head = {x = head.x + ai_snake.direction.x, y = head.y + ai_snake.direction.y}
-
-    -- Wall handling
-    if self.params.wall_mode == "wrap" then
-        new_head.x, new_head.y = self:wrapPosition(new_head.x, new_head.y, self.grid_width, self.grid_height)
-    elseif self.params.wall_mode == "death" then
-        if not self:isInsideArena(new_head) then ai_snake.alive = false; return end
-    elseif self.params.wall_mode == "bounce" then
-        if new_head.x < 0 or new_head.x >= self.grid_width then
-            ai_snake.direction.x = -ai_snake.direction.x
-            new_head.x = head.x + ai_snake.direction.x
-        end
-        if new_head.y < 0 or new_head.y >= self.grid_height then
-            ai_snake.direction.y = -ai_snake.direction.y
-            new_head.y = head.y + ai_snake.direction.y
-        end
-    end
-
-    -- Collision checks
-    if self:checkCollision(new_head, false) then ai_snake.alive = false; return end
-    for _, seg in ipairs(ai_snake.body) do
-        if new_head.x == seg.x and new_head.y == seg.y then ai_snake.alive = false; return end
-    end
-
-    -- Move and eat
-    table.insert(ai_snake.body, 1, new_head)
-    local ate = false
-    for _, food in ipairs(self:getFoods()) do
-        if new_head.x == food.x and new_head.y == food.y then
-            ate = true
-            ai_snake.length = ai_snake.length + 1
-            self:removeFood(food)
-            if self.params.food_spawn_mode == "continuous" then self:spawnFoodEntity()
-            elseif self.params.food_spawn_mode == "batch" and #self:getFoods() == 0 then
-                for _ = 1, self.params.food_count do self:spawnFoodEntity() end
-            end
-            break
-        end
-    end
-    if not ate then table.remove(ai_snake.body) end
-end
-
 function SnakeGame:checkSnakeCollisions()
-    -- Check collisions between player and AI snakes
+    -- Check collisions between primary player snake and other snakes
     local player_head = self.snake.body[1]
 
-    for i, ai_snake in ipairs(self.ai_snakes) do
-        if ai_snake.alive then
-            local ai_head = ai_snake.body[1]
+    for _, other in ipairs(self.snakes) do
+        if other ~= self.snake and other.alive then
+            local other_head = other.body[1]
 
             -- Check head-to-head collision
-            if player_head.x == ai_head.x and player_head.y == ai_head.y then
+            if player_head.x == other_head.x and player_head.y == other_head.y then
                 if self.params.snake_collision_mode == "both_die" then
                     self.snake.alive = false
-                    ai_snake.alive = false
-                                        self:onComplete()
+                    other.alive = false
+                    self:onComplete()
                 elseif self.params.snake_collision_mode == "big_eats_small" then
-                    if #self.snake.body > #ai_snake.body then
-                        -- Player wins, absorb AI snake
-                        for _ = 1, #ai_snake.body do
-                            self.metrics.snake_length = self.metrics.snake_length + 1
-                        end
-                        ai_snake.alive = false
+                    if #self.snake.body > #other.body then
+                        self.metrics.snake_length = self.metrics.snake_length + #other.body
+                        other.alive = false
                         self:playSound("success", 0.8)
                     else
-                        -- AI wins, player dies
                         self.snake.alive = false
-                                                self:onComplete()
+                        self:onComplete()
                     end
                 end
-                -- phase_through: do nothing
             end
 
-            -- Check if player head hits AI body
-            for _, segment in ipairs(ai_snake.body) do
+            -- Check if player head hits other snake's body
+            for _, segment in ipairs(other.body) do
                 if player_head.x == segment.x and player_head.y == segment.y then
                     if self.params.snake_collision_mode ~= "phase_through" then
                         self.snake.alive = false
-                                                self:onComplete()
+                        self:onComplete()
                     end
                     break
                 end
@@ -933,6 +852,10 @@ function SnakeGame:checkSnakeCollisions()
         end
     end
 end
+
+--------------------------------------------------------------------------------
+-- Arena & Walls
+--------------------------------------------------------------------------------
 
 function SnakeGame:createEdgeObstacles()
     -- No walls for wrap mode or shaped arenas (shaped use bounds check, not entities)
@@ -969,6 +892,10 @@ end
 function SnakeGame:isInsideArena(pos, margin)
     return self.arena_controller:isInsideGrid(pos.x, pos.y, margin)
 end
+
+--------------------------------------------------------------------------------
+-- Girth System (Snake-Specific)
+--------------------------------------------------------------------------------
 
 function SnakeGame:getGirthCells(center_pos, girth_value, direction)
     -- Returns all grid cells occupied by a segment with given girth
@@ -1060,6 +987,10 @@ function SnakeGame:collectFood(food, snake)
         end
     end
 end
+
+--------------------------------------------------------------------------------
+-- Collision & Spawning
+--------------------------------------------------------------------------------
 
 function SnakeGame:checkCollision(pos, check_snake_body)
     if not pos then return false end
