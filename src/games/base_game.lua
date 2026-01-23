@@ -785,6 +785,24 @@ function BaseGame:findSafePosition(min_x, max_x, min_y, max_y, is_safe_fn, max_a
     return cx, cy, false
 end
 
+-- Clamp all entities in given arrays to bounds
+-- entity_arrays: table of arrays, each containing entities with x,y fields
+function BaseGame:clampEntitiesToBounds(entity_arrays, min_x, max_x, min_y, max_y)
+    for _, entities in ipairs(entity_arrays) do
+        for _, entity in ipairs(entities) do
+            if entity.x then entity.x = math.max(min_x, math.min(max_x, entity.x)) end
+            if entity.y then entity.y = math.max(min_y, math.min(max_y, entity.y)) end
+        end
+    end
+end
+
+-- Get random cardinal direction
+function BaseGame:getRandomCardinalDirection()
+    local dirs = {{1,0}, {-1,0}, {0,1}, {0,-1}}
+    local d = dirs[math.random(1, 4)]
+    return d[1], d[2]
+end
+
 -- Scale a value with multipliers, variance, range, and bounds
 -- config: {multipliers = {}, variance = 0, range = {min, max}, bounds = {min, max}}
 function BaseGame:getScaledValue(base, config)

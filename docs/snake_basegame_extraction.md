@@ -367,7 +367,23 @@ Unified collision, wall visualization via ArenaController.
 - [ ] Collision detection works
 
 ### AI Notes
-(To be filled after completion)
+**Completed successfully.**
+
+Key insight: Wall entities were being created just for collision detection, but ArenaController already tracks arena bounds. Removed wall entities entirely:
+
+**Changes made:**
+- Added `getBoundaryCells(grid_width, grid_height)` to ArenaController (for future use)
+- Simplified `checkCollision()` to use `isInsideArena()` for bounds checking
+- Deleted `createEdgeObstacles()` (52 lines) - wall entities no longer needed
+- Simplified `onArenaShrink()` (11 → 4 lines) - no wall entity spawning
+- Inlined `syncArenaState()` (deleted 4-line function)
+- Renamed `_regenerateEdgeObstacles` → `_regenerateObstacles` (removed wall removal logic)
+
+**View unchanged:** snake_view.lua already renders walls via `drawArenaBoundaries()` without needing wall entities.
+
+**Line count change:**
+- snake_game.lua: 1285 → 1218 (-67 lines)
+- arena_controller.lua: +24 lines (getBoundaryCells)
 
 ---
 

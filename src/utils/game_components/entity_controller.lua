@@ -438,6 +438,118 @@ function EntityController:spawnWithPattern(type_name, pattern, config, custom_pa
 end
 
 --[[
+    Spawn entity in a region with optional direction facing
+
+    @param type_name string
+    @param config table - Spawn configuration (see calculateSpawnPosition)
+    @param custom_params table - Optional params to pass to spawn
+    @return entity, direction - spawned entity and calculated direction
+]]
+function EntityController:spawnInRegion(type_name, config, custom_params)
+    local x, y, direction = self:calculateSpawnPosition(config)
+
+    local entity = self:spawn(type_name, x, y, custom_params)
+    if entity then
+        entity.spawn_direction = direction
+    end
+
+    return entity, direction
+end
+
+--[[
+    Calculate spawn position without creating an entity
+    Same logic as spawnInRegion but returns x, y, direction instead of spawning
+
+    @param config table - Same as spawnInRegion config
+    @return x, y, direction
+]]
+function EntityController:calculateSpawnPosition(config)
+    config = config or {}
+    local bounds = config.bounds or {min_x = 0, max_x = 100, min_y = 0, max_y = 100}
+    local center = config.center or {x = (bounds.min_x + bounds.max_x) / 2, y = (bounds.min_y + bounds.max_y) / 2}
+    local region = config.region or "random"
+    local index = config.index or 1
+    local spacing = config.spacing or 3
+
+    local x, y
+
+    if region == "center" then
+        x = center.x + (index - 1) * spacing
+        y = center.y
+    else
+        local min_dist = config.min_distance_from_center or 0
+        local max_attempts = config.max_attempts or 200
+
+        for _ = 1, max_attempts do
+            if bounds.is_grid then
+                x = math.random(bounds.min_x, bounds.max_x)
+                y = math.random(bounds.min_y, bounds.max_y)
+            else
+                x = bounds.min_x + math.random() * (bounds.max_x - bounds.min_x)
+                y = bounds.min_y + math.random() * (bounds.max_y - bounds.min_y)
+            end
+
+            local valid = true
+            if min_dist > 0 then
+                local dist = math.abs(x - center.x) + math.abs(y - center.y)
+                if dist < min_dist then valid = false end
+            end
+            if valid and config.is_valid_fn then
+                valid = config.is_valid_fn(x, y)
+            end
+            if valid then break end
+            x, y = nil, nil
+        end
+
+        if not x then
+            x = center.x + (index * 2)
+            y = center.y
+        end
+    end
+
+    local direction = self:calculateSpawnDirection(config.direction, x, y, center, config.fixed_direction)
+    return x, y, direction
+end
+
+--[[
+    Calculate spawn direction based on mode
+
+    @param mode string|table - "toward_center", "from_center", "fixed", or {x, y}
+    @param x, y number - entity position
+    @param center table - {x, y} center point
+    @param fixed_direction table - {x, y} for "fixed" mode
+    @return table - {x, y} direction vector
+]]
+function EntityController:calculateSpawnDirection(mode, x, y, center, fixed_direction)
+    if type(mode) == "table" then
+        return {x = mode.x or 0, y = mode.y or 0}
+    end
+
+    if mode == "toward_center" then
+        local dx, dy = center.x - x, center.y - y
+        if dx == 0 and dy == 0 then
+            return fixed_direction or {x = 1, y = 0}
+        elseif math.abs(dx) > math.abs(dy) then
+            return {x = dx > 0 and 1 or -1, y = 0}
+        else
+            return {x = 0, y = dy > 0 and 1 or -1}
+        end
+    elseif mode == "from_center" then
+        local dx, dy = x - center.x, y - center.y
+        if dx == 0 and dy == 0 then
+            return fixed_direction or {x = 1, y = 0}
+        elseif math.abs(dx) > math.abs(dy) then
+            return {x = dx > 0 and 1 or -1, y = 0}
+        else
+            return {x = 0, y = dy > 0 and 1 or -1}
+        end
+    end
+
+    -- Default: use fixed_direction or right
+    return fixed_direction or {x = 1, y = 0}
+end
+
+--[[
     Spawn entity with min_distance_from constraint
 
     @param type_name string
@@ -620,6 +732,17 @@ function EntityController:spawnWeighted(type_name, weighted_configs, x, y, base_
     for k, v in pairs(chosen) do if k ~= "weight" then extra[k] = v end end
 
     return self:spawn(type_name, x, y, extra)
+end
+
+-- Tick entity timer - returns true when interval reached
+function EntityController:tickTimer(entity, field, speed, dt)
+    entity[field] = (entity[field] or 0) + dt
+    local interval = 1 / speed
+    if entity[field] >= interval then
+        entity[field] = entity[field] - interval
+        return true
+    end
+    return false
 end
 
 --[[
@@ -843,6 +966,35 @@ function EntityController:removeEntity(entity)
             break
         end
     end
+end
+
+--[[
+    Remove all entities matching any of the given types
+    @param types table - array of type strings to remove
+]]
+function EntityController:removeByTypes(types)
+    local type_set = {}
+    for _, t in ipairs(types) do type_set[t] = true end
+
+    local to_remove = {}
+    for _, entity in ipairs(self.entities) do
+        if type_set[entity.type] then
+            table.insert(to_remove, entity)
+        end
+    end
+    for _, entity in ipairs(to_remove) do
+        self:removeEntity(entity)
+    end
+end
+
+--[[
+    Remove entities by type and reinitialize (common resize pattern)
+    @param types table - array of type strings to remove
+    @param init_fn function - callback to reinitialize entities
+]]
+function EntityController:regenerate(types, init_fn)
+    self:removeByTypes(types)
+    if init_fn then init_fn() end
 end
 
 --[[

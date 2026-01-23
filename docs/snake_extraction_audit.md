@@ -145,12 +145,11 @@ If foods array is empty and _foods_spawned flag not set, loops food_count times 
 Clamps all snake body segments to be within min_x, max_x, min_y, max_y bounds. Also clamps all food positions to same bounds. Used during resize when grid dimensions change.
 
 - **Original:** 14 lines
-- **Current:** 14 lines
+- **Current:** DELETED
 - **Plan:** Delete, EntityController handles
-- **Status:** NOT DONE - Still manual clamping
-- **Action:** Add EntityController:clampAllToBounds() and use it
-- **Action Taken:**
-- **Final Lines:**
+- **Status:** DONE - Moved to BaseGame as generic function
+- **Action Taken:** Added BaseGame:clampEntitiesToBounds(entity_arrays, min_x, max_x, min_y, max_y). Deleted snake-specific function. Call site passes {self.snake.body, self:getFoods()}.
+- **Final Lines:** 0 (8 lines in BaseGame, reusable)
 
 ---
 
@@ -158,12 +157,11 @@ Clamps all snake body segments to be within min_x, max_x, min_y, max_y bounds. A
 Removes all wall entities ("walls" and "bounce_wall" types) from obstacles. Then calls _initializeObstacles to recreate edge obstacles for new grid size. Used on resize.
 
 - **Original:** 10 lines
-- **Current:** 9 lines
+- **Current:** 3 lines
 - **Plan:** Delete, ArenaController handles
-- **Status:** PARTIAL - Still exists but simpler
-- **Action:** Use EntityController:removeByType() then ArenaController boundary spawning
-- **Action Taken:**
-- **Final Lines:**
+- **Status:** DONE - Simplified using EntityController
+- **Action Taken:** Added EntityController:removeByTypes(types) (15 lines) and EntityController:regenerate(types, init_fn) (8 lines). Function now handles full resize: calculates safe interior bounds, clamps snake/food/obstacles to interior, then removes walls and reinitializes. Removed redundant clamp call from setPlayArea.
+- **Final Lines:** 18
 
 ---
 
@@ -175,8 +173,8 @@ Calculates arena center. Creates player_snakes array with snake_count snakes, ea
 - **Plan:** Use EntityController for snake spawning
 - **Status:** NOT DONE - Still manual snake array management
 - **Action:** Keep - snake body is genuinely different from simple entities (segments follow leader)
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** Moved spawn position/direction logic to EntityController:calculateSpawnPosition() and calculateSpawnDirection(). Added _spawnSnakePosition helper. Removed _findSpawnPosition, _getSpawnDirection from snake_game.
+- **Final Lines:** 49
 
 ---
 
@@ -188,8 +186,8 @@ Calls createComponentsFromSchema and createVictoryConditionFromSchema. Sets aren
 - **Plan:** Low extraction potential
 - **Status:** WORSE - Added more arena_controller manual setup
 - **Action:** Extract arena_controller:setGridDimensions() helper, or accept grid dims in schema config
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** None - kept as-is
+- **Final Lines:** 30
 
 ---
 
@@ -205,8 +203,8 @@ Wrapper functions for EntityController integration:
 - **Current:** 48 lines
 - **Plan:** These are the EntityController integration
 - **Status:** CORRECT - Good abstraction layer
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** None - kept as-is
+- **Final Lines:** 48
 
 ---
 
@@ -218,8 +216,8 @@ Called when viewport resizes. Stores viewport dimensions. For non-fixed arena: u
 - **Plan:** Shrink to ~10 lines
 - **Status:** PARTIAL - Reduced but not to target
 - **Action:** Extract common spawn/reposition pattern to helper
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** Now uses _regenerateEdgeObstacles (handles clamping + wall regen), _positionAllSnakes (uses EntityController:calculateSpawnPosition), _spawnInitialFood
+- **Final Lines:** 28
 
 ---
 
@@ -239,8 +237,8 @@ Main game loop. Updates survival_time. Updates food movement (drift/flee/chase) 
   - Grid movement: ~20 lines (was 120) - refactored to use _moveGridSnake
   - Multi-snake loop: UNIFIED via _moveGridSnake
 - **Action:** Extract entity behaviors to components
-- **Action Taken:** Refactored player snake grid movement loop (was ~110 lines inline) to call _moveGridSnake (~17 lines). Now both player and AI snakes use same _moveGridSnake helper. Also added initGridState call to _moveGridSnake for bounce sync.
-- **Final Lines:** 183
+- **Action Taken:** Refactored player snake grid movement loop (was ~110 lines inline) to call _moveGridSnake (~17 lines). Now both player and AI snakes use same _moveGridSnake helper. Also added initGridState call to _moveGridSnake for bounce sync. Further simplified: food movement uses tickTimer + getCardinalDirection (12 lines), food lifetime uses tickTimer (8 lines), shrink over time uses tickTimer (5 lines), moving obstacles use tickTimer + PhysicsUtils.handleBounds with vx/vy (6 lines), obstacle spawning uses tickTimer (3 lines).
+- **Final Lines:** 93
 
 ---
 
@@ -251,8 +249,8 @@ Calls victory_checker:check(). If result exists, sets victory or game_over flags
 - **Current:** DELETED
 - **Plan:** Delete, BaseGame handles via VictoryCondition component
 - **Status:** CORRECT
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** None - already deleted, BaseGame handles
+- **Final Lines:** 0 (DELETED)
 
 ---
 

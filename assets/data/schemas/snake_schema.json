@@ -292,6 +292,14 @@
             "max": 5,
             "description": "Number of player-controlled snakes"
         },
+        "snake_spawns": {
+            "type": "array",
+            "default": [
+                {"count": 1, "region": "random", "direction": "toward_center", "behavior": null},
+                {"count": 0, "region": "random", "min_distance_from_center": 10, "direction": "starting_direction", "behavior": "food_focused"}
+            ],
+            "description": "Spawn configs for snakes. Each entry: count, region (random/center/bounds), direction (toward_center/from_center/starting_direction), behavior (null for player), min_distance_from_center, avoid_collision (default true), inside_arena (default true)"
+        },
         "victory_condition": {
             "type": "enum",
             "values": ["length", "time"],
