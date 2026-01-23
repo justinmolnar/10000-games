@@ -293,7 +293,7 @@
         },
         "snake_collision_mode": {
             "type": "enum",
-            "values": ["both_die", "big_eats_small"],
+            "values": ["both_die", "big_eats_small", "phase_through"],
             "default": "both_die",
             "description": "What happens when snakes collide"
         },

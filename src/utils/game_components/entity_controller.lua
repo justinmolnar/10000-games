@@ -329,6 +329,14 @@ function EntityController:spawnMultiple(count, spawner_fn)
     end
 end
 
+function EntityController:spawnAtCells(type_name, cells, is_valid_fn)
+    for _, cell in ipairs(cells) do
+        if not is_valid_fn or is_valid_fn(cell.x, cell.y) then
+            self:spawn(type_name, cell.x, cell.y)
+        end
+    end
+end
+
 --[[
     Spawn entity near an existing entity (cluster spawning)
 

@@ -410,8 +410,8 @@ Checks collisions between player and AI snakes. For head-to-head: handles based 
 - **Plan:** Delete, EntityController collision callbacks
 - **Status:** NOT DONE - Still manual collision modes
 - **Action:** Use EntityController collision callbacks with mode config
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** DELETED. Logic moved to _moveGridSnake death handler. Uses entity.owner to distinguish own vs other snake. Reads snake_collision_mode from schema. Added "phase_through" to schema enum.
+- **Final Lines:** 0
 
 ---
 
@@ -423,8 +423,8 @@ Creates wall obstacles at arena edges. Skips for wrap mode or shaped arenas (tho
 - **Plan:** Delete, ArenaController + view handles
 - **Status:** PARTIAL - Uses getBoundaryCells but still spawns wall entities
 - **Action:** View should render walls directly from ArenaController bounds, no wall entities needed
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** Added EntityController:spawnAtCells(type, cells, is_valid_fn). Simplified to use spawnAtCells with occupied position check.
+- **Final Lines:** 11**
 
 ---
 
@@ -448,8 +448,8 @@ Callback for arena shrinking. Spawns wall obstacle entities at the new margins o
 - **Plan:** Delete, ArenaController handles
 - **Status:** PARTIAL - Simplified but still spawns wall entities
 - **Action:** ArenaController + view should handle boundary visualization, no callback needed
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** None - kept as-is. Wall entities needed for collision.
+- **Final Lines:** 11**
 
 ---
 
@@ -472,8 +472,8 @@ Wrapper that calls arena_controller:isInsideGrid(pos.x, pos.y, margin). Thin wra
 - **Current:** 3 lines
 - **Plan:** Keep as-is
 - **Status:** CORRECT
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** None - kept as-is.
+- **Final Lines:** 3**
 
 ---
 
@@ -484,8 +484,8 @@ Returns all grid cells occupied by a position with given girth. Girth expands pe
 - **Current:** 40 lines
 - **Plan:** Keep (snake-specific girth mechanic)
 - **Status:** CORRECT
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** None - kept as-is.
+- **Final Lines:** 40**
 
 ---
 
@@ -509,8 +509,8 @@ Handles food collection by any snake. For bad food: shrinks snake (removes segme
 - **Plan:** Shrink, food effects via entity config
 - **Status:** PARTIAL - Has grid/smooth branch that should be encapsulated
 - **Action:** Growth logic could be in snake entity or helper - snake_game passes growth amount, entity handles mode
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** Simplified to use food.growth from schema directly. Mode branching reduced from 14 to 4 lines.
+- **Final Lines:** 27**
 
 ---
 
@@ -537,12 +537,12 @@ Checks if position collides with obstacles. For shaped arenas, checks arena boun
 Finds safe spawn position for snake using findSafePosition with collision check. Falls back to center if none found. Updates snake body position. Calculates direction toward center. Syncs movement_controller. Updates smooth position/angle if smooth mode.
 
 - **Original:** 97 lines
-- **Current:** 38 lines
+- **Current:** DELETED (replaced by _spawnSnakePosition)
 - **Plan:** Shrink to ~5-10 lines using helpers
-- **Status:** PARTIAL - Better but still has grid/smooth branch that should be encapsulated
+- **Status:** DONE - Replaced with _spawnSnakePosition which delegates to EntityController:calculateSpawnPosition
 - **Action:** Reduce to findSafePosition + _repositionSnakeAt (which handles mode internally)
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** Replaced with _spawnSnakePosition (19 lines). Uses entity_controller:calculateSpawnPosition for all spawn logic.
+- **Final Lines:** 0 (replaced by 19-line _spawnSnakePosition)**
 
 ---
 
