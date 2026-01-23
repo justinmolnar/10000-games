@@ -42,6 +42,18 @@
             "max": 720,
             "description": "Turn speed in degrees per second (smooth mode only)"
         },
+        "spawn_margin": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 5,
+            "description": "Extra margin from walls for spawn safety"
+        },
+        "use_trail": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use continuous trail instead of discrete body segments"
+        },
         "speed_increase_per_food": {
             "type": "number",
             "default": 0,
@@ -387,32 +399,58 @@
             "category": "food",
             "type": "normal",
             "size": 1,
-            "growth": 1
+            "growth": 1,
+            "on_collision": "collect"
         },
         "food_bad": {
             "category": "food",
             "type": "bad",
             "size": 1,
-            "growth": -1
+            "growth": -1,
+            "on_collision": "collect"
         },
         "food_golden": {
             "category": "food",
             "type": "golden",
             "size": 3,
-            "growth": 3
+            "growth": 3,
+            "on_collision": "collect"
         },
         "obstacle_static": {
             "category": "obstacle",
             "type": "static_blocks",
             "size": 1,
-            "movement_type": "static"
+            "movement_type": "static",
+            "on_collision": "death"
         },
         "obstacle_moving": {
             "category": "obstacle",
             "type": "moving_blocks",
             "size": 1,
             "movement_type": "linear",
-            "speed": 2
+            "speed": 2,
+            "on_collision": "death"
+        },
+        "wall_death": {
+            "category": "obstacle",
+            "type": "walls",
+            "size": 1,
+            "on_collision": "death"
+        },
+        "wall_bounce": {
+            "category": "obstacle",
+            "type": "bounce_wall",
+            "size": 1,
+            "on_collision": "bounce"
+        },
+        "snake_body": {
+            "category": "snake_body",
+            "on_collision": "death",
+            "movement": {
+                "type": "chain",
+                "follow": "previous",
+                "on_leader_move": "take_leader_position"
+            }
         },
         "snake_player": {
             "category": "snake",

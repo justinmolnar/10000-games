@@ -847,15 +847,19 @@ end
     @param callback function(entity) - Called for each collision
     @return table - List of colliding entities
 ]]
-function EntityController:checkCollision(obj, callback)
+function EntityController:checkCollision(obj, handlers)
     local collisions = {}
 
     for _, entity in ipairs(self.entities) do
         if entity.active and not entity.marked_for_removal then
             local collided = false
 
+            -- Grid-based collision (cell match)
+            if obj.grid then
+                collided = math.floor(obj.x) == math.floor(entity.x) and math.floor(obj.y) == math.floor(entity.y)
+
             -- Circle-circle collision
-            if obj.radius and entity.radius then
+            elseif obj.radius and entity.radius then
                 local dx = obj.x - entity.x
                 local dy = obj.y - entity.y
                 local dist_sq = dx * dx + dy * dy
@@ -876,12 +880,21 @@ function EntityController:checkCollision(obj, callback)
                            obj.x + obj.width > entity.x and
                            obj.y < entity.y + entity.height and
                            obj.y + obj.height > entity.y
+
+            -- Default: grid cell match
+            else
+                collided = math.floor(obj.x) == math.floor(entity.x) and math.floor(obj.y) == math.floor(entity.y)
             end
 
             if collided then
                 table.insert(collisions, entity)
-                if callback then
-                    callback(entity)
+                if type(handlers) == "function" then
+                    handlers(entity)
+                elseif type(handlers) == "table" then
+                    local action = entity.on_collision
+                    if action and handlers[action] then
+                        handlers[action](entity)
+                    end
                 end
             end
         end
@@ -995,6 +1008,38 @@ end
 function EntityController:regenerate(types, init_fn)
     self:removeByTypes(types)
     if init_fn then init_fn() end
+end
+
+--[[
+    Move a chain of entities based on schema-defined movement behavior.
+    Reads movement config from entity type: { type: "chain", follow: "previous", on_leader_move: "take_leader_position" }
+    @param chain table - ordered array of entities (index 1 = head/leader)
+    @param new_x number - new x position for head
+    @param new_y number - new y position for head
+    @return old_tail_x, old_tail_y - position where tail was (for growth)
+]]
+function EntityController:moveChain(chain, new_x, new_y)
+    if not chain or #chain == 0 then return end
+
+    local head = chain[1]
+    local movement = head.movement or (self.entity_types[head.type_name] or {}).movement
+
+    -- Default behavior or explicit "take_leader_position"
+    if not movement or movement.on_leader_move == "take_leader_position" then
+        -- Cascade positions: each segment takes position of the one before it
+        local old_tail_x, old_tail_y = chain[#chain].x, chain[#chain].y
+
+        for i = #chain, 2, -1 do
+            chain[i].x = chain[i-1].x
+            chain[i].y = chain[i-1].y
+        end
+
+        -- Move head to new position
+        head.x = new_x
+        head.y = new_y
+
+        return old_tail_x, old_tail_y
+    end
 end
 
 --[[

@@ -59,8 +59,8 @@ Creates initial state for smooth movement mode. Returns table with smooth_x, smo
 - **Plan:** Delete, use PhysicsUtils.createTrailSystem() inline
 - **Status:** PARTIAL - Uses createTrailSystem but function still exists
 - **Action:** Inline into _createSnakeEntity, saves ~5 lines
-- **Action Taken:** Skip - depends on MovementController refactor (smooth state moves to controller)
-- **Final Lines:** 7 (REVISIT after MovementController refactor)
+- **Action Taken:** Now uses schema param `use_trail` instead of checking movement_type. Returns empty table for grid mode.
+- **Final Lines:** 8
 
 ---
 
@@ -72,8 +72,8 @@ Creates a snake entity at given x,y position. Gets starting direction from CARDI
 - **Plan:** Delete, use EntityController:spawn with snake entity type
 - **Status:** NOT DONE - Still manual snake creation
 - **Action:** Keep - snake body management is genuinely complex (segments follow leader, not independent entities)
-- **Action Taken:** Skip - smooth branch disappears after MovementController refactor, rest stays
-- **Final Lines:** ~8 (REVISIT after MovementController refactor)
+- **Action Taken:** Removed mode branch - just merges _initSmoothState result (empty for grid, smooth fields for trail).
+- **Final Lines:** 12
 
 ---
 
@@ -261,8 +261,8 @@ Determines win/loss based on victory_condition and whether threshold was reached
 - **Current:** DELETED
 - **Plan:** Delete, BaseGame handles via VictoryCondition
 - **Status:** CORRECT
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** None - already deleted, BaseGame handles
+- **Final Lines:** 0 (DELETED)
 
 ---
 
@@ -273,8 +273,8 @@ Calls view:draw() if view exists.
 - **Current:** DELETED
 - **Plan:** Delete, BaseGame handles
 - **Status:** CORRECT
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** None - already deleted, BaseGame handles
+- **Final Lines:** 0 (DELETED)
 
 ---
 
@@ -286,8 +286,8 @@ Calls parent keypressed for demo tracking. For smooth movement: tracks turn key 
 - **Plan:** Use MovementController:handleInput()
 - **Status:** PARTIAL - Has grid/smooth branching that should be in MovementController
 - **Action:** MovementController:handleInput() encapsulates mode - snake_game just calls it
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** Added MovementController:handleInput(). Keypressed now 1 line calling controller.
+- **Final Lines:** 4
 
 ---
 
@@ -299,46 +299,47 @@ Calls parent keyreleased for demo tracking. For smooth movement: clears turn key
 - **Plan:** Use MovementController:handleInput()
 - **Status:** NOT DONE - Still manual turn flag management
 - **Action:** MovementController:handleInput() handles release for smooth mode internally
-- **Action Taken:**
-- **Final Lines:**
+- **Action Taken:** Added MovementController:handleInputRelease(). Keyreleased now 1 line calling controller.
+- **Final Lines:** 4
 
 ---
 
 ### updateSmoothMovement
 Dispatches smooth movement update to all player snakes. Calculates head_radius and food_radius based on girth. Calls _updateSmoothSnake for main snake and additional player snakes.
 
-**REVISIT:** _initSmoothState, _createSnakeEntity, _repositionSnakeAt (smooth state moves to MovementController)
-
 - **Original:** 409 lines
-- **Current:** 16 lines (dispatch) + 96 lines (_updateSmoothSnake)
+- **Current:** 16 lines (dispatch) + 61 lines (_updateSmoothSnake)
 - **Plan:** DELETE ENTIRELY - unified with grid
-- **Status:** NOT DONE - This logic should be in MovementController, not snake_game
-- **Action:** MovementController:update() handles smooth internally. Delete from snake_game.
-- **Action Taken:**
-- **Final Lines:**
+- **Status:** KEPT - Trail system is snake-specific, not worth unifying
+- **Action Taken:** None - dispatch function unchanged
+- **Final Lines:** 16
 
 ---
 
 ### _updateSmoothSnake (NEW)
-Handles single snake smooth movement. Uses MovementController:updateSmooth for rotation and movement. Manages trail (clear on wrap, add point, trim to length). Checks shaped arena bounds for death. Checks obstacle collision with bounce or death handling. Checks trail self-collision (skipping neck region). Checks food collision. Updates body[1] for camera tracking.
+Handles single snake smooth movement. Uses MovementController:updateSmooth for rotation and movement. Manages trail via PhysicsUtils. Checks arena bounds, self-collision via trail, entity collisions (food/obstacles/walls).
 
-- **Current:** 96 lines
+- **Current:** 61 lines
 - **Plan:** Should not exist - unified with grid
-- **Status:** NOT DONE - This logic should be in MovementController, not snake_game
-- **Action:** MovementController:update() handles smooth internally. Delete from snake_game.
-- **Action Taken:**
-- **Final Lines:**
+- **Status:** KEPT - Trail collision is snake-specific, entity collision uses schema on_collision handlers
+- **Action Taken:** Uses entity_controller:checkCollision with on_collision handlers (collect/bounce/death). Death handler skips own snake_body entities (trail handles self-collision separately).
+- **Final Lines:** 61
 
 ---
 
-### _isWallAt (NEW)
-Checks if a grid position contains a wall obstacle ("bounce_wall" or "walls" type). Used for grid bounce mode direction finding.
+### _isWallAt
+- **Current:** DELETED
+- **Action Taken:** Removed - collision now uses entity_controller:checkCollision with on_collision handlers
+- **Final Lines:** 0
 
-- **Current:** 8 lines
-- **Plan:** Not needed with unified collision
-- **Status:** CORRECT - helper for grid bounce mode
-- **Action Taken:**
-- **Final Lines:**
+---
+
+### _moveGridSnake
+Handles single snake grid movement. Calculates new head position with wrap. Checks collisions via entity_controller with on_collision handlers (bounce/death). Uses moveChain for body cascade. Checks food collision (collect handler). Spawns new segment on growth.
+
+- **Current:** 65 lines
+- **Action Taken:** Body segments now entities with chain movement defined in schema. Self-collision via entity system (snake_body on_collision: "death"). Added EntityController:moveChain() for position cascade. Removed manual self-collision loop from checkCollision().
+- **Final Lines:** 65
 
 ---
 
@@ -348,8 +349,7 @@ Finds best bounce angle for smooth movement. Tests +45° and -45° from current 
 - **Current:** 16 lines
 - **Plan:** PhysicsUtils should handle bounce
 - **Status:** CORRECT - smooth-specific bounce raycast
-- **Action:** Extract to PhysicsUtils if bounce needed elsewhere
-- **Action Taken:**
+- **Action Taken:** None
 - **Final Lines:**
 
 ---
@@ -515,16 +515,20 @@ Handles food collection by any snake. For bad food: shrinks snake (removes segme
 ---
 
 ### checkCollision
-Checks if position collides with obstacles or snake body. For shaped arenas, checks arena bounds first. Gets all cells for position with current girth. Checks each cell against all obstacles. If check_snake_body and not phase_through_tail: skips segments near head (at least girth count), checks girth collision against remaining body segments.
-
-**REVISIT:** _checkSpawnSafety (branching moves into checkCollision)
+Checks if position collides with obstacles. For shaped arenas, checks arena bounds first. Gets all cells for position with current girth. Checks each cell against all obstacles.
 
 - **Original:** 43 lines
-- **Current:** 48 lines (GREW)
+- **Current:** 21 lines
 - **Plan:** Simplify with unified collision
-- **Status:** WORSE - Added girth complexity
-- **Action:** Obstacle collision → EntityController check, self-collision stays (snake-specific)
-- **Action Taken:**
+- **Status:** DONE - Removed manual self-collision code (now via entity system)
+- **Action Taken:** Removed check_snake_body parameter and manual snake body collision loop (~25 lines). Self-collision now handled via entity system - grid segments are snake_body entities with on_collision: "death", smooth uses PhysicsUtils trail checkSelfCollision.
+- **Final Lines:** 21
+
+---
+
+### checkGirthCollision
+- **Current:** DELETED
+- **Action Taken:** Removed - was only used by manual self-collision code
 - **Final Lines:**
 
 ---

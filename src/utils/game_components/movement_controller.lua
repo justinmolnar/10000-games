@@ -917,4 +917,86 @@ function MovementController:angleDiff(target, current)
     return diff
 end
 
+-- ============================================================================
+-- Generic input handling (mode-agnostic interface)
+-- ============================================================================
+
+-- Handle key input for entities - works for any movement mode
+-- entities: array of {entity, entity_id} or single entity table
+-- Returns true if input was handled
+function MovementController:handleInput(key, entities, primary_direction)
+    local left = (key == 'left' or key == 'a')
+    local right = (key == 'right' or key == 'd')
+    local up = (key == 'up' or key == 'w')
+    local down = (key == 'down' or key == 's')
+
+    if not (left or right or up or down) then return false end
+
+    -- Normalize entities to array
+    if entities.body or entities.x then entities = {entities} end
+
+    for i, entity in ipairs(entities) do
+        local entity_id = (i == 1) and "snake" or ("snake_" .. i)
+        if entity.behavior then goto continue end -- skip AI
+
+        -- Smooth mode: turn flags
+        local smooth_state = self.smooth_state[entity_id]
+        if smooth_state then
+            if left then smooth_state.turn_left = true end
+            if right then smooth_state.turn_right = true end
+        end
+
+        -- Grid mode: queue direction
+        local grid_state = self.grid_state[entity_id]
+        if grid_state then
+            local dir = nil
+            if left then dir = {x = -1, y = 0}
+            elseif right then dir = {x = 1, y = 0}
+            elseif up then dir = {x = 0, y = -1}
+            elseif down then dir = {x = 0, y = 1}
+            end
+            if dir then
+                local current_dir = (i == 1) and primary_direction or entity.direction
+                if self:queueGridDirection(entity_id, dir.x, dir.y, current_dir) then
+                    if i > 1 then entity.next_direction = {x = dir.x, y = dir.y} end
+                end
+            end
+        end
+
+        ::continue::
+    end
+    return true
+end
+
+-- Handle key release for entities - works for any movement mode
+function MovementController:handleInputRelease(key, entities)
+    local left = (key == 'left' or key == 'a')
+    local right = (key == 'right' or key == 'd')
+
+    if not (left or right) then return end
+
+    -- Normalize entities to array
+    if entities.body or entities.x then entities = {entities} end
+
+    for i, entity in ipairs(entities) do
+        local entity_id = (i == 1) and "snake" or ("snake_" .. i)
+        local smooth_state = self.smooth_state[entity_id]
+        if smooth_state then
+            if left then smooth_state.turn_left = false end
+            if right then smooth_state.turn_right = false end
+        end
+    end
+end
+
+-- Initialize state for entity based on config
+function MovementController:initState(entity_id, direction)
+    entity_id = entity_id or "default"
+    local dir_x, dir_y = direction and direction.x or 1, direction and direction.y or 0
+    local angle = math.atan2(dir_y, dir_x)
+
+    -- Initialize both - only the relevant one will be used based on config
+    self:initGridState(entity_id, dir_x, dir_y)
+    self:initSmoothState(entity_id, angle)
+end
+
 return MovementController

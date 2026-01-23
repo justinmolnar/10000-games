@@ -70,7 +70,7 @@ function SnakeView:draw()
 
     if camera_mode == "follow_head" and #game.snake.body > 0 then
         -- Follow snake head
-        if game.params.movement_type == "smooth" and game.snake.smooth_x then
+        if game.params.use_trail and game.snake.smooth_x then
             -- Use smooth float position for smooth camera following
             focus_x = game.snake.smooth_x * GRID_SIZE
             focus_y = game.snake.smooth_y * GRID_SIZE
@@ -83,7 +83,7 @@ function SnakeView:draw()
 
     elseif camera_mode == "center_of_mass" and #game.snake.body > 0 then
         -- Center on snake's center of mass
-        if game.params.movement_type == "smooth" and game.snake.smooth_x then
+        if game.params.use_trail and game.snake.smooth_x then
             -- For smooth mode, just use head position (trail doesn't have discrete segments)
             focus_x = game.snake.smooth_x * GRID_SIZE
             focus_y = game.snake.smooth_y * GRID_SIZE
@@ -145,7 +145,7 @@ function SnakeView:draw()
     local segment_size = GRID_SIZE - 1
 
     -- Check for smooth movement mode (analog turning with trail)
-    if game.params.movement_type == "smooth" then
+    if game.params.use_trail then
         -- Draw trail
         local trail_points = game.snake.smooth_trail:getPoints()
         if #trail_points > 0 then
@@ -319,7 +319,7 @@ function SnakeView:draw()
             local is_ai = psnake.behavior ~= nil
             local tint = is_ai and {1, 0.3, 0.3} or {0.3, 0.3, 1}  -- Red for AI, Blue for player
 
-            if game.params.movement_type == "smooth" and psnake.smooth_x and not is_ai then
+            if game.params.use_trail and psnake.smooth_x and not is_ai then
                 -- Draw smooth trail
                 local trail_points = psnake.smooth_trail and psnake.smooth_trail:getPoints() or {}
                 if #trail_points > 0 then

@@ -645,6 +645,25 @@ function PhysicsUtils.createTrailSystem(config)
     function trail:getDistance() return self.distance end
     function trail:getPoints() return self.buffer end
 
+    function trail:checkSelfCollision(head_x, head_y, girth)
+        local skip_dist = 1.0 * girth
+        local coll_dist = 0.1 + (girth * 0.3)
+        local checked = 0
+        for i = #self.buffer, 1, -1 do
+            if i < #self.buffer then
+                local curr, next_pt = self.buffer[i], self.buffer[i + 1]
+                checked = checked + math.sqrt((next_pt.x - curr.x)^2 + (next_pt.y - curr.y)^2)
+            end
+            if checked > skip_dist then
+                local dx, dy = head_x - self.buffer[i].x, head_y - self.buffer[i].y
+                if dx*dx + dy*dy < coll_dist*coll_dist then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
     return trail
 end
 
