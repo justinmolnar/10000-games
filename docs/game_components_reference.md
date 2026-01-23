@@ -22,6 +22,7 @@ Visibility system with stencil or alpha modes.
 - **addVisibilitySource(x, y, radius)** - Add circular visible area.
 - **render(arena_width, arena_height)** - Draw fog overlay with stencil cutouts.
 - **calculateAlpha(entity_x, entity_y, fog_center_x, fog_center_y)** - Get alpha multiplier based on distance (for alpha mode).
+- **update(dt)** - Update fog state (call each frame).
 
 ---
 
@@ -133,6 +134,11 @@ Reusable movement for multiple modes. All deterministic for demo playback.
 - **getSmoothState(entity_id)** / **getSmoothAngle(entity_id)** / **setSmoothAngle(entity_id, angle)** - State accessors.
 - **updateSmooth(dt, entity_id, entity, bounds, speed, turn_speed_deg)** - Update angle and position. Entity {x, y} modified. Bounds {width, height, wrap_x, wrap_y}. Returns dx, dy, wrapped, out_of_bounds.
 
+**Input handling (for games with multiple entities):**
+- **handleInput(key, entities, primary_direction)** - Handle key press for multiple entities. Maps WASD/arrows to direction queuing. primary_direction is the starting direction for the first entity.
+- **handleInputRelease(key, entities)** - Handle key release for smooth mode turn flags.
+- **initState(entity_id, direction)** - Initialize state (grid or smooth) for an entity with starting direction.
+
 **Helpers:**
 - **applyBounds(entity, bounds)** - Clamp or wrap entity to bounds.
 - **applyBounce(entity, bounds)** - Bounce velocity on boundary collision.
@@ -158,6 +164,7 @@ Manages play area bounds, shapes, shrinking, pulsing, movement, holes.
 - **setContainerSize(w, h)** - Update container dimensions.
 - **getState()** - Get full state for rendering.
 - **drawBoundary(scale, color)** - Draw arena boundary line for circle/hexagon shapes. Scale = pixels per unit (e.g., GRID_SIZE).
+- **getBoundaryCells(grid_width, grid_height)** - Get array of {x, y} cells that form the arena boundary (for wall spawning in grid games).
 
 **Morph types:** "none", "shrink", "pulsing", "shape_shifting", "deformation"
 **Movement types:** "none", "drift", "cardinal", "follow", "orbit"
@@ -253,7 +260,8 @@ Physics helpers: forces, movement, collision detection/response.
 **Utilities:**
 - **updateTrail(entity, max_length)** - Add current position to trail array.
 - **wrapPosition(x, y, ew, eh, bw, bh)** - Screen wrap position.
-- **createTrailSystem(config)** - Create trail object. Config: max_length (point count limit), track_distance (enable distance tracking), color, line_width. Methods: addPoint(x, y, dist), clear(), draw(), getPoints(), getPointCount(), getDistance(), trimToDistance(target).
+- **createTrailSystem(config)** - Create trail object. Config: max_length (point count limit), track_distance (enable distance tracking), color, line_width.
+  - Trail methods: addPoint(x, y, dist), clear(), draw(), getPoints(), getPointCount(), getDistance(), trimToDistance(target), checkSelfCollision(head_x, head_y, girth).
 
 ---
 
@@ -334,6 +342,17 @@ Generic enemy/obstacle spawning and management with pooling.
 - **getEntitiesByFilter(filter_fn)** - Get entities where filter_fn(entity) returns true.
 - **findNearest(x, y, filter)** - Find nearest entity. Returns entity, distance.
 - **spawnWithPattern(type_name, pattern, config, custom_params)** - Spawn using pattern from SPAWN_PATTERNS. Config: bounds, is_valid_fn, max_attempts, plus pattern-specific options.
+- **spawnMultiple(count, spawner_fn)** - Spawn multiple entities using custom spawner function. Returns array of spawned entities.
+- **spawnAtCells(type_name, cells, is_valid_fn)** - Spawn entities at array of {x, y} cell positions. Optional is_valid_fn(x, y) to filter positions.
+- **spawnCluster(type_name, ref_entity, radius, bounds, is_valid_fn, custom_params)** - Spawn near an existing entity within radius.
+- **spawnInRegion(type_name, config, custom_params)** - Spawn in a region. Config: region ("random"/"center"/"bounds"), bounds, constraints.
+- **spawnWithConstraints(type_name, bounds, constraints, custom_params)** - Spawn with validation constraints. Constraints: min_distance_from, avoid_entities, is_valid_fn.
+- **calculateSpawnPosition(config)** - Calculate spawn position from config. Config: region, bounds, min_distance_from_center, inside_arena.
+- **calculateSpawnDirection(mode, x, y, center, fixed_direction)** - Calculate spawn direction. Modes: "toward_center", "from_center", "starting_direction", "random".
+- **tickTimer(entity, field, speed, dt)** - Increment entity timer field by speed*dt. Returns true if timer >= 1 (and resets timer).
+- **removeByTypes(types)** - Remove all entities matching array of type names.
+- **regenerate(types, init_fn)** - Remove entities of types and call init_fn to respawn them.
+- **moveChain(chain, new_x, new_y)** - Move chain of entities (snake body segments). Each entity takes previous entity's position. Returns old_tail_x, old_tail_y.
 
 **SPAWN_PATTERNS** - Data-driven spawn pattern functions:
 - `random` - Random position within bounds
