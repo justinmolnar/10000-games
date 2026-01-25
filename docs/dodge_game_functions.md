@@ -102,18 +102,32 @@ Calculates safe zone dimensions, shrink rate, movement velocity based on params 
 **Plan after discussion:** Delete entirely. ArenaController creation moves to setupComponents with config from params. Delete self.safe_zone table - use arena_controller:getState(). Holes as entities via EntityController or ArenaController internal. All dimension/shrink/movement calculations handled by ArenaController internally from params.
 
 ### Testing (User)
-- [ ] (AI fills in test steps after implementation)
+- [ ] Game initializes without errors
+- [ ] Player appears at center of arena
+- [ ] Safe zone renders correctly (circle/square/hex shapes)
+- [ ] Movement works (all three modes: default, asteroids, jump)
+- [ ] Shield system functions if enabled in variant
 
 ### AI Notes
-
+- Deleted setupArena() - now uses BaseGame:setupArenaDimensions()
+- Deleted setupPlayer() - now uses BaseGame:createPlayer()
+- Deleted setupSafeZone() - arena_controller creation absorbed into setupComponents()
+- Renamed setupGameState() → setupEntities()
+- setupComponents now creates: movement_controller, arena_controller, all schema-driven components
+- self.safe_zone now uses arena_controller:getState() instead of redundant table
+- syncSafeZoneFromArena simplified to just refresh state reference
+- Added arena_base_width/arena_base_height to dodge_schema.json (defaults 400)
+- OBJECT_SIZE and MAX_COLLISIONS were unused - removed without replacement
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+- dodge_game.lua: 1657 → 1611 (-46 lines)
+- dodge_schema.json: +12 lines (arena_base_width/height params)
 
 ### Deviation from Plan
+Player properties (movement, shield, jump) still set via createPlayer extra config instead of fully removing them. Plan said shields should use health_system only - deferred to Phase 5 (SHIELD SYSTEM) when those functions are addressed.
 
 ---
 

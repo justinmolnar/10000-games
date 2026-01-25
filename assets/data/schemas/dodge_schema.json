@@ -231,6 +231,18 @@
             "max": 500,
             "description": "Target dodge count or survival seconds for victory"
         },
+        "arena_base_width": {
+            "type": "integer",
+            "default": 400,
+            "source": "runtime_config.arena.width",
+            "description": "Base arena width in pixels"
+        },
+        "arena_base_height": {
+            "type": "integer",
+            "default": 400,
+            "source": "runtime_config.arena.height",
+            "description": "Base arena height in pixels"
+        },
         "area_size": {
             "type": "number",
             "default": 1.0,

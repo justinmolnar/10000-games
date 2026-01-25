@@ -28,46 +28,43 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
         performance_modifier = {"obstacle_spawn_rate"}
     })
 
-    self:setupArena()
-    self:setupPlayer()
+    self:setupArenaDimensions()
+    local p = self.params
+    self:createPlayer({
+        x = self.game_width / 2,
+        y = self.game_height / 2,
+        radius = (p.player_base_size or 20) * (p.player_size or 1),
+        extra = {
+            size = (p.player_base_size or 20) * (p.player_size or 1),
+            rotation_speed = p.rotation_speed, movement_speed = p.movement_speed,
+            max_speed = p.max_speed, movement_type = p.movement_type,
+            accel_friction = p.accel_friction, decel_friction = p.decel_friction,
+            bounce_damping = p.bounce_damping, reverse_mode = p.reverse_mode,
+            jump_distance = p.jump_distance, jump_cooldown = p.jump_cooldown,
+            jump_speed = p.jump_speed, last_jump_time = -999,
+            is_jumping = false, jump_target_x = 0, jump_target_y = 0,
+            jump_dir_x = 0, jump_dir_y = 0, time_elapsed = 0,
+            shield_charges = p.shield, shield_max = p.shield,
+            shield_recharge_timer = p.shield_recharge_time,
+            shield_recharge_time = p.shield_recharge_time
+        }
+    })
     self:setupComponents()
-    self:setupGameState()
-    self:setupSafeZone()
+    self:setupEntities()
 
     self.view = DodgeView:new(self, self.variant)
     self:loadAssets()
 end
 
-function DodgeGame:setupArena()
-    self.game_width = (self.runtimeCfg.arena and self.runtimeCfg.arena.width) or 400
-    self.game_height = (self.runtimeCfg.arena and self.runtimeCfg.arena.height) or 400
-    self.OBJECT_SIZE = self.params.object_size or 15
-    local extra = (self.cheats.advantage_modifier or {}).collisions or 0
-    self.MAX_COLLISIONS = (self.params.max_collisions or 10) + extra
-end
-
-function DodgeGame:setupPlayer()
+function DodgeGame:setupComponents()
     local p = self.params
-    local base_size = p.player_base_size or 20
-    local size_mult = p.player_size or 1
 
-    self.player = {
-        x = self.game_width / 2, y = self.game_height / 2,
-        size = base_size * size_mult, radius = base_size * size_mult,
-        rotation = 0, angle = 0, vx = 0, vy = 0,
-        rotation_speed = p.rotation_speed, movement_speed = p.movement_speed,
-        max_speed = p.max_speed, movement_type = p.movement_type,
-        accel_friction = p.accel_friction, decel_friction = p.decel_friction,
-        bounce_damping = p.bounce_damping, reverse_mode = p.reverse_mode,
-        jump_distance = p.jump_distance, jump_cooldown = p.jump_cooldown,
-        jump_speed = p.jump_speed, last_jump_time = -999,
-        is_jumping = false, jump_target_x = 0, jump_target_y = 0,
-        jump_dir_x = 0, jump_dir_y = 0, time_elapsed = 0,
-        shield_charges = p.shield, shield_max = p.shield,
-        shield_recharge_timer = p.shield_recharge_time,
-        shield_recharge_time = p.shield_recharge_time
-    }
+    -- Schema-driven components (health_system, hud, fog_controller, visual_effects)
+    self:createComponentsFromSchema()
+    self.fog_controller.enabled = p.fog_of_war_origin ~= "none" and p.fog_of_war_radius < 9999
+    self.lives = self.health_system.lives
 
+    -- Movement controller
     local mode_map = {asteroids = "asteroids", jump = "jump"}
     local MovementController = self.di.components.MovementController
     self.movement_controller = MovementController:new({
@@ -79,75 +76,8 @@ function DodgeGame:setupPlayer()
         reverse_mode = p.reverse_mode,
         jump_distance = p.jump_distance, jump_cooldown = p.jump_cooldown, jump_speed = p.jump_speed
     })
-end
 
-function DodgeGame:setupComponents()
-    local p = self.params
-
-    -- Schema-driven components (health_system, hud, fog_controller, visual_effects)
-    self:createComponentsFromSchema()
-    self.fog_controller.enabled = p.fog_of_war_origin ~= "none" and p.fog_of_war_radius < 9999
-    self.lives = self.health_system.lives
-
-    -- Player trail (game-specific)
-    self.player_trail = PhysicsUtils.createTrailSystem({
-        max_length = p.player_trail_length, color = {0.5, 0.7, 1.0, 0.3}, line_width = 3
-    })
-
-    -- Entity controller from schema
-    self:createEntityControllerFromSchema({}, {spawning = {mode = "manual"}, pooling = true, max_entities = 500})
-
-    -- Calculate object_speed for projectile system
-    local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
-    local speed_mod = self.cheats.speed_modifier or 1.0
-    self.object_speed = ((p.base_object_speed or 200) * self.difficulty_modifiers.speed * speed_mod) * variant_diff
-
-    -- Projectile system (needs runtime object_speed)
-    self:createProjectileSystemFromSchema({pooling = true, max_projectiles = 200})
-
-    -- Victory condition from schema (uses victory_condition param to select)
-    self:createVictoryConditionFromSchema()
-end
-
-function DodgeGame:setupGameState()
-    local p = self.params
-    local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
-    local speed_mod = self.cheats.speed_modifier or 1.0
-
-    self.objects = {}
-    self.warnings = {}
-    self.time_elapsed = 0
-    self.spawn_timer = 0
-    self.game_over = false
-
-    self.spawn_rate = ((p.base_spawn_rate or 1.0) / self.difficulty_modifiers.count / variant_diff) / p.obstacle_spawn_rate
-    self.object_speed = ((p.base_object_speed or 200) * self.difficulty_modifiers.speed * speed_mod) * variant_diff
-    self.warning_enabled = self.difficulty_modifiers.complexity <= ((self.runtimeCfg.warnings and self.runtimeCfg.warnings.complexity_threshold) or 2)
-
-    self.dodge_target = p.victory_condition == "dodge_count" and math.floor(p.victory_limit) or 9999
-
-    self.enemy_composition = {}
-    if self.variant and self.variant.enemies then
-        for _, ed in ipairs(self.variant.enemies) do
-            self.enemy_composition[ed.type] = ed.multiplier
-        end
-    end
-
-    self.metrics.objects_dodged = 0
-    self.metrics.collisions = 0
-    self.metrics.combo = 0
-    self.current_combo = 0
-
-    self.wind_timer = 0
-    self.wind_current_angle = type(p.wind_direction) == "number" and math.rad(p.wind_direction) or math.random() * math.pi * 2
-    self.spawn_pattern_state = {wave_timer = 0, wave_active = false, spiral_angle = 0, cluster_pending = 0}
-    self.avg_speed_tracker = {sum = 0, count = 0}
-    self.center_time_tracker = {total_weighted = 0, total_time = 0}
-    self.edge_time_tracker = {total_weighted = 0, total_time = 0}
-end
-
-function DodgeGame:setupSafeZone()
-    local p = self.params
+    -- Arena controller (safe zone)
     local min_dim = math.min(self.game_width, self.game_height)
     local level_scale = 1 + ((self.runtimeCfg.drift and self.runtimeCfg.drift.level_scale_add_per_level) or 0.15) * math.max(0, (self.difficulty_level or 1) - 1)
     local drift_speed = ((self.runtimeCfg.drift and self.runtimeCfg.drift.base_speed) or 45) * level_scale
@@ -200,19 +130,71 @@ function DodgeGame:setupSafeZone()
         vx = target_vx, vy = target_vy, target_vx = target_vx, target_vy = target_vy,
         holes = holes
     })
-
-    self.safe_zone = {
-        x = self.game_width/2, y = self.game_height/2, radius = initial_radius,
-        initial_radius = initial_radius, min_radius = min_radius, shrink_speed = shrink_speed,
-        vx = target_vx, vy = target_vy, target_vx = target_vx, target_vy = target_vy,
-        area_size = p.area_size, area_morph_type = p.area_morph_type,
-        area_morph_speed = p.area_morph_speed, area_movement_speed = p.area_movement_speed,
-        area_movement_type = p.area_movement_type, area_friction = p.area_friction,
-        area_shape = p.area_shape, morph_time = 0, shape_index = 1,
-        direction_timer = 0, direction_change_interval = 2.0
-    }
+    self.safe_zone = self.arena_controller:getState()
     self.holes = self.arena_controller.holes
     self.leaving_area_ends_game = p.leaving_area_ends_game
+
+    -- Player trail
+    self.player_trail = PhysicsUtils.createTrailSystem({
+        max_length = p.player_trail_length, color = {0.5, 0.7, 1.0, 0.3}, line_width = 3
+    })
+
+    -- Entity controller from schema
+    self:createEntityControllerFromSchema({}, {spawning = {mode = "manual"}, pooling = true, max_entities = 500})
+
+    -- Calculate object_speed for projectile system
+    local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
+    local speed_mod = self.cheats.speed_modifier or 1.0
+    self.object_speed = ((p.base_object_speed or 200) * self.difficulty_modifiers.speed * speed_mod) * variant_diff
+
+    -- Projectile system
+    self:createProjectileSystemFromSchema({pooling = true, max_projectiles = 200})
+
+    -- Victory condition from schema
+    self:createVictoryConditionFromSchema()
+end
+
+function DodgeGame:setupEntities()
+    local p = self.params
+    local variant_diff = self.variant and self.variant.difficulty_modifier or 1.0
+
+    -- Entity arrays
+    self.objects = {}
+    self.warnings = {}
+
+    -- Game state
+    self.time_elapsed = 0
+    self.spawn_timer = 0
+    self.game_over = false
+    self.spawn_rate = ((p.base_spawn_rate or 1.0) / self.difficulty_modifiers.count / variant_diff) / p.obstacle_spawn_rate
+    self.warning_enabled = self.difficulty_modifiers.complexity <= ((self.runtimeCfg.warnings and self.runtimeCfg.warnings.complexity_threshold) or 2)
+    self.dodge_target = p.victory_condition == "dodge_count" and math.floor(p.victory_limit) or 9999
+
+    -- Enemy composition from variant
+    self.enemy_composition = {}
+    if self.variant and self.variant.enemies then
+        for _, ed in ipairs(self.variant.enemies) do
+            self.enemy_composition[ed.type] = ed.multiplier
+        end
+    end
+
+    -- Metrics
+    self.metrics.objects_dodged = 0
+    self.metrics.collisions = 0
+    self.metrics.combo = 0
+    self.current_combo = 0
+
+    -- Wind state
+    self.wind_timer = 0
+    self.wind_current_angle = type(p.wind_direction) == "number" and math.rad(p.wind_direction) or math.random() * math.pi * 2
+
+    -- Spawn pattern state
+    self.spawn_pattern_state = {wave_timer = 0, wave_active = false, spiral_angle = 0, cluster_pending = 0}
+
+    -- Score trackers
+    self.avg_speed_tracker = {sum = 0, count = 0}
+    self.center_time_tracker = {total_weighted = 0, total_time = 0}
+    self.edge_time_tracker = {total_weighted = 0, total_time = 0}
 end
 
 --------------------------------------------------------------------------------
@@ -859,20 +841,8 @@ end
 --------------------------------------------------------------------------------
 
 function DodgeGame:syncSafeZoneFromArena()
-    if not self.arena_controller or not self.safe_zone then return end
-
-    local state = self.arena_controller:getState()
-    local sz = self.safe_zone
-
-    sz.x = state.x
-    sz.y = state.y
-    sz.vx = state.vx or sz.vx
-    sz.vy = state.vy or sz.vy
-    sz.radius = state.radius
-
-    sz.morph_time = state.morph_timer or sz.morph_time
-    sz.area_shape = state.shape
-
+    if not self.arena_controller then return end
+    self.safe_zone = self.arena_controller:getState()
     self.holes = self.arena_controller.holes
 end
 
