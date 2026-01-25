@@ -503,18 +503,21 @@ Checks if circle intersects line segment.
 **Plan after discussion:** Delete entirely. Add PhysicsUtils.circleVsLineSegment() - basic collision for trails, lasers, beams, etc. 16 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Clone 0 "Dodge Master" - basic gameplay, player stays in safe zone, obstacles collide
+- [ ] Clone 6 "Dodge Momentum Master" - holes_type: "circle", verify holes appear on boundary
+- [ ] Clone 48 "Dodge Trail Blazer" - obstacle_trails: 15, verify trail collisions still work
 
 ### AI Notes
-
+Reordered initialization - arena_controller must exist before holes can be positioned. Added PhysicsUtils.circleLineCollision() for trail collision (reusable for lasers, beams, etc in other games).
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+-108 (1231 → 1123)
 
 ### Deviation from Plan
+Added circleLineCollision to PhysicsUtils instead of inline - more reusable across games.
 
 ---
 

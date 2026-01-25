@@ -105,24 +105,6 @@ function DodgeGame:setupComponents()
     local min_radius = min_dim * (p.min_safe_radius_fraction or 0.35) * p.area_size
     local shrink_speed = (initial_radius - min_radius) / ((p.safe_zone_shrink_sec or 45) / self.difficulty_modifiers.complexity)
 
-    local holes = {}
-    if p.holes_count > 0 and p.holes_type ~= "none" then
-        for i = 1, p.holes_count do
-            local hole = {radius = 8}
-            if p.holes_type == "circle" then
-                local angle = math.random() * math.pi * 2
-                hole.angle = angle
-                hole.x, hole.y = self:getPointOnShapeBoundary(self.game_width/2, self.game_height/2, initial_radius, p.area_shape, angle)
-                hole.on_boundary = true
-            else
-                hole.x = math.random(hole.radius, self.game_width - hole.radius)
-                hole.y = math.random(hole.radius, self.game_height - hole.radius)
-                hole.on_boundary = false
-            end
-            table.insert(holes, hole)
-        end
-    end
-
     local ArenaController = self.di.components.ArenaController
     self.arena_controller = ArenaController:new({
         safe_zone = true, x = self.game_width/2, y = self.game_height/2,
@@ -134,9 +116,25 @@ function DodgeGame:setupComponents()
         movement_speed = drift_speed * p.area_movement_speed, friction = p.area_friction or 0.95,
         direction_change_interval = 2.0, container_width = self.game_width,
         container_height = self.game_height, bounds_padding = 0,
-        vx = target_vx, vy = target_vy, target_vx = target_vx, target_vy = target_vy,
-        holes = holes
+        vx = target_vx, vy = target_vy, target_vx = target_vx, target_vy = target_vy
     })
+
+    if p.holes_count > 0 and p.holes_type ~= "none" then
+        for i = 1, p.holes_count do
+            local hole = {radius = 8}
+            if p.holes_type == "circle" then
+                local angle = math.random() * math.pi * 2
+                hole.angle = angle
+                hole.x, hole.y = self.arena_controller:getPointOnShapeBoundary(angle, initial_radius)
+                hole.on_boundary = true
+            else
+                hole.x = math.random(hole.radius, self.game_width - hole.radius)
+                hole.y = math.random(hole.radius, self.game_height - hole.radius)
+                hole.on_boundary = false
+            end
+            self.arena_controller:addHole(hole)
+        end
+    end
     self.safe_zone = self.arena_controller:getState()
     self.holes = self.arena_controller.holes
     self.leaving_area_ends_game = p.leaving_area_ends_game
@@ -299,112 +297,6 @@ function DodgeGame:updateGameLogic(dt)
 end
 
 --------------------------------------------------------------------------------
--- GEOMETRY HELPERS
---------------------------------------------------------------------------------
-
-function DodgeGame:isPointInCircle(px, py, cx, cy, radius)
-    local dx = px - cx
-    local dy = py - cy
-    return (dx*dx + dy*dy) <= (radius * radius)
-end
-
-function DodgeGame:isPointInSquare(px, py, cx, cy, half_size)
-    return px >= (cx - half_size) and px <= (cx + half_size) and
-           py >= (cy - half_size) and py <= (cy + half_size)
-end
-
-function DodgeGame:isPointInHex(px, py, cx, cy, radius)
-    local dx = px - cx
-    local dy = py - cy
-    local abs_dx = math.abs(dx)
-    local abs_dy = math.abs(dy)
-
-    if abs_dy > radius then return false end
-
-    local hex_half_width = radius * 0.866025
-    if abs_dx > hex_half_width then return false end
-
-    if abs_dx * 0.577 + abs_dy > radius then return false end
-
-    return true
-end
-
-function DodgeGame:getPointOnShapeBoundary(cx, cy, radius, shape, angle)
-    shape = shape or "circle"
-
-    if shape == "circle" then
-        return cx + math.cos(angle) * radius, cy + math.sin(angle) * radius
-
-    elseif shape == "square" then
-        local dx = math.cos(angle)
-        local dy = math.sin(angle)
-        local abs_dx = math.abs(dx)
-        local abs_dy = math.abs(dy)
-
-        local t
-        if abs_dx > abs_dy then
-            t = radius / abs_dx
-        else
-            t = radius / abs_dy
-        end
-        return cx + dx * t, cy + dy * t
-
-    elseif shape == "hex" then
-        local dx = math.cos(angle)
-        local dy = math.sin(angle)
-        local abs_dx = math.abs(dx)
-        local abs_dy = math.abs(dy)
-        local hex_width = radius * 0.866
-
-        local t = radius
-
-        if abs_dy > 0.001 then
-            local t_vert = radius / abs_dy
-            local hit_x = abs_dx * t_vert
-            if hit_x <= hex_width then
-                t = t_vert
-            end
-        end
-
-        if abs_dx > 0.001 then
-            local t_horiz = hex_width / abs_dx
-            local hit_y = abs_dy * t_horiz
-            if hit_y <= radius * 0.5 then
-                t = math.min(t, t_horiz)
-            end
-        end
-
-        local angled_denom = 0.577 * abs_dx + abs_dy
-        if angled_denom > 0.001 then
-            local t_angled = radius / angled_denom
-            t = math.min(t, t_angled)
-        end
-
-        return cx + dx * t, cy + dy * t
-
-    else
-        return cx + math.cos(angle) * radius, cy + math.sin(angle) * radius
-    end
-end
-
-function DodgeGame:checkCircleLineCollision(cx, cy, cr, x1, y1, x2, y2)
-    local dx = x2 - x1
-    local dy = y2 - y1
-    local len_sq = dx*dx + dy*dy
-    if len_sq == 0 then
-        local dist_sq = (cx - x1)*(cx - x1) + (cy - y1)*(cy - y1)
-        return dist_sq <= cr*cr
-    end
-
-    local t = math.max(0, math.min(1, ((cx - x1)*dx + (cy - y1)*dy) / len_sq))
-    local px = x1 + t * dx
-    local py = y1 + t * dy
-
-    local dist_sq = (cx - px)*(cx - px) + (cy - py)*(cy - py)
-    return dist_sq <= cr*cr
-end
-
---------------------------------------------------------------------------------
 -- GAME STATE / VICTORY
 --------------------------------------------------------------------------------
 
@@ -415,18 +307,7 @@ function DodgeGame:checkGameOver()
     if not sz then return end
 
     if self.leaving_area_ends_game then
-        local shape = sz.area_shape or "circle"
-        local is_inside = false
-
-        if shape == "circle" then
-            is_inside = self:isPointInCircle(self.player.x, self.player.y, sz.x, sz.y, sz.radius - self.player.radius)
-        elseif shape == "square" then
-            is_inside = self:isPointInSquare(self.player.x, self.player.y, sz.x, sz.y, sz.radius - self.player.radius)
-        elseif shape == "hex" then
-            is_inside = self:isPointInHex(self.player.x, self.player.y, sz.x, sz.y, sz.radius - self.player.radius)
-        end
-
-        if not is_inside then
+        if not self.arena_controller:isInside(self.player.x, self.player.y, self.player.radius) then
             self.game_over = true
             print("[DodgeGame] Game Over: Player left safe zone")
             return
@@ -646,20 +527,8 @@ function DodgeGame:updateObjects(dt)
             end
         end
 
-        if obj.type == 'splitter' and self.safe_zone then
-            local sz = self.safe_zone
-            local shape = sz.area_shape or "circle"
-            local check_radius = sz.radius + obj.radius
-            local inside = false
-            if shape == "circle" then
-                local dxs = obj.x - sz.x
-                local dys = obj.y - sz.y
-                inside = (dxs*dxs + dys*dys) <= (check_radius * check_radius)
-            else
-                inside = self:isPointInCircle(obj.x, obj.y, sz.x, sz.y, check_radius) or
-                         (shape == "square" and self:isPointInSquare(obj.x, obj.y, sz.x, sz.y, check_radius)) or
-                         (shape == "hex" and self:isPointInHex(obj.x, obj.y, sz.x, sz.y, check_radius))
-            end
+        if obj.type == 'splitter' and self.arena_controller then
+            local inside = self.arena_controller:isInside(obj.x, obj.y, -obj.radius)
             if inside and not obj.was_inside then
                 local shards = (self.runtimeCfg.objects and self.runtimeCfg.objects.splitter and self.runtimeCfg.objects.splitter.shards_count) or 3
                 self:spawnShards(obj, shards)
@@ -695,7 +564,7 @@ function DodgeGame:updateObjects(dt)
             for j = 1, #obj.trail_positions - 1 do
                 local p1 = obj.trail_positions[j]
                 local p2 = obj.trail_positions[j + 1]
-                if self:checkCircleLineCollision(self.player.x, self.player.y, self.player.radius, p1.x, p1.y, p2.x, p2.y) then
+                if PhysicsUtils.circleLineCollision(self.player.x, self.player.y, self.player.radius, p1.x, p1.y, p2.x, p2.y) then
                     hit_trail = true
                     break
                 end

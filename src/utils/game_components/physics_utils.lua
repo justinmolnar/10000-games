@@ -239,6 +239,21 @@ function PhysicsUtils.circleVsCenteredRect(circle_x, circle_y, circle_r, rect_cx
            circle_y + circle_r > rect_cy - half_h and circle_y - circle_r < rect_cy + half_h
 end
 
+function PhysicsUtils.circleLineCollision(cx, cy, cr, x1, y1, x2, y2)
+    local dx = x2 - x1
+    local dy = y2 - y1
+    local len_sq = dx*dx + dy*dy
+    if len_sq == 0 then
+        local dist_sq = (cx - x1)*(cx - x1) + (cy - y1)*(cy - y1)
+        return dist_sq <= cr*cr
+    end
+    local t = math.max(0, math.min(1, ((cx - x1)*dx + (cy - y1)*dy) / len_sq))
+    local px = x1 + t * dx
+    local py = y1 + t * dy
+    local dist_sq = (cx - px)*(cx - px) + (cy - py)*(cy - py)
+    return dist_sq <= cr*cr
+end
+
 -- Shape-aware collision check between two entities
 function PhysicsUtils.checkCollision(e1, e2, shape1, shape2)
     shape1 = shape1 or (e1.shape or (e1.radius and "circle") or "rect")
