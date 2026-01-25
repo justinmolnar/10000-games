@@ -611,6 +611,15 @@ function PhysicsUtils.createTrailSystem(config)
         end
     end
 
+    function trail:updateFromEntity(entity)
+        if not self.max_length or self.max_length <= 0 then return end
+        local angle = (entity.angle or entity.rotation or 0) + math.pi / 2
+        local radius = entity.radius or 0
+        local x = entity.x + math.cos(angle) * radius
+        local y = entity.y + math.sin(angle) * radius
+        self:addPoint(x, y)
+    end
+
     function trail:trimToDistance(target)
         while self.distance > target and #self.buffer > 1 do
             local removed = table.remove(self.buffer, 1)
@@ -665,6 +674,32 @@ function PhysicsUtils.createTrailSystem(config)
     end
 
     return trail
+end
+
+-- Update a directional force that can change over time
+-- state = {angle, strength, type, timer, change_interval, change_amount, turbulence_range}
+-- type: "constant", "turbulent", "rotating", "rotating_turbulent"
+-- Returns fx, fy force components
+function PhysicsUtils.updateDirectionalForce(state, dt)
+    state.timer = state.timer or 0
+
+    if state.type == "rotating" or state.type == "rotating_turbulent" then
+        state.timer = state.timer + dt
+        local interval = state.change_interval or 3.0
+        if state.timer >= interval then
+            state.timer = state.timer - interval
+            state.angle = state.angle + (state.change_amount or math.rad(30))
+        end
+    end
+
+    local angle = state.angle or 0
+    if state.type == "turbulent" or state.type == "rotating_turbulent" then
+        local range = state.turbulence_range or (math.pi * 0.5)
+        angle = angle + (math.random() - 0.5) * range
+    end
+
+    local strength = state.strength or 0
+    return math.cos(angle) * strength, math.sin(angle) * strength
 end
 
 return PhysicsUtils

@@ -24,6 +24,7 @@ Comprehensive audit of all functions in `src/games/dodge_game.lua` with extracti
 - Backward compatibility shims
 - Partial deletions (finish what you start)
 - Proceeding without documenting line count changes
+- Including AI as co-author on commits
 
 ---
 
@@ -269,18 +270,33 @@ Adds current player position to trail if trail_length > 0.
 **Plan after discussion:** Delete entirely. Add trail:updateFromEntity(entity) to trail system - calculates position at back based on entity.angle + entity.radius, calls addPoint. Generic for any entity. 11 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Player moves with WASD/arrows in all variants
+- [ ] Asteroids movement mode works (thrust/rotate)
+- [ ] Player bounces off arena boundaries (circle, square, hex shapes)
+- [ ] Wind pushes player when configured
+- [ ] Area gravity pulls toward center when configured
+- [ ] Player trail renders behind player
+- [ ] Max speed is clamped properly
 
 ### AI Notes
-
+- Added BaseGame:buildInput() - returns {left, right, up, down, space}
+- Added ArenaController:clampEntity(entity) - handles circle/square/hex shapes with bounce
+- Added trail:updateFromEntity(entity) to PhysicsUtils trail system
+- Deleted updatePlayer (30 lines), applyEnvironmentForces (32 lines), getWindForce (25 lines), clampPlayerPosition (90 lines), updatePlayerTrail (12 lines)
+- Inlined player movement and environment forces in updateGameLogic (~30 lines)
+- Used PhysicsUtils.clampSpeed() for max speed
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+- dodge_game.lua: 1538 → 1375 (-163 lines)
+- base_game.lua: +9 lines (buildInput)
+- arena_controller.lua: +78 lines (clampEntity)
+- physics_utils.lua: +8 lines (updateFromEntity) +24 lines (updateDirectionalForce)
 
 ### Deviation from Plan
+None. Added PhysicsUtils.updateDirectionalForce() for changing forces (wind, currents, etc.). Area gravity inlined (~4 lines) since it's a simple pull toward safe zone center.
 
 ---
 

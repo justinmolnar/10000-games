@@ -59,7 +59,7 @@ function DodgeView:draw()
     -- Safe zone ring (shape-aware)
     if game.safe_zone then
         local sz = game.safe_zone
-        local shape = sz.area_shape or "circle"
+        local shape = sz.shape or "circle"
 
         -- Game over flash effect
         local flash_alpha = 0.2

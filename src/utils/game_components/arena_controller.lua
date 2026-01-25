@@ -680,4 +680,91 @@ function ArenaController:getBoundaryCells(grid_width, grid_height)
     return cells
 end
 
+-- Clamp entity to stay inside arena bounds with optional bounce
+-- entity: {x, y, vx, vy, radius, bounce_damping}
+function ArenaController:clampEntity(entity)
+    if not self.safe_zone_mode then return end
+
+    local radius = entity.radius or 0
+    local dx = entity.x - self.x
+    local dy = entity.y - self.y
+    local dist = math.sqrt(dx * dx + dy * dy)
+    local bounce = entity.bounce_damping or 0
+
+    if self.shape == "circle" then
+        local max_dist = math.max(0, self:getEffectiveRadius() - radius)
+        if dist > max_dist and dist > 0 then
+            local scale = max_dist / dist
+            entity.x = self.x + dx * scale
+            entity.y = self.y + dy * scale
+
+            if entity.vx and entity.vy then
+                local nx, ny = dx / dist, dy / dist
+                local dot = entity.vx * nx + entity.vy * ny
+                if dot > 0 then
+                    local factor = 1.0 + bounce
+                    entity.vx = entity.vx - nx * dot * factor
+                    entity.vy = entity.vy - ny * dot * factor
+                end
+            end
+        end
+
+    elseif self.shape == "square" then
+        local half = self:getEffectiveRadius() - radius
+        local clamped_x = math.max(self.x - half, math.min(self.x + half, entity.x))
+        local clamped_y = math.max(self.y - half, math.min(self.y + half, entity.y))
+
+        if clamped_x ~= entity.x or clamped_y ~= entity.y then
+            if entity.vx and clamped_x ~= entity.x then
+                entity.vx = -entity.vx * bounce
+            end
+            if entity.vy and clamped_y ~= entity.y then
+                entity.vy = -entity.vy * bounce
+            end
+            entity.x = clamped_x
+            entity.y = clamped_y
+        end
+
+    elseif self.shape == "hex" or self.shape == "hexagon" then
+        local r = self:getEffectiveRadius() - radius
+        local abs_dx, abs_dy = math.abs(dx), math.abs(dy)
+        local hex_width = r * 0.866
+        local clamped = false
+        local nx, ny = 0, 0
+
+        if abs_dy > r then
+            entity.y = self.y + (dy > 0 and r or -r)
+            ny = dy > 0 and 1 or -1
+            clamped = true
+        end
+
+        if abs_dx > hex_width then
+            entity.x = self.x + (dx > 0 and hex_width or -hex_width)
+            nx = dx > 0 and 1 or -1
+            clamped = true
+        end
+
+        -- Check angled edges
+        local check_dx = math.abs(entity.x - self.x)
+        local check_dy = math.abs(entity.y - self.y)
+        if check_dx * 0.577 + check_dy > r then
+            local t = r / (check_dx * 0.577 + check_dy)
+            entity.x = self.x + (entity.x - self.x) * t
+            entity.y = self.y + (entity.y - self.y) * t
+            nx = dx > 0 and 0.5 or -0.5
+            ny = dy > 0 and 0.866 or -0.866
+            clamped = true
+        end
+
+        if clamped and entity.vx and entity.vy then
+            local dot = entity.vx * nx + entity.vy * ny
+            if dot > 0 then
+                local factor = 1.0 + bounce
+                entity.vx = entity.vx - nx * dot * factor
+                entity.vy = entity.vy - ny * dot * factor
+            end
+        end
+    end
+end
+
 return ArenaController

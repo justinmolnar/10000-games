@@ -451,6 +451,16 @@ function BaseGame:isKeyDown(...)
     end
 end
 
+function BaseGame:buildInput()
+    return {
+        left = self:isKeyDown('left', 'a'),
+        right = self:isKeyDown('right', 'd'),
+        up = self:isKeyDown('up', 'w'),
+        down = self:isKeyDown('down', 's'),
+        space = self:isKeyDown('space')
+    }
+end
+
 -- Enable/disable VM render mode (hides HUD)
 function BaseGame:setVMRenderMode(enabled)
     self.vm_render_mode = enabled

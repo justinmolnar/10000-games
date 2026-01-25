@@ -188,9 +188,17 @@ function DodgeGame:setupEntities()
     self.metrics.combo = 0
     self.current_combo = 0
 
-    -- Wind state
-    self.wind_timer = 0
-    self.wind_current_angle = type(p.wind_direction) == "number" and math.rad(p.wind_direction) or math.random() * math.pi * 2
+    -- Wind state (uses PhysicsUtils.updateDirectionalForce)
+    local wind_type_map = {steady = "constant", turbulent = "turbulent", changing_steady = "rotating", changing_turbulent = "rotating_turbulent"}
+    self.wind_state = {
+        angle = type(p.wind_direction) == "number" and math.rad(p.wind_direction) or math.random() * math.pi * 2,
+        strength = p.wind_strength or 0,
+        type = wind_type_map[p.wind_type] or "constant",
+        timer = 0,
+        change_interval = 3.0,
+        change_amount = math.rad(30),
+        turbulence_range = math.pi * 0.5
+    }
 
     -- Spawn pattern state
     self.spawn_pattern_state = {wave_timer = 0, wave_active = false, spiral_angle = 0, cluster_pending = 0}
@@ -243,10 +251,41 @@ function DodgeGame:updateGameLogic(dt)
     self.arena_controller:update(dt)
     self:syncSafeZoneFromArena()
     self:updateShield(dt)
-    self:updatePlayerTrail(dt)
+    if self.player_trail then
+        self.player_trail:updateFromEntity(self.player)
+    end
     self:updateCameraShake(dt)
     self:updateScoreTracking(dt)
-    self:updatePlayer(dt)
+
+    -- Player movement
+    local input = self:buildInput()
+    local bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height, wrap_x = false, wrap_y = false}
+    self.player.time_elapsed = self.time_elapsed
+    if self.player.rotation then self.player.angle = self.player.rotation end
+    self.movement_controller:update(dt, self.player, input, bounds)
+    self.player.rotation = self.player.angle
+
+    -- Environment forces (after movement, applied as position changes for all modes)
+    if self.params.area_gravity ~= 0 and self.safe_zone then
+        local dx = self.safe_zone.x - self.player.x
+        local dy = self.safe_zone.y - self.player.y
+        local dist = math.sqrt(dx * dx + dy * dy)
+        if dist > 0 then
+            local force = self.params.area_gravity * dt
+            self.player.x = self.player.x + (dx / dist) * force
+            self.player.y = self.player.y + (dy / dist) * force
+        end
+    end
+    if self.wind_state.strength > 0 and self.params.wind_type ~= "none" then
+        local fx, fy = PhysicsUtils.updateDirectionalForce(self.wind_state, dt)
+        self.player.x = self.player.x + fx * dt
+        self.player.y = self.player.y + fy * dt
+    end
+
+    if self.player.max_speed > 0 then
+        PhysicsUtils.clampSpeed(self.player, self.player.max_speed)
+    end
+    self.arena_controller:clampEntity(self.player)
 
     self.spawn_timer = self.spawn_timer - dt
     if self.spawn_timer <= 0 then
@@ -256,206 +295,6 @@ function DodgeGame:updateGameLogic(dt)
 
     self:updateWarnings(dt)
     self:updateObjects(dt)
-end
-
-
---------------------------------------------------------------------------------
--- PLAYER MOVEMENT & PHYSICS
---------------------------------------------------------------------------------
-
-function DodgeGame:updatePlayer(dt)
-    local input = {
-        left = self:isKeyDown('left', 'a'),
-        right = self:isKeyDown('right', 'd'),
-        up = self:isKeyDown('up', 'w'),
-        down = self:isKeyDown('down', 's'),
-        jump = false
-    }
-
-    local bounds = {
-        x = 0,
-        y = 0,
-        width = self.game_width,
-        height = self.game_height,
-        wrap_x = false,
-        wrap_y = false
-    }
-
-    self.player.time_elapsed = self.time_elapsed
-    if self.player.rotation then
-        self.player.angle = self.player.rotation
-    end
-
-    self.movement_controller:update(dt, self.player, input, bounds)
-
-    self.player.rotation = self.player.angle
-
-    self:applyEnvironmentForces(dt)
-    self:clampPlayerPosition()
-end
-
-function DodgeGame:applyEnvironmentForces(dt)
-    if not self.player or not self.safe_zone then
-        return
-    end
-
-    if self.params.area_gravity ~= 0 then
-        local dx = self.safe_zone.x - self.player.x
-        local dy = self.safe_zone.y - self.player.y
-        local dist = math.sqrt(dx*dx + dy*dy)
-        if dist > 0 then
-            local gx = (dx / dist) * self.params.area_gravity * dt
-            local gy = (dy / dist) * self.params.area_gravity * dt
-            self.player.vx = self.player.vx + gx
-            self.player.vy = self.player.vy + gy
-        end
-    end
-
-    if self.params.wind_strength > 0 and self.params.wind_type ~= "none" then
-        local wx, wy = self:getWindForce(dt)
-        self.player.vx = self.player.vx + wx * dt
-        self.player.vy = self.player.vy + wy * dt
-    end
-
-    if self.player.max_speed > 0 then
-        local speed = math.sqrt(self.player.vx * self.player.vx + self.player.vy * self.player.vy)
-        if speed > self.player.max_speed then
-            local scale = self.player.max_speed / speed
-            self.player.vx = self.player.vx * scale
-            self.player.vy = self.player.vy * scale
-        end
-    end
-end
-
-function DodgeGame:getWindForce(dt)
-    if self.params.wind_type == "changing_steady" or self.params.wind_type == "changing_turbulent" then
-        self.wind_timer = self.wind_timer + dt
-        if self.wind_timer >= 3.0 then
-            self.wind_timer = 0
-            self.wind_current_angle = self.wind_current_angle + math.rad(30)
-        end
-    end
-
-    local base_angle = self.wind_current_angle
-    local wx, wy
-
-    if self.params.wind_type == "steady" or self.params.wind_type == "changing_steady" then
-        wx = math.cos(base_angle) * self.params.wind_strength
-        wy = math.sin(base_angle) * self.params.wind_strength
-    elseif self.params.wind_type == "turbulent" or self.params.wind_type == "changing_turbulent" then
-        local turbulence_angle = base_angle + (math.random() - 0.5) * math.pi * 0.5
-        wx = math.cos(turbulence_angle) * self.params.wind_strength
-        wy = math.sin(turbulence_angle) * self.params.wind_strength
-    else
-        wx, wy = 0, 0
-    end
-
-    return wx, wy
-end
-
-function DodgeGame:clampPlayerPosition()
-    local sz = self.safe_zone
-    if sz then
-        local shape = sz.area_shape or "circle"
-        local dxp = self.player.x - sz.x
-        local dyp = self.player.y - sz.y
-        local dist = math.sqrt(dxp*dxp + dyp*dyp)
-
-        if shape == "circle" then
-            local max_dist = math.max(0, sz.radius - self.player.radius)
-            if dist > max_dist and dist > 0 then
-                local scale = max_dist / dist
-                self.player.x = sz.x + dxp * scale
-                self.player.y = sz.y + dyp * scale
-
-                local nx = dxp / dist
-                local ny = dyp / dist
-                local dot = self.player.vx * nx + self.player.vy * ny
-                if dot > 0 then
-                    local bounce_factor = 1.0 + self.player.bounce_damping
-                    self.player.vx = self.player.vx - nx * dot * bounce_factor
-                    self.player.vy = self.player.vy - ny * dot * bounce_factor
-                end
-            end
-
-        elseif shape == "square" then
-            local half_size = sz.radius - self.player.radius
-            local clamped_x = math.max(sz.x - half_size, math.min(sz.x + half_size, self.player.x))
-            local clamped_y = math.max(sz.y - half_size, math.min(sz.y + half_size, self.player.y))
-
-            if clamped_x ~= self.player.x or clamped_y ~= self.player.y then
-                if clamped_x ~= self.player.x then
-                    self.player.vx = -self.player.vx * self.player.bounce_damping
-                end
-                if clamped_y ~= self.player.y then
-                    self.player.vy = -self.player.vy * self.player.bounce_damping
-                end
-                self.player.x = clamped_x
-                self.player.y = clamped_y
-            end
-
-        elseif shape == "hex" then
-            local r = sz.radius - self.player.radius
-            local abs_dx = math.abs(dxp)
-            local abs_dy = math.abs(dyp)
-            local hex_width = r * 0.866
-            local clamped = false
-            local nx, ny = 0, 0
-
-            if abs_dy > r then
-                self.player.y = sz.y + (dyp > 0 and r or -r)
-                clamped = true
-                ny = dyp > 0 and 1 or -1
-            elseif abs_dx > hex_width then
-                self.player.x = sz.x + (dxp > 0 and hex_width or -hex_width)
-                clamped = true
-                nx = dxp > 0 and 1 or -1
-            elseif abs_dx * 0.577 + abs_dy > r then
-                local sign_x = dxp > 0 and 1 or -1
-                local sign_y = dyp > 0 and 1 or -1
-
-                nx = sign_x * 0.5
-                ny = sign_y * 0.866
-
-                local v1x, v1y = 0, sign_y * r
-                local v2x, v2y = sign_x * hex_width, sign_y * r * 0.5
-                local edx, edy = v2x - v1x, v2y - v1y
-
-                local t = ((dxp - v1x) * edx + (dyp - v1y) * edy) / (edx * edx + edy * edy)
-                t = math.max(0, math.min(1, t))
-
-                self.player.x = sz.x + v1x + t * edx
-                self.player.y = sz.y + v1y + t * edy
-                clamped = true
-            end
-
-            if clamped then
-                local len = math.sqrt(nx*nx + ny*ny)
-                if len > 0 then
-                    nx, ny = nx/len, ny/len
-                    local dot = self.player.vx * nx + self.player.vy * ny
-                    if dot > 0 then
-                        local bounce_factor = 1.0 + self.player.bounce_damping
-                        self.player.vx = self.player.vx - nx * dot * bounce_factor
-                        self.player.vy = self.player.vy - ny * dot * bounce_factor
-                    end
-                end
-            end
-        end
-    end
-end
-
-function DodgeGame:updatePlayerTrail(dt)
-    if self.params.player_trail_length <= 0 or not self.player then
-        return
-    end
-
-    local rotation = self.player.rotation or 0
-    local back_angle = rotation + math.pi / 2
-    local trail_x = self.player.x + math.cos(back_angle) * self.player.radius
-    local trail_y = self.player.y + math.sin(back_angle) * self.player.radius
-
-    self.player_trail:addPoint(trail_x, trail_y)
 end
 
 --------------------------------------------------------------------------------

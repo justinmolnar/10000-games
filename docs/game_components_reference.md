@@ -165,6 +165,7 @@ Manages play area bounds, shapes, shrinking, pulsing, movement, holes.
 - **getState()** - Get full state for rendering.
 - **drawBoundary(scale, color)** - Draw arena boundary line for circle/hexagon shapes. Scale = pixels per unit (e.g., GRID_SIZE).
 - **getBoundaryCells(grid_width, grid_height)** - Get array of {x, y} cells that form the arena boundary (for wall spawning in grid games).
+- **clampEntity(entity)** - Clamp entity to stay inside arena bounds with optional bounce. Entity: {x, y, vx, vy, radius, bounce_damping}. Handles circle/square/hex shapes.
 
 **Morph types:** "none", "shrink", "pulsing", "shape_shifting", "deformation"
 **Movement types:** "none", "drift", "cardinal", "follow", "orbit"
@@ -261,7 +262,8 @@ Physics helpers: forces, movement, collision detection/response.
 - **updateTrail(entity, max_length)** - Add current position to trail array.
 - **wrapPosition(x, y, ew, eh, bw, bh)** - Screen wrap position.
 - **createTrailSystem(config)** - Create trail object. Config: max_length (point count limit), track_distance (enable distance tracking), color, line_width.
-  - Trail methods: addPoint(x, y, dist), clear(), draw(), getPoints(), getPointCount(), getDistance(), trimToDistance(target), checkSelfCollision(head_x, head_y, girth).
+  - Trail methods: addPoint(x, y, dist), updateFromEntity(entity), clear(), draw(), getPoints(), getPointCount(), getDistance(), trimToDistance(target), checkSelfCollision(head_x, head_y, girth).
+- **updateDirectionalForce(state, dt)** - Update a directional force that changes over time. State: {angle, strength, type, timer, change_interval, change_amount, turbulence_range}. Types: "constant", "turbulent", "rotating", "rotating_turbulent". Returns fx, fy force components.
 
 ---
 
@@ -435,6 +437,7 @@ Base class for all minigames. Provides common state, fixed timestep, demo playba
 - **setPlaybackMode(enabled)** - Enable/disable demo playback mode.
 - **isInPlaybackMode()** - Check if in playback mode.
 - **isKeyDown(...)** - Check key state (virtual during playback, real otherwise).
+- **buildInput()** - Returns {left, right, up, down, space} input state table. Checks WASD/arrows for movement, space for action.
 - **setVMRenderMode(enabled)** / **isVMRenderMode()** - VM render mode (hides HUD).
 
 ### Audio

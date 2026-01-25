@@ -181,9 +181,9 @@
         },
         "wind_type": {
             "type": "enum",
-            "values": ["none", "constant", "gusting", "rotating"],
+            "values": ["none", "steady", "turbulent", "changing_steady", "changing_turbulent"],
             "default": "none",
-            "description": "Wind behavior pattern"
+            "description": "Wind behavior pattern: steady (constant), turbulent (random variation), changing_steady (rotating direction), changing_turbulent (rotating + random)"
         },
         "fog_of_war_origin": {
             "type": "enum",
