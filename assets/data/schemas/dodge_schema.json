@@ -212,12 +212,6 @@
             "max": 50,
             "description": "Visual trail behind player (0 = none)"
         },
-        "score_multiplier_mode": {
-            "type": "enum",
-            "values": ["none", "speed", "center", "edge", "combo"],
-            "default": "none",
-            "description": "How score multiplier is calculated"
-        },
         "victory_condition": {
             "type": "enum",
             "values": ["dodge_count", "time"],

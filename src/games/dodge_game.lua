@@ -208,11 +208,6 @@ function DodgeGame:setupEntities()
 
     -- Spawn pattern state
     self.spawn_pattern_state = {wave_timer = 0, wave_active = false, spiral_angle = 0, cluster_pending = 0}
-
-    -- Score trackers
-    self.avg_speed_tracker = {sum = 0, count = 0}
-    self.center_time_tracker = {total_weighted = 0, total_time = 0}
-    self.edge_time_tracker = {total_weighted = 0, total_time = 0}
 end
 
 --------------------------------------------------------------------------------
@@ -262,7 +257,6 @@ function DodgeGame:updateGameLogic(dt)
         self.player_trail:updateFromEntity(self.player)
     end
     self.visual_effects:update(dt)
-    self:updateScoreTracking(dt)
 
     -- Player movement
     local input = self:buildInput()
@@ -302,60 +296,6 @@ function DodgeGame:updateGameLogic(dt)
 
     self:updateWarnings(dt)
     self:updateObjects(dt)
-end
-
---------------------------------------------------------------------------------
--- SCORING & TRACKING
---------------------------------------------------------------------------------
-
-function DodgeGame:updateScoreTracking(dt)
-    if not self.player or not self.safe_zone then
-        return
-    end
-
-    if self.params.score_multiplier_mode == "speed" then
-        local speed = math.sqrt(self.player.vx * self.player.vx + self.player.vy * self.player.vy)
-        self.avg_speed_tracker.sum = self.avg_speed_tracker.sum + speed
-        self.avg_speed_tracker.count = self.avg_speed_tracker.count + 1
-    end
-
-    if self.params.score_multiplier_mode == "center" or self.params.score_multiplier_mode == "edge" then
-        local dx = self.player.x - self.safe_zone.x
-        local dy = self.player.y - self.safe_zone.y
-        local dist = math.sqrt(dx*dx + dy*dy)
-        local normalized_dist = dist / math.max(1, self.safe_zone.radius)
-
-        if self.params.score_multiplier_mode == "center" then
-            local center_weight = 1.0 - normalized_dist
-            self.center_time_tracker.total_weighted = self.center_time_tracker.total_weighted + center_weight * dt
-            self.center_time_tracker.total_time = self.center_time_tracker.total_time + dt
-        elseif self.params.score_multiplier_mode == "edge" then
-            local edge_weight = normalized_dist
-            self.edge_time_tracker.total_weighted = self.edge_time_tracker.total_weighted + edge_weight * dt
-            self.edge_time_tracker.total_time = self.edge_time_tracker.total_time + dt
-        end
-    end
-end
-
-function DodgeGame:getScoreMultiplier()
-    if self.params.score_multiplier_mode == "speed" then
-        if self.avg_speed_tracker.count > 0 then
-            local avg_speed = self.avg_speed_tracker.sum / self.avg_speed_tracker.count
-            local speed_ratio = avg_speed / (self.player.max_speed or 600)
-            return 1.0 + speed_ratio * 0.5
-        end
-    elseif self.params.score_multiplier_mode == "center" then
-        if self.center_time_tracker.total_time > 0 then
-            local avg_center = self.center_time_tracker.total_weighted / self.center_time_tracker.total_time
-            return 1.0 + avg_center * 0.5
-        end
-    elseif self.params.score_multiplier_mode == "edge" then
-        if self.edge_time_tracker.total_time > 0 then
-            local avg_edge = self.edge_time_tracker.total_weighted / self.edge_time_tracker.total_time
-            return 1.0 + avg_edge * 0.5
-        end
-    end
-    return 1.0
 end
 
 --------------------------------------------------------------------------------
@@ -520,20 +460,6 @@ function DodgeGame:checkComplete()
 end
 
 function DodgeGame:onComplete()
-    local is_win = self.victory
-
-    if is_win and self.params.score_multiplier_mode ~= "none" then
-        local multiplier = self:getScoreMultiplier()
-        if multiplier > 1.0 then
-            print(string.format("[DodgeGame] Score multiplier applied: %.2fx (%s mode)", multiplier, self.params.score_multiplier_mode))
-            self.metrics.objects_dodged = math.floor(self.metrics.objects_dodged * multiplier)
-            self.metrics.combo = math.floor(self.metrics.combo * multiplier)
-        end
-    end
-
-    if is_win then
-    end
-
     self:stopMusic()
     DodgeGame.super.onComplete(self)
 end

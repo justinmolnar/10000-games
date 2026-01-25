@@ -427,18 +427,23 @@ Calculates final multiplier based on tracked data for the configured mode.
 **Plan after discussion:** Delete entirely. ScoringSystem:getTrackingMultiplier() returns result from tracked data. 19 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Game runs without errors
 
 ### AI Notes
-
+- Deleted updateScoreTracking and getScoreMultiplier functions
+- Deleted score tracker state variables
+- Deleted multiplier application in onComplete
+- Removed score_multiplier_mode from schema
+- Removed score_multiplier_mode from all variants
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+- dodge_game.lua: 1328 → 1254 (-74 lines)
 
 ### Deviation from Plan
+Feature removed entirely instead of extracting to ScoringSystem. User identified this as unwanted AI creativity.
 
 ---
 
