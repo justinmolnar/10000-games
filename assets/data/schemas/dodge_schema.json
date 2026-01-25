@@ -295,5 +295,115 @@
             "max": 20,
             "description": "Number of holes (danger zones) in arena"
         }
+    },
+    "components": {
+        "hud": {
+            "type": "HUDRenderer",
+            "config": {
+                "primary": {"label": "Dodged", "key": "metrics.objects_dodged"},
+                "secondary": {"label": "Time", "key": "time_elapsed", "format": "float"},
+                "lives": {"key": "lives", "max": "$lives", "style": "hearts"}
+            }
+        },
+        "fog_controller": {
+            "type": "FogOfWar",
+            "config": {
+                "enabled": true,
+                "mode": "stencil",
+                "opacity": 0.8
+            }
+        },
+        "visual_effects": {
+            "type": "VisualEffects",
+            "config": {
+                "camera_shake_enabled": true,
+                "screen_flash_enabled": false,
+                "particle_effects_enabled": false,
+                "shake_mode": "exponential",
+                "shake_decay": 0.9
+            }
+        },
+        "health_system": {
+            "type": "LivesHealthSystem",
+            "config": {
+                "mode": "lives",
+                "starting_lives": "$lives",
+                "max_lives": 20
+            }
+        }
+    },
+    "entity_types": {
+        "obstacle": {
+            "name": "obstacle",
+            "category": "obstacle",
+            "type": "linear",
+            "speed_multiplier": 1.0,
+            "on_collision": "damage"
+        },
+        "chaser": {
+            "name": "chaser",
+            "category": "obstacle",
+            "type": "seeker",
+            "speed_multiplier": 0.9,
+            "on_collision": "damage"
+        },
+        "shooter": {
+            "name": "shooter",
+            "category": "obstacle",
+            "type": "shooter",
+            "speed_multiplier": 0.7,
+            "on_collision": "damage"
+        },
+        "bouncer": {
+            "name": "bouncer",
+            "category": "obstacle",
+            "type": "bouncer",
+            "speed_multiplier": 1.0,
+            "on_collision": "damage"
+        },
+        "zigzag": {
+            "name": "zigzag",
+            "category": "obstacle",
+            "type": "zigzag",
+            "speed_multiplier": 1.1,
+            "on_collision": "damage"
+        },
+        "teleporter": {
+            "name": "teleporter",
+            "category": "obstacle",
+            "type": "teleporter",
+            "speed_multiplier": 0.8,
+            "teleport_interval": 3.0,
+            "teleport_range": 100,
+            "on_collision": "damage"
+        },
+        "splitter": {
+            "name": "splitter",
+            "category": "obstacle",
+            "type": "splitter",
+            "speed_multiplier": 0.8,
+            "on_collision": "damage"
+        },
+    },
+    "projectile_types": {
+        "enemy_projectile": {
+            "speed": 160,
+            "radius": 8,
+            "movement_type": "linear",
+            "lifetime": 10.0,
+            "team": "enemy"
+        }
+    },
+    "victory_conditions": {
+        "dodge_count": {
+            "victory": {"type": "threshold", "metric": "metrics.objects_dodged", "target": "$victory_limit"},
+            "loss": {"type": "lives_depleted", "metric": "lives"},
+            "check_loss_first": true
+        },
+        "time": {
+            "victory": {"type": "time_survival", "metric": "time_elapsed", "target": "$victory_limit"},
+            "loss": {"type": "lives_depleted", "metric": "lives"},
+            "check_loss_first": true
+        }
     }
 }

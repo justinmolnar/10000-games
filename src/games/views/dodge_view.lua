@@ -212,7 +212,7 @@ function DodgeView:draw()
     for _, warning in ipairs(game.warnings) do
         if warning.type == 'radial' then
             -- Draw a short wedge/arrow along the initial angle from the spawn point
-            local len = 28
+            local len = 5000
             local x2 = warning.sx + math.cos(warning.angle) * len
             local y2 = warning.sy + math.sin(warning.angle) * len
             g.setLineWidth(3)
