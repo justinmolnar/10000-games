@@ -261,7 +261,7 @@ function DodgeGame:updateGameLogic(dt)
     if self.player_trail then
         self.player_trail:updateFromEntity(self.player)
     end
-    self:updateCameraShake(dt)
+    self.visual_effects:update(dt)
     self:updateScoreTracking(dt)
 
     -- Player movement
@@ -302,18 +302,6 @@ function DodgeGame:updateGameLogic(dt)
 
     self:updateWarnings(dt)
     self:updateObjects(dt)
-end
-
---------------------------------------------------------------------------------
--- VISUAL EFFECTS
---------------------------------------------------------------------------------
-
-function DodgeGame:updateCameraShake(dt)
-    self.visual_effects:update(dt)
-end
-
-function DodgeGame:triggerCameraShake(intensity)
-    self.visual_effects:shake(nil, intensity or self.params.camera_shake_intensity, "exponential")
 end
 
 --------------------------------------------------------------------------------

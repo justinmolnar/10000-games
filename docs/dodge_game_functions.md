@@ -385,18 +385,22 @@ Calls visual_effects:shake() with intensity.
 **Plan after discussion:** Delete entirely. Configure health_system on_damage callback to trigger visual_effects:shake(). 3 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Camera shake still works on damage
+- [ ] Game runs without errors
 
 ### AI Notes
-
+- Inlined visual_effects:update(dt) in updateGameLogic
+- Deleted updateCameraShake wrapper (3 lines)
+- Deleted triggerCameraShake wrapper (3 lines) - no longer called after Phase 4
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+- dodge_game.lua: 1340 → 1328 (-12 lines)
 
 ### Deviation from Plan
+None
 
 ---
 
