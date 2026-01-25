@@ -245,32 +245,10 @@ function DodgeView:draw()
         local sprite_img = nil
         local sprite_key = nil
 
-        -- Determine which sprite to use
-        if obj.is_enemy and obj.enemy_type then
-            -- Enemy sprite - check if it's "obstacle" type or special enemy
-            if obj.enemy_type == "obstacle" then
-                -- Basic obstacle enemy - use obstacle sprite
-                sprite_key = "obstacle"
-            else
-                -- Special enemy type - use enemy-specific sprite
-                sprite_key = "enemy_" .. obj.enemy_type
-            end
+        -- Determine which sprite to use - all enemies use "enemy_TYPE" pattern
+        if obj.enemy_type then
+            sprite_key = "enemy_" .. obj.enemy_type
             sprite_img = game.sprites and game.sprites[sprite_key]
-            if _G.DEBUG_SPRITES and i <= 3 then  -- Only debug first 3 objects to avoid spam
-                print(string.format("[DodgeView] Drawing obj #%d: is_enemy=%s, enemy_type=%s, sprite_key=%s, sprite_found=%s",
-                    i, tostring(obj.is_enemy), tostring(obj.enemy_type), sprite_key, tostring(sprite_img ~= nil)))
-            end
-            if not sprite_img and _G.DEBUG_SPRITES then
-                print(string.format("[DodgeView] Enemy sprite not found: %s (enemy_type=%s, is_enemy=%s)",
-                    sprite_key, tostring(obj.enemy_type), tostring(obj.is_enemy)))
-            end
-        elseif not obj.is_enemy then
-            -- Legacy: Regular obstacle (shouldn't happen anymore)
-            sprite_key = "obstacle"
-            sprite_img = game.sprites and game.sprites[sprite_key]
-            if _G.DEBUG_SPRITES then
-                print(string.format("[DodgeView] WARNING: Object with is_enemy=false (should not happen)"))
-            end
         end
 
         if sprite_img then

@@ -36,7 +36,7 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
         radius = (p.player_base_size or 20) * (p.player_size or 1),
         extra = {
             size = (p.player_base_size or 20) * (p.player_size or 1),
-            rotation_speed = p.rotation_speed, movement_speed = p.movement_speed,
+            angle = 0, rotation_speed = p.rotation_speed, movement_speed = p.movement_speed,
             max_speed = p.max_speed, movement_type = p.movement_type,
             accel_friction = p.accel_friction, decel_friction = p.decel_friction,
             bounce_damping = p.bounce_damping, reverse_mode = p.reverse_mode,
@@ -52,6 +52,7 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     self:setupComponents()
     self:setupEntities()
 
+    self.default_sprite_set = "dodge_base"
     self.view = DodgeView:new(self, self.variant)
     self:loadAssets()
 end
@@ -139,6 +140,9 @@ function DodgeGame:setupComponents()
         max_length = p.player_trail_length, color = {0.5, 0.7, 1.0, 0.3}, line_width = 3
     })
 
+    -- Alias for createEntityControllerFromSchema (expects entity_types)
+    self.params.entity_types = self.params.enemy_types
+
     -- Entity controller from schema
     self:createEntityControllerFromSchema({}, {spawning = {mode = "manual"}, pooling = true, max_entities = 500})
 
@@ -201,97 +205,11 @@ end
 -- ASSETS
 --------------------------------------------------------------------------------
 
-function DodgeGame:loadAssets()
-    self.sprites = {}
-
-    local sprite_set_id = (self.variant and self.variant.sprite_set) or
-                         (self.data and self.data.visual_identity and self.data.visual_identity.sprite_set_id) or
-                         "dodge_base"
-    local default_sprite_set_id = "dodge_base"
-
-    print(string.format("[DodgeGame:loadAssets] sprite_set=%s, default=%s", sprite_set_id, default_sprite_set_id))
-
-    local sprite_set_loader = self.di and self.di.spriteSetLoader
-
-    if sprite_set_loader then
-        self.sprites.player = sprite_set_loader:getSprite(sprite_set_id, "player", default_sprite_set_id)
-        self.sprites.obstacle = sprite_set_loader:getSprite(sprite_set_id, "obstacle", default_sprite_set_id)
-
-        if self.enemy_composition then
-            for enemy_type, _ in pairs(self.enemy_composition) do
-                if enemy_type ~= "obstacle" then
-                    local sprite_key = "enemy_" .. enemy_type
-                    self.sprites[sprite_key] = sprite_set_loader:getSprite(sprite_set_id, sprite_key, default_sprite_set_id)
-                    print(string.format("[DodgeGame:loadAssets] Loaded %s sprite: %s", sprite_key, tostring(self.sprites[sprite_key])))
-                end
-            end
-        end
-
-        print("[DodgeGame:loadAssets] Loaded sprites using SpriteSetLoader")
-        print(string.format("[DodgeGame:loadAssets] Total sprites loaded: player=%s, obstacle=%s",
-            tostring(self.sprites.player), tostring(self.sprites.obstacle)))
-    else
-        print("[DodgeGame:loadAssets] WARNING: SpriteSetLoader not available, using legacy path loading")
-        local base_path = "assets/sprites/games/dodge/" .. sprite_set_id .. "/"
-        local function tryLoad(filename, sprite_key)
-            local filepath = base_path .. filename
-            local success, result = pcall(function()
-                return love.graphics.newImage(filepath)
-            end)
-
-            if success then
-                self.sprites[sprite_key] = result
-                print("[DodgeGame:loadAssets] Loaded: " .. filepath)
-            else
-                print("[DodgeGame:loadAssets] Missing: " .. filepath .. " (using fallback)")
-            end
-        end
-
-        tryLoad("player.png", "player")
-        tryLoad("obstacle.png", "obstacle")
-        tryLoad("background.png", "background")
-
-        if self.enemy_composition then
-            for enemy_type, _ in pairs(self.enemy_composition) do
-                tryLoad("enemy_" .. enemy_type .. ".png", "enemy_" .. enemy_type)
-            end
-        end
-    end
-
-    print("[DodgeGame:loadAssets] Loaded " .. self:countLoadedSprites() .. " sprites for variant: " .. (self.variant.name or "Unknown"))
-    self:loadAudio()
-end
-
-function DodgeGame:countLoadedSprites()
-    local count = 0
-    for _ in pairs(self.sprites) do
-        count = count + 1
-    end
-    return count
-end
-
-function DodgeGame:hasSprite(sprite_key)
-    return self.sprites and self.sprites[sprite_key] ~= nil
-end
-
 function DodgeGame:setPlayArea(width, height)
     self.game_width = width
     self.game_height = height
-
     if self.arena_controller then
         self.arena_controller:setContainerSize(width, height)
-        if self.safe_zone then
-            self.safe_zone.x = width / 2
-            self.safe_zone.y = height / 2
-        end
-    end
-
-    if self.player then
-        self.player.x = math.max(self.player.radius, math.min(self.game_width - self.player.radius, self.player.x))
-        self.player.y = math.max(self.player.radius, math.min(self.game_height - self.player.radius, self.player.y))
-        print("[DodgeGame] Play area updated to:", width, height)
-    else
-        print("[DodgeGame] setPlayArea called before init completed")
     end
 end
 
@@ -372,7 +290,9 @@ function DodgeGame:updatePlayer(dt)
     }
 
     self.player.time_elapsed = self.time_elapsed
-    self.player.angle = self.player.rotation
+    if self.player.rotation then
+        self.player.angle = self.player.rotation
+    end
 
     self.movement_controller:update(dt, self.player, input, bounds)
 
@@ -1232,7 +1152,7 @@ function DodgeGame:spawnVariantEnemy(warned_status, force_type)
     local angle = math.atan2(ty - sy, tx - sx)
     angle = self:ensureInboundAngle(sx, sy, angle)
 
-    local enemy_def = self.params.entity_types[chosen_type]
+    local enemy_def = self.params.enemy_types[chosen_type]
     if enemy_def then
         self:createEnemyObject(sx, sy, angle, warned_status, enemy_def)
     else
@@ -1375,13 +1295,13 @@ function DodgeGame:createObjectFromWarning(warning)
                 break
             end
         end
-        local enemy_def = self.params.entity_types[chosen_type]
+        local enemy_def = self.params.enemy_types[chosen_type]
         if enemy_def then
             self:createEnemyObject(warning.sx, warning.sy, warning.angle, true, enemy_def)
             return
         end
     end
-    local enemy_def = self.params.entity_types.obstacle
+    local enemy_def = self.params.enemy_types.obstacle
     if enemy_def then
         self:createEnemyObject(warning.sx, warning.sy, warning.angle, true, enemy_def)
     else

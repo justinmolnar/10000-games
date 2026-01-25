@@ -176,18 +176,32 @@ Updates game_width and game_height. Updates arena_controller container size. Upd
 **Plan after discussion:** Delete entirely. Use BaseGame:setPlayArea(). Add arena_controller:setContainerSize to BaseGame if arena_controller exists. Player clamping handled automatically by MovementController:applyBounds on next update. Rename game_width/game_height → arena_width/arena_height for consistency.
 
 ### Testing (User)
-- [ ] (AI fills in test steps after implementation)
+- [ ] Game loads without errors
+- [ ] Player sprite renders
+- [ ] Enemy sprites render for different enemy types
+- [ ] Obstacle sprites render
+- [ ] Window resize still works
 
 ### AI Notes
-
+- Deleted loadAssets entirely - now uses BaseGame:loadAssets()
+- Deleted countLoadedSprites (6 lines) - only used in removed debug print
+- Deleted hasSprite (3 lines) - dead code, never called
+- Renamed entity_types → enemy_types in dodge_schema.json (matches BaseGame:loadAssets expectation)
+- Added alias `self.params.entity_types = self.params.enemy_types` for createEntityControllerFromSchema
+- Updated all `self.params.entity_types[` references to use `enemy_types`
+- Fixed sprite_sets.json: "obstacle" → "enemy_obstacle" (all dodge sprite sets)
+- Fixed dodge_view.lua to use "enemy_TYPE" pattern for all enemy sprites
+- Fixed player.angle being overwritten with nil from player.rotation
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+- dodge_game.lua: 1611 → 1546 (-65 lines)
+- dodge_view.lua: -20 lines (simplified sprite lookup)
 
 ### Deviation from Plan
+None. Schema uses enemy_types as planned. Alias added to support createEntityControllerFromSchema which expects entity_types (BaseGame method, not changed per rules).
 
 ---
 

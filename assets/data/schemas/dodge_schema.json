@@ -344,7 +344,7 @@
             }
         }
     },
-    "entity_types": {
+    "enemy_types": {
         "obstacle": {
             "name": "obstacle",
             "category": "obstacle",
