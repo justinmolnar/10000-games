@@ -258,14 +258,6 @@ function DodgeGame:updateGameLogic(dt)
     self:updateObjects(dt)
 end
 
-function DodgeGame:draw()
-    if self.view and self.view.draw then
-        self.view:draw()
-    else
-        love.graphics.setColor(1,0,0)
-        love.graphics.print("Error: DodgeView not loaded or has no draw function.", 10, 100)
-    end
-end
 
 --------------------------------------------------------------------------------
 -- PLAYER MOVEMENT & PHYSICS

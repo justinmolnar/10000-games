@@ -205,49 +205,7 @@ None. Schema uses enemy_types as planned. Alias added to support createEntityCon
 
 ---
 
-## Phase 3: MAIN GAME LOOP
-
-### updateGameLogic
-Main game loop. Checks game over. Updates entity_controller and projectile_system. Merges projectiles into objects array for collision checking. Updates arena_controller. Syncs safe_zone from arena (redundant state). Updates shield, player trail, camera shake, score tracking, player movement. Handles spawn timer and spawning. Updates warnings and objects.
-
-**Notes:** 40 lines. Clean structure. Merging projectiles into objects array is ugly - creates combined list every frame. Calls to sync redundant state.
-
-**Extraction Potential:** Medium.
-1. **Projectile merging** - instead of merging arrays, collision system should check both separately, or use EntityController for everything including projectiles.
-2. **syncSafeZoneFromArena** - delete when redundant safe_zone state eliminated.
-3. **Spawn timer** - EntityController has "continuous" spawn mode. Use that instead of manual timer.
-4. **Multiple update calls** - several are tiny wrappers that could be inlined or handled by components directly.
-
-**Plan after discussion:** Gut this function. Delete: checkGameOver (VictoryCondition), projectile merging (collision system handles), syncSafeZoneFromArena (redundant state gone), updateShield (health_system), updateCameraShake (visual_effects:update inline), updateScoreTracking (ScoringSystem), spawn timer (EntityController continuous mode), updateWarnings (EntityController delayed_spawn), updateObjects (EntityController behaviors + collision callbacks). Keep only: entity_controller:update(dt), projectile_system:update(dt), arena_controller:update(dt), updatePlayer(dt), checkComplete(). ~5 lines.
-
----
-
-### draw
-Calls view:draw() if view exists, otherwise prints error.
-
-**Notes:** 8 lines. Defensive nil check with error message.
-
-**Extraction Potential:** High. Every game does `self.view:draw()`. Move to BaseGame. Delete error path - view always created in init. 8 lines → 0 lines (inherited from BaseGame).
-
-**Plan after discussion:** Delete entirely. Inherit BaseGame:draw(). 8 lines → 0 lines.
-
-### Testing (User)
-- [ ] (AI fills in test steps after implementation)
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
----
-
-## Phase 4: PLAYER MOVEMENT & PHYSICS
+## Phase 3: PLAYER MOVEMENT & PHYSICS
 
 ### updatePlayer
 Builds input table from key states. Builds bounds table. Syncs player.time_elapsed and player.angle. Calls movement_controller:update. Syncs player.rotation back. Calls applyEnvironmentForces and clampPlayerPosition.
@@ -326,7 +284,7 @@ Adds current player position to trail if trail_length > 0.
 
 ---
 
-## Phase 5: SHIELD SYSTEM
+## Phase 4: SHIELD SYSTEM
 
 ### updateShield
 Recharges shield over time if below max and recharge enabled.
@@ -375,7 +333,7 @@ Decrements shield, resets recharge timer, triggers small camera shake.
 
 ---
 
-## Phase 6: VISUAL EFFECTS
+## Phase 5: VISUAL EFFECTS
 
 ### updateCameraShake
 Calls visual_effects:update(dt).
@@ -413,7 +371,7 @@ Calls visual_effects:shake() with intensity.
 
 ---
 
-## Phase 7: SCORING & TRACKING
+## Phase 6: SCORING & TRACKING
 
 ### updateScoreTracking
 Tracks speed, center time, or edge time based on score_multiplier_mode param. Updates corresponding tracker accumulators.
@@ -451,7 +409,7 @@ Calculates final multiplier based on tracked data for the configured mode.
 
 ---
 
-## Phase 8: GEOMETRY HELPERS
+## Phase 7: GEOMETRY HELPERS
 
 ### isPointInCircle
 Checks if point is inside circle using distance squared comparison.
@@ -522,7 +480,7 @@ Checks if circle intersects line segment.
 
 ---
 
-## Phase 9: GAME STATE / VICTORY
+## Phase 8: GAME STATE / VICTORY
 
 ### checkGameOver
 Checks if player left safe zone (instant death mode). Checks if player touched any hole. Sets game_over flag.
@@ -586,7 +544,7 @@ Returns progress toward victory based on victory_condition type.
 
 ---
 
-## Phase 10: ARENA / SAFE ZONE
+## Phase 9: ARENA / SAFE ZONE
 
 ### syncSafeZoneFromArena
 Copies arena_controller state to self.safe_zone table.
@@ -613,7 +571,7 @@ Copies arena_controller state to self.safe_zone table.
 
 ---
 
-## Phase 11: OBJECT UPDATE & COLLISION
+## Phase 10: OBJECT UPDATE & COLLISION
 
 ### updateObjects
 Massive function handling all object movement and collision (260 lines). Updates velocity from angle/speed. Handles sprite rotation. Type-specific behaviors: shooter fires projectiles, bouncer bounces off walls, teleporter teleports near player. Tracking/homing toward player. Seeker full homing. Zigzag/sine wave movement. Trail updates. Splitter splits when entering safe zone. Player collision with shield/damage handling. Trail collision. Offscreen removal with dodge counting.
@@ -694,7 +652,7 @@ Checks if object is outside game bounds plus radius margin.
 
 ---
 
-## Phase 12: SPAWNING
+## Phase 11: SPAWNING
 
 ### spawnObjectOrWarning
 Updates spawn_rate with acceleration. Handles spawn patterns: waves (burst spawning), clusters (grouped spawning), spiral (angle-based), pulse_with_arena (spawn from safe zone boundary). Default calls spawnSingleObject.
@@ -832,7 +790,7 @@ Spawns N shard entities around parent position with spread angle and reduced siz
 
 ---
 
-## Phase 13: SPAWN POSITION HELPERS
+## Phase 12: SPAWN POSITION HELPERS
 
 ### pickSpawnPoint
 Picks random spawn point on one of four screen edges.
@@ -903,7 +861,7 @@ Adjusts angle to point inward if object spawned on edge facing outward.
 
 ---
 
-## Phase 14: INPUT
+## Phase 13: INPUT
 
 ### keypressed
 Calls parent keypressed for demo playback tracking. Returns false.
@@ -927,6 +885,50 @@ Calls parent keypressed for demo playback tracking. Returns false.
 
 
 ### Deviation from Plan
+
+---
+
+## Phase 14: MAIN GAME LOOP (FINAL CLEANUP)
+
+**NOTE:** This phase was moved to the end because it depends on Phases 3-13 being completed first. The main game loop can only be simplified after all the component systems are extracted.
+
+**ALREADY DONE:** Deleted draw() function (-8 lines) - now inherits from BaseGame:draw().
+
+### updateGameLogic
+Main game loop. Checks game over. Updates entity_controller and projectile_system. Merges projectiles into objects array for collision checking. Updates arena_controller. Syncs safe_zone from arena (redundant state). Updates shield, player trail, camera shake, score tracking, player movement. Handles spawn timer and spawning. Updates warnings and objects.
+
+**Notes:** 40 lines. Clean structure. Merging projectiles into objects array is ugly - creates combined list every frame. Calls to sync redundant state.
+
+**Extraction Potential:** Medium.
+1. **Projectile merging** - instead of merging arrays, collision system should check both separately, or use EntityController for everything including projectiles.
+2. **syncSafeZoneFromArena** - delete when redundant safe_zone state eliminated.
+3. **Spawn timer** - EntityController has "continuous" spawn mode. Use that instead of manual timer.
+4. **Multiple update calls** - several are tiny wrappers that could be inlined or handled by components directly.
+
+**Plan after discussion:** Gut this function. Delete: checkGameOver (VictoryCondition), projectile merging (collision system handles), syncSafeZoneFromArena (redundant state gone), updateShield (health_system), updateCameraShake (visual_effects:update inline), updateScoreTracking (ScoringSystem), spawn timer (EntityController continuous mode), updateWarnings (EntityController delayed_spawn), updateObjects (EntityController behaviors + collision callbacks). Keep only: entity_controller:update(dt), projectile_system:update(dt), arena_controller:update(dt), updatePlayer(dt), checkComplete(). ~5 lines.
+
+---
+
+### draw
+~~Calls view:draw() if view exists, otherwise prints error.~~ **DELETED** - now inherits from BaseGame:draw().
+
+### Testing (User)
+- [ ] Game renders correctly (draw inherited from BaseGame)
+- [ ] All game systems still update properly
+- [ ] Victory and loss conditions still trigger
+
+### AI Notes
+- Deleted draw() function (-8 lines) - inherits from BaseGame:draw()
+- updateGameLogic simplification deferred until Phases 3-13 complete
+
+### Status
+Partial (draw deleted, updateGameLogic deferred)
+
+### Line Count Change
+- dodge_game.lua: 1546 → 1538 (-8 lines from draw deletion)
+
+### Deviation from Plan
+Phase moved to end due to dependencies on other phases. draw() deleted as planned. updateGameLogic changes require Phases 3-13 to be completed first.
 
 ---
 
