@@ -334,18 +334,31 @@ Decrements shield, resets recharge timer, triggers small camera shake.
 **Plan after discussion:** Delete entirely. health_system:takeDamage() handles shield absorption. Configure on_shield_break callback to trigger camera shake. 7 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Shield absorbs hits (visual indicator shows)
+- [ ] Shield recharges over time when enabled
+- [ ] Camera shake on shield break (smaller)
+- [ ] Camera shake on life loss (larger)
+- [ ] Lives decrease when shield depleted
+- [ ] Game over when lives depleted
 
 ### AI Notes
-
+- Changed health_system mode from "lives" to "shield" (matches space_shooter pattern)
+- Added shield_enabled, shield_max_hits, shield_regen_time to schema health_system config
+- Removed player.shield_* properties from createPlayer
+- Added on_shield_break and on_damage callbacks for camera shake
+- Replaced inline shield check with self:takeDamage() (BaseGame method)
+- Added health_system:update(dt) call in updateGameLogic
+- Updated dodge_view.lua to use health_system methods instead of player.shield_*
+- Deleted updateShield, hasActiveShield, consumeShield functions
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+- dodge_game.lua: 1375 → 1340 (-35 lines)
 
 ### Deviation from Plan
+None
 
 ---
 

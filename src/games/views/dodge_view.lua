@@ -199,7 +199,7 @@ function DodgeView:draw()
     end
 
     -- Draw shield visual
-    if game.player.shield_charges and game.player.shield_charges > 0 then
+    if game.params.shield > 0 and game.health_system:isShieldActive() then
         local shield_alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 5)
         g.setColor(0.3, 0.7, 1.0, shield_alpha)
         g.setLineWidth(3)
@@ -379,9 +379,10 @@ function DodgeView:draw()
         end
 
         -- Shield charges (if enabled)
-        if game.player.shield_max and game.player.shield_max > 0 then
-            g.setColor(0.5, 0.5, 1)
-            g.print("Shield: " .. game.player.shield_charges .. "/" .. game.player.shield_max, lx, hud_y, 0, s, s)
+        if game.params.shield and game.params.shield > 0 then
+            local shield_color = game.health_system:isShieldActive() and {0.5, 0.5, 1} or {0.5, 0.5, 0.5}
+            g.setColor(shield_color)
+            g.print("Shield: " .. game.health_system:getShieldHitsRemaining() .. "/" .. game.params.shield, lx, hud_y, 0, s, s)
             hud_y = hud_y + 18
             g.setColor(1, 1, 1)
         end

@@ -338,9 +338,13 @@
         "health_system": {
             "type": "LivesHealthSystem",
             "config": {
-                "mode": "lives",
+                "mode": "shield",
                 "starting_lives": "$lives",
-                "max_lives": 20
+                "max_lives": 20,
+                "shield_enabled": true,
+                "shield_max_hits": "$shield",
+                "shield_regen_time": "$shield_recharge_time",
+                "shield_regen_delay": 0
             }
         }
     },

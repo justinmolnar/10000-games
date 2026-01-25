@@ -43,10 +43,7 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
             jump_distance = p.jump_distance, jump_cooldown = p.jump_cooldown,
             jump_speed = p.jump_speed, last_jump_time = -999,
             is_jumping = false, jump_target_x = 0, jump_target_y = 0,
-            jump_dir_x = 0, jump_dir_y = 0, time_elapsed = 0,
-            shield_charges = p.shield, shield_max = p.shield,
-            shield_recharge_timer = p.shield_recharge_time,
-            shield_recharge_time = p.shield_recharge_time
+            jump_dir_x = 0, jump_dir_y = 0, time_elapsed = 0
         }
     })
     self:setupComponents()
@@ -61,9 +58,18 @@ function DodgeGame:setupComponents()
     local p = self.params
 
     -- Schema-driven components (health_system, hud, fog_controller, visual_effects)
+    local game = self
     self:createComponentsFromSchema()
     self.fog_controller.enabled = p.fog_of_war_origin ~= "none" and p.fog_of_war_radius < 9999
     self.lives = self.health_system.lives
+
+    -- Damage callbacks
+    self.health_system.on_shield_break = function()
+        game.visual_effects:shake(nil, p.camera_shake_intensity * 0.5, "exponential")
+    end
+    self.health_system.on_damage = function()
+        game.visual_effects:shake(nil, p.camera_shake_intensity, "exponential")
+    end
 
     -- Movement controller
     local mode_map = {asteroids = "asteroids", jump = "jump"}
@@ -250,7 +256,8 @@ function DodgeGame:updateGameLogic(dt)
 
     self.arena_controller:update(dt)
     self:syncSafeZoneFromArena()
-    self:updateShield(dt)
+    self.health_system:update(dt)
+    self.lives = self.health_system.lives
     if self.player_trail then
         self.player_trail:updateFromEntity(self.player)
     end
@@ -295,37 +302,6 @@ function DodgeGame:updateGameLogic(dt)
 
     self:updateWarnings(dt)
     self:updateObjects(dt)
-end
-
---------------------------------------------------------------------------------
--- SHIELD SYSTEM
---------------------------------------------------------------------------------
-
-function DodgeGame:updateShield(dt)
-    if not self.player or self.player.shield_recharge_time <= 0 then
-        return
-    end
-
-    if self.player.shield_charges < self.player.shield_max then
-        self.player.shield_recharge_timer = self.player.shield_recharge_timer - dt
-        if self.player.shield_recharge_timer <= 0 then
-            self.player.shield_charges = self.player.shield_charges + 1
-            self.player.shield_recharge_timer = self.player.shield_recharge_time
-            self:playSound("pickup", 0.7)
-        end
-    end
-end
-
-function DodgeGame:hasActiveShield()
-    return self.player and self.player.shield_charges > 0
-end
-
-function DodgeGame:consumeShield()
-    if self:hasActiveShield() then
-        self.player.shield_charges = self.player.shield_charges - 1
-        self.player.shield_recharge_timer = self.player.shield_recharge_time
-        self:triggerCameraShake(self.params.camera_shake_intensity * 0.5)
-    end
 end
 
 --------------------------------------------------------------------------------
@@ -791,23 +767,14 @@ function DodgeGame:updateObjects(dt)
                 self.entity_controller:removeEntity(obj)
             end
 
-            if self:hasActiveShield() then
-                self:consumeShield()
-                self:playSound("hit", 0.7)
-            else
-                self.metrics.collisions = self.metrics.collisions + 1
-                self.current_combo = 0
-                self:playSound("hit", 1.0)
-                self:triggerCameraShake()
+            self.metrics.collisions = self.metrics.collisions + 1
+            self.current_combo = 0
+            self:takeDamage(1, "hit")
 
-                self.health_system:takeDamage(1, "obstacle_collision")
-                self.lives = self.health_system.lives
-
-                if not self.health_system:isAlive() then
-                    self:playSound("death", 1.0)
-                    self:onComplete()
-                    return
-                end
+            if not self.health_system:isAlive() then
+                self:playSound("death", 1.0)
+                self:onComplete()
+                return
             end
         elseif obj.trail_positions and #obj.trail_positions > 1 then
             local hit_trail = false
@@ -826,19 +793,15 @@ function DodgeGame:updateObjects(dt)
                 else
                     self.entity_controller:removeEntity(obj)
                 end
-                if self:hasActiveShield() then
-                    self:consumeShield()
-                    self:playSound("hit", 0.5)
-                else
-                    self.metrics.collisions = self.metrics.collisions + 1
-                    self.current_combo = 0
-                    self:playSound("hit", 0.8)
-                    self:triggerCameraShake(self.params.camera_shake_intensity * 0.7)
-                    if self.metrics.collisions >= self.lives then
-                        self:playSound("death", 1.0)
-                        self:onComplete()
-                        return
-                    end
+
+                self.metrics.collisions = self.metrics.collisions + 1
+                self.current_combo = 0
+                self:takeDamage(1, "hit")
+
+                if not self.health_system:isAlive() then
+                    self:playSound("death", 1.0)
+                    self:onComplete()
+                    return
                 end
             end
         elseif self:isObjectOffscreen(obj) or obj.should_remove then
