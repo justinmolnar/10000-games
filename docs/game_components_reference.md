@@ -178,6 +178,7 @@ Unified victory/loss checking for all games.
 - **new(config)** - Create checker. Config: victory {type, metric, target}, loss {type, metric}, check_loss_first, bonuses.
 - **check()** - Returns "victory", "loss", or nil. Auto-applies bonuses on victory.
 - **checkVictory()** / **checkLoss()** - Check individual conditions.
+- **getProgress()** - Returns 0-1 progress toward victory based on condition type. Works for threshold, time_survival, clear_all, streak, rounds. Returns nil for unsupported types.
 - **getValue(key)** - Get value from game state (supports nested keys like "metrics.kills").
 - **applyBonuses()** - Apply configured victory bonuses.
 

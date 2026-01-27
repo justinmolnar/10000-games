@@ -63,6 +63,13 @@ function DodgeGame:setupComponents()
     self.fog_controller.enabled = p.fog_of_war_origin ~= "none" and p.fog_of_war_radius < 9999
     self.lives = self.health_system.lives
 
+    -- Progress bar based on victory condition
+    if p.victory_condition == "time" then
+        self.hud.progress = {label = "Survive", current_key = "time_elapsed", total_key = "params.victory_limit", show_bar = true}
+    else
+        self.hud.progress = {label = "Dodge", current_key = "metrics.objects_dodged", total_key = "dodge_target", show_bar = true}
+    end
+
     -- Damage callbacks
     self.health_system.on_shield_break = function()
         game.visual_effects:shake(nil, p.camera_shake_intensity * 0.5, "exponential")
@@ -218,6 +225,11 @@ function DodgeGame:setPlayArea(width, height)
     if self.arena_controller then
         self.arena_controller:setContainerSize(width, height)
     end
+    -- Recenter player to match arena
+    if self.player then
+        self.player.x = width / 2
+        self.player.y = height / 2
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -225,10 +237,15 @@ end
 --------------------------------------------------------------------------------
 
 function DodgeGame:updateGameLogic(dt)
-    self:checkGameOver()
+    if self.game_over or self.completed then return end
 
-    if self.game_over then
-        return
+    -- Check if player left safe zone (instant death mode)
+    if self.leaving_area_ends_game and self.arena_controller then
+        if not self.arena_controller:isInside(self.player.x, self.player.y, self.player.radius) then
+            self.game_over = true
+            self:onComplete()
+            return
+        end
     end
 
     self.entity_controller:update(dt)
@@ -297,68 +314,6 @@ function DodgeGame:updateGameLogic(dt)
 end
 
 --------------------------------------------------------------------------------
--- GAME STATE / VICTORY
---------------------------------------------------------------------------------
-
-function DodgeGame:checkGameOver()
-    if self.game_over then return end
-
-    local sz = self.safe_zone
-    if not sz then return end
-
-    if self.leaving_area_ends_game then
-        if not self.arena_controller:isInside(self.player.x, self.player.y, self.player.radius) then
-            self.game_over = true
-            print("[DodgeGame] Game Over: Player left safe zone")
-            return
-        end
-    end
-
-    if self.holes then
-        for _, hole in ipairs(self.holes) do
-            local dx = self.player.x - hole.x
-            local dy = self.player.y - hole.y
-            local dist_sq = dx*dx + dy*dy
-            local collision_dist = self.player.radius + hole.radius
-
-            if dist_sq <= (collision_dist * collision_dist) then
-                self.game_over = true
-                print("[DodgeGame] Game Over: Player touched hole")
-                return
-            end
-        end
-    end
-end
-
-function DodgeGame:checkComplete()
-    local result = self.victory_checker:check()
-    if result then
-        self.victory = (result == "victory")
-        self.game_over = (result == "loss")
-        return true
-    end
-    return false
-end
-
-function DodgeGame:onComplete()
-    self:stopMusic()
-    DodgeGame.super.onComplete(self)
-end
-
-function DodgeGame:getCompletionRatio()
-    if self.params.victory_condition == "time" then
-        if self.params.victory_limit and self.params.victory_limit > 0 then
-            return math.min(1.0, self.time_elapsed / self.params.victory_limit)
-        end
-    elseif self.params.victory_condition == "dodge_count" then
-        if self.dodge_target and self.dodge_target > 0 then
-            return math.min(1.0, (self.metrics.objects_dodged or 0) / self.dodge_target)
-        end
-    end
-    return 1.0
-end
-
---------------------------------------------------------------------------------
 -- ARENA / SAFE ZONE
 --------------------------------------------------------------------------------
 
@@ -373,6 +328,15 @@ end
 --------------------------------------------------------------------------------
 
 function DodgeGame:updateObjects(dt)
+    -- Hole collision = instant death
+    for _, hole in ipairs(self.arena_controller.holes) do
+        if PhysicsUtils.circleCollision(self.player.x, self.player.y, self.player.radius, hole.x, hole.y, hole.radius) then
+            self.game_over = true
+            self:onComplete()
+            return
+        end
+    end
+
     for i = #self.objects, 1, -1 do
         local obj = self.objects[i]
         if not obj then goto continue_obj_loop end

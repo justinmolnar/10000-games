@@ -570,18 +570,30 @@ Returns progress toward victory based on victory_condition type.
 **Plan after discussion:** Delete entirely. Add VictoryCondition:getProgress() - returns 0-1 based on condition type and current value. 11 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Test "Sudden Death Dash" (clone 5) - has leaving_area_ends_game: true - verify instant death when leaving safe zone
+- [ ] Test "Danger Zone Deluxe" (clone 13) - has holes - verify hole collision causes game over
+- [ ] Test any time-based variant (e.g. "Time Attack" clone 11) - verify progress bar fills as time passes
+- [ ] Test any dodge_count variant (e.g. "Classic Dodge" clone 1) - verify progress bar fills as dodges increase
+- [ ] Verify win/lose sounds play on completion
 
 ### AI Notes
-
+- Deleted checkGameOver (40 lines) - moved inline to updateGameLogic (~12 lines)
+- Deleted checkComplete (9 lines) - BaseGame:checkComplete() already identical
+- Deleted onComplete (4 lines) - BaseGame:onComplete() already handles music stop + sounds
+- Deleted getCompletionRatio (11 lines) - added VictoryCondition:getProgress() instead
+- Updated BaseGame:getCompletionRatio() to use victory_checker:getProgress() if available
+- Updated game_components_reference.md with VictoryCondition:getProgress() documentation
 
 ### Status
-
+COMPLETE
 
 ### Line Count Change
-
+dodge_game.lua: -64 lines (checkGameOver, checkComplete, onComplete, getCompletionRatio deleted), +12 lines (inline checks) = **-52 lines net**
+victory_condition.lua: +38 lines (getProgress function)
+base_game.lua: +4 lines (updated getCompletionRatio)
 
 ### Deviation from Plan
+Hole collision check added to updateObjects (not deleted entirely as plan suggested). ArenaController:isInside returns false for holes but doesn't set game_over. Holes are collision objects requiring explicit check. Added 6 lines to updateObjects using PhysicsUtils.circleCollision - consistent with other collision handling in that function.
 
 ---
 

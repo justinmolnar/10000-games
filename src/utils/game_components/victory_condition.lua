@@ -243,6 +243,46 @@ function VictoryCondition:checkLoss()
     return false
 end
 
+-- Get progress toward victory (0 = just started, 1 = complete)
+-- Returns nil if victory type doesn't support progress tracking
+function VictoryCondition:getProgress()
+    if not self.game then return nil end
+
+    local config = self.victory
+    local v_type = config.type
+
+    if v_type == "threshold" then
+        local value = self:getValue(config.metric)
+        local target = config.target or 1
+        if target <= 0 then return 1 end
+        return math.min(1, value / target)
+
+    elseif v_type == "time_survival" then
+        local elapsed = self:getValue(config.metric or "time_elapsed")
+        local target = config.target or 1
+        if target <= 0 then return 1 end
+        return math.min(1, elapsed / target)
+
+    elseif v_type == "clear_all" then
+        -- Need both current and initial to calculate progress
+        local remaining = self:getValue(config.metric)
+        local initial = self:getValue(config.initial_metric or config.metric .. "_initial")
+        if initial <= 0 then return remaining <= 0 and 1 or 0 end
+        return math.min(1, 1 - (remaining / initial))
+
+    elseif v_type == "streak" or v_type == "rounds" then
+        local value = self:getValue(config.metric)
+        local target = config.target or 1
+        if target <= 0 then return 1 end
+        return math.min(1, value / target)
+
+    elseif v_type == "endless" then
+        return 0  -- Never completes
+    end
+
+    return nil  -- Unknown type
+end
+
 -- Get value from game state (supports nested keys like "metrics.kills")
 function VictoryCondition:getValue(key)
     if not key or not self.game then return 0 end

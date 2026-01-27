@@ -637,8 +637,13 @@ function BaseGame:handleEntityDestroyed(entity, config)
     end
 end
 
--- Completion ratio: override in games to report progress toward their core goal (0..1)
+-- Completion ratio: reports progress toward victory (0..1)
+-- Uses VictoryCondition:getProgress() if available, otherwise returns 1.0
 function BaseGame:getCompletionRatio()
+    if self.victory_checker then
+        local progress = self.victory_checker:getProgress()
+        if progress then return progress end
+    end
     return 1.0
 end
 
