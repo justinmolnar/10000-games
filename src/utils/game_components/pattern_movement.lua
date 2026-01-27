@@ -33,6 +33,10 @@ function PatternMovement.update(dt, entity, bounds)
         PatternMovement.updateBounce(dt, entity, bounds)
     elseif pattern == "wave" then
         PatternMovement.updateWave(dt, entity, bounds)
+    elseif pattern == "teleporter" then
+        PatternMovement.updateTeleporter(dt, entity, bounds)
+    elseif pattern == "tracking" then
+        PatternMovement.updateTracking(dt, entity, bounds)
     end
 end
 
@@ -212,6 +216,78 @@ function PatternMovement.updateBounce(dt, entity, bounds)
     end
 end
 
+-- Teleporter: Periodically teleport near a target and move toward it
+-- Entity needs: teleport_timer, teleport_interval, teleport_range, target_x, target_y
+-- Updates angle, vx, vy to point toward target after teleport
+function PatternMovement.updateTeleporter(dt, entity, bounds)
+    entity.teleport_timer = entity.teleport_timer - dt
+    if entity.teleport_timer <= 0 then
+        entity.teleport_timer = entity.teleport_interval or 3.0
+        local angle = math.random() * math.pi * 2
+        local dist = entity.teleport_range or 100
+        local target_x = entity.target_x or (bounds and bounds.width / 2) or 400
+        local target_y = entity.target_y or (bounds and bounds.height / 2) or 300
+        entity.x = target_x + math.cos(angle) * dist
+        entity.y = target_y + math.sin(angle) * dist
+
+        -- Clamp to bounds
+        if bounds then
+            local r = entity.radius or 0
+            entity.x = math.max(r, math.min(bounds.width - r, entity.x))
+            entity.y = math.max(r, math.min(bounds.height - r, entity.y))
+        end
+
+        -- Update velocity toward target
+        local dx = target_x - entity.x
+        local dy = target_y - entity.y
+        local new_angle = math.atan2(dy, dx)
+        entity.angle = new_angle
+        local speed = entity.speed or 100
+        entity.vx = math.cos(new_angle) * speed
+        entity.vy = math.sin(new_angle) * speed
+    end
+
+    -- Move between teleports
+    entity.x = entity.x + (entity.vx or 0) * dt
+    entity.y = entity.y + (entity.vy or 0) * dt
+end
+
+-- Tracking: Smoothly turn toward a target (angle-based steering)
+-- Entity needs: angle, speed, tracking_strength (0-1), target_x, target_y
+-- Optional: turn_rate (radians/sec base), difficulty_scaler
+function PatternMovement.updateTracking(dt, entity, bounds)
+    if not entity.target_x or not entity.target_y then return end
+
+    local tracking = entity.tracking_strength or 1.0
+    if tracking <= 0 then return end
+
+    local desired = math.atan2(entity.target_y - entity.y, entity.target_x - entity.x)
+    local diff = (desired - entity.angle + math.pi) % (2 * math.pi) - math.pi
+
+    local base_turn = entity.turn_rate or math.rad(180)
+    local scaler = entity.difficulty_scaler or 1.0
+    local max_turn = base_turn * tracking * scaler * dt
+
+    if diff > max_turn then diff = max_turn
+    elseif diff < -max_turn then diff = -max_turn end
+
+    entity.angle = entity.angle + diff
+    local speed = entity.speed or 100
+    entity.vx = math.cos(entity.angle) * speed
+    entity.vy = math.sin(entity.angle) * speed
+    entity.x = entity.x + entity.vx * dt
+    entity.y = entity.y + entity.vy * dt
+end
+
+-- Sprite rotation: Visual spinning effect (doesn't affect movement)
+-- Entity needs: sprite_rotation_speed (degrees/sec)
+-- Updates: sprite_rotation_angle
+function PatternMovement.updateSpriteRotation(dt, entity)
+    if not entity.sprite_rotation_speed or entity.sprite_rotation_speed == 0 then return end
+    entity.sprite_rotation_angle = (entity.sprite_rotation_angle or 0) + (entity.sprite_rotation_speed * dt)
+    entity.sprite_rotation_angle = entity.sprite_rotation_angle % 360
+end
+
 -- Utility: Check if entity is off screen
 function PatternMovement.isOffScreen(entity, bounds, margin)
     margin = margin or 0
@@ -273,6 +349,22 @@ function PatternMovement.initPattern(entity, pattern, config)
             entity.dir_x = config.dir_x
             entity.dir_y = config.dir_y
         end
+
+    elseif pattern == "teleporter" then
+        entity.speed = config.speed or 100
+        entity.teleport_timer = config.teleport_interval or 3.0
+        entity.teleport_interval = config.teleport_interval or 3.0
+        entity.teleport_range = config.teleport_range or 100
+        entity.target_x = config.target_x
+        entity.target_y = config.target_y
+
+    elseif pattern == "tracking" then
+        entity.speed = config.speed or 100
+        entity.tracking_strength = config.tracking_strength or 1.0
+        entity.turn_rate = config.turn_rate or math.rad(180)
+        entity.difficulty_scaler = config.difficulty_scaler or 1.0
+        entity.target_x = config.target_x
+        entity.target_y = config.target_y
     end
 
     return entity

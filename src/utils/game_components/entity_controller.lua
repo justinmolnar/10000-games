@@ -138,6 +138,11 @@ function EntityController:spawn(type_name, x, y, custom_params)
     local entity = nil
     if self.pooling and #self.entity_pool > 0 then
         entity = table.remove(self.entity_pool)
+        -- CRITICAL: Clear all properties from pooled entity to prevent stale data
+        -- (e.g., warning properties bleeding into obstacles)
+        for k in pairs(entity) do
+            entity[k] = nil
+        end
     else
         entity = {}
     end
@@ -803,9 +808,9 @@ function EntityController:update(dt, game_state)
             end
         end
 
-        -- Remove marked entities
+        -- Remove marked entities (use stored removal_reason if set)
         if entity.marked_for_removal then
-            self:removeEntity(entity)
+            self:removeEntity(entity, entity.removal_reason)
         end
     end
 end
@@ -971,9 +976,20 @@ end
 --[[
     Remove entity from active list (return to pool if pooling enabled)
 ]]
-function EntityController:removeEntity(entity)
+function EntityController:removeEntity(entity, removal_reason)
     for i, e in ipairs(self.entities) do
         if e == entity then
+            -- Call on_remove callback if exists (entity-level or type-level)
+            local on_remove = entity.on_remove or (self.entity_types[entity.type_name] and self.entity_types[entity.type_name].on_remove)
+            if on_remove then
+                on_remove(entity, removal_reason or "unknown")
+            end
+
+            -- Call global on_remove if set
+            if self.on_remove then
+                self.on_remove(entity, removal_reason or "unknown")
+            end
+
             table.remove(self.entities, i)
             self.entity_count = self.entity_count - 1
 
@@ -1288,13 +1304,13 @@ function EntityController:updateBehaviors(dt, config, collision_check)
         end
 
         -- Shooting behavior
-        if config.shooting_enabled and entity.shoot_rate and entity.shoot_rate > 0 then
-            entity.shoot_timer = (entity.shoot_timer or entity.shoot_rate) - dt
+        if config.shooting_enabled and entity.shoot_interval and entity.shoot_interval > 0 then
+            entity.shoot_timer = (entity.shoot_timer or entity.shoot_interval) - dt
             if entity.shoot_timer <= 0 then
                 if config.on_shoot then
                     config.on_shoot(entity)
                 end
-                entity.shoot_timer = entity.shoot_rate
+                entity.shoot_timer = entity.shoot_interval
             end
         end
 
@@ -1306,9 +1322,46 @@ function EntityController:updateBehaviors(dt, config, collision_check)
                 local pm = config.pattern_movement
                 if pm.speed then entity.speed = entity.speed or pm.speed end
                 if pm.direction then entity.direction = entity.direction or pm.direction end
+
+                -- Update target for tracking/teleporter patterns
+                if pm.tracking_target and (entity.movement_pattern == 'tracking' or entity.movement_pattern == 'teleporter') then
+                    entity.target_x = pm.tracking_target.x
+                    entity.target_y = pm.tracking_target.y
+                end
+
+                -- Update difficulty scaler from game state if provided
+                if pm.get_difficulty_scaler then
+                    entity.difficulty_scaler = pm.get_difficulty_scaler(entity)
+                end
+
                 if pm.PatternMovement then
                     pm.PatternMovement.update(dt, entity, pm.bounds)
                 end
+            end
+        end
+
+        -- Sprite rotation behavior (visual only)
+        if config.sprite_rotation then
+            local pm = config.pattern_movement and config.pattern_movement.PatternMovement
+            if pm and pm.updateSpriteRotation then
+                pm.updateSpriteRotation(dt, entity)
+            end
+        end
+
+        -- Trail update behavior
+        if config.trails and entity.trail_positions then
+            table.insert(entity.trail_positions, 1, {x = entity.x, y = entity.y})
+            while #entity.trail_positions > (config.trails.max_length or 10) do
+                table.remove(entity.trail_positions)
+            end
+        end
+
+        -- Track when entity enters play area (for dodge counting)
+        if config.track_entered_play and not entity.entered_play then
+            local b = config.track_entered_play
+            if entity.x > (b.x or 0) and entity.x < (b.width or 800) and
+               entity.y > (b.y or 0) and entity.y < (b.height or 600) then
+                entity.entered_play = true
             end
         end
 
@@ -1320,16 +1373,46 @@ function EntityController:updateBehaviors(dt, config, collision_check)
         -- Bounce movement (uses PatternMovement-compatible fields: vx, vy, radius)
         if config.bounce_movement and entity.movement_pattern == 'bounce' then
             local bm = config.bounce_movement
-            entity.x = entity.x + (entity.vx or 0) * dt
-            entity.y = entity.y + (entity.vy or 0) * dt
             local r = entity.radius or 0
-            if entity.x < r or entity.x > (bm.width or 800) - r then
-                entity.vx = -(entity.vx or 0)
-                entity.x = math.max(r, math.min((bm.width or 800) - r, entity.x))
+            local w, h = bm.width or 800, bm.height or 600
+
+            -- Track when bouncer enters play area
+            if not entity.has_entered then
+                if entity.x >= r and entity.x <= w - r and entity.y >= r and entity.y <= h - r then
+                    entity.has_entered = true
+                end
             end
-            if entity.y < r or entity.y > (bm.height or 600) - r then
-                entity.vy = -(entity.vy or 0)
-                entity.y = math.max(r, math.min((bm.height or 600) - r, entity.y))
+
+            -- Only bounce after entering
+            if entity.has_entered then
+                entity.x = entity.x + (entity.vx or 0) * dt
+                entity.y = entity.y + (entity.vy or 0) * dt
+
+                local bounced = false
+                if entity.x < r or entity.x > w - r then
+                    entity.vx = -(entity.vx or 0)
+                    entity.x = math.max(r, math.min(w - r, entity.x))
+                    bounced = true
+                end
+                if entity.y < r or entity.y > h - r then
+                    entity.vy = -(entity.vy or 0)
+                    entity.y = math.max(r, math.min(h - r, entity.y))
+                    bounced = true
+                end
+
+                -- Count bounces and check max
+                if bounced then
+                    entity.bounce_count = (entity.bounce_count or 0) + 1
+                    if bm.max_bounces and entity.bounce_count >= bm.max_bounces then
+                        entity.was_dodged = true
+                        entity.removal_reason = "max_bounces"
+                        entity.marked_for_removal = true
+                    end
+                end
+            else
+                -- Move toward play area before entering
+                entity.x = entity.x + (entity.vx or 0) * dt
+                entity.y = entity.y + (entity.vy or 0) * dt
             end
         end
 
@@ -1342,7 +1425,8 @@ function EntityController:updateBehaviors(dt, config, collision_check)
                     config.delayed_spawn.on_spawn(entity, ds)
                 end
                 entity.delayed_spawn.spawned = true
-                self:removeEntity(entity)
+                -- Mark for removal instead of removing during iteration
+                entity.marked_for_removal = true
             end
         end
 
@@ -1355,7 +1439,87 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             local off_right = entity.x > (bounds.right or bounds.width or 800)
 
             if off_bottom or off_top or off_left or off_right then
-                self:removeEntity(entity)
+                entity.removal_reason = "offscreen"
+                entity.marked_for_removal = true
+            end
+        end
+
+        -- Collision behavior (check against a target like player)
+        if config.collision and config.collision.target then
+            local target = config.collision.target
+            local tr = target.radius or 10
+            local er = entity.radius or 10
+            local dx = target.x - entity.x
+            local dy = target.y - entity.y
+            local dist_sq = dx * dx + dy * dy
+            local radii = tr + er
+
+            if dist_sq < radii * radii then
+                if config.collision.on_collision then
+                    local should_remove = config.collision.on_collision(entity, target)
+                    if should_remove ~= false then
+                        entity.removal_reason = "collision"
+                        entity.marked_for_removal = true
+                    end
+                else
+                    entity.removal_reason = "collision"
+                    entity.marked_for_removal = true
+                end
+            end
+
+            -- Trail collision (if entity has trail_positions)
+            if entity.trail_positions and #entity.trail_positions > 1 and config.collision.check_trails then
+                for j = 1, #entity.trail_positions - 1 do
+                    local p1 = entity.trail_positions[j]
+                    local p2 = entity.trail_positions[j + 1]
+                    -- Circle vs line segment collision
+                    local lx, ly = p2.x - p1.x, p2.y - p1.y
+                    local fx, fy = p1.x - target.x, p1.y - target.y
+                    local a = lx * lx + ly * ly
+                    local b = 2 * (fx * lx + fy * ly)
+                    local c = fx * fx + fy * fy - tr * tr
+                    local disc = b * b - 4 * a * c
+                    if disc >= 0 and a > 0 then
+                        disc = math.sqrt(disc)
+                        local t1 = (-b - disc) / (2 * a)
+                        local t2 = (-b + disc) / (2 * a)
+                        if (t1 >= 0 and t1 <= 1) or (t2 >= 0 and t2 <= 1) then
+                            if config.collision.on_collision then
+                                local should_remove = config.collision.on_collision(entity, target, "trail")
+                                if should_remove ~= false then
+                                    entity.removal_reason = "trail_collision"
+                                    entity.marked_for_removal = true
+                                end
+                            else
+                                entity.removal_reason = "trail_collision"
+                                entity.marked_for_removal = true
+                            end
+                            break
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Enter zone behavior (trigger callback when entity enters a zone)
+        if config.enter_zone and not entity.has_entered_zone then
+            local zone = config.enter_zone
+            local inside = false
+            if zone.check_fn then
+                inside = zone.check_fn(entity)
+            elseif zone.bounds then
+                inside = entity.x > zone.bounds.x and entity.x < zone.bounds.x + zone.bounds.width and
+                         entity.y > zone.bounds.y and entity.y < zone.bounds.y + zone.bounds.height
+            end
+            if inside then
+                entity.has_entered_zone = true
+                if zone.on_enter then
+                    local should_remove = zone.on_enter(entity)
+                    if should_remove then
+                        entity.removal_reason = "entered_zone"
+                        entity.marked_for_removal = true
+                    end
+                end
             end
         end
 
@@ -1455,11 +1619,12 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             end
         end
 
-        -- Remove grid entities that go off the bottom
+        -- Mark grid entities for removal when they go off the bottom
         if gum.bounds_bottom then
             for _, e in ipairs(self.entities) do
                 if e.active and e.movement_pattern == 'grid' and e.y > gum.bounds_bottom then
-                    self:removeEntity(e)
+                    e.removal_reason = "out_of_bounds"
+                    e.marked_for_removal = true
                 end
             end
         end

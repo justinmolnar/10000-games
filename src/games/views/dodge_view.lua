@@ -209,19 +209,18 @@ function DodgeView:draw()
 
     g.setColor(0.9, 0.9, 0.3, 0.45)
     local warning_draw_thickness = self.OBJECT_DRAW_SIZE * 1.5
-    for _, warning in ipairs(game.warnings) do
-        if warning.type == 'radial' then
-            -- Draw a short wedge/arrow along the initial angle from the spawn point
-            local len = 5000
-            local x2 = warning.sx + math.cos(warning.angle) * len
-            local y2 = warning.sy + math.sin(warning.angle) * len
-            g.setLineWidth(3)
-            g.line(warning.sx, warning.sy, x2, y2)
-            g.setLineWidth(1)
-            g.circle('fill', warning.sx, warning.sy, 4)
-        else
-            -- Legacy fallback
-            g.rectangle('fill', 0, 0, 0, 0)
+    -- Draw warning entities (type = 'warning' with warning_type = 'radial')
+    for _, obj in ipairs(game.objects) do
+        if obj.type == 'warning' then
+            if obj.warning_type == 'radial' then
+                local len = 5000
+                local x2 = obj.x + math.cos(obj.spawn_angle or 0) * len
+                local y2 = obj.y + math.sin(obj.spawn_angle or 0) * len
+                g.setLineWidth(3)
+                g.line(obj.x, obj.y, x2, y2)
+                g.setLineWidth(1)
+                g.circle('fill', obj.x, obj.y, 4)
+            end
         end
     end
 

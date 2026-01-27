@@ -343,6 +343,12 @@
         }
     },
     "enemy_types": {
+        "warning": {
+            "name": "warning",
+            "category": "warning",
+            "type": "static",
+            "radius": 0
+        },
         "obstacle": {
             "name": "obstacle",
             "category": "obstacle",
@@ -392,7 +398,12 @@
             "category": "obstacle",
             "type": "splitter",
             "speed_multiplier": 0.8,
-            "on_collision": "damage"
+            "on_collision": "damage",
+            "shards_count": 3,
+            "shard_speed_factor": 0.36,
+            "shard_radius_factor": 0.6,
+            "shard_radius_min": 6,
+            "spread_deg": 35
         },
     },
     "projectile_types": {

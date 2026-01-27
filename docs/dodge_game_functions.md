@@ -4,9 +4,68 @@ Comprehensive audit of all functions in `src/games/dodge_game.lua` with extracti
 
 ---
 
+## ⚠️ READ THIS FIRST - CRITICAL RULES FOR AI
+
+Before making any changes, read the "Rules for Extraction" section below. Key points:
+- **Refactor means MOVE code to components and DELETE from game file**
+- **"Component doesn't support X" is NOT an excuse - ADD the feature**
+- **Use existing patterns from other games (delayed_spawn, etc.)**
+- **Deviation from plan should say "None"**
+
+---
+
 ## Rules for Extraction
 
 **Follow the "Plan after discussion" for each function.** The Notes and Extraction Potential sections are just context - the Plan is the actual instruction on what to do. Each plan was discussed and agreed upon.
+
+### What "Refactor" Means
+
+Refactoring means MOVING existing code to where it belongs - into reusable components - then DELETING it from the game file. The functionality stays identical, but the code lives in the component, not the game.
+
+**Refactoring is NOT:**
+- Keeping "helper functions" in the game file because it's easier
+- Leaving code inline because it's "small" or "minimal" or "tightly coupled"
+- Creating new abstractions that still live in the game file
+- Partial extraction where some logic stays behind
+
+**Refactoring IS:**
+- Moving code to EntityController, PatternMovement, PhysicsUtils, etc.
+- Adding new features to components if they don't exist yet
+- Configuring components via schema/callbacks instead of inline code
+- Deleting the game code entirely after extraction
+
+### "Component Doesn't Support X" Is NOT An Excuse
+
+If the plan says "use EntityController for X" and EntityController doesn't support X, that means **ADD the feature to EntityController**. That's the work. The whole point of this refactoring is to build out the component library so future games are easier to create.
+
+Examples of WRONG thinking:
+- "EntityController doesn't have on_remove callback" → ADD on_remove to EntityController
+- "PatternMovement doesn't handle difficulty scaling" → ADD difficulty_scaler parameter
+- "EntityController doesn't have on_enter_zone" → ADD the behavior
+
+The component not having a feature is literally WHY we're doing this extraction. We're moving game-specific code into generic components.
+
+### Use Existing Patterns
+
+Other games already solved similar problems. Use their patterns:
+- **Warnings** → space_shooter uses delayed_spawn for meteor warnings. Same pattern.
+- **Collision callbacks** → EntityController has on_hit, on_death. Use them.
+- **Movement patterns** → PatternMovement has zigzag, wave, tracking. Use them.
+- **Shooting** → EntityController has shooting_enabled + on_shoot. Use it.
+
+Don't reinvent. Don't keep inline versions. Use what exists, extend if needed.
+
+### Difficulty Scaling Is Generic
+
+A multiplier that increases over time (like seeker turn rate scaling) is not seeker-specific. It applies to any entity. Set `difficulty_scaler = 1 + (time_elapsed / 90)` at spawn time, or have the component read it from game state. This is schema territory.
+
+### The Goal
+
+When a phase says "260 lines → 0 lines", that means 0 lines. Not "180 lines of helper functions." Not "we kept updateEntityBehaviors for complex stuff." Zero. The game file configures components via schema and callbacks. The logic lives in components.
+
+---
+
+### Procedural Rules
 
 1. Complete ALL functions within a section (phase) before stopping.
 2. After completing a section, fill in AI Notes with **exact line count change**.
@@ -25,6 +84,9 @@ Comprehensive audit of all functions in `src/games/dodge_game.lua` with extracti
 - Partial deletions (finish what you start)
 - Proceeding without documenting line count changes
 - Including AI as co-author on commits
+- Keeping "helper functions" in the game file
+- "Component doesn't support it" as a deviation excuse
+- Inline code because it's "minimal" or "tightly coupled"
 
 ---
 
@@ -706,18 +768,58 @@ Checks if object is outside game bounds plus radius margin.
 **Plan after discussion:** Delete entirely. Use PatternMovement.isOffScreen() or rely on EntityController remove_offscreen behavior which handles this internally. 5 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Clone 0 "Dodge Master" - basic obstacles spawn and move
+- [ ] Clone 11 "Dodge Bounce Master" - bouncer enemies bounce off walls
+- [ ] Clone 12 "Dodge Teleporter Chaos" - teleporter enemies teleport near player
+- [ ] Clone 17 "Dodge Hunter Escape" - seeker/chaser enemies turn toward player
+- [ ] Clone 48 "Dodge Trail Blazer" - trail collision still damages player
+- [ ] Clone 10 "Dodge Shooter Survival" - shooter enemies fire projectiles
 
 ### AI Notes
+**Added to EntityController:**
+- on_remove callback in removeEntity() - calls entity-level, type-level, and global callbacks
+- collision behavior in updateBehaviors - circle collision + trail collision with on_collision callback
+- enter_zone behavior in updateBehaviors - check_fn + on_enter callback
+- tracking_target and get_difficulty_scaler in pattern_movement behavior
+- sprite_rotation behavior
+- trails behavior - updates trail_positions array
+- track_entered_play behavior - tracks when entity enters play area
+- bounce counting in bounce_movement - has_entered, bounce_count, max_bounces
 
+**Added to PatternMovement:**
+- updateTeleporter() - teleports near target, updates velocity
+- updateTracking() - angle-based homing with difficulty_scaler
+- updateSpriteRotation() - visual sprite spinning
+
+**Deleted from dodge_game.lua:**
+- updateObjects (~260 lines) - replaced by EntityController behaviors
+- updateEntityBehaviors (~110 lines) - replaced by EntityController behaviors
+- checkPlayerCollisions (~55 lines) - replaced by collision behavior
+- updateWarnings (~11 lines) - replaced by delayed_spawn behavior
+- createWarning, createObjectFromWarning (~45 lines) - replaced by spawnWarning, spawnFromWarning
+- isObjectOffscreen - uses PatternMovement.isOffScreen
+
+**Added to dodge_game.lua:**
+- entity_behaviors_config with collision, enter_zone, delayed_spawn, trails, etc.
+- on_remove callback for dodge counting
+- spawnWarning() + spawnFromWarning() - uses delayed_spawn behavior
+- checkProjectileCollisions() - simple projectile-only check (~15 lines)
+- movement_pattern set at spawn time based on entity type
+
+**Updated dodge_view.lua:**
+- Warnings now render from game.objects (type='warning') instead of game.warnings array
 
 ### Status
-
+COMPLETE
 
 ### Line Count Change
-
+- dodge_game.lua: **-480 lines** (updateObjects, updateEntityBehaviors, checkPlayerCollisions, warning functions) → **+65 lines** (config, callbacks, spawnWarning) = **~-415 lines net**
+- entity_controller.lua: **+95 lines** (on_remove, collision, enter_zone, trails, track_entered_play, bounce counting, pattern_movement enhancements)
+- pattern_movement.lua: **+75 lines** (updateTeleporter, updateTracking, updateSpriteRotation, initPattern entries)
+- dodge_view.lua: **~0 lines** (changed warning rendering to use objects)
 
 ### Deviation from Plan
+None
 
 ---
 

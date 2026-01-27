@@ -210,11 +210,14 @@ Autonomous movement patterns for enemies, powerups, hazards.
 - **updateBezier(dt, entity, bounds)** - Follow quadratic bezier curve. Entity needs: bezier_path [{x,y},{x,y},{x,y}], bezier_duration. Sets entity.bezier_complete.
 - **updateOrbit(dt, entity, bounds)** - Circle around center. Entity needs: orbit_center_x/y, orbit_radius, orbit_speed.
 - **updateBounce(dt, entity, bounds)** - Move with velocity, bounce off bounds. Entity needs: vx, vy.
+- **updateTeleporter(dt, entity, bounds)** - Periodically teleport near target and move toward it. Entity needs: teleport_timer, teleport_interval, teleport_range, target_x, target_y. Updates angle/vx/vy after teleport.
+- **updateTracking(dt, entity, bounds)** - Angle-based homing toward target. Entity needs: angle, speed, tracking_strength (0-1), target_x, target_y. Optional: turn_rate (rad/sec), difficulty_scaler.
+- **updateSpriteRotation(dt, entity)** - Visual sprite spinning (doesn't affect movement). Entity needs: sprite_rotation_speed (deg/sec). Updates: sprite_rotation_angle.
 - **isOffScreen(entity, bounds, margin)** - Check if entity is outside bounds.
 - **initPattern(entity, pattern, config)** - Initialize pattern-specific fields with defaults.
 - **buildPath(pattern, params)** - Build bezier path for common patterns. Returns array of {x,y} control points. Params: start_x, start_y, end_x, end_y, curve_y, target_x, target_y, exit_x, exit_y, mid_x, mid_y.
 
-**Patterns:** "straight", "zigzag", "wave", "dive", "bezier", "orbit", "bounce"
+**Patterns:** "straight", "zigzag", "wave", "dive", "bezier", "orbit", "bounce", "teleporter", "tracking"
 **Path patterns (buildPath):** "swoop", "dive", "loop", "arc"
 
 ---
@@ -335,7 +338,7 @@ Generic enemy/obstacle spawning and management with pooling.
 - **checkCollision(obj, callback)** - Check collision with circle/rect object. Returns colliding entities.
 - **hitEntity(entity, damage, by_what)** - Deal damage, trigger callbacks. Returns true if killed.
 - **killEntity(entity)** - Trigger death callback, mark for removal.
-- **removeEntity(entity)** - Remove from list, return to pool.
+- **removeEntity(entity, removal_reason)** - Remove from list, return to pool. Calls on_remove callbacks (entity-level, type-level, and controller.on_remove) with (entity, reason).
 - **clear()** - Remove all entities.
 - **draw(render_callback)** - Draw all via callback.
 - **getActiveCount()** / **getTotalCount()** - Get counts.
@@ -369,10 +372,16 @@ Generic enemy/obstacle spawning and management with pooling.
 - `fall_enabled` - Entities fall at fall_speed
 - `move_enabled` - Entities move horizontally, bounce off walls
 - `regen_enabled` - Dead entities regenerate after regen_time
-- `shooting_enabled` - Entities fire at shoot_rate, calls on_shoot
+- `shooting_enabled` - Entities fire at shoot_rate, calls on_shoot(entity)
+- `pattern_movement` - Call PatternMovement.update for entities with movement_pattern. Config: {PatternMovement, bounds, tracking_target, get_difficulty_scaler(entity)}
+- `sprite_rotation` - Call PatternMovement.updateSpriteRotation for visual spinning
+- `trails` - Update entity.trail_positions array. Config: {max_length}
+- `track_entered_play` - Set entity.entered_play=true when inside bounds. Config: {x, y, width, height}
 - `rotation` - Entities rotate based on rotation_speed
-- `bounce_movement` - Entities with movement_pattern='bounce' bounce off {width, height} bounds
-- `delayed_spawn` - Entities with delayed_spawn={timer, spawn_type} convert after timer expires, calls on_spawn(entity, config)
+- `bounce_movement` - Entities with movement_pattern='bounce' bounce off walls, track has_entered, count bounces. Config: {width, height, max_bounces}. Sets was_dodged=true when max reached.
+- `collision` - Check circle collision + optional trail collision with target. Config: {target, check_trails, on_collision(entity, target, type)}. Returns true from on_collision to remove entity.
+- `enter_zone` - Trigger callback when entity enters zone. Config: {check_fn(entity) or bounds, on_enter(entity)}. Return true from on_enter to remove entity.
+- `delayed_spawn` - Entities with delayed_spawn={timer, spawn_type} convert after timer expires, calls on_spawn(entity, ds)
 - `timer_spawn` - Spawn entities on timers: {type_name = {interval, on_spawn(ec, type_name)}}
 - `remove_offscreen` - Remove entities outside bounds {top, bottom, left, right}
 - `grid_unit_movement` - Space Invaders style: all grid entities move as unit, speed up as count drops
