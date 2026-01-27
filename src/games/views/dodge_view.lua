@@ -57,9 +57,9 @@ function DodgeView:draw()
     self:drawBackground(game_width, game_height)
 
     -- Safe zone ring (shape-aware)
-    if game.safe_zone then
-        local sz = game.safe_zone
-        local shape = sz.shape or "circle"
+    if game.arena_controller then
+        local ac = game.arena_controller
+        local shape = ac.shape or "circle"
 
         -- Game over flash effect
         local flash_alpha = 0.2
@@ -71,34 +71,34 @@ function DodgeView:draw()
             g.setColor(0.2, 0.8, 1.0, flash_alpha)
         end
 
+        local r = ac:getEffectiveRadius()
         if shape == "circle" then
-            g.circle('fill', sz.x, sz.y, sz.radius)
+            g.circle('fill', ac.x, ac.y, r)
             if game.game_over then
                 g.setColor(1.0, 0.2, 0.2)
             else
                 g.setColor(0.2, 0.8, 1.0)
             end
             g.setLineWidth(2)
-            g.circle('line', sz.x, sz.y, sz.radius)
+            g.circle('line', ac.x, ac.y, r)
 
         elseif shape == "square" then
-            local half = sz.radius
-            g.rectangle('fill', sz.x - half, sz.y - half, half * 2, half * 2)
+            g.rectangle('fill', ac.x - r, ac.y - r, r * 2, r * 2)
             if game.game_over then
                 g.setColor(1.0, 0.2, 0.2)
             else
                 g.setColor(0.2, 0.8, 1.0)
             end
             g.setLineWidth(2)
-            g.rectangle('line', sz.x - half, sz.y - half, half * 2, half * 2)
+            g.rectangle('line', ac.x - r, ac.y - r, r * 2, r * 2)
 
         elseif shape == "hex" then
             -- Draw hexagon (6 vertices)
             local vertices = {}
             for i = 0, 5 do
                 local angle = (i / 6) * math.pi * 2 - math.pi / 2  -- Start at top
-                table.insert(vertices, sz.x + math.cos(angle) * sz.radius)
-                table.insert(vertices, sz.y + math.sin(angle) * sz.radius)
+                table.insert(vertices, ac.x + math.cos(angle) * r)
+                table.insert(vertices, ac.y + math.sin(angle) * r)
             end
             g.polygon('fill', vertices)
             if game.game_over then
@@ -111,12 +111,12 @@ function DodgeView:draw()
         end
 
         -- Draw deformation effect for "deformation" morph type
-        if sz.area_morph_type == "deformation" then
+        if ac.morph_type == "deformation" then
             -- Simple wobble visualization: draw additional circles at perturbed positions
             g.setColor(0.2, 0.8, 1.0, 0.1)
-            local wobble = math.sin(sz.morph_time * 3) * 5
-            g.circle('line', sz.x + wobble, sz.y, sz.radius + wobble)
-            g.circle('line', sz.x, sz.y + wobble, sz.radius + wobble)
+            local wobble = math.sin((ac.morph_timer or 0) * 3) * 5
+            g.circle('line', ac.x + wobble, ac.y, r + wobble)
+            g.circle('line', ac.x, ac.y + wobble, r + wobble)
         end
 
         g.setLineWidth(1)
@@ -341,8 +341,8 @@ function DodgeView:draw()
             local fog_x, fog_y
             if fog_origin == "player" then
                 fog_x, fog_y = game.player.x, game.player.y
-            elseif fog_origin == "circle_center" and game.safe_zone then
-                fog_x, fog_y = game.safe_zone.x, game.safe_zone.y
+            elseif (fog_origin == "circle_center" or fog_origin == "center") and game.arena_controller then
+                fog_x, fog_y = game.arena_controller.x, game.arena_controller.y
             else
                 fog_x, fog_y = game_width / 2, game_height / 2
             end

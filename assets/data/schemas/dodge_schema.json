@@ -187,7 +187,7 @@
         },
         "fog_of_war_origin": {
             "type": "enum",
-            "values": ["none", "player", "center", "mouse"],
+            "values": ["none", "player", "center", "circle_center", "mouse"],
             "default": "none",
             "description": "Center point for fog of war visibility"
         },

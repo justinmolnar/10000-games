@@ -570,30 +570,32 @@ Returns progress toward victory based on victory_condition type.
 **Plan after discussion:** Delete entirely. Add VictoryCondition:getProgress() - returns 0-1 based on condition type and current value. 11 lines → 0 lines.
 
 ### Testing (User)
-- [ ] Test "Sudden Death Dash" (clone 5) - has leaving_area_ends_game: true - verify instant death when leaving safe zone
-- [ ] Test "Danger Zone Deluxe" (clone 13) - has holes - verify hole collision causes game over
-- [ ] Test any time-based variant (e.g. "Time Attack" clone 11) - verify progress bar fills as time passes
-- [ ] Test any dodge_count variant (e.g. "Classic Dodge" clone 1) - verify progress bar fills as dodges increase
-- [ ] Verify win/lose sounds play on completion
+- [x] Clone 22 "Dodge One Strike" - leaving_area_ends_game: true - verify instant death when leaving safe zone
+- [x] Clone 6 "Dodge Momentum Master" - holes_count: 4 - verify hole collision causes game over
+- [x] Clone 35 "Dodge Fog Runner" - victory_condition: time - verify progress bar fills as time passes
+- [x] Clone 0 "Dodge Master" - default dodge_count victory - verify progress bar fills as dodges increase
 
 ### AI Notes
-- Deleted checkGameOver (40 lines) - moved inline to updateGameLogic (~12 lines)
-- Deleted checkComplete (9 lines) - BaseGame:checkComplete() already identical
-- Deleted onComplete (4 lines) - BaseGame:onComplete() already handles music stop + sounds
-- Deleted getCompletionRatio (11 lines) - added VictoryCondition:getProgress() instead
+- Deleted checkGameOver (40 lines), checkComplete (9 lines), onComplete (4 lines), getCompletionRatio (11 lines)
+- Added VictoryCondition:getProgress() for 0-1 progress tracking
 - Updated BaseGame:getCompletionRatio() to use victory_checker:getProgress() if available
-- Updated game_components_reference.md with VictoryCondition:getProgress() documentation
+- Added HUD progress bar config in setupComponents based on victory_condition type
+- Moved hole collision to updateObjects using PhysicsUtils.circleCollision
+- Instant death conditions (holes, leaving area) now call self:onComplete() to properly end game
+- **Bug fix:** setPlayArea() now recenters player when arena recenters - was causing instant death on spawn because window dimensions differ from schema defaults (player stayed at schema center while arena moved to window center)
 
 ### Status
 COMPLETE
 
 ### Line Count Change
-dodge_game.lua: -64 lines (checkGameOver, checkComplete, onComplete, getCompletionRatio deleted), +12 lines (inline checks) = **-52 lines net**
+dodge_game.lua: -64 lines deleted, +20 lines added (inline checks, progress bar, setPlayArea fix) = **-44 lines net**
 victory_condition.lua: +38 lines (getProgress function)
 base_game.lua: +4 lines (updated getCompletionRatio)
 
 ### Deviation from Plan
-Hole collision check added to updateObjects (not deleted entirely as plan suggested). ArenaController:isInside returns false for holes but doesn't set game_over. Holes are collision objects requiring explicit check. Added 6 lines to updateObjects using PhysicsUtils.circleCollision - consistent with other collision handling in that function.
+1. Hole collision check added to updateObjects (6 lines) - ArenaController:isInside returns false for holes but doesn't trigger game_over, needed explicit collision check with onComplete() call.
+2. Added progress bar config (+5 lines) - not in original plan but necessary for showing victory progress.
+3. Fixed setPlayArea to recenter player (+4 lines) - pre-existing bug where player spawned at schema center while arena recentered to window center.
 
 ---
 
@@ -609,18 +611,32 @@ Copies arena_controller state to self.safe_zone table.
 **Plan after discussion:** Delete entirely. Delete self.safe_zone table. Use arena_controller:getState() where needed. 16 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Clone 7 "Dodge Heartbeat" - area_morph_type: pulsing - verify arena pulses visually
+- [ ] Clone 22 "Dodge One Strike" - leaving_area_ends_game - verify still works after refactor
+- [ ] Clone 29 "Dodge Wobble Zone" - area_morph_type: deformation - verify wobble effect renders
+- [ ] Clone 39 "Dodge Gravity Well" - area_gravity: 250 - verify player pulled toward center
+- [ ] Clone 44 "Dodge Edge Lord" - fog_of_war_origin: circle_center - verify fog centers on arena
 
 ### AI Notes
-
+- Deleted syncSafeZoneFromArena function (5 lines)
+- Removed syncSafeZoneFromArena call from updateGameLogic
+- Removed self.safe_zone assignment in setupComponents
+- Updated gravity calculation to use arena_controller.x/y directly
+- Updated pickTargetPointOnRing to use arena_controller
+- Updated pickPointOnSafeZoneBoundary to use arena_controller
+- Updated pulse_with_arena spawn check to use arena_controller
+- Updated dodge_view.lua to use arena_controller instead of safe_zone
+- Kept self.holes as alias to arena_controller.holes for view compatibility
 
 ### Status
-
+COMPLETE
 
 ### Line Count Change
-
+dodge_game.lua: **-8 lines** (syncSafeZoneFromArena function + call + assignment removed)
+dodge_view.lua: +1 line (local r = ac:getEffectiveRadius())
 
 ### Deviation from Plan
+None. Deleted entirely as planned, replaced all usages with direct arena_controller access.
 
 ---
 

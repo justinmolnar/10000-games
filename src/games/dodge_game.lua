@@ -142,8 +142,7 @@ function DodgeGame:setupComponents()
             self.arena_controller:addHole(hole)
         end
     end
-    self.safe_zone = self.arena_controller:getState()
-    self.holes = self.arena_controller.holes
+    self.holes = self.arena_controller.holes  -- Alias for view
     self.leaving_area_ends_game = p.leaving_area_ends_game
 
     -- Player trail
@@ -265,7 +264,6 @@ function DodgeGame:updateGameLogic(dt)
     end
 
     self.arena_controller:update(dt)
-    self:syncSafeZoneFromArena()
     self.health_system:update(dt)
     self.lives = self.health_system.lives
     if self.player_trail then
@@ -282,9 +280,9 @@ function DodgeGame:updateGameLogic(dt)
     self.player.rotation = self.player.angle
 
     -- Environment forces (after movement, applied as position changes for all modes)
-    if self.params.area_gravity ~= 0 and self.safe_zone then
-        local dx = self.safe_zone.x - self.player.x
-        local dy = self.safe_zone.y - self.player.y
+    if self.params.area_gravity ~= 0 and self.arena_controller then
+        local dx = self.arena_controller.x - self.player.x
+        local dy = self.arena_controller.y - self.player.y
         local dist = math.sqrt(dx * dx + dy * dy)
         if dist > 0 then
             local force = self.params.area_gravity * dt
@@ -311,16 +309,6 @@ function DodgeGame:updateGameLogic(dt)
 
     self:updateWarnings(dt)
     self:updateObjects(dt)
-end
-
---------------------------------------------------------------------------------
--- ARENA / SAFE ZONE
---------------------------------------------------------------------------------
-
-function DodgeGame:syncSafeZoneFromArena()
-    if not self.arena_controller then return end
-    self.safe_zone = self.arena_controller:getState()
-    self.holes = self.arena_controller.holes
 end
 
 --------------------------------------------------------------------------------
@@ -633,7 +621,7 @@ function DodgeGame:spawnObjectOrWarning()
         self:createObject(sx, sy, angle, false)
         self.spawn_pattern_state.spiral_angle = self.spawn_pattern_state.spiral_angle + math.rad(30)
     elseif self.params.obstacle_spawn_pattern == "pulse_with_arena" then
-        if self.safe_zone then
+        if self.arena_controller then
             local sx, sy, angle = self:pickPointOnSafeZoneBoundary()
             self:createObject(sx, sy, angle, false)
         else
@@ -970,13 +958,13 @@ function DodgeGame:pickSpawnPointAtAngle(angle)
 end
 
 function DodgeGame:pickTargetPointOnRing()
-    local sz = self.safe_zone
+    local ac = self.arena_controller
     local scale = (self.params.target_ring_min_scale or 1.2) + math.random() * ((self.params.target_ring_max_scale or 1.5) - (self.params.target_ring_min_scale or 1.2))
-    local r = (sz and sz.radius or math.min(self.game_width, self.game_height) * 0.4) * scale
+    local r = (ac and ac:getEffectiveRadius() or math.min(self.game_width, self.game_height) * 0.4) * scale
     local a = math.random() * math.pi * 2
-    local cx = sz and sz.x or self.game_width/2
-    local cy = sz and sz.y or self.game_height/2
-    local shape = sz and sz.area_shape or "circle"
+    local cx = ac and ac.x or self.game_width/2
+    local cy = ac and ac.y or self.game_height/2
+    local shape = ac and ac.shape or "circle"
 
     if shape == "circle" then
         return cx + math.cos(a) * r, cy + math.sin(a) * r
@@ -1010,10 +998,10 @@ function DodgeGame:pickTargetPointOnRing()
 end
 
 function DodgeGame:pickPointOnSafeZoneBoundary()
-    local sz = self.safe_zone
-    local r = sz.radius
-    local cx, cy = sz.x, sz.y
-    local shape = sz.area_shape or "circle"
+    local ac = self.arena_controller
+    local r = ac:getEffectiveRadius()
+    local cx, cy = ac.x, ac.y
+    local shape = ac.shape or "circle"
     local spawn_angle = math.random() * math.pi * 2
 
     if shape == "circle" then
