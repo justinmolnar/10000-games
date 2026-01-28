@@ -364,21 +364,13 @@ end
 function DodgeGame:updateGameLogic(dt)
     if self.game_over or self.completed then return end
 
-    -- Check if player left safe zone (instant death mode)
-    if self.leaving_area_ends_game and self.arena_controller then
-        if not self.arena_controller:isInside(self.player.x, self.player.y, self.player.radius) then
-            self.game_over = true
-            self:onComplete()
-            return
-        end
+    -- Lethal zone checks
+    if self.leaving_area_ends_game and not self.arena_controller:isInside(self.player.x, self.player.y, self.player.radius) then
+        self.game_over = true; self:onComplete(); return
     end
-
-    -- Check hole collision (instant death)
     for _, hole in ipairs(self.arena_controller.holes) do
         if PhysicsUtils.circleCollision(self.player.x, self.player.y, self.player.radius, hole.x, hole.y, hole.radius) then
-            self.game_over = true
-            self:onComplete()
-            return
+            self.game_over = true; self:onComplete(); return
         end
     end
 
@@ -389,37 +381,28 @@ function DodgeGame:updateGameLogic(dt)
         self.entity_controller.spawn_rate = self.spawn_rate / accel
     end
 
-    -- Entity controller handles spawning, basic movement, lifetime
+    -- Systems
     self.entity_controller:update(dt)
-
-    -- Update all entity behaviors (movement patterns, collision, shooting, etc)
     self.entity_controller:updateBehaviors(dt, self.entity_behaviors_config)
-
-    -- Projectile system (separate from entities)
-    local game_bounds = {x_min = 0, x_max = self.game_width, y_min = 0, y_max = self.game_height}
-    self.projectile_system:update(dt, game_bounds)
-
-    -- Check projectile collision with player
-    if self:checkProjectileCollisions() then
-        return  -- Game over
-    end
-
-    -- Build combined objects list for view
-    self.objects = self.entity_controller:getEntities()
-    local projectiles = self.projectile_system:getProjectiles()
-    for _, proj in ipairs(projectiles) do
-        table.insert(self.objects, proj)
-    end
-
+    self.projectile_system:update(dt, {x_min = 0, x_max = self.game_width, y_min = 0, y_max = self.game_height})
+    if self:checkProjectileCollisions() then return end
     self.arena_controller:update(dt)
     self.health_system:update(dt)
-    self.lives = self.health_system.lives
-    if self.player_trail then
-        self.player_trail:updateFromEntity(self.player)
-    end
     self.visual_effects:update(dt)
 
-    -- Player movement
+    -- View state
+    self.lives = self.health_system.lives
+    self.objects = self.entity_controller:getEntities()
+    for _, proj in ipairs(self.projectile_system:getProjectiles()) do
+        table.insert(self.objects, proj)
+    end
+    if self.player_trail then self.player_trail:updateFromEntity(self.player) end
+
+    -- Player
+    self:updatePlayer(dt)
+end
+
+function DodgeGame:updatePlayer(dt)
     local input = self:buildInput()
     local bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height, wrap_x = false, wrap_y = false}
     self.player.time_elapsed = self.time_elapsed
@@ -427,7 +410,6 @@ function DodgeGame:updateGameLogic(dt)
     self.movement_controller:update(dt, self.player, input, bounds)
     self.player.rotation = self.player.angle
 
-    -- Environment forces
     if self.params.area_gravity ~= 0 and self.arena_controller then
         local dx = self.arena_controller.x - self.player.x
         local dy = self.arena_controller.y - self.player.y
@@ -448,7 +430,6 @@ function DodgeGame:updateGameLogic(dt)
         PhysicsUtils.clampSpeed(self.player, self.player.max_speed)
     end
     self.arena_controller:clampEntity(self.player)
-
 end
 
 --------------------------------------------------------------------------------

@@ -1074,17 +1074,20 @@ Main game loop. Checks game over. Updates entity_controller and projectile_syste
 - [ ] Victory and loss conditions still trigger
 
 ### AI Notes
-- Deleted draw() function (-8 lines) - inherits from BaseGame:draw()
-- updateGameLogic simplification deferred until Phases 3-13 complete
+- draw() already deleted in earlier pass (inherits from BaseGame:draw())
+- Most plan items (spawn timer, updateWarnings, updateObjects, updateShield, updateCameraShake, updateScoreTracking, syncSafeZoneFromArena) were already eliminated in Phases 3-13
+- Extracted updatePlayer(dt) — movement, environment forces (gravity/wind), speed clamp, arena clamp
+- Reorganized updateGameLogic: lethal checks → systems → view state → player
+- Compacted lethal zone checks (removed redundant nil guard on arena_controller)
 
 ### Status
-Partial (draw deleted, updateGameLogic deferred)
+COMPLETE
 
 ### Line Count Change
-- dodge_game.lua: 1546 → 1538 (-8 lines from draw deletion)
+- dodge_game.lua: 639 → 619 (-20 lines)
 
 ### Deviation from Plan
-Phase moved to end due to dependencies on other phases. draw() deleted as planned. updateGameLogic changes require Phases 3-13 to be completed first.
+Plan's "~5 lines" target was written before Phases 3-13 existed. The remaining game-specific logic (lethal zones, spawn acceleration, projectile collision, player movement, environment forces) is irreducible — it's the game, not boilerplate.
 
 ---
 
