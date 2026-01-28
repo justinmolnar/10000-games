@@ -12,6 +12,7 @@ local BaseGame = require('src.games.base_game')
 local DodgeView = require('src.games.views.dodge_view')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local PatternMovement = require('src.utils.game_components.pattern_movement')
+local SchemaLoader = require('src.utils.game_components.schema_loader')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 --------------------------------------------------------------------------------
@@ -92,58 +93,26 @@ function DodgeGame:setupComponents()
         jump_distance = p.jump_distance, jump_cooldown = p.jump_cooldown, jump_speed = p.jump_speed
     })
 
-    -- Arena controller (safe zone)
-    local min_dim = math.min(self.game_width, self.game_height)
+    -- Arena controller (safe zone) — AC computes radius/velocity from raw params
     local level_scale = 1 + ((self.runtimeCfg.drift and self.runtimeCfg.drift.level_scale_add_per_level) or 0.15) * math.max(0, (self.difficulty_level or 1) - 1)
     local drift_speed = ((self.runtimeCfg.drift and self.runtimeCfg.drift.base_speed) or 45) * level_scale
-
-    local target_vx, target_vy = 0, 0
-    if p.area_movement_type == "random" then
-        local angle = math.random() * math.pi * 2
-        target_vx = math.cos(angle) * drift_speed * p.area_movement_speed
-        target_vy = math.sin(angle) * drift_speed * p.area_movement_speed
-    elseif p.area_movement_type == "cardinal" then
-        local dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
-        local dir = dirs[math.random(1, 4)]
-        target_vx = dir[1] * drift_speed * p.area_movement_speed
-        target_vy = dir[2] * drift_speed * p.area_movement_speed
-    end
-
-    local initial_radius = min_dim * (p.initial_safe_radius_fraction or 0.48) * p.area_size
-    local min_radius = min_dim * (p.min_safe_radius_fraction or 0.35) * p.area_size
-    local shrink_speed = (initial_radius - min_radius) / ((p.safe_zone_shrink_sec or 45) / self.difficulty_modifiers.complexity)
 
     local ArenaController = self.di.components.ArenaController
     self.arena_controller = ArenaController:new({
         safe_zone = true, x = self.game_width/2, y = self.game_height/2,
-        radius = initial_radius, safe_zone_radius = initial_radius,
-        safe_zone_min_radius = min_radius, safe_zone_shrink_speed = shrink_speed,
         shape = p.area_shape or "circle", morph_type = p.area_morph_type or "shrink",
-        morph_speed = p.area_morph_speed or 1.0, shrink_speed = shrink_speed,
+        morph_speed = p.area_morph_speed or 1.0,
+        -- Raw params: AC computes radius, min_radius, shrink_speed internally
+        area_size = p.area_size, initial_radius_fraction = p.initial_safe_radius_fraction or 0.48,
+        min_radius_fraction = p.min_safe_radius_fraction or 0.35,
+        shrink_seconds = p.safe_zone_shrink_sec or 45, complexity_modifier = self.difficulty_modifiers.complexity,
+        -- Movement: AC computes initial velocity internally
         movement = (p.area_movement_type == "random") and "drift" or p.area_movement_type,
         movement_speed = drift_speed * p.area_movement_speed, friction = p.area_friction or 0.95,
         direction_change_interval = 2.0, container_width = self.game_width,
-        container_height = self.game_height, bounds_padding = 0,
-        vx = target_vx, vy = target_vy, target_vx = target_vx, target_vy = target_vy
+        container_height = self.game_height, bounds_padding = 0
     })
 
-    if p.holes_count > 0 and p.holes_type ~= "none" then
-        for i = 1, p.holes_count do
-            local hole = {radius = 8}
-            if p.holes_type == "circle" then
-                local angle = math.random() * math.pi * 2
-                hole.angle = angle
-                hole.x, hole.y = self.arena_controller:getPointOnShapeBoundary(angle, initial_radius)
-                hole.on_boundary = true
-            else
-                hole.x = math.random(hole.radius, self.game_width - hole.radius)
-                hole.y = math.random(hole.radius, self.game_height - hole.radius)
-                hole.on_boundary = false
-            end
-            self.arena_controller:addHole(hole)
-        end
-    end
-    self.holes = self.arena_controller.holes  -- Alias for view
     self.leaving_area_ends_game = p.leaving_area_ends_game
 
     -- Player trail
@@ -156,31 +125,33 @@ function DodgeGame:setupComponents()
 
     -- Entity controller from schema with pattern-based spawning
     local pattern = p.obstacle_spawn_pattern or "random"
-    local spawn_func = function(ec)
-        local sx, sy, forced_angle
-        local margin = (p.object_radius or 15) - ((game.runtimeCfg.arena and game.runtimeCfg.arena.spawn_inset) or 2)
-        local bounds = {min_x = 0, max_x = game.game_width, min_y = 0, max_y = game.game_height}
-        if pattern == "spiral" then
-            sx, sy = ec:calculateSpawnPosition({region = "edge", angle = game.spawn_state.spiral_angle, margin = margin, bounds = bounds})
-            game.spawn_state.spiral_angle = game.spawn_state.spiral_angle + math.rad(30)
-        elseif pattern == "pulse_with_arena" and game.arena_controller then
-            sx, sy, forced_angle = game.arena_controller:getRandomBoundaryPoint()
-        elseif pattern == "clusters" then
-            for i = 1, math.random(2, 4) do
-                game:spawnNext()
-            end
-            return
-        else
-            sx, sy = ec:calculateSpawnPosition({region = "edge", margin = margin, bounds = bounds})
-        end
-        game:spawnNext(sx, sy, forced_angle)
+    local spawn_func = function(ec, sx, sy, angle)
+        game:spawnNext(sx, sy, angle)
+    end
+
+    local margin = (p.object_radius or 15) - ((self.runtimeCfg.arena and self.runtimeCfg.arena.spawn_inset) or 2)
+    self.spawn_bounds = {min_x = 0, max_x = self.game_width, min_y = 0, max_y = self.game_height}
+    local position_pattern = "random_edge"
+    local position_config = {margin = margin, bounds = self.spawn_bounds}
+    if pattern == "spiral" then
+        position_pattern = "spiral"
+        position_config.angle_step = math.rad(30)
+    elseif pattern == "pulse_with_arena" then
+        position_pattern = "boundary"
+        position_config.get_boundary_point = function() return game.arena_controller:getRandomBoundaryPoint() end
+    elseif pattern == "clusters" then
+        position_pattern = "clusters"
+        position_config.cluster_min = 2
+        position_config.cluster_max = 4
     end
 
     local spawn_config
     if pattern == "waves" then
-        spawn_config = {mode = "burst", burst_count = 6, burst_interval = 0.15, burst_pause = 2.5, spawn_func = spawn_func}
+        spawn_config = {mode = "burst", burst_count = 6, burst_interval = 0.15, burst_pause = 2.5,
+            position_pattern = position_pattern, position_config = position_config, spawn_func = spawn_func}
     else
-        spawn_config = {mode = "continuous", rate = 1.0, spawn_func = spawn_func, max_concurrent = 500}
+        spawn_config = {mode = "continuous", rate = 1.0, max_concurrent = 500,
+            position_pattern = position_pattern, position_config = position_config, spawn_func = spawn_func}
     end
     self:createEntityControllerFromSchema({}, {spawning = spawn_config, pooling = true, max_entities = 500})
 
@@ -191,8 +162,26 @@ function DodgeGame:setupComponents()
         end
     end
 
+    -- Spawn hole entities via EC
+    if p.holes_count > 0 and p.holes_type ~= "none" then
+        local ac = self.arena_controller
+        self.entity_controller:spawnMultiple(p.holes_count, function()
+            if p.holes_type == "circle" then
+                local angle = math.random() * math.pi * 2
+                local hx, hy = ac:getPointOnShapeBoundary(angle)
+                return game.entity_controller:spawn("hole", hx, hy, {boundary_angle = angle})
+            end
+            return game.entity_controller:spawn("hole", math.random(8, game.game_width - 8), math.random(8, game.game_height - 8))
+        end)
+    end
+
     -- Configure entity behaviors for updateBehaviors
     self.entity_behaviors_config = {
+        boundary_anchor = (p.holes_count > 0 and p.holes_type == "circle") and {
+            get_boundary_point = function(angle)
+                return game.arena_controller:getPointOnShapeBoundary(angle, game.arena_controller:getEffectiveRadius())
+            end
+        } or nil,
         shooting_enabled = true,
         on_shoot = function(entity)
             game:onEntityShoot(entity)
@@ -225,6 +214,16 @@ function DodgeGame:setupComponents()
             target = self.player,
             check_trails = true,
             on_collision = function(entity, target, collision_type)
+                if entity.type_name == "hole" then
+                    game.metrics.collisions = game.metrics.collisions + 1
+                    game.current_combo = 0
+                    game:takeDamage(1, "hit")
+                    if not game.health_system:isAlive() then
+                        game:playSound("death", 1.0)
+                        game:onComplete()
+                    end
+                    return false  -- don't remove hole
+                end
                 game.metrics.collisions = game.metrics.collisions + 1
                 game.current_combo = 0
                 game:takeDamage(1, "hit")
@@ -305,6 +304,23 @@ function DodgeGame:setupEntities()
         self.spawn_composition = {{name = "obstacle", weight = 1}}
     end
 
+    -- Pre-resolve per-type params (size, speed, sprite settings) via SchemaLoader.resolveChain
+    local sources = {self.variant, self.runtimeCfg.objects}
+    local default_radius = p.object_radius or 15
+    for type_name, def in pairs(p.enemy_types) do
+        if not def.resolved then
+            def.resolved_size_range = def.size_range
+                or SchemaLoader.resolveChain(def.name or type_name, "size_range", "enemy_sizes", sources)
+                or {default_radius, default_radius}
+            def.resolved_speed_range = def.speed_range
+                or SchemaLoader.resolveChain(def.name or type_name, "speed_range", "enemy_speeds", sources)
+                or {self.object_speed, self.object_speed}
+            def.resolved_sprite_settings = def.sprite_settings
+                or SchemaLoader.resolveChain(def.name or type_name, "sprite_settings", "enemy_sprite_settings", sources)
+            def.resolved = true
+        end
+    end
+
     -- Metrics
     self.metrics.objects_dodged = 0
     self.metrics.collisions = 0
@@ -323,8 +339,6 @@ function DodgeGame:setupEntities()
         turbulence_range = math.pi * 0.5
     }
 
-    -- Spawn pattern state
-    self.spawn_state = {spiral_angle = 0}
 end
 
 --------------------------------------------------------------------------------
@@ -355,6 +369,10 @@ function DodgeGame:setPlayArea(width, height)
         self.entity_behaviors_config.track_entered_play.width = width
         self.entity_behaviors_config.track_entered_play.height = height
     end
+    if self.spawn_bounds then
+        self.spawn_bounds.max_x = width
+        self.spawn_bounds.max_y = height
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -364,14 +382,9 @@ end
 function DodgeGame:updateGameLogic(dt)
     if self.game_over or self.completed then return end
 
-    -- Lethal zone checks
+    -- Lethal zone check
     if self.leaving_area_ends_game and not self.arena_controller:isInside(self.player.x, self.player.y, self.player.radius) then
         self.game_over = true; self:onComplete(); return
-    end
-    for _, hole in ipairs(self.arena_controller.holes) do
-        if PhysicsUtils.circleCollision(self.player.x, self.player.y, self.player.radius, hole.x, hole.y, hole.radius) then
-            self.game_over = true; self:onComplete(); return
-        end
     end
 
     -- Spawn rate acceleration
@@ -503,29 +516,15 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
     local speed_mult = enemy_def.speed_multiplier or 1.0
     local name = enemy_def.name or type_name
 
-    -- Size resolution chain
-    local size_range = enemy_def.size_range
-        or (self.variant and self.variant.enemy_sizes and self.variant.enemy_sizes[name])
-        or (self.variant and self.variant.size_range)
-        or (self.runtimeCfg.objects and self.runtimeCfg.objects.enemy_sizes and self.runtimeCfg.objects.enemy_sizes[name])
-        or (self.runtimeCfg.objects and self.runtimeCfg.objects.size_range)
-        or {(self.params.object_radius or 15), (self.params.object_radius or 15)}
+    -- Pre-resolved params from setupEntities
+    local size_range = enemy_def.resolved_size_range or {(self.params.object_radius or 15), (self.params.object_radius or 15)}
     local final_radius = size_range[1] + math.random() * (size_range[2] - size_range[1])
 
-    -- Speed resolution chain
-    local speed_range = enemy_def.speed_range
-        or (self.variant and self.variant.enemy_speeds and self.variant.enemy_speeds[name])
-        or (self.variant and self.variant.speed_range)
-        or (self.runtimeCfg.objects and self.runtimeCfg.objects.enemy_speeds and self.runtimeCfg.objects.enemy_speeds[name])
-        or (self.runtimeCfg.objects and self.runtimeCfg.objects.speed_range)
-        or {self.object_speed, self.object_speed}
+    local speed_range = enemy_def.resolved_speed_range or {self.object_speed, self.object_speed}
     local base_speed = speed_range[1] + math.random() * (speed_range[2] - speed_range[1])
     local final_speed = base_speed * speed_mult
 
-    -- Sprite settings resolution
-    local sprite_settings = enemy_def.sprite_settings
-        or (self.variant and self.variant.enemy_sprite_settings and self.variant.enemy_sprite_settings[name])
-        or (self.runtimeCfg.objects and self.runtimeCfg.objects.enemy_sprite_settings and self.runtimeCfg.objects.enemy_sprite_settings[name])
+    local sprite_settings = enemy_def.resolved_sprite_settings
     local sprite_rotation = (sprite_settings and sprite_settings.rotation) or 0
     local sprite_direction = (sprite_settings and sprite_settings.direction) or "movement_based"
 

@@ -409,6 +409,14 @@
             "shard_radius_min": 6,
             "spread_deg": 35
         },
+        "hole": {
+            "name": "hole",
+            "category": "hazard",
+            "type": "static",
+            "radius": 8,
+            "on_collision": "instant_death",
+            "skip_offscreen_removal": true
+        },
     },
     "projectile_types": {
         "enemy_projectile": {

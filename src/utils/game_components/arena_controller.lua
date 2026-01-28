@@ -26,8 +26,6 @@
 --       movement = "none",             -- "none", "drift", "cardinal", "follow"
 --       movement_speed = 50,           -- Movement speed
 --       friction = 0.95,               -- Movement friction
---       -- Holes:
---       holes = {},                    -- Array of hole definitions
 --   })
 --
 --   -- In update loop:
@@ -103,16 +101,44 @@ function ArenaController:new(params)
     self.container_width = params.container_width or self.base_width
     self.container_height = params.container_height or self.base_height
 
-    -- Holes/gaps in the arena boundary
-    self.holes = params.holes or {}
-    -- Each hole: {x, y, radius, angle (optional for circular placement)}
-
     -- Moving walls offset (Snake-specific feature)
     self.wall_offset_x = 0
     self.wall_offset_y = 0
     self.moving_walls = params.moving_walls or false
     self.wall_move_interval = params.wall_move_interval or 3
     self.wall_move_timer = 0
+
+    -- Compute radius/shrink from raw schema params if area_size provided
+    if params.area_size then
+        local min_dim = math.min(self.container_width, self.container_height)
+        local area_size = params.area_size
+        self.radius = min_dim * (params.initial_radius_fraction or 0.48) * area_size
+        self.initial_radius = self.radius
+        self.min_radius = min_dim * (params.min_radius_fraction or 0.35) * area_size
+        if params.shrink_seconds and params.shrink_seconds > 0 then
+            local complexity = params.complexity_modifier or 1.0
+            self.shrink_speed = (self.radius - self.min_radius) / (params.shrink_seconds / complexity)
+        end
+    end
+
+    -- Compute initial velocity from movement params
+    if params.movement ~= "none" and params.movement_speed and params.movement_speed > 0 then
+        local speed = params.movement_speed
+        if params.movement == "drift" then
+            local angle = math.random() * math.pi * 2
+            self.vx = math.cos(angle) * speed
+            self.vy = math.sin(angle) * speed
+            self.target_vx = self.vx
+            self.target_vy = self.vy
+        elseif params.movement == "cardinal" then
+            local dirs = {{1,0},{-1,0},{0,1},{0,-1}}
+            local d = dirs[math.random(1,4)]
+            self.vx = d[1] * speed
+            self.vy = d[2] * speed
+            self.target_vx = self.vx
+            self.target_vy = self.vy
+        end
+    end
 
     -- Callback for shrink events (to spawn obstacles)
     self.on_shrink = params.on_shrink or nil
@@ -153,9 +179,6 @@ function ArenaController:update(dt)
     if self.moving_walls then
         self:updateMovingWalls(dt)
     end
-
-    -- Update hole positions (orbiting and boundary-attached)
-    self:updateHoles(dt)
 end
 
 -- Shrinking update (rectangular shrinking by adding walls)
@@ -299,23 +322,7 @@ function ArenaController:updateMovingWalls(dt)
     end
 end
 
--- Update holes (shape-aware for all arena shapes)
-function ArenaController:updateHoles(dt)
-    local effective_radius = self:getEffectiveRadius()
-    for _, hole in ipairs(self.holes) do
-        if hole.orbit_speed then
-            -- Orbiting holes rotate around the arena
-            hole.angle = (hole.angle or 0) + hole.orbit_speed * dt
-            hole.x, hole.y = self:getPointOnShapeBoundary(hole.angle, effective_radius)
-        elseif hole.on_boundary then
-            -- Boundary-attached holes stay at their angle on the boundary (shape-aware)
-            hole.x, hole.y = self:getPointOnShapeBoundary(hole.angle or 0, effective_radius)
-        end
-        -- Static holes (no orbit_speed, no on_boundary) keep their position
-    end
-end
-
--- Get point on shape boundary at given angle (for holes, spawns, etc.)
+-- Get point on shape boundary at given angle (for spawns, etc.)
 function ArenaController:getPointOnShapeBoundary(angle, radius)
     radius = radius or self:getEffectiveRadius()
 
@@ -509,21 +516,7 @@ function ArenaController:isInside(x, y, margin)
             inside_shape = dist_sq <= effective_radius * effective_radius
         end
 
-        if not inside_shape then
-            return false
-        end
-
-        -- Check holes
-        for _, hole in ipairs(self.holes) do
-            local hole_dx = x - hole.x
-            local hole_dy = y - hole.y
-            local hole_dist_sq = hole_dx * hole_dx + hole_dy * hole_dy
-            if hole_dist_sq < hole.radius * hole.radius then
-                return false  -- Inside a hole
-            end
-        end
-
-        return true
+        return inside_shape
     end
 
     -- Non-safe-zone shapes
@@ -588,16 +581,6 @@ function ArenaController:setVelocity(vx, vy)
     self.target_vy = vy
 end
 
--- Add a hole to the arena boundary
-function ArenaController:addHole(hole)
-    table.insert(self.holes, hole)
-end
-
--- Remove all holes
-function ArenaController:clearHoles()
-    self.holes = {}
-end
-
 -- Reset arena to initial state
 function ArenaController:reset()
     self.current_width = self.base_width
@@ -645,8 +628,7 @@ function ArenaController:getState()
         deformation_offset = self.deformation_offset,
         shrink_progress = self:getShrinkProgress(),
         wall_offset_x = self.wall_offset_x,
-        wall_offset_y = self.wall_offset_y,
-        holes = self.holes
+        wall_offset_y = self.wall_offset_y
     }
 end
 

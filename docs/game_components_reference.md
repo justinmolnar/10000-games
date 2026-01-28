@@ -147,12 +147,12 @@ Reusable movement for multiple modes. All deterministic for demo playback.
 ---
 
 ## ArenaController
-Manages play area bounds, shapes, shrinking, pulsing, movement, holes.
+Manages play area bounds, shapes, shrinking, pulsing, movement.
 
-- **new(params)** - Create arena. Params: width, height, shape ("rectangle"/"circle"/"hexagon"), shrink, safe_zone, pulse, movement, holes, grid_mode, etc.
-- **update(dt)** - Update shrinking, morphing, pulsing, movement, holes.
+- **new(params)** - Create arena. Params: width, height, shape ("rectangle"/"circle"/"hexagon"), shrink, safe_zone, pulse, movement, grid_mode, etc. Also accepts raw schema params: area_size, initial_radius_fraction, min_radius_fraction, shrink_seconds, complexity_modifier (computes radius/shrink internally). Accepts movement + movement_speed to compute initial velocity for "drift"/"cardinal" types.
+- **update(dt)** - Update shrinking, morphing, pulsing, movement.
 - **getBounds()** - Get current bounds for collision/rendering. Returns {x, y, width, height, radius, shape}.
-- **isInside(x, y)** - Check if position is inside arena (handles all shapes + holes).
+- **isInside(x, y)** - Check if position is inside arena (handles all shapes).
 - **isInsideGrid(grid_x, grid_y)** - Check if grid position is inside (for Snake-style games).
 - **getEffectiveRadius()** - Get radius including pulse offset.
 - **getShrinkProgress()** - Get shrink progress 0-1 (0=full, 1=min size).
@@ -160,13 +160,17 @@ Manages play area bounds, shapes, shrinking, pulsing, movement, holes.
 - **getPointOnShapeBoundary(angle, radius)** - Get {x, y} on shape boundary at angle (works for circle/square/hex).
 - **getRandomBoundaryPoint(radius)** - Get random {x, y, outward_angle} on shape boundary with uniform sampling. Returns point + outward normal angle. Works for circle/square/hex.
 - **setPosition(x, y)** / **setVelocity(vx, vy)** - Direct position/velocity control.
-- **addHole(hole)** / **clearHoles()** - Manage arena holes.
 - **reset()** - Reset to initial state.
 - **setContainerSize(w, h)** - Update container dimensions.
 - **getState()** - Get full state for rendering.
 - **drawBoundary(scale, color)** - Draw arena boundary line for circle/hexagon shapes. Scale = pixels per unit (e.g., GRID_SIZE).
 - **getBoundaryCells(grid_width, grid_height)** - Get array of {x, y} cells that form the arena boundary (for wall spawning in grid games).
 - **clampEntity(entity)** - Clamp entity to stay inside arena bounds with optional bounce. Entity: {x, y, vx, vy, radius, bounce_damping}. Handles circle/square/hex shapes.
+
+**Raw schema params (computed in init):**
+- `area_size` + `initial_radius_fraction` + `min_radius_fraction` → radius, initial_radius, min_radius
+- `shrink_seconds` + `complexity_modifier` → shrink_speed
+- `movement` ("drift"/"cardinal") + `movement_speed` → initial vx/vy/target_vx/target_vy
 
 **Morph types:** "none", "shrink", "pulsing", "shape_shifting", "deformation"
 **Movement types:** "none", "drift", "cardinal", "follow", "orbit"
@@ -195,6 +199,7 @@ Auto-populates game parameters from JSON schema. Priority: variant → runtime_c
 - **SchemaLoader.loadFromTable(variant, schema, runtime_config)** - Load from Lua table (for testing/inline).
 - **SchemaLoader.getSchemaInfo(schema_name)** - Get schema metadata (name, description, parameter list).
 - **SchemaLoader.validateVariant(variant, schema_name)** - Validate variant against schema, returns warnings list.
+- **SchemaLoader.resolveChain(type_name, generic_key, typed_key, sources)** - Cascade through sources for per-type resolution. Checks each source for `source[typed_key][type_name]` first, then `source[generic_key]`. Returns first match or nil. Example: `resolveChain("chaser", "size_range", "enemy_sizes", {variant, runtimeCfg.objects})`.
 
 Internal: _loadSchema, _populateParams, _resolveValue, _coerceType, _validateConstraints, _getNestedValue
 
@@ -370,6 +375,7 @@ Generic enemy/obstacle spawning and management with pooling.
 - **getRectCollisionCheck(PhysicsUtils)** - Get collision check function for rect-rect.
 
 **updateBehaviors(dt, config, collision_check)** - Per-entity behaviors:
+- `boundary_anchor` - Entities with boundary_angle get repositioned via callback. Config: {get_boundary_point(angle)} returns x, y
 - `fall_enabled` - Entities fall at fall_speed
 - `move_enabled` - Entities move horizontally, bounce off walls
 - `regen_enabled` - Dead entities regenerate after regen_time
@@ -391,8 +397,14 @@ Generic enemy/obstacle spawning and management with pooling.
 
 - **ensureInboundAngle(x, y, angle, bounds)** - If entity at (x,y) with direction angle would move away from bounds, flip the relevant component to point inward. Bounds: {min_x, max_x, min_y, max_y}. Returns corrected angle.
 
+- **resolveSpawnPosition(config)** - Resolve spawn position using named patterns. Config: {position_pattern, position_config, spawn_func}. Returns sx, sy, angle or nil (if pattern handled spawning internally). Patterns: "random_edge" (default), "spiral" (rotating angle with angle_step), "boundary" (via get_boundary_point callback), "clusters" (multi-spawn per trigger). Used by continuous/burst spawning when position_pattern is set.
+
 **Spawn modes:** "continuous", "wave", "burst", "grid", "manual"
 - **burst** - Spawn burst_count entities at burst_interval rate, pause for burst_pause seconds, repeat. Uses spawn_func callback.
+- **continuous/burst with position_pattern** - When spawning config includes `position_pattern` and `position_config`, calls `resolveSpawnPosition` to get coordinates, then passes them to `spawn_func(ec, sx, sy, angle)` instead of `spawn_func(ec, game_state)`.
+
+**Position patterns:** "random_edge", "spiral", "boundary", "clusters"
+- **position_config fields:** margin, bounds, angle_step (spiral), get_boundary_point (boundary), cluster_min/cluster_max (clusters)
 
 ---
 

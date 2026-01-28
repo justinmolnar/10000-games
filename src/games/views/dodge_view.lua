@@ -122,10 +122,10 @@ function DodgeView:draw()
         g.setLineWidth(1)
     end
 
-    -- Render holes
-    if game.holes then
-        for _, hole in ipairs(game.holes) do
-            if hole.on_boundary then
+    -- Render holes (from EC entity list)
+    if game.entity_controller then
+        for _, hole in ipairs(game.entity_controller:getEntitiesByType("hole")) do
+            if hole.boundary_angle then
                 -- Holes on boundary (red with warning effect)
                 g.setColor(1.0, 0.2, 0.2, 0.6)
                 g.circle('fill', hole.x, hole.y, hole.radius)
@@ -224,8 +224,9 @@ function DodgeView:draw()
         end
     end
 
-    -- Draw objects/enemies
+    -- Draw objects/enemies (skip types rendered separately)
     for i, obj in ipairs(game.objects) do
+        if obj.type_name == 'hole' or obj.type_name == 'warning' then goto continue_obj end
         -- Draw obstacle trail first (behind object)
         if obj.trail_positions and #obj.trail_positions > 1 then
             g.setColor(1, 0.4, 0.2, 0.4)
@@ -327,6 +328,7 @@ function DodgeView:draw()
                 palette_id
             )
         end
+    ::continue_obj::
     end
 
     -- Fog of war overlay (after all game elements, before closing transform)

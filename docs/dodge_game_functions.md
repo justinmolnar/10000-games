@@ -1199,3 +1199,86 @@ The function-by-function plans call for deleting ~1500 lines of Lua code. Howeve
 | PhysicsUtils | circleVsLineSegment() | Trail collision |
 | VictoryCondition | getProgress() | Completion ratio for HUD |
 | ScoringSystem | Tracking modes | Speed/center/edge multipliers |
+
+---
+
+## Phase 15: Final Extractions
+
+### Goal
+Move remaining component logic out of dodge_game.lua into AC, EC, and SchemaLoader. ~80 lines of config translation and behavior definition extracted.
+
+### Changes
+
+**Part 1: ArenaController — Raw Schema Params**
+- AC:new() accepts `area_size`, `initial_radius_fraction`, `min_radius_fraction`, `shrink_seconds`, `complexity_modifier` and computes `radius`, `initial_radius`, `min_radius`, `shrink_speed` internally
+- AC:new() accepts `movement`, `movement_speed` and computes initial `vx`/`vy`/`target_vx`/`target_vy` for "drift" and "cardinal" movement types
+- Dodge no longer pre-calculates these derived values
+
+**Part 2: Holes as EC Entities**
+- Removed `addHole()`, `clearHoles()`, `updateHoles()` from ArenaController
+- Removed hole collision check from `isInside()`
+- Removed `holes` from `getState()`
+- Holes now spawned as EC entities with `type = "hole"`, `skip_offscreen_removal = true`
+- Added `boundary_anchor` behavior to EC `updateBehaviors` — entities with `boundary_angle` get repositioned via callback
+- Added "hole" enemy type to dodge_schema.json (category: "hazard", type: "static")
+- Hole collision handled by existing EC collision behavior (`on_collision` returns false to keep hole)
+- Dodge view renders holes from `entity_controller:getEntitiesByType("hole")`
+
+**Part 3: Spawn Position Patterns in EC**
+- Added `resolveSpawnPosition(config)` to EC with named patterns: "random_edge", "spiral", "boundary", "clusters"
+- Modified `updateContinuousSpawning` and `updateBurstSpawning` to use `resolveSpawnPosition` when `position_pattern` is set
+- Dodge spawn_func reduced from 19-line closure to 1-line call
+- Pattern selection is now declarative config (`position_pattern`, `position_config`)
+
+**Part 4: Resolution Chains via SchemaLoader**
+- Added `SchemaLoader.resolveChain(type_name, generic_key, typed_key, sources)` for cascading per-type lookups
+- Pre-resolve size_range, speed_range, sprite_settings per enemy type in `setupEntities`
+- `spawnEntity` uses pre-resolved values (3 lines instead of 25)
+
+### Testing
+- [ ] Clone 0 "Dodge Master" — basic gameplay, no holes
+- [ ] Clone 6 "Dodge Momentum Master" — holes_type: "circle", holes on boundary move with arena
+- [ ] Clone 42 — spiral spawn pattern still works
+- [ ] Clone 43 — pulse_with_arena spawns from arena boundary
+- [ ] Clone 62 "Dodge Escalation" — weighted composition with time growth
+- [ ] Any variant with "waves" pattern — burst timing
+- [ ] Any variant with "clusters" pattern — multi-spawn per trigger
+- [ ] Window resize — holes reposition correctly
+
+### AI Notes
+**Added to components:**
+- SchemaLoader: `resolveChain()` (~12 lines)
+- ArenaController: raw schema param computation in init (~30 lines)
+- ArenaController: removed hole code (~45 lines deleted)
+- EntityController: `resolveSpawnPosition()` (~35 lines)
+- EntityController: `boundary_anchor` behavior (~6 lines)
+- EntityController: position_pattern integration in continuous/burst spawning (~12 lines)
+- dodge_schema.json: "hole" enemy type (+6 lines)
+
+**Modified in dodge_game.lua:**
+- setupComponents: AC uses raw params (17 lines, down from 33)
+- setupComponents: holes spawned as EC entities
+- setupComponents: spawn_func is 1-line, pattern config is declarative
+- setupComponents: boundary_anchor in entity_behaviors_config
+- setupComponents: hole collision in EC collision callback
+- setupEntities: pre-resolve per-type params via SchemaLoader.resolveChain
+- spawnEntity: uses pre-resolved params (3 lines, down from 25)
+- updateGameLogic: removed hole collision loop
+- Removed self.holes alias and spawn_state
+
+**Modified in dodge_view.lua:**
+- Holes rendered from `entity_controller:getEntitiesByType("hole")` instead of `game.holes`
+
+### Status
+COMPLETE
+
+### Line Count Change
+- dodge_game.lua: 619 → ~600 (net ~-19 lines — removed pre-computation, added EC hole spawning + config)
+- arena_controller.lua: net ~-15 lines (removed hole code, added raw param computation)
+- entity_controller.lua: +53 lines (resolveSpawnPosition, boundary_anchor, spawning integration)
+- schema_loader.lua: +12 lines (resolveChain)
+- dodge_schema.json: +6 lines (hole enemy type)
+- dodge_view.lua: ~0 lines (changed hole source)
+
+### Deviation from Plan
+None

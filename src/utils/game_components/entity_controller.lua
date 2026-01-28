@@ -805,6 +805,49 @@ function EntityController:pickWeightedType(configs, time)
 end
 
 --[[
+    Resolve spawn position using named patterns.
+    Returns sx, sy, angle or nil if pattern handled spawning internally (e.g., clusters).
+
+    Spawning config fields:
+      position_pattern: "random_edge", "spiral", "boundary", "clusters"
+      position_config: {margin, bounds, angle_step, get_boundary_point, cluster_min, cluster_max}
+]]
+function EntityController:resolveSpawnPosition(config)
+    local pp = config.position_pattern or "random_edge"
+    local pc = config.position_config or {}
+    local margin = pc.margin or 0
+    local bounds = pc.bounds or {min_x = 0, max_x = 800, min_y = 0, max_y = 600}
+
+    if pp == "spiral" then
+        self.spawn_position_state = self.spawn_position_state or {spiral_angle = 0}
+        local sx, sy = self:calculateSpawnPosition({region = "edge", angle = self.spawn_position_state.spiral_angle, margin = margin, bounds = bounds})
+        self.spawn_position_state.spiral_angle = self.spawn_position_state.spiral_angle + (pc.angle_step or math.rad(30))
+        return sx, sy
+
+    elseif pp == "boundary" then
+        if pc.get_boundary_point then
+            return pc.get_boundary_point()
+        end
+        local sx, sy = self:calculateSpawnPosition({region = "edge", margin = margin, bounds = bounds})
+        return sx, sy
+
+    elseif pp == "clusters" then
+        local count = math.random(pc.cluster_min or 2, pc.cluster_max or 4)
+        for _ = 1, count do
+            local sx, sy = self:calculateSpawnPosition({region = "edge", margin = margin, bounds = bounds})
+            if config.spawn_func then
+                config.spawn_func(self, sx, sy, nil)
+            end
+        end
+        return nil  -- already handled
+
+    else -- "random_edge"
+        local sx, sy = self:calculateSpawnPosition({region = "edge", margin = margin, bounds = bounds})
+        return sx, sy
+    end
+end
+
+--[[
     Burst spawning mode - rapid bursts with pauses between.
     Config: burst_count, burst_interval (between spawns), burst_pause (between bursts)
 ]]
@@ -818,7 +861,12 @@ function EntityController:updateBurstSpawning(dt, game_state)
         bs.timer = bs.timer + dt
         if bs.timer >= (self.spawning.burst_interval or 0.15) then
             bs.timer = 0
-            if self.spawning.spawn_func then
+            if self.spawning.position_pattern and self.spawning.spawn_func then
+                local sx, sy, angle = self:resolveSpawnPosition(self.spawning)
+                if sx then
+                    self.spawning.spawn_func(self, sx, sy, angle)
+                end
+            elseif self.spawning.spawn_func then
                 self.spawning.spawn_func(self, game_state)
             end
             bs.spawned = bs.spawned + 1
@@ -918,8 +966,12 @@ function EntityController:updateContinuousSpawning(dt, game_state)
     if self.spawn_timer >= self.spawn_rate and active_count < self.max_concurrent then
         self.spawn_timer = 0
 
-        -- Spawn new entity (game must provide spawn_func in config)
-        if self.spawning.spawn_func then
+        if self.spawning.position_pattern and self.spawning.spawn_func then
+            local sx, sy, angle = self:resolveSpawnPosition(self.spawning)
+            if sx then
+                self.spawning.spawn_func(self, sx, sy, angle)
+            end
+        elseif self.spawning.spawn_func then
             self.spawning.spawn_func(self, game_state)
         end
     end
@@ -1321,6 +1373,14 @@ function EntityController:updateBehaviors(dt, config, collision_check)
     for _, entity in ipairs(self.entities) do
         if not entity.active or entity.marked_for_removal then
             goto continue
+        end
+
+        -- Boundary anchor behavior (entity stays attached to a boundary point)
+        if config.boundary_anchor and entity.boundary_angle ~= nil then
+            local ba = config.boundary_anchor
+            if ba.get_boundary_point then
+                entity.x, entity.y = ba.get_boundary_point(entity.boundary_angle)
+            end
         end
 
         -- Falling behavior

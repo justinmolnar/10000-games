@@ -244,6 +244,30 @@ function SchemaLoader._getNestedValue(tbl, key)
 end
 
 -- ===================================================================
+-- RESOLUTION HELPERS
+-- ===================================================================
+
+-- Resolve a value by cascading through sources with type-specific and generic lookups
+-- @param type_name: string - Entity type name (e.g., "chaser", "obstacle")
+-- @param generic_key: string - Generic param key (e.g., "size_range")
+-- @param typed_key: string - Type-keyed param key (e.g., "enemy_sizes")
+-- @param sources: table - Array of tables to search in order (e.g., {variant, runtimeCfg.objects})
+-- @return value or nil
+function SchemaLoader.resolveChain(type_name, generic_key, typed_key, sources)
+    for _, source in ipairs(sources) do
+        if source then
+            if source[typed_key] and source[typed_key][type_name] then
+                return source[typed_key][type_name]
+            end
+            if source[generic_key] then
+                return source[generic_key]
+            end
+        end
+    end
+    return nil
+end
+
+-- ===================================================================
 -- UTILITY METHODS
 -- ===================================================================
 
