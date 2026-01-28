@@ -368,7 +368,8 @@
             "category": "obstacle",
             "type": "shooter",
             "speed_multiplier": 0.7,
-            "on_collision": "damage"
+            "on_collision": "damage",
+            "shoot_interval": 2.0
         },
         "bouncer": {
             "name": "bouncer",
@@ -382,7 +383,10 @@
             "category": "obstacle",
             "type": "zigzag",
             "speed_multiplier": 1.1,
-            "on_collision": "damage"
+            "on_collision": "damage",
+            "wave_speed_min": 6,
+            "wave_speed_range": 4,
+            "wave_amp": 30
         },
         "teleporter": {
             "name": "teleporter",

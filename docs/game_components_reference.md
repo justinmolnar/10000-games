@@ -386,7 +386,10 @@ Generic enemy/obstacle spawning and management with pooling.
 - `remove_offscreen` - Remove entities outside bounds {top, bottom, left, right}
 - `grid_unit_movement` - Space Invaders style: all grid entities move as unit, speed up as count drops
 
-**Spawn modes:** "continuous", "wave", "grid", "manual"
+- **pickWeightedType(configs, time)** - Pick random type from weighted configs array. Each config: {name, weight} where weight is number or {base, growth} table. With growth, effective weight = base + time * growth. Returns winning config's name.
+
+**Spawn modes:** "continuous", "wave", "burst", "grid", "manual"
+- **burst** - Spawn burst_count entities at burst_interval rate, pause for burst_pause seconds, repeat. Uses spawn_func callback.
 
 ---
 

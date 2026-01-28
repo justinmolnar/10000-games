@@ -823,141 +823,106 @@ None
 
 ---
 
-## Phase 11: SPAWNING
+## Phase 11: SPAWNING (UNIFIED ENTITY SYSTEM)
 
-### spawnObjectOrWarning
-Updates spawn_rate with acceleration. Handles spawn patterns: waves (burst spawning), clusters (grouped spawning), spiral (angle-based), pulse_with_arena (spawn from safe zone boundary). Default calls spawnSingleObject.
+### Core Problem
 
-**Notes:** 48 lines. Four spawn pattern modes plus default. Each pattern has custom logic.
+All "obstacles" and "enemies" are identical entities, but the codebase has three separate spawn paths converging on two separate creation functions. The `is_enemy` flag, `enemy_composition` as a separate structure, and `hasVariantEnemies()` branching all exist to support this artificial split.
 
-**Extraction Potential:** High.
-1. **Spawn rate acceleration** - EntityController could have accelerating spawn rate config.
-2. **Wave pattern** - EntityController wave spawn mode.
-3. **Cluster pattern** - EntityController cluster spawning exists.
-4. **Spiral pattern** - EntityController spiral spawn pattern exists.
-5. **Pulse with arena** - spawn at arena boundary, new pattern for EntityController.
-Configure spawn_pattern in schema, EntityController handles it. Delete this function.
+### Unification Plan
 
-**Plan after discussion:** Delete entirely. EntityController handles all spawn patterns (waves, clusters, spiral exist). Spawn rate acceleration via EntityController config. pulse_with_arena is spawn at boundary - use calculateSpawnPosition with arena bounds. 48 lines → 0 lines.
+1. **One entity type registry.** All types (obstacle, chaser, shooter, bouncer, zigzag, teleporter, splitter) already defined in schema `enemy_types`. Extend each with ALL properties needed for spawning: size_range, speed_range, sprite settings, type-specific params (shoot_interval, teleport_interval, turn_rate, wave params, etc.)
 
----
+2. **One spawn composition.** Replace `enemy_composition` with a single weighted list built at init. "obstacle" is just another type with a weight. Variants with no enemies array default to `[{type: "obstacle", weight: 1}]`.
 
-### spawnSingleObject
-Decides whether to spawn variant enemy (70% if variants exist), warning (if enabled), or fallback obstacle.
+3. **One creation function.** Single `spawnEntity(type_name, x, y, angle, warned)` that reads the schema type definition, applies variance/difficulty scaling, and calls `entity_controller:spawn()`. No branching by type — the type definition has everything.
 
-**Notes:** 12 lines. Probability-based spawn type selection.
+4. **Delete `is_enemy` flag.** Entity behavior is determined by type definition. Has `shoot_interval`? It shoots. Has `type: "seeker"`? It tracks. No flag needed.
 
-**Extraction Potential:** High. EntityController:spawnWeighted() with warning as a type. Warning chance is just another weight. Delete this function.
+### Functions to Delete
 
-**Plan after discussion:** Delete entirely. Use EntityController:spawnWeighted() with warning as weighted type alongside enemy types. 12 lines → 0 lines.
+| Function | Lines | Reason |
+|----------|-------|--------|
+| `spawnObjectOrWarning` | 48 | Spawn patterns handled by EntityController (wave/cluster/spiral exist). pulse_with_arena = spawn at boundary via calculateSpawnPosition. |
+| `spawnSingleObject` | 12 | Replaced by unified weighted spawn — no hasVariantEnemies branch needed. |
+| `hasVariantEnemies` | 3 | Eliminated — single composition list, empty = just obstacles. |
+| `spawnVariantEnemy` | 39 | Replaced by unified weighted spawn + spawnEntity. |
+| `createEnemyObject` | 107 | Replaced by spawnEntity reading schema type definition. |
+| `createObjectFromWarning` | — | Already deleted in Phase 10 (spawnFromWarning uses delayed_spawn). |
+| `createWarning` | — | Already deleted in Phase 10 (spawnWarning uses delayed_spawn). |
+| `createRandomObject` | 27 | Time-weighted selection moved to EntityController (weight: {base, growth}). |
+| `createObject` | 39 | Replaced by spawnEntity — same path as createEnemyObject. |
+| `spawnShards` | 20 | Shard config in schema splitter type. spawnEntity handles shards. |
 
----
+### Schema Changes
 
-### hasVariantEnemies
-Returns true if enemy_composition has entries.
+Move ALL spawn-related config into schema `enemy_types`:
+- `size_range: {min, max}` (replaces cascading runtimeCfg lookups)
+- `speed_range: {min, max}` or `speed_multiplier` (already exists for some)
+- `shoot_interval`, `teleport_interval`, `teleport_range` (type-specific params)
+- `zigzag_frequency`, `zigzag_amplitude` (wave params)
+- `sprite_rotation_speed`, `sprite_direction_mode` (visual config)
+- Splitter shard config already moved in Phase 10
 
-**Notes:** 3 lines. Simple empty check.
+### Replace With
 
-**Extraction Potential:** High. Delete entirely. Check inline or configure weighted_configs at init time - if empty, no variants.
-
-**Plan after discussion:** Delete entirely. Not needed when using EntityController weighted_configs - empty config handled implicitly. 3 lines → 0 lines.
-
----
-
-### spawnVariantEnemy
-Picks enemy type via weighted random from enemy_composition. Picks spawn point and target. Calculates angle. Gets enemy_def from params.entity_types. Calls createEnemyObject.
-
-**Notes:** 39 lines. Manual weighted selection. Position/angle calculation.
-
-**Extraction Potential:** Very High. EntityController:spawnWeighted() does weighted selection. Position calculation should be in calculateSpawnPosition (already exists in EntityController). Delete this function.
-
-**Plan after discussion:** Delete entirely. EntityController:spawnWeighted() for type selection, calculateSpawnPosition() for position, calculateSpawnDirection() for angle. 39 lines → 0 lines.
-
----
-
-### createEnemyObject
-Creates enemy entity with type-specific properties. Gets size from variant/runtimeCfg cascading lookup. Gets speed from variant/runtimeCfg cascading lookup. Gets sprite settings. Sets type-specific params (zigzag wave, shooter interval, teleporter interval, bouncer state). Spawns via entity_controller.
-
-**Notes:** 107 lines. Massive function for single entity creation. Cascading config lookup repeated for size, speed, sprite settings. Type-specific initialization blocks.
-
-**Extraction Potential:** Very High.
-1. **Cascading config** - VariantLoader does this. Use VariantLoader:get() with fallback chain.
-2. **Size/speed ranges** - should be in entity_type definition in schema. EntityController reads them.
-3. **Type-specific params** - should be in entity_type definition. EntityController:spawn() reads type config.
-4. **Zigzag/shooter/teleporter/bouncer init** - define in schema entity_types with all params.
-
-After proper schema definition: 107 lines → ~3 lines calling EntityController:spawn() with type name.
-
-**Plan after discussion:** Delete entirely. All config (size_range, speed_range, type-specific params) defined in schema entity_types. EntityController:spawn(type_name) reads config automatically. 107 lines → 0 lines.
-
----
-
-### createWarning
-Creates warning object with spawn position, target angle, and duration.
-
-**Notes:** 7 lines. Simple warning creation.
-
-**Extraction Potential:** High. Warning as entity type. EntityController:spawn("warning", x, y, {angle, duration}). Delete this function.
-
-**Plan after discussion:** Delete entirely. Spawn warning as entity via EntityController:spawn("warning", x, y, {angle, delayed_spawn}). 7 lines → 0 lines.
-
----
-
-### createObjectFromWarning
-Picks enemy type via weighted random (duplicates spawnVariantEnemy logic). Creates enemy at warning position.
-
-**Notes:** 29 lines. Duplicates weighted selection from spawnVariantEnemy.
-
-**Extraction Potential:** Very High. If warnings are entities with delayed_spawn, on_spawn callback creates the real entity. Weighted selection done once. Delete this function.
-
-**Plan after discussion:** Delete entirely. delayed_spawn on_spawn callback handles enemy creation with weighted selection. 29 lines → 0 lines.
-
----
-
-### createRandomObject
-Picks spawn/target points. Uses time-weighted random selection from runtimeCfg weights. Calls createObject with chosen type.
-
-**Notes:** 27 lines. Different weighted selection than enemy_composition (uses base + growth * time formula).
-
-**Extraction Potential:** High. Time-weighted spawning could be EntityController feature. Or simplify: just use enemy_composition weights, remove time-based weight growth. Delete this function if complexity not needed.
-
-**Plan after discussion:** Delete entirely. Add time-based weight support to EntityController:spawnWeighted() - accept `weight: {base, growth}` config alongside static `weight: N`. EntityController calculates `base + time_elapsed * growth` internally. 27 lines → 0 lines.
-
----
-
-### createObject
-Creates basic obstacle entity with size/speed variance applied. Sets up zigzag params if applicable. Spawns via entity_controller.
-
-**Notes:** 39 lines. Similar to createEnemyObject but simpler. Duplicates zigzag init.
-
-**Extraction Potential:** High. Same as createEnemyObject - schema-driven entity_types. Variance handled by EntityController reading size_range/speed_range from type config. Delete this function.
-
-**Plan after discussion:** Delete entirely. Schema-driven entity_types with size_range/speed_range. EntityController:spawn(type_name) handles variance. 39 lines → 0 lines.
-
----
-
-### spawnShards
-Spawns N shard entities around parent position with spread angle and reduced size/speed.
-
-**Notes:** 20 lines. Shard spawning for splitter enemy.
-
-**Extraction Potential:** High. EntityController could have spawnCluster or spawnAround method. Or splitter entity_type has `on_split: {count: N, type: "shard", spread: 35}` config. Delete this function.
-
-**Plan after discussion:** Delete entirely. Splitter entity_type config: `on_split: {count: N, type: "shard", spread_angle: 35}`. EntityController handles spawning shards via callback when splitter triggers. 20 lines → 0 lines.
+- `spawnEntity(type_name, x, y, angle, warned)` — reads type def, applies variance/difficulty, spawns via entity_controller
+- Single weighted composition list built at init
+- `spawnWarning` / `spawnFromWarning` stay (already use delayed_spawn from Phase 10)
+- `spawnShards` simplified to use spawnEntity instead of manual params
 
 ### Testing (User)
-- [ ]
+- [ ] Clone 0 "Dodge Master" — empty enemies, spawns obstacles only
+- [ ] Clone 1 "Dodge Deluxe" — chasers + shooters with correct sprites
+- [ ] Any variant with "waves" spawn pattern — burst timing: rapid-fire 6, then pause
+- [ ] Any variant with "spiral" spawn pattern — entities at rotating angles, weighted types
+- [ ] Warning → entity spawn chain works (line appears, entity spawns at position)
+- [ ] Splitter enters safe zone → shards spawn via spawnEntity
+- [ ] Shooter entities fire projectiles at player
+- [ ] Teleporter enemies teleport near player
+- [ ] Clone 62 "Dodge Escalation" — starts with obstacles, chasers grow, shooters appear ~30s
+- [ ] Demo recording/playback still works (fixed timestep, deterministic spawning)
 
 ### AI Notes
+**Deleted 8 functions (~326 lines):**
+- spawnObjectOrWarning, spawnSingleObject, hasVariantEnemies, spawnVariantEnemy
+- createEnemyObject, createRandomObject, createObject, spawnShards
 
+**Added to dodge_game.lua (~110 lines):**
+- spawnEntity(type_name, x, y, angle, warned, overrides) — unified creation with resolution chains for size/speed/sprite
+- spawnNext(sx, sy, forced_angle) — DRY helper: pick position → pick weighted type → warning or direct
+- spawnWarning(type_name, sx, sy, angle) — accepts type_name + position from caller
+- spawnFromWarning(warning_entity) — simplified to 2 lines
+- spawnShards(parent, count) — uses spawnEntity with overrides
+
+**Modified in dodge_game.lua:**
+- setupComponents: EC spawn config with spawn_func callback (BURST for waves, CONTINUOUS for others)
+- setupEntities: spawn_composition replaces enemy_composition, spawn_state replaces spawn_pattern_state
+- onEntityShoot: removed is_enemy check
+- updateGameLogic: removed manual spawn timer, added spawn rate acceleration via runtimeCfg.spawn.accel
+
+**Added to EntityController (+61 lines):**
+- BURST spawn mode (updateBurstSpawning) — burst_count entities at burst_interval, pause for burst_pause
+- pickWeightedType(configs, time) — weighted selection with {base, growth} time-based weight support
+
+**Added to dodge_schema.json (+6 lines):**
+- zigzag enemy type: wave_speed_min, wave_speed_range, wave_amp
+- shooter enemy type: shoot_interval
+
+**Added to dodge_variants.json:**
+- Clone 62 "Dodge Escalation" — time-based weight growth test variant
 
 ### Status
-
+COMPLETE
 
 ### Line Count Change
-
+- dodge_game.lua: 1007 → 790 (-217 lines)
+- entity_controller.lua: 1635 → 1696 (+61 lines)
+- dodge_schema.json: +6 lines
+- dodge_variants.json: +15 lines
 
 ### Deviation from Plan
+None
 
 ---
 

@@ -60,6 +60,7 @@ EntityController.SPAWN_MODES = {
     CONTINUOUS = "continuous",  -- Spawn at regular rate
     WAVE = "wave",              -- Spawn in waves
     GRID = "grid",              -- Spawn in grid layout (Breakout bricks)
+    BURST = "burst",            -- Rapid bursts with pauses between
     MANUAL = "manual"           -- No auto-spawning, manual spawn() calls only
 }
 
@@ -747,6 +748,64 @@ function EntityController:spawnWeighted(type_name, weighted_configs, x, y, base_
     return self:spawn(type_name, x, y, extra)
 end
 
+--[[
+    Pick a type name from weighted configs with optional time-based growth.
+    Configs: array of {name = "type_name", weight = N} or {name = "type_name", weight = {base = N, growth = N}}
+    Time: elapsed time for growth calculation (nil = no growth)
+]]
+function EntityController:pickWeightedType(configs, time)
+    time = time or 0
+    local function getWeight(cfg)
+        local w = cfg.weight
+        if type(w) == "table" then
+            return (w.base or 0) + time * (w.growth or 0)
+        end
+        return w or 1
+    end
+    local total = 0
+    for _, cfg in ipairs(configs) do total = total + getWeight(cfg) end
+    if total <= 0 then return configs[1].name end
+    local r = math.random() * total
+    for _, cfg in ipairs(configs) do
+        r = r - getWeight(cfg)
+        if r <= 0 then return cfg.name end
+    end
+    return configs[1].name
+end
+
+--[[
+    Burst spawning mode - rapid bursts with pauses between.
+    Config: burst_count, burst_interval (between spawns), burst_pause (between bursts)
+]]
+function EntityController:updateBurstSpawning(dt, game_state)
+    if not self.burst_state then
+        self.burst_state = {bursting = false, timer = 0, spawned = 0}
+    end
+    local bs = self.burst_state
+
+    if bs.bursting then
+        bs.timer = bs.timer + dt
+        if bs.timer >= (self.spawning.burst_interval or 0.15) then
+            bs.timer = 0
+            if self.spawning.spawn_func then
+                self.spawning.spawn_func(self, game_state)
+            end
+            bs.spawned = bs.spawned + 1
+            if bs.spawned >= (self.spawning.burst_count or 6) then
+                bs.bursting = false
+                bs.spawned = 0
+                bs.timer = 0
+            end
+        end
+    else
+        bs.timer = bs.timer + dt
+        if bs.timer >= (self.spawning.burst_pause or 2.5) then
+            bs.timer = 0
+            bs.bursting = true
+        end
+    end
+end
+
 -- Tick entity timer - returns true when interval reached
 function EntityController:tickTimer(entity, field, speed, dt)
     entity[field] = (entity[field] or 0) + dt
@@ -767,6 +826,8 @@ function EntityController:update(dt, game_state)
         self:updateContinuousSpawning(dt, game_state)
     elseif self.spawning.mode == EntityController.SPAWN_MODES.WAVE then
         self:updateWaveSpawning(dt, game_state)
+    elseif self.spawning.mode == EntityController.SPAWN_MODES.BURST then
+        self:updateBurstSpawning(dt, game_state)
     elseif self.spawning.mode == EntityController.SPAWN_MODES.GRID and not self.grid_spawned then
         -- Grid spawns once at start
         if self.spawning.grid_config then

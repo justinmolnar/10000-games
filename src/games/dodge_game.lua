@@ -154,8 +154,33 @@ function DodgeGame:setupComponents()
     -- Alias for createEntityControllerFromSchema (expects entity_types)
     self.params.entity_types = self.params.enemy_types
 
-    -- Entity controller from schema
-    self:createEntityControllerFromSchema({}, {spawning = {mode = "manual"}, pooling = true, max_entities = 500})
+    -- Entity controller from schema with pattern-based spawning
+    local pattern = p.obstacle_spawn_pattern or "random"
+    local spawn_func = function(ec)
+        local sx, sy, forced_angle
+        if pattern == "spiral" then
+            sx, sy = game:pickSpawnPointAtAngle(game.spawn_state.spiral_angle)
+            game.spawn_state.spiral_angle = game.spawn_state.spiral_angle + math.rad(30)
+        elseif pattern == "pulse_with_arena" and game.arena_controller then
+            sx, sy, forced_angle = game:pickPointOnSafeZoneBoundary()
+        elseif pattern == "clusters" then
+            for i = 1, math.random(2, 4) do
+                game:spawnNext()
+            end
+            return
+        else
+            sx, sy = game:pickSpawnPoint()
+        end
+        game:spawnNext(sx, sy, forced_angle)
+    end
+
+    local spawn_config
+    if pattern == "waves" then
+        spawn_config = {mode = "burst", burst_count = 6, burst_interval = 0.15, burst_pause = 2.5, spawn_func = spawn_func}
+    else
+        spawn_config = {mode = "continuous", rate = 1.0, spawn_func = spawn_func, max_concurrent = 500}
+    end
+    self:createEntityControllerFromSchema({}, {spawning = spawn_config, pooling = true, max_entities = 500})
 
     -- Global on_remove callback for dodge counting
     self.entity_controller.on_remove = function(entity, reason)
@@ -215,8 +240,17 @@ function DodgeGame:setupComponents()
             end,
             on_enter = function(entity)
                 if entity.type == 'splitter' then
-                    local shards = (game.runtimeCfg.objects and game.runtimeCfg.objects.splitter and game.runtimeCfg.objects.splitter.shards_count) or 3
-                    game:spawnShards(entity, shards)
+                    local def = game.params.enemy_types.splitter or {}
+                    local n = (game.runtimeCfg.objects and game.runtimeCfg.objects.splitter and game.runtimeCfg.objects.splitter.shards_count) or def.shards_count or 3
+                    local spread = math.rad(def.spread_deg or 35)
+                    for i = 1, n do
+                        local a = entity.angle + (math.random() * 2 - 1) * spread
+                        game:spawnEntity("obstacle", entity.x, entity.y, a, false, {
+                            radius = math.max(def.shard_radius_min or 6, math.floor(entity.radius * (def.shard_radius_factor or 0.6))),
+                            speed = game.object_speed * (def.shard_speed_factor or 0.36),
+                            movement_pattern = 'straight', type = 'linear'
+                        })
+                    end
                     return true  -- remove entity
                 end
                 return false
@@ -224,8 +258,8 @@ function DodgeGame:setupComponents()
         },
         delayed_spawn = {
             on_spawn = function(warning_entity, ds)
-                -- Spawn the actual obstacle when warning timer expires
-                game:spawnFromWarning(warning_entity)
+                local type_name = warning_entity.spawn_type_name or game.entity_controller:pickWeightedType(game.spawn_composition, game.time_elapsed)
+                game:spawnEntity(type_name, warning_entity.x, warning_entity.y, warning_entity.spawn_angle or 0, true)
             end
         }
     }
@@ -251,18 +285,22 @@ function DodgeGame:setupEntities()
 
     -- Game state
     self.time_elapsed = 0
-    self.spawn_timer = 0
     self.game_over = false
     self.spawn_rate = ((p.base_spawn_rate or 1.0) / self.difficulty_modifiers.count / variant_diff) / p.obstacle_spawn_rate
+    if self.entity_controller.spawning.mode ~= "burst" then
+        self.entity_controller.spawn_rate = self.spawn_rate
+    end
     self.warning_enabled = self.difficulty_modifiers.complexity <= ((self.runtimeCfg.warnings and self.runtimeCfg.warnings.complexity_threshold) or 2)
     self.dodge_target = p.victory_condition == "dodge_count" and math.floor(p.victory_limit) or 9999
 
-    -- Enemy composition from variant
-    self.enemy_composition = {}
-    if self.variant and self.variant.enemies then
+    -- Spawn composition for weighted type selection
+    self.spawn_composition = {}
+    if self.variant and self.variant.enemies and #self.variant.enemies > 0 then
         for _, ed in ipairs(self.variant.enemies) do
-            self.enemy_composition[ed.type] = ed.multiplier
+            table.insert(self.spawn_composition, {name = ed.type, weight = ed.multiplier})
         end
+    else
+        self.spawn_composition = {{name = "obstacle", weight = 1}}
     end
 
     -- Metrics
@@ -284,7 +322,7 @@ function DodgeGame:setupEntities()
     }
 
     -- Spawn pattern state
-    self.spawn_pattern_state = {wave_timer = 0, wave_active = false, spiral_angle = 0, cluster_pending = 0}
+    self.spawn_state = {spiral_angle = 0}
 end
 
 --------------------------------------------------------------------------------
@@ -340,6 +378,13 @@ function DodgeGame:updateGameLogic(dt)
             self:onComplete()
             return
         end
+    end
+
+    -- Spawn rate acceleration
+    if self.entity_controller.spawning.mode ~= "burst" then
+        local accel_cfg = (self.runtimeCfg.spawn and self.runtimeCfg.spawn.accel) or {}
+        local accel = 1 + math.min(accel_cfg.max or 2.0, self.time_elapsed / (accel_cfg.time or 60))
+        self.entity_controller.spawn_rate = self.spawn_rate / accel
     end
 
     -- Entity controller handles spawning, basic movement, lifetime
@@ -402,12 +447,6 @@ function DodgeGame:updateGameLogic(dt)
     end
     self.arena_controller:clampEntity(self.player)
 
-    -- Spawning
-    self.spawn_timer = self.spawn_timer - dt
-    if self.spawn_timer <= 0 then
-        self:spawnObjectOrWarning()
-        self.spawn_timer = self.spawn_rate + self.spawn_timer
-    end
 end
 
 --------------------------------------------------------------------------------
@@ -416,7 +455,7 @@ end
 
 -- Called by EntityController shooting behavior
 function DodgeGame:onEntityShoot(entity)
-    if entity.type ~= 'shooter' or not entity.is_enemy then return end
+    if entity.type ~= 'shooter' then return end
 
     local dx = self.player.x - entity.x
     local dy = self.player.y - entity.y
@@ -467,176 +506,47 @@ end
 
 
 --------------------------------------------------------------------------------
--- SPAWNING
+-- SPAWNING (Unified Entity System)
 --------------------------------------------------------------------------------
 
-function DodgeGame:spawnObjectOrWarning()
-    local accel = 1 + math.min(((self.runtimeCfg.spawn and self.runtimeCfg.spawn.accel and self.runtimeCfg.spawn.accel.max) or 2.0), self.time_elapsed / ((self.runtimeCfg.spawn and self.runtimeCfg.spawn.accel and self.runtimeCfg.spawn.accel.time) or 60))
-    self.spawn_rate = ((self.params.base_spawn_rate or 1.0) / self.difficulty_modifiers.count) / accel
-
-    if self.params.obstacle_spawn_pattern == "waves" then
-        self.spawn_pattern_state.wave_timer = self.spawn_pattern_state.wave_timer + self.spawn_rate
-        if self.spawn_pattern_state.wave_active then
-            if self.spawn_pattern_state.wave_timer >= 0.15 then
-                self.spawn_pattern_state.wave_timer = 0
-                self:spawnSingleObject()
-                self.spawn_pattern_state.wave_count = (self.spawn_pattern_state.wave_count or 0) + 1
-                if self.spawn_pattern_state.wave_count >= 6 then
-                    self.spawn_pattern_state.wave_active = false
-                    self.spawn_pattern_state.wave_count = 0
-                end
-            end
-        else
-            if self.spawn_pattern_state.wave_timer >= 2.5 then
-                self.spawn_pattern_state.wave_active = true
-                self.spawn_pattern_state.wave_timer = 0
-            end
-        end
-    elseif self.params.obstacle_spawn_pattern == "clusters" then
-        if self.spawn_pattern_state.cluster_pending > 0 then
-            self:spawnSingleObject()
-            self.spawn_pattern_state.cluster_pending = self.spawn_pattern_state.cluster_pending - 1
-        else
-            self.spawn_pattern_state.cluster_pending = math.random(2, 4)
-            self:spawnSingleObject()
-        end
-    elseif self.params.obstacle_spawn_pattern == "spiral" then
-        local sx, sy = self:pickSpawnPointAtAngle(self.spawn_pattern_state.spiral_angle)
-        local tx, ty = self:pickTargetPointOnRing()
-        local angle = math.atan2(ty - sy, tx - sx)
-        angle = self:ensureInboundAngle(sx, sy, angle)
-        self:createObject(sx, sy, angle, false)
-        self.spawn_pattern_state.spiral_angle = self.spawn_pattern_state.spiral_angle + math.rad(30)
-    elseif self.params.obstacle_spawn_pattern == "pulse_with_arena" then
-        if self.arena_controller then
-            local sx, sy, angle = self:pickPointOnSafeZoneBoundary()
-            self:createObject(sx, sy, angle, false)
-        else
-            self:spawnSingleObject()
-        end
-    else
-        self:spawnSingleObject()
-    end
-end
-
-function DodgeGame:spawnSingleObject()
-    if self:hasVariantEnemies() and math.random() < 0.7 then
-        self:spawnVariantEnemy(false)
-    elseif self.warning_enabled and math.random() < ((self.runtimeCfg.spawn and self.runtimeCfg.spawn.warning_chance) or 0.7) then
-        self:spawnWarning()
-    else
-        if not self.params.disable_obstacle_fallback then
-            self:spawnVariantEnemy(false, "obstacle")
-        else
-            self:spawnVariantEnemy(false)
-        end
-    end
-end
-
-function DodgeGame:hasVariantEnemies()
-    return self.enemy_composition and next(self.enemy_composition) ~= nil
-end
-
-function DodgeGame:spawnVariantEnemy(warned_status, force_type)
-    local chosen_type = force_type
-
-    if not chosen_type then
-        if not self:hasVariantEnemies() then
-            chosen_type = "obstacle"
-        else
-            local enemy_types = {}
-            local total_weight = 0
-            for enemy_type, multiplier in pairs(self.enemy_composition) do
-                table.insert(enemy_types, {type = enemy_type, weight = multiplier})
-                total_weight = total_weight + multiplier
-            end
-
-            local r = math.random() * total_weight
-            chosen_type = enemy_types[1].type
-            for _, entry in ipairs(enemy_types) do
-                r = r - entry.weight
-                if r <= 0 then
-                    chosen_type = entry.type
-                    break
-                end
-            end
-        end
+function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
+    local enemy_def = self.params.enemy_types[type_name]
+    if not enemy_def then
+        enemy_def = self.params.enemy_types.obstacle
+        type_name = "obstacle"
     end
 
-    local sx, sy = self:pickSpawnPoint()
-    local tx, ty = self:pickTargetPointOnRing()
-    local angle = math.atan2(ty - sy, tx - sx)
-    angle = self:ensureInboundAngle(sx, sy, angle)
-
-    local enemy_def = self.params.enemy_types[chosen_type]
-    if enemy_def then
-        self:createEnemyObject(sx, sy, angle, warned_status, enemy_def)
-    else
-        print("[DodgeGame] ERROR: Unknown enemy type: " .. tostring(chosen_type))
-        self:createObject(sx, sy, angle, warned_status, 'linear')
-    end
-end
-
-function DodgeGame:createEnemyObject(spawn_x, spawn_y, angle, was_warned, enemy_def)
     local base_type = enemy_def.type or 'linear'
     local speed_mult = enemy_def.speed_multiplier or 1.0
+    local name = enemy_def.name or type_name
 
-    local size_range = nil
-
-    if self.variant and self.variant.enemy_sizes and self.variant.enemy_sizes[enemy_def.name] then
-        size_range = self.variant.enemy_sizes[enemy_def.name]
-    end
-
-    if not size_range and self.variant and self.variant.size_range then
-        size_range = self.variant.size_range
-    end
-
-    if not size_range and self.runtimeCfg.objects and self.runtimeCfg.objects.enemy_sizes then
-        size_range = self.runtimeCfg.objects.enemy_sizes[enemy_def.name]
-    end
-
-    if not size_range and self.runtimeCfg.objects then
-        size_range = self.runtimeCfg.objects.size_range or {(self.params.object_radius or 15), (self.params.object_radius or 15)}
-    end
-
-    size_range = size_range or {(self.params.object_radius or 15), (self.params.object_radius or 15)}
-
+    -- Size resolution chain
+    local size_range = enemy_def.size_range
+        or (self.variant and self.variant.enemy_sizes and self.variant.enemy_sizes[name])
+        or (self.variant and self.variant.size_range)
+        or (self.runtimeCfg.objects and self.runtimeCfg.objects.enemy_sizes and self.runtimeCfg.objects.enemy_sizes[name])
+        or (self.runtimeCfg.objects and self.runtimeCfg.objects.size_range)
+        or {(self.params.object_radius or 15), (self.params.object_radius or 15)}
     local final_radius = size_range[1] + math.random() * (size_range[2] - size_range[1])
 
-    local speed_range = nil
-
-    if self.variant and self.variant.enemy_speeds and self.variant.enemy_speeds[enemy_def.name] then
-        speed_range = self.variant.enemy_speeds[enemy_def.name]
-    end
-
-    if not speed_range and self.variant and self.variant.speed_range then
-        speed_range = self.variant.speed_range
-    end
-
-    if not speed_range and self.runtimeCfg.objects and self.runtimeCfg.objects.enemy_speeds then
-        speed_range = self.runtimeCfg.objects.enemy_speeds[enemy_def.name]
-    end
-
-    if not speed_range and self.runtimeCfg.objects then
-        speed_range = self.runtimeCfg.objects.speed_range or {self.object_speed, self.object_speed}
-    end
-
-    speed_range = speed_range or {self.object_speed, self.object_speed}
-
+    -- Speed resolution chain
+    local speed_range = enemy_def.speed_range
+        or (self.variant and self.variant.enemy_speeds and self.variant.enemy_speeds[name])
+        or (self.variant and self.variant.speed_range)
+        or (self.runtimeCfg.objects and self.runtimeCfg.objects.enemy_speeds and self.runtimeCfg.objects.enemy_speeds[name])
+        or (self.runtimeCfg.objects and self.runtimeCfg.objects.speed_range)
+        or {self.object_speed, self.object_speed}
     local base_speed = speed_range[1] + math.random() * (speed_range[2] - speed_range[1])
     local final_speed = base_speed * speed_mult
 
-    local sprite_settings = nil
-    if self.variant and self.variant.enemy_sprite_settings and self.variant.enemy_sprite_settings[enemy_def.name] then
-        sprite_settings = self.variant.enemy_sprite_settings[enemy_def.name]
-    elseif self.runtimeCfg.objects and self.runtimeCfg.objects.enemy_sprite_settings then
-        sprite_settings = self.runtimeCfg.objects.enemy_sprite_settings[enemy_def.name]
-    end
-
+    -- Sprite settings resolution
+    local sprite_settings = enemy_def.sprite_settings
+        or (self.variant and self.variant.enemy_sprite_settings and self.variant.enemy_sprite_settings[name])
+        or (self.runtimeCfg.objects and self.runtimeCfg.objects.enemy_sprite_settings and self.runtimeCfg.objects.enemy_sprite_settings[name])
     local sprite_rotation = (sprite_settings and sprite_settings.rotation) or 0
     local sprite_direction = (sprite_settings and sprite_settings.direction) or "movement_based"
 
-    -- Map entity type to movement pattern for EntityController behaviors
+    -- Movement pattern mapping
     local movement_pattern_map = {
         zigzag = 'zigzag', sine = 'wave',
         seeker = 'tracking', chaser = 'tracking',
@@ -644,12 +554,11 @@ function DodgeGame:createEnemyObject(spawn_x, spawn_y, angle, was_warned, enemy_
     }
 
     local custom_params = {
-        warned = was_warned,
+        warned = warned,
         radius = final_radius,
         type = base_type,
-        enemy_type = enemy_def.name,
+        enemy_type = name,
         speed = final_speed,
-        is_enemy = true,
         sprite_rotation_angle = 0,
         sprite_rotation_speed = sprite_rotation,
         sprite_direction_mode = sprite_direction,
@@ -661,18 +570,19 @@ function DodgeGame:createEnemyObject(spawn_x, spawn_y, angle, was_warned, enemy_
         turn_rate = math.rad(self.params.seeker_turn_rate or 54)
     }
 
+    -- Type-specific params (read from enemy_def first, runtimeCfg fallback)
     if base_type == 'zigzag' or base_type == 'sine' then
-        local zig = (self.runtimeCfg.objects and self.runtimeCfg.objects.zigzag) or { wave_speed_min = 6, wave_speed_range = 4, wave_amp = 30 }
-        custom_params.wave_speed = (zig.wave_speed_min or 6) + math.random() * (zig.wave_speed_range or 4)
-        custom_params.wave_amp = zig.wave_amp or 30
-        custom_params.wave_phase = math.random()*math.pi*2
+        local zig_cfg = (self.runtimeCfg.objects and self.runtimeCfg.objects.zigzag) or {}
+        local wave_speed_min = enemy_def.wave_speed_min or zig_cfg.wave_speed_min or 6
+        local wave_speed_range = enemy_def.wave_speed_range or zig_cfg.wave_speed_range or 4
+        custom_params.wave_speed = wave_speed_min + math.random() * wave_speed_range
+        custom_params.wave_amp = enemy_def.wave_amp or zig_cfg.wave_amp or 30
+        custom_params.wave_phase = math.random() * math.pi * 2
     elseif base_type == 'shooter' then
-        local shoot_interval = 2.0
-        if self.variant and self.variant.shooter and self.variant.shooter.shoot_interval then
-            shoot_interval = self.variant.shooter.shoot_interval
-        elseif self.runtimeCfg.objects and self.runtimeCfg.objects.shooter and self.runtimeCfg.objects.shooter.shoot_interval then
-            shoot_interval = self.runtimeCfg.objects.shooter.shoot_interval
-        end
+        local shoot_interval = enemy_def.shoot_interval
+            or (self.variant and self.variant.shooter and self.variant.shooter.shoot_interval)
+            or (self.runtimeCfg.objects and self.runtimeCfg.objects.shooter and self.runtimeCfg.objects.shooter.shoot_interval)
+            or 2.0
         custom_params.shoot_timer = shoot_interval
         custom_params.shoot_interval = shoot_interval
     elseif base_type == 'teleporter' then
@@ -684,181 +594,38 @@ function DodgeGame:createEnemyObject(spawn_x, spawn_y, angle, was_warned, enemy_
         custom_params.has_entered = false
     end
 
-    -- Initialize trail positions if trails are enabled
     if self.params.obstacle_trails and self.params.obstacle_trails > 0 then
         custom_params.trail_positions = {}
     end
 
-    local obj = self.entity_controller:spawn("obstacle", spawn_x, spawn_y, custom_params)
-
-    if obj and (not self._last_enemy_debug or (love.timer.getTime() - self._last_enemy_debug) > 1.0) then
-        print(string.format("[DodgeGame] Created enemy: type=%s, enemy_type=%s, is_enemy=%s",
-            obj.type or "nil", obj.enemy_type or "nil", tostring(obj.is_enemy)))
-        self._last_enemy_debug = love.timer.getTime()
+    -- Apply overrides last
+    if overrides then
+        for k, v in pairs(overrides) do custom_params[k] = v end
     end
 
-    return obj
+    return self.entity_controller:spawn(type_name, x, y, custom_params)
 end
 
--- Spawn a warning entity that becomes an obstacle after delay (uses delayed_spawn behavior)
-function DodgeGame:spawnWarning()
-    local sx, sy = self:pickSpawnPoint()
+function DodgeGame:spawnNext(sx, sy, forced_angle)
+    if not sx then sx, sy = self:pickSpawnPoint() end
     local tx, ty = self:pickTargetPointOnRing()
-    local angle = math.atan2(ty - sy, tx - sx)
+    local angle = forced_angle or math.atan2(ty - sy, tx - sx)
     angle = self:ensureInboundAngle(sx, sy, angle)
-    local warning_duration = (self.params.warning_time or 0.5) / self.difficulty_modifiers.speed
-
-    -- Spawn warning entity with delayed_spawn
-    self.entity_controller:spawn("warning", sx, sy, {
-        type = 'warning',
-        warning_type = 'radial',
-        spawn_angle = angle,
-        skip_offscreen_removal = true,
-        delayed_spawn = {
-            timer = warning_duration,
-            spawn_type = "obstacle"
-        }
-    })
-end
-
--- Called by delayed_spawn when warning timer expires
-function DodgeGame:spawnFromWarning(warning_entity)
-    local sx, sy = warning_entity.x, warning_entity.y
-    local angle = warning_entity.spawn_angle or 0
-
-    if self:hasVariantEnemies() then
-        local enemy_types = {}
-        local total_weight = 0
-        for enemy_type, multiplier in pairs(self.enemy_composition) do
-            table.insert(enemy_types, {type = enemy_type, weight = multiplier})
-            total_weight = total_weight + multiplier
-        end
-        local r = math.random() * total_weight
-        local chosen_type = enemy_types[1].type
-        for _, entry in ipairs(enemy_types) do
-            r = r - entry.weight
-            if r <= 0 then
-                chosen_type = entry.type
-                break
-            end
-        end
-        local enemy_def = self.params.enemy_types[chosen_type]
-        if enemy_def then
-            self:createEnemyObject(sx, sy, angle, true, enemy_def)
-            return
-        end
-    end
-    local enemy_def = self.params.enemy_types.obstacle
-    if enemy_def then
-        self:createEnemyObject(sx, sy, angle, true, enemy_def)
-    else
-        self:createObject(sx, sy, angle, true)
-    end
-end
-
-function DodgeGame:createRandomObject(warned_status)
-    local sx, sy = self:pickSpawnPoint()
-    local tx, ty = self:pickTargetPointOnRing()
-    local angle = math.atan2(ty - sy, tx - sx)
-    angle = self:ensureInboundAngle(sx, sy, angle)
-    local t = self.time_elapsed
-    local weights = (self.runtimeCfg.objects and self.runtimeCfg.objects.weights) or {
-        linear  = { base = 50, growth = 0.0 },
-        zigzag  = { base = 22, growth = 0.30 },
-        sine    = { base = 18, growth = 0.22 },
-        seeker  = { base = 4,  growth = 0.08 },
-        splitter= { base = 7,  growth = 0.18 }
-    }
-    local function pick(weights_cfg)
-        local sum = 0
-        for _, cfg in pairs(weights_cfg) do
-            sum = sum + ((cfg.base or 0) + t * (cfg.growth or 0))
-        end
-        local r = math.random() * sum
-        for k, cfg in pairs(weights_cfg) do
-            r = r - ((cfg.base or 0) + t * (cfg.growth or 0))
-            if r <= 0 then return k end
-        end
-        return 'linear'
-    end
-    local kind = pick(weights)
-    self:createObject(sx, sy, angle, warned_status, kind)
-end
-
-function DodgeGame:createObject(spawn_x, spawn_y, angle, was_warned, kind)
-    local base_radius = (self.params.object_radius or 15)
-    if self.params.obstacle_size_variance > 0 then
-        local size_mult = 0.5 + math.random() * self.params.obstacle_size_variance
-        base_radius = (self.params.object_radius or 15) * size_mult
-    end
-
-    local type_mult = ((self.runtimeCfg.objects and self.runtimeCfg.objects.type_speed_multipliers and self.runtimeCfg.objects.type_speed_multipliers[kind or 'linear']) or (kind == 'seeker' and 0.9 or kind == 'splitter' and 0.8 or kind == 'zigzag' and 1.1 or kind == 'sine' and 1.0 or 1.0))
-    local base_speed = self.object_speed * type_mult
-
-    if self.params.obstacle_speed_variance > 0 then
-        local speed_var = 1.0 + (math.random() - 0.5) * 2 * self.params.obstacle_speed_variance
-        base_speed = base_speed * speed_var
-    end
-
-    local movement_pattern_map = {
-        zigzag = 'zigzag', sine = 'wave',
-        seeker = 'tracking', chaser = 'tracking',
-        teleporter = 'teleporter', bouncer = 'bounce'
-    }
-
-    local custom_params = {
-        warned = was_warned,
-        radius = base_radius,
-        type = kind or 'linear',
-        speed = base_speed,
-        tracking_strength = self.params.obstacle_tracking or 0,
-        angle = angle or 0,
-        direction = angle or 0,
-        movement_pattern = movement_pattern_map[kind or 'linear'] or 'straight',
-        vx = math.cos(angle or 0) * base_speed,
-        vy = math.sin(angle or 0) * base_speed
-    }
-
-    if self.params.obstacle_trails > 0 then
-        custom_params.trail_positions = {}
-    end
-
-    if (kind or 'linear') == 'zigzag' or (kind or 'linear') == 'sine' then
-        local zig = (self.runtimeCfg.objects and self.runtimeCfg.objects.zigzag) or { wave_speed_min = 6, wave_speed_range = 4, wave_amp = 30 }
-        custom_params.wave_speed = (zig.wave_speed_min or 6) + math.random() * (zig.wave_speed_range or 4)
-        custom_params.wave_amp = zig.wave_amp or 30
-        custom_params.wave_phase = math.random()*math.pi*2
-    end
-
-    return self.entity_controller:spawn("obstacle", spawn_x, spawn_y, custom_params)
-end
-
-function DodgeGame:spawnShards(parent, count)
-    local def = self.params.enemy_types.splitter or {}
-    local n = count or def.shards_count or 3
-    local spread = math.rad(def.spread_deg or 35)
-    local shard_speed_factor = def.shard_speed_factor or 0.36
-    local shard_radius_factor = def.shard_radius_factor or 0.6
-    local shard_radius_min = def.shard_radius_min or 6
-
-    for i = 1, n do
-        local a = parent.angle + (math.random() * 2 - 1) * spread
-        local shard_speed = self.object_speed * shard_speed_factor
-        local shard_radius = math.max(shard_radius_min, math.floor(parent.radius * shard_radius_factor))
-
-        self.entity_controller:spawn("obstacle", parent.x, parent.y, {
-            radius = shard_radius,
-            type = 'linear',
-            speed = shard_speed,
-            warned = false,
-            angle = a,
-            direction = a,
-            movement_pattern = 'straight',
-            vx = math.cos(a) * shard_speed,
-            vy = math.sin(a) * shard_speed
+    local type_name = self.entity_controller:pickWeightedType(self.spawn_composition, self.time_elapsed)
+    local warning_chance = (self.runtimeCfg.spawn and self.runtimeCfg.spawn.warning_chance) or 0.7
+    if self.warning_enabled and math.random() < warning_chance then
+        local warning_duration = (self.params.warning_time or 0.5) / self.difficulty_modifiers.speed
+        self.entity_controller:spawn("warning", sx, sy, {
+            type = 'warning', warning_type = 'radial',
+            spawn_type_name = type_name, spawn_angle = angle,
+            skip_offscreen_removal = true,
+            delayed_spawn = {timer = warning_duration, spawn_type = "warning"}
         })
+    else
+        self:spawnEntity(type_name, sx, sy, angle, false)
     end
 end
+
 
 --------------------------------------------------------------------------------
 -- SPAWN POSITION HELPERS

@@ -1261,6 +1261,26 @@
     ],
     "flavor_text": "Splitters rain shards while chasers hunt you down",
     "intro_cutscene": null
+  },
+  {
+    "clone_index": 62,
+    "name": "Dodge Escalation",
+    "movement_type": "default",
+    "sprite_set": "dodge_base",
+    "palette": "default",
+    "music_track": "dodge_theme_1",
+    "sfx_pack": "retro_beeps",
+    "background": "starfield",
+    "difficulty_modifier": 1.0,
+    "movement_speed": 300,
+    "disable_obstacle_fallback": true,
+    "enemies": [
+      { "type": "obstacle", "multiplier": {"base": 50, "growth": 0} },
+      { "type": "chaser", "multiplier": {"base": 5, "growth": 0.3} },
+      { "type": "shooter", "multiplier": {"base": 0, "growth": 0.3} }
+    ],
+    "flavor_text": "Starts easy. Gets worse. Shooters appear around 15 seconds.",
+    "intro_cutscene": null
   }
 ]
 }
