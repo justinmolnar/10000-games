@@ -1028,18 +1028,19 @@ Calls parent keypressed for demo playback tracking. Returns false.
 **Plan after discussion:** Delete entirely. Inherit from BaseGame:keypressed(). No custom input handling needed. 4 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Clone 0 — movement still works, demo recording still works
 
 ### AI Notes
-
+Deleted keypressed override (4 lines). BaseGame:keypressed handles demo tracking via inheritance.
 
 ### Status
-
+COMPLETE
 
 ### Line Count Change
-
+- dodge_game.lua: 647 → 639 (-8 lines)
 
 ### Deviation from Plan
+None
 
 ---
 

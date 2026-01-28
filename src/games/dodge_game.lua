@@ -635,13 +635,4 @@ function DodgeGame:spawnNext(sx, sy, forced_angle)
 end
 
 
---------------------------------------------------------------------------------
--- INPUT
---------------------------------------------------------------------------------
-
-function DodgeGame:keypressed(key)
-    DodgeGame.super.keypressed(self, key)
-    return false
-end
-
 return DodgeGame
