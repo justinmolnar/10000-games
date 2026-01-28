@@ -982,18 +982,37 @@ Adjusts angle to point inward if object spawned on edge facing outward.
 **Plan after discussion:** Delete entirely. Use calculateSpawnDirection("toward_center") or integrate into calculateSpawnPosition - edge spawns default to inward direction. 13 lines → 0 lines.
 
 ### Testing (User)
-- [ ]
+- [ ] Clone 0 — basic obstacle spawning (random edge position)
+- [ ] Clone 42 — spiral pattern (edge spawn at angle)
+- [ ] Clone 43 — pulse_with_arena (safe zone boundary spawn)
+- [ ] Any variant with circle/square/hex arena shapes — target ring + boundary points
+- [ ] Entities still aim inward (not flying off-screen immediately)
 
 ### AI Notes
+**Deleted 5 functions (~122 lines):**
+- pickSpawnPoint, pickSpawnPointAtAngle, pickTargetPointOnRing, pickPointOnSafeZoneBoundary, ensureInboundAngle
 
+**Added to EntityController (+31 lines):**
+- `region: "edge"` in calculateSpawnPosition — random edge or angle-based edge spawn with margin
+- `ensureInboundAngle(x, y, angle, bounds)` — flip angle components to point inward from bounds edges
+
+**Added to ArenaController (+28 lines):**
+- `getRandomBoundaryPoint(radius)` — uniform random point on shape boundary with outward normal angle
+
+**Modified in dodge_game.lua:**
+- spawn_func: uses EC calculateSpawnPosition for edge spawns, AC getRandomBoundaryPoint for pulse_with_arena
+- spawnNext: uses AC getPointOnShapeBoundary for target ring, EC ensureInboundAngle for angle correction
 
 ### Status
-
+COMPLETE
 
 ### Line Count Change
-
+- dodge_game.lua: 774 → 647 (-127 lines)
+- entity_controller.lua: 1696 → 1727 (+31 lines)
+- arena_controller.lua: 770 → 798 (+28 lines)
 
 ### Deviation from Plan
+None
 
 ---
 

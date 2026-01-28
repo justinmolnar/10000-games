@@ -158,18 +158,20 @@ function DodgeGame:setupComponents()
     local pattern = p.obstacle_spawn_pattern or "random"
     local spawn_func = function(ec)
         local sx, sy, forced_angle
+        local margin = (p.object_radius or 15) - ((game.runtimeCfg.arena and game.runtimeCfg.arena.spawn_inset) or 2)
+        local bounds = {min_x = 0, max_x = game.game_width, min_y = 0, max_y = game.game_height}
         if pattern == "spiral" then
-            sx, sy = game:pickSpawnPointAtAngle(game.spawn_state.spiral_angle)
+            sx, sy = ec:calculateSpawnPosition({region = "edge", angle = game.spawn_state.spiral_angle, margin = margin, bounds = bounds})
             game.spawn_state.spiral_angle = game.spawn_state.spiral_angle + math.rad(30)
         elseif pattern == "pulse_with_arena" and game.arena_controller then
-            sx, sy, forced_angle = game:pickPointOnSafeZoneBoundary()
+            sx, sy, forced_angle = game.arena_controller:getRandomBoundaryPoint()
         elseif pattern == "clusters" then
             for i = 1, math.random(2, 4) do
                 game:spawnNext()
             end
             return
         else
-            sx, sy = game:pickSpawnPoint()
+            sx, sy = ec:calculateSpawnPosition({region = "edge", margin = margin, bounds = bounds})
         end
         game:spawnNext(sx, sy, forced_angle)
     end
@@ -607,10 +609,16 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
 end
 
 function DodgeGame:spawnNext(sx, sy, forced_angle)
-    if not sx then sx, sy = self:pickSpawnPoint() end
-    local tx, ty = self:pickTargetPointOnRing()
+    local bounds = {min_x = 0, max_x = self.game_width, min_y = 0, max_y = self.game_height}
+    if not sx then
+        local margin = (self.params.object_radius or 15) - ((self.runtimeCfg.arena and self.runtimeCfg.arena.spawn_inset) or 2)
+        sx, sy = self.entity_controller:calculateSpawnPosition({region = "edge", margin = margin, bounds = bounds})
+    end
+    local ac = self.arena_controller
+    local scale = (self.params.target_ring_min_scale or 1.2) + math.random() * ((self.params.target_ring_max_scale or 1.5) - (self.params.target_ring_min_scale or 1.2))
+    local tx, ty = ac:getPointOnShapeBoundary(math.random() * math.pi * 2, ac:getEffectiveRadius() * scale)
     local angle = forced_angle or math.atan2(ty - sy, tx - sx)
-    angle = self:ensureInboundAngle(sx, sy, angle)
+    angle = self.entity_controller:ensureInboundAngle(sx, sy, angle, bounds)
     local type_name = self.entity_controller:pickWeightedType(self.spawn_composition, self.time_elapsed)
     local warning_chance = (self.runtimeCfg.spawn and self.runtimeCfg.spawn.warning_chance) or 0.7
     if self.warning_enabled and math.random() < warning_chance then
@@ -626,141 +634,6 @@ function DodgeGame:spawnNext(sx, sy, forced_angle)
     end
 end
 
-
---------------------------------------------------------------------------------
--- SPAWN POSITION HELPERS
---------------------------------------------------------------------------------
-
-function DodgeGame:pickSpawnPoint()
-    local inset = ((self.runtimeCfg.arena and self.runtimeCfg.arena.spawn_inset) or 2)
-    local r = (self.params.object_radius or 15)
-    local edge = math.random(4)
-    if edge == 1 then return -r + inset, math.random(0, self.game_height)
-    elseif edge == 2 then return self.game_width + r - inset, math.random(0, self.game_height)
-    elseif edge == 3 then return math.random(0, self.game_width), -r + inset
-    else return math.random(0, self.game_width), self.game_height + r - inset end
-end
-
-function DodgeGame:pickSpawnPointAtAngle(angle)
-    local inset = ((self.runtimeCfg.arena and self.runtimeCfg.arena.spawn_inset) or 2)
-    local r = (self.params.object_radius or 15)
-    local center_x = self.game_width / 2
-    local center_y = self.game_height / 2
-    local dist = math.max(self.game_width, self.game_height)
-    local sx = center_x + math.cos(angle) * dist
-    local sy = center_y + math.sin(angle) * dist
-    if sx < 0 then sx = -r + inset end
-    if sx > self.game_width then sx = self.game_width + r - inset end
-    if sy < 0 then sy = -r + inset end
-    if sy > self.game_height then sy = self.game_height + r - inset end
-    return sx, sy
-end
-
-function DodgeGame:pickTargetPointOnRing()
-    local ac = self.arena_controller
-    local scale = (self.params.target_ring_min_scale or 1.2) + math.random() * ((self.params.target_ring_max_scale or 1.5) - (self.params.target_ring_min_scale or 1.2))
-    local r = (ac and ac:getEffectiveRadius() or math.min(self.game_width, self.game_height) * 0.4) * scale
-    local a = math.random() * math.pi * 2
-    local cx = ac and ac.x or self.game_width/2
-    local cy = ac and ac.y or self.game_height/2
-    local shape = ac and ac.shape or "circle"
-
-    if shape == "circle" then
-        return cx + math.cos(a) * r, cy + math.sin(a) * r
-    elseif shape == "square" then
-        local side = math.random(4)
-        local t = math.random() * 2 - 1
-        if side == 1 then return cx + r, cy + t * r
-        elseif side == 2 then return cx - r, cy + t * r
-        elseif side == 3 then return cx + t * r, cy + r
-        else return cx + t * r, cy - r end
-    elseif shape == "hex" then
-        local hex_width = r * 0.866
-        local edge = math.random(6)
-        local t = math.random()
-        if edge == 1 then
-            return cx + hex_width * t, cy - r + r * 0.5 * t
-        elseif edge == 2 then
-            return cx + hex_width, cy - r * 0.5 + r * t
-        elseif edge == 3 then
-            return cx + hex_width * (1-t), cy + r * 0.5 + r * 0.5 * (1-t)
-        elseif edge == 4 then
-            return cx - hex_width * t, cy + r - r * 0.5 * t
-        elseif edge == 5 then
-            return cx - hex_width, cy + r * 0.5 - r * t
-        else
-            return cx - hex_width * (1-t), cy - r * 0.5 - r * 0.5 * (1-t)
-        end
-    else
-        return cx + math.cos(a) * r, cy + math.sin(a) * r
-    end
-end
-
-function DodgeGame:pickPointOnSafeZoneBoundary()
-    local ac = self.arena_controller
-    local r = ac:getEffectiveRadius()
-    local cx, cy = ac.x, ac.y
-    local shape = ac.shape or "circle"
-    local spawn_angle = math.random() * math.pi * 2
-
-    if shape == "circle" then
-        local sx = cx + math.cos(spawn_angle) * r
-        local sy = cy + math.sin(spawn_angle) * r
-        return sx, sy, spawn_angle
-    elseif shape == "square" then
-        local side = math.random(4)
-        local t = math.random() * 2 - 1
-        local sx, sy, angle
-        if side == 1 then sx, sy = cx + r, cy + t * r; angle = 0
-        elseif side == 2 then sx, sy = cx - r, cy + t * r; angle = math.pi
-        elseif side == 3 then sx, sy = cx + t * r, cy + r; angle = math.pi / 2
-        else sx, sy = cx + t * r, cy - r; angle = -math.pi / 2 end
-        return sx, sy, angle
-    elseif shape == "hex" then
-        local hex_width = r * 0.866
-        local edge = math.random(6)
-        local t = math.random()
-        local sx, sy, angle
-        if edge == 1 then
-            sx, sy = cx + hex_width * t, cy - r + r * 0.5 * t
-            angle = math.atan2(0.5, 0.866)
-        elseif edge == 2 then
-            sx, sy = cx + hex_width, cy - r * 0.5 + r * t
-            angle = 0
-        elseif edge == 3 then
-            sx, sy = cx + hex_width * (1-t), cy + r * 0.5 + r * 0.5 * (1-t)
-            angle = math.atan2(0.5, -0.866)
-        elseif edge == 4 then
-            sx, sy = cx - hex_width * t, cy + r - r * 0.5 * t
-            angle = math.atan2(-0.5, -0.866)
-        elseif edge == 5 then
-            sx, sy = cx - hex_width, cy + r * 0.5 - r * t
-            angle = math.pi
-        else
-            sx, sy = cx - hex_width * (1-t), cy - r * 0.5 - r * 0.5 * (1-t)
-            angle = math.atan2(-0.5, 0.866)
-        end
-        return sx, sy, angle
-    else
-        local sx = cx + math.cos(spawn_angle) * r
-        local sy = cy + math.sin(spawn_angle) * r
-        return sx, sy, spawn_angle
-    end
-end
-
-function DodgeGame:ensureInboundAngle(sx, sy, angle)
-    local vx, vy = math.cos(angle), math.sin(angle)
-    if sx <= 0 then
-        if vx <= 0 then angle = math.atan2(vy, math.abs(vx)) end
-    elseif sx >= self.game_width then
-        if vx >= 0 then angle = math.atan2(vy, -math.abs(vx)) end
-    elseif sy <= 0 then
-        if vy <= 0 then angle = math.atan2(math.abs(vy), vx) end
-    elseif sy >= self.game_height then
-        if vy >= 0 then angle = math.atan2(-math.abs(vy), vx) end
-    end
-    return angle
-end
 
 --------------------------------------------------------------------------------
 -- INPUT

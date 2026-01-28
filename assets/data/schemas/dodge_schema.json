@@ -128,7 +128,7 @@
         },
         "obstacle_spawn_pattern": {
             "type": "enum",
-            "values": ["random", "wave", "spiral", "cluster"],
+            "values": ["random", "waves", "spiral", "clusters", "pulse_with_arena"],
             "default": "random",
             "description": "How obstacles spawn into the arena"
         },

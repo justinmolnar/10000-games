@@ -158,6 +158,7 @@ Manages play area bounds, shapes, shrinking, pulsing, movement, holes.
 - **getShrinkProgress()** - Get shrink progress 0-1 (0=full, 1=min size).
 - **getShrinkMargins()** - Get {left, right, top, bottom} margin pixels for rectangular shrinking.
 - **getPointOnShapeBoundary(angle, radius)** - Get {x, y} on shape boundary at angle (works for circle/square/hex).
+- **getRandomBoundaryPoint(radius)** - Get random {x, y, outward_angle} on shape boundary with uniform sampling. Returns point + outward normal angle. Works for circle/square/hex.
 - **setPosition(x, y)** / **setVelocity(vx, vy)** - Direct position/velocity control.
 - **addHole(hole)** / **clearHoles()** - Manage arena holes.
 - **reset()** - Reset to initial state.
@@ -353,7 +354,7 @@ Generic enemy/obstacle spawning and management with pooling.
 - **spawnCluster(type_name, ref_entity, radius, bounds, is_valid_fn, custom_params)** - Spawn near an existing entity within radius.
 - **spawnInRegion(type_name, config, custom_params)** - Spawn in a region. Config: region ("random"/"center"/"bounds"), bounds, constraints.
 - **spawnWithConstraints(type_name, bounds, constraints, custom_params)** - Spawn with validation constraints. Constraints: min_distance_from, avoid_entities, is_valid_fn.
-- **calculateSpawnPosition(config)** - Calculate spawn position from config. Config: region, bounds, min_distance_from_center, inside_arena.
+- **calculateSpawnPosition(config)** - Calculate spawn position from config. Config: region, bounds, min_distance_from_center, inside_arena. Regions: "random", "center", "edge". Edge mode: random point on bounds edge with optional margin. With angle param: spawn at edge in that direction from center.
 - **calculateSpawnDirection(mode, x, y, center, fixed_direction)** - Calculate spawn direction. Modes: "toward_center", "from_center", "starting_direction", "random".
 - **tickTimer(entity, field, speed, dt)** - Increment entity timer field by speed*dt. Returns true if timer >= 1 (and resets timer).
 - **removeByTypes(types)** - Remove all entities matching array of type names.
@@ -387,6 +388,8 @@ Generic enemy/obstacle spawning and management with pooling.
 - `grid_unit_movement` - Space Invaders style: all grid entities move as unit, speed up as count drops
 
 - **pickWeightedType(configs, time)** - Pick random type from weighted configs array. Each config: {name, weight} where weight is number or {base, growth} table. With growth, effective weight = base + time * growth. Returns winning config's name.
+
+- **ensureInboundAngle(x, y, angle, bounds)** - If entity at (x,y) with direction angle would move away from bounds, flip the relevant component to point inward. Bounds: {min_x, max_x, min_y, max_y}. Returns corrected angle.
 
 **Spawn modes:** "continuous", "wave", "burst", "grid", "manual"
 - **burst** - Spawn burst_count entities at burst_interval rate, pause for burst_pause seconds, repeat. Uses spawn_func callback.

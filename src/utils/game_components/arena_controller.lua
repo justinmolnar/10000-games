@@ -381,6 +381,34 @@ function ArenaController:getPointOnShapeBoundary(angle, radius)
     end
 end
 
+function ArenaController:getRandomBoundaryPoint(radius)
+    radius = radius or self:getEffectiveRadius()
+    if self.shape == "circle" then
+        local a = math.random() * math.pi * 2
+        return self.x + math.cos(a) * radius, self.y + math.sin(a) * radius, a
+    elseif self.shape == "square" then
+        local side = math.random(4)
+        local t = math.random() * 2 - 1
+        if side == 1 then return self.x + radius, self.y + t * radius, 0
+        elseif side == 2 then return self.x - radius, self.y + t * radius, math.pi
+        elseif side == 3 then return self.x + t * radius, self.y + radius, math.pi / 2
+        else return self.x + t * radius, self.y - radius, -math.pi / 2 end
+    elseif self.shape == "hex" then
+        local hw = radius * 0.866
+        local edge = math.random(6)
+        local t = math.random()
+        if edge == 1 then return self.x + hw * t, self.y - radius + radius * 0.5 * t, math.atan2(0.5, 0.866)
+        elseif edge == 2 then return self.x + hw, self.y - radius * 0.5 + radius * t, 0
+        elseif edge == 3 then return self.x + hw * (1-t), self.y + radius * 0.5 + radius * 0.5 * (1-t), math.atan2(0.5, -0.866)
+        elseif edge == 4 then return self.x - hw * t, self.y + radius - radius * 0.5 * t, math.atan2(-0.5, -0.866)
+        elseif edge == 5 then return self.x - hw, self.y + radius * 0.5 - radius * t, math.pi
+        else return self.x - hw * (1-t), self.y - radius * 0.5 - radius * 0.5 * (1-t), math.atan2(-0.5, 0.866) end
+    else
+        local a = math.random() * math.pi * 2
+        return self.x + math.cos(a) * radius, self.y + math.sin(a) * radius, a
+    end
+end
+
 -- Get effective radius (base + pulse offset)
 function ArenaController:getEffectiveRadius()
     return self.radius + self.pulse_offset

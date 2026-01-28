@@ -490,6 +490,23 @@ function EntityController:calculateSpawnPosition(config)
     if region == "center" then
         x = center.x + (index - 1) * spacing
         y = center.y
+    elseif region == "edge" then
+        local margin = config.margin or 0
+        if config.angle then
+            local dist = math.max(bounds.max_x - bounds.min_x, bounds.max_y - bounds.min_y)
+            x = center.x + math.cos(config.angle) * dist
+            y = center.y + math.sin(config.angle) * dist
+            if x < bounds.min_x then x = bounds.min_x - margin end
+            if x > bounds.max_x then x = bounds.max_x + margin end
+            if y < bounds.min_y then y = bounds.min_y - margin end
+            if y > bounds.max_y then y = bounds.max_y + margin end
+        else
+            local edge_side = math.random(4)
+            if edge_side == 1 then x = bounds.min_x - margin; y = bounds.min_y + math.random() * (bounds.max_y - bounds.min_y)
+            elseif edge_side == 2 then x = bounds.max_x + margin; y = bounds.min_y + math.random() * (bounds.max_y - bounds.min_y)
+            elseif edge_side == 3 then x = bounds.min_x + math.random() * (bounds.max_x - bounds.min_x); y = bounds.min_y - margin
+            else x = bounds.min_x + math.random() * (bounds.max_x - bounds.min_x); y = bounds.max_y + margin end
+        end
     else
         local min_dist = config.min_distance_from_center or 0
         local max_attempts = config.max_attempts or 200
@@ -561,6 +578,20 @@ function EntityController:calculateSpawnDirection(mode, x, y, center, fixed_dire
 
     -- Default: use fixed_direction or right
     return fixed_direction or {x = 1, y = 0}
+end
+
+function EntityController:ensureInboundAngle(x, y, angle, bounds)
+    local vx, vy = math.cos(angle), math.sin(angle)
+    if x <= bounds.min_x then
+        if vx <= 0 then angle = math.atan2(vy, math.abs(vx)) end
+    elseif x >= bounds.max_x then
+        if vx >= 0 then angle = math.atan2(vy, -math.abs(vx)) end
+    elseif y <= bounds.min_y then
+        if vy <= 0 then angle = math.atan2(math.abs(vy), vx) end
+    elseif y >= bounds.max_y then
+        if vy >= 0 then angle = math.atan2(-math.abs(vy), vx) end
+    end
+    return angle
 end
 
 --[[
