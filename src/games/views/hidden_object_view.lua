@@ -2,7 +2,10 @@ local GameBaseView = require('src.games.views.game_base_view')
 local HiddenObjectView = GameBaseView:extend('HiddenObjectView')
 
 function HiddenObjectView:init(game_state, variant)
-    HiddenObjectView.super.init(self, game_state, variant)
+    HiddenObjectView.super.init(self, game_state, variant, {
+        background_procedural = true,
+        procedural_alt_color = {0.25, 0.22, 0.18}
+    })
 
     -- Game-specific view config
     local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.hidden_object and self.di.config.games.hidden_object.view) or {})
@@ -75,62 +78,6 @@ function HiddenObjectView:drawContent()
         if game.completed and game.metrics.time_bonus > 0 then
             love.graphics.setColor(0.5, 1, 0.5)
             love.graphics.print("Time Bonus: " .. game.metrics.time_bonus, 10, 90, 0, 0.85, 0.85)
-        end
-    end
-end
-
-function HiddenObjectView:drawBackground()
-    local game = self.game
-
-    if game and game.sprites and game.sprites.background then
-        local bg = game.sprites.background
-        local bg_width = bg:getWidth()
-        local bg_height = bg:getHeight()
-
-        -- Apply palette swap
-        local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
-        local paletteManager = self.di and self.di.paletteManager
-
-        -- Scale or tile background to fit game area
-        local scale_x = game.game_width / bg_width
-        local scale_y = game.game_height / bg_height
-
-        if paletteManager and palette_id then
-            paletteManager:drawSpriteWithPalette(
-                bg,
-                0,
-                0,
-                game.game_width,
-                game.game_height,
-                palette_id,
-                {1, 1, 1}
-            )
-        else
-            -- No palette, just draw normally
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.draw(bg, 0, 0, 0, scale_x, scale_y)
-        end
-
-        return -- Don't draw procedural background if we have a sprite
-    end
-
-    -- Fallback: Draw procedural background
-    love.graphics.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
-    love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
-
-    local complexity = game.difficulty_modifiers.complexity
-    local grid_density = math.floor(game.params.background_grid_base * complexity)
-    local cell_w = game.game_width / grid_density
-    local cell_h = game.game_height / grid_density
-
-    local complexity_mod = math.max(1, game.params.background_hash_2 + complexity)
-
-    for i = 0, grid_density do
-        for j = 0, grid_density do
-            if ((i + j) * game.params.background_hash_1) % complexity_mod == 0 then
-                love.graphics.setColor(0.25, 0.22, 0.18)
-                love.graphics.rectangle('fill', i * cell_w, j * cell_h, cell_w, cell_h)
-            end
         end
     end
 end

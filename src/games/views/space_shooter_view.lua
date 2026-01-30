@@ -3,6 +3,10 @@ local SpaceShooterView = GameBaseView:extend('SpaceShooterView')
 
 function SpaceShooterView:init(game_state, variant)
     SpaceShooterView.super.init(self, game_state, variant)
+
+    -- Game-specific view config
+    local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or {})
+    self.bg_color = viewcfg.bg_color or {0.05, 0.05, 0.15}
 end
 
 function SpaceShooterView:drawContent()
@@ -304,50 +308,6 @@ function SpaceShooterView:drawContent()
             g.setColor(1, 1, 1)
         end
     end
-end
-
-function SpaceShooterView:drawBackground()
-    local game = self.game
-    local g = love.graphics
-
-    if game and game.sprites and game.sprites.background then
-        local bg = game.sprites.background
-        local bg_width = bg:getWidth()
-        local bg_height = bg:getHeight()
-
-        -- Apply palette swap
-        local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
-        local paletteManager = self.di and self.di.paletteManager
-
-        -- Scale or tile background to fit game area
-        local scale_x = game.game_width / bg_width
-        local scale_y = game.game_height / bg_height
-
-        if paletteManager and palette_id then
-            paletteManager:drawSpriteWithPalette(
-                bg,
-                0,
-                0,
-                game.game_width,
-                game.game_height,
-                palette_id,
-                {1, 1, 1}
-            )
-        else
-            -- No palette, just draw normally
-            g.setColor(1, 1, 1)
-            g.draw(bg, 0, 0, 0, scale_x, scale_y)
-        end
-
-        return -- Don't draw solid background if we have a sprite
-    end
-
-    -- Fallback: Draw solid color background
-    local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or
-                     (Config and Config.games and Config.games.space_shooter and Config.games.space_shooter.view) or {})
-    local bg = viewcfg.bg_color or {0.05, 0.05, 0.15}
-    g.setColor(bg[1], bg[2], bg[3])
-    g.rectangle('fill', 0, 0, game.game_width, game.game_height)
 end
 
 return SpaceShooterView

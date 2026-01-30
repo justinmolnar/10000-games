@@ -314,16 +314,31 @@ Extract background rendering into BaseView with multiple modes. Currently 5 view
 
 
 ### AI Notes
-
+- Added drawBackground() dispatcher to GameBaseView with multiple modes
+- Added drawBackgroundSprite() - scaled sprite with palette support
+- Added drawBackgroundTiled() - tiled sprite with palette support
+- Added drawBackgroundSolid() - solid color fill using self.bg_color
+- Added drawBackgroundStarfield() - animated star particles using self.stars
+- Added drawBackgroundProcedural() - grid pattern using game.params
+- Views configure mode via init config: background_tiled, background_starfield, background_procedural
+- Updated hidden_object_view: uses procedural fallback, deleted drawBackground()
+- Updated space_shooter_view: uses default sprite/solid, deleted drawBackground()
+- Updated snake_view: uses default sprite/solid, deleted drawBackground()
+- Updated dodge_view: uses tiled + starfield fallback, deleted drawBackground()
 
 ### Status
-Not started
+Complete
 
 ### Line Count Change
-
+- game_base_view: 131 → 256 lines (+125 for background infrastructure)
+- hidden_object_view: 138 → 84 lines (-54)
+- space_shooter_view: 353 → 312 lines (-41)
+- snake_view: 554 → 512 lines (-42)
+- dodge_view: 435 → 380 lines (-55)
+- **Net change:** +125 infrastructure, -192 removed = -67 lines
 
 ### Deviation from Plan
-
+- memory_match_view not updated (only 2 lines of inline solid color, not worth extracting)
 
 ---
 

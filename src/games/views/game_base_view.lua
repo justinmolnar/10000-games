@@ -128,4 +128,129 @@ function GameBaseView:getGameOverSubtitle()
     return nil
 end
 
+--------------------------------------------------------------------------------
+-- BACKGROUND RENDERING
+--------------------------------------------------------------------------------
+
+function GameBaseView:drawBackground(width, height)
+    local game = self.game
+    width = width or game.game_width or game.arena_width or love.graphics.getWidth()
+    height = height or game.game_height or game.arena_height or love.graphics.getHeight()
+
+    -- Try sprite background first (scaled or tiled based on config)
+    if game and game.sprites and game.sprites.background then
+        if self.config.background_tiled then
+            self:drawBackgroundTiled(width, height)
+        else
+            self:drawBackgroundSprite(width, height)
+        end
+        return true
+    end
+
+    -- Fallback based on config
+    if self.config.background_starfield and self.stars then
+        self:drawBackgroundStarfield(width, height)
+        return true
+    end
+
+    if self.config.background_procedural then
+        self:drawBackgroundProcedural(width, height)
+        return true
+    end
+
+    -- Default: solid color
+    self:drawBackgroundSolid(width, height)
+    return true
+end
+
+function GameBaseView:drawBackgroundSprite(width, height)
+    local game = self.game
+    local bg = game.sprites.background
+    local bg_width = bg:getWidth()
+    local bg_height = bg:getHeight()
+
+    local palette_id = self:getPaletteId()
+    local scale_x = width / bg_width
+    local scale_y = height / bg_height
+
+    if self.palette_manager and palette_id then
+        self.palette_manager:drawSpriteWithPalette(bg, 0, 0, width, height, palette_id, {1, 1, 1})
+    else
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.draw(bg, 0, 0, 0, scale_x, scale_y)
+    end
+end
+
+function GameBaseView:drawBackgroundTiled(width, height)
+    local game = self.game
+    local bg = game.sprites.background
+    local bg_width = bg:getWidth()
+    local bg_height = bg:getHeight()
+
+    local palette_id = self:getPaletteId()
+
+    for y = 0, math.ceil(height / bg_height) do
+        for x = 0, math.ceil(width / bg_width) do
+            if self.palette_manager and palette_id then
+                self.palette_manager:drawSpriteWithPalette(
+                    bg, x * bg_width, y * bg_height, bg_width, bg_height, palette_id, {1, 1, 1}
+                )
+            else
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.draw(bg, x * bg_width, y * bg_height)
+            end
+        end
+    end
+end
+
+function GameBaseView:drawBackgroundSolid(width, height)
+    if self.bg_color then
+        love.graphics.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
+    else
+        love.graphics.setColor(0.1, 0.1, 0.15)
+    end
+    love.graphics.rectangle('fill', 0, 0, width, height)
+end
+
+function GameBaseView:drawBackgroundStarfield(width, height)
+    local t = love.timer.getTime()
+    love.graphics.setColor(1, 1, 1)
+    for _, star in ipairs(self.stars) do
+        local y = (star.y + (star.speed * t) / height) % 1
+        local px = star.x * width
+        local py = y * height
+        local size = math.max(1, star.speed / (self.star_size_divisor or 60))
+        love.graphics.rectangle('fill', px, py, size, size)
+    end
+end
+
+function GameBaseView:drawBackgroundProcedural(width, height)
+    local game = self.game
+
+    -- Draw base color first
+    self:drawBackgroundSolid(width, height)
+
+    -- Draw grid pattern
+    local complexity = (game.difficulty_modifiers and game.difficulty_modifiers.complexity) or 1
+    local grid_base = (game.params and game.params.background_grid_base) or 10
+    local hash_1 = (game.params and game.params.background_hash_1) or 7
+    local hash_2 = (game.params and game.params.background_hash_2) or 3
+
+    local grid_density = math.floor(grid_base * complexity)
+    local cell_w = width / grid_density
+    local cell_h = height / grid_density
+    local complexity_mod = math.max(1, hash_2 + complexity)
+
+    local alt_color = self.config.procedural_alt_color or {0.25, 0.22, 0.18}
+    love.graphics.setColor(alt_color[1], alt_color[2], alt_color[3])
+
+    for i = 0, grid_density do
+        for j = 0, grid_density do
+            if ((i + j) * hash_1) % complexity_mod == 0 then
+                love.graphics.rectangle('fill', i * cell_w, j * cell_h, cell_w, cell_h)
+            end
+        end
+    end
+end
+
 return GameBaseView

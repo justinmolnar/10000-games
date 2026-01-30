@@ -432,46 +432,6 @@ function SnakeView:drawContent()
     game.hud:draw(viewport_width, viewport_height)
 end
 
-function SnakeView:drawBackground()
-    local game = self.game
-
-    if game and game.sprites and game.sprites.background then
-        local bg = game.sprites.background
-        local bg_width = bg:getWidth()
-        local bg_height = bg:getHeight()
-
-        -- Apply palette swap
-        local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
-        local paletteManager = self.di and self.di.paletteManager
-
-        -- Scale or tile background to fit game area
-        local scale_x = game.game_width / bg_width
-        local scale_y = game.game_height / bg_height
-
-        if paletteManager and palette_id then
-            paletteManager:drawSpriteWithPalette(
-                bg,
-                0,
-                0,
-                game.game_width,
-                game.game_height,
-                palette_id,
-                {1, 1, 1}
-            )
-        else
-            -- No palette, just draw normally
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.draw(bg, 0, 0, 0, scale_x, scale_y)
-        end
-
-        return -- Don't draw solid background if we have a sprite
-    end
-
-    -- Fallback: Draw solid color background
-    love.graphics.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
-    love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
-end
-
 function SnakeView:drawArenaBoundaries()
     local game = self.game
     local GRID_SIZE = self.GRID_SIZE

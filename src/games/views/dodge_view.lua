@@ -2,7 +2,10 @@ local GameBaseView = require('src.games.views.game_base_view')
 local DodgeView = GameBaseView:extend('DodgeView')
 
 function DodgeView:init(game_state, variant)
-    DodgeView.super.init(self, game_state, variant)
+    DodgeView.super.init(self, game_state, variant, {
+        background_tiled = true,
+        background_starfield = true
+    })
 
     -- Game-specific view config
     self.OBJECT_DRAW_SIZE = game_state.OBJECT_SIZE or 15
@@ -372,59 +375,6 @@ function DodgeView:drawContent()
 
         -- Difficulty
         g.print("Difficulty: " .. game.difficulty_level, lx, hud_y, 0, s, s)
-    end
-end
-
-function DodgeView:drawBackground(width, height)
-    local g = love.graphics
-    local game = self.game
-
-    -- Use loaded background sprite if available
-    if game and game.sprites and game.sprites.background then
-        -- Tile the background to fill the play area
-        local bg = game.sprites.background
-        local bg_width = bg:getWidth()
-        local bg_height = bg:getHeight()
-
-        -- Apply palette swap
-        local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
-        local paletteManager = self.di and self.di.paletteManager
-
-        -- Tile the background with palette swapping
-        for y = 0, math.ceil(height / bg_height) do
-            for x = 0, math.ceil(width / bg_width) do
-                if paletteManager and palette_id then
-                    paletteManager:drawSpriteWithPalette(
-                        bg,
-                        x * bg_width,
-                        y * bg_height,
-                        bg_width,
-                        bg_height,
-                        palette_id,
-                        {1, 1, 1}
-                    )
-                else
-                    -- No palette, just draw normally
-                    g.setColor(1, 1, 1)
-                    g.draw(bg, x * bg_width, y * bg_height)
-                end
-            end
-        end
-
-        return -- Don't draw starfield if we have a background sprite
-    end
-
-    -- Fallback: Draw animated starfield
-    local t = love.timer.getTime()
-    g.setColor(1, 1, 1)
-    for _, star in ipairs(self.stars) do
-        -- animate downward based on speed; wrap with modulo 1.0
-        local y = (star.y + (star.speed * t) / height) % 1
-        local x = star.x
-        local px = x * width
-        local py = y * height
-        local size = math.max(1, star.speed / (self.star_size_divisor or 60))
-        g.rectangle('fill', px, py, size, size)
     end
 end
 
