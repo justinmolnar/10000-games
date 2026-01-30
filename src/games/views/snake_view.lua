@@ -1,32 +1,16 @@
-local Object = require('class')
-local Config = rawget(_G, 'DI_CONFIG') or {}
-local SnakeView = Object:extend('SnakeView')
+local GameBaseView = require('src.games.views.game_base_view')
+local SnakeView = GameBaseView:extend('SnakeView')
 
 function SnakeView:init(game_state, variant)
-    self.game = game_state
-    self.variant = variant
+    SnakeView.super.init(self, game_state, variant)
+
+    -- Game-specific view config
     self.GRID_SIZE = game_state.GRID_SIZE or 20
-    self.di = game_state and game_state.di
-    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.snake and self.di.config.games.snake.view) or
-                 (Config and Config.games and Config.games.snake and Config.games.snake.view) or {})
+    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.snake and self.di.config.games.snake.view) or {})
     self.bg_color = cfg.bg_color or {0.05, 0.1, 0.05}
-    self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50} }
-    self.sprite_loader = nil
-    self.sprite_manager = nil
 end
 
-function SnakeView:ensureLoaded()
-    if not self.sprite_loader then
-        self.sprite_loader = (self.di and self.di.spriteLoader) or error("SnakeView: spriteLoader not available in DI")
-    end
-
-    if not self.sprite_manager then
-        self.sprite_manager = (self.di and self.di.spriteManager) or error("SnakeView: spriteManager not available in DI")
-    end
-end
-
-function SnakeView:draw()
-    self:ensureLoaded()
+function SnakeView:drawContent()
 
     local game = self.game
     local GRID_SIZE = self.GRID_SIZE

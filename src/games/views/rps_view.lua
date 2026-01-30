@@ -1,11 +1,11 @@
-local Class = require('lib.class')
-local RPSView = Class:extend('RPSView')
+local GameBaseView = require('src.games.views.game_base_view')
+local RPSView = GameBaseView:extend('RPSView')
 
 function RPSView:init(game)
-    self.game = game
+    RPSView.super.init(self, game, nil)
 end
 
-function RPSView:draw()
+function RPSView:drawContent()
     -- Use viewport dimensions if available (for demo playback), otherwise full screen
     local w = self.game.viewport_width or love.graphics.getWidth()
     local h = self.game.viewport_height or love.graphics.getHeight()

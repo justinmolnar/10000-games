@@ -167,6 +167,13 @@ function MemoryMatch:setPlayArea(width, height)
     if self.CARD_WIDTH and self.CARD_HEIGHT then
         self:calculateGridPosition()
 
+        -- Update card dimensions and positions
+        local new_width, new_height = self.CARD_WIDTH, self.CARD_HEIGHT
+        self.entity_controller:forEachByType("card", function(card)
+            card.width = new_width
+            card.height = new_height
+        end)
+
         -- Update card positions for non-gravity mode
         if not self.params.gravity_enabled then
             self.entity_controller:repositionGridEntities("card", {

@@ -1,37 +1,21 @@
-local Object = require('class')
-local Config = rawget(_G, 'DI_CONFIG') or {}
-local MemoryMatchView = Object:extend('MemoryMatchView')
+local GameBaseView = require('src.games.views.game_base_view')
+local MemoryMatchView = GameBaseView:extend('MemoryMatchView')
 
 function MemoryMatchView:init(game_state, variant)
-    self.game = game_state
-    self.variant = variant
+    MemoryMatchView.super.init(self, game_state, variant)
+
+    -- Game-specific view config
     self.CARD_WIDTH = game_state.CARD_WIDTH or 60
     self.CARD_HEIGHT = game_state.CARD_HEIGHT or 80
     self.CARD_SPACING = (game_state.params and game_state.params.card_spacing) or 10
-    self.di = game_state and game_state.di
-    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match and self.di.config.games.memory_match.view) or
-                 (Config and Config.games and Config.games.memory_match and Config.games.memory_match.view) or {})
+    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match and self.di.config.games.memory_match.view) or {})
     self.bg_color = cfg.bg_color or {0.05, 0.08, 0.12}
-    self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
     self.start_x = game_state.start_x
     self.start_y = game_state.start_y
     self.grid_size = game_state.grid_size
-    self.sprite_loader = nil
-    self.sprite_manager = nil
 end
 
-function MemoryMatchView:ensureLoaded()
-    if not self.sprite_loader then
-        self.sprite_loader = (self.di and self.di.spriteLoader) or error("MemoryMatchView: spriteLoader not available in DI")
-    end
-
-    if not self.sprite_manager then
-        self.sprite_manager = (self.di and self.di.spriteManager) or error("MemoryMatchView: spriteManager not available in DI")
-    end
-end
-
-function MemoryMatchView:draw()
-    self:ensureLoaded()
+function MemoryMatchView:drawContent()
 
     local game = self.game
 

@@ -1,11 +1,11 @@
-local Class = require('lib.class')
-local BreakoutView = Class:extend('BreakoutView')
+local GameBaseView = require('src.games.views.game_base_view')
+local BreakoutView = GameBaseView:extend('BreakoutView')
 
 function BreakoutView:init(game)
-    self.game = game
+    BreakoutView.super.init(self, game, nil)
 end
 
-function BreakoutView:draw()
+function BreakoutView:drawContent()
     love.graphics.push()
 
     -- Apply camera shake

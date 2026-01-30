@@ -1,28 +1,11 @@
-local Object = require('class')
-local Config = rawget(_G, 'DI_CONFIG') or {}
-local SpaceShooterView = Object:extend('SpaceShooterView')
+local GameBaseView = require('src.games.views.game_base_view')
+local SpaceShooterView = GameBaseView:extend('SpaceShooterView')
 
 function SpaceShooterView:init(game_state, variant)
-    self.game = game_state
-    self.variant = variant
-    self.sprite_loader = nil
-    self.sprite_manager = nil
-    -- capture DI if passed via game_state
-    self.di = game_state and game_state.di
+    SpaceShooterView.super.init(self, game_state, variant)
 end
 
-function SpaceShooterView:ensureLoaded()
-    if not self.sprite_loader then
-        self.sprite_loader = (self.di and self.di.spriteLoader) or error("SpaceShooterView: spriteLoader not available in DI")
-    end
-
-    if not self.sprite_manager then
-        self.sprite_manager = (self.di and self.di.spriteManager) or error("SpaceShooterView: spriteManager not available in DI")
-    end
-end
-
-function SpaceShooterView:draw()
-    self:ensureLoaded()
+function SpaceShooterView:drawContent()
 
     local game = self.game
     local g = love.graphics

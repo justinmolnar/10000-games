@@ -1,46 +1,28 @@
-local Object = require('class')
-local Config = rawget(_G, 'DI_CONFIG') or {}
-local DodgeView = Object:extend('DodgeView')
+local GameBaseView = require('src.games.views.game_base_view')
+local DodgeView = GameBaseView:extend('DodgeView')
 
 function DodgeView:init(game_state, variant)
-    self.game = game_state
-    self.variant = variant -- Store variant data for future use (Phase 1.3)
+    DodgeView.super.init(self, game_state, variant)
+
+    -- Game-specific view config
     self.OBJECT_DRAW_SIZE = game_state.OBJECT_SIZE or 15
-    self.di = game_state and game_state.di
-    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.dodge and self.di.config.games.dodge.view) or
-                 (Config and Config.games and Config.games.dodge and Config.games.dodge.view) or {})
+    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.dodge and self.di.config.games.dodge.view) or {})
     self.bg_color = cfg.bg_color or {0.08, 0.05, 0.1}
 
-    -- NOTE: In Phase 2, background will be determined by variant.background
-    -- e.g., variant.background could be "starfield_blue", "starfield_red", etc.
-    self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 70, text_x = 90, row_y = {10, 30, 50, 70} }
+    -- Starfield background config
     local sf = cfg.starfield or { count = 180, speed_min = 20, speed_max = 100, size_divisor = 60 }
-    self.sprite_loader = nil
-    self.sprite_manager = nil
-    -- Simple starfield background (animated by time)
     self.stars = {}
     for i = 1, (sf.count or 180) do
         table.insert(self.stars, {
-            x = math.random(),      -- normalized [0,1]
-            y = math.random(),      -- normalized [0,1]
-            speed = (sf.speed_min or 20) + math.random() * ((sf.speed_max or 100) - (sf.speed_min or 20)) -- px/sec at 1x height
+            x = math.random(),
+            y = math.random(),
+            speed = (sf.speed_min or 20) + math.random() * ((sf.speed_max or 100) - (sf.speed_min or 20))
         })
     end
     self.star_size_divisor = sf.size_divisor or 60
 end
 
-function DodgeView:ensureLoaded()
-    if not self.sprite_loader then
-        self.sprite_loader = (self.di and self.di.spriteLoader) or error("DodgeView: spriteLoader not available in DI")
-    end
-
-    if not self.sprite_manager then
-        self.sprite_manager = (self.di and self.di.spriteManager) or error("DodgeView: spriteManager not available in DI")
-    end
-end
-
-function DodgeView:draw()
-    self:ensureLoaded()
+function DodgeView:drawContent()
 
     local game = self.game
     local g = love.graphics

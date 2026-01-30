@@ -1,32 +1,15 @@
-local Object = require('class')
-local Config = rawget(_G, 'DI_CONFIG') or {}
-local HiddenObjectView = Object:extend('HiddenObjectView')
+local GameBaseView = require('src.games.views.game_base_view')
+local HiddenObjectView = GameBaseView:extend('HiddenObjectView')
 
 function HiddenObjectView:init(game_state, variant)
-    self.game = game_state
-    self.variant = variant
-    self.di = game_state and game_state.di
-    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.hidden_object and self.di.config.games.hidden_object.view) or
-                 (Config and Config.games and Config.games.hidden_object and Config.games.hidden_object.view) or {})
+    HiddenObjectView.super.init(self, game_state, variant)
+
+    -- Game-specific view config
+    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.hidden_object and self.di.config.games.hidden_object.view) or {})
     self.bg_color = cfg.bg_color or {0.12, 0.1, 0.08}
-
-    self.hud = cfg.hud or { icon_size = 16, text_scale = 0.85, label_x = 10, icon_x = 60, text_x = 80, row_y = {10, 30, 50, 70} }
-    self.sprite_loader = nil
-    self.sprite_manager = nil
 end
 
-function HiddenObjectView:ensureLoaded()
-    if not self.sprite_loader then
-        self.sprite_loader = (self.di and self.di.spriteLoader) or error("HiddenObjectView: spriteLoader not available in DI")
-    end
-
-    if not self.sprite_manager then
-        self.sprite_manager = (self.di and self.di.spriteManager) or error("HiddenObjectView: spriteManager not available in DI")
-    end
-end
-
-function HiddenObjectView:draw()
-    self:ensureLoaded()
+function HiddenObjectView:drawContent()
 
     local game = self.game
 

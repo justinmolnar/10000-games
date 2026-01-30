@@ -1,11 +1,11 @@
-local Class = require('lib.class')
-local CoinFlipView = Class:extend('CoinFlipView')
+local GameBaseView = require('src.games.views.game_base_view')
+local CoinFlipView = GameBaseView:extend('CoinFlipView')
 
 function CoinFlipView:init(game)
-    self.game = game
+    CoinFlipView.super.init(self, game, nil)
 end
 
-function CoinFlipView:draw()
+function CoinFlipView:drawContent()
     -- Use viewport dimensions if available (for demo playback), otherwise full screen
     local w = self.game.viewport_width or love.graphics.getWidth()
     local h = self.game.viewport_height or love.graphics.getHeight()
