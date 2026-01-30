@@ -55,6 +55,45 @@ Other games already solved similar problems. Use their patterns:
 
 Don't reinvent. Don't keep inline versions. Use what exists, extend if needed.
 
+### Follow the `self.params` Pattern (dodge_game style)
+
+**DO NOT copy params to self.* fields.** Access params directly via `local p = self.params`.
+
+**WRONG:**
+```lua
+function Game:setupGameState()
+    self.card_count = self.params.card_count
+    self.flip_speed = self.params.flip_speed
+    self.memorize_time = self.params.memorize_time
+    self.columns = self.params.columns
+    -- ... 20 more copied fields
+end
+```
+
+**RIGHT:**
+```lua
+function Game:setupEntities()
+    local p = self.params
+    -- Only initialize RUNTIME state that changes during gameplay
+    self.flipped_cards = {}
+    self.matched_pairs = 0
+    self.moves = 0
+end
+
+function Game:flipCard(card)
+    local p = self.params
+    if #self.flipped_cards >= p.match_requirement then  -- Access directly
+        return
+    end
+end
+```
+
+**Rules:**
+1. Use `local p = self.params` at the start of methods that need params
+2. Only initialize runtime state (counters, flags, arrays that change during play)
+3. Never copy params that don't change - access them directly when needed
+4. Delete nil initializations (`self.foo = nil` is pointless)
+
 ### The Goal
 
 When a phase says "100 lines → 0 lines", that means 0 lines. Not "50 lines of helper functions." Not "we kept checkMatch for complex stuff." Zero. The game file configures components via schema and callbacks. The logic lives in components.
@@ -63,9 +102,9 @@ When a phase says "100 lines → 0 lines", that means 0 lines. Not "50 lines of 
 
 ### Procedural Rules
 
-1. Complete ALL functions within a section (phase) before stopping.
-2. After completing a section, fill in AI Notes with **exact line count change**.
-3. Do NOT proceed to the next section without user approval.
+1. Complete ALL functions within a phase before stopping.
+2. After completing a phase, fill in AI Notes with **exact line count change**.
+3. Do NOT proceed to the next phase without user approval.
 4. Run NO tests yourself - the user will do manual testing.
 5. When adding to BaseGame/components, ensure other games still work.
 6. Delete the memory_match functions after extraction - no wrappers.
@@ -86,7 +125,9 @@ When a phase says "100 lines → 0 lines", that means 0 lines. Not "50 lines of 
 
 ---
 
-## Phase 1: INITIALIZATION
+## Phase 1: INITIALIZATION + ASSETS (9 functions)
+
+### Section: INITIALIZATION
 
 ### init
 Initializes the game. Calls parent init with game_data, cheats, DI container, and variant_override. Gets runtime config from DI. Loads parameters from memory_match_schema.json using SchemaLoader. Sets display_name from variant. Calls applyModifiers, setupGameState, setupComponents. Creates the view.
@@ -190,51 +231,7 @@ Creates FogOfWar component. Creates HUDRenderer. Creates VictoryCondition with t
 
 ---
 
-## Phase 1 Summary
-
-**Functions reviewed:** 4 (init, applyModifiers, setupGameState, setupComponents)
-
-**Total current lines:** ~184 lines
-**Expected after refactor:** ~75 lines (~60% reduction)
-
-**Key changes:**
-- Delete applyModifiers entirely
-- Rename setupGameState → setupEntities, gut from 127 → ~45 lines
-- Use createComponentsFromSchema() pattern
-- Move constants to schema
-- Move loadAssets to init
-- Move EntityController to setupComponents
-
-**Schema additions needed:**
-- Card spacing/padding defaults
-- Game dimension defaults
-- Gravity physics constants
-- Components config (fog, hud, victory)
-
-### Testing (User)
-- [ ] Game initializes without errors
-- [ ] Cards render at correct positions
-- [ ] Grid scales properly to window size
-- [ ] FogOfWar works if enabled
-- [ ] HUD displays matches/moves/time
-- [ ] Victory/loss conditions trigger correctly
-- [ ] Memorize phase works (cards face up, then flip down)
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 2: ASSETS
+### Section: ASSETS
 
 ### loadAssets
 Loads sprites from variant sprite_set or "flags" default. Loads card_back.png. Scans directory for all .png icon files. Falls back to memory/flags if no icons found. Shuffles icon files for randomness. Loads needed icons up to total_pairs. Sets base card dimensions from first loaded sprite. Calls loadAudio.
@@ -329,49 +326,83 @@ Calculates HUD height based on active features. Calculates available space. Calc
 
 ---
 
-## Phase 2 Summary
+## Phase 1 Summary
 
-**Functions reviewed:** 5 (loadAssets, countLoadedSprites, hasSprite, setPlayArea, calculateGridPosition)
+**Functions:** 9 (init, applyModifiers, setupGameState, setupComponents, loadAssets, countLoadedSprites, hasSprite, setPlayArea, calculateGridPosition)
+**Current lines:** ~406
+**Expected after refactor:** ~75 lines (~82% reduction)
 
-**Total current lines:** ~222 lines
-**Expected after refactor:** ~15 lines (~93% reduction)
+**Sections covered:** INITIALIZATION, ASSETS
 
 **Key changes:**
-- Delete loadAssets entirely - use BaseGame:loadAssets() with new features
-- Delete countLoadedSprites - dead code (debug print removed)
-- Delete hasSprite - dead code (never called)
-- Simplify setPlayArea - use BaseGame pattern + EC repositioning
-- Simplify calculateGridPosition - use HUDRenderer:getHeight() + EC grid layout utility
+- Delete applyModifiers entirely
+- Rename setupGameState → setupEntities, gut from 127 → ~45 lines
+- Use createComponentsFromSchema() pattern
+- Move constants to schema
+- Move loadAssets to init
+- Move EntityController to setupComponents
+- Delete loadAssets entirely - use BaseGame pattern
+- Delete dead code (countLoadedSprites, hasSprite)
+- Simplify setPlayArea and calculateGridPosition
 
-**Features to add to components:**
-- BaseGame:loadAssets() - directory scanning, icon shuffling, dimension detection, filename storage
-- HUDRenderer:getHeight() - return actual rendered height
-- EntityController:calculateGridLayout() - grid layout calculation utility
-- EntityController:repositionGridEntities() - reposition entities with grid_row/grid_col
+**Schema additions needed:**
+- Card spacing/padding defaults
+- Game dimension defaults
+- Gravity physics constants
+- Components config (fog, hud, victory)
 
 ### Testing (User)
-- [ ] Sprites load correctly from variant sprite_set
-- [ ] Fallback to "flags" sprite set works
-- [ ] Card dimensions detected from sprites
-- [ ] Grid scales properly on window resize
-- [ ] Cards reposition correctly on resize
-- [ ] HUD doesn't overlap with cards
+Tested variants: 0 (Classic), 4 (Foggy Memory), 7 (Gravity Falls), 9 (Triple Trouble), 13 (Marathon)
+- Basic grid layout works
+- FogOfWar component works
+- Gravity mode has existing issues (not Phase 1 scope)
+- Large grids scale correctly
+- Match check delay scales poorly with match_requirement > 2 (tuning issue for later)
 
 ### AI Notes
+- Fixed requires: 8 → 3 (BaseGame, MemoryMatchView, extend). Components accessed via self.di.components.*
+- Deleted redundant self.di and self.cheats assignments in init
+- Deleted applyModifiers function - speed_modifier computed inline where needed
+- Renamed setupGameState → setupEntities, refactored to follow dodge pattern (no nil inits, no param copying, uses local p = self.params)
+- Moved EntityController creation from setupEntities to setupComponents
+- Deleted loadAssets - now uses BaseGame:loadAssets() with new directory scanning mode
+- Added scan_directory, shuffle_icons, detect_dimensions, icon_filenames params to schema
+- Deleted countLoadedSprites and hasSprite (dead code)
+- Added HUDRenderer:getHeight() to component
+- Added EntityController:calculateGridLayout() utility for grid-based games
+- calculateGridPosition now uses EntityController:calculateGridLayout() and HUDRenderer:getHeight()
+- Added schema params: card_spacing, card_icon_padding, grid_padding, arena_base_width/height, gravity_accel, floor_bounce, card_mass, shuffle_animation_duration
+- Gravity physics now uses params.gravity_accel and params.floor_bounce instead of hardcoded constants
+- Added "components" section to schema for fog_controller and hud
+- setupComponents now uses createComponentsFromSchema() for fog_controller and hud
 
+**Fixes during testing:**
+- Added calculateGridPosition() call before createCards() in setupComponents (CARD_WIDTH was nil)
+- Updated view to use game.params.card_spacing instead of game.CARD_SPACING
+- Updated view to use game.params.card_icon_padding instead of game.CARD_ICON_PADDING
+- Fixed base_game.lua loadAssets to use self.data.sprite_folder for path construction
+- Fixed memory_match_variants.json sprite_folder to "memory" (matching actual folder name)
+- Fixed base_game.lua loadAssets to check p.sprite_set first (from schema params)
+- Fixed total_pairs calculation to use match_requirement instead of hardcoded 2 (fixes Triple Trouble grid)
 
 ### Status
-
+Complete - Tested
 
 ### Line Count Change
-
+989 → 682 lines (307 line reduction, 31%)
 
 ### Deviation from Plan
+- VictoryCondition still created manually because target depends on runtime-computed self.total_pairs (cannot be schema-driven)
+- calculateGridPosition is ~42 lines instead of target ~10 - full grid layout calculation still required, but now uses EntityController:calculateGridLayout()
+- setPlayArea is ~17 lines instead of target ~5 - card repositioning loop still needed for non-gravity mode
 
+Note: Used createComponentsFromSchema() for fog_controller and hud as planned. VictoryCondition cannot use schema because its target is dynamic (total_pairs computed at runtime).
 
 ---
 
-## Phase 3: CARD MANAGEMENT
+## Phase 2: CARD MGMT + INPUT (6 functions)
+
+### Section: CARD MANAGEMENT
 
 ### createCards
 Creates card entities via EntityController:spawn. Calculates initial positions based on grid or gravity mode. Sets flip state based on memorize phase. Adds to local cards array. Calls shuffleCards.
@@ -433,45 +464,7 @@ Checks if card index is in selected_indices array.
 
 ---
 
-## Phase 3 Summary
-
-**Functions reviewed:** 3 (createCards, shuffleCards, isSelected)
-
-**Total current lines:** ~79 lines
-**Expected after refactor:** ~25 lines (~68% reduction)
-
-**Key changes:**
-- Eliminate dual tracking (self.cards array + EntityController)
-- Cards use grid_index for position, not array order
-- Shuffle by reassigning grid_index values via EntityController
-- Selection state on entity (is_selected flag) not separate array
-
-**Features to add to EntityController:**
-- `shuffleGridIndices(type_name)` - shuffle grid_index values among entities of type
-- `repositionGridEntities(type_name, start_x, start_y, cols, width, height, spacing)` - reposition based on grid_index
-
-### Testing (User)
-- [ ] Cards spawn at correct grid positions
-- [ ] Initial shuffle randomizes card positions
-- [ ] Cards can be selected (click highlights them)
-- [ ] Already-selected cards can't be re-selected
-- [ ] Gravity mode spawns cards at top with physics
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 4: INPUT
+### Section: INPUT
 
 ### keypressed
 Calls parent keypressed for demo playback tracking. Returns false.
@@ -522,29 +515,30 @@ Handles card click/selection. Checks if in valid game state. Checks move limit. 
 
 ---
 
-## Phase 4 Summary
+## Phase 2 Summary
 
-**Functions reviewed:** 3 (keypressed, mousemoved, mousepressed)
+**Functions:** 6 (createCards, shuffleCards, isSelected, keypressed, mousemoved, mousepressed)
+**Current lines:** ~136
+**Expected after refactor:** ~50 lines (~63% reduction)
 
-**Total current lines:** ~57 lines
-**Expected after refactor:** ~25 lines (~56% reduction)
+**Sections covered:** CARD MANAGEMENT, INPUT
 
 **Key changes:**
+- Eliminate dual tracking (self.cards array + EntityController)
+- Cards use grid_index for position, not array order
+- Shuffle by reassigning grid_index values via EntityController
+- Selection state on entity (is_selected flag) not separate array
 - keypressed deleted (inherit from BaseGame)
 - mousemoved deleted (FogOfWar tracks mouse internally)
 - mousepressed simplified with EntityController hit testing
 
-**Features to add:**
-- FogOfWar: read mouse position via love.mouse.getPosition() internally
-- EntityController:getEntityAtPoint(x, y, type_name) - point-in-entity hit testing
+**Features to add to EntityController:**
+- `shuffleGridIndices(type_name)` - shuffle grid_index values among entities of type
+- `repositionGridEntities(type_name, start_x, start_y, cols, width, height, spacing)` - reposition based on grid_index
+- `getEntityAtPoint(x, y, type_name)` - point-in-entity hit testing
 
 ### Testing (User)
-- [ ] Clicking cards selects them
-- [ ] Can't select already-matched cards
-- [ ] Can't select already-selected cards
-- [ ] Can't select while cards are flipping
-- [ ] Move counter increments on selection
-- [ ] Fog of war follows mouse (if enabled)
+
 
 ### AI Notes
 
@@ -560,7 +554,9 @@ Handles card click/selection. Checks if in valid game state. Checks move limit. 
 
 ---
 
-## Phase 5: GAME STATE / VICTORY
+## Phase 3: GAME STATE + CHALLENGE + SHUFFLE (6 functions)
+
+### Section: GAME STATE / VICTORY
 
 ### checkComplete
 Skips during memorize phase. Checks is_failed flag. Calls victory_checker:check(). Sets victory/game_over flags.
@@ -596,44 +592,7 @@ Calculates speed bonus if time limit exists. Plays success sound. Stops music. C
 
 ---
 
-## Phase 5 Summary
-
-**Functions reviewed:** 2 (checkComplete, onComplete)
-
-**Total current lines:** ~33 lines
-**Expected after refactor:** ~5 lines (~85% reduction)
-
-**Key changes:**
-- checkComplete: delete is_failed flag, use VictoryCondition loss types, keep memorize guard
-- onComplete: delete entirely, time bonus in VictoryCondition config
-
-**Features to add:**
-- VictoryCondition: time_bonus config `{type: "time_bonus", metric: "time_remaining", multiplier: N}`
-- Reusable speed bonus pattern for any timed game
-
-### Testing (User)
-- [ ] Victory triggers when all pairs matched
-- [ ] Loss triggers on time expiry (if time_limit set)
-- [ ] Loss triggers on move limit exceeded (if move_limit set)
-- [ ] Speed bonus awarded based on time remaining
-- [ ] Success sound plays on completion
-- [ ] Music stops on completion
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 6: CHALLENGE MODE
+### Section: CHALLENGE MODE
 
 ### selectNextChainTarget
 Finds unmatched card values. Randomly selects one as chain target.
@@ -670,42 +629,7 @@ Applies time penalty or sets is_failed based on config.
 
 ---
 
-## Phase 6 Summary
-
-**Functions reviewed:** 2 (selectNextChainTarget, applyMismatchPenalty)
-
-**Total current lines:** ~27 lines
-**Expected after refactor:** ~2 lines (~93% reduction)
-
-**Key changes:**
-- selectNextChainTarget: delete, handled by schema-driven match_constraint system
-- applyMismatchPenalty: delete, inline 2 lines in onMatchFailure
-
-**Features to add:**
-- Schema: match_constraint config for chain mode (discussed in Phase 8)
-
-### Testing (User)
-- [ ] Chain mode shows required target (if enabled)
-- [ ] Wrong chain target = failure
-- [ ] Correct chain target = success + new target selected
-- [ ] Time penalty subtracts from time_remaining
-- [ ] Instant fail mode ends game on mismatch
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 7: SHUFFLE ANIMATION
+### Section: SHUFFLE ANIMATION
 
 ### startShuffle
 Finds all face-down cards eligible for shuffle. Validates enough cards to shuffle. Randomly selects cards to shuffle. Stores start positions for animation. Swaps card objects in array. Starts animation timer.
@@ -747,27 +671,29 @@ Clears is_shuffling flag. Clears shuffle_start_positions.
 
 ---
 
-## Phase 7 Summary
+## Phase 3 Summary
 
-**Functions reviewed:** 2 (startShuffle, completeShuffle)
+**Functions:** 6 (checkComplete, onComplete, selectNextChainTarget, applyMismatchPenalty, startShuffle, completeShuffle)
+**Current lines:** ~157
+**Expected after refactor:** ~20 lines (~87% reduction)
 
-**Total current lines:** ~97 lines
-**Expected after refactor:** ~15 lines (~85% reduction)
+**Sections covered:** GAME STATE / VICTORY, CHALLENGE MODE, SHUFFLE ANIMATION
 
 **Key changes:**
+- checkComplete: delete is_failed flag, use VictoryCondition loss types, keep memorize guard
+- onComplete: delete entirely, time bonus in VictoryCondition config
+- selectNextChainTarget: delete, handled by schema-driven match_constraint system
+- applyMismatchPenalty: delete, inline 2 lines in onMatchFailure
 - startShuffle: use EC filtering + shuffleGridIndices, AnimationSystem position tweens
 - completeShuffle: delete, inline as animation callback
 
 **Features to add:**
+- VictoryCondition: time_bonus config `{type: "time_bonus", metric: "time_remaining", multiplier: N}`
 - EntityController:shuffleGridIndices(type_name, filter_fn) - shuffle only filtered entities
 - AnimationSystem.createPositionTween(entity, from, to, duration, on_complete)
 
 ### Testing (User)
-- [ ] Auto-shuffle triggers after interval (if configured)
-- [ ] Only face-down, unmatched, unselected cards shuffle
-- [ ] Cards animate smoothly to new positions
-- [ ] Shuffle completes and cards are clickable again
-- [ ] Partial shuffle works (shuffle_count < total eligible)
+
 
 ### AI Notes
 
@@ -783,7 +709,7 @@ Clears is_shuffling flag. Clears shuffle_start_positions.
 
 ---
 
-## Phase 8: MAIN GAME LOOP (FINAL - depends on all other phases)
+## Phase 4: MAIN GAME LOOP (5 functions)
 
 ### updateGameLogic
 Main game loop (113 lines). Handles memorize phase countdown and card flip when phase ends. Updates match announcement timer. Updates time limit countdown. Updates auto-shuffle timer. Updates shuffle animation. Updates flip animations for all cards. Updates gravity physics for all cards. Updates match check timer and calls checkMatch.
@@ -882,12 +808,13 @@ Delete entirely. Inherit from BaseGame:draw(). 5 lines → 0 lines.
 
 ---
 
-## Phase 8 Summary
+## Phase 4 Summary
 
-**Functions reviewed:** 5 (updateGameLogic, checkMatch, onMatchSuccess, onMatchFailure, draw)
+**Functions:** 5 (updateGameLogic, checkMatch, onMatchSuccess, onMatchFailure, draw)
+**Current lines:** ~215
+**Expected after refactor:** ~55 lines (~74% reduction)
 
-**Total current lines:** ~215 lines
-**Expected after refactor:** ~50 lines (~77% reduction)
+**Sections covered:** MAIN GAME LOOP
 
 **Key changes:**
 - updateGameLogic gutted: timers → AnimationSystem, physics → PhysicsUtils, flip animations → AnimationSystem
@@ -906,15 +833,7 @@ Delete entirely. Inherit from BaseGame:draw(). 5 lines → 0 lines.
 - Schema: match_constraint config for chain mode
 
 ### Testing (User)
-- [ ] Memorize phase shows cards, then flips down after timer
-- [ ] Cards flip up when clicked
-- [ ] Match detection works (same values match)
-- [ ] Combo increments on consecutive matches
-- [ ] Perfect bonus awarded for first-attempt matches
-- [ ] Chain mode validates target (if enabled)
-- [ ] TTS speaks matched item name
-- [ ] Mismatch flips cards back down
-- [ ] Gravity mode physics work (cards fall, bounce)
+
 
 ### AI Notes
 
@@ -932,17 +851,13 @@ Delete entirely. Inherit from BaseGame:draw(). 5 lines → 0 lines.
 
 ## Summary Statistics
 
-| Section | Functions | Lines | Notes |
-|---------|-----------|-------|-------|
-| Initialization | 4 | 184 | setupGameState is 127 lines alone |
-| Assets | 5 | 222 | loadAssets is 114 lines, calculateGridPosition is 75 lines |
-| Card Management | 3 | 79 | Dual tracking issue, duplicated grid calculations |
-| Main Game Loop | 5 | 215 | updateGameLogic is 113 lines, inline physics/animations |
-| Input | 3 | 57 | mousepressed has duplicated grid logic |
-| Game State | 2 | 33 | Standard patterns |
-| Shuffle Animation | 2 | 97 | startShuffle is 92 lines |
-| Challenge Mode | 2 | 27 | Small, focused |
-| **TOTAL** | **26** | **914** | |
+| Phase | Sections | Functions | Lines | Expected |
+|-------|----------|-----------|-------|----------|
+| Phase 1 | Initialization + Assets | 9 | 406 | ~75 |
+| Phase 2 | Card Mgmt + Input | 6 | 136 | ~50 |
+| Phase 3 | Game State + Challenge + Shuffle | 6 | 157 | ~20 |
+| Phase 4 | Main Game Loop | 5 | 215 | ~55 |
+| **TOTAL** | | **26** | **914** | **~200** |
 
 ---
 
@@ -972,7 +887,6 @@ Delete entirely. Inherit from BaseGame:draw(). 5 lines → 0 lines.
 
 1. hasSprite - defined but never called
 2. countLoadedSprites - only used in debug print
-
 
 ---
 
@@ -1007,23 +921,21 @@ Delete entirely. Inherit from BaseGame:draw(). 5 lines → 0 lines.
 
 ## Estimated Reduction
 
-Current: 914 lines (after organization/extraction of checkMatch etc.)
+Current: 914 lines
 
-After full refactoring:
-- Delete dead code: -15 lines
-- Inherit from BaseGame: -15 lines
-- Physics to PhysicsUtils: -40 lines
-- Animations to AnimationSystem: -60 lines
-- Grid layout to utility/EC: -80 lines
-- loadAssets to BaseGame pattern: -80 lines
-- Shuffle to AnimationSystem: -70 lines
+After full refactoring by phase:
+- Phase 1 (Initialization + Assets): 406 → ~75 lines
+- Phase 2 (Card Mgmt + Input): 136 → ~50 lines
+- Phase 3 (Game State + Challenge + Shuffle): 157 → ~20 lines
+- Phase 4 (Main Game Loop): 215 → ~55 lines
 
-**Estimated final size:** ~300-400 lines
-**Estimated reduction:** ~55-65%
+**Estimated final size:** ~200 lines
+**Estimated reduction:** ~78%
 
-Note: Memory match is already more structured than dodge was. The reduction won't be as dramatic because:
-1. It's a simpler game mechanically
-2. It already uses some components correctly
-3. Card-specific logic (matching, flipping) is genuinely game-specific
-
-The main wins are in eliminating duplicated grid calculations, using PhysicsUtils for gravity, and using AnimationSystem for animations.
+**New components/features to create:**
+- HUDRenderer:getHeight()
+- EntityController grid utilities (repositionGridEntities, shuffleGridIndices, getEntityAtPoint, forEachByType, forEachByFilter)
+- AnimationSystem (createTimer, createFlipAnimation, createPositionTween)
+- PhysicsUtils gravity + handleBounds
+- BaseGame:speak() TTS helper
+- BaseGame:loadAssets() enhancements (directory scanning, dimension detection)

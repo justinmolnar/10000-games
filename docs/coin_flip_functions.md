@@ -48,6 +48,44 @@ Other games already solved similar problems. Use their patterns:
 
 Don't reinvent. Don't keep inline versions. Use what exists, extend if needed.
 
+### Follow the `self.params` Pattern (dodge_game style)
+
+**DO NOT copy params to self.* fields.** Access params directly via `local p = self.params`.
+
+**WRONG:**
+```lua
+function Game:setupGameState()
+    self.time_per_flip = self.params.time_per_flip
+    self.flip_speed = self.params.flip_animation_speed
+    self.coin_bias = self.params.coin_bias
+    self.lives = self.params.starting_lives
+    -- ... 20 more copied fields
+end
+```
+
+**RIGHT:**
+```lua
+function Game:setupGameState()
+    local p = self.params
+    -- Only initialize RUNTIME state that changes during gameplay
+    self.current_streak = 0
+    self.pattern_state = {index = 0, cluster_count = 0}
+end
+
+function Game:someMethod()
+    local p = self.params
+    if self.timer > p.time_per_flip then  -- Access directly
+        self:flipCoin()
+    end
+end
+```
+
+**Rules:**
+1. Use `local p = self.params` at the start of methods that need params
+2. Only initialize runtime state (counters, flags, arrays that change during play)
+3. Never copy params that don't change - access them directly when needed
+4. Delete nil initializations (`self.foo = nil` is pointless)
+
 ### The Goal
 
 When a phase says "50 lines → 0 lines", that means 0 lines. Not "20 lines of helper functions." Zero. The game file configures components via schema and callbacks. The logic lives in components.
@@ -56,9 +94,9 @@ When a phase says "50 lines → 0 lines", that means 0 lines. Not "20 lines of h
 
 ### Procedural Rules
 
-1. Complete ALL functions within a section (phase) before stopping.
-2. After completing a section, fill in AI Notes with **exact line count change**.
-3. Do NOT proceed to the next section without user approval.
+1. Complete ALL functions within a phase before stopping.
+2. After completing a phase, fill in AI Notes with **exact line count change**.
+3. Do NOT proceed to the next phase without user approval.
 4. Run NO tests yourself - the user will do manual testing.
 5. When adding to BaseGame/components, ensure other games still work.
 6. Delete the coin_flip functions after extraction - no wrappers.
@@ -78,7 +116,7 @@ When a phase says "50 lines → 0 lines", that means 0 lines. Not "20 lines of h
 
 ---
 
-## Phase 1: INITIALIZATION
+## Phase 1: INITIALIZATION (5 functions)
 
 ### init
 Initializes the game. Calls parent init. Gets runtime config from DI. Loads parameters from coin_flip_schema.json using SchemaLoader. Calls applyModifiers, setupGameState, setupComponents. Creates the view.
@@ -203,7 +241,9 @@ Builds victory_config based on params.victory_condition type (streak, total, rat
 
 ---
 
-## Phase 2: ASSETS
+## Phase 2: ASSETS + INPUT + GAME STATE + MAIN LOOP (6 functions)
+
+### Section: ASSETS
 
 ### setPlayArea
 Stores viewport dimensions.
@@ -220,30 +260,7 @@ Stores viewport dimensions.
 
 ---
 
-## Phase 2 Summary
-
-**Functions:** 1 (setPlayArea)
-**Current lines:** ~4
-**Expected after refactor:** 0 lines
-
-### Testing (User)
-
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 3: INPUT
+### Section: INPUT
 
 ### keypressed
 Guards against invalid input state. Auto mode: space triggers flipCoin. Guess mode: h/t triggers makeGuess.
@@ -262,11 +279,79 @@ Guards against invalid input state. Auto mode: space triggers flipCoin. Guess mo
 
 ---
 
-## Phase 3 Summary
+### Section: GAME STATE / VICTORY
 
-**Functions:** 1 (keypressed)
-**Current lines:** ~17
-**Expected after refactor:** 0 lines
+### checkVictoryCondition
+Custom ratio calculation for ratio victory type. For other types, uses victory_checker:check().
+
+**Notes:** 22 lines. Ratio type has inline calculation because VictoryCondition may not support it properly.
+
+**Extraction Potential:** High. VictoryCondition should handle ratio type properly. This custom logic shouldn't exist.
+
+**Plan after discussion:**
+1. Delete function entirely
+2. VictoryCondition already supports ratio type
+3. If ratio calculation is wrong in VictoryCondition, fix it there
+4. All games use victory_checker:check() directly
+
+**Expected:** 22 lines → 0 lines
+
+---
+
+### checkComplete
+Calls victory_checker:check(). Sets victory and game_over flags. Returns true if complete.
+
+**Notes:** 9 lines. Standard pattern matching other games.
+
+**Extraction Potential:** Medium. Could inherit from BaseGame:checkComplete().
+
+**Plan after discussion:**
+1. Delete function - inherit from BaseGame:checkComplete()
+
+**Expected:** 9 lines → 0 lines
+
+---
+
+### Section: MAIN GAME LOOP
+
+### updateGameLogic
+Checks time limit victory. Updates flip_animation, visual_effects, popup_manager. Handles result display timer and transitions to waiting_for_guess. Handles auto_flip_timer countdown. Handles time_per_flip_timer countdown.
+
+**Notes:** 50 lines. Multiple timers with similar structure. Two auto-trigger paths that duplicate logic.
+
+**Extraction Potential:** Medium. Timer management could be unified. Auto-flip and time-per-flip timers have identical behavior.
+
+**Plan after discussion:**
+1. Time limit victory check → Delete, VictoryCondition handles automatically
+2. Component updates → 3 lines, keep inline
+3. Result display timer → AnimationSystem.createTimer()
+4. auto_flip_timer and time_per_flip_timer → Consolidate into single decision timer using AnimationSystem.createTimer(), calls `triggerFlip()` helper when expired
+
+**Expected:** 50 lines → ~10 lines
+
+---
+
+### draw
+Calls view:draw().
+
+**Notes:** 3 lines. Pure wrapper.
+
+**Extraction Potential:** Very High. Delete entirely. Inherit from BaseGame:draw().
+
+**Plan after discussion:**
+1. Delete entirely - inherit from BaseGame:draw()
+
+**Expected:** 3 lines → 0 lines
+
+---
+
+## Phase 2 Summary
+
+**Functions:** 6 (setPlayArea, keypressed, checkVictoryCondition, checkComplete, updateGameLogic, draw)
+**Current lines:** ~105
+**Expected after refactor:** ~10 lines
+
+**Sections covered:** ASSETS, INPUT, GAME STATE / VICTORY, MAIN GAME LOOP
 
 ### Testing (User)
 
@@ -285,7 +370,7 @@ Guards against invalid input state. Auto mode: space triggers flipCoin. Guess mo
 
 ---
 
-## Phase 4: FLIP LOGIC
+## Phase 3: FLIP LOGIC (7 functions)
 
 ### generateFlipResult
 Generates flip result based on pattern_mode. Four modes: alternating, clusters, biased_random, random. Updates pattern_state.
@@ -414,7 +499,7 @@ Syncs metrics object from game state (max_streak, correct_total, flips_total, ac
 
 ---
 
-## Phase 4 Summary
+## Phase 3 Summary
 
 **Functions:** 7 (generateFlipResult, flipCoin, makeGuess, processFlipResult, onCorrectFlip, onIncorrectFlip, updateMetrics)
 **Current lines:** ~165
@@ -444,129 +529,14 @@ Syncs metrics object from game state (max_streak, correct_total, flips_total, ac
 
 ---
 
-## Phase 5: GAME STATE / VICTORY
-
-### checkVictoryCondition
-Custom ratio calculation for ratio victory type. For other types, uses victory_checker:check().
-
-**Notes:** 22 lines. Ratio type has inline calculation because VictoryCondition may not support it properly.
-
-**Extraction Potential:** High. VictoryCondition should handle ratio type properly. This custom logic shouldn't exist.
-
-**Plan after discussion:**
-1. Delete function entirely
-2. VictoryCondition already supports ratio type
-3. If ratio calculation is wrong in VictoryCondition, fix it there
-4. All games use victory_checker:check() directly
-
-**Expected:** 22 lines → 0 lines
-
----
-
-### checkComplete
-Calls victory_checker:check(). Sets victory and game_over flags. Returns true if complete.
-
-**Notes:** 9 lines. Standard pattern matching other games.
-
-**Extraction Potential:** Medium. Could inherit from BaseGame:checkComplete().
-
-**Plan after discussion:**
-1. Delete function - inherit from BaseGame:checkComplete()
-
-**Expected:** 9 lines → 0 lines
-
----
-
-## Phase 5 Summary
-
-**Functions:** 2 (checkVictoryCondition, checkComplete)
-**Current lines:** ~31
-**Expected after refactor:** 0 lines
-
-### Testing (User)
-
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 6: MAIN GAME LOOP (FINAL - depends on other phases)
-
-### updateGameLogic
-Checks time limit victory. Updates flip_animation, visual_effects, popup_manager. Handles result display timer and transitions to waiting_for_guess. Handles auto_flip_timer countdown. Handles time_per_flip_timer countdown.
-
-**Notes:** 50 lines. Multiple timers with similar structure. Two auto-trigger paths that duplicate logic.
-
-**Extraction Potential:** Medium. Timer management could be unified. Auto-flip and time-per-flip timers have identical behavior.
-
-**Plan after discussion:**
-1. Time limit victory check → Delete, VictoryCondition handles automatically
-2. Component updates → 3 lines, keep inline
-3. Result display timer → AnimationSystem.createTimer()
-4. auto_flip_timer and time_per_flip_timer → Consolidate into single decision timer using AnimationSystem.createTimer(), calls `triggerFlip()` helper when expired
-
-**Expected:** 50 lines → ~10 lines
-
----
-
-### draw
-Calls view:draw().
-
-**Notes:** 3 lines. Pure wrapper.
-
-**Extraction Potential:** Very High. Delete entirely. Inherit from BaseGame:draw().
-
-**Plan after discussion:**
-1. Delete entirely - inherit from BaseGame:draw()
-
-**Expected:** 3 lines → 0 lines
-
----
-
-## Phase 6 Summary
-
-**Functions:** 2 (updateGameLogic, draw)
-**Current lines:** ~53
-**Expected after refactor:** ~10 lines
-
-### Testing (User)
-
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
 ## Summary Statistics
 
-| Section | Functions | Lines | Notes |
-|---------|-----------|-------|-------|
-| Phase 1: Initialization | 5 | 132 | Standard setup |
-| Phase 2: Assets | 1 | 4 | Minimal |
-| Phase 3: Input | 1 | 17 | Simple key mapping |
-| Phase 4: Flip Logic | 7 | 165 | Core game mechanics |
-| Phase 5: Game State | 2 | 31 | Victory checking |
-| Phase 6: Main Game Loop | 2 | 53 | Timer management (FINAL) |
-| **TOTAL** | **18** | **402** | |
+| Phase | Sections | Functions | Lines | Expected |
+|-------|----------|-----------|-------|----------|
+| Phase 1 | Initialization | 5 | 132 | ~15 |
+| Phase 2 | Assets + Input + Game State + Main Loop | 6 | 105 | ~10 |
+| Phase 3 | Flip Logic | 7 | 165 | ~15 |
+| **TOTAL** | | **18** | **402** | **~40** |
 
 ---
 
@@ -611,17 +581,14 @@ Most of this game is already well-structured after the flipCoin/makeGuess refact
 
 ---
 
-## Estimated Reduction (Updated After Discussion)
+## Estimated Reduction
 
 Current: 402 lines
 
 After full refactoring by phase:
 - Phase 1 (Initialization): 132 → ~15 lines
-- Phase 2 (Assets): 4 → 0 lines
-- Phase 3 (Input): 17 → 0 lines
-- Phase 4 (Flip Logic): 165 → ~15 lines
-- Phase 5 (Game State): 31 → 0 lines
-- Phase 6 (Main Game Loop - FINAL): 53 → ~10 lines
+- Phase 2 (Assets + Input + Game State + Main Loop): 105 → ~10 lines
+- Phase 3 (Flip Logic): 165 → ~15 lines
 
 **Estimated final size:** ~40 lines
 **Estimated reduction:** ~90%

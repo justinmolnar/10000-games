@@ -1,6 +1,26 @@
 {
     "name": "memory_match_schema",
     "description": "Schema for Memory Match game parameters - all configurable values for memory match variants",
+    "components": {
+        "fog_controller": {
+            "type": "FogOfWar",
+            "config": {
+                "enabled": "$fog_of_war_enabled",
+                "mode": "alpha",
+                "opacity": "$fog_darkness",
+                "inner_radius_multiplier": "$fog_inner_radius",
+                "outer_radius": "$fog_of_war"
+            }
+        },
+        "hud": {
+            "type": "HUDRenderer",
+            "config": {
+                "primary": {"label": "Matches", "key": "metrics.matches"},
+                "secondary": {"label": "Moves", "key": "metrics.moves"},
+                "timer": {"label": "Time", "key": "time_elapsed", "format": "float"}
+            }
+        }
+    },
     "parameters": {
         "card_count": {
             "type": "integer",
@@ -100,6 +120,13 @@
             "max": 50,
             "description": "Number of cards to shuffle (0 = all face-down)"
         },
+        "shuffle_animation_duration": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 3.0,
+            "description": "Duration of shuffle animation in seconds"
+        },
         "gravity_enabled": {
             "type": "boolean",
             "default": false,
@@ -121,6 +148,11 @@
             "min": 0,
             "max": 500,
             "description": "Fog visibility radius around mouse (0 = disabled)"
+        },
+        "fog_of_war_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether fog of war is enabled (derived from fog_of_war > 0)"
         },
         "fog_inner_radius": {
             "type": "number",
@@ -159,6 +191,82 @@
             "type": "string",
             "default": "flags",
             "description": "Sprite set folder name for card icons"
+        },
+        "card_spacing": {
+            "type": "integer",
+            "default": 10,
+            "min": 0,
+            "max": 50,
+            "description": "Spacing between cards in pixels"
+        },
+        "card_icon_padding": {
+            "type": "integer",
+            "default": 10,
+            "min": 0,
+            "max": 50,
+            "description": "Padding inside cards for icons"
+        },
+        "grid_padding": {
+            "type": "integer",
+            "default": 10,
+            "min": 0,
+            "max": 100,
+            "description": "Padding around the card grid"
+        },
+        "arena_base_width": {
+            "type": "integer",
+            "default": 800,
+            "min": 400,
+            "max": 1920,
+            "description": "Base arena width"
+        },
+        "arena_base_height": {
+            "type": "integer",
+            "default": 600,
+            "min": 300,
+            "max": 1080,
+            "description": "Base arena height"
+        },
+        "gravity_accel": {
+            "type": "number",
+            "default": 600,
+            "min": 100,
+            "max": 2000,
+            "description": "Gravity acceleration for gravity mode"
+        },
+        "floor_bounce": {
+            "type": "number",
+            "default": 0.3,
+            "min": 0.0,
+            "max": 1.0,
+            "description": "Bounce dampening when cards hit floor"
+        },
+        "card_mass": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.1,
+            "max": 10.0,
+            "description": "Card mass for physics calculations"
+        },
+        "scan_directory": {
+            "type": "boolean",
+            "default": true,
+            "description": "Scan sprite directory for icon files"
+        },
+        "shuffle_icons": {
+            "type": "boolean",
+            "default": true,
+            "description": "Randomize which icons are loaded"
+        },
+        "detect_dimensions": {
+            "type": "boolean",
+            "default": true,
+            "description": "Detect card dimensions from first loaded sprite"
+        },
+        "icon_filenames": {
+            "type": "boolean",
+            "default": true,
+            "description": "Store icon filenames for match announcements"
         }
     }
 }

@@ -250,6 +250,30 @@ function HUDRenderer:getValue(key)
     return value
 end
 
+-- Calculate total HUD height based on configured elements
+-- Returns the vertical space consumed by HUD elements at the top
+function HUDRenderer:getHeight()
+    local height = 0
+    local row_height = 20  -- Standard row height
+
+    -- Primary metric row
+    if self.primary then
+        height = height + row_height
+    end
+
+    -- Secondary metric row
+    if self.secondary then
+        height = height + row_height
+    end
+
+    -- Timer takes same row as primary/lives, so no extra height
+
+    -- Add top margin and bottom padding
+    height = height + 20  -- Top margin (10) + bottom padding (10)
+
+    return height
+end
+
 -- Helper: Format value based on format type
 function HUDRenderer:formatValue(value, format)
     if value == nil then return "N/A" end

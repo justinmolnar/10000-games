@@ -7,7 +7,7 @@ function MemoryMatchView:init(game_state, variant)
     self.variant = variant
     self.CARD_WIDTH = game_state.CARD_WIDTH or 60
     self.CARD_HEIGHT = game_state.CARD_HEIGHT or 80
-    self.CARD_SPACING = game_state.CARD_SPACING or 10
+    self.CARD_SPACING = (game_state.params and game_state.params.card_spacing) or 10
     self.di = game_state and game_state.di
     local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match and self.di.config.games.memory_match.view) or
                  (Config and Config.games and Config.games.memory_match and Config.games.memory_match.view) or {})
@@ -66,8 +66,8 @@ function MemoryMatchView:draw()
         else
             local row = math.floor((i-1) / game.grid_cols)
             local col = (i-1) % game.grid_cols
-            x = game.start_x + col * (game.CARD_WIDTH + game.CARD_SPACING)
-            y = game.start_y + row * (game.CARD_HEIGHT + game.CARD_SPACING)
+            x = game.start_x + col * (game.CARD_WIDTH + game.params.card_spacing)
+            y = game.start_y + row * (game.CARD_HEIGHT + game.params.card_spacing)
         end
 
         -- Card rotation effect (separate from flip animation)
@@ -155,7 +155,7 @@ function MemoryMatchView:draw()
                 love.graphics.setColor(0.9 * fog_alpha, 0.9 * fog_alpha, 0.85 * fog_alpha, fog_alpha)
                 love.graphics.rectangle('fill', 0, 0, game.CARD_WIDTH, game.CARD_HEIGHT)
 
-                local icon_padding = game.CARD_ICON_PADDING or 10
+                local icon_padding = game.params.card_icon_padding or 10
                 local icon_size = math.min(game.CARD_WIDTH, game.CARD_HEIGHT) - icon_padding
                 local icon_x = (game.CARD_WIDTH - icon_size) / 2
                 local icon_y = (game.CARD_HEIGHT - icon_size) / 2

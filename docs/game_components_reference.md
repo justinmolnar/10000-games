@@ -70,6 +70,7 @@ Standardized HUD with consistent layout across games.
 - **drawProgress()** - Draw progress bar (bottom-center).
 - **getValue(key)** - Get value from game state, supports nested keys like "metrics.score".
 - **formatValue(value, format)** - Format value as "number", "float", "percent", "time", or "ratio".
+- **getHeight()** - Returns total height consumed by HUD at top of screen. Accounts for primary, secondary, and margins.
 
 ---
 
@@ -338,6 +339,7 @@ Generic enemy/obstacle spawning and management with pooling.
 - **spawnCircle(type_name, rings, center_x, center_y, base_count, ring_spacing)** - Spawn concentric circles.
 - **spawnRandom(type_name, count, bounds, rng, allow_overlap)** - Spawn randomly in bounds.
 - **spawnCheckerboard(type_name, rows, cols, x, y, spacing_x, spacing_y)** - Spawn checkerboard pattern.
+- **calculateGridLayout(config)** - Pure calculation for fitting items in a container. Config: {cols, rows, container_width, container_height, item_width, item_height, spacing, padding, reserved_top}. Returns: {cols, rows, item_width, item_height, start_x, start_y, scale, spacing}. Use for memory match, sliding puzzle, minesweeper, etc.
 - **spawnLayout(type_name, layout, config)** - Dispatch to layout spawner. Layouts: "grid", "pyramid", "circle", "random", "checkerboard", "v_shape", "line", "spiral". Grid layout auto-adds grid_row/grid_col to each entity. Config.extra merged into spawned entities.
 - **spawnWeighted(type_name, weighted_configs, x, y, base_extra)** - Spawn using weighted random selection. Each config in array has `weight` plus properties to merge. Returns spawned entity.
 - **update(dt, game_state)** - Update spawning and all entities.

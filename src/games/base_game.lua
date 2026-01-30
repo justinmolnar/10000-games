@@ -1091,13 +1091,104 @@ function BaseGame:spawnEntity(type_name, config)
 end
 
 -- Load sprites from variant sprite_set (override default_sprite_set in subclass if needed)
+-- Supports directory scanning mode via params:
+--   scan_directory: true - scan folder for all .png files
+--   shuffle_icons: true - randomize which icons are loaded
+--   max_icons: N - limit how many to load
+--   detect_dimensions: true - set base_sprite_width/height from first loaded
+--   icon_filenames: true - store filename-to-index mapping for announcements
 function BaseGame:loadAssets()
     self.sprites = self.sprites or {}
-    local sprite_set = (self.variant and self.variant.sprite_set) or self.default_sprite_set
+    local p = self.params or {}
+    local sprite_set = p.sprite_set or (self.variant and self.variant.sprite_set) or self.default_sprite_set
     local fallback = self.default_sprite_set or sprite_set
     local loader = self.di and self.di.spriteSetLoader
 
-    if loader and sprite_set then
+    -- Directory scanning mode (for games like memory match with many icon sprites)
+    if p.scan_directory then
+        local game_folder = (self.data and self.data.sprite_folder) or (self.data and self.data.type) or "unknown"
+        local base_path = "assets/sprites/games/" .. game_folder .. "/" .. (sprite_set or "default")
+
+        -- Try to load card_back or other special sprites first
+        local special_files = {"card_back.png", "background.png"}
+        for _, filename in ipairs(special_files) do
+            local filepath = base_path .. "/" .. filename
+            local success, result = pcall(function()
+                return love.graphics.newImage(filepath)
+            end)
+            if success then
+                local key = filename:gsub("%.png$", "")
+                self.sprites[key] = result
+            end
+        end
+
+        -- Scan directory for icon files
+        local icon_files = {}
+        local files = love.filesystem.getDirectoryItems(base_path)
+        for _, filename in ipairs(files) do
+            if filename:lower():match("%.png$") then
+                -- Exclude special files
+                local is_special = false
+                for _, sf in ipairs(special_files) do
+                    if filename:lower() == sf:lower() or filename:lower() == "launcher_icon.png" then
+                        is_special = true
+                        break
+                    end
+                end
+                if not is_special then
+                    table.insert(icon_files, filename)
+                end
+            end
+        end
+
+        -- Fallback path if no icons found
+        if #icon_files == 0 and fallback and fallback ~= sprite_set then
+            base_path = "assets/sprites/games/" .. game_type .. "/" .. fallback
+            files = love.filesystem.getDirectoryItems(base_path)
+            for _, filename in ipairs(files) do
+                if filename:lower():match("%.png$") and filename:lower() ~= "card_back.png" and filename:lower() ~= "launcher_icon.png" then
+                    table.insert(icon_files, filename)
+                end
+            end
+        end
+
+        -- Shuffle if requested
+        if p.shuffle_icons and #icon_files > 1 then
+            for i = #icon_files, 2, -1 do
+                local j = math.random(i)
+                icon_files[i], icon_files[j] = icon_files[j], icon_files[i]
+            end
+        end
+
+        -- Load icons up to max_icons
+        local max_icons = p.max_icons or #icon_files
+        local icons_to_load = math.min(max_icons, #icon_files)
+        self.icon_filenames = p.icon_filenames and {} or nil
+
+        for i = 1, icons_to_load do
+            local filename = icon_files[i]
+            local filepath = base_path .. "/" .. filename
+            local success, sprite = pcall(function()
+                return love.graphics.newImage(filepath)
+            end)
+            if success then
+                self.sprites["icon_" .. i] = sprite
+
+                -- Store filename for announcements
+                if self.icon_filenames then
+                    local display_name = filename:gsub("%.png$", ""):gsub("%.PNG$", "")
+                    self.icon_filenames[i] = display_name
+                end
+
+                -- Detect dimensions from first sprite
+                if p.detect_dimensions and i == 1 then
+                    self.base_sprite_width = sprite:getWidth()
+                    self.base_sprite_height = sprite:getHeight()
+                end
+            end
+        end
+    elseif loader and sprite_set then
+        -- Standard sprite loader mode
         -- Load player sprite
         self.sprites.player = loader:getSprite(sprite_set, "player", fallback)
 

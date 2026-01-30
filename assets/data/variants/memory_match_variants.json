@@ -1,6 +1,6 @@
 {
   "game_class": "MemoryMatch",
-  "sprite_folder": "memory_match",
+  "sprite_folder": "memory",
   "default_sprite_set": "memory_base",
   "category": "puzzle",
   "tier": "trash",

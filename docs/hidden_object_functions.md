@@ -47,6 +47,43 @@ Other games already solved similar problems. Use their patterns:
 
 Don't reinvent. Don't keep inline versions. Use what exists, extend if needed.
 
+### Follow the `self.params` Pattern (dodge_game style)
+
+**DO NOT copy params to self.* fields.** Access params directly via `local p = self.params`.
+
+**WRONG:**
+```lua
+function Game:setupGameState()
+    self.time_limit = self.params.time_limit_base
+    self.total_objects = self.params.total_objects
+    self.variant_difficulty = self.params.variant_difficulty
+    -- ... copied fields
+end
+```
+
+**RIGHT:**
+```lua
+function Game:setupGameState()
+    local p = self.params
+    -- Only initialize RUNTIME state that changes during gameplay
+    self.objects_found = 0
+    self.time_remaining = p.time_limit_base * p.difficulty_modifier
+end
+
+function Game:someMethod()
+    local p = self.params
+    if self.objects_found >= p.total_objects then  -- Access directly
+        self:onComplete()
+    end
+end
+```
+
+**Rules:**
+1. Use `local p = self.params` at the start of methods that need params
+2. Only initialize runtime state (counters, flags, arrays that change during play)
+3. Never copy params that don't change - access them directly when needed
+4. Delete nil initializations (`self.foo = nil` is pointless)
+
 ### The Goal
 
 When a phase says "20 lines → 0 lines", that means 0 lines. Not "10 lines of helper functions." Zero. The game file configures components via schema and callbacks. The logic lives in components.
@@ -55,9 +92,9 @@ When a phase says "20 lines → 0 lines", that means 0 lines. Not "10 lines of h
 
 ### Procedural Rules
 
-1. Complete ALL functions within a section (phase) before stopping.
-2. After completing a section, fill in AI Notes with **exact line count change**.
-3. Do NOT proceed to the next section without user approval.
+1. Complete ALL functions within a phase before stopping.
+2. After completing a phase, fill in AI Notes with **exact line count change**.
+3. Do NOT proceed to the next phase without user approval.
 4. Run NO tests yourself - the user will do manual testing.
 5. When adding to BaseGame/components, ensure other games still work.
 6. Delete the hidden_object functions after extraction - no wrappers.
@@ -77,7 +114,9 @@ When a phase says "20 lines → 0 lines", that means 0 lines. Not "10 lines of h
 
 ---
 
-## Phase 1: INITIALIZATION
+## Phase 1: INITIALIZATION + ASSETS (7 functions)
+
+### Section: INITIALIZATION
 
 ### init
 Initializes the game. Calls parent init. Gets runtime config from DI. Loads parameters from hidden_object_schema.json using SchemaLoader. Calls applyModifiers, setupGameState, setupComponents. Creates the view. Calls loadAssets.
@@ -148,30 +187,7 @@ Creates EntityController with hidden_object entity type including on_hit callbac
 
 ---
 
-## Phase 1 Summary
-
-**Functions:** 4 (init, applyModifiers, setupGameState, setupComponents)
-**Current lines:** ~71
-**Expected after refactor:** ~25 lines
-
-### Testing (User)
-
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 2: ASSETS
+### Section: ASSETS
 
 ### loadAssets
 Initializes sprites table. Returns early if no sprite_set. Defines tryLoad helper for pcall-wrapped image loading. Loads background. Loops to load object_01 through object_30. Calls loadAudio.
@@ -218,11 +234,13 @@ Gets deterministic positions. Gets entities from controller. Updates positions f
 
 ---
 
-## Phase 2 Summary
+## Phase 1 Summary
 
-**Functions:** 3 (loadAssets, setPlayArea, regenerateObjects)
-**Current lines:** ~45
-**Expected after refactor:** 0 lines
+**Functions:** 7 (init, applyModifiers, setupGameState, setupComponents, loadAssets, setPlayArea, regenerateObjects)
+**Current lines:** ~116
+**Expected after refactor:** ~25 lines
+
+**Sections covered:** INITIALIZATION, ASSETS
 
 ### Testing (User)
 
@@ -241,7 +259,9 @@ Gets deterministic positions. Gets entities from controller. Updates positions f
 
 ---
 
-## Phase 3: OBJECT MANAGEMENT
+## Phase 2: OBJECT MGMT + MAIN LOOP + INPUT + GAME STATE (8 functions)
+
+### Section: OBJECT MANAGEMENT
 
 ### generateObjects
 Clears EntityController. Gets deterministic positions. Loops to spawn hidden_object entities with id and sprite_variant.
@@ -277,30 +297,7 @@ Generates positions using hash-based pseudo-random placement. Uses params for ha
 
 ---
 
-## Phase 3 Summary
-
-**Functions:** 2 (generateObjects, getDeterministicPositions)
-**Current lines:** ~26
-**Expected after refactor:** 0 lines
-
-### Testing (User)
-
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 4: MAIN GAME LOOP
+### Section: MAIN GAME LOOP
 
 ### updateGameLogic
 Calculates time_bonus when all objects found (one-time calculation).
@@ -331,30 +328,7 @@ Calls view:draw() if view exists.
 
 ---
 
-## Phase 4 Summary
-
-**Functions:** 2 (updateGameLogic, draw)
-**Current lines:** ~9
-**Expected after refactor:** 0 lines
-
-### Testing (User)
-
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 5: INPUT
+### Section: INPUT
 
 ### keypressed
 Calls parent keypressed. Returns false.
@@ -388,30 +362,7 @@ Guards against completed state and non-left-click. Creates click point. Uses Ent
 
 ---
 
-## Phase 5 Summary
-
-**Functions:** 2 (keypressed, mousepressed)
-**Current lines:** ~21
-**Expected after refactor:** 0 lines
-
-### Testing (User)
-
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 6: GAME STATE / VICTORY
+### Section: GAME STATE / VICTORY
 
 ### checkComplete
 Calls victory_checker:check(). Sets victory and game_over flags. Returns true if complete.
@@ -447,11 +398,13 @@ Guards against double completion. Sets metrics.objects_found. Determines win/los
 
 ---
 
-## Phase 6 Summary
+## Phase 2 Summary
 
-**Functions:** 2 (checkComplete, onComplete)
-**Current lines:** ~29
+**Functions:** 8 (generateObjects, getDeterministicPositions, updateGameLogic, draw, keypressed, mousepressed, checkComplete, onComplete)
+**Current lines:** ~85
 **Expected after refactor:** 0 lines
+
+**Sections covered:** OBJECT MANAGEMENT, MAIN GAME LOOP, INPUT, GAME STATE / VICTORY
 
 ### Testing (User)
 
@@ -472,15 +425,11 @@ Guards against double completion. Sets metrics.objects_found. Determines win/los
 
 ## Summary Statistics
 
-| Section | Functions | Lines | Notes |
-|---------|-----------|-------|-------|
-| Initialization | 4 | 71 | Standard setup |
-| Assets | 3 | 45 | Clean loading + resize |
-| Object Management | 2 | 26 | EntityController usage |
-| Main Game Loop | 2 | 9 | Minimal |
-| Input | 2 | 21 | keypressed redundant |
-| Game State | 2 | 29 | Standard patterns |
-| **TOTAL** | **15** | **201** | |
+| Phase | Sections | Functions | Lines | Expected |
+|-------|----------|-----------|-------|----------|
+| Phase 1 | Initialization + Assets | 7 | 116 | ~25 |
+| Phase 2 | Object Mgmt + Main Loop + Input + Game State | 8 | 85 | 0 |
+| **TOTAL** | | **15** | **201** | **~25** |
 
 ---
 
@@ -508,13 +457,6 @@ Hidden Object is the smallest and most recently written game. It already:
 - Has minimal game logic (click objects, track time)
 - Has clean separation of concerns
 
-There's very little to refactor here. The game is 201 lines and most of that is irreducible:
-- Component setup (required)
-- Asset loading (required)
-- Position generation (game-specific)
-- Click handling (game-specific)
-- Completion handling (game-specific)
-
 ---
 
 ## Priority Extraction Targets
@@ -528,17 +470,13 @@ There's very little to refactor here. The game is 201 lines and most of that is 
 
 ---
 
-## Estimated Reduction (Updated After Discussion)
+## Estimated Reduction
 
 Current: 201 lines
 
 After full refactoring by phase:
-- Phase 1 (Initialization): 71 → ~25 lines
-- Phase 2 (Assets): 45 → 0 lines
-- Phase 3 (Object Management): 26 → 0 lines
-- Phase 4 (Main Game Loop): 9 → 0 lines
-- Phase 5 (Input): 21 → 0 lines
-- Phase 6 (Game State): 29 → 0 lines
+- Phase 1 (Initialization + Assets): 116 → ~25 lines
+- Phase 2 (Object Mgmt + Main Loop + Input + Game State): 85 → 0 lines
 
 **Estimated final size:** ~25 lines
 **Estimated reduction:** ~88%

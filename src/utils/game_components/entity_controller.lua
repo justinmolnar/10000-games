@@ -690,6 +690,77 @@ end
         - center_x, center_y: Center point (circle)
         - base_count, ring_spacing: Circle parameters
 ]]
+
+--[[
+    Calculate grid layout dimensions for fitting items in a container.
+    Pure calculation - does not spawn anything.
+
+    @param config table:
+        - cols: number of columns
+        - rows: number of rows
+        - container_width: available width
+        - container_height: available height
+        - item_width: base item width (before scaling)
+        - item_height: base item height (before scaling)
+        - spacing: gap between items (default 10)
+        - padding: margin around grid (default 10)
+        - reserved_top: space reserved at top for HUD (default 0)
+
+    @return table: {cols, rows, item_width, item_height, start_x, start_y, scale}
+]]
+function EntityController:calculateGridLayout(config)
+    local cols = config.cols or 4
+    local rows = config.rows or 4
+    local container_w = config.container_width or 800
+    local container_h = config.container_height or 600
+    local base_w = config.item_width or 60
+    local base_h = config.item_height or 80
+    local spacing = config.spacing or 10
+    local padding = config.padding or 10
+    local reserved_top = config.reserved_top or 0
+
+    -- Available space after padding and reserved areas
+    local available_w = container_w - (padding * 2)
+    local available_h = container_h - reserved_top - (padding * 2)
+
+    -- Space taken by gaps between items
+    local total_spacing_w = spacing * (cols - 1)
+    local total_spacing_h = spacing * (rows - 1)
+
+    -- Max item size that would fit
+    local max_item_w = (available_w - total_spacing_w) / cols
+    local max_item_h = (available_h - total_spacing_h) / rows
+
+    -- Scale to fit while maintaining aspect ratio
+    local scale = math.min(max_item_w / base_w, max_item_h / base_h)
+    local item_w = base_w * scale
+    local item_h = base_h * scale
+
+    -- Total grid size
+    local grid_w = (item_w + spacing) * cols - spacing
+    local grid_h = (item_h + spacing) * rows - spacing
+
+    -- Center horizontally, position below reserved area
+    local start_x = (container_w - grid_w) / 2
+    local start_y
+    if grid_h <= available_h then
+        start_y = reserved_top + padding + (available_h - grid_h) / 2
+    else
+        start_y = reserved_top + padding
+    end
+
+    return {
+        cols = cols,
+        rows = rows,
+        item_width = item_w,
+        item_height = item_h,
+        start_x = start_x,
+        start_y = start_y,
+        scale = scale,
+        spacing = spacing
+    }
+end
+
 function EntityController:spawnLayout(type_name, layout, config)
     config = config or {}
     local rows = config.rows or 5

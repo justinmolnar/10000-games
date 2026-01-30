@@ -48,6 +48,48 @@ Other games already solved similar problems. Use their patterns:
 
 Don't reinvent. Don't keep inline versions. Use what exists, extend if needed.
 
+### Follow the `self.params` Pattern (dodge_game style)
+
+**DO NOT copy params to self.* fields.** Access params directly via `local p = self.params`.
+
+**WRONG:**
+```lua
+function Game:setupGameState()
+    self.rounds_to_win = self.params.rounds_to_win
+    self.time_per_round = self.params.time_per_round
+    self.ai_pattern = self.params.ai_pattern
+    self.num_opponents = self.params.num_opponents
+    -- ... 30 more copied fields
+end
+```
+
+**RIGHT:**
+```lua
+function Game:setupGameState()
+    local p = self.params
+    -- Only initialize RUNTIME state that changes during gameplay
+    self.player_wins = 0
+    self.ai_wins = 0
+    self.ties = 0
+    self.current_win_streak = 0
+    self.ai_history = {}
+    self.player_history = {}
+end
+
+function Game:playRound()
+    local p = self.params
+    if self.player_wins >= p.rounds_to_win then  -- Access directly
+        self:checkComplete()
+    end
+end
+```
+
+**Rules:**
+1. Use `local p = self.params` at the start of methods that need params
+2. Only initialize runtime state (counters, flags, arrays that change during play)
+3. Never copy params that don't change - access them directly when needed
+4. Delete nil initializations (`self.foo = nil` is pointless)
+
 ### The Goal
 
 When a phase says "50 lines → 0 lines", that means 0 lines. Not "20 lines of helper functions." Zero. The game file configures components via schema and callbacks. The logic lives in components.
@@ -56,9 +98,9 @@ When a phase says "50 lines → 0 lines", that means 0 lines. Not "20 lines of h
 
 ### Procedural Rules
 
-1. Complete ALL functions within a section (phase) before stopping.
-2. After completing a section, fill in AI Notes with **exact line count change**.
-3. Do NOT proceed to the next section without user approval.
+1. Complete ALL functions within a phase before stopping.
+2. After completing a phase, fill in AI Notes with **exact line count change**.
+3. Do NOT proceed to the next phase without user approval.
 4. Run NO tests yourself - the user will do manual testing.
 5. When adding to BaseGame/components, ensure other games still work.
 6. Delete the rps functions after extraction - no wrappers.
@@ -78,7 +120,9 @@ When a phase says "50 lines → 0 lines", that means 0 lines. Not "20 lines of h
 
 ---
 
-## Data Structures
+## Phase 1: INITIALIZATION + ASSETS (6 functions + WIN_MATRICES)
+
+### Data Structures
 
 ### WIN_MATRICES (module-level constant)
 Data-driven win/lose relationships for three game modes: rps, rpsls, rpsfb. Each choice maps to what it beats and what it loses to.
@@ -92,7 +136,7 @@ Move to schema (rps_schema.json). Delete module-level constant. `determineWinner
 
 ---
 
-## Phase 1: INITIALIZATION
+### Section: INITIALIZATION
 
 ### init
 Initializes the game. Calls parent init. Gets runtime config from DI. Loads parameters from rps_schema.json using SchemaLoader. Calls applyModifiers, setupGameState, setupComponents. Creates the view.
@@ -186,49 +230,7 @@ Builds victory_config based on params.victory_condition type (rounds, first_to, 
 
 ---
 
-## Phase 1 Summary
-
-**Functions reviewed:** 5 (init, applyModifiers, setupGameState, setupComponents, setupVictoryCondition) + WIN_MATRICES
-
-**Total current lines:** ~200 lines
-**Expected after refactor:** ~50 lines (~75% reduction)
-
-**Key changes:**
-- WIN_MATRICES → schema
-- applyModifiers → delete, use applyCheats()
-- setupGameState → ScoringSystem for score/streaks, schema for metrics/opponent template
-- setupComponents → createComponentsFromSchema()
-- setupVictoryCondition → delete, schema defines config directly
-
-**Schema additions needed:**
-- win_matrix per game mode
-- components config (popup, visual_effects, animation, health, hud)
-- victory_condition config (direct, not type selector)
-- metrics_keys, opponent_template
-
-### Testing (User)
-- [ ] Game initializes without errors
-- [ ] All game modes work (rps, rpsls, rpsfb)
-- [ ] Victory conditions trigger correctly (rounds, first_to, streak, total, time)
-- [ ] Loss conditions trigger correctly (lives, ai_wins threshold)
-- [ ] Cheats apply correctly (speed, advantage, performance)
-- [ ] Score and streaks track correctly
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 2: ASSETS
+### Section: ASSETS
 
 ### setPlayArea
 Stores viewport dimensions. Prints debug message.
@@ -246,18 +248,30 @@ Stores viewport dimensions. Prints debug message.
 
 ---
 
-## Phase 2 Summary
+## Phase 1 Summary
 
-**Functions reviewed:** 1 (setPlayArea)
+**Functions:** 6 (init, applyModifiers, setupGameState, setupComponents, setupVictoryCondition, setPlayArea) + WIN_MATRICES
+**Current lines:** ~205
+**Expected after refactor:** ~50 lines (~75% reduction)
 
-**Total current lines:** ~5 lines
-**Expected after refactor:** ~0 lines (100% reduction)
+**Sections covered:** INITIALIZATION, ASSETS
 
 **Key changes:**
-- Delete setPlayArea, inherit from BaseGame
+- WIN_MATRICES → schema
+- applyModifiers → delete, use applyCheats()
+- setupGameState → ScoringSystem for score/streaks, schema for metrics/opponent template
+- setupComponents → createComponentsFromSchema()
+- setupVictoryCondition → delete, schema defines config directly
+- setPlayArea → delete, inherit from BaseGame
+
+**Schema additions needed:**
+- win_matrix per game mode
+- components config (popup, visual_effects, animation, health, hud)
+- victory_condition config (direct, not type selector)
+- metrics_keys, opponent_template
 
 ### Testing (User)
-- [ ] Window resizing works correctly
+
 
 ### AI Notes
 
@@ -273,7 +287,9 @@ Stores viewport dimensions. Prints debug message.
 
 ---
 
-## Phase 3: MAIN GAME LOOP
+## Phase 2: MAIN LOOP + INPUT + ROUND LOGIC (9 functions)
+
+### Section: MAIN GAME LOOP
 
 ### updateGameLogic
 Checks time limit for "time" victory condition. Handles double hands removal timer timeout. Updates throw_animation, visual_effects, popup_manager. Handles result display timer and transitions back to waiting_for_input. Activates special round after result display.
@@ -308,38 +324,7 @@ Calls view:draw().
 
 ---
 
-## Phase 3 Summary
-
-**Functions reviewed:** 2 (updateGameLogic, draw)
-
-**Total current lines:** ~55 lines
-**Expected after refactor:** ~10 lines (~82% reduction)
-
-**Key changes:**
-- updateGameLogic: timers → AnimationSystem, delete duplicate time limit check
-- draw: delete, inherit from BaseGame
-
-### Testing (User)
-- [ ] Round result displays for correct duration
-- [ ] Double hands removal timer works
-- [ ] Time-based victory condition works
-- [ ] Visual effects and popups update correctly
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 4: INPUT
+### Section: INPUT
 
 ### keypressed
 Guards against invalid input state. Maps keys to choices based on game_mode (r/p/s, l/v for rpsls, f/w for rpsfb). Handles double hands removal phase (1/2 keys). Handles double hands selection phase. Calls playRound for normal mode.
@@ -358,39 +343,7 @@ Guards against invalid input state. Maps keys to choices based on game_mode (r/p
 
 ---
 
-## Phase 4 Summary
-
-**Functions reviewed:** 1 (keypressed)
-
-**Total current lines:** ~78 lines
-**Expected after refactor:** ~15 lines (~81% reduction)
-
-**Key changes:**
-- Key mappings → schema
-- Double hands game logic moves out of keypressed to game handlers
-
-### Testing (User)
-- [ ] All keys map correctly (r/p/s, l/v for rpsls, f/w for rpsfb)
-- [ ] Double hands mode selection works
-- [ ] Double hands removal phase (1/2 keys) works
-- [ ] Invalid keys ignored
-- [ ] Input blocked during result display
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 5: ROUND LOGIC
+### Section: ROUND LOGIC
 
 ### playRound
 Main round execution for single opponent. Sets player choice, starts animation. Branches to playRoundMultipleOpponents if needed. Generates AI choice, determines winner. Applies special round rules (reverse, mirror). Increments rounds_played. Calls onRoundWin/onRoundLose/onRoundTie based on result. Updates history arrays. Updates throw_history for display. Calls updateMetrics. Clears special round. Sets show_result.
@@ -495,14 +448,18 @@ Handles round with multiple AI opponents. Iterates opponents, generates choices,
 
 ---
 
-## Phase 5 Summary
+## Phase 2 Summary
 
-**Functions reviewed:** 6 (playRound, onRoundWin, onRoundLose, onRoundTie, updateMetrics, playRoundMultipleOpponents)
+**Functions:** 9 (updateGameLogic, draw, keypressed, playRound, onRoundWin, onRoundLose, onRoundTie, updateMetrics, playRoundMultipleOpponents)
+**Current lines:** ~342
+**Expected after refactor:** ~80 lines (~77% reduction)
 
-**Total current lines:** ~209 lines
-**Expected after refactor:** ~55 lines (~74% reduction)
+**Sections covered:** MAIN GAME LOOP, INPUT, ROUND LOGIC
 
 **Key changes:**
+- updateGameLogic: timers → AnimationSystem, delete duplicate time limit check
+- draw: delete, inherit from BaseGame
+- keypressed: key mappings → schema, double hands logic moves out
 - playRound: unify with multiple opponents, special rounds → schema
 - onRoundWin: ScoringSystem handles all scoring, callbacks for visuals
 - onRoundLose: ScoringSystem + health_system, delete manual checks
@@ -511,14 +468,7 @@ Handles round with multiple AI opponents. Iterates opponents, generates choices,
 - playRoundMultipleOpponents: delete, merge into playRound
 
 ### Testing (User)
-- [ ] Single opponent rounds work
-- [ ] Multiple opponents rounds work (majority result)
-- [ ] Win streaks track correctly
-- [ ] Score popups display
-- [ ] Perfect game bonus awarded
-- [ ] Sudden death mode works
-- [ ] Double or nothing scoring works
-- [ ] Life loss on loss/tie works
+
 
 ### AI Notes
 
@@ -534,7 +484,9 @@ Handles round with multiple AI opponents. Iterates opponents, generates choices,
 
 ---
 
-## Phase 6: AI SYSTEM
+## Phase 3: AI SYSTEM + GAME STATE + SPECIAL ROUNDS (7 functions)
+
+### Section: AI SYSTEM
 
 ### generateAIChoice
 Gets available choices. Handles ai_pattern_delay (random during delay). Implements six AI patterns: random, repeat_last, counter_player, pattern_cycle, mimic_player, anti_player. Uses WIN_MATRICES for counter_player.
@@ -599,40 +551,7 @@ Checks for tie. Looks up win_matrix for game_mode. Checks if AI choice is in pla
 
 ---
 
-## Phase 6 Summary
-
-**Functions reviewed:** 4 (generateAIChoice, generateAIChoiceForOpponent, getAvailableChoices, determineWinner)
-
-**Total current lines:** ~88 lines
-**Expected after refactor:** ~40 lines (~55% reduction)
-
-**Key changes:**
-- generateAIChoice: merge with generateAIChoiceForOpponent by passing context (history, pattern) as params
-- generateAIChoiceForOpponent: delete, merged into generateAIChoice
-- getAvailableChoices: delete, derive from win_matrix keys or schema `choices` array
-- determineWinner: update to use self.params.win_matrix instead of WIN_MATRICES
-
-### Testing (User)
-- [ ] All AI patterns work (random, repeat_last, counter_player, pattern_cycle, mimic_player, anti_player)
-- [ ] Multiple opponents use correct AI patterns
-- [ ] Winner determination correct for all game modes (rps, rpsls, rpsfb)
-- [ ] Pattern delay works correctly
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 7: GAME STATE / VICTORY
+### Section: GAME STATE / VICTORY
 
 ### checkVictoryCondition
 Calls victory_checker:check(). Returns true if result is "victory".
@@ -664,37 +583,7 @@ Calls victory_checker:check(). Sets victory and game_over flags. Returns true if
 
 ---
 
-## Phase 7 Summary
-
-**Functions reviewed:** 2 (checkVictoryCondition, checkComplete)
-
-**Total current lines:** ~16 lines
-**Expected after refactor:** ~0 lines (100% reduction)
-
-**Key changes:**
-- checkVictoryCondition: delete, callers use checkComplete or victory_checker directly
-- checkComplete: delete, inherit from BaseGame
-
-### Testing (User)
-- [ ] Victory triggers correctly on all condition types
-- [ ] Loss triggers correctly
-- [ ] game_over and victory flags set properly
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 8: SPECIAL ROUNDS
+### Section: SPECIAL ROUNDS
 
 ### activateSpecialRound
 Returns nil if special_rounds_enabled is false. Builds array of enabled special types. Returns nil if none enabled. 50% chance to activate, random selection from available.
@@ -713,20 +602,25 @@ Returns nil if special_rounds_enabled is false. Builds array of enabled special 
 
 ---
 
-## Phase 8 Summary
+## Phase 3 Summary
 
-**Functions reviewed:** 1 (activateSpecialRound)
+**Functions:** 7 (generateAIChoice, generateAIChoiceForOpponent, getAvailableChoices, determineWinner, checkVictoryCondition, checkComplete, activateSpecialRound)
+**Current lines:** ~124
+**Expected after refactor:** ~45 lines (~64% reduction)
 
-**Total current lines:** ~20 lines
-**Expected after refactor:** ~5 lines (~75% reduction)
+**Sections covered:** AI SYSTEM, GAME STATE / VICTORY, SPECIAL ROUNDS
 
 **Key changes:**
-- activateSpecialRound: schema-driven special round config with weights, use existing weighted selection pattern
+- generateAIChoice: merge with generateAIChoiceForOpponent by passing context (history, pattern) as params
+- generateAIChoiceForOpponent: delete, merged into generateAIChoice
+- getAvailableChoices: delete, derive from win_matrix keys or schema `choices` array
+- determineWinner: update to use self.params.win_matrix instead of WIN_MATRICES
+- checkVictoryCondition: delete, callers use checkComplete or victory_checker directly
+- checkComplete: delete, inherit from BaseGame
+- activateSpecialRound: schema-driven special round config with weights
 
 ### Testing (User)
-- [ ] Special rounds activate at correct rate
-- [ ] All special round types work (reverse, mirror, sudden_death, double_or_nothing)
-- [ ] Disabled special rounds don't appear
+
 
 ### AI Notes
 
@@ -744,18 +638,12 @@ Returns nil if special_rounds_enabled is false. Builds array of enabled special 
 
 ## Summary Statistics
 
-| Section | Functions | Lines | Notes |
-|---------|-----------|-------|-------|
-| Data Structures | 1 | 21 | WIN_MATRICES constant |
-| Initialization | 5 | 179 | setupGameState is 69 lines |
-| Assets | 1 | 5 | Minimal |
-| Main Game Loop | 2 | 55 | Timer management |
-| Input | 1 | 78 | Complex multi-mode input |
-| Round Logic | 6 | 209 | playRound orchestration + outcomes |
-| AI System | 4 | 88 | generateAIChoice duplication |
-| Game State | 2 | 16 | checkVictoryCondition redundant |
-| Special Rounds | 1 | 20 | Random activation |
-| **TOTAL** | **23** | **671** | |
+| Phase | Sections | Functions | Lines | Expected |
+|-------|----------|-----------|-------|----------|
+| Phase 1 | Initialization + Assets | 6 + WIN_MATRICES | 205 | ~50 |
+| Phase 2 | Main Loop + Input + Round Logic | 9 | 342 | ~80 |
+| Phase 3 | AI System + Game State + Special Rounds | 7 | 124 | ~45 |
+| **TOTAL** | | **22 + WIN_MATRICES** | **671** | **~175** |
 
 ---
 
@@ -811,21 +699,19 @@ Returns nil if special_rounds_enabled is false. Builds array of enabled special 
 
 ## Estimated Reduction
 
-Current: 671 lines (after reorganization with onRound* extraction)
+Current: 671 lines
 
-After full refactoring:
-- Delete draw wrapper: -3 lines
-- Merge AI choice functions: -25 lines
-- Use ScoringSystem for points/streaks: -30 lines
-- Remove redundant checkVictoryCondition: -7 lines
-- Simplify checkComplete inheritance: -5 lines
+After full refactoring by phase:
+- Phase 1 (Initialization + Assets): 205 → ~50 lines
+- Phase 2 (Main Loop + Input + Round Logic): 342 → ~80 lines
+- Phase 3 (AI System + Game State + Special Rounds): 124 → ~45 lines
 
-**Estimated final size:** ~550-600 lines
-**Estimated reduction:** ~10-15%
+**Estimated final size:** ~175 lines
+**Estimated reduction:** ~74%
 
-Note: RPS is already relatively well-structured. The game is fundamentally different from action games - it's turn-based with AI patterns and special round modifiers. Much of the code is genuinely game-specific logic (AI patterns, special rounds, double hands mode) that doesn't belong in generic components.
+**New components/features to create:**
+- PatternGenerator component (shared with coin_flip)
+- BaseGame turn state helper (shared with coin_flip)
 
-The main wins are:
-1. Eliminating the generateAIChoice duplication
-2. Using ScoringSystem if it supports streak/bonus patterns
-3. Inheriting standard BaseGame methods
+**Games to update alongside:**
+- Coin Flip (turn state, PatternGenerator, onCorrect/onIncorrect patterns)
