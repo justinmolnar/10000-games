@@ -233,41 +233,6 @@ function BreakoutView:drawContent()
         y_offset = y_offset + 18
         love.graphics.setColor(1, 1, 1)
     end
-
-    -- Victory/Game Over overlay
-    if self.game.victory then
-        love.graphics.push()
-        love.graphics.setColor(0, 0, 0, 0.7)
-        love.graphics.rectangle('fill', 0, 0, self.game.arena_width, self.game.arena_height)
-
-        love.graphics.setColor(0.3, 1, 0.3)
-        local text = "VICTORY!"
-        local font = love.graphics.getFont()
-        local text_width = font:getWidth(text)
-        love.graphics.print(text, (self.game.arena_width - text_width) / 2, self.game.arena_height / 2 - 40)
-
-        love.graphics.setColor(1, 1, 1)
-        local score_text = "Final Score: " .. math.floor(self.game.score)
-        local score_width = font:getWidth(score_text)
-        love.graphics.print(score_text, (self.game.arena_width - score_width) / 2, self.game.arena_height / 2)
-        love.graphics.pop()
-    elseif self.game.game_over then
-        love.graphics.push()
-        love.graphics.setColor(0, 0, 0, 0.7)
-        love.graphics.rectangle('fill', 0, 0, self.game.arena_width, self.game.arena_height)
-
-        love.graphics.setColor(1, 0.3, 0.3)
-        local text = "GAME OVER"
-        local font = love.graphics.getFont()
-        local text_width = font:getWidth(text)
-        love.graphics.print(text, (self.game.arena_width - text_width) / 2, self.game.arena_height / 2 - 40)
-
-        love.graphics.setColor(1, 1, 1)
-        local score_text = "Final Score: " .. math.floor(self.game.score)
-        local score_width = font:getWidth(score_text)
-        love.graphics.print(score_text, (self.game.arena_width - score_width) / 2, self.game.arena_height / 2)
-        love.graphics.pop()
-    end
 end
 
 function BreakoutView:drawFogOfWar()

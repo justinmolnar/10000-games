@@ -126,26 +126,14 @@ function CoinFlipView:drawContent()
             love.graphics.printf("[H] Heads  |  [T] Tails", 0, h - 60, w, 'center', 0, 1.5, 1.5)
         end
     end
+end
 
-    -- Victory message
-    if self.game.victory then
-        love.graphics.setColor(0, 0, 0, 0.7)
-        love.graphics.rectangle('fill', 0, 0, w, h)
-        love.graphics.setColor(0, 1, 0)
-        love.graphics.printf("VICTORY!", 0, h / 2 - 40, w, 'center', 0, 3, 3)
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.printf("Streak of " .. self.game.params.streak_target .. " reached!", 0, h / 2 + 20, w, 'center', 0, 1.5, 1.5)
-    end
+function CoinFlipView:getVictorySubtitle()
+    return "Streak of " .. self.game.params.streak_target .. " reached!"
+end
 
-    -- Game Over message
-    if self.game.game_over then
-        love.graphics.setColor(0, 0, 0, 0.7)
-        love.graphics.rectangle('fill', 0, 0, w, h)
-        love.graphics.setColor(1, 0, 0)
-        love.graphics.printf("GAME OVER", 0, h / 2 - 40, w, 'center', 0, 3, 3)
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.printf("Max Streak: " .. self.game.max_streak, 0, h / 2 + 20, w, 'center', 0, 1.5, 1.5)
-    end
+function CoinFlipView:getGameOverSubtitle()
+    return "Max Streak: " .. self.game.max_streak
 end
 
 return CoinFlipView

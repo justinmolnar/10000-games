@@ -253,26 +253,14 @@ function RPSView:drawContent()
         love.graphics.setColor(1, 1, 1, 0.8)
         love.graphics.printf("[R] Rock  |  [P] Paper  |  [S] Scissors", 0, h - 60, w, 'center', 0, 1.5, 1.5)
     end
+end
 
-    -- Victory message
-    if self.game.victory then
-        love.graphics.setColor(0, 0, 0, 0.7)
-        love.graphics.rectangle('fill', 0, 0, w, h)
-        love.graphics.setColor(0, 1, 0)
-        love.graphics.printf("VICTORY!", 0, h / 2 - 40, w, 'center', 0, 3, 3)
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.printf("First to " .. self.game.params.rounds_to_win .. " wins!", 0, h / 2 + 20, w, 'center', 0, 1.5, 1.5)
-    end
+function RPSView:getVictorySubtitle()
+    return "First to " .. self.game.params.rounds_to_win .. " wins!"
+end
 
-    -- Game Over message
-    if self.game.game_over then
-        love.graphics.setColor(0, 0, 0, 0.7)
-        love.graphics.rectangle('fill', 0, 0, w, h)
-        love.graphics.setColor(1, 0, 0)
-        love.graphics.printf("GAME OVER", 0, h / 2 - 40, w, 'center', 0, 3, 3)
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.printf("AI wins " .. self.game.ai_wins .. " - " .. self.game.player_wins, 0, h / 2 + 20, w, 'center', 0, 1.5, 1.5)
-    end
+function RPSView:getGameOverSubtitle()
+    return "AI wins " .. self.game.ai_wins .. " - " .. self.game.player_wins
 end
 
 return RPSView

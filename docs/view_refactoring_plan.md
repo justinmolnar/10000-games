@@ -245,16 +245,29 @@ end
 
 
 ### AI Notes
-
+- Added drawOverlay(), getVictorySubtitle(), getGameOverSubtitle() to GameBaseView
+- Base overlay checks game.victory and game.game_over, draws dark modal with title and subtitle
+- Default subtitle shows "Final Score: X" if game.score exists
+- Updated coin_flip_view: removed overlay code, added custom subtitle methods
+- Updated breakout_view: removed overlay code, uses default score subtitle
+- Updated rps_view: removed overlay code, added custom subtitle methods
+- Other views (snake, dodge, hidden_object, memory_match, space_shooter) now get overlay automatically if they have victory/game_over states
+- Views can override drawOverlay() to customize or disable
 
 ### Status
-Not started
+Complete
 
 ### Line Count Change
-
+- game_base_view: 79 → 131 lines (+52 for overlay infrastructure)
+- coin_flip_view: 152 → 139 lines (-13)
+- breakout_view: 306 → 270 lines (-36)
+- rps_view: 279 → 266 lines (-13)
+- **Net change:** +52 infrastructure, -62 removed = -10 lines
 
 ### Deviation from Plan
-
+- Plan listed 6 views with overlay (coin_flip, breakout, space_shooter, snake, memory_match, rps)
+- Actual: only 3 views had inline overlay code (coin_flip, breakout, rps)
+- Other views already relied on external overlay handling or didn't have overlays
 
 ---
 
