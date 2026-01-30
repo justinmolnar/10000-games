@@ -341,6 +341,7 @@ Generic enemy/obstacle spawning and management with pooling.
 - **spawnPyramid(type_name, rows, max_cols, x, y, spacing_x, spacing_y, arena_width)** - Spawn centered pyramid/triangle.
 - **spawnCircle(type_name, rings, center_x, center_y, base_count, ring_spacing)** - Spawn concentric circles.
 - **spawnRandom(type_name, count, bounds, rng, allow_overlap)** - Spawn randomly in bounds.
+- **spawnScatter(type_name, count, config)** - Spawn in deterministic hash-based positions. Config: bounds, padding, hash_x1/x2/y1/y2, extra_fn(i).
 - **spawnCheckerboard(type_name, rows, cols, x, y, spacing_x, spacing_y)** - Spawn checkerboard pattern.
 - **calculateGridLayout(config)** - Pure calculation for fitting items in a container. Config: {cols, rows, container_width, container_height, item_width, item_height, spacing, padding, reserved_top}. Returns: {cols, rows, item_width, item_height, start_x, start_y, scale, spacing}. Use for memory match, sliding puzzle, minesweeper, etc.
 - **getEntityAtPoint(x, y, type_name)** - Point-in-entity hit testing. Returns first entity at point (rect or circle hit test), or nil. Optional type_name filter.
@@ -352,7 +353,7 @@ Generic enemy/obstacle spawning and management with pooling.
 - **getShuffleProgress()** - Get shuffle animation progress (0-1).
 - **getShuffleStartPosition(entity)** - Get entity's start position for animation interpolation.
 - **completeGridShuffle()** - Finalize shuffle positions and clear animation state.
-- **spawnLayout(type_name, layout, config)** - Dispatch to layout spawner. Layouts: "grid", "pyramid", "circle", "random", "checkerboard", "v_shape", "line", "spiral". Grid layout auto-adds grid_row/grid_col to each entity. Config.extra merged into spawned entities.
+- **spawnLayout(type_name, layout, config)** - Dispatch to layout spawner. Layouts: "grid", "pyramid", "circle", "random", "checkerboard", "v_shape", "line", "spiral", "scatter". Grid layout auto-adds grid_row/grid_col to each entity. Config.extra merged into spawned entities.
 - **spawnWeighted(type_name, weighted_configs, x, y, base_extra)** - Spawn using weighted random selection. Each config in array has `weight` plus properties to merge. Returns spawned entity.
 - **update(dt, game_state)** - Update spawning and all entities.
 - **checkCollision(obj, callback)** - Check collision with circle/rect object. Returns colliding entities.

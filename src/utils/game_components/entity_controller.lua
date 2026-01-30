@@ -328,6 +328,43 @@ function EntityController:spawnRandom(type_name, count, bounds, rng, allow_overl
     end
 end
 
+--[[
+    Spawn entities in deterministic hash-based positions (scatter pattern)
+    Positions are reproducible given the same parameters.
+
+    @param type_name string
+    @param count number - Number of entities to spawn
+    @param config table:
+        - bounds: {x, y, width, height}
+        - padding: number (default from entity size)
+        - hash_x1, hash_x2, hash_y1, hash_y2: hash constants for positioning
+        - extra_fn: function(i) returns extra fields for entity i
+]]
+function EntityController:spawnScatter(type_name, count, config)
+    local entity_type = self.entity_types[type_name]
+    if not entity_type then return end
+
+    config = config or {}
+    local bounds = config.bounds or {x = 0, y = 0, width = 800, height = 600}
+    local size = entity_type.size or entity_type.width or (entity_type.radius and entity_type.radius * 2) or 20
+    local padding = config.padding or size
+
+    local hash_x1 = config.hash_x1 or 17
+    local hash_x2 = config.hash_x2 or 47
+    local hash_y1 = config.hash_y1 or 23
+    local hash_y2 = config.hash_y2 or 53
+
+    for i = 1, count do
+        local hx = (i * hash_x1) % hash_x2
+        local hy = (i * hash_y1) % hash_y2
+        local x = bounds.x + padding + (hx / hash_x2) * (bounds.width - 2 * padding)
+        local y = bounds.y + padding + (hy / hash_y2) * (bounds.height - 2 * padding)
+
+        local extra = config.extra_fn and config.extra_fn(i) or {id = i}
+        self:spawn(type_name, x, y, extra)
+    end
+end
+
 -- Spawn multiple entities using a spawner function
 function EntityController:spawnMultiple(count, spawner_fn)
     for _ = 1, count do
@@ -777,8 +814,8 @@ function EntityController:getEntityAtPoint(x, y, type_name)
             local eh = entity.height or (entity.radius and entity.radius * 2) or 0
 
             if entity.radius then
-                -- Circle hit test
-                local cx, cy = ex + entity.radius, ey + entity.radius
+                -- Circle hit test (centered = x,y is center, else x,y is top-left)
+                local cx, cy = entity.centered and ex or (ex + entity.radius), entity.centered and ey or (ey + entity.radius)
                 local dx, dy = x - cx, y - cy
                 if dx * dx + dy * dy <= entity.radius * entity.radius then
                     return entity
@@ -1032,6 +1069,8 @@ function EntityController:spawnLayout(type_name, layout, config)
             local angle = (i / count) * math.pi * 2
             self:spawn(type_name, center_x + math.cos(angle) * radius, center_y + math.sin(angle) * radius * 0.3, config.extra)
         end
+    elseif layout == "scatter" then
+        self:spawnScatter(type_name, config.count or (rows * cols), config)
     else -- "grid" is default
         for row = 1, rows do
             for col = 1, cols do

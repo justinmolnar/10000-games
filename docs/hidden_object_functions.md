@@ -419,15 +419,23 @@ Guards against double completion. Sets metrics.objects_found. Determines win/los
 
 
 ### AI Notes
-
+- Deleted generateObjects/getDeterministicPositions - replaced with spawnObjects using EntityController:spawnScatter
+- Added spawnScatter layout to EntityController for deterministic hash-based positioning
+- Deleted updateGameLogic - time_bonus moved to onComplete
+- Deleted draw - inherits from BaseGame:draw()
+- Deleted keypressed - inherits from BaseGame:keypressed()
+- Deleted checkComplete - inherits from BaseGame:checkComplete()
+- Simplified onComplete (20→4 lines) - just syncs metrics and calls super
+- Simplified mousepressed (17→12 lines) - uses getEntityAtPoint like memory_match, direct entity manipulation
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+191 → 108 lines (83 line reduction, 43%)
 
 ### Deviation from Plan
+None
 
 
 ---

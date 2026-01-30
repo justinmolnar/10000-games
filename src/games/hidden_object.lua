@@ -47,13 +47,8 @@ function HiddenObject:setupComponents()
             ["hidden_object"] = {
                 size = p.object_base_size,
                 radius = p.object_base_size / 2,
-                found = false,
-                on_hit = function(entity)
-                    entity.found = true
-                    self.objects_found = self.objects_found + 1
-                    self.objects_remaining = self.objects_remaining - 1
-                    self:playSound("find_object", 1.0)
-                end
+                centered = true,
+                found = false
             }
         },
         spawning = {mode = "manual"},
@@ -61,7 +56,7 @@ function HiddenObject:setupComponents()
         max_entities = 50
     })
 
-    self:generateObjects()
+    self:spawnObjects()
     self:createComponentsFromSchema()
 
     -- Create victory condition manually since target is runtime-calculated
@@ -74,117 +69,40 @@ function HiddenObject:setupComponents()
     self.victory_checker.game = self
 
     -- Resize callback to regenerate deterministic positions
-    self.on_resize = function() self:generateObjects() end
-end
-
-
---------------------------------------------------------------------------------
--- OBJECT MANAGEMENT
---------------------------------------------------------------------------------
-
-function HiddenObject:generateObjects()
-    self.entity_controller:clear()
-
-    local positions = self:getDeterministicPositions()
-    for i = 1, self.total_objects do
-        local pos = positions[i]
-        local sprite_variant = math.floor((i - 1) / math.max(1, self.params.sprite_variant_divisor - self.difficulty_modifiers.complexity)) + 1
-
-        self.entity_controller:spawn("hidden_object", pos.x, pos.y, {
-            id = i,
-            sprite_variant = sprite_variant
-        })
+    self.on_resize = function()
+        self.entity_controller:clear()
+        self:spawnObjects()
     end
 end
 
-function HiddenObject:getDeterministicPositions()
-    local positions = {}
-    local padding = self.params.object_base_size
-    for i = 1, self.total_objects do
-        local hash_x = (i * self.params.position_hash_x1) % self.params.position_hash_x2
-        local hash_y = (i * self.params.position_hash_y1) % self.params.position_hash_y2
-        local x = padding + (hash_x / self.params.position_hash_x2) * (self.game_width - 2 * padding)
-        local y = padding + (hash_y / self.params.position_hash_y2) * (self.game_height - 2 * padding)
-        positions[i] = {x = x, y = y}
-    end
-    return positions
-end
-
---------------------------------------------------------------------------------
--- MAIN GAME LOOP
---------------------------------------------------------------------------------
-
-function HiddenObject:updateGameLogic(dt)
-    if self.objects_found >= self.total_objects and self.metrics.time_bonus == 0 then
-        self.metrics.time_bonus = math.floor(math.max(0, self.time_remaining) * self.params.bonus_time_multiplier)
-    end
-end
-
-function HiddenObject:draw()
-    if self.view then
-        self.view:draw()
-    end
-end
-
---------------------------------------------------------------------------------
--- INPUT
---------------------------------------------------------------------------------
-
-function HiddenObject:keypressed(key)
-    HiddenObject.super.keypressed(self, key)
-    return false
+function HiddenObject:spawnObjects()
+    local p = self.params
+    local divisor = math.max(1, p.sprite_variant_divisor - self.difficulty_modifiers.complexity)
+    self.entity_controller:spawnScatter("hidden_object", self.total_objects, {
+        bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height},
+        hash_x1 = p.position_hash_x1, hash_x2 = p.position_hash_x2,
+        hash_y1 = p.position_hash_y1, hash_y2 = p.position_hash_y2,
+        extra_fn = function(i) return {id = i, sprite_variant = math.floor((i - 1) / divisor) + 1} end
+    })
 end
 
 function HiddenObject:mousepressed(x, y, button)
     if self.completed or button ~= 1 then return end
 
-    local click_point = {x = x, y = y, radius = 0}
-    local collisions = self.entity_controller:checkCollision(click_point, function(entity)
-        if not entity.found then
-            local entity_type = self.entity_controller.entity_types[entity.type_name]
-            if entity_type and entity_type.on_hit then
-                entity_type.on_hit(entity)
-            end
-        end
-    end)
-
-    if #collisions == 0 then
+    local entity = self.entity_controller:getEntityAtPoint(x, y, "hidden_object")
+    if entity and not entity.found then
+        entity.found = true
+        self.objects_found = self.objects_found + 1
+        self.objects_remaining = self.objects_remaining - 1
+        self:playSound("find_object", 1.0)
+    elseif not entity then
         self:playSound("wrong_click", 0.5)
     end
 end
 
---------------------------------------------------------------------------------
--- GAME STATE / VICTORY
---------------------------------------------------------------------------------
-
-function HiddenObject:checkComplete()
-    local result = self.victory_checker:check()
-    if result then
-        self.victory = (result == "victory")
-        self.game_over = (result == "loss")
-        return true
-    end
-    return false
-end
-
 function HiddenObject:onComplete()
-    if self.completed then return end
     self.metrics.objects_found = self.objects_found
-
-    local is_win = self.objects_found >= self.total_objects
-
-    if self.objects_found < self.total_objects then
-        self.metrics.time_bonus = 0
-    elseif self.metrics.time_bonus == 0 then
-        self.metrics.time_bonus = math.floor(math.max(0, self.time_remaining) * self.params.bonus_time_multiplier)
-    end
-
-    if is_win then
-        self:playSound("success", 1.0)
-    end
-
-    self:stopMusic()
-
+    self.metrics.time_bonus = self.victory and math.floor(math.max(0, self.time_remaining) * self.params.bonus_time_multiplier) or 0
     HiddenObject.super.onComplete(self)
 end
 
