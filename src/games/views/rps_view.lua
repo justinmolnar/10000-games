@@ -23,11 +23,11 @@ function RPSView:draw()
     love.graphics.print("RPS TOURNAMENT", 20, 50, 0, 2, 2)
 
     -- Additional game info
-    love.graphics.print("First to " .. self.game.rounds_to_win .. " wins", 20, 90)
+    love.graphics.print("First to " .. self.game.params.rounds_to_win .. " wins", 20, 90)
     love.graphics.setColor(0.5, 1, 0.5)
     love.graphics.print("Player: " .. self.game.player_wins, 20, 110)
 
-    if self.game.num_opponents > 1 then
+    if #self.game.opponents > 1 then
         love.graphics.setColor(1, 0.5, 0.5)
         love.graphics.print("Opponents:", 20, 130)
         local active_count = 0
@@ -106,7 +106,7 @@ function RPSView:draw()
         love.graphics.setColor(1, 1, 1)
     end
 
-    if self.game.show_ai_pattern_hint then
+    if self.game.params.show_ai_pattern_hint then
         love.graphics.setColor(1, 0.7, 0.3)
         love.graphics.print("AI Pattern: " .. self.game.params.ai_pattern, 20, y_offset)
         y_offset = y_offset + 20
@@ -170,7 +170,7 @@ function RPSView:draw()
     end
 
     if self.game.show_result then
-        if self.game.num_opponents > 1 then
+        if #self.game.opponents > 1 then
             -- Show player throw in center
             love.graphics.push()
             love.graphics.translate(0, bounce_offset)
@@ -261,7 +261,7 @@ function RPSView:draw()
         love.graphics.setColor(0, 1, 0)
         love.graphics.printf("VICTORY!", 0, h / 2 - 40, w, 'center', 0, 3, 3)
         love.graphics.setColor(1, 1, 1)
-        love.graphics.printf("First to " .. self.game.rounds_to_win .. " wins!", 0, h / 2 + 20, w, 'center', 0, 1.5, 1.5)
+        love.graphics.printf("First to " .. self.game.params.rounds_to_win .. " wins!", 0, h / 2 + 20, w, 'center', 0, 1.5, 1.5)
     end
 
     -- Game Over message

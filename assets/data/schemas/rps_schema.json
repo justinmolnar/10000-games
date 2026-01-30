@@ -2,6 +2,31 @@
     "name": "rps_schema",
     "description": "Schema for Rock Paper Scissors game parameters - all configurable values for RPS variants",
     "parameters": {
+        "win_matrices": {
+            "type": "object",
+            "default": {
+                "rps": {
+                    "rock": { "beats": ["scissors"], "loses_to": ["paper"] },
+                    "paper": { "beats": ["rock"], "loses_to": ["scissors"] },
+                    "scissors": { "beats": ["paper"], "loses_to": ["rock"] }
+                },
+                "rpsls": {
+                    "rock": { "beats": ["scissors", "lizard"], "loses_to": ["paper", "spock"] },
+                    "paper": { "beats": ["rock", "spock"], "loses_to": ["scissors", "lizard"] },
+                    "scissors": { "beats": ["paper", "lizard"], "loses_to": ["rock", "spock"] },
+                    "lizard": { "beats": ["paper", "spock"], "loses_to": ["rock", "scissors"] },
+                    "spock": { "beats": ["rock", "scissors"], "loses_to": ["paper", "lizard"] }
+                },
+                "rpsfb": {
+                    "rock": { "beats": ["scissors"], "loses_to": ["paper", "water"] },
+                    "paper": { "beats": ["rock"], "loses_to": ["scissors", "fire"] },
+                    "scissors": { "beats": ["paper"], "loses_to": ["rock", "water"] },
+                    "fire": { "beats": ["paper", "scissors"], "loses_to": ["water", "rock"] },
+                    "water": { "beats": ["fire", "rock"], "loses_to": ["paper", "scissors"] }
+                }
+            },
+            "description": "Win/lose relationships for each game mode"
+        },
         "rounds_to_win": {
             "type": "integer",
             "default": 3,
@@ -247,6 +272,48 @@
             "min": 0.5,
             "max": 3.0,
             "description": "Global difficulty multiplier"
+        },
+        "victory_conditions": {
+            "type": "object",
+            "default": {
+                "rounds": {
+                    "victory": {"type": "threshold", "metric": "player_wins", "target": "$rounds_to_win"}
+                },
+                "first_to": {
+                    "victory": {"type": "threshold", "metric": "player_wins", "target": "$first_to_target"}
+                },
+                "streak": {
+                    "victory": {"type": "streak", "metric": "current_win_streak", "target": "$streak_target"}
+                },
+                "total": {
+                    "victory": {"type": "threshold", "metric": "player_wins", "target": "$total_wins_target"}
+                },
+                "time": {
+                    "victory": {"type": "time_survival", "metric": "time_elapsed", "target": "$time_limit"}
+                }
+            },
+            "description": "Victory condition configurations indexed by type"
+        },
+        "components": {
+            "type": "object",
+            "default": {
+                "visual_effects": {
+                    "type": "VisualEffects",
+                    "config": {
+                        "camera_shake_enabled": false,
+                        "screen_flash_enabled": "$screen_flash_enabled",
+                        "particle_effects_enabled": true
+                    }
+                },
+                "hud": {
+                    "type": "HUDRenderer",
+                    "config": {
+                        "primary": {"label": "Score", "key": "score"},
+                        "secondary": {"label": "Win Streak", "key": "current_win_streak"}
+                    }
+                }
+            },
+            "description": "Component configurations"
         }
     }
 }

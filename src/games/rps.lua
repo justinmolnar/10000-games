@@ -1,38 +1,6 @@
 local BaseGame = require('src.games.base_game')
-local Config = rawget(_G, 'DI_CONFIG') or {}
 local RPSView = require('src.games.views.rps_view')
-local popup_module = require('src.games.score_popup')
-local PopupManager = popup_module.PopupManager
-local VisualEffects = require('src.utils.game_components.visual_effects')
-local AnimationSystem = require('src.utils.game_components.animation_system')
-local SchemaLoader = require('src.utils.game_components.schema_loader')
-local HUDRenderer = require('src.utils.game_components.hud_renderer')
-local VictoryCondition = require('src.utils.game_components.victory_condition')
-local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local RPS = BaseGame:extend('RPS')
-
--- Win matrices for different game modes
-local WIN_MATRICES = {
-    rps = {
-        rock = { beats = {"scissors"}, loses_to = {"paper"} },
-        paper = { beats = {"rock"}, loses_to = {"scissors"} },
-        scissors = { beats = {"paper"}, loses_to = {"rock"} }
-    },
-    rpsls = {
-        rock = { beats = {"scissors", "lizard"}, loses_to = {"paper", "spock"} },
-        paper = { beats = {"rock", "spock"}, loses_to = {"scissors", "lizard"} },
-        scissors = { beats = {"paper", "lizard"}, loses_to = {"rock", "spock"} },
-        lizard = { beats = {"paper", "spock"}, loses_to = {"rock", "scissors"} },
-        spock = { beats = {"rock", "scissors"}, loses_to = {"paper", "lizard"} }
-    },
-    rpsfb = {
-        rock = { beats = {"scissors"}, loses_to = {"paper", "water"} },
-        paper = { beats = {"rock"}, loses_to = {"scissors", "fire"} },
-        scissors = { beats = {"paper"}, loses_to = {"rock", "water"} },
-        fire = { beats = {"paper", "scissors"}, loses_to = {"water", "rock"} },
-        water = { beats = {"fire", "rock"}, loses_to = {"paper", "scissors"} }
-    }
-}
 
 --------------------------------------------------------------------------------
 -- INITIALIZATION
@@ -40,66 +8,31 @@ local WIN_MATRICES = {
 
 function RPS:init(game_data, cheats, di, variant_override)
     RPS.super.init(self, game_data, cheats, di, variant_override)
-    self.di = di
-    self.cheats = cheats or {}
 
-    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.rps)
+    local SchemaLoader = self.di.components.SchemaLoader
+    local runtimeCfg = self.di.config and self.di.config.games and self.di.config.games.rps
     self.params = SchemaLoader.load(self.variant, "rps_schema", runtimeCfg)
 
-    self:applyModifiers()
     self:setupGameState()
     self:setupComponents()
 
     self.view = RPSView:new(self)
 end
 
-function RPS:applyModifiers()
-    -- Mutable params that can be modified by cheats
-    self.rounds_to_win = self.params.rounds_to_win
-    self.time_per_round = self.params.time_per_round
-    self.round_result_display_time = self.params.round_result_display_time
-    self.show_ai_pattern_hint = self.params.show_ai_pattern_hint
-    self.show_player_history = self.params.show_player_history
-
-    -- Apply difficulty modifier
-    if self.params.difficulty_modifier ~= 1.0 then
-        self.time_per_round = self.time_per_round * self.params.difficulty_modifier
-        self.round_result_display_time = self.round_result_display_time * self.params.difficulty_modifier
-    end
-
-    -- Apply CheatEngine modifications
-    if self.cheats.speed_modifier then
-        self.round_result_display_time = self.round_result_display_time * self.cheats.speed_modifier
-        self.time_per_round = self.time_per_round * self.cheats.speed_modifier
-    end
-    if self.cheats.advantage_modifier then
-        self.rounds_to_win = math.max(1, self.rounds_to_win - math.floor((self.cheats.advantage_modifier or 0) / 2))
-    end
-    if self.cheats.performance_modifier then
-        self.show_ai_pattern_hint = true
-        self.show_player_history = true
-    end
-
-    self.num_opponents = math.max(1, math.min(5, self.params.num_opponents))
-end
-
 function RPS:setupGameState()
-    -- Game state
+    local p = self.params
+
+    -- Game state counters
     self.player_wins = 0
     self.ai_wins = 0
     self.ties = 0
     self.rounds_played = 0
     self.current_win_streak = 0
     self.max_win_streak = 0
-    self.game_over = false
-    self.victory = false
     self.score = 0
 
     -- Round state
     self.waiting_for_input = true
-    self.player_choice = nil
-    self.ai_choice = nil
-    self.round_result = nil
     self.result_display_time = 0
     self.show_result = false
 
@@ -109,35 +42,23 @@ function RPS:setupGameState()
 
     -- Double hands mode state
     self.phase = "selection"
-    self.player_left_hand = nil
-    self.player_right_hand = nil
-    self.ai_left_hand = nil
-    self.ai_right_hand = nil
-    self.both_hands_history = {}
     self.removal_timer = 0
 
     -- Multiple opponents state
+    local num_opponents = math.max(1, math.min(5, p.num_opponents))
     self.opponents = {}
-    for i = 1, self.num_opponents do
+    for i = 1, num_opponents do
         table.insert(self.opponents, {
             id = i,
             wins = 0,
-            choice = nil,
             eliminated = false,
-            pattern = self.params.ai_pattern,
+            pattern = p.ai_pattern,
             history = {}
         })
     end
 
-    -- Time limit state
-    self.time_elapsed = 0
-
     -- History display state
     self.throw_history = {}
-
-    -- Special rounds state
-    self.current_special_round = nil
-    self.last_special_round = nil
 
     -- Metrics
     self.metrics = {
@@ -154,82 +75,47 @@ function RPS:setupGameState()
 end
 
 function RPS:setupComponents()
+    local p = self.params
+    local AnimationSystem = self.di.components.AnimationSystem
+    local LivesHealthSystem = self.di.components.LivesHealthSystem
+    local PopupManager = self.di.components.PopupManager
+
     -- Score popups
     self.popup_manager = PopupManager:new()
 
-    -- Visual effects
-    self.visual_effects = VisualEffects:new({
-        camera_shake_enabled = false,
-        screen_flash_enabled = self.params.screen_flash_enabled,
-        particle_effects_enabled = true
-    })
+    -- Create visual_effects and hud from schema
+    self:createComponentsFromSchema()
 
     -- Throw animation
     self.throw_animation = AnimationSystem.createBounceAnimation({
         duration = 0.5,
         height = 20,
-        speed_multiplier = self.params.animation_speed,
-        on_complete = nil
+        speed_multiplier = p.animation_speed
     })
 
     -- Lives/Health System
     self.health_system = LivesHealthSystem:new({
         mode = "lives",
-        starting_lives = self.params.lives,
+        starting_lives = p.lives,
         max_lives = 999,
-        lose_life_on = self.params.lose_life_on
+        lose_life_on = p.lose_life_on
     })
     self.lives = self.health_system.lives
 
-    -- HUD
-    self.hud = HUDRenderer:new({
-        primary = {label = "Score", key = "score"},
-        secondary = {label = "Win Streak", key = "current_win_streak"}
-    })
-    self.hud.game = self
+    -- Victory Condition - configure loss based on lives
+    local loss_config
+    if p.lives < 999 then
+        loss_config = {type = "lives_depleted", metric = "lives"}
+    else
+        loss_config = {type = "threshold", metric = "ai_wins", target = p.rounds_to_win}
+    end
+    self:createVictoryConditionFromSchema()
+    if self.victory_checker then
+        self.victory_checker.loss = loss_config
+    end
 
     -- Try to activate special round for first throw
     self.current_special_round = self:activateSpecialRound()
-
-    -- Victory Condition System
-    self:setupVictoryCondition()
-end
-
-function RPS:setupVictoryCondition()
-    local victory_config = {}
-
-    if self.params.victory_condition == "rounds" then
-        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.rounds_to_win}
-    elseif self.params.victory_condition == "first_to" then
-        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.params.first_to_target}
-    elseif self.params.victory_condition == "streak" then
-        victory_config.victory = {type = "streak", metric = "current_win_streak", target = self.params.streak_target}
-    elseif self.params.victory_condition == "total" then
-        victory_config.victory = {type = "threshold", metric = "player_wins", target = self.params.total_wins_target}
-    elseif self.params.victory_condition == "time" then
-        victory_config.victory = {type = "time_survival", metric = "time_elapsed", target = self.params.time_limit}
-    end
-
-    -- Loss condition
-    if self.lives < 999 then
-        victory_config.loss = {type = "lives_depleted", metric = "lives"}
-    else
-        victory_config.loss = {type = "threshold", metric = "ai_wins", target = self.rounds_to_win}
-    end
-    victory_config.check_loss_first = true
-
-    self.victory_checker = VictoryCondition:new(victory_config)
-    self.victory_checker.game = self
-end
-
---------------------------------------------------------------------------------
--- ASSETS
---------------------------------------------------------------------------------
-
-function RPS:setPlayArea(width, height)
-    self.viewport_width = width
-    self.viewport_height = height
-    print("[RPS] Play area updated to:", width, height)
 end
 
 --------------------------------------------------------------------------------
@@ -276,7 +162,7 @@ function RPS:updateGameLogic(dt)
     -- Handle result display timer
     if self.show_result and not self.game_over and not self.victory then
         self.result_display_time = self.result_display_time + dt
-        if self.result_display_time >= self.round_result_display_time then
+        if self.result_display_time >= self.params.round_result_display_time then
             self.show_result = false
             self.result_display_time = 0
             self.waiting_for_input = true
@@ -386,7 +272,7 @@ function RPS:playRound(player_choice)
     self.waiting_for_input = false
     self.throw_animation:start()
 
-    if self.num_opponents > 1 then
+    if #self.opponents > 1 then
         self:playRoundMultipleOpponents(player_choice)
         return
     end
@@ -514,7 +400,7 @@ function RPS:onRoundLose()
         end
     end
 
-    if self.ai_wins >= self.rounds_to_win then
+    if self.ai_wins >= self.params.rounds_to_win then
         self.game_over = true
     end
 end
@@ -557,7 +443,7 @@ function RPS:playRoundMultipleOpponents(player_choice)
             elseif result == "lose" then
                 player_losses_this_round = player_losses_this_round + 1
                 opponent.wins = opponent.wins + 1
-                if self.params.elimination_mode and opponent.wins >= self.rounds_to_win then
+                if self.params.elimination_mode and opponent.wins >= self.params.rounds_to_win then
                     self.game_over = true
                 end
             else
@@ -614,7 +500,7 @@ function RPS:generateAIChoice()
         return self.ai_history[#self.ai_history]
     elseif pattern == "counter_player" and #self.player_history > 0 then
         local last_player = self.player_history[#self.player_history]
-        local win_matrix = WIN_MATRICES[self.params.game_mode]
+        local win_matrix = self.params.win_matrices[self.params.game_mode]
         if win_matrix and win_matrix[last_player] and win_matrix[last_player].loses_to then
             local counters = win_matrix[last_player].loses_to
             return counters[self.rng:random(1, #counters)]
@@ -645,7 +531,7 @@ function RPS:generateAIChoiceForOpponent(opponent)
         return opponent.history[#opponent.history]
     elseif opponent.pattern == "counter_player" and #self.player_history > 0 then
         local last_player = self.player_history[#self.player_history]
-        local win_matrix = WIN_MATRICES[self.params.game_mode]
+        local win_matrix = self.params.win_matrices[self.params.game_mode]
         if win_matrix and win_matrix[last_player] and win_matrix[last_player].loses_to then
             local counters = win_matrix[last_player].loses_to
             return counters[self.rng:random(1, #counters)]
@@ -678,7 +564,7 @@ function RPS:determineWinner(player, ai)
         return "tie"
     end
 
-    local win_matrix = WIN_MATRICES[self.params.game_mode]
+    local win_matrix = self.params.win_matrices[self.params.game_mode]
     if not win_matrix or not win_matrix[player] then
         return "tie"
     end
@@ -712,6 +598,12 @@ function RPS:checkComplete()
         return true
     end
     return false
+end
+
+function RPS:setPlayArea(width, height)
+    RPS.super.setPlayArea(self, width, height)
+    self.viewport_width = width
+    self.viewport_height = height
 end
 
 --------------------------------------------------------------------------------
