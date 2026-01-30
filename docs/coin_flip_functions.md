@@ -243,63 +243,7 @@ Stores viewport dimensions.
 
 ---
 
-## Phase 3: MAIN GAME LOOP
-
-### updateGameLogic
-Checks time limit victory. Updates flip_animation, visual_effects, popup_manager. Handles result display timer and transitions to waiting_for_guess. Handles auto_flip_timer countdown. Handles time_per_flip_timer countdown.
-
-**Notes:** 50 lines. Multiple timers with similar structure. Two auto-trigger paths that duplicate logic.
-
-**Extraction Potential:** Medium. Timer management could be unified. Auto-flip and time-per-flip timers have identical behavior.
-
-**Plan after discussion:**
-1. Time limit victory check → Delete, VictoryCondition handles automatically
-2. Component updates → 3 lines, keep inline
-3. Result display timer → AnimationSystem.createTimer()
-4. auto_flip_timer and time_per_flip_timer → Consolidate into single decision timer using AnimationSystem.createTimer(), calls `triggerFlip()` helper when expired
-
-**Expected:** 50 lines → ~10 lines
-
----
-
-### draw
-Calls view:draw().
-
-**Notes:** 3 lines. Pure wrapper.
-
-**Extraction Potential:** Very High. Delete entirely. Inherit from BaseGame:draw().
-
-**Plan after discussion:**
-1. Delete entirely - inherit from BaseGame:draw()
-
-**Expected:** 3 lines → 0 lines
-
----
-
-## Phase 3 Summary
-
-**Functions:** 2 (updateGameLogic, draw)
-**Current lines:** ~53
-**Expected after refactor:** ~10 lines
-
-### Testing (User)
-
-
-### AI Notes
-
-
-### Status
-
-
-### Line Count Change
-
-
-### Deviation from Plan
-
-
----
-
-## Phase 4: INPUT
+## Phase 3: INPUT
 
 ### keypressed
 Guards against invalid input state. Auto mode: space triggers flipCoin. Guess mode: h/t triggers makeGuess.
@@ -318,7 +262,7 @@ Guards against invalid input state. Auto mode: space triggers flipCoin. Guess mo
 
 ---
 
-## Phase 4 Summary
+## Phase 3 Summary
 
 **Functions:** 1 (keypressed)
 **Current lines:** ~17
@@ -341,7 +285,7 @@ Guards against invalid input state. Auto mode: space triggers flipCoin. Guess mo
 
 ---
 
-## Phase 5: FLIP LOGIC
+## Phase 4: FLIP LOGIC
 
 ### generateFlipResult
 Generates flip result based on pattern_mode. Four modes: alternating, clusters, biased_random, random. Updates pattern_state.
@@ -470,9 +414,9 @@ Syncs metrics object from game state (max_streak, correct_total, flips_total, ac
 
 ---
 
-## Phase 5 Summary
+## Phase 4 Summary
 
-**Functions:** 6 (generateFlipResult, flipCoin, makeGuess, processFlipResult, onCorrectFlip, onIncorrectFlip, updateMetrics)
+**Functions:** 7 (generateFlipResult, flipCoin, makeGuess, processFlipResult, onCorrectFlip, onIncorrectFlip, updateMetrics)
 **Current lines:** ~165
 **Expected after refactor:** ~15 lines
 
@@ -500,7 +444,7 @@ Syncs metrics object from game state (max_streak, correct_total, flips_total, ac
 
 ---
 
-## Phase 6: GAME STATE / VICTORY
+## Phase 5: GAME STATE / VICTORY
 
 ### checkVictoryCondition
 Custom ratio calculation for ratio victory type. For other types, uses victory_checker:check().
@@ -533,7 +477,7 @@ Calls victory_checker:check(). Sets victory and game_over flags. Returns true if
 
 ---
 
-## Phase 6 Summary
+## Phase 5 Summary
 
 **Functions:** 2 (checkVictoryCondition, checkComplete)
 **Current lines:** ~31
@@ -556,17 +500,73 @@ Calls victory_checker:check(). Sets victory and game_over flags. Returns true if
 
 ---
 
+## Phase 6: MAIN GAME LOOP (FINAL - depends on other phases)
+
+### updateGameLogic
+Checks time limit victory. Updates flip_animation, visual_effects, popup_manager. Handles result display timer and transitions to waiting_for_guess. Handles auto_flip_timer countdown. Handles time_per_flip_timer countdown.
+
+**Notes:** 50 lines. Multiple timers with similar structure. Two auto-trigger paths that duplicate logic.
+
+**Extraction Potential:** Medium. Timer management could be unified. Auto-flip and time-per-flip timers have identical behavior.
+
+**Plan after discussion:**
+1. Time limit victory check → Delete, VictoryCondition handles automatically
+2. Component updates → 3 lines, keep inline
+3. Result display timer → AnimationSystem.createTimer()
+4. auto_flip_timer and time_per_flip_timer → Consolidate into single decision timer using AnimationSystem.createTimer(), calls `triggerFlip()` helper when expired
+
+**Expected:** 50 lines → ~10 lines
+
+---
+
+### draw
+Calls view:draw().
+
+**Notes:** 3 lines. Pure wrapper.
+
+**Extraction Potential:** Very High. Delete entirely. Inherit from BaseGame:draw().
+
+**Plan after discussion:**
+1. Delete entirely - inherit from BaseGame:draw()
+
+**Expected:** 3 lines → 0 lines
+
+---
+
+## Phase 6 Summary
+
+**Functions:** 2 (updateGameLogic, draw)
+**Current lines:** ~53
+**Expected after refactor:** ~10 lines
+
+### Testing (User)
+
+
+### AI Notes
+
+
+### Status
+
+
+### Line Count Change
+
+
+### Deviation from Plan
+
+
+---
+
 ## Summary Statistics
 
 | Section | Functions | Lines | Notes |
 |---------|-----------|-------|-------|
-| Initialization | 5 | 132 | Standard setup |
-| Assets | 1 | 4 | Minimal |
-| Main Game Loop | 2 | 53 | Timer management |
-| Input | 1 | 17 | Simple key mapping |
-| Flip Logic | 6 | 165 | Core game mechanics |
-| Game State | 2 | 31 | Victory checking |
-| **TOTAL** | **17** | **402** | |
+| Phase 1: Initialization | 5 | 132 | Standard setup |
+| Phase 2: Assets | 1 | 4 | Minimal |
+| Phase 3: Input | 1 | 17 | Simple key mapping |
+| Phase 4: Flip Logic | 7 | 165 | Core game mechanics |
+| Phase 5: Game State | 2 | 31 | Victory checking |
+| Phase 6: Main Game Loop | 2 | 53 | Timer management (FINAL) |
+| **TOTAL** | **18** | **402** | |
 
 ---
 
@@ -618,10 +618,10 @@ Current: 402 lines
 After full refactoring by phase:
 - Phase 1 (Initialization): 132 → ~15 lines
 - Phase 2 (Assets): 4 → 0 lines
-- Phase 3 (Main Game Loop): 53 → ~10 lines
-- Phase 4 (Input): 17 → 0 lines
-- Phase 5 (Flip Logic): 165 → ~15 lines
-- Phase 6 (Game State): 31 → 0 lines
+- Phase 3 (Input): 17 → 0 lines
+- Phase 4 (Flip Logic): 165 → ~15 lines
+- Phase 5 (Game State): 31 → 0 lines
+- Phase 6 (Main Game Loop - FINAL): 53 → ~10 lines
 
 **Estimated final size:** ~40 lines
 **Estimated reduction:** ~90%
