@@ -11,6 +11,10 @@ local VictoryCondition = require('src.utils.game_components.victory_condition')
 local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
 local CoinFlip = BaseGame:extend('CoinFlip')
 
+--------------------------------------------------------------------------------
+-- INITIALIZATION
+--------------------------------------------------------------------------------
+
 function CoinFlip:init(game_data, cheats, di, variant_override)
     CoinFlip.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
@@ -29,7 +33,6 @@ end
 function CoinFlip:applyModifiers()
     local p = self.params
 
-    -- Mutable params (modified by cheats/difficulty)
     self.time_per_flip = p.time_per_flip
     self.flip_animation_speed = p.flip_animation_speed
     self.coin_bias = p.coin_bias
@@ -149,10 +152,18 @@ function CoinFlip:setupVictoryCondition()
     self.victory_checker.game = self
 end
 
+--------------------------------------------------------------------------------
+-- ASSETS
+--------------------------------------------------------------------------------
+
 function CoinFlip:setPlayArea(width, height)
     self.viewport_width = width
     self.viewport_height = height
 end
+
+--------------------------------------------------------------------------------
+-- MAIN GAME LOOP
+--------------------------------------------------------------------------------
 
 function CoinFlip:updateGameLogic(dt)
     if not self.game_over and not self.victory then
@@ -205,18 +216,24 @@ function CoinFlip:updateGameLogic(dt)
     end
 end
 
+function CoinFlip:draw()
+    self.view:draw()
+end
+
+--------------------------------------------------------------------------------
+-- INPUT
+--------------------------------------------------------------------------------
+
 function CoinFlip:keypressed(key)
     if not self.waiting_for_guess or self.game_over or self.victory then
         return
     end
 
     if self.params.flip_mode == "auto" then
-        -- Auto mode: space to flip, heads = success
         if key == 'space' then
             self:flipCoin()
         end
     else
-        -- Guess mode: H/T to call it
         if key == 'h' then
             self:makeGuess('heads')
         elseif key == 't' then
@@ -225,40 +242,34 @@ function CoinFlip:keypressed(key)
     end
 end
 
+--------------------------------------------------------------------------------
+-- FLIP LOGIC
+--------------------------------------------------------------------------------
+
 function CoinFlip:generateFlipResult()
-    -- Generate flip result based on pattern_mode
     local result
 
     if self.params.pattern_mode == "alternating" then
-        -- Alternate between heads and tails
         if self.pattern_state.last_result == nil then
-            -- First flip uses bias
             local flip_value = self.rng:random()
             result = flip_value < self.coin_bias and 'heads' or 'tails'
         else
-            -- Alternate
             result = self.pattern_state.last_result == 'heads' and 'tails' or 'heads'
         end
 
     elseif self.params.pattern_mode == "clusters" then
-        -- Generate runs of same result (HHHTTTHHH)
         if self.pattern_state.cluster_remaining > 0 then
-            -- Continue current cluster
             result = self.pattern_state.cluster_value
             self.pattern_state.cluster_remaining = self.pattern_state.cluster_remaining - 1
         else
-            -- Start new cluster
             local flip_value = self.rng:random()
             result = flip_value < self.coin_bias and 'heads' or 'tails'
             self.pattern_state.cluster_value = result
-            -- Cluster length between 2 and 5
             self.pattern_state.cluster_remaining = self.rng:random(2, 5) - 1
         end
 
     elseif self.params.pattern_mode == "biased_random" then
-        -- Use coin_bias with streak-based adjustment
         local adjusted_bias = self.coin_bias
-        -- Increase heads probability slightly when on a streak (helps maintain streaks)
         if self.current_streak > 0 then
             adjusted_bias = math.min(0.95, adjusted_bias + 0.05)
         end
@@ -266,255 +277,154 @@ function CoinFlip:generateFlipResult()
         result = flip_value < adjusted_bias and 'heads' or 'tails'
 
     else
-        -- Default "random" mode - use coin_bias
         local flip_value = self.rng:random()
         result = flip_value < self.coin_bias and 'heads' or 'tails'
     end
 
-    -- Update pattern state
     self.pattern_state.last_result = result
-
     return result
 end
 
 function CoinFlip:flipCoin()
-    -- Auto mode: just flip, heads = advance streak
     self.waiting_for_guess = false
-
-    -- Start flip animation
     self.flip_animation:start()
     self.flip_timer = 0
 
-    -- Generate result based on pattern mode
     local result = self:generateFlipResult()
     self.last_result = result
 
-    -- Update pattern history
     table.insert(self.pattern_history, result == 'heads' and 'H' or 'T')
     while #self.pattern_history > self.params.pattern_history_length do
-        table.remove(self.pattern_history, 1)  -- Remove oldest
+        table.remove(self.pattern_history, 1)
     end
 
-    -- Update stats
     self.flips_total = self.flips_total + 1
 
-    -- Heads = success (advance streak), Tails = miss (reset)
-    if result == 'heads' then
-        self.correct_total = self.correct_total + 1
-        self.current_streak = self.current_streak + 1
-        table.insert(self.flip_history, 1)  -- Track for ratio victory condition
-
-        -- Award score with streak multiplier
-        local base_score = self.params.score_per_correct
-        local multiplier = 1 + (self.current_streak * self.params.streak_multiplier)
-        local points = math.floor(base_score * multiplier)
-        self.score = self.score + points
-
-        -- Spawn score popup
-        if self.params.score_popup_enabled then
-            local w, h = love.graphics.getDimensions()
-            local popup_color = {1, 1, 1}  -- White for correct guess
-            -- Yellow for streak milestones at 5/10
-            if self.current_streak == 5 or self.current_streak == 10 then
-                popup_color = {1, 1, 0}
-            end
-            self.popup_manager:add(w / 2, h / 2 - 50, "+" .. points, popup_color)
-        end
-
-        -- Update max streak
-        if self.current_streak > self.max_streak then
-            self.max_streak = self.current_streak
-        end
-
-        -- Visual effects: screen flash + confetti
-        self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")  -- Green flash
-        if self.params.celebration_on_streak and (self.current_streak % 5 == 0) then
-            local w, h = love.graphics.getDimensions()
-            self.visual_effects:emitConfetti(w / 2, h / 2, 15)
-        end
-
-        -- TTS announcement
-        if (self.params.result_announce_mode == "voice" or self.params.result_announce_mode == "both") and self.di and self.di.ttsManager then
-            local tts = self.di.ttsManager
-            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
-            tts:speakWeird("correct", weirdness)
-        end
-
-        -- Check victory condition
-        if self:checkVictoryCondition() then
-            self.victory = true
-            -- Award perfect streak bonus if no mistakes
-            if self.perfect_streak and self.incorrect_total == 0 then
-                self.score = self.score + self.params.perfect_streak_bonus
-                -- Spawn green popup for perfect streak
-                if self.params.score_popup_enabled then
-                    local w, h = love.graphics.getDimensions()
-                    self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT! +" .. self.params.perfect_streak_bonus, {0, 1, 0})
-                end
-            end
-        end
-    else
-        -- Tails = miss
-        self.incorrect_total = self.incorrect_total + 1
-        self.perfect_streak = false  -- Mark that we've made a mistake
-        self.current_streak = 0  -- Reset streak
-
-        -- Visual effects: screen flash
-        self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")  -- Red flash
-
-        -- TTS announcement
-        if (self.params.result_announce_mode == "voice" or self.params.result_announce_mode == "both") and self.di and self.di.ttsManager then
-            local tts = self.di.ttsManager
-            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
-            tts:speakWeird("wrong", weirdness)
-        end
-
-        table.insert(self.flip_history, 0)  -- Track for ratio victory condition
-
-        if self.lives < 999 then
-            self.health_system:takeDamage(1, "wrong_guess")
-            self.lives = self.health_system.lives
-            if not self.health_system:isAlive() then
-                self.game_over = true
-            end
-        end
-    end
-
-    -- Update metrics for formula
-    self.metrics.max_streak = self.max_streak
-    self.metrics.correct_total = self.correct_total
-    self.metrics.flips_total = self.flips_total
-    self.metrics.accuracy = self.flips_total > 0 and (self.correct_total / self.flips_total) or 0
-    self.metrics.score = self.score
-
-    -- Show result
-    self.show_result = true
-    self.result_display_time = 0
+    -- In auto mode, heads = success
+    local is_correct = (result == 'heads')
+    self:processFlipResult(is_correct, result)
 end
 
 function CoinFlip:makeGuess(guess)
-    -- Guess mode: player calls heads or tails
     self.current_guess = guess
     self.last_guess = guess
     self.waiting_for_guess = false
-
-    -- Start flip animation
     self.flip_animation:start()
     self.flip_timer = 0
 
-    -- Generate result based on pattern mode
     local result = self:generateFlipResult()
     self.last_result = result
 
-    -- Update pattern history
     table.insert(self.pattern_history, result == 'heads' and 'H' or 'T')
     while #self.pattern_history > self.params.pattern_history_length do
-        table.remove(self.pattern_history, 1)  -- Remove oldest
+        table.remove(self.pattern_history, 1)
     end
 
-    -- Update stats
     self.flips_total = self.flips_total + 1
 
-    -- Check if guess was correct
-    if guess == result then
-        -- Correct guess
-        self.correct_total = self.correct_total + 1
-        self.current_streak = self.current_streak + 1
-        table.insert(self.flip_history, 1)  -- Track for ratio victory condition
+    -- In guess mode, correct = guess matches result
+    local is_correct = (guess == result)
+    self:processFlipResult(is_correct, result)
+end
 
-        -- Award score with streak multiplier
-        local base_score = self.params.score_per_correct
-        local multiplier = 1 + (self.current_streak * self.params.streak_multiplier)
-        local points = math.floor(base_score * multiplier)
-        self.score = self.score + points
-
-        -- Spawn score popup
-        if self.params.score_popup_enabled then
-            local w, h = love.graphics.getDimensions()
-            local popup_color = {1, 1, 1}  -- White for correct guess
-            -- Yellow for streak milestones at 5/10
-            if self.current_streak == 5 or self.current_streak == 10 then
-                popup_color = {1, 1, 0}
-            end
-            self.popup_manager:add(w / 2, h / 2 - 50, "+" .. points, popup_color)
-        end
-
-        -- Update max streak
-        if self.current_streak > self.max_streak then
-            self.max_streak = self.current_streak
-        end
-
-        -- Visual effects: screen flash + confetti
-        self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")  -- Green flash
-        if self.params.celebration_on_streak and (self.current_streak % 5 == 0) then
-            local w, h = love.graphics.getDimensions()
-            self.visual_effects:emitConfetti(w / 2, h / 2, 15)
-        end
-
-        -- TTS announcement
-        if (self.params.result_announce_mode == "voice" or self.params.result_announce_mode == "both") and self.di and self.di.ttsManager then
-            local tts = self.di.ttsManager
-            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
-            tts:speakWeird("correct", weirdness)
-        end
-
-        -- Check victory condition
-        if self:checkVictoryCondition() then
-            self.victory = true
-            -- Award perfect streak bonus if no mistakes
-            if self.perfect_streak and self.incorrect_total == 0 then
-                self.score = self.score + self.params.perfect_streak_bonus
-                -- Spawn green popup for perfect streak
-                if self.params.score_popup_enabled then
-                    local w, h = love.graphics.getDimensions()
-                    self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT! +" .. self.params.perfect_streak_bonus, {0, 1, 0})
-                end
-            end
-        end
+function CoinFlip:processFlipResult(is_correct, result)
+    if is_correct then
+        self:onCorrectFlip()
     else
-        -- Wrong guess
-        self.incorrect_total = self.incorrect_total + 1
-        self.perfect_streak = false  -- Mark that we've made a mistake
-        self.current_streak = 0  -- Reset streak
-        table.insert(self.flip_history, 0)  -- Track for ratio victory condition
+        self:onIncorrectFlip()
+    end
 
-        -- Visual effects: screen flash
-        self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")  -- Red flash
+    self:updateMetrics()
 
-        -- TTS announcement
-        if (self.params.result_announce_mode == "voice" or self.params.result_announce_mode == "both") and self.di and self.di.ttsManager then
-            local tts = self.di.ttsManager
-            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
-            tts:speakWeird("wrong", weirdness)
+    self.show_result = true
+    self.result_display_time = 0
+end
+
+function CoinFlip:onCorrectFlip()
+    self.correct_total = self.correct_total + 1
+    self.current_streak = self.current_streak + 1
+    table.insert(self.flip_history, 1)
+
+    local base_score = self.params.score_per_correct
+    local multiplier = 1 + (self.current_streak * self.params.streak_multiplier)
+    local points = math.floor(base_score * multiplier)
+    self.score = self.score + points
+
+    if self.params.score_popup_enabled then
+        local w, h = love.graphics.getDimensions()
+        local popup_color = {1, 1, 1}
+        if self.current_streak == 5 or self.current_streak == 10 then
+            popup_color = {1, 1, 0}
         end
+        self.popup_manager:add(w / 2, h / 2 - 50, "+" .. points, popup_color)
+    end
 
-        if self.lives < 999 then
-            self.health_system:takeDamage(1, "wrong_guess")
-            self.lives = self.health_system.lives
-            if not self.health_system:isAlive() then
-                self.game_over = true
+    if self.current_streak > self.max_streak then
+        self.max_streak = self.current_streak
+    end
+
+    self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")
+    if self.params.celebration_on_streak and (self.current_streak % 5 == 0) then
+        local w, h = love.graphics.getDimensions()
+        self.visual_effects:emitConfetti(w / 2, h / 2, 15)
+    end
+
+    if (self.params.result_announce_mode == "voice" or self.params.result_announce_mode == "both") and self.di and self.di.ttsManager then
+        local tts = self.di.ttsManager
+        local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
+        tts:speakWeird("correct", weirdness)
+    end
+
+    if self:checkVictoryCondition() then
+        self.victory = true
+        if self.perfect_streak and self.incorrect_total == 0 then
+            self.score = self.score + self.params.perfect_streak_bonus
+            if self.params.score_popup_enabled then
+                local w, h = love.graphics.getDimensions()
+                self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT! +" .. self.params.perfect_streak_bonus, {0, 1, 0})
             end
         end
     end
+end
 
-    -- Update metrics for formula
+function CoinFlip:onIncorrectFlip()
+    self.incorrect_total = self.incorrect_total + 1
+    self.perfect_streak = false
+    self.current_streak = 0
+    table.insert(self.flip_history, 0)
+
+    self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")
+
+    if (self.params.result_announce_mode == "voice" or self.params.result_announce_mode == "both") and self.di and self.di.ttsManager then
+        local tts = self.di.ttsManager
+        local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
+        tts:speakWeird("wrong", weirdness)
+    end
+
+    if self.lives < 999 then
+        self.health_system:takeDamage(1, "wrong_guess")
+        self.lives = self.health_system.lives
+        if not self.health_system:isAlive() then
+            self.game_over = true
+        end
+    end
+end
+
+function CoinFlip:updateMetrics()
     self.metrics.max_streak = self.max_streak
     self.metrics.correct_total = self.correct_total
     self.metrics.flips_total = self.flips_total
     self.metrics.accuracy = self.flips_total > 0 and (self.correct_total / self.flips_total) or 0
     self.metrics.score = self.score
-
-    -- Show result
-    self.show_result = true
-    self.result_display_time = 0
 end
 
+--------------------------------------------------------------------------------
+-- GAME STATE / VICTORY
+--------------------------------------------------------------------------------
+
 function CoinFlip:checkVictoryCondition()
-    -- Ratio condition uses custom calculation, others use VictoryCondition component
     if self.params.victory_condition == "ratio" then
-        -- Maintain ratio_target accuracy over ratio_flip_count flips
         if #self.flip_history >= self.params.ratio_flip_count then
-            -- Calculate accuracy over last N flips
             local recent_correct = 0
             local start_index = math.max(1, #self.flip_history - self.params.ratio_flip_count + 1)
             for i = start_index, #self.flip_history do
@@ -528,7 +438,6 @@ function CoinFlip:checkVictoryCondition()
         return false
     end
 
-    -- For all other victory types, use VictoryCondition
     local result = self.victory_checker:check()
     if result then
         return result == "victory"
@@ -544,10 +453,6 @@ function CoinFlip:checkComplete()
         return true
     end
     return false
-end
-
-function CoinFlip:draw()
-    self.view:draw()
 end
 
 return CoinFlip

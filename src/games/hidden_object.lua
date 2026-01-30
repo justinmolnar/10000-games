@@ -6,6 +6,10 @@ local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HiddenObjectView = require('src.games.views.hidden_object_view')
 local HiddenObject = BaseGame:extend('HiddenObject')
 
+--------------------------------------------------------------------------------
+-- INITIALIZATION
+--------------------------------------------------------------------------------
+
 function HiddenObject:init(game_data, cheats, di, variant_override)
     HiddenObject.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
@@ -81,6 +85,10 @@ function HiddenObject:setupComponents()
     self.victory_checker.game = self
 end
 
+--------------------------------------------------------------------------------
+-- ASSETS
+--------------------------------------------------------------------------------
+
 function HiddenObject:loadAssets()
     self.sprites = {}
 
@@ -111,28 +119,12 @@ function HiddenObject:loadAssets()
     self:loadAudio()
 end
 
-function HiddenObject:countLoadedSprites()
-    local count = 0
-    for _ in pairs(self.sprites) do
-        count = count + 1
-    end
-    return count
-end
-
-function HiddenObject:hasSprite(sprite_key)
-    return self.sprites and self.sprites[sprite_key] ~= nil
-end
-
 function HiddenObject:setPlayArea(width, height)
     self.game_width = width
     self.game_height = height
-    
-    -- Only regenerate if objects exist
+
     if self.objects and #self.objects > 0 then
         self:regenerateObjects()
-        print("[HiddenObject] Play area updated to:", width, height)
-    else
-        print("[HiddenObject] setPlayArea called before init completed")
     end
 end
 
@@ -145,8 +137,11 @@ function HiddenObject:regenerateObjects()
     end
 end
 
+--------------------------------------------------------------------------------
+-- OBJECT MANAGEMENT
+--------------------------------------------------------------------------------
+
 function HiddenObject:generateObjects()
-    -- Clear any existing objects
     self.entity_controller:clear()
 
     local positions = self:getDeterministicPositions()
@@ -154,7 +149,6 @@ function HiddenObject:generateObjects()
         local pos = positions[i]
         local sprite_variant = math.floor((i - 1) / math.max(1, self.params.sprite_variant_divisor - self.difficulty_modifiers.complexity)) + 1
 
-        -- Spawn via EntityController
         self.entity_controller:spawn("hidden_object", pos.x, pos.y, {
             id = i,
             sprite_variant = sprite_variant
@@ -175,8 +169,11 @@ function HiddenObject:getDeterministicPositions()
     return positions
 end
 
+--------------------------------------------------------------------------------
+-- MAIN GAME LOOP
+--------------------------------------------------------------------------------
+
 function HiddenObject:updateGameLogic(dt)
-    -- Calculate time bonus when all objects found (before completion triggers)
     if self.objects_found >= self.total_objects and self.metrics.time_bonus == 0 then
         self.metrics.time_bonus = math.floor(math.max(0, self.time_remaining) * self.params.bonus_time_multiplier)
     end
@@ -188,13 +185,21 @@ function HiddenObject:draw()
     end
 end
 
+--------------------------------------------------------------------------------
+-- INPUT
+--------------------------------------------------------------------------------
+
+function HiddenObject:keypressed(key)
+    HiddenObject.super.keypressed(self, key)
+    return false
+end
+
 function HiddenObject:mousepressed(x, y, button)
     if self.completed or button ~= 1 then return end
 
     local click_point = {x = x, y = y, radius = 0}
     local collisions = self.entity_controller:checkCollision(click_point, function(entity)
         if not entity.found then
-            -- Trigger on_hit callback (which marks found and increments counter)
             local entity_type = self.entity_controller.entity_types[entity.type_name]
             if entity_type and entity_type.on_hit then
                 entity_type.on_hit(entity)
@@ -202,37 +207,14 @@ function HiddenObject:mousepressed(x, y, button)
         end
     end)
 
-    -- Play wrong click sound if no object was clicked
     if #collisions == 0 then
         self:playSound("wrong_click", 0.5)
     end
 end
 
-function HiddenObject:onComplete()
-    if self.completed then return end
-    self.metrics.objects_found = self.objects_found
-
-    -- Determine if win or loss
-    local is_win = self.objects_found >= self.total_objects
-
-    -- Only set time bonus to 0 if not all objects found
-    if self.objects_found < self.total_objects then
-        self.metrics.time_bonus = 0
-    elseif self.metrics.time_bonus == 0 then
-        -- If all objects found and time_bonus not set, calculate it
-        self.metrics.time_bonus = math.floor(math.max(0, self.time_remaining) * self.params.bonus_time_multiplier)
-    end
-
-    if is_win then
-        self:playSound("success", 1.0)
-    end
-    -- Note: No death sound for time running out (just silence)
-
-    -- Stop music
-    self:stopMusic()
-
-    HiddenObject.super.onComplete(self)
-end
+--------------------------------------------------------------------------------
+-- GAME STATE / VICTORY
+--------------------------------------------------------------------------------
 
 function HiddenObject:checkComplete()
     local result = self.victory_checker:check()
@@ -244,10 +226,25 @@ function HiddenObject:checkComplete()
     return false
 end
 
-function HiddenObject:keypressed(key)
-    -- Call parent to handle virtual key tracking for demo playback
-    HiddenObject.super.keypressed(self, key)
-    return false
+function HiddenObject:onComplete()
+    if self.completed then return end
+    self.metrics.objects_found = self.objects_found
+
+    local is_win = self.objects_found >= self.total_objects
+
+    if self.objects_found < self.total_objects then
+        self.metrics.time_bonus = 0
+    elseif self.metrics.time_bonus == 0 then
+        self.metrics.time_bonus = math.floor(math.max(0, self.time_remaining) * self.params.bonus_time_multiplier)
+    end
+
+    if is_win then
+        self:playSound("success", 1.0)
+    end
+
+    self:stopMusic()
+
+    HiddenObject.super.onComplete(self)
 end
 
 return HiddenObject

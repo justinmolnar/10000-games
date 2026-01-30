@@ -34,6 +34,10 @@ local WIN_MATRICES = {
     }
 }
 
+--------------------------------------------------------------------------------
+-- INITIALIZATION
+--------------------------------------------------------------------------------
+
 function RPS:init(game_data, cheats, di, variant_override)
     RPS.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
@@ -218,12 +222,19 @@ function RPS:setupVictoryCondition()
     self.victory_checker.game = self
 end
 
+--------------------------------------------------------------------------------
+-- ASSETS
+--------------------------------------------------------------------------------
+
 function RPS:setPlayArea(width, height)
-    -- Store viewport dimensions for demo playback
     self.viewport_width = width
     self.viewport_height = height
     print("[RPS] Play area updated to:", width, height)
 end
+
+--------------------------------------------------------------------------------
+-- MAIN GAME LOOP
+--------------------------------------------------------------------------------
 
 function RPS:updateGameLogic(dt)
     -- Check time limit (for "time" victory condition)
@@ -278,6 +289,14 @@ function RPS:updateGameLogic(dt)
     end
 end
 
+function RPS:draw()
+    self.view:draw()
+end
+
+--------------------------------------------------------------------------------
+-- INPUT
+--------------------------------------------------------------------------------
+
 function RPS:keypressed(key)
     if not self.waiting_for_input or self.game_over or self.victory then
         return
@@ -317,31 +336,24 @@ function RPS:keypressed(key)
     if self.params.hands_mode == "double" and self.phase == "removal" then
         local player_final = nil
         if key == '1' and self.player_left_hand then
-            -- Keep left hand, remove right
             player_final = self.player_left_hand
         elseif key == '2' and self.player_right_hand then
-            -- Keep right hand, remove left
             player_final = self.player_right_hand
         end
 
         if player_final then
-            -- AI removes one hand (randomly for now, could be strategic)
             local ai_final = (self.rng:random() < 0.5 and self.ai_left_hand) or self.ai_right_hand
             print("[RPS] AI keeps:", ai_final)
 
-            -- Override ai_choice for this round
             self.ai_choice = ai_final
-
-            -- Play the round
             self:playRound(player_final)
 
-            -- Reset hands
             self.player_left_hand = nil
             self.player_right_hand = nil
             self.ai_left_hand = nil
             self.ai_right_hand = nil
             self.phase = "selection"
-            return  -- Don't process as normal throw
+            return
         end
     end
 
@@ -363,6 +375,170 @@ function RPS:keypressed(key)
             self:playRound(choice)
         end
     end
+end
+
+--------------------------------------------------------------------------------
+-- ROUND LOGIC
+--------------------------------------------------------------------------------
+
+function RPS:playRound(player_choice)
+    self.player_choice = player_choice
+    self.waiting_for_input = false
+    self.throw_animation:start()
+
+    if self.num_opponents > 1 then
+        self:playRoundMultipleOpponents(player_choice)
+        return
+    end
+
+    self.ai_choice = self:generateAIChoice()
+    self.round_result = self:determineWinner(player_choice, self.ai_choice)
+
+    -- Apply special round rules
+    if self.current_special_round == "reverse" then
+        if self.round_result == "win" then
+            self.round_result = "lose"
+        elseif self.round_result == "lose" then
+            self.round_result = "win"
+        end
+    elseif self.current_special_round == "mirror" then
+        if player_choice == self.ai_choice then
+            self.round_result = "win"
+        else
+            self.round_result = "tie"
+        end
+    end
+
+    -- Update stats
+    self.rounds_played = self.rounds_played + 1
+
+    if self.round_result == "win" then
+        self:onRoundWin()
+    elseif self.round_result == "lose" then
+        self:onRoundLose()
+    else
+        self:onRoundTie()
+    end
+
+    table.insert(self.player_history, player_choice)
+    table.insert(self.ai_history, self.ai_choice)
+
+    if self.params.show_history_display then
+        table.insert(self.throw_history, {
+            player = player_choice,
+            ai = self.ai_choice,
+            result = self.round_result
+        })
+        while #self.throw_history > self.params.history_length do
+            table.remove(self.throw_history, 1)
+        end
+    end
+
+    self:updateMetrics()
+
+    self.last_special_round = self.current_special_round
+    self.current_special_round = nil
+
+    self.show_result = true
+    self.result_display_time = 0
+end
+
+function RPS:onRoundWin()
+    self.player_wins = self.player_wins + 1
+    self.current_win_streak = self.current_win_streak + 1
+
+    local round_points = self.params.score_per_round_win
+    if self.current_special_round == "double_or_nothing" then
+        round_points = round_points * 2
+    end
+    self.score = self.score + round_points
+
+    local total_points = round_points
+    if self.current_win_streak > 1 then
+        local streak_points = self.params.streak_bonus * self.current_win_streak
+        self.score = self.score + streak_points
+        total_points = total_points + streak_points
+    end
+
+    if self.params.score_popup_enabled then
+        local w, h = love.graphics.getDimensions()
+        local popup_color = (self.current_win_streak == 3 or self.current_win_streak == 5) and {1, 1, 0} or {1, 1, 1}
+        self.popup_manager:add(w / 2, h / 2 - 50, "+" .. math.floor(total_points), popup_color)
+    end
+
+    if self.current_win_streak > self.max_win_streak then
+        self.max_win_streak = self.current_win_streak
+    end
+
+    self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")
+
+    if self.current_special_round == "sudden_death" then
+        self.victory = true
+    end
+
+    if self:checkVictoryCondition() then
+        self.victory = true
+        if self.ai_wins == 0 then
+            self.score = self.score + self.params.perfect_game_bonus
+            if self.params.score_popup_enabled then
+                local w, h = love.graphics.getDimensions()
+                self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT GAME! +" .. self.params.perfect_game_bonus, {0, 1, 0})
+            end
+            if self.params.celebration_on_perfect then
+                local w, h = love.graphics.getDimensions()
+                self.visual_effects:emitConfetti(w / 2, h / 2, 30)
+            end
+        end
+    end
+end
+
+function RPS:onRoundLose()
+    self.ai_wins = self.ai_wins + 1
+    self.current_win_streak = 0
+
+    if self.current_special_round == "double_or_nothing" then
+        self.score = math.max(0, self.score - self.params.score_per_round_win)
+    end
+
+    if self.current_special_round == "sudden_death" then
+        self.game_over = true
+    end
+
+    self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")
+
+    if self.lives < 999 and (self.params.lose_life_on == "loss" or self.params.lose_life_on == "both") then
+        self.health_system:takeDamage(1, "round_loss")
+        self.lives = self.health_system.lives
+        if not self.health_system:isAlive() then
+            self.game_over = true
+        end
+    end
+
+    if self.ai_wins >= self.rounds_to_win then
+        self.game_over = true
+    end
+end
+
+function RPS:onRoundTie()
+    self.ties = self.ties + 1
+
+    if self.lives < 999 and (self.params.lose_life_on == "tie" or self.params.lose_life_on == "both") then
+        self.health_system:takeDamage(1, "round_tie")
+        self.lives = self.health_system.lives
+        if not self.health_system:isAlive() then
+            self.game_over = true
+        end
+    end
+end
+
+function RPS:updateMetrics()
+    self.metrics.rounds_won = self.player_wins
+    self.metrics.rounds_lost = self.ai_wins
+    self.metrics.rounds_total = self.rounds_played
+    self.metrics.max_win_streak = self.max_win_streak
+    local total_decided = self.player_wins + self.ai_wins
+    self.metrics.accuracy = total_decided > 0 and (self.player_wins / total_decided) or 0
+    self.metrics.score = self.score
 end
 
 function RPS:playRoundMultipleOpponents(player_choice)
@@ -405,178 +581,24 @@ function RPS:playRoundMultipleOpponents(player_choice)
         self.round_result = "tie"
     end
 
-    -- Update max streak
     if self.current_win_streak > self.max_win_streak then
         self.max_win_streak = self.current_win_streak
     end
 
-    -- Check victory
     if self:checkVictoryCondition() then
         self.victory = true
     end
 
-    -- Update metrics
-    self.metrics.rounds_won = self.player_wins
-    self.metrics.rounds_lost = self.ai_wins
-    self.metrics.rounds_total = self.rounds_played
-    self.metrics.max_win_streak = self.max_win_streak
-    local total_decided = self.player_wins + self.ai_wins
-    self.metrics.accuracy = total_decided > 0 and (self.player_wins / total_decided) or 0
-    self.metrics.score = self.score
-
-    -- Update history
+    self:updateMetrics()
     table.insert(self.player_history, player_choice)
 
-    -- Show result
     self.show_result = true
     self.result_display_time = 0
 end
 
-function RPS:playRound(player_choice)
-    self.player_choice = player_choice
-    self.waiting_for_input = false
-    self.throw_animation:start()
-
-    if self.num_opponents > 1 then
-        self:playRoundMultipleOpponents(player_choice)
-        return
-    end
-
-    self.ai_choice = self:generateAIChoice()
-    self.round_result = self:determineWinner(player_choice, self.ai_choice)
-
-    -- Apply special round rules
-    if self.current_special_round == "reverse" then
-        if self.round_result == "win" then
-            self.round_result = "lose"
-        elseif self.round_result == "lose" then
-            self.round_result = "win"
-        end
-    elseif self.current_special_round == "mirror" then
-        -- Mirror mode: both must throw same thing to win, otherwise tie
-        if player_choice == self.ai_choice then
-            self.round_result = "win"  -- Both threw same - player wins
-        else
-            self.round_result = "tie"
-        end
-    end
-
-    -- Update stats
-    self.rounds_played = self.rounds_played + 1
-
-    if self.round_result == "win" then
-        self.player_wins = self.player_wins + 1
-        self.current_win_streak = self.current_win_streak + 1
-
-        local round_points = self.params.score_per_round_win
-        if self.current_special_round == "double_or_nothing" then
-            round_points = round_points * 2
-        end
-        self.score = self.score + round_points
-
-        local total_points = round_points
-        if self.current_win_streak > 1 then
-            local streak_points = self.params.streak_bonus * self.current_win_streak
-            self.score = self.score + streak_points
-            total_points = total_points + streak_points
-        end
-
-        if self.params.score_popup_enabled then
-            local w, h = love.graphics.getDimensions()
-            local popup_color = (self.current_win_streak == 3 or self.current_win_streak == 5) and {1, 1, 0} or {1, 1, 1}
-            self.popup_manager:add(w / 2, h / 2 - 50, "+" .. math.floor(total_points), popup_color)
-        end
-
-        if self.current_win_streak > self.max_win_streak then
-            self.max_win_streak = self.current_win_streak
-        end
-
-        self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")
-
-        if self.current_special_round == "sudden_death" then
-            self.victory = true
-        end
-
-        if self:checkVictoryCondition() then
-            self.victory = true
-            if self.ai_wins == 0 then
-                self.score = self.score + self.params.perfect_game_bonus
-                if self.params.score_popup_enabled then
-                    local w, h = love.graphics.getDimensions()
-                    self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT GAME! +" .. self.params.perfect_game_bonus, {0, 1, 0})
-                end
-                if self.params.celebration_on_perfect then
-                    local w, h = love.graphics.getDimensions()
-                    self.visual_effects:emitConfetti(w / 2, h / 2, 30)
-                end
-            end
-        end
-    elseif self.round_result == "lose" then
-        self.ai_wins = self.ai_wins + 1
-        self.current_win_streak = 0
-
-        if self.current_special_round == "double_or_nothing" then
-            self.score = math.max(0, self.score - self.params.score_per_round_win)
-        end
-
-        if self.current_special_round == "sudden_death" then
-            self.game_over = true
-        end
-
-        self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")
-
-        if self.lives < 999 and (self.params.lose_life_on == "loss" or self.params.lose_life_on == "both") then
-            self.health_system:takeDamage(1, "round_loss")
-            self.lives = self.health_system.lives
-            if not self.health_system:isAlive() then
-                self.game_over = true
-            end
-        end
-
-        if self.ai_wins >= self.rounds_to_win then
-            self.game_over = true
-        end
-    else
-        self.ties = self.ties + 1
-
-        if self.lives < 999 and (self.params.lose_life_on == "tie" or self.params.lose_life_on == "both") then
-            self.health_system:takeDamage(1, "round_tie")
-            self.lives = self.health_system.lives
-            if not self.health_system:isAlive() then
-                self.game_over = true
-            end
-        end
-    end
-
-    table.insert(self.player_history, player_choice)
-    table.insert(self.ai_history, self.ai_choice)
-
-    if self.params.show_history_display then
-        table.insert(self.throw_history, {
-            player = player_choice,
-            ai = self.ai_choice,
-            result = self.round_result
-        })
-        while #self.throw_history > self.params.history_length do
-            table.remove(self.throw_history, 1)
-        end
-    end
-
-    self.metrics.rounds_won = self.player_wins
-    self.metrics.rounds_lost = self.ai_wins
-    self.metrics.rounds_total = self.rounds_played
-    self.metrics.max_win_streak = self.max_win_streak
-    local total_decided = self.player_wins + self.ai_wins
-    self.metrics.accuracy = total_decided > 0 and (self.player_wins / total_decided) or 0
-    self.metrics.score = self.score
-
-    self.last_special_round = self.current_special_round
-    self.current_special_round = nil
-
-    -- Show result
-    self.show_result = true
-    self.result_display_time = 0
-end
+--------------------------------------------------------------------------------
+-- AI SYSTEM
+--------------------------------------------------------------------------------
 
 function RPS:generateAIChoice()
     local choices = self:getAvailableChoices()
@@ -670,6 +692,10 @@ function RPS:determineWinner(player, ai)
     return "lose"
 end
 
+--------------------------------------------------------------------------------
+-- GAME STATE / VICTORY
+--------------------------------------------------------------------------------
+
 function RPS:checkVictoryCondition()
     local result = self.victory_checker:check()
     if result then
@@ -677,6 +703,20 @@ function RPS:checkVictoryCondition()
     end
     return false
 end
+
+function RPS:checkComplete()
+    local result = self.victory_checker:check()
+    if result then
+        self.victory = (result == "victory")
+        self.game_over = (result == "loss")
+        return true
+    end
+    return false
+end
+
+--------------------------------------------------------------------------------
+-- SPECIAL ROUNDS
+--------------------------------------------------------------------------------
 
 function RPS:activateSpecialRound()
     if not self.params.special_rounds_enabled then
@@ -697,20 +737,6 @@ function RPS:activateSpecialRound()
         return available_specials[self.rng:random(1, #available_specials)]
     end
     return nil
-end
-
-function RPS:checkComplete()
-    local result = self.victory_checker:check()
-    if result then
-        self.victory = (result == "victory")
-        self.game_over = (result == "loss")
-        return true
-    end
-    return false
-end
-
-function RPS:draw()
-    self.view:draw()
 end
 
 return RPS

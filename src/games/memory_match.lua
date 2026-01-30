@@ -8,6 +8,10 @@ local VictoryCondition = require('src.utils.game_components.victory_condition')
 local EntityController = require('src.utils.game_components.entity_controller')
 local MemoryMatch = BaseGame:extend('MemoryMatch')
 
+--------------------------------------------------------------------------------
+-- INITIALIZATION
+--------------------------------------------------------------------------------
+
 function MemoryMatch:init(game_data, cheats, di, variant_override)
     MemoryMatch.super.init(self, game_data, cheats, di, variant_override)
     self.di = di
@@ -196,6 +200,10 @@ function MemoryMatch:setupComponents()
     self.victory_checker.game = self
 end
 
+--------------------------------------------------------------------------------
+-- ASSETS
+--------------------------------------------------------------------------------
+
 function MemoryMatch:loadAssets()
     self.sprites = {}
 
@@ -232,7 +240,7 @@ function MemoryMatch:loadAssets()
     if #icon_files == 0 then
         print("[MemoryMatch:loadAssets] No icons found in " .. base_path .. ", trying fallback to assets/sprites/games/memory/flags")
         base_path = "assets/sprites/games/memory/flags"
-        
+
         -- Try loading card back again from fallback path
         local fallback_card_back = base_path .. "/card_back.png"
         local cb_success, cb_img = pcall(function() return love.graphics.newImage(fallback_card_back) end)
@@ -424,6 +432,97 @@ function MemoryMatch:calculateGridPosition()
     end
 end
 
+--------------------------------------------------------------------------------
+-- CARD MANAGEMENT
+--------------------------------------------------------------------------------
+
+function MemoryMatch:createCards(pairs_count)
+    for i = 1, pairs_count do
+        for j = 1, self.params.match_requirement do
+            local card_index = #self.cards + 1
+            local row = math.floor((card_index-1) / self.grid_cols)
+            local col = (card_index-1) % self.grid_cols
+
+            -- Cards start face up during memorize phase
+            local initial_flip_state = self.memorize_phase and "face_up" or "face_down"
+            local initial_flip_progress = self.memorize_phase and 1 or 0
+
+            -- In gravity mode, spawn cards at top with random X spread
+            local init_x, init_y, init_vx, init_vy
+            if self.params.gravity_enabled then
+                init_x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING) + (math.random() - 0.5) * 20
+                init_y = -self.CARD_HEIGHT - row * 30  -- Start above screen
+                init_vx = (math.random() - 0.5) * 50
+                init_vy = math.random() * 100
+            else
+                init_x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING)
+                init_y = self.start_y + row * (self.CARD_HEIGHT + self.CARD_SPACING)
+                init_vx = 0
+                init_vy = 0
+            end
+
+            local card = self.entity_controller:spawn("card", init_x, init_y, {
+                value = i,
+                attempts = {},
+                -- Flip animation state
+                flip_state = initial_flip_state,  -- "face_down", "flipping_up", "face_up", "flipping_down"
+                flip_progress = initial_flip_progress,  -- 0-1 animation progress
+                -- Physics for gravity mode
+                vx = init_vx,
+                vy = init_vy,
+                grid_row = row,
+                grid_col = col,
+                icon_id = i,  -- Icon identifier for sprite lookup
+                width = self.CARD_WIDTH,
+                height = self.CARD_HEIGHT
+            })
+
+            -- Also add to local cards list for initial shuffle
+            if card then
+                table.insert(self.cards, card)
+            else
+                print("[MemoryMatch:createCards] Failed to spawn card entity!")
+            end
+        end
+    end
+    self:shuffleCards()
+end
+
+function MemoryMatch:shuffleCards()
+    -- Shuffle card values and icon assignments
+    for i = #self.cards, 2, -1 do
+        local j = math.random(i)
+        self.cards[i], self.cards[j] = self.cards[j], self.cards[i]
+    end
+
+    -- Update grid positions and physics positions after shuffle
+    for i, card in ipairs(self.cards) do
+        local row = math.floor((i-1) / self.grid_cols)
+        local col = (i-1) % self.grid_cols
+        card.grid_row = row
+        card.grid_col = col
+
+        -- Reset to grid position if not in gravity mode
+        if not self.params.gravity_enabled then
+            card.x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING)
+            card.y = self.start_y + row * (self.CARD_HEIGHT + self.CARD_SPACING)
+            card.vx = 0
+            card.vy = 0
+        end
+    end
+end
+
+function MemoryMatch:isSelected(index)
+    for _, selected_index in ipairs(self.selected_indices) do
+        if selected_index == index then return true end
+    end
+    return false
+end
+
+--------------------------------------------------------------------------------
+-- MAIN GAME LOOP
+--------------------------------------------------------------------------------
+
 function MemoryMatch:updateGameLogic(dt)
     -- Note: self.cards is already populated by createCards() and shuffled by shuffleCards()
     -- Do NOT sync with entity_controller:getEntities() as it returns spawn order, not shuffled order
@@ -533,115 +632,128 @@ function MemoryMatch:updateGameLogic(dt)
         if self.match_check_timer > 0 then
             self.match_check_timer = self.match_check_timer - dt
             if self.match_check_timer <= 0 then
-                -- Check if all selected cards match
-                local all_match = true
-                local first_value = self.cards[self.selected_indices[1]].value
-
-                for i = 2, #self.selected_indices do
-                    if self.cards[self.selected_indices[i]].value ~= first_value then
-                        all_match = false
-                        break
-                    end
-                end
-
-                if all_match then
-                    -- Check chain requirement
-                    local chain_valid = true
-                    if self.params.chain_requirement > 0 and self.chain_target then
-                        chain_valid = (first_value == self.chain_target)
-                    end
-
-                    if chain_valid then
-                        -- Cards match!
-                        self.matched_pairs[first_value] = true
-                        self.metrics.matches = self.metrics.matches + 1
-
-                        -- Show match announcement with sprite name
-                        if self.icon_filenames[first_value] then
-                            local filename = self.icon_filenames[first_value]
-                            self.match_announcement = filename:upper() .. "!"
-                            self.match_announcement_timer = 2.0
-
-                            -- Speak the match via TTS
-                            if self.di and self.di.ttsManager then
-                                local tts = self.di.ttsManager
-                                local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
-                                tts:speakWeird(filename, weirdness)
-                            end
-                        end
-
-                        -- Check for perfect match and apply bonus
-                        local is_perfect = true
-                        for _, idx in ipairs(self.selected_indices) do
-                            if #self.cards[idx].attempts > 1 then
-                                is_perfect = false
-                                break
-                            end
-                        end
-
-                        if is_perfect then
-                            self.metrics.perfect = self.metrics.perfect + 1
-                            if self.params.perfect_bonus > 0 then
-                                self.metrics.score = self.metrics.score + self.params.perfect_bonus
-                            end
-                        end
-
-                        -- Combo system
-                        self.current_combo = self.current_combo + 1
-                        self.metrics.combo = math.max(self.metrics.combo, self.current_combo)
-
-                        if self.params.combo_multiplier > 0 then
-                            local combo_bonus = math.floor(10 * self.params.combo_multiplier * self.current_combo)
-                            self.metrics.score = self.metrics.score + combo_bonus
-                        end
-
-                        -- Base match points
-                        self.metrics.score = self.metrics.score + 10
-
-                        -- Chain requirement progress
-                        if self.params.chain_requirement > 0 then
-                            self.chain_progress = self.chain_progress + 1
-                            if self.chain_progress >= self.params.chain_requirement then
-                                self.chain_progress = 0
-                            end
-                            self:selectNextChainTarget()
-                        end
-
-                        self:playSound("match", 1.0)
-                    else
-                        -- Wrong chain target - flip cards back down
-                        self.current_combo = 0
-                        if self.params.mismatch_penalty > 0 then
-                            self:applyMismatchPenalty()
-                        end
-                        -- Start flip down animation
-                        for _, idx in ipairs(self.selected_indices) do
-                            self.cards[idx].flip_state = "flipping_down"
-                        end
-                        self:playSound("mismatch", 0.8)
-                    end
-                else
-                    -- Cards don't match - flip back down
-                    self.current_combo = 0
-                    if self.params.mismatch_penalty > 0 then
-                        self:applyMismatchPenalty()
-                    end
-                    -- Start flip down animation
-                    for _, idx in ipairs(self.selected_indices) do
-                        self.cards[idx].flip_state = "flipping_down"
-                    end
-                    self:playSound("mismatch", 0.8)
-                end
-                self.selected_indices = {}
+                self:checkMatch()
             end
         end
     end
+end
+
+function MemoryMatch:checkMatch()
+    -- Check if all selected cards match
+    local all_match = true
+    local first_value = self.cards[self.selected_indices[1]].value
+
+    for i = 2, #self.selected_indices do
+        if self.cards[self.selected_indices[i]].value ~= first_value then
+            all_match = false
+            break
+        end
+    end
+
+    if all_match then
+        -- Check chain requirement
+        local chain_valid = true
+        if self.params.chain_requirement > 0 and self.chain_target then
+            chain_valid = (first_value == self.chain_target)
+        end
+
+        if chain_valid then
+            self:onMatchSuccess(first_value)
+        else
+            self:onMatchFailure()
+        end
+    else
+        self:onMatchFailure()
+    end
+    self.selected_indices = {}
+end
+
+function MemoryMatch:onMatchSuccess(matched_value)
+    -- Cards match!
+    self.matched_pairs[matched_value] = true
+    self.metrics.matches = self.metrics.matches + 1
+
+    -- Show match announcement with sprite name
+    if self.icon_filenames[matched_value] then
+        local filename = self.icon_filenames[matched_value]
+        self.match_announcement = filename:upper() .. "!"
+        self.match_announcement_timer = 2.0
+
+        -- Speak the match via TTS
+        if self.di and self.di.ttsManager then
+            local tts = self.di.ttsManager
+            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
+            tts:speakWeird(filename, weirdness)
+        end
+    end
+
+    -- Check for perfect match and apply bonus
+    local is_perfect = true
+    for _, idx in ipairs(self.selected_indices) do
+        if #self.cards[idx].attempts > 1 then
+            is_perfect = false
+            break
+        end
+    end
+
+    if is_perfect then
+        self.metrics.perfect = self.metrics.perfect + 1
+        if self.params.perfect_bonus > 0 then
+            self.metrics.score = self.metrics.score + self.params.perfect_bonus
+        end
+    end
+
+    -- Combo system
+    self.current_combo = self.current_combo + 1
+    self.metrics.combo = math.max(self.metrics.combo, self.current_combo)
+
+    if self.params.combo_multiplier > 0 then
+        local combo_bonus = math.floor(10 * self.params.combo_multiplier * self.current_combo)
+        self.metrics.score = self.metrics.score + combo_bonus
+    end
+
+    -- Base match points
+    self.metrics.score = self.metrics.score + 10
+
+    -- Chain requirement progress
+    if self.params.chain_requirement > 0 then
+        self.chain_progress = self.chain_progress + 1
+        if self.chain_progress >= self.params.chain_requirement then
+            self.chain_progress = 0
+        end
+        self:selectNextChainTarget()
+    end
+
+    self:playSound("match", 1.0)
+end
+
+function MemoryMatch:onMatchFailure()
+    -- Cards don't match or wrong chain target - flip back down
+    self.current_combo = 0
+    if self.params.mismatch_penalty > 0 then
+        self:applyMismatchPenalty()
+    end
+    -- Start flip down animation
+    for _, idx in ipairs(self.selected_indices) do
+        self.cards[idx].flip_state = "flipping_down"
+    end
+    self:playSound("mismatch", 0.8)
 end
 
 function MemoryMatch:draw()
     if self.view then
         self.view:draw()
     end
+end
+
+--------------------------------------------------------------------------------
+-- INPUT
+--------------------------------------------------------------------------------
+
+function MemoryMatch:keypressed(key)
+    -- Call parent to handle virtual key tracking for demo playback
+    MemoryMatch.super.keypressed(self, key)
+    return false
 end
 
 function MemoryMatch:mousemoved(x, y, dx, dy)
@@ -698,88 +810,9 @@ function MemoryMatch:mousepressed(x, y, button)
     end
 end
 
-function MemoryMatch:createCards(pairs_count)
-    for i = 1, pairs_count do
-        for j = 1, self.params.match_requirement do
-            local card_index = #self.cards + 1
-            local row = math.floor((card_index-1) / self.grid_cols)
-            local col = (card_index-1) % self.grid_cols
-
-            -- Cards start face up during memorize phase
-            local initial_flip_state = self.memorize_phase and "face_up" or "face_down"
-            local initial_flip_progress = self.memorize_phase and 1 or 0
-
-            -- In gravity mode, spawn cards at top with random X spread
-            local init_x, init_y, init_vx, init_vy
-            if self.params.gravity_enabled then
-                init_x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING) + (math.random() - 0.5) * 20
-                init_y = -self.CARD_HEIGHT - row * 30  -- Start above screen
-                init_vx = (math.random() - 0.5) * 50
-                init_vy = math.random() * 100
-            else
-                init_x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING)
-                init_y = self.start_y + row * (self.CARD_HEIGHT + self.CARD_SPACING)
-                init_vx = 0
-                init_vy = 0
-            end
-
-            local card = self.entity_controller:spawn("card", init_x, init_y, {
-                value = i,
-                attempts = {},
-                -- Flip animation state
-                flip_state = initial_flip_state,  -- "face_down", "flipping_up", "face_up", "flipping_down"
-                flip_progress = initial_flip_progress,  -- 0-1 animation progress
-                -- Physics for gravity mode
-                vx = init_vx,
-                vy = init_vy,
-                grid_row = row,
-                grid_col = col,
-                icon_id = i,  -- Icon identifier for sprite lookup
-                width = self.CARD_WIDTH,
-                height = self.CARD_HEIGHT
-            })
-            
-            -- Also add to local cards list for initial shuffle
-            if card then
-                table.insert(self.cards, card)
-            else
-                print("[MemoryMatch:createCards] Failed to spawn card entity!")
-            end
-        end
-    end
-    self:shuffleCards()
-end
-
-function MemoryMatch:shuffleCards()
-    -- Shuffle card values and icon assignments
-    for i = #self.cards, 2, -1 do
-        local j = math.random(i)
-        self.cards[i], self.cards[j] = self.cards[j], self.cards[i]
-    end
-
-    -- Update grid positions and physics positions after shuffle
-    for i, card in ipairs(self.cards) do
-        local row = math.floor((i-1) / self.grid_cols)
-        local col = (i-1) % self.grid_cols
-        card.grid_row = row
-        card.grid_col = col
-
-        -- Reset to grid position if not in gravity mode
-        if not self.params.gravity_enabled then
-            card.x = self.start_x + col * (self.CARD_WIDTH + self.CARD_SPACING)
-            card.y = self.start_y + row * (self.CARD_HEIGHT + self.CARD_SPACING)
-            card.vx = 0
-            card.vy = 0
-        end
-    end
-end
-
-function MemoryMatch:isSelected(index)
-    for _, selected_index in ipairs(self.selected_indices) do
-        if selected_index == index then return true end
-    end
-    return false
-end
+--------------------------------------------------------------------------------
+-- GAME STATE / VICTORY
+--------------------------------------------------------------------------------
 
 function MemoryMatch:checkComplete()
     if self.memorize_phase then return false end
@@ -816,13 +849,10 @@ function MemoryMatch:onComplete()
     MemoryMatch.super.onComplete(self)
 end
 
-function MemoryMatch:keypressed(key)
-    -- Call parent to handle virtual key tracking for demo playback
-    MemoryMatch.super.keypressed(self, key)
-    return false
-end
+--------------------------------------------------------------------------------
+-- SHUFFLE ANIMATION
+--------------------------------------------------------------------------------
 
--- Helper function: Start shuffle animation
 function MemoryMatch:startShuffle()
     print("[MemoryMatch:startShuffle] Starting shuffle check...")
 
@@ -916,12 +946,15 @@ function MemoryMatch:startShuffle()
         shuffle_count, #face_down_indices, tostring(self.is_shuffling)))
 end
 
--- Helper function: Complete shuffle
 function MemoryMatch:completeShuffle()
     print("[MemoryMatch:completeShuffle] Animation complete, clearing is_shuffling flag")
     self.is_shuffling = false
     self.shuffle_start_positions = nil
 end
+
+--------------------------------------------------------------------------------
+-- CHALLENGE MODE
+--------------------------------------------------------------------------------
 
 function MemoryMatch:selectNextChainTarget()
     if self.params.chain_requirement == 0 then return end
