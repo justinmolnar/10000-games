@@ -541,16 +541,37 @@ Handles card click/selection. Checks if in valid game state. Checks move limit. 
 
 
 ### AI Notes
+- Eliminated dual tracking: removed self.cards array, use entity_controller:getEntitiesByType("card") directly
+- Cards now use grid_index field instead of array position for grid layout
+- Removed selected_indices array, use card.is_selected flag instead
+- createCards: simplified, uses grid_index on each card
+- shuffleCards: now uses EntityController:shuffleGridIndices() and repositionGridEntities() (22→11 lines)
+- isSelected: deleted entirely, replaced by card.is_selected flag
+- draw: deleted, inherits from BaseGame:draw()
+- keypressed: deleted, inherits from BaseGame:keypressed()
+- mousemoved: delegates to fog_controller:updateMousePosition() (removed game state, component handles tracking)
+- mousepressed: uses EntityController:getEntityAtPoint() for hit testing
+- checkMatch: uses entity_controller:getEntitiesByFilter() for selected cards, clears selection inline
+- startShuffle: rewritten to work with entity-keyed shuffle_start_positions (Phase 3 will extract to EntityController)
+- Updated view to use entity_controller:getEntitiesByType("card"), fog_controller:getMousePosition()
 
+**New EntityController methods added:**
+- getEntityAtPoint(x, y, type_name) - point-in-entity hit testing
+- repositionGridEntities(type_name, layout) - reposition by grid_index
+- shuffleGridIndices(type_name) - Fisher-Yates shuffle of grid_index values
+
+**New FogOfWar methods added:**
+- updateMousePosition(x, y) - store mouse position in viewport coordinates
+- getMousePosition() - retrieve stored mouse position
 
 ### Status
-
+Complete - Tested
 
 ### Line Count Change
-
+682 → 641 lines (41 line reduction, 6%)
 
 ### Deviation from Plan
-
+- mousemoved not fully deleted: FogOfWar now tracks mouse internally via updateMousePosition()/getMousePosition(), but coordinate transformation requires input from mousemoved callback. love.mouse.getPosition() returns screen coordinates, viewport coordinates come from the input system.
 
 ---
 

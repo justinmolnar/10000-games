@@ -48,11 +48,15 @@ function MemoryMatchView:draw()
     local card_sprite_fallback = game.data.icon_sprite or "game_freecell-0"
     local paletteManager = self.di and self.di.paletteManager
 
-    -- Get mouse position for fog of war (use tracked position from game, not screen position)
-    local mouse_x, mouse_y = game.mouse_x, game.mouse_y
+    -- Get mouse position for fog of war (tracked by fog_controller)
+    local mouse_x, mouse_y = 0, 0
+    if game.fog_controller then
+        mouse_x, mouse_y = game.fog_controller:getMousePosition()
+    end
 
     -- Draw cards
-    for i, card in ipairs(game.cards) do
+    local cards = game.entity_controller:getEntitiesByType("card")
+    for i, card in ipairs(cards) do
         -- Skip matched cards in gravity mode (they disappear)
         if game.params.gravity_enabled and game.matched_pairs[card.value] then
             goto continue
@@ -64,8 +68,8 @@ function MemoryMatchView:draw()
             x = card.x
             y = card.y
         else
-            local row = math.floor((i-1) / game.grid_cols)
-            local col = (i-1) % game.grid_cols
+            local row = math.floor(card.grid_index / game.grid_cols)
+            local col = card.grid_index % game.grid_cols
             x = game.start_x + col * (game.CARD_WIDTH + game.params.card_spacing)
             y = game.start_y + row * (game.CARD_HEIGHT + game.params.card_spacing)
         end
@@ -73,27 +77,26 @@ function MemoryMatchView:draw()
         -- Card rotation effect (separate from flip animation)
         local rotation = 0
         if game.params.card_rotation and not game.memorize_phase then
-            rotation = (love.timer.getTime() + i * 0.3) * 0.5
+            rotation = (love.timer.getTime() + card.grid_index * 0.3) * 0.5
         end
         if game.params.spinning_cards and not game.memorize_phase then
-            rotation = love.timer.getTime() * 3 + i * 0.5
+            rotation = love.timer.getTime() * 3 + card.grid_index * 0.5
         end
 
         -- Shuffle animation (only in non-gravity mode)
         local draw_x, draw_y = x, y
-        if not game.params.gravity_enabled and game.is_shuffling and game.shuffle_start_positions and game.shuffle_start_positions[i] then
-            local progress = math.min(1, game.shuffle_animation_timer / game.shuffle_animation_duration)
-            local start_x = game.shuffle_start_positions[i].x
-            local start_y = game.shuffle_start_positions[i].y
+        if not game.params.gravity_enabled and game.is_shuffling and game.shuffle_start_positions and game.shuffle_start_positions[card] then
+            local progress = math.min(1, game.shuffle_animation_timer / game.params.shuffle_animation_duration)
+            local start_pos = game.shuffle_start_positions[card]
             -- Smooth interpolation with easing
             local eased_progress = progress * progress * (3 - 2 * progress)  -- Smoothstep
-            draw_x = start_x + (x - start_x) * eased_progress
-            draw_y = start_y + (y - start_y) * eased_progress
+            draw_x = start_pos.x + (x - start_pos.x) * eased_progress
+            draw_y = start_pos.y + (y - start_pos.y) * eased_progress
         end
 
         -- Determine face up/down based on flip state
         local face_up = false
-        if game.memorize_phase or game.matched_pairs[card.value] or game:isSelected(i) then
+        if game.memorize_phase or game.matched_pairs[card.value] or card.is_selected then
             face_up = true
         end
 

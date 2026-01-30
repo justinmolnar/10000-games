@@ -340,6 +340,9 @@ Generic enemy/obstacle spawning and management with pooling.
 - **spawnRandom(type_name, count, bounds, rng, allow_overlap)** - Spawn randomly in bounds.
 - **spawnCheckerboard(type_name, rows, cols, x, y, spacing_x, spacing_y)** - Spawn checkerboard pattern.
 - **calculateGridLayout(config)** - Pure calculation for fitting items in a container. Config: {cols, rows, container_width, container_height, item_width, item_height, spacing, padding, reserved_top}. Returns: {cols, rows, item_width, item_height, start_x, start_y, scale, spacing}. Use for memory match, sliding puzzle, minesweeper, etc.
+- **getEntityAtPoint(x, y, type_name)** - Point-in-entity hit testing. Returns first entity at point (rect or circle hit test), or nil. Optional type_name filter.
+- **repositionGridEntities(type_name, layout)** - Reposition entities based on their grid_index. Layout: {start_x, start_y, cols, item_width, item_height, spacing}. Each entity needs grid_index field.
+- **shuffleGridIndices(type_name)** - Fisher-Yates shuffle grid_index values among entities of given type. Use with repositionGridEntities for memory match shuffling.
 - **spawnLayout(type_name, layout, config)** - Dispatch to layout spawner. Layouts: "grid", "pyramid", "circle", "random", "checkerboard", "v_shape", "line", "spiral". Grid layout auto-adds grid_row/grid_col to each entity. Config.extra merged into spawned entities.
 - **spawnWeighted(type_name, weighted_configs, x, y, base_extra)** - Spawn using weighted random selection. Each config in array has `weight` plus properties to merge. Returns spawned entity.
 - **update(dt, game_state)** - Update spawning and all entities.

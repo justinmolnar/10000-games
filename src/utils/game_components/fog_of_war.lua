@@ -26,6 +26,10 @@ function FogOfWar:new(params)
     -- Stencil mode: visibility sources (cleared each frame, then rebuilt)
     instance.visibility_sources = {}  -- Array of {x, y, radius}
 
+    -- Mouse position tracking (in viewport coordinates)
+    instance.mouse_x = 0
+    instance.mouse_y = 0
+
     if _G.DEBUG_FOG then
         print(string.format("[FogOfWar] new() called: enabled=%s, mode=%s, opacity=%s",
             tostring(instance.enabled), tostring(instance.mode), tostring(instance.opacity)))
@@ -93,10 +97,27 @@ function FogOfWar:render(arena_width, arena_height)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- Mouse Tracking API
+-- ==================
+
+function FogOfWar:updateMousePosition(x, y)
+    -- Update stored mouse position (call from game's mousemoved or update)
+    self.mouse_x = x or 0
+    self.mouse_y = y or 0
+end
+
+function FogOfWar:getMousePosition()
+    return self.mouse_x, self.mouse_y
+end
+
 -- Alpha Mode API
 -- ==============
 
 function FogOfWar:calculateAlpha(entity_x, entity_y, fog_center_x, fog_center_y)
+    -- If no fog center provided, use stored mouse position
+    if not fog_center_x then
+        fog_center_x, fog_center_y = self.mouse_x, self.mouse_y
+    end
     -- Calculate alpha value for an entity based on distance from fog center
     -- Returns: alpha multiplier (1.0 = fully visible, opacity = fully dark)
     -- Used for Memory Match card rendering

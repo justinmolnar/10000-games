@@ -761,6 +761,232 @@ function EntityController:calculateGridLayout(config)
     }
 end
 
+--[[
+    Get entity at a specific point (hit testing)
+
+    @param x number - X coordinate to test
+    @param y number - Y coordinate to test
+    @param type_name string|nil - Optional type filter
+    @return entity|nil - First entity at point, or nil
+]]
+function EntityController:getEntityAtPoint(x, y, type_name)
+    for _, entity in ipairs(self.entities) do
+        if entity.active and (not type_name or entity.type_name == type_name) then
+            local ex, ey = entity.x, entity.y
+            local ew = entity.width or (entity.radius and entity.radius * 2) or 0
+            local eh = entity.height or (entity.radius and entity.radius * 2) or 0
+
+            if entity.radius then
+                -- Circle hit test
+                local cx, cy = ex + entity.radius, ey + entity.radius
+                local dx, dy = x - cx, y - cy
+                if dx * dx + dy * dy <= entity.radius * entity.radius then
+                    return entity
+                end
+            else
+                -- Rectangle hit test
+                if x >= ex and x <= ex + ew and y >= ey and y <= ey + eh then
+                    return entity
+                end
+            end
+        end
+    end
+    return nil
+end
+
+--[[
+    Reposition entities based on their grid_index
+
+    @param type_name string - Entity type to reposition
+    @param layout table - {start_x, start_y, cols, item_width, item_height, spacing}
+]]
+function EntityController:repositionGridEntities(type_name, layout)
+    local start_x = layout.start_x or 0
+    local start_y = layout.start_y or 0
+    local cols = layout.cols or 4
+    local item_w = layout.item_width or 60
+    local item_h = layout.item_height or 80
+    local spacing = layout.spacing or 10
+
+    for _, entity in ipairs(self.entities) do
+        if entity.active and entity.type_name == type_name and entity.grid_index then
+            local row = math.floor(entity.grid_index / cols)
+            local col = entity.grid_index % cols
+            entity.x = start_x + col * (item_w + spacing)
+            entity.y = start_y + row * (item_h + spacing)
+        end
+    end
+end
+
+--[[
+    Shuffle grid_index values among entities of a given type (Fisher-Yates)
+
+    @param type_name string - Entity type to shuffle
+]]
+function EntityController:shuffleGridIndices(type_name)
+    -- Collect entities with grid_index
+    local entities_with_index = {}
+    for _, entity in ipairs(self.entities) do
+        if entity.active and entity.type_name == type_name and entity.grid_index then
+            table.insert(entities_with_index, entity)
+        end
+    end
+
+    if #entities_with_index < 2 then return end
+
+    -- Collect all grid_index values
+    local indices = {}
+    for _, entity in ipairs(entities_with_index) do
+        table.insert(indices, entity.grid_index)
+    end
+
+    -- Fisher-Yates shuffle on indices
+    for i = #indices, 2, -1 do
+        local j = math.random(i)
+        indices[i], indices[j] = indices[j], indices[i]
+    end
+
+    -- Reassign shuffled indices to entities
+    for i, entity in ipairs(entities_with_index) do
+        entity.grid_index = indices[i]
+    end
+end
+
+--[[
+    Get entities matching a filter function
+
+    @param filter_fn function(entity) -> boolean
+    @return table - Array of matching entities
+]]
+--[[
+    Start animated grid shuffle
+
+    @param entities table - Array of entities to shuffle (game filters these)
+    @param count number - How many to shuffle (0 = all)
+    @param layout table - {start_x, start_y, cols, item_width, item_height, spacing}
+    @param duration number - Animation duration in seconds
+]]
+function EntityController:animateGridShuffle(entities, count, layout, duration)
+    if #entities < 2 then return end
+
+    -- Limit to count if specified
+    local to_shuffle = entities
+    if count > 0 and count < #entities then
+        to_shuffle = {}
+        local available = {unpack(entities)}
+        for i = 1, count do
+            local pick = math.random(#available)
+            table.insert(to_shuffle, available[pick])
+            table.remove(available, pick)
+        end
+    end
+
+    if #to_shuffle < 2 then return end
+
+    -- Store start positions for all entities being shuffled
+    self.grid_shuffle = {
+        start_positions = {},
+        duration = duration,
+        timer = 0,
+        layout = layout
+    }
+
+    local cols = layout.cols or 4
+    local start_x = layout.start_x or 0
+    local start_y = layout.start_y or 0
+    local item_w = layout.item_width or 60
+    local item_h = layout.item_height or 80
+    local spacing = layout.spacing or 10
+
+    for _, entity in ipairs(to_shuffle) do
+        local row = math.floor(entity.grid_index / cols)
+        local col = entity.grid_index % cols
+        self.grid_shuffle.start_positions[entity] = {
+            x = start_x + col * (item_w + spacing),
+            y = start_y + row * (item_h + spacing)
+        }
+    end
+
+    -- Shuffle grid_index values among selected entities
+    local indices = {}
+    for _, entity in ipairs(to_shuffle) do
+        table.insert(indices, entity.grid_index)
+    end
+    for i = #indices, 2, -1 do
+        local j = math.random(i)
+        indices[i], indices[j] = indices[j], indices[i]
+    end
+    for i, entity in ipairs(to_shuffle) do
+        entity.grid_index = indices[i]
+    end
+end
+
+--[[
+    Update grid shuffle animation
+
+    @param dt number - Delta time
+    @return boolean - True if shuffle just completed
+]]
+function EntityController:updateGridShuffle(dt)
+    if not self.grid_shuffle then return false end
+
+    self.grid_shuffle.timer = self.grid_shuffle.timer + dt
+    if self.grid_shuffle.timer >= self.grid_shuffle.duration then
+        return true
+    end
+    return false
+end
+
+--[[
+    Check if grid shuffle is active
+]]
+function EntityController:isGridShuffling()
+    return self.grid_shuffle ~= nil
+end
+
+--[[
+    Get shuffle animation progress (0-1)
+]]
+function EntityController:getShuffleProgress()
+    if not self.grid_shuffle then return 1 end
+    return math.min(1, self.grid_shuffle.timer / self.grid_shuffle.duration)
+end
+
+--[[
+    Get shuffle start position for an entity (for animation interpolation)
+]]
+function EntityController:getShuffleStartPosition(entity)
+    if not self.grid_shuffle or not self.grid_shuffle.start_positions then return nil end
+    return self.grid_shuffle.start_positions[entity]
+end
+
+--[[
+    Complete grid shuffle - finalize positions and clear state
+]]
+function EntityController:completeGridShuffle()
+    if not self.grid_shuffle then return end
+
+    local layout = self.grid_shuffle.layout
+    if layout then
+        local cols = layout.cols or 4
+        local start_x = layout.start_x or 0
+        local start_y = layout.start_y or 0
+        local item_w = layout.item_width or 60
+        local item_h = layout.item_height or 80
+        local spacing = layout.spacing or 10
+
+        -- Update positions for entities that were shuffled
+        for entity, _ in pairs(self.grid_shuffle.start_positions) do
+            local row = math.floor(entity.grid_index / cols)
+            local col = entity.grid_index % cols
+            entity.x = start_x + col * (item_w + spacing)
+            entity.y = start_y + row * (item_h + spacing)
+        end
+    end
+
+    self.grid_shuffle = nil
+end
+
 function EntityController:spawnLayout(type_name, layout, config)
     config = config or {}
     local rows = config.rows or 5

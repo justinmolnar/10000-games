@@ -61,7 +61,6 @@ function MemoryMatch:setupEntities()
 
     -- Runtime state (changes during gameplay)
     self.memorize_phase = p.memorize_time > 0
-    self.selected_indices = {}
     self.matched_pairs = {}
     self.match_check_timer = 0
     self.shuffle_timer = p.auto_shuffle_interval
@@ -76,7 +75,6 @@ function MemoryMatch:setupEntities()
     -- UI state
     self.match_announcement = nil
     self.match_announcement_timer = 0
-    self.mouse_x, self.mouse_y = 0, 0
 
     -- Metrics
     self.metrics.matches = 0
@@ -84,9 +82,6 @@ function MemoryMatch:setupEntities()
     self.metrics.combo = 0
     self.metrics.moves = 0
     self.metrics.score = 0
-
-    -- Cards array
-    self.cards = {}
 
     -- Select initial chain target if chain mode
     if p.chain_requirement > 0 then
@@ -142,13 +137,15 @@ function MemoryMatch:setPlayArea(width, height)
         self:calculateGridPosition()
 
         -- Update card positions for non-gravity mode
-        if self.cards and not self.params.gravity_enabled then
-            for i, card in ipairs(self.cards) do
-                local row = math.floor((i-1) / self.grid_cols)
-                local col = (i-1) % self.grid_cols
-                card.x = self.start_x + col * (self.CARD_WIDTH + self.params.card_spacing)
-                card.y = self.start_y + row * (self.CARD_HEIGHT + self.params.card_spacing)
-            end
+        if not self.params.gravity_enabled then
+            self.entity_controller:repositionGridEntities("card", {
+                start_x = self.start_x,
+                start_y = self.start_y,
+                cols = self.grid_cols,
+                item_width = self.CARD_WIDTH,
+                item_height = self.CARD_HEIGHT,
+                spacing = self.params.card_spacing
+            })
         end
     end
 end
@@ -179,82 +176,62 @@ end
 --------------------------------------------------------------------------------
 
 function MemoryMatch:createCards(pairs_count)
-    local spacing = self.params.card_spacing
+    local p = self.params
+    local spacing = p.card_spacing
+    local card_index = 0
 
     for i = 1, pairs_count do
-        for j = 1, self.params.match_requirement do
-            local card_index = #self.cards + 1
-            local row = math.floor((card_index-1) / self.grid_cols)
-            local col = (card_index-1) % self.grid_cols
-
+        for j = 1, p.match_requirement do
             -- Cards start face up during memorize phase
             local initial_flip_state = self.memorize_phase and "face_up" or "face_down"
             local initial_flip_progress = self.memorize_phase and 1 or 0
 
-            -- In gravity mode, spawn cards at top with random X spread
-            local init_x, init_y, init_vx, init_vy
-            if self.params.gravity_enabled then
-                init_x = self.start_x + col * (self.CARD_WIDTH + spacing) + (math.random() - 0.5) * 20
+            -- Initial position (will be repositioned after shuffle)
+            local row = math.floor(card_index / self.grid_cols)
+            local col = card_index % self.grid_cols
+            local init_x = self.start_x + col * (self.CARD_WIDTH + spacing)
+            local init_y = self.start_y + row * (self.CARD_HEIGHT + spacing)
+
+            -- Gravity mode: spawn at top with random physics
+            local init_vx, init_vy = 0, 0
+            if p.gravity_enabled then
+                init_x = init_x + (math.random() - 0.5) * 20
                 init_y = -self.CARD_HEIGHT - row * 30
                 init_vx = (math.random() - 0.5) * 50
                 init_vy = math.random() * 100
-            else
-                init_x = self.start_x + col * (self.CARD_WIDTH + spacing)
-                init_y = self.start_y + row * (self.CARD_HEIGHT + spacing)
-                init_vx = 0
-                init_vy = 0
             end
 
-            local card = self.entity_controller:spawn("card", init_x, init_y, {
+            self.entity_controller:spawn("card", init_x, init_y, {
                 value = i,
+                icon_id = i,
+                grid_index = card_index,
                 attempts = {},
                 flip_state = initial_flip_state,
                 flip_progress = initial_flip_progress,
+                is_selected = false,
                 vx = init_vx,
                 vy = init_vy,
-                grid_row = row,
-                grid_col = col,
-                icon_id = i,
                 width = self.CARD_WIDTH,
                 height = self.CARD_HEIGHT
             })
-
-            if card then
-                table.insert(self.cards, card)
-            end
+            card_index = card_index + 1
         end
     end
     self:shuffleCards()
 end
 
 function MemoryMatch:shuffleCards()
-    local spacing = self.params.card_spacing
-
-    for i = #self.cards, 2, -1 do
-        local j = math.random(i)
-        self.cards[i], self.cards[j] = self.cards[j], self.cards[i]
+    self.entity_controller:shuffleGridIndices("card")
+    if not self.params.gravity_enabled then
+        self.entity_controller:repositionGridEntities("card", {
+            start_x = self.start_x,
+            start_y = self.start_y,
+            cols = self.grid_cols,
+            item_width = self.CARD_WIDTH,
+            item_height = self.CARD_HEIGHT,
+            spacing = self.params.card_spacing
+        })
     end
-
-    for i, card in ipairs(self.cards) do
-        local row = math.floor((i-1) / self.grid_cols)
-        local col = (i-1) % self.grid_cols
-        card.grid_row = row
-        card.grid_col = col
-
-        if not self.params.gravity_enabled then
-            card.x = self.start_x + col * (self.CARD_WIDTH + spacing)
-            card.y = self.start_y + row * (self.CARD_HEIGHT + spacing)
-            card.vx = 0
-            card.vy = 0
-        end
-    end
-end
-
-function MemoryMatch:isSelected(index)
-    for _, selected_index in ipairs(self.selected_indices) do
-        if selected_index == index then return true end
-    end
-    return false
 end
 
 --------------------------------------------------------------------------------
@@ -262,13 +239,15 @@ end
 --------------------------------------------------------------------------------
 
 function MemoryMatch:updateGameLogic(dt)
+    local cards = self.entity_controller:getEntitiesByType("card")
+
     if self.memorize_phase then
         self.memorize_timer = self.memorize_timer - dt
         if self.memorize_timer <= 0 then
             self.memorize_phase = false
             self.time_elapsed = 0
 
-            for _, card in ipairs(self.cards) do
+            for _, card in ipairs(cards) do
                 card.flip_state = "flipping_down"
                 card.flip_progress = 1
             end
@@ -310,7 +289,7 @@ function MemoryMatch:updateGameLogic(dt)
         end
 
         -- Update flip animations for all cards
-        for i, card in ipairs(self.cards) do
+        for _, card in ipairs(cards) do
             if card.flip_state == "flipping_up" then
                 card.flip_progress = math.min(1, card.flip_progress + dt / self.params.flip_speed)
                 if card.flip_progress >= 1 then
@@ -331,7 +310,7 @@ function MemoryMatch:updateGameLogic(dt)
             local gravity = self.params.gravity_accel
             local bounce = self.params.floor_bounce
 
-            for i, card in ipairs(self.cards) do
+            for _, card in ipairs(cards) do
                 if not self.matched_pairs[card.value] then
                     card.vy = card.vy + gravity * dt
                     card.x = card.x + card.vx * dt
@@ -367,11 +346,14 @@ function MemoryMatch:updateGameLogic(dt)
 end
 
 function MemoryMatch:checkMatch()
-    local all_match = true
-    local first_value = self.cards[self.selected_indices[1]].value
+    local selected = self.entity_controller:getEntitiesByFilter(function(e) return e.is_selected end)
+    if #selected == 0 then return end
 
-    for i = 2, #self.selected_indices do
-        if self.cards[self.selected_indices[i]].value ~= first_value then
+    local all_match = true
+    local first_value = selected[1].value
+
+    for i = 2, #selected do
+        if selected[i].value ~= first_value then
             all_match = false
             break
         end
@@ -384,17 +366,21 @@ function MemoryMatch:checkMatch()
         end
 
         if chain_valid then
-            self:onMatchSuccess(first_value)
+            self:onMatchSuccess(first_value, selected)
         else
-            self:onMatchFailure()
+            self:onMatchFailure(selected)
         end
     else
-        self:onMatchFailure()
+        self:onMatchFailure(selected)
     end
-    self.selected_indices = {}
+
+    -- Clear selection
+    for _, card in ipairs(selected) do
+        card.is_selected = false
+    end
 end
 
-function MemoryMatch:onMatchSuccess(matched_value)
+function MemoryMatch:onMatchSuccess(matched_value, selected)
     self.matched_pairs[matched_value] = true
     self.metrics.matches = self.metrics.matches + 1
 
@@ -414,8 +400,8 @@ function MemoryMatch:onMatchSuccess(matched_value)
 
     -- Check for perfect match and apply bonus
     local is_perfect = true
-    for _, idx in ipairs(self.selected_indices) do
-        if #self.cards[idx].attempts > 1 then
+    for _, card in ipairs(selected) do
+        if #card.attempts > 1 then
             is_perfect = false
             break
         end
@@ -452,74 +438,52 @@ function MemoryMatch:onMatchSuccess(matched_value)
     self:playSound("match", 1.0)
 end
 
-function MemoryMatch:onMatchFailure()
+function MemoryMatch:onMatchFailure(selected)
     self.current_combo = 0
     if self.params.mismatch_penalty > 0 then
         self:applyMismatchPenalty()
     end
-    for _, idx in ipairs(self.selected_indices) do
-        self.cards[idx].flip_state = "flipping_down"
+    for _, card in ipairs(selected) do
+        card.flip_state = "flipping_down"
     end
     self:playSound("mismatch", 0.8)
-end
-
-function MemoryMatch:draw()
-    if self.view then
-        self.view:draw()
-    end
 end
 
 --------------------------------------------------------------------------------
 -- INPUT
 --------------------------------------------------------------------------------
 
-function MemoryMatch:mousemoved(x, y, dx, dy)
-    self.mouse_x = x
-    self.mouse_y = y
+function MemoryMatch:mousemoved(x, y)
+    if self.fog_controller then
+        self.fog_controller:updateMousePosition(x, y)
+    end
 end
 
 function MemoryMatch:mousepressed(x, y, button)
-    self.mouse_x = x
-    self.mouse_y = y
-
-    if self.memorize_phase or self.match_check_timer > 0 or #self.selected_indices >= self.params.match_requirement then return end
+    local selected_count = #self.entity_controller:getEntitiesByFilter(function(e) return e.is_selected end)
+    if self.memorize_phase or self.match_check_timer > 0 or selected_count >= self.params.match_requirement then return end
 
     if self.params.move_limit > 0 and self.moves_made >= self.params.move_limit then
         self.is_failed = true
         return
     end
 
-    local spacing = self.params.card_spacing
+    -- Find clicked card using EntityController hit testing
+    local card = self.entity_controller:getEntityAtPoint(x, y, "card")
 
-    for i, card in ipairs(self.cards) do
-        local card_x, card_y
-        if self.params.gravity_enabled then
-            card_x = card.x
-            card_y = card.y
-        else
-            local row = math.floor((i-1) / self.grid_cols)
-            local col = (i-1) % self.grid_cols
-            card_x = self.start_x + col * (self.CARD_WIDTH + spacing)
-            card_y = self.start_y + row * (self.CARD_HEIGHT + spacing)
-        end
+    if card and not self.matched_pairs[card.value] and not card.is_selected and card.flip_state ~= "flipping_up" then
+        table.insert(card.attempts, self.time_elapsed)
+        card.is_selected = true
+        self.moves_made = self.moves_made + 1
+        self.metrics.moves = self.moves_made
 
-        if x >= card_x and x <= card_x + self.CARD_WIDTH and y >= card_y and y <= card_y + self.CARD_HEIGHT then
-            if not self.matched_pairs[card.value] and not self:isSelected(i) and card.flip_state ~= "flipping_up" then
-                table.insert(card.attempts, self.time_elapsed)
-                table.insert(self.selected_indices, i)
-                self.moves_made = self.moves_made + 1
-                self.metrics.moves = self.moves_made
+        card.flip_state = "flipping_up"
+        card.flip_progress = 0
 
-                card.flip_state = "flipping_up"
-                card.flip_progress = 0
+        self:playSound("flip_card", 0.7)
 
-                self:playSound("flip_card", 0.7)
-
-                if #self.selected_indices == self.params.match_requirement then
-                    self.match_check_timer = self.params.reveal_duration
-                end
-                break
-            end
+        if selected_count + 1 == self.params.match_requirement then
+            self.match_check_timer = self.params.reveal_duration
         end
     end
 end
@@ -563,57 +527,62 @@ end
 --------------------------------------------------------------------------------
 
 function MemoryMatch:startShuffle()
-    local face_down_indices = {}
+    local cards = self.entity_controller:getEntitiesByType("card")
+    local shuffleable = {}
 
-    for i, card in ipairs(self.cards) do
+    -- Find cards that can be shuffled
+    for _, card in ipairs(cards) do
         local is_face_down = (card.flip_state == "face_down")
         local not_matched = not self.matched_pairs[card.value]
-        local not_selected = not self:isSelected(i)
+        local not_selected = not card.is_selected
         local not_flipping = (card.flip_state ~= "flipping_up" and card.flip_state ~= "flipping_down")
 
         if is_face_down and not_matched and not_selected and not_flipping then
-            table.insert(face_down_indices, i)
+            table.insert(shuffleable, card)
         end
     end
 
-    if #face_down_indices < 2 then return end
+    if #shuffleable < 2 then return end
 
     local shuffle_count = self.params.auto_shuffle_count
-    if shuffle_count == 0 or shuffle_count > #face_down_indices then
-        shuffle_count = #face_down_indices
+    if shuffle_count == 0 or shuffle_count > #shuffleable then
+        shuffle_count = #shuffleable
     end
 
     if shuffle_count < 2 then return end
 
-    local selected_indices = {}
-    local available = {}
-    for _, idx in ipairs(face_down_indices) do
-        table.insert(available, idx)
-    end
-
+    -- Select random cards to shuffle
+    local to_shuffle = {}
+    local available = {unpack(shuffleable)}
     for i = 1, shuffle_count do
         local pick = math.random(#available)
-        table.insert(selected_indices, available[pick])
+        table.insert(to_shuffle, available[pick])
         table.remove(available, pick)
     end
 
+    -- Store start positions for animation (keyed by card entity)
     local spacing = self.params.card_spacing
     self.shuffle_start_positions = {}
-    for i, card in ipairs(self.cards) do
-        local row = math.floor((i-1) / self.grid_cols)
-        local col = (i-1) % self.grid_cols
-        local x = self.start_x + col * (self.CARD_WIDTH + spacing)
-        local y = self.start_y + row * (self.CARD_HEIGHT + spacing)
-        self.shuffle_start_positions[i] = {x = x, y = y}
+    for _, card in ipairs(cards) do
+        local row = math.floor(card.grid_index / self.grid_cols)
+        local col = card.grid_index % self.grid_cols
+        self.shuffle_start_positions[card] = {
+            x = self.start_x + col * (self.CARD_WIDTH + spacing),
+            y = self.start_y + row * (self.CARD_HEIGHT + spacing)
+        }
     end
 
-    for i = #selected_indices, 2, -1 do
-        local j = math.random(i - 1)
-        local idx1 = selected_indices[i]
-        local idx2 = selected_indices[j]
-        self.cards[idx1], self.cards[idx2] = self.cards[idx2], self.cards[idx1]
-        self.shuffle_start_positions[idx1], self.shuffle_start_positions[idx2] =
-            self.shuffle_start_positions[idx2], self.shuffle_start_positions[idx1]
+    -- Shuffle grid_index values among selected cards
+    local indices = {}
+    for _, card in ipairs(to_shuffle) do
+        table.insert(indices, card.grid_index)
+    end
+    for i = #indices, 2, -1 do
+        local j = math.random(i)
+        indices[i], indices[j] = indices[j], indices[i]
+    end
+    for i, card in ipairs(to_shuffle) do
+        card.grid_index = indices[i]
     end
 
     self.is_shuffling = true
@@ -623,6 +592,18 @@ end
 function MemoryMatch:completeShuffle()
     self.is_shuffling = false
     self.shuffle_start_positions = nil
+
+    -- Update actual positions after animation completes
+    if not self.params.gravity_enabled then
+        self.entity_controller:repositionGridEntities("card", {
+            start_x = self.start_x,
+            start_y = self.start_y,
+            cols = self.grid_cols,
+            item_width = self.CARD_WIDTH,
+            item_height = self.CARD_HEIGHT,
+            spacing = self.params.card_spacing
+        })
+    end
 end
 
 --------------------------------------------------------------------------------
