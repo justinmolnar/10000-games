@@ -343,6 +343,12 @@ Generic enemy/obstacle spawning and management with pooling.
 - **getEntityAtPoint(x, y, type_name)** - Point-in-entity hit testing. Returns first entity at point (rect or circle hit test), or nil. Optional type_name filter.
 - **repositionGridEntities(type_name, layout)** - Reposition entities based on their grid_index. Layout: {start_x, start_y, cols, item_width, item_height, spacing}. Each entity needs grid_index field.
 - **shuffleGridIndices(type_name)** - Fisher-Yates shuffle grid_index values among entities of given type. Use with repositionGridEntities for memory match shuffling.
+- **animateGridShuffle(entities, count, layout, duration)** - Start animated shuffle of entities. Stores start positions, shuffles grid_index values, tracks animation state. Count=0 shuffles all.
+- **updateGridShuffle(dt)** - Update shuffle animation timer. Returns true when animation completes.
+- **isGridShuffling()** - Check if grid shuffle animation is active.
+- **getShuffleProgress()** - Get shuffle animation progress (0-1).
+- **getShuffleStartPosition(entity)** - Get entity's start position for animation interpolation.
+- **completeGridShuffle()** - Finalize shuffle positions and clear animation state.
 - **spawnLayout(type_name, layout, config)** - Dispatch to layout spawner. Layouts: "grid", "pyramid", "circle", "random", "checkerboard", "v_shape", "line", "spiral". Grid layout auto-adds grid_row/grid_col to each entity. Config.extra merged into spawned entities.
 - **spawnWeighted(type_name, weighted_configs, x, y, base_extra)** - Spawn using weighted random selection. Each config in array has `weight` plus properties to merge. Returns spawned entity.
 - **update(dt, game_state)** - Update spawning and all entities.

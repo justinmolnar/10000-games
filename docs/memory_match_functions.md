@@ -717,16 +717,25 @@ Clears is_shuffling flag. Clears shuffle_start_positions.
 
 
 ### AI Notes
-
+- checkComplete: Simplified to memorize guard + parent call (17→3 lines)
+- onComplete: Deleted - time bonus now in VictoryCondition bonuses config
+- selectNextChainTarget: Deleted - inlined in onMatchSuccess (3 lines) and setupEntities (1 line)
+- applyMismatchPenalty: Deleted, inlined in onMatchFailure
+- startShuffle: Rewritten to use EC:getEntitiesByFilter + EC:animateGridShuffle (62→15 lines)
+- completeShuffle: Simplified to EC:completeGridShuffle call (16→3 lines)
+- Removed is_shuffling and shuffle_animation_timer state (EC tracks internally)
+- Removed is_failed flag usage (VictoryCondition handles time_expired and move_limit)
+- Updated view to use EC:getShuffleProgress() and EC:getShuffleStartPosition()
+- VictoryCondition bonuses used for time_bonus (condition + apply functions)
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+641 → 539 lines (102 line reduction, 16%)
 
 ### Deviation from Plan
-
+None
 
 ---
 

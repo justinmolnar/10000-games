@@ -64,8 +64,6 @@ function MemoryMatch:setupEntities()
     self.matched_pairs = {}
     self.match_check_timer = 0
     self.shuffle_timer = p.auto_shuffle_interval
-    self.is_shuffling = false
-    self.shuffle_animation_timer = 0
     self.current_combo = 0
     self.chain_progress = 0
     self.chain_target = nil
@@ -83,9 +81,9 @@ function MemoryMatch:setupEntities()
     self.metrics.moves = 0
     self.metrics.score = 0
 
-    -- Select initial chain target if chain mode
+    -- Select initial chain target if chain mode (random value 1 to total_pairs)
     if p.chain_requirement > 0 then
-        self:selectNextChainTarget()
+        self.chain_target = math.random(self.total_pairs)
     end
 end
 
@@ -109,14 +107,23 @@ function MemoryMatch:setupComponents()
 
     -- Victory Condition (dynamic target based on total_pairs)
     local VictoryCondition = self.di.components.VictoryCondition
+    local p = self.params
     local victory_config = {
         victory = {type = "threshold", metric = "metrics.matches", target = self.total_pairs},
         loss = {type = "none"},
-        check_loss_first = false
+        check_loss_first = false,
+        bonuses = {}
     }
-    if self.params.time_limit > 0 then
+    if p.time_limit > 0 then
         victory_config.loss = {type = "time_expired", metric = "time_remaining"}
-    elseif self.params.move_limit > 0 then
+        -- Time bonus for fast completion
+        if p.speed_bonus > 0 then
+            table.insert(victory_config.bonuses, {
+                condition = function(g) return g.time_remaining > 0 end,
+                apply = function(g) g.metrics.score = g.metrics.score + math.floor(g.time_remaining * p.speed_bonus) end
+            })
+        end
+    elseif p.move_limit > 0 then
         victory_config.loss = {type = "move_limit", moves_metric = "moves_made", limit_metric = "move_limit"}
     end
     self.victory_checker = VictoryCondition:new(victory_config)
@@ -263,16 +270,13 @@ function MemoryMatch:updateGameLogic(dt)
             end
         end
 
-        -- Time limit countdown
+        -- Time limit countdown (VictoryCondition handles loss check)
         if self.params.time_limit > 0 then
             self.time_remaining = math.max(0, self.time_remaining - dt)
-            if self.time_remaining <= 0 then
-                self.is_failed = true
-            end
         end
 
         -- Auto-shuffle timer
-        if self.params.auto_shuffle_interval > 0 and not self.is_shuffling then
+        if self.params.auto_shuffle_interval > 0 and not self.entity_controller:isGridShuffling() then
             self.shuffle_timer = self.shuffle_timer - dt
             if self.shuffle_timer <= 0 then
                 self:startShuffle()
@@ -280,12 +284,9 @@ function MemoryMatch:updateGameLogic(dt)
             end
         end
 
-        -- Shuffle animation
-        if self.is_shuffling then
-            self.shuffle_animation_timer = self.shuffle_animation_timer + dt
-            if self.shuffle_animation_timer >= self.params.shuffle_animation_duration then
-                self:completeShuffle()
-            end
+        -- Shuffle animation update
+        if self.entity_controller:updateGridShuffle(dt) then
+            self:completeShuffle()
         end
 
         -- Update flip animations for all cards
@@ -426,13 +427,18 @@ function MemoryMatch:onMatchSuccess(matched_value, selected)
     -- Base match points
     self.metrics.score = self.metrics.score + 10
 
-    -- Chain requirement progress
+    -- Chain requirement progress - pick random unmatched value as next target
     if self.params.chain_requirement > 0 then
         self.chain_progress = self.chain_progress + 1
         if self.chain_progress >= self.params.chain_requirement then
             self.chain_progress = 0
         end
-        self:selectNextChainTarget()
+        -- Select next chain target (random unmatched)
+        local unmatched = {}
+        for i = 1, self.total_pairs do
+            if not self.matched_pairs[i] then table.insert(unmatched, i) end
+        end
+        self.chain_target = #unmatched > 0 and unmatched[math.random(#unmatched)] or nil
     end
 
     self:playSound("match", 1.0)
@@ -440,9 +446,15 @@ end
 
 function MemoryMatch:onMatchFailure(selected)
     self.current_combo = 0
-    if self.params.mismatch_penalty > 0 then
-        self:applyMismatchPenalty()
+
+    -- Apply mismatch penalty (inline from applyMismatchPenalty)
+    local p = self.params
+    if p.mismatch_penalty > 0 then
+        if p.time_limit > 0 then
+            self.time_remaining = math.max(0, self.time_remaining - p.mismatch_penalty)
+        end
     end
+
     for _, card in ipairs(selected) do
         card.flip_state = "flipping_down"
     end
@@ -463,10 +475,8 @@ function MemoryMatch:mousepressed(x, y, button)
     local selected_count = #self.entity_controller:getEntitiesByFilter(function(e) return e.is_selected end)
     if self.memorize_phase or self.match_check_timer > 0 or selected_count >= self.params.match_requirement then return end
 
-    if self.params.move_limit > 0 and self.moves_made >= self.params.move_limit then
-        self.is_failed = true
-        return
-    end
+    -- Move limit check (VictoryCondition handles loss, just block input)
+    if self.params.move_limit > 0 and self.moves_made >= self.params.move_limit then return end
 
     -- Find clicked card using EntityController hit testing
     local card = self.entity_controller:getEntityAtPoint(x, y, "card")
@@ -494,32 +504,7 @@ end
 
 function MemoryMatch:checkComplete()
     if self.memorize_phase then return false end
-
-    if self.is_failed then
-        self.victory = false
-        self.game_over = true
-        return true
-    end
-
-    local result = self.victory_checker:check()
-    if result then
-        self.victory = (result == "victory")
-        self.game_over = (result == "loss")
-        return true
-    end
-    return false
-end
-
-function MemoryMatch:onComplete()
-    if self.params.time_limit > 0 and self.params.speed_bonus > 0 then
-        local time_bonus = math.floor(self.time_remaining * self.params.speed_bonus)
-        self.metrics.score = self.metrics.score + time_bonus
-    end
-
-    self:playSound("success", 1.0)
-    self:stopMusic()
-
-    MemoryMatch.super.onComplete(self)
+    return MemoryMatch.super.checkComplete(self)
 end
 
 --------------------------------------------------------------------------------
@@ -527,115 +512,28 @@ end
 --------------------------------------------------------------------------------
 
 function MemoryMatch:startShuffle()
-    local cards = self.entity_controller:getEntitiesByType("card")
-    local shuffleable = {}
-
-    -- Find cards that can be shuffled
-    for _, card in ipairs(cards) do
-        local is_face_down = (card.flip_state == "face_down")
-        local not_matched = not self.matched_pairs[card.value]
-        local not_selected = not card.is_selected
-        local not_flipping = (card.flip_state ~= "flipping_up" and card.flip_state ~= "flipping_down")
-
-        if is_face_down and not_matched and not_selected and not_flipping then
-            table.insert(shuffleable, card)
-        end
-    end
+    local matched_pairs = self.matched_pairs
+    local shuffleable = self.entity_controller:getEntitiesByFilter(function(card)
+        return card.flip_state == "face_down"
+            and not matched_pairs[card.value]
+            and not card.is_selected
+    end)
 
     if #shuffleable < 2 then return end
 
-    local shuffle_count = self.params.auto_shuffle_count
-    if shuffle_count == 0 or shuffle_count > #shuffleable then
-        shuffle_count = #shuffleable
-    end
-
-    if shuffle_count < 2 then return end
-
-    -- Select random cards to shuffle
-    local to_shuffle = {}
-    local available = {unpack(shuffleable)}
-    for i = 1, shuffle_count do
-        local pick = math.random(#available)
-        table.insert(to_shuffle, available[pick])
-        table.remove(available, pick)
-    end
-
-    -- Store start positions for animation (keyed by card entity)
-    local spacing = self.params.card_spacing
-    self.shuffle_start_positions = {}
-    for _, card in ipairs(cards) do
-        local row = math.floor(card.grid_index / self.grid_cols)
-        local col = card.grid_index % self.grid_cols
-        self.shuffle_start_positions[card] = {
-            x = self.start_x + col * (self.CARD_WIDTH + spacing),
-            y = self.start_y + row * (self.CARD_HEIGHT + spacing)
-        }
-    end
-
-    -- Shuffle grid_index values among selected cards
-    local indices = {}
-    for _, card in ipairs(to_shuffle) do
-        table.insert(indices, card.grid_index)
-    end
-    for i = #indices, 2, -1 do
-        local j = math.random(i)
-        indices[i], indices[j] = indices[j], indices[i]
-    end
-    for i, card in ipairs(to_shuffle) do
-        card.grid_index = indices[i]
-    end
-
-    self.is_shuffling = true
-    self.shuffle_animation_timer = 0
+    local p = self.params
+    self.entity_controller:animateGridShuffle(shuffleable, p.auto_shuffle_count, {
+        start_x = self.start_x,
+        start_y = self.start_y,
+        cols = self.grid_cols,
+        item_width = self.CARD_WIDTH,
+        item_height = self.CARD_HEIGHT,
+        spacing = p.card_spacing
+    }, p.shuffle_animation_duration)
 end
 
 function MemoryMatch:completeShuffle()
-    self.is_shuffling = false
-    self.shuffle_start_positions = nil
-
-    -- Update actual positions after animation completes
-    if not self.params.gravity_enabled then
-        self.entity_controller:repositionGridEntities("card", {
-            start_x = self.start_x,
-            start_y = self.start_y,
-            cols = self.grid_cols,
-            item_width = self.CARD_WIDTH,
-            item_height = self.CARD_HEIGHT,
-            spacing = self.params.card_spacing
-        })
-    end
-end
-
---------------------------------------------------------------------------------
--- CHALLENGE MODE
---------------------------------------------------------------------------------
-
-function MemoryMatch:selectNextChainTarget()
-    if self.params.chain_requirement == 0 then return end
-
-    local unmatched = {}
-    for i = 1, self.total_pairs do
-        if not self.matched_pairs[i] then
-            table.insert(unmatched, i)
-        end
-    end
-
-    if #unmatched > 0 then
-        self.chain_target = unmatched[math.random(#unmatched)]
-    else
-        self.chain_target = nil
-    end
-end
-
-function MemoryMatch:applyMismatchPenalty()
-    if self.params.time_limit > 0 then
-        self.time_remaining = math.max(0, self.time_remaining - self.params.mismatch_penalty)
-        if self.time_remaining <= 0 then
-            self.is_failed = true
-        end
-    elseif self.params.mismatch_penalty > 0 then
-        self.is_failed = true
-    end
+    self.entity_controller:completeGridShuffle()
 end
 
 return MemoryMatch

@@ -85,10 +85,10 @@ function MemoryMatchView:draw()
 
         -- Shuffle animation (only in non-gravity mode)
         local draw_x, draw_y = x, y
-        if not game.params.gravity_enabled and game.is_shuffling and game.shuffle_start_positions and game.shuffle_start_positions[card] then
-            local progress = math.min(1, game.shuffle_animation_timer / game.params.shuffle_animation_duration)
-            local start_pos = game.shuffle_start_positions[card]
-            -- Smooth interpolation with easing
+        local ec = game.entity_controller
+        local start_pos = ec:getShuffleStartPosition(card)
+        if not game.params.gravity_enabled and start_pos then
+            local progress = ec:getShuffleProgress()
             local eased_progress = progress * progress * (3 - 2 * progress)  -- Smoothstep
             draw_x = start_pos.x + (x - start_pos.x) * eased_progress
             draw_y = start_pos.y + (y - start_pos.y) * eased_progress
