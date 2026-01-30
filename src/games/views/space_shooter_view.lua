@@ -86,73 +86,19 @@ function SpaceShooterView:drawContent()
     local enemy_sprite_fallback = self.sprite_manager:getMetricSprite(game.data, "kills") or "game_mine_2-0"
     for _, enemy in ipairs(game.enemies) do
         local sprite_key = enemy.type and ("enemy_" .. enemy.type) or nil
-        if sprite_key and game.sprites and game.sprites[sprite_key] then
-            local sprite = game.sprites[sprite_key]
-            -- Apply tint when drawing sprite
-            g.setColor(tint[1], tint[2], tint[3])
-            g.draw(sprite, enemy.x, enemy.y, 0,
-                enemy.width / sprite:getWidth(), enemy.height / sprite:getHeight())
-            g.setColor(1, 1, 1)  -- Reset color
-        else
-            -- Fallback to icon
-            self.sprite_loader:drawSprite(
-                enemy_sprite_fallback,
-                enemy.x,
-                enemy.y,
-                enemy.width,
-                enemy.height,
-                {1, 1, 1},
-                palette_id
-            )
-        end
+        self:drawEntityAt(enemy.x, enemy.y, enemy.width, enemy.height, sprite_key, enemy_sprite_fallback, {tint = tint})
     end
 
     -- Draw player bullets (sprite or fallback)
     local bullet_sprite_fallback = "msg_information-0"
     for _, bullet in ipairs(game.player_bullets) do
-        if game.sprites and game.sprites.bullet_player then
-            local sprite = game.sprites.bullet_player
-            -- Apply tint when drawing sprite
-            g.setColor(tint[1], tint[2], tint[3])
-            g.draw(sprite, bullet.x - bullet.width/2, bullet.y - bullet.height/2, 0,
-                bullet.width / sprite:getWidth(), bullet.height / sprite:getHeight())
-            g.setColor(1, 1, 1)  -- Reset color
-        else
-            -- Fallback to icon
-            self.sprite_loader:drawSprite(
-                bullet_sprite_fallback,
-                bullet.x - bullet.width/2,
-                bullet.y - bullet.height/2,
-                bullet.width,
-                bullet.height,
-                {1, 1, 1},
-                palette_id
-            )
-        end
+        self:drawEntityCentered(bullet.x, bullet.y, bullet.width, bullet.height, "bullet_player", bullet_sprite_fallback, {tint = tint})
     end
 
     -- Draw enemy bullets (sprite or fallback)
     local enemy_bullet_sprite_fallback = "msg_error-0"
     for _, bullet in ipairs(game.enemy_bullets) do
-        if game.sprites and game.sprites.bullet_enemy then
-            local sprite = game.sprites.bullet_enemy
-            -- Apply tint when drawing sprite
-            g.setColor(tint[1], tint[2], tint[3])
-            g.draw(sprite, bullet.x - bullet.width/2, bullet.y - bullet.height/2, 0,
-                bullet.width / sprite:getWidth(), bullet.height / sprite:getHeight())
-            g.setColor(1, 1, 1)  -- Reset color
-        else
-            -- Fallback to icon
-            self.sprite_loader:drawSprite(
-                enemy_bullet_sprite_fallback,
-                bullet.x - bullet.width/2,
-                bullet.y - bullet.height/2,
-                bullet.width,
-                bullet.height,
-                {1, 1, 1},
-                palette_id
-            )
-        end
+        self:drawEntityCentered(bullet.x, bullet.y, bullet.width, bullet.height, "bullet_enemy", enemy_bullet_sprite_fallback, {tint = tint})
     end
 
     -- Draw power-ups

@@ -25,46 +25,13 @@ function HiddenObjectView:drawContent()
     game.entity_controller:draw(function(obj)
         if not obj.found then
             local angle = (obj.id * 13) % 360
-
-            love.graphics.push()
-            love.graphics.translate(obj.x, obj.y)
-            love.graphics.rotate(math.rad(angle))
-
-            -- Try to use loaded sprite for this object
             local sprite_key = "object_" .. obj.sprite_variant
-            if game.sprites and game.sprites[sprite_key] then
-                -- Use loaded object sprite with palette swapping
-                local sprite = game.sprites[sprite_key]
-                if paletteManager and palette_id then
-                    paletteManager:drawSpriteWithPalette(
-                        sprite,
-                        -obj.size/2,
-                        -obj.size/2,
-                        obj.size,
-                        obj.size,
-                        palette_id,
-                        {1, 1, 1}
-                    )
-                else
-                    -- No palette, just draw normally
-                    love.graphics.setColor(1, 1, 1)
-                    love.graphics.draw(sprite, -obj.size/2, -obj.size/2, 0,
-                        obj.size / sprite:getWidth(), obj.size / sprite:getHeight())
-                end
-            else
-                -- Fallback to icon system
-                self.sprite_loader:drawSprite(
-                    object_sprite_fallback,
-                    -obj.size/2,
-                    -obj.size/2,
-                    obj.size,
-                    obj.size,
-                    {1, 1, 1},
-                    palette_id
-                )
-            end
 
-            love.graphics.pop()
+            self:drawEntityCentered(obj.x, obj.y, obj.size, obj.size, sprite_key, object_sprite_fallback, {
+                rotation = math.rad(angle),
+                use_palette = true,
+                palette_id = palette_id
+            })
         end
     end)
 

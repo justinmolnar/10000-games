@@ -335,10 +335,11 @@ Complete
 - space_shooter_view: 353 → 312 lines (-41)
 - snake_view: 554 → 512 lines (-42)
 - dodge_view: 435 → 380 lines (-55)
-- **Net change:** +125 infrastructure, -192 removed = -67 lines
+- memory_match_view: 263 → 261 lines (-2, now uses drawBackground)
+- **Net change:** +125 infrastructure, -194 removed = -69 lines
 
 ### Deviation from Plan
-- memory_match_view not updated (only 2 lines of inline solid color, not worth extracting)
+None
 
 ---
 
@@ -388,16 +389,29 @@ end
 
 
 ### AI Notes
-
+- Added drawEntityAt(x, y, w, h, sprite_key, fallback_icon, options) to GameBaseView
+- Added drawEntityCentered(cx, cy, w, h, sprite_key, fallback_icon, options) to GameBaseView
+- Options support: tint, rotation, use_palette, palette_id, fallback_tint
+- fallback_tint option added to support different tints for sprite vs fallback cases (needed for dodge type-specific enemy icons)
+- Updated space_shooter_view: replaced enemy, player_bullets, enemy_bullets inline patterns
+- Updated hidden_object_view: replaced object drawing loop with drawEntityCentered
+- Updated dodge_view: replaced player and enemy drawing with helpers (kept trail rendering inline as game-specific)
+- Updated snake_view: replaced segment, food, and obstacle drawing with helpers (kept girth cell iteration as game-specific logic)
+- NOT updated: breakout_view (procedural shapes), coin_flip_view (procedural), rps_view (procedural), memory_match_view (flip animation math tightly coupled with draw)
 
 ### Status
-Not started
+Complete
 
 ### Line Count Change
-
+- game_base_view: 256 → 352 lines (+96 for entity drawing helpers including fallback_tint support)
+- space_shooter_view: 312 → 258 lines (-54)
+- hidden_object_view: 84 → 51 lines (-33)
+- dodge_view: 380 → 299 lines (-81)
+- snake_view: 512 → 456 lines (-56)
+- **Net change:** +96 infrastructure, -224 removed = -128 lines
 
 ### Deviation from Plan
-
+None
 
 ---
 

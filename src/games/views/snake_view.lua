@@ -253,15 +253,10 @@ function SnakeView:drawContent()
         -- Get all cells this segment occupies based on girth
         local girth_cells = game:getGirthCells(segment, girth, dir)
 
-        -- Try to get sprite from loaded sprites
-        local sprite = nil
-        if game.sprites then
-            sprite = game.sprites[sprite_name]
-            -- For uniform mode, always use segment sprite
-            -- For segmented mode, use the specific sprite (seg_head/seg_body/seg_tail)
-            if not sprite and sprite_style == "uniform" then
-                sprite = game.sprites["segment"]
-            end
+        -- Determine effective sprite key (specific sprite or fallback to "segment")
+        local sprite_key = sprite_name
+        if game.sprites and not game.sprites[sprite_key] and sprite_style == "uniform" then
+            sprite_key = "segment"
         end
 
         -- Draw sprite at each girth cell position
@@ -269,26 +264,12 @@ function SnakeView:drawContent()
             local draw_x = cell.x * GRID_SIZE + segment_size / 2
             local draw_y = cell.y * GRID_SIZE + segment_size / 2
 
-            -- Draw sprite or fallback
-            if sprite then
-                -- Apply tint and draw with rotation
-                love.graphics.setColor(tint[1], tint[2], tint[3])
-                local sx = segment_size / sprite:getWidth()
-                local sy = segment_size / sprite:getHeight()
-                love.graphics.draw(sprite, draw_x, draw_y, rotation, sx, sy, sprite:getWidth()/2, sprite:getHeight()/2)
-                love.graphics.setColor(1, 1, 1)  -- Reset color
-            else
-                -- Fallback to icon system
-                self.sprite_loader:drawSprite(
-                    snake_sprite_fallback,
-                    draw_x - segment_size / 2,
-                    draw_y - segment_size / 2,
-                    segment_size,
-                    segment_size,
-                    {1, 1, 1},
-                    palette_id
-                )
-            end
+            self:drawEntityCentered(draw_x, draw_y, segment_size, segment_size, sprite_key, snake_sprite_fallback, {
+                rotation = rotation,
+                tint = tint,
+                use_palette = true,
+                palette_id = palette_id
+            })
         end
 
         ::continue::
@@ -350,73 +331,36 @@ function SnakeView:drawContent()
     love.graphics.setColor(1, 1, 1)
 
     -- Draw foods (multiple foods support with palette-swapped colors)
+    local food_size = GRID_SIZE - 1
     for _, food in ipairs(game:getFoods()) do
-        -- Determine color based on food type (palette swap)
-        local food_color = {1, 1, 1}  -- Normal
+        local food_color = {1, 1, 1}
         local food_icon = "check-0"
-        -- Food visual size is always single tile (collision is single tile)
-        local food_size = (GRID_SIZE - 1)
 
         if food.type == "bad" then
-            food_color = {0.8, 0.2, 0.2}  -- Red tint for bad
+            food_color = {0.8, 0.2, 0.2}
             food_icon = "msg_warning-0"
         elseif food.type == "golden" then
-            food_color = {1, 0.84, 0}  -- Gold tint
+            food_color = {1, 0.84, 0}
             food_icon = "app_favorites-0"
         end
 
-        if game.sprites and game.sprites.food then
-            local sprite = game.sprites.food
-            -- Draw with color tint for type
-            love.graphics.setColor(food_color)
-            love.graphics.draw(sprite, food.x * GRID_SIZE, food.y * GRID_SIZE, 0,
-                food_size / sprite:getWidth(), food_size / sprite:getHeight())
-            love.graphics.setColor(1, 1, 1)
-        else
-            -- Fallback to icon - DON'T pass palette_id so tint works
-            self.sprite_loader:drawSprite(
-                food_icon,
-                food.x * GRID_SIZE,
-                food.y * GRID_SIZE,
-                food_size,
-                food_size,
-                food_color,
-                nil  -- No palette override, use tint color instead
-            )
-        end
+        self:drawEntityAt(food.x * GRID_SIZE, food.y * GRID_SIZE, food_size, food_size, "food", food_icon, {
+            tint = food_color
+        })
     end
 
     -- Draw obstacles (skip wall-type obstacles for rectangles - they're rendered by drawArenaBoundaries)
     local arena_shape = game.params.arena_shape or "rectangle"
+    local obstacle_size = GRID_SIZE - 1
     for _, obstacle in ipairs(game:getObstacles()) do
-        -- Skip wall obstacles for rectangle arenas only - shaped arenas need their walls drawn as obstacles
         if (obstacle.type == "walls" or obstacle.type == "bounce_wall") and arena_shape == "rectangle" then
             goto continue_obstacle
         end
 
-        local sprite = game.sprites and game.sprites.obstacle
-
-        if sprite then
-            -- Draw loaded sprite
-            local sx = (GRID_SIZE - 1) / sprite:getWidth()
-            local sy = (GRID_SIZE - 1) / sprite:getHeight()
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.draw(sprite,
-                obstacle.x * GRID_SIZE,
-                obstacle.y * GRID_SIZE,
-                0, sx, sy)
-        else
-            -- Fallback to sprite loader system sprites
-            self.sprite_loader:drawSprite(
-                "msg_error-0",
-                obstacle.x * GRID_SIZE,
-                obstacle.y * GRID_SIZE,
-                GRID_SIZE - 1,
-                GRID_SIZE - 1,
-                {1, 1, 1},
-                palette_id
-            )
-        end
+        self:drawEntityAt(obstacle.x * GRID_SIZE, obstacle.y * GRID_SIZE, obstacle_size, obstacle_size, "obstacle", "msg_error-0", {
+            use_palette = true,
+            palette_id = palette_id
+        })
 
         ::continue_obstacle::
     end

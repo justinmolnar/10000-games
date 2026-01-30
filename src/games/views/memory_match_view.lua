@@ -19,8 +19,7 @@ function MemoryMatchView:drawContent()
 
     local game = self.game
 
-    love.graphics.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
-    love.graphics.rectangle('fill', 0, 0, game.game_width, game.game_height)
+    self:drawBackground(game.game_width, game.game_height)
 
     -- Distraction elements (if enabled)
     if game.params.distraction_elements then

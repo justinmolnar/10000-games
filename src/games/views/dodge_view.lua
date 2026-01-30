@@ -145,43 +145,15 @@ function DodgeView:drawContent()
         tint = paletteManager:getTintForVariant(self.variant, "DodgeGame", config.games.dodge)
     end
 
-    if game.sprites and game.sprites.player then
-        -- Use loaded player sprite with tinting and rotation
-        local sprite = game.sprites.player
-        local size = game.player.radius * 2
-        local rotation = game.player.rotation or 0
-
-        -- Apply tint and draw with rotation
-        g.push()
-        g.translate(game.player.x, game.player.y)
-        g.rotate(rotation)
-        g.setColor(tint[1], tint[2], tint[3])
-        g.draw(sprite,
-            -game.player.radius,
-            -game.player.radius,
-            0,
-            size / sprite:getWidth(),
-            size / sprite:getHeight())
-        g.setColor(1, 1, 1)  -- Reset color
-        g.pop()
-    else
-        -- Fallback to icon system with rotation
-        local player_sprite = game.data.icon_sprite or "game_solitaire-0"
-
-        g.push()
-        g.translate(game.player.x, game.player.y)
-        g.rotate(game.player.rotation or 0)
-        self.sprite_loader:drawSprite(
-            player_sprite,
-            -game.player.radius,
-            -game.player.radius,
-            game.player.radius * 2,
-            game.player.radius * 2,
-            {1, 1, 1},
-            palette_id
-        )
-        g.pop()
-    end
+    local player_size = game.player.radius * 2
+    local player_rotation = game.player.rotation or 0
+    local player_fallback = game.data.icon_sprite or "game_solitaire-0"
+    self:drawEntityCentered(game.player.x, game.player.y, player_size, player_size, "player", player_fallback, {
+        rotation = player_rotation,
+        tint = tint,
+        use_palette = true,
+        palette_id = palette_id
+    })
 
     -- Draw shield visual
     if game.params.shield > 0 and game.health_system:isShieldActive() then
@@ -210,14 +182,15 @@ function DodgeView:drawContent()
     end
 
     -- Draw objects/enemies (skip types rendered separately)
-    for i, obj in ipairs(game.objects) do
+    for _, obj in ipairs(game.objects) do
         if obj.type_name == 'hole' or obj.type_name == 'warning' then goto continue_obj end
+
         -- Draw obstacle trail first (behind object)
         if obj.trail_positions and #obj.trail_positions > 1 then
             g.setColor(1, 0.4, 0.2, 0.4)
             g.setLineWidth(2)
             local points = {}
-            for i, pos in ipairs(obj.trail_positions) do
+            for _, pos in ipairs(obj.trail_positions) do
                 table.insert(points, pos.x)
                 table.insert(points, pos.y)
             end
@@ -227,92 +200,38 @@ function DodgeView:drawContent()
             g.setLineWidth(1)
         end
 
-        local sprite_img = nil
-        local sprite_key = nil
-
-        -- Determine which sprite to use - all enemies use "enemy_TYPE" pattern
-        if obj.enemy_type then
-            sprite_key = "enemy_" .. obj.enemy_type
-            sprite_img = game.sprites and game.sprites[sprite_key]
-        end
-
-        if sprite_img then
-            -- Use loaded sprite with palette swapping
-            local size = obj.radius * 2
-
-            -- DEBUG: Print what we're actually drawing (first object only)
-            if i == 1 and not self._draw_debug_printed then
-                print(string.format("[DodgeView] Drawing first object: enemy_type=%s, sprite_key=%s, sprite=%s, paletteManager=%s, palette_id=%s",
-                    tostring(obj.enemy_type), sprite_key, tostring(sprite_img), tostring(paletteManager ~= nil), tostring(palette_id)))
-                self._draw_debug_printed = true
-            end
-
-            -- Calculate rotation angle based on sprite direction mode
-            local rotation = 0
-
-            if obj.sprite_direction_mode == "movement_based" or not obj.sprite_direction_mode then
-                -- Default: rotate sprite to face movement direction
-                if obj.vx or obj.vy then
-                    rotation = math.atan2(obj.vy or 0, obj.vx or 0) + math.pi/2  -- +90° because sprites point up
-                else
-                    rotation = obj.angle or 0
-                end
+        -- Calculate rotation angle based on sprite direction mode
+        local rotation = 0
+        if obj.sprite_direction_mode == "movement_based" or not obj.sprite_direction_mode then
+            if obj.vx or obj.vy then
+                rotation = math.atan2(obj.vy or 0, obj.vx or 0) + math.pi/2
             else
-                -- Locked direction: use specified angle in degrees
-                rotation = math.rad(obj.sprite_direction_mode)
-            end
-
-            -- Add accumulated rotation from sprite_rotation_speed
-            if obj.sprite_rotation_angle then
-                rotation = rotation + math.rad(obj.sprite_rotation_angle)
-            end
-
-            if paletteManager and palette_id then
-                -- Palette drawing with rotation (need to transform manually)
-                g.push()
-                g.translate(obj.x, obj.y)
-                g.rotate(rotation)
-                paletteManager:drawSpriteWithPalette(
-                    sprite_img,
-                    -obj.radius,
-                    -obj.radius,
-                    size,
-                    size,
-                    palette_id,
-                    {1, 1, 1}
-                )
-                g.pop()
-            else
-                -- No palette, just draw normally with rotation
-                g.setColor(1, 1, 1)
-                g.draw(sprite_img,
-                    obj.x,
-                    obj.y,
-                    rotation,
-                    size / sprite_img:getWidth(),
-                    size / sprite_img:getHeight(),
-                    sprite_img:getWidth() / 2,
-                    sprite_img:getHeight() / 2)
+                rotation = obj.angle or 0
             end
         else
-            -- Fallback to icon system
-            local tint = {1,1,1}
-            local icon_sprite = "msg_error-0"
-            if obj.type == 'seeker' then tint = {1, 0.3, 0.3}; icon_sprite = "world_lock-0"
-            elseif obj.type == 'zigzag' then tint = {1, 1, 0.3}; icon_sprite = "world_star-1"
-            elseif obj.type == 'sine' then tint = {0.6, 1, 0.6}; icon_sprite = "world_star-0"
-            elseif obj.type == 'splitter' then tint = {0.8, 0.6, 1.0}; icon_sprite = "xml_gear-1" end
-
-            self.sprite_loader:drawSprite(
-                icon_sprite,
-                obj.x - obj.radius,
-                obj.y - obj.radius,
-                obj.radius * 2,
-                obj.radius * 2,
-                tint,
-                palette_id
-            )
+            rotation = math.rad(obj.sprite_direction_mode)
         end
+        if obj.sprite_rotation_angle then
+            rotation = rotation + math.rad(obj.sprite_rotation_angle)
+        end
+
+        -- Determine sprite key and fallback icon/tint
+        local sprite_key = obj.enemy_type and ("enemy_" .. obj.enemy_type) or nil
+        local fallback_icon = "msg_error-0"
+        local fallback_tint = {1, 1, 1}
+        if obj.type == 'seeker' then fallback_tint = {1, 0.3, 0.3}; fallback_icon = "world_lock-0"
+        elseif obj.type == 'zigzag' then fallback_tint = {1, 1, 0.3}; fallback_icon = "world_star-1"
+        elseif obj.type == 'sine' then fallback_tint = {0.6, 1, 0.6}; fallback_icon = "world_star-0"
+        elseif obj.type == 'splitter' then fallback_tint = {0.8, 0.6, 1.0}; fallback_icon = "xml_gear-1" end
+
+        local size = obj.radius * 2
+        self:drawEntityCentered(obj.x, obj.y, size, size, sprite_key, fallback_icon, {
+            rotation = rotation,
+            use_palette = true,
+            palette_id = palette_id,
+            fallback_tint = fallback_tint
+        })
+
     ::continue_obj::
     end
 

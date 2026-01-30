@@ -253,4 +253,100 @@ function GameBaseView:drawBackgroundProcedural(width, height)
     end
 end
 
+--------------------------------------------------------------------------------
+-- ENTITY DRAWING HELPERS
+--------------------------------------------------------------------------------
+
+function GameBaseView:drawEntityAt(x, y, w, h, sprite_key, fallback_icon, options)
+    options = options or {}
+    local game = self.game
+    local sprite = game.sprites and game.sprites[sprite_key]
+
+    if sprite then
+        local tint = options.tint or {1, 1, 1}
+        local rotation = options.rotation or 0
+        local scale_x = w / sprite:getWidth()
+        local scale_y = h / sprite:getHeight()
+
+        if options.use_palette and self.palette_manager then
+            local palette_id = options.palette_id or self:getPaletteId()
+            if rotation ~= 0 then
+                love.graphics.push()
+                love.graphics.translate(x + w/2, y + h/2)
+                love.graphics.rotate(rotation)
+                self.palette_manager:drawSpriteWithPalette(sprite, -w/2, -h/2, w, h, palette_id, tint)
+                love.graphics.pop()
+            else
+                self.palette_manager:drawSpriteWithPalette(sprite, x, y, w, h, palette_id, tint)
+            end
+        else
+            love.graphics.setColor(tint[1], tint[2], tint[3])
+            if rotation ~= 0 then
+                local ox, oy = sprite:getWidth() / 2, sprite:getHeight() / 2
+                love.graphics.draw(sprite, x + w/2, y + h/2, rotation, scale_x, scale_y, ox, oy)
+            else
+                love.graphics.draw(sprite, x, y, 0, scale_x, scale_y)
+            end
+            love.graphics.setColor(1, 1, 1)
+        end
+        return true
+    else
+        -- Fallback to icon system
+        local tint = options.fallback_tint or options.tint or {1, 1, 1}
+        local palette_id = options.palette_id or self:getPaletteId()
+        local rotation = options.rotation or 0
+
+        if rotation ~= 0 then
+            love.graphics.push()
+            love.graphics.translate(x + w/2, y + h/2)
+            love.graphics.rotate(rotation)
+            self.sprite_loader:drawSprite(fallback_icon, -w/2, -h/2, w, h, tint, palette_id)
+            love.graphics.pop()
+        else
+            self.sprite_loader:drawSprite(fallback_icon, x, y, w, h, tint, palette_id)
+        end
+        return false
+    end
+end
+
+function GameBaseView:drawEntityCentered(cx, cy, w, h, sprite_key, fallback_icon, options)
+    options = options or {}
+    local game = self.game
+    local sprite = game.sprites and game.sprites[sprite_key]
+
+    if sprite then
+        local tint = options.tint or {1, 1, 1}
+        local rotation = options.rotation or 0
+        local scale_x = w / sprite:getWidth()
+        local scale_y = h / sprite:getHeight()
+        local ox, oy = sprite:getWidth() / 2, sprite:getHeight() / 2
+
+        if options.use_palette and self.palette_manager then
+            local palette_id = options.palette_id or self:getPaletteId()
+            love.graphics.push()
+            love.graphics.translate(cx, cy)
+            love.graphics.rotate(rotation)
+            self.palette_manager:drawSpriteWithPalette(sprite, -w/2, -h/2, w, h, palette_id, tint)
+            love.graphics.pop()
+        else
+            love.graphics.setColor(tint[1], tint[2], tint[3])
+            love.graphics.draw(sprite, cx, cy, rotation, scale_x, scale_y, ox, oy)
+            love.graphics.setColor(1, 1, 1)
+        end
+        return true
+    else
+        -- Fallback to icon system
+        local tint = options.fallback_tint or options.tint or {1, 1, 1}
+        local palette_id = options.palette_id or self:getPaletteId()
+        local rotation = options.rotation or 0
+
+        love.graphics.push()
+        love.graphics.translate(cx, cy)
+        love.graphics.rotate(rotation)
+        self.sprite_loader:drawSprite(fallback_icon, -w/2, -h/2, w, h, tint, palette_id)
+        love.graphics.pop()
+        return false
+    end
+end
+
 return GameBaseView
