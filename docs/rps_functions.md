@@ -646,16 +646,22 @@ Returns nil if special_rounds_enabled is false. Builds array of enabled special 
 
 
 ### AI Notes
-
+- Deleted getAvailableChoices function - derive choices from win_matrix keys inline
+- Added special_round_chance to schema (default 0.5)
+- Simplified activateSpecialRound to use special_round_chance from params
+- Cleaned up determineWinner (more concise)
+- generateAIChoiceForOpponent already deleted in Phase 2
+- checkVictoryCondition already deleted in Phase 2
+- checkComplete already deleted in Phase 2 (inherits from BaseGame)
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+471 → 449 lines (22 line reduction, 5%)
 
 ### Deviation from Plan
-
+None - most Phase 3 items were already completed in Phase 2 during the merge/cleanup
 
 ---
 

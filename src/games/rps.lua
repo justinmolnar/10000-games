@@ -378,7 +378,9 @@ function RPS:generateAIChoice(history, pattern)
     local p = self.params
     history = history or self.ai_history
     pattern = pattern or p.ai_pattern
-    local choices = self:getAvailableChoices()
+    local win_matrix = p.win_matrices[p.game_mode]
+    local choices = {}
+    for choice in pairs(win_matrix) do table.insert(choices, choice) end
 
     if p.ai_pattern_delay > 0 and self.rounds_played < p.ai_pattern_delay then
         return choices[self.rng:random(1, #choices)]
@@ -388,11 +390,11 @@ function RPS:generateAIChoice(history, pattern)
         return history[#history]
     elseif pattern == "counter_player" and #self.player_history > 0 then
         local last_player = self.player_history[#self.player_history]
-        local win_matrix = p.win_matrices[p.game_mode]
-        if win_matrix and win_matrix[last_player] and win_matrix[last_player].loses_to then
-            local counters = win_matrix[last_player].loses_to
-            return counters[self.rng:random(1, #counters)]
+        local entry = win_matrix[last_player]
+        if entry and entry.loses_to and #entry.loses_to > 0 then
+            return entry.loses_to[self.rng:random(1, #entry.loses_to)]
         end
+        return choices[self.rng:random(1, #choices)]
     elseif pattern == "pattern_cycle" then
         return choices[(#history % #choices) + 1]
     elseif pattern == "mimic_player" and #self.player_history > 0 then
@@ -403,31 +405,13 @@ function RPS:generateAIChoice(history, pattern)
     return choices[self.rng:random(1, #choices)]
 end
 
-function RPS:getAvailableChoices()
-    if self.params.game_mode == "rpsls" then
-        return {"rock", "paper", "scissors", "lizard", "spock"}
-    elseif self.params.game_mode == "rpsfb" then
-        return {"rock", "paper", "scissors", "fire", "water"}
-    else
-        return {"rock", "paper", "scissors"}
-    end
-end
-
 function RPS:determineWinner(player, ai)
-    if player == ai then
-        return "tie"
-    end
-
-    local win_matrix = self.params.win_matrices[self.params.game_mode]
-    if not win_matrix or not win_matrix[player] then
-        return "tie"
-    end
-
-    local beats_list = win_matrix[player].beats
-    for _, beaten in ipairs(beats_list) do
-        if beaten == ai then
-            return "win"
-        end
+    if player == ai then return "tie" end
+    local p = self.params
+    local entry = p.win_matrices[p.game_mode] and p.win_matrices[p.game_mode][player]
+    if not entry then return "tie" end
+    for _, beaten in ipairs(entry.beats) do
+        if beaten == ai then return "win" end
     end
     return "lose"
 end
@@ -448,22 +432,17 @@ end
 --------------------------------------------------------------------------------
 
 function RPS:activateSpecialRound()
-    if not self.params.special_rounds_enabled then
-        return nil
-    end
+    local p = self.params
+    if not p.special_rounds_enabled then return nil end
 
-    local available_specials = {}
-    if self.params.double_or_nothing_enabled then table.insert(available_specials, "double_or_nothing") end
-    if self.params.sudden_death_enabled then table.insert(available_specials, "sudden_death") end
-    if self.params.reverse_mode_enabled then table.insert(available_specials, "reverse") end
-    if self.params.mirror_mode_enabled then table.insert(available_specials, "mirror") end
+    local specials = {}
+    if p.double_or_nothing_enabled then specials[#specials + 1] = "double_or_nothing" end
+    if p.sudden_death_enabled then specials[#specials + 1] = "sudden_death" end
+    if p.reverse_mode_enabled then specials[#specials + 1] = "reverse" end
+    if p.mirror_mode_enabled then specials[#specials + 1] = "mirror" end
 
-    if #available_specials == 0 then
-        return nil
-    end
-
-    if self.rng:random() < 0.5 then
-        return available_specials[self.rng:random(1, #available_specials)]
+    if #specials > 0 and self.rng:random() < p.special_round_chance then
+        return specials[self.rng:random(1, #specials)]
     end
     return nil
 end
