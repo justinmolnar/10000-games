@@ -7,6 +7,15 @@ function SpaceShooterView:init(game_state, variant)
     -- Game-specific view config
     local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or {})
     self.bg_color = viewcfg.bg_color or {0.05, 0.05, 0.15}
+
+    -- Configure extra stats for HUD (simple stats only - bars handled inline)
+    game_state.hud:setExtraStats({
+        {label = "Kills", key = "kills", total_key = "params.victory_limit"},
+        {label = "Shield",
+            value_fn = function(g) return g.health_system:getShieldHitsRemaining() .. "/" .. g.params.shield_hits end,
+            color_fn = function(g) return g.health_system:isShieldActive() and {0.3, 0.7, 1.0} or {0.5, 0.5, 0.5} end,
+            show_fn = function(g) return g.params.shield end},
+    })
 end
 
 function SpaceShooterView:drawContent()
@@ -177,30 +186,17 @@ function SpaceShooterView:drawContent()
     end
 
     game.hud:draw(game.game_width, game.game_height)
+    local extra_height = game.hud:drawExtraStats(game.game_width, game.game_height)
 
-    -- Additional game-specific stats (below standard HUD)
+    -- Complex stats with progress bars (handled inline)
     if not game.vm_render_mode then
         local s = 0.85
         local lx = 10
-        local hud_y = 90  -- Start below standard HUD
+        local hud_y = 90 + extra_height
 
-        g.setColor(1, 1, 1)
-
-        -- Kills progress
-        g.print("Kills: " .. (game.kills or 0) .. "/" .. game.params.victory_limit, lx, hud_y, 0, s, s)
-        hud_y = hud_y + 18
-
-        -- Shield (if enabled)
-        if game.params.shield then
-            local shield_color = game.health_system:isShieldActive() and {0.3, 0.7, 1.0} or {0.5, 0.5, 0.5}
-            g.setColor(shield_color)
-            g.print("Shield: " .. game.health_system:getShieldHitsRemaining() .. "/" .. game.params.shield_hits, lx, hud_y, 0, s, s)
-            hud_y = hud_y + 18
-            g.setColor(1, 1, 1)
-        end
-
-        -- Ammo display (read from projectile_system directly)
         local ps = game.projectile_system
+
+        -- Ammo display with reload bar
         if game.params.ammo_enabled and ps then
             if ps.is_reloading then
                 local reload_progress = 1 - (ps.reload_timer / game.params.ammo_reload_time)
@@ -218,7 +214,7 @@ function SpaceShooterView:drawContent()
             g.setColor(1, 1, 1)
         end
 
-        -- Overheat display (read from projectile_system directly)
+        -- Overheat display with heat bar
         if game.params.overheat_enabled and ps then
             local heat_percent = ps.heat_current / game.params.overheat_threshold
             if ps.is_overheated then
@@ -230,9 +226,7 @@ function SpaceShooterView:drawContent()
                 g.rectangle("fill", bar_x, hud_y + 2, bar_width * cooldown_progress, 10)
             else
                 g.print("Heat:", lx, hud_y, 0, s, s)
-                -- Draw heat bar
-                local bar_width = 60
-                local bar_x = lx + 50
+                local bar_width, bar_x = 60, lx + 50
                 local bar_color = heat_percent > 0.75 and {1, 0, 0} or (heat_percent > 0.5 and {1, 1, 0} or {0, 1, 0})
                 g.setColor(bar_color)
                 g.rectangle("line", bar_x, hud_y + 2, bar_width, 10)
@@ -247,7 +241,7 @@ function SpaceShooterView:drawContent()
             for powerup_type, effect in pairs(game.active_powerups) do
                 local name = powerup_type:gsub("_", " "):upper()
                 local time_left = math.ceil(effect.duration_remaining)
-                g.setColor(0, 1, 0)  -- Green for active powerup
+                g.setColor(0, 1, 0)
                 g.print(name .. ": " .. time_left .. "s", lx, hud_y, 0, s * 0.8, s * 0.8)
                 hud_y = hud_y + 18
             end

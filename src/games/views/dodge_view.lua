@@ -23,6 +23,17 @@ function DodgeView:init(game_state, variant)
         })
     end
     self.star_size_divisor = sf.size_divisor or 60
+
+    -- Configure extra stats for HUD
+    game_state.hud:setExtraStats({
+        {label = "Dodged", key = "metrics.objects_dodged", total_key = "dodge_target"},
+        {label = "Combo", key = "metrics.combo", show_if_positive = true, color = {0.2, 1, 0.2}},
+        {label = "Shield",
+            value_fn = function(g) return g.health_system:getShieldHitsRemaining() .. "/" .. g.params.shield end,
+            color_fn = function(g) return g.health_system:isShieldActive() and {0.5, 0.5, 1} or {0.5, 0.5, 0.5} end,
+            show_fn = function(g) return g.params.shield and g.params.shield > 0 end},
+        {label = "Difficulty", key = "difficulty_level"},
+    })
 end
 
 function DodgeView:drawContent()
@@ -260,41 +271,9 @@ function DodgeView:drawContent()
     -- Close camera shake transform
     g.pop()
 
-    -- Standard HUD (Phase 8) - NOT affected by camera shake
+    -- Standard HUD - NOT affected by camera shake
     game.hud:draw(game_width, game_height)
-
-    -- Additional game-specific stats (below standard HUD)
-    if not game.vm_render_mode then
-        local s = 0.85
-        local lx = 10
-        local hud_y = 90  -- Start below standard HUD
-
-        g.setColor(1, 1, 1)
-
-        -- Dodged progress
-        g.print("Dodged: " .. game.metrics.objects_dodged .. "/" .. game.dodge_target, lx, hud_y, 0, s, s)
-        hud_y = hud_y + 18
-
-        -- Combo
-        if game.metrics.combo > 0 then
-            g.setColor(0.2, 1, 0.2)
-            g.print("Combo: " .. game.metrics.combo, lx, hud_y, 0, s, s)
-            hud_y = hud_y + 18
-            g.setColor(1, 1, 1)
-        end
-
-        -- Shield charges (if enabled)
-        if game.params.shield and game.params.shield > 0 then
-            local shield_color = game.health_system:isShieldActive() and {0.5, 0.5, 1} or {0.5, 0.5, 0.5}
-            g.setColor(shield_color)
-            g.print("Shield: " .. game.health_system:getShieldHitsRemaining() .. "/" .. game.params.shield, lx, hud_y, 0, s, s)
-            hud_y = hud_y + 18
-            g.setColor(1, 1, 1)
-        end
-
-        -- Difficulty
-        g.print("Difficulty: " .. game.difficulty_level, lx, hud_y, 0, s, s)
-    end
+    game.hud:drawExtraStats(game_width, game_height)
 end
 
 return DodgeView

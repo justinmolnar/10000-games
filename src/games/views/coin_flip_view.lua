@@ -3,6 +3,17 @@ local CoinFlipView = GameBaseView:extend('CoinFlipView')
 
 function CoinFlipView:init(game)
     CoinFlipView.super.init(self, game, nil)
+
+    -- Configure extra stats
+    game.hud:setExtraStats({
+        {label = "Target Streak", key = "params.streak_target"},
+        {label = "Max Streak", key = "max_streak"},
+        {label = "Total Flips", key = "flips_total"},
+        {label = "Correct", key = "correct_total"},
+        {label = "Wrong", key = "incorrect_total"},
+        {label = "Accuracy", value_fn = function(g) return math.floor(g.metrics.accuracy * 100) .. "%" end,
+            show_fn = function(g) return g.flips_total > 0 end},
+    })
 end
 
 function CoinFlipView:drawContent()
@@ -18,25 +29,13 @@ function CoinFlipView:drawContent()
     self.game.popup_manager:draw()
     self.game.visual_effects:drawParticles()
     self.game.hud:draw(w, h)
+    local extra_height = self.game.hud:drawExtraStats(w, h)
 
     -- Title
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("COIN FLIP CHALLENGE", 20, 50, 0, 2, 2)
 
-    -- Additional stats (below HUD standard elements)
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Target Streak: " .. self.game.params.streak_target, 20, 90)
-    love.graphics.print("Max Streak: " .. self.game.max_streak, 20, 110)
-    love.graphics.print("Total Flips: " .. self.game.flips_total, 20, 130)
-    love.graphics.print("Correct: " .. self.game.correct_total, 20, 150)
-    love.graphics.print("Wrong: " .. self.game.incorrect_total, 20, 170)
-
-    if self.game.flips_total > 0 then
-        local accuracy = math.floor(self.game.metrics.accuracy * 100)
-        love.graphics.print("Accuracy: " .. accuracy .. "%", 20, 190)
-    end
-
-    -- Pattern history display
+    -- Pattern history display (complex - uses table.concat)
     if self.game.params.show_pattern_history and #self.game.pattern_history > 0 then
         local history_str = table.concat(self.game.pattern_history, " ")
         love.graphics.setColor(0.7, 0.7, 0.7)

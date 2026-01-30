@@ -461,16 +461,33 @@ end
 
 
 ### AI Notes
-
+- Added drawExtraStats() to HUDRenderer with flexible config system
+- Supports: simple values, ratios, value_fn for computed values, show_fn for conditional display, color/color_fn for coloring
+- Added setExtraStats() to configure extra stats from view init
+- Updated dodge_view: all stats moved to extra_stats config
+- Updated space_shooter_view: kills/shield via extra_stats, ammo/overheat/powerup bars kept inline (too complex)
+- Updated hidden_object_view: time bonus via extra_stats
+- Updated memory_match_view: simple stats via extra_stats, memorize phase and chain kept inline (special layout)
+- Updated breakout_view: combo/shield via extra_stats, powerup loop kept inline
+- Updated coin_flip_view: all simple stats via extra_stats, pattern history kept inline
+- NOT updated: rps_view (complex multi-opponent layout with interleaved positioning), snake_view (no extra stats)
 
 ### Status
-Not started
+Complete
 
 ### Line Count Change
-
+- hud_renderer: 299 → 383 lines (+84 for extra_stats infrastructure)
+- dodge_view: 299 → 278 lines (-21)
+- space_shooter_view: 258 → 252 lines (-6)
+- hidden_object_view: 51 → 48 lines (-3)
+- memory_match_view: 261 → 243 lines (-18)
+- breakout_view: 270 → 261 lines (-9)
+- coin_flip_view: 139 → 138 lines (-1)
+- **Net change:** +84 infrastructure, -58 views = +26 lines (infrastructure investment)
 
 ### Deviation from Plan
-
+- rps_view not updated due to complex multi-opponent layout with fixed positions and interleaved stats
+- Plan expected -20 to -40 lines per view, actual was -3 to -21 (some views kept complex stats inline)
 
 ---
 

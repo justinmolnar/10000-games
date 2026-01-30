@@ -10,6 +10,13 @@ function HiddenObjectView:init(game_state, variant)
     -- Game-specific view config
     local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.hidden_object and self.di.config.games.hidden_object.view) or {})
     self.bg_color = cfg.bg_color or {0.12, 0.1, 0.08}
+
+    -- Configure extra stats for HUD
+    game_state.hud:setExtraStats({
+        {label = "Time Bonus", key = "metrics.time_bonus",
+            show_fn = function(g) return g.completed and g.metrics.time_bonus > 0 end,
+            color = {0.5, 1, 0.5}},
+    })
 end
 
 function HiddenObjectView:drawContent()
@@ -36,17 +43,7 @@ function HiddenObjectView:drawContent()
     end)
 
     game.hud:draw(game.game_width, game.game_height)
-
-    -- Additional game-specific stats (below standard HUD)
-    if not game.vm_render_mode then
-        love.graphics.setColor(1, 1, 1)
-
-        -- Time bonus (if completed)
-        if game.completed and game.metrics.time_bonus > 0 then
-            love.graphics.setColor(0.5, 1, 0.5)
-            love.graphics.print("Time Bonus: " .. game.metrics.time_bonus, 10, 90, 0, 0.85, 0.85)
-        end
-    end
+    game.hud:drawExtraStats(game.game_width, game.game_height)
 end
 
 return HiddenObjectView

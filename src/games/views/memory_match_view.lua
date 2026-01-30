@@ -13,6 +13,20 @@ function MemoryMatchView:init(game_state, variant)
     self.start_x = game_state.start_x
     self.start_y = game_state.start_y
     self.grid_size = game_state.grid_size
+
+    -- Configure extra stats (simple ones - memorize phase and chain handled inline)
+    game_state.hud:setExtraStats({
+        {label = "Perfect", key = "metrics.perfect", color = {0.5, 1, 0.5},
+            show_fn = function(g) return g.params.perfect_bonus > 0 and g.metrics.perfect > 0 end},
+        {label = "Time Left", value_fn = function(g) return string.format("%.1f", g.time_remaining) end,
+            color_fn = function(g) return g.time_remaining < 10 and {1, 0.3, 0.3} or {1, 1, 0.5} end,
+            show_fn = function(g) return g.params.time_limit > 0 end},
+        {label = "Moves Left", value_fn = function(g) return g.params.move_limit - g.moves_made end,
+            color_fn = function(g) return (g.params.move_limit - g.moves_made) < 5 and {1, 0.3, 0.3} or {1, 1, 1} end,
+            show_fn = function(g) return g.params.move_limit > 0 end},
+        {label = "Combo", value_fn = function(g) return "x" .. g.current_combo end, color = {0.2, 1, 0.2},
+            show_fn = function(g) return g.params.combo_multiplier > 0 and g.current_combo > 0 end},
+    })
 end
 
 function MemoryMatchView:drawContent()
@@ -162,15 +176,13 @@ function MemoryMatchView:drawContent()
     
     game.hud:draw(game.game_width, game.game_height)
 
-    -- Additional game-specific stats (below standard HUD)
+    -- Complex stats (memorize phase, chain) handled inline; simple stats via extra_stats
     if not game.vm_render_mode then
         local s = 0.85
         local lx = 10
-        local hud_y = 90  -- Start below standard HUD
+        local hud_y = 90
 
-        love.graphics.setColor(1, 1, 1)
-
-        -- Memorize phase indicator
+        -- Memorize phase indicator (special - larger scale, timer function)
         if game.memorize_phase then
             love.graphics.setColor(1, 1, 0)
             love.graphics.print("MEMORIZING: " .. string.format("%.1f", game.memorize_timer:getRemaining()) .. "s", lx, hud_y, 0, 1.2, 1.2)
@@ -178,45 +190,15 @@ function MemoryMatchView:drawContent()
             love.graphics.setColor(1, 1, 1)
         end
 
-        -- Perfect matches (if enabled)
-        if game.params.perfect_bonus > 0 and game.metrics.perfect > 0 then
-            love.graphics.setColor(0.5, 1, 0.5)
-            love.graphics.print("Perfect: " .. game.metrics.perfect, lx, hud_y, 0, s, s)
-            hud_y = hud_y + 18
-            love.graphics.setColor(1, 1, 1)
-        end
+        -- Simple stats via extra_stats system
+        local extra_height = game.hud:drawExtraStats(game.game_width, game.game_height)
+        hud_y = hud_y + extra_height
 
-        -- Time remaining (if time limit)
-        if game.params.time_limit > 0 then
-            love.graphics.setColor(game.time_remaining < 10 and {1, 0.3, 0.3} or {1, 1, 0.5})
-            love.graphics.print("Time Left: " .. string.format("%.1f", game.time_remaining), lx, hud_y, 0, s, s)
-            hud_y = hud_y + 18
-            love.graphics.setColor(1, 1, 1)
-        end
-
-        -- Move limit
-        if game.params.move_limit > 0 then
-            local moves_left = game.params.move_limit - game.moves_made
-            love.graphics.setColor(moves_left < 5 and {1, 0.3, 0.3} or {1, 1, 1})
-            love.graphics.print("Moves Left: " .. moves_left, lx, hud_y, 0, s, s)
-            hud_y = hud_y + 18
-            love.graphics.setColor(1, 1, 1)
-        end
-
-        -- Combo counter
-        if game.params.combo_multiplier > 0 and game.current_combo > 0 then
-            love.graphics.setColor(0.2, 1, 0.2)
-            love.graphics.print("Combo: x" .. game.current_combo, lx, hud_y, 0, s, s)
-            hud_y = hud_y + 18
-            love.graphics.setColor(1, 1, 1)
-        end
-
-        -- Chain requirement
+        -- Chain requirement (special - two lines)
         if game.params.chain_requirement > 0 and game.chain_target then
             love.graphics.setColor(1, 1, 0.2)
             love.graphics.print("Find: " .. game.chain_target, lx, hud_y, 0, s, s)
             love.graphics.print("Chain: " .. game.chain_progress .. "/" .. game.params.chain_requirement, lx, hud_y + 15, 0, s * 0.8, s * 0.8)
-            hud_y = hud_y + 35
             love.graphics.setColor(1, 1, 1)
         end
     end

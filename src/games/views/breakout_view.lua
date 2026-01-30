@@ -3,6 +3,13 @@ local BreakoutView = GameBaseView:extend('BreakoutView')
 
 function BreakoutView:init(game)
     BreakoutView.super.init(self, game, nil)
+
+    -- Configure extra stats (simple ones - powerup loop handled inline)
+    game.hud:setExtraStats({
+        {label = "Combo", key = "combo", show_if_positive = true, color = {0.2, 1, 0.2}},
+        {label = "SHIELD ACTIVE", value_fn = function() return "" end, color = {0, 1, 1},
+            show_fn = function(g) return g.shield_active end},
+    })
 end
 
 function BreakoutView:drawContent()
@@ -206,33 +213,17 @@ function BreakoutView:drawContent()
 
     -- Standard HUD - NOT affected by camera shake or fog
     self.game.hud:draw(self.game.arena_width, self.game.arena_height)
+    local extra_height = self.game.hud:drawExtraStats(self.game.arena_width, self.game.arena_height)
 
-    -- Additional game-specific stats (below standard HUD)
-    local y_offset = 90
-    love.graphics.setColor(1, 1, 1)
-
-    -- Combo
-    if self.game.combo > 0 then
-        love.graphics.setColor(0.2, 1, 0.2)
-        love.graphics.print("Combo: " .. self.game.combo, 10, y_offset)
-        y_offset = y_offset + 18
-        love.graphics.setColor(1, 1, 1)
-    end
-
-    -- Active power-ups
-    if self.game.shield_active then
-        love.graphics.setColor(0, 1, 1)  -- Cyan
-        love.graphics.print("SHIELD ACTIVE", 10, y_offset)
-        y_offset = y_offset + 18
-        love.graphics.setColor(1, 1, 1)
-    end
+    -- Active power-ups (complex loop - handled inline)
+    local y_offset = 90 + extra_height
     for powerup_type, effect in pairs(self.game.active_powerups) do
         local time_left = math.ceil(effect.duration_remaining)
-        love.graphics.setColor(1, 1, 0)  -- Yellow
+        love.graphics.setColor(1, 1, 0)
         love.graphics.print(powerup_type:upper():gsub("_", " ") .. ": " .. time_left .. "s", 10, y_offset)
         y_offset = y_offset + 18
-        love.graphics.setColor(1, 1, 1)
     end
+    love.graphics.setColor(1, 1, 1)
 end
 
 function BreakoutView:drawFogOfWar()
