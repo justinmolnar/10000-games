@@ -146,11 +146,7 @@ function DodgeView:drawContent()
 
     -- Draw shield visual
     if game.params.shield > 0 and game.health_system:isShieldActive() then
-        local shield_alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 5)
-        g.setColor(0.3, 0.7, 1.0, shield_alpha)
-        g.setLineWidth(3)
-        g.circle('line', game.player.x, game.player.y, game.player.radius + 5)
-        g.setLineWidth(1)
+        self:drawShieldIndicator(game.player.x, game.player.y, game.player.radius + 5)
     end
 
     g.setColor(0.9, 0.9, 0.3, 0.45)
@@ -171,7 +167,7 @@ function DodgeView:drawContent()
     end
 
     -- Draw objects/enemies (skip types rendered separately)
-    for _, obj in ipairs(game.objects) do
+    for i, obj in ipairs(game.objects) do
         if obj.type_name == 'hole' or obj.type_name == 'warning' then goto continue_obj end
 
         -- Draw obstacle trail first (behind object)
@@ -204,19 +200,11 @@ function DodgeView:drawContent()
             rotation = rotation + math.rad(obj.sprite_rotation_angle)
         end
 
-        -- Determine sprite key and fallback icon/tint
         local sprite_key = obj.enemy_type and ("enemy_" .. obj.enemy_type) or nil
-        local fallback_icon = "msg_error-0"
-        local fallback_tint = {1, 1, 1}
-        if obj.type == 'seeker' then fallback_tint = {1, 0.3, 0.3}; fallback_icon = "world_lock-0"
-        elseif obj.type == 'zigzag' then fallback_tint = {1, 1, 0.3}; fallback_icon = "world_star-1"
-        elseif obj.type == 'sine' then fallback_tint = {0.6, 1, 0.6}; fallback_icon = "world_star-0"
-        elseif obj.type == 'splitter' then fallback_tint = {0.8, 0.6, 1.0}; fallback_icon = "xml_gear-1" end
-
         local size = obj.radius * 2
-        self:drawEntityCentered(obj.x, obj.y, size, size, sprite_key, fallback_icon, {
+        self:drawEntityCentered(obj.x, obj.y, size, size, sprite_key, "msg_error-0", {
             rotation = rotation,
-            fallback_tint = fallback_tint
+            fallback_tint = self:getIndexedColor(i)
         })
 
     ::continue_obj::

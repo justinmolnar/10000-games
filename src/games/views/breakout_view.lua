@@ -17,55 +17,33 @@ function BreakoutView:drawContent()
     -- Draw bricks
     for _, brick in ipairs(self.game.bricks) do
         if brick.alive then
-            love.graphics.push()
-
-            -- Check if brick is flashing
-            local is_flashing = self.game:isFlashing(brick)
-
-            -- Color based on health
             local health_percent = brick.health / brick.max_health
-            if is_flashing then
-                love.graphics.setColor(1, 1, 1)  -- White flash
-            elseif health_percent > 0.66 then
-                love.graphics.setColor(0.3, 0.8, 0.3)
-            elseif health_percent > 0.33 then
-                love.graphics.setColor(0.9, 0.9, 0.3)
-            else
-                love.graphics.setColor(0.9, 0.3, 0.3)
-            end
+            local is_flashing = self.game:isFlashing(brick)
+            local color = is_flashing and {1, 1, 1} or self:getHealthColor(health_percent)
 
-            -- Draw brick shape (rectangle, circle, or PNG)
             if brick.display_image then
-                -- PNG brick - draw the actual image
-                love.graphics.setColor(1, 1, 1)  -- Reset color for image drawing
-
-                -- Health tinting for damaged PNG bricks
-                if health_percent <= 0.66 and health_percent > 0.33 then
-                    love.graphics.setColor(1, 1, 0.5)  -- Yellow tint
-                elseif health_percent <= 0.33 then
-                    love.graphics.setColor(1, 0.5, 0.5)  -- Red tint
+                -- PNG brick with health tinting
+                if health_percent <= 0.33 then
+                    love.graphics.setColor(1, 0.5, 0.5)
+                elseif health_percent <= 0.66 then
+                    love.graphics.setColor(1, 1, 0.5)
+                else
+                    love.graphics.setColor(1, 1, 1)
                 end
-
                 love.graphics.draw(brick.display_image, brick.x, brick.y)
             elseif brick.shape == "circle" then
-                -- Circle brick - x,y is top-left, so center is x + radius, y + radius
-                local center_x = brick.x + (brick.radius or brick.width / 2)
-                local center_y = brick.y + (brick.radius or brick.height / 2)
-                love.graphics.circle('fill', center_x, center_y, brick.radius or brick.width / 2)
-
-                -- Outline
+                local cx = brick.x + (brick.radius or brick.width / 2)
+                local cy = brick.y + (brick.radius or brick.height / 2)
+                love.graphics.setColor(color)
+                love.graphics.circle('fill', cx, cy, brick.radius or brick.width / 2)
                 love.graphics.setColor(0.2, 0.2, 0.2)
-                love.graphics.circle('line', center_x, center_y, brick.radius or brick.width / 2)
+                love.graphics.circle('line', cx, cy, brick.radius or brick.width / 2)
             else
-                -- Rectangle brick (default)
+                love.graphics.setColor(color)
                 love.graphics.rectangle('fill', brick.x, brick.y, brick.width, brick.height)
-
-                -- Outline
                 love.graphics.setColor(0.2, 0.2, 0.2)
                 love.graphics.rectangle('line', brick.x, brick.y, brick.width, brick.height)
             end
-
-            love.graphics.pop()
         end
     end
 
@@ -82,21 +60,9 @@ function BreakoutView:drawContent()
     -- Draw ball(s)
     for _, ball in ipairs(self.game.balls) do
         if ball.active then
-            -- Draw trail first (behind ball)
-            if ball.trail and #ball.trail > 1 then
-                for i = 2, #ball.trail do
-                    local alpha = 1 - (i / #ball.trail)  -- Fade out older positions
-                    local radius = ball.radius * (1 - i / #ball.trail * 0.5)  -- Shrink older positions
-                    love.graphics.setColor(1, 1, 1, alpha * 0.6)
-                    love.graphics.circle('fill', ball.trail[i].x, ball.trail[i].y, radius)
-                end
-            end
-
-            -- Draw ball
-            love.graphics.push()
+            self:drawTrail(ball.trail, ball.radius, {1, 1, 1})
             love.graphics.setColor(1, 1, 1)
             love.graphics.circle('fill', ball.x, ball.y, ball.radius)
-            love.graphics.pop()
         end
     end
 
@@ -115,80 +81,30 @@ function BreakoutView:drawContent()
     -- Draw obstacles
     for _, obstacle in ipairs(self.game.obstacles) do
         if obstacle.alive then
-            love.graphics.push()
+            local color = self.game.obstacles_destructible
+                and self:getHealthColor(obstacle.health / obstacle.max_health)
+                or {0.6, 0.6, 0.6}
 
-            -- Color based on health if destructible (clear gradient from green to red)
-            if self.game.obstacles_destructible then
-                local health_percent = obstacle.health / obstacle.max_health
-                if health_percent > 0.66 then
-                    love.graphics.setColor(0.2, 0.8, 0.2)  -- Green (healthy)
-                elseif health_percent > 0.33 then
-                    love.graphics.setColor(0.9, 0.9, 0.2)  -- Yellow (damaged)
-                else
-                    love.graphics.setColor(0.9, 0.2, 0.2)  -- Red (critical)
-                end
-            else
-                love.graphics.setColor(0.6, 0.6, 0.6)  -- Gray (indestructible)
-            end
-
+            love.graphics.setColor(color)
             if obstacle.shape == "circle" then
                 love.graphics.circle('fill', obstacle.x + obstacle.size / 2, obstacle.y + obstacle.size / 2, obstacle.size / 2)
-            else
-                love.graphics.rectangle('fill', obstacle.x, obstacle.y, obstacle.size, obstacle.size)
-            end
-
-            -- Add outline for visibility
-            love.graphics.setColor(0.2, 0.2, 0.2)
-            if obstacle.shape == "circle" then
+                love.graphics.setColor(0.2, 0.2, 0.2)
                 love.graphics.circle('line', obstacle.x + obstacle.size / 2, obstacle.y + obstacle.size / 2, obstacle.size / 2)
             else
+                love.graphics.rectangle('fill', obstacle.x, obstacle.y, obstacle.size, obstacle.size)
+                love.graphics.setColor(0.2, 0.2, 0.2)
                 love.graphics.rectangle('line', obstacle.x, obstacle.y, obstacle.size, obstacle.size)
             end
-
-            love.graphics.pop()
         end
     end
 
     -- Draw power-ups
-    for _, powerup in ipairs(self.game.powerups) do
-        love.graphics.push()
-
-        -- Color coding for power-up types
-        local color = {1, 1, 1}  -- White default
-        if powerup.type == "multi_ball" then
-            color = {0.3, 0.5, 1}  -- Blue
-        elseif powerup.type == "paddle_extend" then
-            color = {0.3, 1, 0.3}  -- Green (good)
-        elseif powerup.type == "paddle_shrink" then
-            color = {1, 0.3, 0.3}  -- Red (bad)
-        elseif powerup.type == "slow_motion" then
-            color = {0.5, 0.8, 1}  -- Light blue (good)
-        elseif powerup.type == "fast_ball" then
-            color = {1, 0.5, 0}  -- Orange (bad)
-        elseif powerup.type == "laser" then
-            color = {1, 1, 0}  -- Yellow
-        elseif powerup.type == "sticky_paddle" then
-            color = {1, 0.5, 1}  -- Pink
-        elseif powerup.type == "extra_life" then
-            color = {0, 1, 0}  -- Bright green
-        elseif powerup.type == "shield" then
-            color = {0, 1, 1}  -- Cyan
-        elseif powerup.type == "penetrating_ball" then
-            color = {0.8, 0.3, 1}  -- Purple
-        elseif powerup.type == "fireball" then
-            color = {1, 0.3, 0}  -- Red-orange
-        elseif powerup.type == "magnet" then
-            color = {0.7, 0.7, 0.7}  -- Gray
-        end
-
+    for i, powerup in ipairs(self.game.powerups) do
+        local color = self:getIndexedColor(i)
         love.graphics.setColor(color)
         love.graphics.rectangle('fill', powerup.x, powerup.y, powerup.width, powerup.height)
-
-        -- Border
         love.graphics.setColor(1, 1, 1)
         love.graphics.rectangle('line', powerup.x, powerup.y, powerup.width, powerup.height)
-
-        love.graphics.pop()
     end
 
     -- Draw score popups

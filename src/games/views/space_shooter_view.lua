@@ -37,13 +37,10 @@ function SpaceShooterView:drawContent()
         local center_x = game.player.x + game.player.width / 2
         local center_y = game.player.y + game.player.height / 2
 
-        -- Draw shield visual indicator (like Dodge)
+        -- Draw shield visual indicator
         if game.params.shield and game.health_system:isShieldActive() then
-            local shield_alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 5)
-            g.setColor(0.3, 0.7, 1.0, shield_alpha)
             local shield_radius = math.max(game.player.width, game.player.height) / 2 + 5
-            g.circle("line", center_x, center_y, shield_radius, 32)
-            g.setColor(1, 1, 1)  -- Reset color after shield
+            self:drawShieldIndicator(center_x, center_y, shield_radius)
         end
 
         if game.sprites and game.sprites.player then
@@ -96,23 +93,8 @@ function SpaceShooterView:drawContent()
     end
 
     -- Draw power-ups
-    for _, powerup in ipairs(game.powerups) do
-        -- Draw power-up based on type (different colors)
-        local color = {1, 1, 1}
-        if powerup.type == "speed" then
-            color = {0, 1, 1}  -- Cyan
-        elseif powerup.type == "rapid_fire" then
-            color = {1, 1, 0}  -- Yellow
-        elseif powerup.type == "pierce" then
-            color = {1, 0, 1}  -- Magenta
-        elseif powerup.type == "shield" then
-            color = {0, 0.5, 1}  -- Blue
-        elseif powerup.type == "triple_shot" then
-            color = {1, 0.5, 0}  -- Orange
-        elseif powerup.type == "spread_shot" then
-            color = {0.5, 1, 0}  -- Green
-        end
-
+    for i, powerup in ipairs(game.powerups) do
+        local color = self:getIndexedColor(i)
         g.setColor(color)
         g.circle("fill", powerup.x + powerup.width/2, powerup.y + powerup.height/2, powerup.width/2)
         g.setColor(1, 1, 1)

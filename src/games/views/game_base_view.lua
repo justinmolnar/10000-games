@@ -222,6 +222,57 @@ function GameBaseView:drawBackgroundProcedural(width, height)
 end
 
 --------------------------------------------------------------------------------
+-- DRAWING HELPERS
+--------------------------------------------------------------------------------
+
+local INDEXED_COLORS = {
+    {0, 1, 1},
+    {1, 1, 0},
+    {1, 0, 1},
+    {0, 1, 0},
+    {1, 0.5, 0},
+    {0.5, 0.5, 1},
+    {1, 0.5, 1},
+    {0.5, 1, 0.5},
+}
+
+function GameBaseView:getIndexedColor(index)
+    return INDEXED_COLORS[((index - 1) % #INDEXED_COLORS) + 1]
+end
+
+-- Health-based color: green (healthy) → yellow (damaged) → red (critical)
+function GameBaseView:getHealthColor(health_percent)
+    if health_percent > 0.66 then
+        return {0.3, 0.8, 0.3}
+    elseif health_percent > 0.33 then
+        return {0.9, 0.9, 0.3}
+    else
+        return {0.9, 0.3, 0.3}
+    end
+end
+
+-- Draw pulsing shield indicator circle
+function GameBaseView:drawShieldIndicator(x, y, radius)
+    local alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 5)
+    love.graphics.setColor(0.3, 0.7, 1.0, alpha)
+    love.graphics.setLineWidth(3)
+    love.graphics.circle('line', x, y, radius)
+    love.graphics.setLineWidth(1)
+end
+
+-- Draw fading trail of circles (for balls, projectiles, etc)
+function GameBaseView:drawTrail(trail, base_radius, color)
+    if not trail or #trail < 2 then return end
+    color = color or {1, 1, 1}
+    for i = 2, #trail do
+        local alpha = 1 - (i / #trail)
+        local radius = base_radius * (1 - i / #trail * 0.5)
+        love.graphics.setColor(color[1], color[2], color[3], alpha * 0.6)
+        love.graphics.circle('fill', trail[i].x, trail[i].y, radius)
+    end
+end
+
+--------------------------------------------------------------------------------
 -- FOG OF WAR
 --------------------------------------------------------------------------------
 

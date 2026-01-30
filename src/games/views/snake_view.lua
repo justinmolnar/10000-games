@@ -321,22 +321,11 @@ function SnakeView:drawContent()
 
     love.graphics.setColor(1, 1, 1)
 
-    -- Draw foods (multiple foods support with palette-swapped colors)
+    -- Draw foods
     local food_size = GRID_SIZE - 1
-    for _, food in ipairs(game:getFoods()) do
-        local food_color = {1, 1, 1}
-        local food_icon = "check-0"
-
-        if food.type == "bad" then
-            food_color = {0.8, 0.2, 0.2}
-            food_icon = "msg_warning-0"
-        elseif food.type == "golden" then
-            food_color = {1, 0.84, 0}
-            food_icon = "app_favorites-0"
-        end
-
-        self:drawEntityAt(food.x * GRID_SIZE, food.y * GRID_SIZE, food_size, food_size, "food", food_icon, {
-            tint = food_color
+    for i, food in ipairs(game:getFoods()) do
+        self:drawEntityAt(food.x * GRID_SIZE, food.y * GRID_SIZE, food_size, food_size, "food", "check-0", {
+            tint = self:getIndexedColor(i)
         })
     end
 
