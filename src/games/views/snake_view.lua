@@ -112,16 +112,9 @@ function SnakeView:drawContent()
     -- Draw arena shape boundaries
     self:drawArenaBoundaries()
 
-    local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local snake_sprite_fallback = game.data.icon_sprite or "game_spider-0"
-    local paletteManager = self.di and self.di.paletteManager
-
-    -- Get tint for this variant based on config
-    local tint = {1, 1, 1}  -- Default: no tint
-    local config = (self.di and self.di.config) or Config
-    if paletteManager and config and config.games and config.games.snake then
-        tint = paletteManager:getTintForVariant(self.variant, "SnakeGame", config.games.snake)
-    end
+    local game_config = self.di and self.di.config and self.di.config.games and self.di.config.games.snake
+    local tint = self:getTint("SnakeGame", game_config)
 
     -- Draw snake (sprite or fallback)
     -- Support for girth (thickness) and invisible_tail
@@ -266,9 +259,7 @@ function SnakeView:drawContent()
 
             self:drawEntityCentered(draw_x, draw_y, segment_size, segment_size, sprite_key, snake_sprite_fallback, {
                 rotation = rotation,
-                tint = tint,
-                use_palette = true,
-                palette_id = palette_id
+                tint = tint
             })
         end
 
@@ -357,10 +348,7 @@ function SnakeView:drawContent()
             goto continue_obstacle
         end
 
-        self:drawEntityAt(obstacle.x * GRID_SIZE, obstacle.y * GRID_SIZE, obstacle_size, obstacle_size, "obstacle", "msg_error-0", {
-            use_palette = true,
-            palette_id = palette_id
-        })
+        self:drawEntityAt(obstacle.x * GRID_SIZE, obstacle.y * GRID_SIZE, obstacle_size, obstacle_size, "obstacle", "msg_error-0")
 
         ::continue_obstacle::
     end
@@ -368,7 +356,17 @@ function SnakeView:drawContent()
     -- Shrinking arena wall obstacles are collision-only; visual walls rendered by drawArenaBoundaries
 
     -- Draw fog of war effect
-    self:drawFogOfWar()
+    local fog_mode = game.params.fog_of_war
+    if fog_mode and fog_mode ~= "none" then
+        local sources = {}
+        if fog_mode == "player" and game.snake.body[1] then
+            local head = game.snake.body[1]
+            table.insert(sources, {x = head.x * GRID_SIZE + GRID_SIZE/2, y = head.y * GRID_SIZE + GRID_SIZE/2})
+        elseif fog_mode == "center" then
+            table.insert(sources, {x = game.game_width/2, y = game.game_height/2})
+        end
+        self:renderFog(game.game_width, game.game_height, sources, 150)
+    end
 
     -- Reset camera transformation before drawing HUD
     love.graphics.pop()
@@ -423,35 +421,6 @@ function SnakeView:drawArenaBoundaries()
     if arena_shape ~= "rectangle" and game.arena_controller then
         game.arena_controller:drawBoundary(GRID_SIZE)
     end
-end
-
-function SnakeView:drawFogOfWar()
-    local game = self.game
-    local fog = game.fog_controller
-    if not fog then return end
-
-    local fog_mode = game.params.fog_of_war or "none"
-    if fog_mode == "none" then
-        return
-    end
-
-    fog:clearSources()
-
-    local GRID_SIZE = self.GRID_SIZE
-    local fog_radius = 150
-
-    if fog_mode == "player" then
-        local head = game.snake.body[1]
-        if head then
-            local head_x = head.x * GRID_SIZE + GRID_SIZE / 2
-            local head_y = head.y * GRID_SIZE + GRID_SIZE / 2
-            fog:addVisibilitySource(head_x, head_y, fog_radius)
-        end
-    elseif fog_mode == "center" then
-        fog:addVisibilitySource(game.game_width / 2, game.game_height / 2, fog_radius)
-    end
-
-    fog:render(game.game_width, game.game_height)
 end
 
 return SnakeView

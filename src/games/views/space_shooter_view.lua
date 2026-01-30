@@ -7,15 +7,6 @@ function SpaceShooterView:init(game_state, variant)
     -- Game-specific view config
     local viewcfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter and self.di.config.games.space_shooter.view) or {})
     self.bg_color = viewcfg.bg_color or {0.05, 0.05, 0.15}
-
-    -- Configure extra stats for HUD (simple stats only - bars handled inline)
-    game_state.hud:setExtraStats({
-        {label = "Kills", key = "kills", total_key = "params.victory_limit"},
-        {label = "Shield",
-            value_fn = function(g) return g.health_system:getShieldHitsRemaining() .. "/" .. g.params.shield_hits end,
-            color_fn = function(g) return g.health_system:isShieldActive() and {0.3, 0.7, 1.0} or {0.5, 0.5, 0.5} end,
-            show_fn = function(g) return g.params.shield end},
-    })
 end
 
 function SpaceShooterView:drawContent()
@@ -29,16 +20,10 @@ function SpaceShooterView:drawContent()
     -- Draw background
     self:drawBackground()
 
-    local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
     local player_sprite_fallback = game.data.icon_sprite or "game_mine_1-0"
-    local paletteManager = self.di and self.di.paletteManager
-
-    -- Get tint for this variant based on config
-    local tint = {1, 1, 1}  -- Default: no tint
-    local config = (self.di and self.di.config) or Config
-    if paletteManager and config and config.games and config.games.space_shooter then
-        tint = paletteManager:getTintForVariant(self.variant, "SpaceShooter", config.games.space_shooter)
-    end
+    local game_config = self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter
+    local tint = self:getTint("SpaceShooter", game_config)
+    local palette_id = self:getPaletteId()
 
     -- Draw player (sprite or fallback)
     if game.player then
@@ -186,14 +171,23 @@ function SpaceShooterView:drawContent()
     end
 
     game.hud:draw(game.game_width, game.game_height)
-    local extra_height = game.hud:drawExtraStats(game.game_width, game.game_height)
 
-    -- Complex stats with progress bars (handled inline)
+    -- Extra stats
     if not game.vm_render_mode then
+        local hud_y = 90
+
+        -- Kills
+        hud_y = game.hud:drawStat("Kills", math.floor(game.kills) .. "/" .. math.floor(game.params.victory_limit), hud_y)
+
+        -- Shield
+        if game.params.shield then
+            local shield_color = game.health_system:isShieldActive() and {0.3, 0.7, 1.0} or {0.5, 0.5, 0.5}
+            hud_y = game.hud:drawStat("Shield", game.health_system:getShieldHitsRemaining() .. "/" .. game.params.shield_hits, hud_y, shield_color)
+        end
+
+        -- Complex stats with progress bars
         local s = 0.85
         local lx = 10
-        local hud_y = 90 + extra_height
-
         local ps = game.projectile_system
 
         -- Ammo display with reload bar

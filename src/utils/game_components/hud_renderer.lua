@@ -300,84 +300,12 @@ end
 -- EXTRA STATS (below standard HUD)
 --------------------------------------------------------------------------------
 
---[[
-Extra stats configuration format:
-{
-    {label = "Kills", key = "kills", total_key = "params.victory_limit"},  -- ratio: "Kills: 5/20"
-    {label = "Combo", key = "metrics.combo", show_if_positive = true, color = {0.2, 1, 0.2}},
-    {label = "Shield", value_fn = function(game) return game.health_system:getShieldHitsRemaining() .. "/" .. game.params.shield end,
-     color_fn = function(game) return game.health_system:isShieldActive() and {0.3, 0.7, 1} or {0.5, 0.5, 0.5} end,
-     show_fn = function(game) return game.params.shield and game.params.shield > 0 end},
-    {label = "Difficulty", key = "difficulty_level"},  -- simple: "Difficulty: 3"
-    {label = "Time Left", key = "time_remaining", format = "float",
-     color_fn = function(game) return game.time_remaining < 10 and {1, 0.3, 0.3} or {1, 1, 0.5} end,
-     show_fn = function(game) return game.params.time_limit > 0 end},
-}
-]]
-
-function HUDRenderer:setExtraStats(extra_stats)
-    self.extra_stats = extra_stats
-end
-
-function HUDRenderer:drawExtraStats(viewport_width, viewport_height)
-    local game = self.game
-    if not game or game.vm_render_mode then return 0 end
-    if not self.extra_stats then return 0 end
-
-    local scale = 0.85
-    local left_x = 10
-    local y = 90  -- Start below standard HUD
-    local row_height = 18
-
-    for _, stat in ipairs(self.extra_stats) do
-        -- Check if stat should be shown
-        if stat.show_fn and not stat.show_fn(game) then
-            goto continue
-        end
-
-        -- Get value
-        local value
-        if stat.value_fn then
-            value = stat.value_fn(game)
-        elseif stat.total_key then
-            -- Ratio format: "X/Y"
-            local current = self:getValue(stat.key) or 0
-            local total = self:getValue(stat.total_key) or 0
-            value = math.floor(current) .. "/" .. math.floor(total)
-        else
-            value = self:getValue(stat.key)
-        end
-
-        -- Check show_if_positive
-        if stat.show_if_positive and (not value or (type(value) == "number" and value <= 0)) then
-            goto continue
-        end
-
-        -- Format value
-        if stat.format and type(value) == "number" then
-            value = self:formatValue(value, stat.format)
-        elseif type(value) == "number" then
-            value = tostring(math.floor(value))
-        end
-
-        -- Get color
-        local color = {1, 1, 1}
-        if stat.color_fn then
-            color = stat.color_fn(game)
-        elseif stat.color then
-            color = stat.color
-        end
-
-        -- Draw
-        love.graphics.setColor(color)
-        love.graphics.print(stat.label .. ": " .. tostring(value), left_x, y, 0, scale, scale)
-        y = y + row_height
-
-        ::continue::
-    end
-
+function HUDRenderer:drawStat(label, value, y, color)
+    if self.game and self.game.vm_render_mode then return y end
+    love.graphics.setColor(color or {1, 1, 1})
+    love.graphics.print(label .. ": " .. tostring(value), 10, y, 0, 0.85, 0.85)
     love.graphics.setColor(1, 1, 1)
-    return y - 90  -- Return height used
+    return y + 18
 end
 
 return HUDRenderer

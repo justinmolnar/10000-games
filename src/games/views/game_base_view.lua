@@ -45,25 +45,11 @@ function GameBaseView:getPaletteId()
     return (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(self.game.data)
 end
 
-function GameBaseView:getTint(game_type, config_path)
-    if not self.palette_manager then
+function GameBaseView:getTint(game_type, game_config)
+    if not self.palette_manager or not game_config then
         return {1, 1, 1}
     end
-
-    -- Get config from DI if config_path provided
-    local config = nil
-    if config_path and self.di and self.di.config then
-        config = self.di.config
-        for part in config_path:gmatch("[^.]+") do
-            config = config and config[part]
-        end
-    end
-
-    if config then
-        return self.palette_manager:getTintForVariant(self.variant, game_type, config)
-    end
-
-    return {1, 1, 1}
+    return self.palette_manager:getTintForVariant(self.variant, game_type, game_config)
 end
 
 function GameBaseView:draw()
@@ -137,30 +123,12 @@ function GameBaseView:drawBackground(width, height)
     width = width or game.game_width or game.arena_width or love.graphics.getWidth()
     height = height or game.game_height or game.arena_height or love.graphics.getHeight()
 
-    -- Try sprite background first (scaled or tiled based on config)
+    -- Sprite background if available, else solid color
     if game and game.sprites and game.sprites.background then
-        if self.config.background_tiled then
-            self:drawBackgroundTiled(width, height)
-        else
-            self:drawBackgroundSprite(width, height)
-        end
-        return true
+        self:drawBackgroundSprite(width, height)
+    else
+        self:drawBackgroundSolid(width, height)
     end
-
-    -- Fallback based on config
-    if self.config.background_starfield and self.stars then
-        self:drawBackgroundStarfield(width, height)
-        return true
-    end
-
-    if self.config.background_procedural then
-        self:drawBackgroundProcedural(width, height)
-        return true
-    end
-
-    -- Default: solid color
-    self:drawBackgroundSolid(width, height)
-    return true
 end
 
 function GameBaseView:drawBackgroundSprite(width, height)
@@ -254,6 +222,20 @@ function GameBaseView:drawBackgroundProcedural(width, height)
 end
 
 --------------------------------------------------------------------------------
+-- FOG OF WAR
+--------------------------------------------------------------------------------
+
+function GameBaseView:renderFog(width, height, sources, radius)
+    local fog = self.game.fog_controller
+    if not fog or not sources or #sources == 0 then return end
+    fog:clearSources()
+    for _, src in ipairs(sources) do
+        fog:addVisibilitySource(src.x, src.y, radius)
+    end
+    fog:render(width, height)
+end
+
+--------------------------------------------------------------------------------
 -- ENTITY DRAWING HELPERS
 --------------------------------------------------------------------------------
 
@@ -261,15 +243,12 @@ function GameBaseView:drawEntityAt(x, y, w, h, sprite_key, fallback_icon, option
     options = options or {}
     local game = self.game
     local sprite = game.sprites and game.sprites[sprite_key]
+    local tint = options.tint or {1, 1, 1}
+    local rotation = options.rotation or 0
+    local palette_id = self:getPaletteId()
 
     if sprite then
-        local tint = options.tint or {1, 1, 1}
-        local rotation = options.rotation or 0
-        local scale_x = w / sprite:getWidth()
-        local scale_y = h / sprite:getHeight()
-
-        if options.use_palette and self.palette_manager then
-            local palette_id = options.palette_id or self:getPaletteId()
+        if self.palette_manager then
             if rotation ~= 0 then
                 love.graphics.push()
                 love.graphics.translate(x + w/2, y + h/2)
@@ -280,6 +259,7 @@ function GameBaseView:drawEntityAt(x, y, w, h, sprite_key, fallback_icon, option
                 self.palette_manager:drawSpriteWithPalette(sprite, x, y, w, h, palette_id, tint)
             end
         else
+            local scale_x, scale_y = w / sprite:getWidth(), h / sprite:getHeight()
             love.graphics.setColor(tint[1], tint[2], tint[3])
             if rotation ~= 0 then
                 local ox, oy = sprite:getWidth() / 2, sprite:getHeight() / 2
@@ -291,19 +271,15 @@ function GameBaseView:drawEntityAt(x, y, w, h, sprite_key, fallback_icon, option
         end
         return true
     else
-        -- Fallback to icon system
-        local tint = options.fallback_tint or options.tint or {1, 1, 1}
-        local palette_id = options.palette_id or self:getPaletteId()
-        local rotation = options.rotation or 0
-
+        local fallback_tint = options.fallback_tint or tint
         if rotation ~= 0 then
             love.graphics.push()
             love.graphics.translate(x + w/2, y + h/2)
             love.graphics.rotate(rotation)
-            self.sprite_loader:drawSprite(fallback_icon, -w/2, -h/2, w, h, tint, palette_id)
+            self.sprite_loader:drawSprite(fallback_icon, -w/2, -h/2, w, h, fallback_tint, palette_id)
             love.graphics.pop()
         else
-            self.sprite_loader:drawSprite(fallback_icon, x, y, w, h, tint, palette_id)
+            self.sprite_loader:drawSprite(fallback_icon, x, y, w, h, fallback_tint, palette_id)
         end
         return false
     end
@@ -313,37 +289,31 @@ function GameBaseView:drawEntityCentered(cx, cy, w, h, sprite_key, fallback_icon
     options = options or {}
     local game = self.game
     local sprite = game.sprites and game.sprites[sprite_key]
+    local tint = options.tint or {1, 1, 1}
+    local rotation = options.rotation or 0
+    local palette_id = self:getPaletteId()
 
     if sprite then
-        local tint = options.tint or {1, 1, 1}
-        local rotation = options.rotation or 0
-        local scale_x = w / sprite:getWidth()
-        local scale_y = h / sprite:getHeight()
-        local ox, oy = sprite:getWidth() / 2, sprite:getHeight() / 2
-
-        if options.use_palette and self.palette_manager then
-            local palette_id = options.palette_id or self:getPaletteId()
+        if self.palette_manager then
             love.graphics.push()
             love.graphics.translate(cx, cy)
             love.graphics.rotate(rotation)
             self.palette_manager:drawSpriteWithPalette(sprite, -w/2, -h/2, w, h, palette_id, tint)
             love.graphics.pop()
         else
+            local scale_x, scale_y = w / sprite:getWidth(), h / sprite:getHeight()
+            local ox, oy = sprite:getWidth() / 2, sprite:getHeight() / 2
             love.graphics.setColor(tint[1], tint[2], tint[3])
             love.graphics.draw(sprite, cx, cy, rotation, scale_x, scale_y, ox, oy)
             love.graphics.setColor(1, 1, 1)
         end
         return true
     else
-        -- Fallback to icon system
-        local tint = options.fallback_tint or options.tint or {1, 1, 1}
-        local palette_id = options.palette_id or self:getPaletteId()
-        local rotation = options.rotation or 0
-
+        local fallback_tint = options.fallback_tint or tint
         love.graphics.push()
         love.graphics.translate(cx, cy)
         love.graphics.rotate(rotation)
-        self.sprite_loader:drawSprite(fallback_icon, -w/2, -h/2, w, h, tint, palette_id)
+        self.sprite_loader:drawSprite(fallback_icon, -w/2, -h/2, w, h, fallback_tint, palette_id)
         love.graphics.pop()
         return false
     end

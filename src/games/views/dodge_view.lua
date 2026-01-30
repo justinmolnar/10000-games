@@ -2,17 +2,14 @@ local GameBaseView = require('src.games.views.game_base_view')
 local DodgeView = GameBaseView:extend('DodgeView')
 
 function DodgeView:init(game_state, variant)
-    DodgeView.super.init(self, game_state, variant, {
-        background_tiled = true,
-        background_starfield = true
-    })
+    DodgeView.super.init(self, game_state, variant)
 
     -- Game-specific view config
     self.OBJECT_DRAW_SIZE = game_state.OBJECT_SIZE or 15
     local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.dodge and self.di.config.games.dodge.view) or {})
     self.bg_color = cfg.bg_color or {0.08, 0.05, 0.1}
 
-    -- Starfield background config
+    -- Starfield background
     local sf = cfg.starfield or { count = 180, speed_min = 20, speed_max = 100, size_divisor = 60 }
     self.stars = {}
     for i = 1, (sf.count or 180) do
@@ -23,17 +20,6 @@ function DodgeView:init(game_state, variant)
         })
     end
     self.star_size_divisor = sf.size_divisor or 60
-
-    -- Configure extra stats for HUD
-    game_state.hud:setExtraStats({
-        {label = "Dodged", key = "metrics.objects_dodged", total_key = "dodge_target"},
-        {label = "Combo", key = "metrics.combo", show_if_positive = true, color = {0.2, 1, 0.2}},
-        {label = "Shield",
-            value_fn = function(g) return g.health_system:getShieldHitsRemaining() .. "/" .. g.params.shield end,
-            color_fn = function(g) return g.health_system:isShieldActive() and {0.5, 0.5, 1} or {0.5, 0.5, 0.5} end,
-            show_fn = function(g) return g.params.shield and g.params.shield > 0 end},
-        {label = "Difficulty", key = "difficulty_level"},
-    })
 end
 
 function DodgeView:drawContent()
@@ -48,9 +34,10 @@ function DodgeView:drawContent()
     g.push()
     game.visual_effects:applyCameraShake()
 
-    g.setColor(self.bg_color[1], self.bg_color[2], self.bg_color[3])
-    g.rectangle('fill', 0, 0, game_width, game_height)
-    self:drawBackground(game_width, game_height)
+    self:drawBackgroundSolid(game_width, game_height)
+    if self.stars then
+        self:drawBackgroundStarfield(game_width, game_height)
+    end
 
     -- Safe zone ring (shape-aware)
     if game.arena_controller then
@@ -145,25 +132,16 @@ function DodgeView:drawContent()
         game.player_trail:draw()
     end
 
-    -- Draw player (sprite or fallback to icon)
-    local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
-    local paletteManager = self.di and self.di.paletteManager
-
-    -- Get tint for this variant based on config
-    local tint = {1, 1, 1}  -- Default: no tint
-    local config = (self.di and self.di.config) or Config
-    if paletteManager and config and config.games and config.games.dodge then
-        tint = paletteManager:getTintForVariant(self.variant, "DodgeGame", config.games.dodge)
-    end
+    -- Draw player
+    local game_config = self.di and self.di.config and self.di.config.games and self.di.config.games.dodge
+    local tint = self:getTint("DodgeGame", game_config)
 
     local player_size = game.player.radius * 2
     local player_rotation = game.player.rotation or 0
     local player_fallback = game.data.icon_sprite or "game_solitaire-0"
     self:drawEntityCentered(game.player.x, game.player.y, player_size, player_size, "player", player_fallback, {
         rotation = player_rotation,
-        tint = tint,
-        use_palette = true,
-        palette_id = palette_id
+        tint = tint
     })
 
     -- Draw shield visual
@@ -238,8 +216,6 @@ function DodgeView:drawContent()
         local size = obj.radius * 2
         self:drawEntityCentered(obj.x, obj.y, size, size, sprite_key, fallback_icon, {
             rotation = rotation,
-            use_palette = true,
-            palette_id = palette_id,
             fallback_tint = fallback_tint
         })
 
@@ -247,25 +223,16 @@ function DodgeView:drawContent()
     end
 
     -- Fog of war overlay (after all game elements, before closing transform)
-    if game.fog_controller then
-        local fog = game.fog_controller
-        fog:clearSources()
-
-        local fog_origin = game.params.fog_of_war_origin
-        local fog_radius = game.params.fog_of_war_radius
-        if fog_origin and fog_origin ~= "none" and fog_radius < 9999 then
-            local fog_x, fog_y
-            if fog_origin == "player" then
-                fog_x, fog_y = game.player.x, game.player.y
-            elseif (fog_origin == "circle_center" or fog_origin == "center") and game.arena_controller then
-                fog_x, fog_y = game.arena_controller.x, game.arena_controller.y
-            else
-                fog_x, fog_y = game_width / 2, game_height / 2
-            end
-
-            fog:addVisibilitySource(fog_x, fog_y, fog_radius)
-            fog:render(game_width, game_height)
+    local fog_origin = game.params.fog_of_war_origin
+    local fog_radius = game.params.fog_of_war_radius
+    if fog_origin and fog_origin ~= "none" and fog_radius and fog_radius < 9999 then
+        local sources = {}
+        if fog_origin == "player" then
+            table.insert(sources, game.player)
+        elseif fog_origin == "circle_center" or fog_origin == "center" then
+            table.insert(sources, game.arena_controller or {x = game_width/2, y = game_height/2})
         end
+        self:renderFog(game_width, game_height, sources, fog_radius)
     end
 
     -- Close camera shake transform
@@ -273,7 +240,18 @@ function DodgeView:drawContent()
 
     -- Standard HUD - NOT affected by camera shake
     game.hud:draw(game_width, game_height)
-    game.hud:drawExtraStats(game_width, game_height)
+
+    -- Extra stats
+    local y = 90
+    y = game.hud:drawStat("Dodged", math.floor(game.metrics.objects_dodged) .. "/" .. math.floor(game.dodge_target), y)
+    if game.metrics.combo > 0 then
+        y = game.hud:drawStat("Combo", game.metrics.combo, y, {0.2, 1, 0.2})
+    end
+    if game.params.shield and game.params.shield > 0 then
+        local shield_color = game.health_system:isShieldActive() and {0.5, 0.5, 1} or {0.5, 0.5, 0.5}
+        y = game.hud:drawStat("Shield", game.health_system:getShieldHitsRemaining() .. "/" .. game.params.shield, y, shield_color)
+    end
+    y = game.hud:drawStat("Difficulty", game.difficulty_level, y)
 end
 
 return DodgeView

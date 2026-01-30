@@ -13,20 +13,6 @@ function MemoryMatchView:init(game_state, variant)
     self.start_x = game_state.start_x
     self.start_y = game_state.start_y
     self.grid_size = game_state.grid_size
-
-    -- Configure extra stats (simple ones - memorize phase and chain handled inline)
-    game_state.hud:setExtraStats({
-        {label = "Perfect", key = "metrics.perfect", color = {0.5, 1, 0.5},
-            show_fn = function(g) return g.params.perfect_bonus > 0 and g.metrics.perfect > 0 end},
-        {label = "Time Left", value_fn = function(g) return string.format("%.1f", g.time_remaining) end,
-            color_fn = function(g) return g.time_remaining < 10 and {1, 0.3, 0.3} or {1, 1, 0.5} end,
-            show_fn = function(g) return g.params.time_limit > 0 end},
-        {label = "Moves Left", value_fn = function(g) return g.params.move_limit - g.moves_made end,
-            color_fn = function(g) return (g.params.move_limit - g.moves_made) < 5 and {1, 0.3, 0.3} or {1, 1, 1} end,
-            show_fn = function(g) return g.params.move_limit > 0 end},
-        {label = "Combo", value_fn = function(g) return "x" .. g.current_combo end, color = {0.2, 1, 0.2},
-            show_fn = function(g) return g.params.combo_multiplier > 0 and g.current_combo > 0 end},
-    })
 end
 
 function MemoryMatchView:drawContent()
@@ -40,10 +26,8 @@ function MemoryMatchView:drawContent()
         self:drawDistractionParticles()
     end
 
-    -- Use variant palette if available
-    local palette_id = (self.variant and self.variant.palette) or self.sprite_manager:getPaletteId(game.data)
+    local palette_id = self:getPaletteId()
     local card_sprite_fallback = game.data.icon_sprite or "game_freecell-0"
-    local paletteManager = self.di and self.di.paletteManager
 
     -- Get mouse position for fog of war (tracked by fog_controller)
     local mouse_x, mouse_y = 0, 0
@@ -176,29 +160,40 @@ function MemoryMatchView:drawContent()
     
     game.hud:draw(game.game_width, game.game_height)
 
-    -- Complex stats (memorize phase, chain) handled inline; simple stats via extra_stats
+    -- Extra stats
     if not game.vm_render_mode then
-        local s = 0.85
-        local lx = 10
-        local hud_y = 90
+        local y = 90
 
-        -- Memorize phase indicator (special - larger scale, timer function)
+        -- Memorize phase indicator
         if game.memorize_phase then
             love.graphics.setColor(1, 1, 0)
-            love.graphics.print("MEMORIZING: " .. string.format("%.1f", game.memorize_timer:getRemaining()) .. "s", lx, hud_y, 0, 1.2, 1.2)
-            hud_y = hud_y + 25
+            love.graphics.print("MEMORIZING: " .. string.format("%.1f", game.memorize_timer:getRemaining()) .. "s", 10, y, 0, 1.2, 1.2)
+            y = y + 25
             love.graphics.setColor(1, 1, 1)
         end
 
-        -- Simple stats via extra_stats system
-        local extra_height = game.hud:drawExtraStats(game.game_width, game.game_height)
-        hud_y = hud_y + extra_height
+        -- Stats
+        if game.params.perfect_bonus > 0 and game.metrics.perfect > 0 then
+            y = game.hud:drawStat("Perfect", game.metrics.perfect, y, {0.5, 1, 0.5})
+        end
+        if game.params.time_limit > 0 then
+            local time_color = game.time_remaining < 10 and {1, 0.3, 0.3} or {1, 1, 0.5}
+            y = game.hud:drawStat("Time Left", string.format("%.1f", game.time_remaining), y, time_color)
+        end
+        if game.params.move_limit > 0 then
+            local moves_left = game.params.move_limit - game.moves_made
+            local move_color = moves_left < 5 and {1, 0.3, 0.3} or {1, 1, 1}
+            y = game.hud:drawStat("Moves Left", moves_left, y, move_color)
+        end
+        if game.params.combo_multiplier > 0 and game.current_combo > 0 then
+            y = game.hud:drawStat("Combo", "x" .. game.current_combo, y, {0.2, 1, 0.2})
+        end
 
-        -- Chain requirement (special - two lines)
+        -- Chain requirement
         if game.params.chain_requirement > 0 and game.chain_target then
             love.graphics.setColor(1, 1, 0.2)
-            love.graphics.print("Find: " .. game.chain_target, lx, hud_y, 0, s, s)
-            love.graphics.print("Chain: " .. game.chain_progress .. "/" .. game.params.chain_requirement, lx, hud_y + 15, 0, s * 0.8, s * 0.8)
+            love.graphics.print("Find: " .. game.chain_target, 10, y, 0, 0.85, 0.85)
+            love.graphics.print("Chain: " .. game.chain_progress .. "/" .. game.params.chain_requirement, 10, y + 15, 0, 0.68, 0.68)
             love.graphics.setColor(1, 1, 1)
         end
     end

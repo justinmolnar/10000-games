@@ -3,13 +3,6 @@ local BreakoutView = GameBaseView:extend('BreakoutView')
 
 function BreakoutView:init(game)
     BreakoutView.super.init(self, game, nil)
-
-    -- Configure extra stats (simple ones - powerup loop handled inline)
-    game.hud:setExtraStats({
-        {label = "Combo", key = "combo", show_if_positive = true, color = {0.2, 1, 0.2}},
-        {label = "SHIELD ACTIVE", value_fn = function() return "" end, color = {0, 1, 1},
-            show_fn = function(g) return g.shield_active end},
-    })
 end
 
 function BreakoutView:drawContent()
@@ -206,56 +199,32 @@ function BreakoutView:drawContent()
 
     -- Draw fog of war
     if self.game.params.fog_of_war_enabled then
-        self:drawFogOfWar()
+        local sources = {self.game.paddle}
+        for _, ball in ipairs(self.game.balls) do
+            if ball.active then table.insert(sources, ball) end
+        end
+        self:renderFog(self.game.arena_width, self.game.arena_height, sources, self.game.params.fog_of_war_radius)
     end
 
     love.graphics.pop()  -- End camera shake transform
 
     -- Standard HUD - NOT affected by camera shake or fog
     self.game.hud:draw(self.game.arena_width, self.game.arena_height)
-    local extra_height = self.game.hud:drawExtraStats(self.game.arena_width, self.game.arena_height)
 
-    -- Active power-ups (complex loop - handled inline)
-    local y_offset = 90 + extra_height
+    -- Extra stats
+    local y = 90
+    if self.game.combo > 0 then
+        y = self.game.hud:drawStat("Combo", self.game.combo, y, {0.2, 1, 0.2})
+    end
+    if self.game.shield_active then
+        y = self.game.hud:drawStat("SHIELD ACTIVE", "", y, {0, 1, 1})
+    end
+
+    -- Active power-ups
     for powerup_type, effect in pairs(self.game.active_powerups) do
         local time_left = math.ceil(effect.duration_remaining)
-        love.graphics.setColor(1, 1, 0)
-        love.graphics.print(powerup_type:upper():gsub("_", " ") .. ": " .. time_left .. "s", 10, y_offset)
-        y_offset = y_offset + 18
+        y = self.game.hud:drawStat(powerup_type:upper():gsub("_", " "), time_left .. "s", y, {1, 1, 0})
     end
-    love.graphics.setColor(1, 1, 1)
-end
-
-function BreakoutView:drawFogOfWar()
-    -- Use FogOfWar component (stencil mode)
-    local fog = self.game.fog_controller
-    if _G.DEBUG_FOG then
-        print(string.format("[BreakoutView] drawFogOfWar() called, fog_controller=%s", tostring(fog ~= nil)))
-        if fog then
-            print(string.format("[BreakoutView] fog.enabled=%s, fog.mode=%s", tostring(fog.enabled), tostring(fog.mode)))
-        end
-    end
-
-    if not fog then return end
-
-    fog:clearSources()
-
-    -- Add visibility around each ball
-    for _, ball in ipairs(self.game.balls) do
-        if ball.active then
-            fog:addVisibilitySource(ball.x, ball.y, self.game.params.fog_of_war_radius)
-        end
-    end
-
-    -- Add visibility around paddle
-    fog:addVisibilitySource(self.game.paddle.x, self.game.paddle.y, self.game.params.fog_of_war_radius)
-
-    if _G.DEBUG_FOG then
-        print(string.format("[BreakoutView] About to call fog:render() with %d sources", #fog.visibility_sources))
-    end
-
-    -- Render fog
-    fog:render(self.game.arena_width, self.game.arena_height)
 end
 
 return BreakoutView

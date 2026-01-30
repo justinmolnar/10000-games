@@ -531,16 +531,36 @@ Standardize fog of war rendering across the 4 views that use it.
 
 
 ### AI Notes
+- Added simple `renderFog(width, height, sources, radius)` helper to GameBaseView (8 lines)
+- Takes position array, doesn't know about game-specific entity types
+- Views decide when to render, build their own source list, pass their own radius
+- Updated breakout_view, snake_view, dodge_view with inline fog logic + renderFog call
+- memory_match_view unchanged (mouse spotlight with per-card alpha - different pattern)
 
+Also cleaned up over-engineering from previous phases:
+- getTint: Removed path traversal, takes config directly
+- drawBackground: Removed config flag dispatcher (background_tiled, etc), simple sprite-or-solid
+- drawEntity*: Removed use_palette/palette_id options, always uses palette if available
+- HUD: Replaced DSL (setExtraStats with key/value_fn/show_fn/color_fn) with simple drawStat() helper
+- All views updated to use explicit calls instead of config-driven behavior
 
 ### Status
-Not started
+Complete
 
 ### Line Count Change
-
+- game_base_view: 352 → 322 lines (-30)
+- breakout_view: 261 → 230 lines (-31)
+- snake_view: 456 → 425 lines (-31)
+- dodge_view: 278 → 256 lines (-22)
+- hidden_object_view: 48 → 44 lines (-4)
+- memory_match_view: 243 → 238 lines (-5)
+- space_shooter_view: 252 → 246 lines (-6)
+- coin_flip_view: 138 → 137 lines (-1)
+- hud_renderer: 383 → 311 lines (-72)
+- **Net change:** -191 lines (cleanup + fog standardization)
 
 ### Deviation from Plan
-
+None
 
 ---
 

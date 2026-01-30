@@ -3,17 +3,6 @@ local CoinFlipView = GameBaseView:extend('CoinFlipView')
 
 function CoinFlipView:init(game)
     CoinFlipView.super.init(self, game, nil)
-
-    -- Configure extra stats
-    game.hud:setExtraStats({
-        {label = "Target Streak", key = "params.streak_target"},
-        {label = "Max Streak", key = "max_streak"},
-        {label = "Total Flips", key = "flips_total"},
-        {label = "Correct", key = "correct_total"},
-        {label = "Wrong", key = "incorrect_total"},
-        {label = "Accuracy", value_fn = function(g) return math.floor(g.metrics.accuracy * 100) .. "%" end,
-            show_fn = function(g) return g.flips_total > 0 end},
-    })
 end
 
 function CoinFlipView:drawContent()
@@ -29,7 +18,17 @@ function CoinFlipView:drawContent()
     self.game.popup_manager:draw()
     self.game.visual_effects:drawParticles()
     self.game.hud:draw(w, h)
-    local extra_height = self.game.hud:drawExtraStats(w, h)
+
+    -- Extra stats
+    local y = 90
+    y = self.game.hud:drawStat("Target Streak", self.game.params.streak_target, y)
+    y = self.game.hud:drawStat("Max Streak", self.game.max_streak, y)
+    y = self.game.hud:drawStat("Total Flips", self.game.flips_total, y)
+    y = self.game.hud:drawStat("Correct", self.game.correct_total, y)
+    y = self.game.hud:drawStat("Wrong", self.game.incorrect_total, y)
+    if self.game.flips_total > 0 then
+        y = self.game.hud:drawStat("Accuracy", math.floor(self.game.metrics.accuracy * 100) .. "%", y)
+    end
 
     -- Title
     love.graphics.setColor(1, 1, 1)
