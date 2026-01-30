@@ -7,10 +7,11 @@ Master list of all functions in `src/utils/game_components/`. Use this before cr
 ## AnimationSystem
 Timer-based animation helpers.
 
-- **createFlipAnimation(config)** - Rotation-based flip (coins, cards). Returns object with start/update/getRotation/isActive/reset.
+- **createFlipAnimation(config)** - Rotation-based flip (coins). Returns object with start/update/getRotation/isActive/reset.
 - **createBounceAnimation(config)** - Sine-wave bounce (hand throws). Returns object with start/update/getOffset/isActive/reset.
 - **createFadeAnimation(config)** - Alpha fade animation. Returns object with start/update/getAlpha/isActive/reset.
-- **createTimer(duration, on_complete)** - Simple countdown timer with callback.
+- **createProgressAnimation(config)** - Bidirectional 0-1 progress (card flips). Config: duration, direction (1/-1), initial. Returns object with start(dir)/update/getProgress/isActive/reset.
+- **createTimer(duration, on_complete)** - Simple countdown timer with callback. Returns object with start/update/getRemaining/getProgress/isActive/reset.
 
 ---
 
@@ -22,6 +23,8 @@ Visibility system with stencil or alpha modes.
 - **addVisibilitySource(x, y, radius)** - Add circular visible area.
 - **render(arena_width, arena_height)** - Draw fog overlay with stencil cutouts.
 - **calculateAlpha(entity_x, entity_y, fog_center_x, fog_center_y)** - Get alpha multiplier based on distance (for alpha mode).
+- **updateMousePosition(x, y)** - Store mouse position in viewport coordinates (call from mousemoved).
+- **getMousePosition()** - Retrieve stored mouse position for alpha calculations.
 - **update(dt)** - Update fog state (call each frame).
 
 ---
@@ -361,6 +364,7 @@ Generic enemy/obstacle spawning and management with pooling.
 - **getActiveCount()** / **getTotalCount()** - Get counts.
 - **getEntities()** - Get all active entities.
 - **getEntitiesByType(type_name)** - Get entities of specific type.
+- **forEachByType(type_name, fn)** - Apply function to each entity of type. More efficient than getEntitiesByType + loop.
 - **getEntitiesByCategory(category)** - Get entities where entity.category matches.
 - **getEntitiesByFilter(filter_fn)** - Get entities where filter_fn(entity) returns true.
 - **findNearest(x, y, filter)** - Find nearest entity. Returns entity, distance.
@@ -483,6 +487,7 @@ Base class for all minigames. Provides common state, fixed timestep, demo playba
 - **loadAudio()** - Load music and SFX from variant.
 - **playMusic()** / **stopMusic()** - Music control.
 - **playSound(action, volume)** - Play SFX from loaded pack.
+- **speak(text)** - TTS speak text with weirdness config from di.config.tts.weirdness.
 
 ---
 

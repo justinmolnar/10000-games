@@ -1565,6 +1565,17 @@ function EntityController:getEntitiesByType(type_name)
 end
 
 --[[
+    Apply function to each entity of a type
+]]
+function EntityController:forEachByType(type_name, fn)
+    for _, entity in ipairs(self.entities) do
+        if entity.active and entity.type_name == type_name and not entity.marked_for_removal then
+            fn(entity)
+        end
+    end
+end
+
+--[[
     Get all entities matching a category (entities with entity.category == category)
     Useful when multiple entity types share a category (e.g., food_normal, food_bad, food_golden all have category "food")
 ]]

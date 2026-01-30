@@ -94,18 +94,9 @@ function MemoryMatchView:draw()
             draw_y = start_pos.y + (y - start_pos.y) * eased_progress
         end
 
-        -- Determine face up/down based on flip state
-        local face_up = false
-        if game.memorize_phase or game.matched_pairs[card.value] or card.is_selected then
-            face_up = true
-        end
-
-        -- Override with flip animation state
-        if card.flip_state == "face_up" or card.flip_state == "flipping_up" then
-            face_up = true
-        elseif card.flip_state == "face_down" or card.flip_state == "flipping_down" then
-            face_up = false
-        end
+        -- Determine face up/down based on flip animation progress
+        local flip_progress = card.flip_anim:getProgress()
+        local face_up = flip_progress >= 0.5
 
         -- Fog of war: Calculate alpha for ALL cards based on distance from spotlight
         -- Calculate fog alpha using FogOfWar component
@@ -124,20 +115,10 @@ function MemoryMatchView:draw()
 
         -- Apply Y-axis flip rotation based on flip_progress
         -- Scale X by cos(progress * PI) to simulate 3D flip
-        local flip_scale = 1
-        if card.flip_state == "flipping_up" then
-            local flip_angle = card.flip_progress * math.pi
-            flip_scale = math.abs(math.cos(flip_angle))
-            -- Flipping UP: progress 0→1, angle 0→π
-            -- Show back (face_up=false) until π/2, then show face (face_up=true)
-            face_up = (flip_angle >= math.pi / 2)
-        elseif card.flip_state == "flipping_down" then
-            local flip_angle = card.flip_progress * math.pi
-            flip_scale = math.abs(math.cos(flip_angle))
-            -- Flipping DOWN: progress 1→0, angle π→0
-            -- Show face (face_up=true) until π/2, then show back (face_up=false)
-            face_up = (flip_angle > math.pi / 2)
-        end
+        local flip_angle = flip_progress * math.pi
+        local flip_scale = math.abs(math.cos(flip_angle))
+        -- Show face (face_up=true) when angle >= π/2 (progress >= 0.5)
+        face_up = (flip_angle >= math.pi / 2)
 
         love.graphics.scale(flip_scale, 1)
         love.graphics.translate(-game.CARD_WIDTH/2, -game.CARD_HEIGHT/2)
@@ -209,7 +190,7 @@ function MemoryMatchView:draw()
         -- Memorize phase indicator
         if game.memorize_phase then
             love.graphics.setColor(1, 1, 0)
-            love.graphics.print("MEMORIZING: " .. string.format("%.1f", game.memorize_timer) .. "s", lx, hud_y, 0, 1.2, 1.2)
+            love.graphics.print("MEMORIZING: " .. string.format("%.1f", game.memorize_timer:getRemaining()) .. "s", lx, hud_y, 0, 1.2, 1.2)
             hud_y = hud_y + 25
             love.graphics.setColor(1, 1, 1)
         end

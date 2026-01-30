@@ -866,15 +866,25 @@ Delete entirely. Inherit from BaseGame:draw(). 5 lines → 0 lines.
 
 
 ### AI Notes
-
+- updateGameLogic: All timers now use AnimationSystem.createTimer() with callbacks
+- updateGameLogic: Flip animations now use AnimationSystem.createProgressAnimation() on each card
+- updateGameLogic: Gravity physics uses PhysicsUtils.applyGravity() and PhysicsUtils.move()
+- updateGameLogic: Bounds handling kept inline (corner-based coordinates, 6 lines)
+- onMatchSuccess: TTS uses BaseGame:speak() helper
+- draw: Already deleted (inherits from BaseGame, done in Phase 2)
+- updateGravityPhysics: Deleted, integrated into updateGameLogic with PhysicsUtils
+- Added AnimationSystem.createProgressAnimation() for bidirectional 0-1 progress animations
+- Cards now store flip_anim (AnimationSystem animation) instead of flip_state/flip_progress
+- View updated to use flip_anim:getProgress() and memorize_timer:getRemaining()
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+536 → 511 lines (25 line reduction, 5%)
 
 ### Deviation from Plan
+- Bounds handling kept inline (6 lines) instead of using PhysicsUtils.handleBounds() because handleBounds uses center-based positioning while cards use corner-based. PhysicsUtils.applyGravity() and move() are used for gravity and movement.
 
 
 ---

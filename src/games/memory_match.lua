@@ -27,6 +27,7 @@ end
 
 function MemoryMatch:setupEntities()
     local p = self.params
+    local AnimationSystem = self.di.components.AnimationSystem
 
     -- Game dimensions
     self.game_width = p.arena_base_width
@@ -36,13 +37,13 @@ function MemoryMatch:setupEntities()
     local match_req = p.match_requirement
     local total_cards
     if p.card_count > 0 then
-        total_cards = p.card_count - (p.card_count % match_req)  -- Ensure divisible by match_requirement
+        total_cards = p.card_count - (p.card_count % match_req)
         self.total_pairs = total_cards / match_req
     else
         self.total_pairs = math.floor(6 * self.difficulty_modifiers.complexity * p.difficulty_modifier)
         total_cards = self.total_pairs * match_req
     end
-    p.max_icons = self.total_pairs  -- For BaseGame:loadAssets()
+    p.max_icons = self.total_pairs
 
     -- Grid layout
     if p.columns == 0 then
@@ -53,26 +54,44 @@ function MemoryMatch:setupEntities()
         self.grid_rows = math.ceil(total_cards / p.columns)
     end
 
-    -- Compute memorize timer with difficulty scaling
-    local speed_mod = self.cheats.speed_modifier or 1.0
-    local time_bonus_mult = 1.0 + (1.0 - speed_mod)
-    self.memorize_timer = p.memorize_time > 0 and
-        ((p.memorize_time / self.difficulty_modifiers.time_limit) * time_bonus_mult) / p.difficulty_modifier or 0
-
-    -- Runtime state (changes during gameplay)
-    self.memorize_phase = p.memorize_time > 0
+    -- Runtime state
     self.matched_pairs = {}
-    self.match_check_timer = 0
-    self.shuffle_timer = p.auto_shuffle_interval
     self.current_combo = 0
     self.chain_progress = 0
     self.chain_target = nil
     self.moves_made = 0
     self.time_remaining = p.time_limit
-
-    -- UI state
     self.match_announcement = nil
-    self.match_announcement_timer = 0
+
+    -- Compute memorize duration with difficulty scaling
+    local speed_mod = self.cheats.speed_modifier or 1.0
+    local time_bonus_mult = 1.0 + (1.0 - speed_mod)
+    local memorize_duration = p.memorize_time > 0 and
+        ((p.memorize_time / self.difficulty_modifiers.time_limit) * time_bonus_mult) / p.difficulty_modifier or 0
+
+    -- Create timers via AnimationSystem
+    self.memorize_phase = p.memorize_time > 0
+    self.memorize_timer = AnimationSystem.createTimer(memorize_duration, function()
+        self.memorize_phase = false
+        self.time_elapsed = 0
+        self.entity_controller:forEachByType("card", function(card)
+            card.flip_anim:start(-1)  -- Flip down
+        end)
+    end)
+    if self.memorize_phase then self.memorize_timer:start() end
+
+    self.match_check_timer = AnimationSystem.createTimer(p.reveal_duration, function()
+        self:checkMatch()
+    end)
+
+    self.shuffle_timer = AnimationSystem.createTimer(p.auto_shuffle_interval, function()
+        self:startShuffle()
+        self.shuffle_timer:start()
+    end)
+
+    self.announcement_timer = AnimationSystem.createTimer(2.0, function()
+        self.match_announcement = nil
+    end)
 
     -- Metrics
     self.metrics.matches = 0
@@ -81,7 +100,7 @@ function MemoryMatch:setupEntities()
     self.metrics.moves = 0
     self.metrics.score = 0
 
-    -- Select initial chain target if chain mode (random value 1 to total_pairs)
+    -- Select initial chain target if chain mode
     if p.chain_requirement > 0 then
         self.chain_target = math.random(self.total_pairs)
     end
@@ -134,6 +153,11 @@ function MemoryMatch:setupComponents()
 
     -- Create cards after EntityController is set up
     self:createCards(self.total_pairs)
+
+    -- Start auto-shuffle timer if enabled
+    if self.params.auto_shuffle_interval > 0 then
+        self.shuffle_timer:start()
+    end
 end
 
 function MemoryMatch:setPlayArea(width, height)
@@ -184,16 +208,12 @@ end
 
 function MemoryMatch:createCards(pairs_count)
     local p = self.params
+    local AnimationSystem = self.di.components.AnimationSystem
     local spacing = p.card_spacing
     local card_index = 0
 
     for i = 1, pairs_count do
         for j = 1, p.match_requirement do
-            -- Cards start face up during memorize phase
-            local initial_flip_state = self.memorize_phase and "face_up" or "face_down"
-            local initial_flip_progress = self.memorize_phase and 1 or 0
-
-            -- Initial position (will be repositioned after shuffle)
             local row = math.floor(card_index / self.grid_cols)
             local col = card_index % self.grid_cols
             local init_x = self.start_x + col * (self.CARD_WIDTH + spacing)
@@ -208,13 +228,18 @@ function MemoryMatch:createCards(pairs_count)
                 init_vy = math.random() * 100
             end
 
+            -- Create flip animation for this card
+            local flip_anim = AnimationSystem.createProgressAnimation({
+                duration = p.flip_speed,
+                initial = self.memorize_phase and 1 or 0
+            })
+
             self.entity_controller:spawn("card", init_x, init_y, {
                 value = i,
                 icon_id = i,
                 grid_index = card_index,
                 attempts = {},
-                flip_state = initial_flip_state,
-                flip_progress = initial_flip_progress,
+                flip_anim = flip_anim,
                 is_selected = false,
                 vx = init_vx,
                 vy = init_vy,
@@ -246,42 +271,25 @@ end
 --------------------------------------------------------------------------------
 
 function MemoryMatch:updateGameLogic(dt)
-    local cards = self.entity_controller:getEntitiesByType("card")
+    local p = self.params
+    local PhysicsUtils = self.di.components.PhysicsUtils
 
-    if self.memorize_phase then
-        self.memorize_timer = self.memorize_timer - dt
-        if self.memorize_timer <= 0 then
-            self.memorize_phase = false
-            self.time_elapsed = 0
+    -- Update timers (callbacks fire automatically)
+    self.memorize_timer:update(dt)
+    self.match_check_timer:update(dt)
+    self.announcement_timer:update(dt)
 
-            for _, card in ipairs(cards) do
-                card.flip_state = "flipping_down"
-                card.flip_progress = 1
-            end
-        end
-    else
+    if not self.memorize_phase then
         self.metrics.time = self.time_elapsed
 
-        -- Update match announcement timer
-        if self.match_announcement_timer > 0 then
-            self.match_announcement_timer = self.match_announcement_timer - dt
-            if self.match_announcement_timer <= 0 then
-                self.match_announcement = nil
-            end
-        end
-
-        -- Time limit countdown (VictoryCondition handles loss check)
-        if self.params.time_limit > 0 then
+        -- Time limit countdown
+        if p.time_limit > 0 then
             self.time_remaining = math.max(0, self.time_remaining - dt)
         end
 
         -- Auto-shuffle timer
-        if self.params.auto_shuffle_interval > 0 and not self.entity_controller:isGridShuffling() then
-            self.shuffle_timer = self.shuffle_timer - dt
-            if self.shuffle_timer <= 0 then
-                self:startShuffle()
-                self.shuffle_timer = self.params.auto_shuffle_interval
-            end
+        if p.auto_shuffle_interval > 0 and not self.entity_controller:isGridShuffling() then
+            self.shuffle_timer:update(dt)
         end
 
         -- Shuffle animation update
@@ -289,60 +297,35 @@ function MemoryMatch:updateGameLogic(dt)
             self:completeShuffle()
         end
 
-        -- Update flip animations for all cards
-        for _, card in ipairs(cards) do
-            if card.flip_state == "flipping_up" then
-                card.flip_progress = math.min(1, card.flip_progress + dt / self.params.flip_speed)
-                if card.flip_progress >= 1 then
-                    card.flip_state = "face_up"
-                    card.flip_progress = 1
+        -- Update flip animations and gravity physics for all cards
+        local matched = self.matched_pairs
+        local gravity, floor_bounce = p.gravity_accel, p.floor_bounce
+        local floor_y = self.game_height - self.CARD_HEIGHT
+        local game_width, card_width = self.game_width, self.CARD_WIDTH
+
+        self.entity_controller:forEachByType("card", function(card)
+            card.flip_anim:update(dt)
+
+            -- Gravity physics
+            if p.gravity_enabled and not matched[card.value] then
+                PhysicsUtils.applyGravity(card, gravity, 90, dt)
+                PhysicsUtils.move(card, dt)
+
+                -- Bounds (corner-based)
+                if card.y >= floor_y then
+                    card.y = floor_y
+                    card.vy = card.vy * -floor_bounce
+                    if math.abs(card.vy) < 10 then card.vy = 0 end
                 end
-            elseif card.flip_state == "flipping_down" then
-                card.flip_progress = math.max(0, card.flip_progress - dt / self.params.flip_speed)
-                if card.flip_progress <= 0 then
-                    card.flip_state = "face_down"
-                    card.flip_progress = 0
-                end
-            end
-        end
-
-        -- Gravity physics
-        if self.params.gravity_enabled then
-            local gravity = self.params.gravity_accel
-            local bounce = self.params.floor_bounce
-
-            for _, card in ipairs(cards) do
-                if not self.matched_pairs[card.value] then
-                    card.vy = card.vy + gravity * dt
-                    card.x = card.x + card.vx * dt
-                    card.y = card.y + card.vy * dt
-
-                    local floor_y = self.game_height - self.CARD_HEIGHT
-                    if card.y >= floor_y then
-                        card.y = floor_y
-                        card.vy = card.vy * -bounce
-                        if math.abs(card.vy) < 10 then
-                            card.vy = 0
-                        end
-                    end
-
-                    if card.x < 0 then
-                        card.x = 0
-                        card.vx = card.vx * -0.5
-                    elseif card.x + self.CARD_WIDTH > self.game_width then
-                        card.x = self.game_width - self.CARD_WIDTH
-                        card.vx = card.vx * -0.5
-                    end
+                if card.x < 0 then
+                    card.x = 0
+                    card.vx = card.vx * -0.5
+                elseif card.x + card_width > game_width then
+                    card.x = game_width - card_width
+                    card.vx = card.vx * -0.5
                 end
             end
-        end
-
-        if self.match_check_timer > 0 then
-            self.match_check_timer = self.match_check_timer - dt
-            if self.match_check_timer <= 0 then
-                self:checkMatch()
-            end
-        end
+        end)
     end
 end
 
@@ -389,14 +372,8 @@ function MemoryMatch:onMatchSuccess(matched_value, selected)
     if self.icon_filenames and self.icon_filenames[matched_value] then
         local filename = self.icon_filenames[matched_value]
         self.match_announcement = filename:upper() .. "!"
-        self.match_announcement_timer = 2.0
-
-        -- Speak the match via TTS
-        if self.di and self.di.ttsManager then
-            local tts = self.di.ttsManager
-            local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
-            tts:speakWeird(filename, weirdness)
-        end
+        self.announcement_timer:start()
+        self:speak(filename)
     end
 
     -- Check for perfect match and apply bonus
@@ -447,16 +424,13 @@ end
 function MemoryMatch:onMatchFailure(selected)
     self.current_combo = 0
 
-    -- Apply mismatch penalty (inline from applyMismatchPenalty)
     local p = self.params
-    if p.mismatch_penalty > 0 then
-        if p.time_limit > 0 then
-            self.time_remaining = math.max(0, self.time_remaining - p.mismatch_penalty)
-        end
+    if p.mismatch_penalty > 0 and p.time_limit > 0 then
+        self.time_remaining = math.max(0, self.time_remaining - p.mismatch_penalty)
     end
 
     for _, card in ipairs(selected) do
-        card.flip_state = "flipping_down"
+        card.flip_anim:start(-1)  -- Flip down
     end
     self:playSound("mismatch", 0.8)
 end
@@ -473,27 +447,24 @@ end
 
 function MemoryMatch:mousepressed(x, y, button)
     local selected_count = #self.entity_controller:getEntitiesByFilter(function(e) return e.is_selected end)
-    if self.memorize_phase or self.match_check_timer > 0 or selected_count >= self.params.match_requirement then return end
+    if self.memorize_phase or self.match_check_timer:isActive() or selected_count >= self.params.match_requirement then return end
 
-    -- Move limit check (VictoryCondition handles loss, just block input)
     if self.params.move_limit > 0 and self.moves_made >= self.params.move_limit then return end
 
-    -- Find clicked card using EntityController hit testing
     local card = self.entity_controller:getEntityAtPoint(x, y, "card")
 
-    if card and not self.matched_pairs[card.value] and not card.is_selected and card.flip_state ~= "flipping_up" then
+    if card and not self.matched_pairs[card.value] and not card.is_selected and not card.flip_anim:isActive() then
         table.insert(card.attempts, self.time_elapsed)
         card.is_selected = true
         self.moves_made = self.moves_made + 1
         self.metrics.moves = self.moves_made
 
-        card.flip_state = "flipping_up"
-        card.flip_progress = 0
+        card.flip_anim:start(1)  -- Flip up
 
         self:playSound("flip_card", 0.7)
 
         if selected_count + 1 == self.params.match_requirement then
-            self.match_check_timer = self.params.reveal_duration
+            self.match_check_timer:start()
         end
     end
 end
@@ -514,7 +485,7 @@ end
 function MemoryMatch:startShuffle()
     local matched_pairs = self.matched_pairs
     local shuffleable = self.entity_controller:getEntitiesByFilter(function(card)
-        return card.flip_state == "face_down"
+        return card.flip_anim:getProgress() == 0  -- Face down
             and not matched_pairs[card.value]
             and not card.is_selected
     end)

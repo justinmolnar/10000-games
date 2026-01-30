@@ -1245,6 +1245,14 @@ function BaseGame:stopMusic()
     end
 end
 
+function BaseGame:speak(text)
+    local tts = self.di and self.di.ttsManager
+    if tts and text then
+        local weirdness = (self.di.config and self.di.config.tts and self.di.config.tts.weirdness) or 1
+        tts:speakWeird(text, weirdness)
+    end
+end
+
 function BaseGame:playSound(action, volume)
     local audioManager = self.di and self.di.audioManager
     if audioManager and self.sfx_pack and action then

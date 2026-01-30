@@ -177,6 +177,55 @@ function AnimationSystem.createFadeAnimation(config)
     return anim
 end
 
+-- Create a bidirectional progress animation (for card flips: 0→1 face up, 1→0 face down)
+function AnimationSystem.createProgressAnimation(config)
+    local anim = {
+        duration = config.duration or 0.5,
+        direction = config.direction or 1,  -- 1 = forward (0→1), -1 = backward (1→0)
+        on_complete = config.on_complete,
+
+        -- State
+        progress = config.initial or 0,
+        active = false
+    }
+
+    function anim:start(dir)
+        if dir then self.direction = dir end
+        self.active = true
+    end
+
+    function anim:update(dt)
+        if not self.active then return end
+
+        self.progress = self.progress + (dt / self.duration) * self.direction
+
+        if self.direction > 0 and self.progress >= 1 then
+            self.progress = 1
+            self.active = false
+            if self.on_complete then self.on_complete(self.direction) end
+        elseif self.direction < 0 and self.progress <= 0 then
+            self.progress = 0
+            self.active = false
+            if self.on_complete then self.on_complete(self.direction) end
+        end
+    end
+
+    function anim:getProgress()
+        return self.progress
+    end
+
+    function anim:isActive()
+        return self.active
+    end
+
+    function anim:reset(initial_progress)
+        self.progress = initial_progress or 0
+        self.active = false
+    end
+
+    return anim
+end
+
 -- Helper: Create a simple timer (for auto-flip, delays, etc.)
 function AnimationSystem.createTimer(duration, on_complete)
     local timer = {
