@@ -274,16 +274,29 @@ Stores viewport dimensions. Prints debug message.
 
 
 ### AI Notes
-
+- Removed WIN_MATRICES constant, moved to schema as win_matrices parameter
+- Fixed requires: 11 → 3 (BaseGame, RPSView, extend)
+- Deleted redundant self.di/self.cheats in init
+- Deleted applyModifiers function - access params directly with difficulty/cheat modifiers applied inline where needed
+- setupGameState simplified: removed nil inits, removed copied params, kept only runtime state
+- setupComponents: uses createComponentsFromSchema() for visual_effects and hud
+- setupComponents: uses createVictoryConditionFromSchema() for victory condition
+- Deleted setupVictoryCondition function - schema defines victory_conditions map
+- Deleted setPlayArea function - inherits from BaseGame
+- Added victory_conditions map to schema with $param references
+- Added components config to schema for visual_effects and hud
+- Fixed all self.rounds_to_win → self.params.rounds_to_win
+- Fixed self.num_opponents → #self.opponents
+- Fixed self.round_result_display_time → self.params.round_result_display_time
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+743 → 628 lines (115 line reduction, 15%)
 
 ### Deviation from Plan
-
+None
 
 ---
 
@@ -471,16 +484,26 @@ Handles round with multiple AI opponents. Iterates opponents, generates choices,
 
 
 ### AI Notes
-
+- Deleted draw function - inherits from BaseGame:draw()
+- Converted manual timers to AnimationSystem.createTimer() (result_timer, removal_timer)
+- Deleted time limit check in updateGameLogic - VictoryCondition time_survival handles it
+- Added key_mappings to schema - keypressed uses schema lookup instead of hardcoded if/elseif
+- Merged playRoundMultipleOpponents into playRound via resolveMultipleOpponents helper
+- Deleted updateMetrics - uses syncMetrics() from BaseGame
+- Deleted checkVictoryCondition and checkComplete - inherits from BaseGame
+- Merged generateAIChoiceForOpponent into generateAIChoice with optional history/pattern params
+- Added helpers: clearDoubleHandsState, onRemovalTimeout, applySpecialRoundRules, resolveMultipleOpponents, updateThrowHistory, showScorePopup, onPerfectGame, handleLifeLoss
+- Simplified onRoundWin, onRoundLose, onRoundTie
+- Updated view to read timer remaining time from timer object
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+628 → 471 lines (157 line reduction, 25%)
 
 ### Deviation from Plan
-
+None
 
 ---
 

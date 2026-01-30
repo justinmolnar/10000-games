@@ -40,6 +40,19 @@
             "default": "rps",
             "description": "Game type: rps (basic), rpsls (lizard/spock), rpsfb (fire/water)"
         },
+        "key_mappings": {
+            "type": "object",
+            "default": {
+                "r": "rock",
+                "p": "paper",
+                "s": "scissors",
+                "l": "lizard",
+                "v": "spock",
+                "f": "fire",
+                "w": "water"
+            },
+            "description": "Key to choice mappings for all game modes"
+        },
         "ai_pattern": {
             "type": "enum",
             "values": ["random", "repeat_last", "counter_player", "pattern_cycle", "mimic_player", "anti_player"],

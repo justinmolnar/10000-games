@@ -151,8 +151,8 @@ function RPSView:draw()
                 love.graphics.print("AI Hands: " .. self.game.ai_left_hand:upper() .. " | " .. self.game.ai_right_hand:upper(), center_x - 100, h - 45, 0, 0.9, 0.9)
             end
 
-            if self.game.params.time_per_removal > 0 then
-                local time_left = math.ceil(self.game.removal_timer)
+            if self.game.params.time_per_removal > 0 and self.game.removal_timer.active then
+                local time_left = math.ceil(self.game.removal_timer.duration - self.game.removal_timer.elapsed)
                 love.graphics.setColor(time_left <= 3 and {1, 0, 0} or {1, 1, 1})
                 love.graphics.print("Time: " .. time_left .. "s", center_x - 40, h - 20)
             end
