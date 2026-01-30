@@ -338,14 +338,23 @@ function BaseGame:updateGameLogic(dt)
 end
 
 -- Resize play area and reposition entities
+-- Games can set self.on_resize callback for custom resize handling
 function BaseGame:setPlayArea(width, height)
     local old_width = self.arena_width
     local offset_x = (width - old_width) / 2
 
     self.arena_width = width
     self.arena_height = height
+    self.game_width = width
+    self.game_height = height
 
-    -- Reposition entities if they exist
+    -- Call resize callback if set (for games needing custom repositioning)
+    if self.on_resize then
+        self.on_resize(width, height)
+        return
+    end
+
+    -- Default: Reposition entities if they exist
     if self.entity_controller then
         for _, entity in ipairs(self.entity_controller:getEntities()) do
             entity.x = entity.x + offset_x

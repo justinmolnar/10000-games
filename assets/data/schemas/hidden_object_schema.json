@@ -94,6 +94,36 @@
             "min": 0.5,
             "max": 3.0,
             "description": "Overall difficulty multiplier"
+        },
+        "scan_directory": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable directory scanning for sprite loading"
+        },
+        "victory_conditions": {
+            "type": "object",
+            "default": {
+                "default": {
+                    "victory": {"type": "threshold", "metric": "objects_found", "target": "$total_objects"},
+                    "loss": {"type": "time_expired", "metric": "time_remaining"},
+                    "check_loss_first": true
+                }
+            },
+            "description": "Victory condition configurations"
+        },
+        "components": {
+            "type": "object",
+            "default": {
+                "hud": {
+                    "type": "HUDRenderer",
+                    "config": {
+                        "primary": {"label": "Found", "key": "objects_found"},
+                        "secondary": {"label": "Remaining", "key": "objects_remaining"},
+                        "timer": {"label": "Time", "key": "time_remaining", "format": "float"}
+                    }
+                }
+            },
+            "description": "Component configurations"
         }
     }
 }

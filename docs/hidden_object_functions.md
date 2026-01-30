@@ -246,16 +246,25 @@ Gets deterministic positions. Gets entities from controller. Updates positions f
 
 
 ### AI Notes
-
+- Reduced requires from 6 to 2 (BaseGame, HiddenObjectView)
+- Removed redundant self.di and self.cheats assignments in init
+- Deleted applyModifiers function - calculate values inline in setupGameState
+- Simplified setupGameState using local p = self.params pattern
+- setupComponents uses createComponentsFromSchema() and createVictoryConditionFromSchema()
+- Deleted loadAssets - inherits from BaseGame:loadAssets() with scan_directory mode
+- Deleted setPlayArea - uses BaseGame on_resize callback instead
+- Deleted regenerateObjects - replaced by on_resize callback calling generateObjects()
+- Added on_resize callback support to BaseGame:setPlayArea() (also updates game_width/game_height)
+- Added scan_directory, victory_conditions, and components to schema
 
 ### Status
-
+Complete
 
 ### Line Count Change
-
+250 → 191 lines (59 line reduction, 24%)
 
 ### Deviation from Plan
-
+None
 
 ---
 

@@ -1,8 +1,4 @@
 local BaseGame = require('src.games.base_game')
-local HUDRenderer = require('src.utils.game_components.hud_renderer')
-local VictoryCondition = require('src.utils.game_components.victory_condition')
-local EntityController = require('src.utils.game_components.entity_controller')
-local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HiddenObjectView = require('src.games.views.hidden_object_view')
 local HiddenObject = BaseGame:extend('HiddenObject')
 
@@ -12,47 +8,45 @@ local HiddenObject = BaseGame:extend('HiddenObject')
 
 function HiddenObject:init(game_data, cheats, di, variant_override)
     HiddenObject.super.init(self, game_data, cheats, di, variant_override)
-    self.di = di
-    self.cheats = cheats or {}
 
-    local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.hidden_object)
+    local SchemaLoader = self.di.components.SchemaLoader
+    local runtimeCfg = self.di.config and self.di.config.games and self.di.config.games.hidden_object
     self.params = SchemaLoader.load(self.variant, "hidden_object_schema", runtimeCfg)
 
-    self:applyModifiers()
     self:setupGameState()
     self:setupComponents()
 
     self.view = HiddenObjectView:new(self, self.variant)
-    self:loadAssets()
-end
-
-function HiddenObject:applyModifiers()
-    self.speed_modifier_value = self.cheats.speed_modifier or 1.0
-    self.time_bonus_multiplier = 1.0 + (1.0 - self.speed_modifier_value)
-    self.variant_difficulty = self.params.difficulty_modifier
+    self:loadAssets()  -- Inherits from BaseGame
 end
 
 function HiddenObject:setupGameState()
-    self.game_width = self.params.arena_width
-    self.game_height = self.params.arena_height
+    local p = self.params
 
-    self.time_limit = ((self.params.time_limit_base / self.difficulty_modifiers.speed) * self.time_bonus_multiplier) / self.variant_difficulty
-    self.total_objects = math.floor(self.params.objects_base * self.difficulty_modifiers.count * self.variant_difficulty)
+    self.game_width = p.arena_width
+    self.game_height = p.arena_height
+
+    local speed_mod = self.cheats and self.cheats.speed_modifier or 1.0
+    local time_bonus_mult = 1.0 + (1.0 - speed_mod)
+    self.time_limit = ((p.time_limit_base / self.difficulty_modifiers.speed) * time_bonus_mult) / p.difficulty_modifier
+    self.total_objects = math.floor(p.objects_base * self.difficulty_modifiers.count * p.difficulty_modifier)
 
     self.time_remaining = self.time_limit
     self.objects_found = 0
     self.objects_remaining = self.total_objects
 
-    self.metrics.objects_found = 0
-    self.metrics.time_bonus = 0
+    self.metrics = {objects_found = 0, time_bonus = 0}
 end
 
 function HiddenObject:setupComponents()
+    local p = self.params
+    local EntityController = self.di.components.EntityController
+
     self.entity_controller = EntityController:new({
         entity_types = {
             ["hidden_object"] = {
-                size = self.params.object_base_size,
-                radius = self.params.object_base_size / 2,
+                size = p.object_base_size,
+                radius = p.object_base_size / 2,
                 found = false,
                 on_hit = function(entity)
                     entity.found = true
@@ -68,74 +62,21 @@ function HiddenObject:setupComponents()
     })
 
     self:generateObjects()
+    self:createComponentsFromSchema()
 
-    self.hud = HUDRenderer:new({
-        primary = {label = "Found", key = "objects_found"},
-        secondary = {label = "Remaining", key = "objects_remaining"},
-        timer = {label = "Time", key = "time_remaining", format = "float"}
-    })
-    self.hud.game = self
-
-    local victory_config = {
+    -- Create victory condition manually since target is runtime-calculated
+    local VictoryCondition = self.di.components.VictoryCondition
+    self.victory_checker = VictoryCondition:new({
         victory = {type = "threshold", metric = "objects_found", target = self.total_objects},
         loss = {type = "time_expired", metric = "time_remaining"},
         check_loss_first = true
-    }
-    self.victory_checker = VictoryCondition:new(victory_config)
+    })
     self.victory_checker.game = self
+
+    -- Resize callback to regenerate deterministic positions
+    self.on_resize = function() self:generateObjects() end
 end
 
---------------------------------------------------------------------------------
--- ASSETS
---------------------------------------------------------------------------------
-
-function HiddenObject:loadAssets()
-    self.sprites = {}
-
-    if not self.variant or not self.variant.sprite_set then
-        return
-    end
-
-    local game_type = "hidden_object"
-    local base_path = "assets/sprites/games/" .. game_type .. "/" .. self.variant.sprite_set .. "/"
-
-    local function tryLoad(filename, sprite_key)
-        local filepath = base_path .. filename
-        local success, result = pcall(function()
-            return love.graphics.newImage(filepath)
-        end)
-        if success then
-            self.sprites[sprite_key] = result
-        end
-    end
-
-    tryLoad("background.png", "background")
-
-    for i = 1, 30 do
-        local filename = string.format("object_%02d.png", i)
-        tryLoad(filename, "object_" .. i)
-    end
-
-    self:loadAudio()
-end
-
-function HiddenObject:setPlayArea(width, height)
-    self.game_width = width
-    self.game_height = height
-
-    if self.objects and #self.objects > 0 then
-        self:regenerateObjects()
-    end
-end
-
-function HiddenObject:regenerateObjects()
-    local positions = self:getDeterministicPositions()
-    local objects = self.entity_controller:getEntities()
-    for i = 1, math.min(#objects, #positions) do
-        objects[i].x = positions[i].x
-        objects[i].y = positions[i].y
-    end
-end
 
 --------------------------------------------------------------------------------
 -- OBJECT MANAGEMENT
