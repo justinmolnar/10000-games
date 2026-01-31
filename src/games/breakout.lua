@@ -117,9 +117,15 @@ end
 
 function Breakout:generateObstacles()
     if self.params.obstacles_count > 0 then
-        self.entity_controller:spawnRandom("obstacle", self.params.obstacles_count,
-            {x = 100, y = 150, width = self.arena_width - 200, height = self.arena_height * 0.4},
-            self.rng, true)
+        local bounds = {x = 100, y = 150, width = self.arena_width - 200, height = self.arena_height * 0.4}
+        local positions = {}
+        for i = 1, self.params.obstacles_count do
+            positions[i] = {
+                x = bounds.x + math.random() * bounds.width,
+                y = bounds.y + math.random() * bounds.height
+            }
+        end
+        self.entity_controller:spawnAtPositions("obstacle", positions)
     end
     self.obstacles = self.entity_controller:getEntitiesByType("obstacle")
 end
@@ -132,26 +138,86 @@ function Breakout:generateBricks()
     end
 
     local p = self.params
-    local total_width = p.brick_columns * (p.brick_width + p.brick_padding)
-    local start_x = (self.arena_width - total_width) / 2
-
-    self.entity_controller:spawnLayout("brick", p.brick_layout, {
-        rows = p.brick_rows,
-        cols = p.brick_columns,
-        x = start_x,
-        y = 60,
-        spacing_x = p.brick_width + p.brick_padding,
-        spacing_y = p.brick_height + p.brick_padding,
-        arena_width = self.arena_width,
-        center_x = self.arena_width / 2,
-        center_y = 200,
-        bounds = {x = 40, y = 40, width = self.arena_width - 80, height = self.arena_height * 0.4},
-        rng = self.rng,
-        can_overlap = p.bricks_can_overlap
-    })
+    local positions = self:generateBrickPositions()
+    self.entity_controller:spawnAtPositions("brick", positions)
 
     self.bricks = self.entity_controller:getEntities()
     self.bricks_left = #self.bricks
+end
+
+function Breakout:generateBrickPositions()
+    local p = self.params
+    local layout = p.brick_layout or "grid"
+    local rows, cols = p.brick_rows, p.brick_columns
+    local spacing_x = p.brick_width + p.brick_padding
+    local spacing_y = p.brick_height + p.brick_padding
+    local total_width = cols * spacing_x
+    local start_x = (self.arena_width - total_width) / 2
+    local start_y = 60
+    local positions = {}
+
+    if layout == "pyramid" then
+        for row = 1, rows do
+            local cols_in_row = math.min(row, cols)
+            local row_width = (cols_in_row - 1) * spacing_x
+            local row_start_x = (self.arena_width - row_width) / 2
+            for col = 1, cols_in_row do
+                table.insert(positions, {
+                    x = row_start_x + (col - 1) * spacing_x,
+                    y = start_y + (row - 1) * spacing_y,
+                    row = row, col = col
+                })
+            end
+        end
+    elseif layout == "circle" then
+        local center_x, center_y = self.arena_width / 2, 200
+        local ring_spacing = 40
+        for ring = 1, rows do
+            local radius = ring * ring_spacing
+            local count = 8 + (ring - 1) * 4
+            for i = 1, count do
+                local angle = (i - 1) / count * math.pi * 2
+                table.insert(positions, {
+                    x = center_x + math.cos(angle) * radius,
+                    y = center_y + math.sin(angle) * radius,
+                    ring = ring, index = i
+                })
+            end
+        end
+    elseif layout == "random" then
+        local bounds = {x = 40, y = 40, width = self.arena_width - 80, height = self.arena_height * 0.4}
+        for i = 1, rows * cols do
+            table.insert(positions, {
+                x = bounds.x + math.random() * bounds.width,
+                y = bounds.y + math.random() * bounds.height,
+                index = i
+            })
+        end
+    elseif layout == "checkerboard" then
+        for row = 1, rows do
+            for col = 1, cols do
+                if (row + col) % 2 == 0 then
+                    table.insert(positions, {
+                        x = start_x + (col - 1) * spacing_x,
+                        y = start_y + (row - 1) * spacing_y,
+                        row = row, col = col
+                    })
+                end
+            end
+        end
+    else -- grid (default)
+        for row = 1, rows do
+            for col = 1, cols do
+                table.insert(positions, {
+                    x = start_x + (col - 1) * spacing_x,
+                    y = start_y + (row - 1) * spacing_y,
+                    row = row, col = col
+                })
+            end
+        end
+    end
+
+    return positions
 end
 
 --------------------------------------------------------------------------------

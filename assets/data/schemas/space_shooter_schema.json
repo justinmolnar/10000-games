@@ -795,14 +795,10 @@
         "movement_controller": {
             "type": "MovementController",
             "config": {
-                "mode": "$movement_type",
                 "speed": "$movement_speed",
-                "friction": 1.0,
                 "accel_friction": "$accel_friction",
                 "decel_friction": "$decel_friction",
                 "rotation_speed": "$rotation_speed",
-                "rail_axis": "horizontal",
-                "reverse_mode": "none",
                 "jump_cooldown": "$jump_cooldown",
                 "jump_speed": "$jump_speed"
             }
@@ -883,6 +879,15 @@
             "width": 30,
             "height": 30,
             "alive": true
+        },
+        "gravity_well": {
+            "radius": "$gravity_well_radius",
+            "strength": "$gravity_well_strength"
+        },
+        "blackout_zone": {
+            "radius": "$blackout_zone_radius",
+            "bounces_off_walls": true,
+            "track_entry": true
         }
     },
     "victory_conditions": {

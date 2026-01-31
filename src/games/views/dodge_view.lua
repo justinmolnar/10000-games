@@ -39,10 +39,10 @@ function DodgeView:drawContent()
         self:drawBackgroundStarfield(game_width, game_height)
     end
 
-    -- Safe zone ring (shape-aware)
+    -- Safe zone ring (generic polygon)
     if game.arena_controller then
         local ac = game.arena_controller
-        local shape = ac.shape or "circle"
+        local vertices = ac:getScaledVertices()
 
         -- Game over flash effect
         local flash_alpha = 0.2
@@ -54,52 +54,27 @@ function DodgeView:drawContent()
             g.setColor(0.2, 0.8, 1.0, flash_alpha)
         end
 
-        local r = ac:getEffectiveRadius()
-        if shape == "circle" then
-            g.circle('fill', ac.x, ac.y, r)
-            if game.game_over then
-                g.setColor(1.0, 0.2, 0.2)
-            else
-                g.setColor(0.2, 0.8, 1.0)
-            end
-            g.setLineWidth(2)
-            g.circle('line', ac.x, ac.y, r)
-
-        elseif shape == "square" then
-            g.rectangle('fill', ac.x - r, ac.y - r, r * 2, r * 2)
-            if game.game_over then
-                g.setColor(1.0, 0.2, 0.2)
-            else
-                g.setColor(0.2, 0.8, 1.0)
-            end
-            g.setLineWidth(2)
-            g.rectangle('line', ac.x - r, ac.y - r, r * 2, r * 2)
-
-        elseif shape == "hex" then
-            -- Draw hexagon (6 vertices)
-            local vertices = {}
-            for i = 0, 5 do
-                local angle = (i / 6) * math.pi * 2 - math.pi / 2  -- Start at top
-                table.insert(vertices, ac.x + math.cos(angle) * r)
-                table.insert(vertices, ac.y + math.sin(angle) * r)
-            end
-            g.polygon('fill', vertices)
-            if game.game_over then
-                g.setColor(1.0, 0.2, 0.2)
-            else
-                g.setColor(0.2, 0.8, 1.0)
-            end
-            g.setLineWidth(2)
-            g.polygon('line', vertices)
+        g.polygon('fill', vertices)
+        if game.game_over then
+            g.setColor(1.0, 0.2, 0.2)
+        else
+            g.setColor(0.2, 0.8, 1.0)
         end
+        g.setLineWidth(2)
+        g.polygon('line', vertices)
 
         -- Draw deformation effect for "deformation" morph type
         if ac.morph_type == "deformation" then
-            -- Simple wobble visualization: draw additional circles at perturbed positions
             g.setColor(0.2, 0.8, 1.0, 0.1)
             local wobble = math.sin((ac.morph_timer or 0) * 3) * 5
-            g.circle('line', ac.x + wobble, ac.y, r + wobble)
-            g.circle('line', ac.x, ac.y + wobble, r + wobble)
+            local r = ac:getEffectiveRadius()
+            -- Draw wobbled version of the polygon
+            local wobbled = {}
+            for i = 1, #vertices, 2 do
+                table.insert(wobbled, vertices[i] + wobble)
+                table.insert(wobbled, vertices[i+1] + wobble)
+            end
+            g.polygon('line', wobbled)
         end
 
         g.setLineWidth(1)

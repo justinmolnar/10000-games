@@ -330,10 +330,10 @@ function SnakeView:drawContent()
     end
 
     -- Draw obstacles (skip wall-type obstacles for rectangles - they're rendered by drawArenaBoundaries)
-    local arena_shape = game.params.arena_shape or "rectangle"
+    local is_shaped = game.arena_controller and game.arena_controller.safe_zone_mode
     local obstacle_size = GRID_SIZE - 1
     for _, obstacle in ipairs(game:getObstacles()) do
-        if (obstacle.type == "walls" or obstacle.type == "bounce_wall") and arena_shape == "rectangle" then
+        if (obstacle.type == "walls" or obstacle.type == "bounce_wall") and not is_shaped then
             goto continue_obstacle
         end
 
@@ -366,14 +366,17 @@ end
 function SnakeView:drawArenaBoundaries()
     local game = self.game
     local GRID_SIZE = self.GRID_SIZE
-    local arena_shape = game.params.arena_shape or "rectangle"
+    local ac = game.arena_controller
+
+    -- Check if using shaped/custom arena (safe_zone_mode) vs rectangle
+    local is_shaped_arena = ac and ac.safe_zone_mode
 
     -- Get moving walls offset
-    local offset_x = (game.params.moving_walls and game.arena_controller.wall_offset_x) or 0
-    local offset_y = (game.params.moving_walls and game.arena_controller.wall_offset_y) or 0
+    local offset_x = (game.params.moving_walls and ac.wall_offset_x) or 0
+    local offset_y = (game.params.moving_walls and ac.wall_offset_y) or 0
 
-    -- For arenas with wall_mode death/bounce, draw edge walls (accounting for moving walls)
-    if (game.params.wall_mode == "death" or game.params.wall_mode == "bounce") and arena_shape == "rectangle" then
+    -- For rectangle arenas with wall_mode death/bounce, draw edge walls
+    if (game.params.wall_mode == "death" or game.params.wall_mode == "bounce") and not is_shaped_arena then
         love.graphics.setColor(0.5, 0.5, 0.5, 1)
         local wall_thickness = GRID_SIZE - 1
 
@@ -406,9 +409,9 @@ function SnakeView:drawArenaBoundaries()
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    -- Shaped arenas (circle/hexagon) - draw boundary via ArenaController
-    if arena_shape ~= "rectangle" and game.arena_controller then
-        game.arena_controller:drawBoundary(GRID_SIZE)
+    -- Shaped/custom arenas - draw boundary via ArenaController
+    if is_shaped_arena then
+        ac:drawBoundary(GRID_SIZE)
     end
 end
 

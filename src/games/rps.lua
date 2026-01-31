@@ -109,8 +109,7 @@ function RPS:setupComponents()
     self.health_system = LivesHealthSystem:new({
         mode = "lives",
         starting_lives = p.lives,
-        max_lives = 999,
-        lose_life_on = p.lose_life_on
+        max_lives = 999
     })
     self.lives = self.health_system.lives
 

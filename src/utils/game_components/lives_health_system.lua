@@ -1,14 +1,14 @@
 local Object = require('class')
 local LivesHealthSystem = Object:extend('LivesHealthSystem')
 
--- Phase 10: Unified lives/health/shield management component
--- Handles damage, death, respawning, shields, and invincibility
+-- Unified lives/health/shield management component
+-- Handles life loss, death, respawning, shields, and invincibility
 
 LivesHealthSystem.MODES = {
-    LIVES = "lives",           -- Standard lives counter (Breakout, Coin Flip, RPS)
-    SHIELD = "shield",         -- Regenerating shield hits (Space Shooter)
-    BINARY = "binary",         -- Instant death on failure (Dodge, Snake)
-    NONE = "none"              -- No health system (Memory Match, Hidden Object)
+    LIVES = "lives",           -- Standard lives counter
+    SHIELD = "shield",         -- Regenerating shield hits
+    BINARY = "binary",         -- Instant death on failure
+    NONE = "none"              -- No health system
 }
 
 function LivesHealthSystem:new(config)
@@ -48,9 +48,6 @@ function LivesHealthSystem:new(config)
     instance.respawn_delay = config.respawn_delay or 1.0
     instance.respawn_timer = 0
     instance.waiting_to_respawn = false
-
-    -- Life loss configuration
-    instance.lose_life_on = config.lose_life_on or "damage"  -- "damage", "custom", "loss", "tie", "both"
 
     -- Extra life awards
     instance.extra_life_enabled = config.extra_life_enabled or false

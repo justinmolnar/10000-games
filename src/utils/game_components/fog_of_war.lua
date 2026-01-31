@@ -1,8 +1,8 @@
 -- fog_of_war.lua
 -- Reusable fog of war component for games
 -- Supports two modes:
---   1. Stencil mode: Dark overlay with circular visibility cutouts (Breakout, Snake, Dodge)
---   2. Alpha mode: Per-entity alpha calculation with gradient (Memory Match)
+--   1. Stencil mode: Dark overlay with circular visibility cutouts
+--   2. Alpha mode: Per-entity alpha calculation with gradient
 
 local Object = require('class')
 local FogOfWar = Object:extend('FogOfWar')
@@ -19,7 +19,7 @@ function FogOfWar:new(params)
     instance.mode = params.mode or "stencil"  -- "stencil" or "alpha"
     instance.opacity = params.opacity or 0.8  -- Darkness level (0.0 = transparent, 1.0 = opaque)
 
-    -- Alpha mode parameters (Memory Match)
+    -- Alpha mode parameters
     instance.inner_radius_multiplier = params.inner_radius_multiplier or 0.4  -- Fully visible inside this
     instance.outer_radius = params.outer_radius or 9999  -- Full darkness outside this
 
@@ -29,11 +29,6 @@ function FogOfWar:new(params)
     -- Mouse position tracking (in viewport coordinates)
     instance.mouse_x = 0
     instance.mouse_y = 0
-
-    if _G.DEBUG_FOG then
-        print(string.format("[FogOfWar] new() called: enabled=%s, mode=%s, opacity=%s",
-            tostring(instance.enabled), tostring(instance.mode), tostring(instance.opacity)))
-    end
 
     return instance
 end
@@ -47,7 +42,7 @@ function FogOfWar:clearSources()
 end
 
 function FogOfWar:addVisibilitySource(x, y, radius)
-    -- Add a visibility circle (player, ball, snake segment, etc.)
+    -- Add a visibility circle at position with radius
     table.insert(self.visibility_sources, {x = x, y = y, radius = radius})
 end
 
@@ -55,24 +50,10 @@ function FogOfWar:render(arena_width, arena_height)
     -- Render fog overlay using stencil cutouts
     -- Call this AFTER drawing game content but BEFORE HUD
 
-    if not self.enabled then
-        if _G.DEBUG_FOG then print("[FogOfWar] render() called but enabled=false") end
-        return
-    end
-
-    if self.mode ~= "stencil" then
-        if _G.DEBUG_FOG then print("[FogOfWar] render() called but mode=" .. tostring(self.mode)) end
-        return
-    end
-
-    if _G.DEBUG_FOG then
-        print(string.format("[FogOfWar] Rendering fog: %d sources, arena=%dx%d",
-            #self.visibility_sources, arena_width, arena_height))
-    end
+    if not self.enabled then return end
+    if self.mode ~= "stencil" then return end
 
     if #self.visibility_sources == 0 then
-        -- No visibility sources, render full fog
-        if _G.DEBUG_FOG then print("[FogOfWar] No visibility sources, rendering full fog") end
         love.graphics.setColor(0, 0, 0, self.opacity)
         love.graphics.rectangle("fill", 0, 0, arena_width, arena_height)
         love.graphics.setColor(1, 1, 1, 1)
@@ -120,7 +101,6 @@ function FogOfWar:calculateAlpha(entity_x, entity_y, fog_center_x, fog_center_y)
     end
     -- Calculate alpha value for an entity based on distance from fog center
     -- Returns: alpha multiplier (1.0 = fully visible, opacity = fully dark)
-    -- Used for Memory Match card rendering
 
     if not self.enabled or self.mode ~= "alpha" then
         return 1.0  -- Fully visible if fog disabled or wrong mode

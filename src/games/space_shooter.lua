@@ -82,10 +82,7 @@ function SpaceShooter:setupComponents()
             on_death = function(enemy)
                 game:onEnemyDestroyed(enemy)
             end
-        },
-        asteroid = {},
-        gravity_well = {radius = p.gravity_well_radius, strength = p.gravity_well_strength},
-        blackout_zone = {radius = p.blackout_zone_radius, movement_pattern = 'bounce'}
+        }
     }, {spawning = {mode = "manual"}, pooling = true, max_entities = 1000})
 
     -- Victory condition from schema (loss target uses params.lives_count which includes cheat modifier)
@@ -309,15 +306,92 @@ function SpaceShooter:updateGameLogic(dt)
 end
 
 function SpaceShooter:updatePlayer(dt)
-    -- Movement via MovementController
-    self.player.time_elapsed = (self.player.time_elapsed or 0) + dt
-    self.movement_controller:update(dt, self.player, {
-        left = self:isKeyDown('left', 'a'), right = self:isKeyDown('right', 'd'),
-        up = self:isKeyDown('up', 'w'), down = self:isKeyDown('down', 's')
-    }, {
-        x = 0, y = 0, width = self.game_width, height = self.game_height,
-        wrap_x = self.params.screen_wrap, wrap_y = self.params.screen_wrap
-    })
+    -- Movement via MovementController primitives
+    local p = self.params
+    local mc = self.movement_controller
+    local player = self.player
+    local bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height,
+                    wrap_x = p.screen_wrap, wrap_y = p.screen_wrap}
+
+    player.time_elapsed = (player.time_elapsed or 0) + dt
+
+    local left = self:isKeyDown('left', 'a')
+    local right = self:isKeyDown('right', 'd')
+    local up = self:isKeyDown('up', 'w')
+    local down = self:isKeyDown('down', 's')
+
+    local move_type = p.movement_type
+
+    if move_type == "rail" then
+        -- Rail: horizontal only (default for shooters)
+        if left then player.x = player.x - p.movement_speed * dt end
+        if right then player.x = player.x + p.movement_speed * dt end
+        -- Clamp horizontal
+        if player.width then
+            player.x = math.max(bounds.x, math.min(bounds.x + bounds.width - player.width, player.x))
+        elseif player.radius then
+            player.x = math.max(bounds.x + player.radius, math.min(bounds.x + bounds.width - player.radius, player.x))
+        end
+
+    elseif move_type == "jump" then
+        -- Jump/dash movement
+        if mc:isJumping("player") then
+            mc:updateJump(player, "player", dt, bounds, player.time_elapsed)
+        else
+            local dx, dy = 0, 0
+            if left then dx = -1
+            elseif right then dx = 1
+            elseif up then dy = -1
+            elseif down then dy = 1 end
+
+            if (dx ~= 0 or dy ~= 0) and mc:canJump("player", player.time_elapsed) then
+                mc:startJump(player, "player", dx, dy, player.time_elapsed, bounds)
+            end
+        end
+        if not mc:isJumping("player") then
+            mc:applyFriction(player, p.decel_friction, dt)
+            mc:applyVelocity(player, dt)
+        end
+
+    elseif move_type == "asteroids" then
+        -- Asteroids: rotation + thrust
+        if left then mc:applyRotation(player, -1, nil, dt) end
+        if right then mc:applyRotation(player, 1, nil, dt) end
+        if up then
+            mc:applyThrust(player, player.angle, nil, dt)
+            mc:applyFriction(player, p.accel_friction, dt)
+        else
+            mc:applyFriction(player, p.decel_friction, dt)
+        end
+        mc:applyVelocity(player, dt)
+        mc:applyBounds(player, bounds)
+        mc:applyBounce(player, bounds)
+
+    else
+        -- Direct movement
+        local dx, dy = 0, 0
+        if left then dx = dx - 1 end
+        if right then dx = dx + 1 end
+        if up then dy = dy - 1 end
+        if down then dy = dy + 1 end
+
+        local has_momentum = p.accel_friction < 1.0 or p.decel_friction < 1.0
+
+        if has_momentum then
+            if dx ~= 0 or dy ~= 0 then
+                mc:applyDirectionalVelocity(player, dx, dy, p.movement_speed, dt)
+                mc:applyFriction(player, p.accel_friction, dt)
+            else
+                mc:applyFriction(player, p.decel_friction, dt)
+            end
+            mc:applyVelocity(player, dt)
+            mc:applyBounds(player, bounds)
+            mc:applyBounce(player, bounds)
+        else
+            mc:applyDirectionalMove(player, dx, dy, p.movement_speed, dt)
+            mc:applyBounds(player, bounds)
+        end
+    end
 
     -- Shield regeneration handled by health_system (updated in updateGameLogic)
 
@@ -409,11 +483,28 @@ function SpaceShooter:spawnEnemy()
 
     -- Formation spawning
     if p.enemy_formation == "v_formation" then
-        self.entity_controller:spawnLayout("enemy", "v_shape", {count = 5, center_x = self.game_width / 2, y = spawn_y, spacing_x = 60, extra = extra})
+        local positions = {}
+        local count, center_x, spacing = 5, self.game_width / 2, 60
+        for i = 1, count do
+            local offset = (i - math.ceil(count / 2)) * spacing
+            positions[i] = {x = center_x + offset, y = spawn_y - math.abs(offset) * 0.5}
+        end
+        self.entity_controller:spawnAtPositions("enemy", positions, extra)
     elseif p.enemy_formation == "wall" then
-        self.entity_controller:spawnLayout("enemy", "line", {count = 6, x = self.game_width / 7, y = spawn_y, spacing_x = self.game_width / 7, extra = extra})
+        local positions = {}
+        local count, spacing = 6, self.game_width / 7
+        for i = 1, count do
+            positions[i] = {x = spacing * i, y = spawn_y}
+        end
+        self.entity_controller:spawnAtPositions("enemy", positions, extra)
     elseif p.enemy_formation == "spiral" then
-        self.entity_controller:spawnLayout("enemy", "spiral", {count = 8, center_x = self.game_width / 2, center_y = spawn_y, radius = 100, extra = extra})
+        local positions = {}
+        local count, center_x, radius = 8, self.game_width / 2, 100
+        for i = 1, count do
+            local angle = (i / count) * math.pi * 2
+            positions[i] = {x = center_x + math.cos(angle) * radius, y = spawn_y + math.sin(angle) * radius * 0.3}
+        end
+        self.entity_controller:spawnAtPositions("enemy", positions, extra)
     else
         -- Single enemy spawn - use weighted configs if available (50% chance)
         local use_weighted = #self.enemy_weighted_configs > 0 and math.random() < 0.5
@@ -476,12 +567,20 @@ function SpaceShooter:initSpaceInvadersGrid()
 
     local spacing_x = (self.game_width / (wave_columns + 1)) * self.params.enemy_density
     local spacing_y = 50 * self.params.enemy_density
+    local start_x = spacing_x
 
-    self.entity_controller:spawnLayout("enemy", "grid", {
-        rows = wave_rows, cols = wave_columns,
-        x = spacing_x, y = 80,
-        spacing_x = spacing_x, spacing_y = spacing_y,
-        extra = {movement_pattern = 'grid', health = wave_health, wave_speed = wave_speed}
+    local positions = {}
+    for row = 1, wave_rows do
+        for col = 1, wave_columns do
+            table.insert(positions, {
+                x = start_x + (col - 1) * spacing_x,
+                y = 80 + (row - 1) * spacing_y,
+                grid_row = row, grid_col = col
+            })
+        end
+    end
+    self.entity_controller:spawnAtPositions("enemy", positions, {
+        movement_pattern = 'grid', health = wave_health, wave_speed = wave_speed
     })
 
     self.grid_state.initialized = true
@@ -509,7 +608,7 @@ function SpaceShooter:updateSpaceInvadersGrid(dt)
             end,
             on_depleted = function()
                 game.grid_state.initialized = false
-                game.entity_controller.grid_movement_state = nil
+                game.grid_state.direction = nil
             end,
             on_start = function() game:initSpaceInvadersGrid() end
         }, dt)
@@ -525,7 +624,7 @@ function SpaceShooter:updateSpaceInvadersGrid(dt)
         self:initSpaceInvadersGrid()
     end
 
-    -- Get wave-specific speed
+    -- Grid movement: all grid enemies move together as a unit
     local base_speed = self.params.grid_speed
     for _, enemy in ipairs(self.enemies) do
         if enemy.movement_pattern == 'grid' and enemy.wave_speed then
@@ -534,19 +633,63 @@ function SpaceShooter:updateSpaceInvadersGrid(dt)
         end
     end
 
-    -- Use EntityController behavior for grid movement
-    self.entity_controller:updateBehaviors(dt, {
-        grid_unit_movement = {
-            speed = base_speed,
-            speed_scaling = true,
-            speed_scale_factor = 2,
-            initial_count = self.grid_state.initial_enemy_count,
-            bounds_left = 0,
-            bounds_right = self.game_width,
-            bounds_bottom = self.game_height + 50,
-            descent = self.params.grid_descent
-        }
-    })
+    -- Count grid enemies and calculate speed
+    local grid_count = 0
+    for _, enemy in ipairs(self.enemies) do
+        if enemy.movement_pattern == 'grid' and enemy.active and not enemy.marked_for_removal then
+            grid_count = grid_count + 1
+        end
+    end
+
+    -- Initialize direction if needed
+    self.grid_state.direction = self.grid_state.direction or 1
+
+    -- Speed increases as enemies die
+    local speed_mult = 1.0
+    local initial_count = self.grid_state.initial_enemy_count or 1
+    if initial_count > 0 and grid_count > 0 then
+        speed_mult = 1 + (1 - grid_count / initial_count) * 2
+    end
+
+    local move = base_speed * speed_mult * dt * self.grid_state.direction
+    local hit_edge = false
+
+    -- Move all grid enemies and check for edge collision
+    for _, enemy in ipairs(self.enemies) do
+        if enemy.movement_pattern == 'grid' and enemy.active and not enemy.marked_for_removal then
+            enemy.x = enemy.x + move
+            if enemy.x <= 0 or enemy.x + (enemy.width or 0) >= self.game_width then
+                hit_edge = true
+            end
+        end
+    end
+
+    -- Bounce and descend when hitting edge
+    if hit_edge then
+        self.grid_state.direction = -self.grid_state.direction
+        for _, enemy in ipairs(self.enemies) do
+            if enemy.movement_pattern == 'grid' and enemy.active then
+                -- Clamp back inside bounds
+                local w = enemy.width or 0
+                if enemy.x <= 0 then
+                    enemy.x = 1
+                elseif enemy.x + w >= self.game_width then
+                    enemy.x = self.game_width - w - 1
+                end
+                -- Descend
+                enemy.y = enemy.y + (self.params.grid_descent or 20)
+            end
+        end
+    end
+
+    -- Mark enemies for removal when below screen
+    local bounds_bottom = self.game_height + 50
+    for _, enemy in ipairs(self.enemies) do
+        if enemy.movement_pattern == 'grid' and enemy.active and enemy.y > bounds_bottom then
+            enemy.removal_reason = "out_of_bounds"
+            enemy.marked_for_removal = true
+        end
+    end
 
     -- Grid shooting: global timer, one random bottom-row enemy shoots
     if self.params.enemy_bullets_enabled then

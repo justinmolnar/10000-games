@@ -41,11 +41,9 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
             angle = 0, rotation_speed = p.rotation_speed, movement_speed = p.movement_speed,
             max_speed = p.max_speed, movement_type = p.movement_type,
             accel_friction = p.accel_friction, decel_friction = p.decel_friction,
-            bounce_damping = p.bounce_damping, reverse_mode = p.reverse_mode,
+            bounce_damping = p.bounce_damping,
             jump_distance = p.jump_distance, jump_cooldown = p.jump_cooldown,
-            jump_speed = p.jump_speed, last_jump_time = -999,
-            is_jumping = false, jump_target_x = 0, jump_target_y = 0,
-            jump_dir_x = 0, jump_dir_y = 0, time_elapsed = 0
+            jump_speed = p.jump_speed, time_elapsed = 0
         }
     })
     self:setupComponents()
@@ -80,38 +78,49 @@ function DodgeGame:setupComponents()
         game.visual_effects:shake(nil, p.camera_shake_intensity, "exponential")
     end
 
-    -- Movement controller
-    local mode_map = {asteroids = "asteroids", jump = "jump"}
+    -- Movement controller (primitives-based, game handles input mapping)
     local MovementController = self.di.components.MovementController
     self.movement_controller = MovementController:new({
-        mode = mode_map[p.movement_type] or "direct",
-        speed = p.movement_speed, friction = 1.0,
+        speed = p.movement_speed,
         accel_friction = p.accel_friction, decel_friction = p.decel_friction,
         rotation_speed = p.rotation_speed, bounce_damping = p.bounce_damping,
         thrust_acceleration = (self.runtimeCfg.player and self.runtimeCfg.player.thrust_acceleration) or 600,
-        reverse_mode = p.reverse_mode,
         jump_distance = p.jump_distance, jump_cooldown = p.jump_cooldown, jump_speed = p.jump_speed
     })
 
-    -- Arena controller (safe zone) — AC computes radius/velocity from raw params
+    -- Arena controller (safe zone) — pure physics, game controls movement via setAcceleration
     local level_scale = 1 + ((self.runtimeCfg.drift and self.runtimeCfg.drift.level_scale_add_per_level) or 0.15) * math.max(0, (self.difficulty_level or 1) - 1)
-    local drift_speed = ((self.runtimeCfg.drift and self.runtimeCfg.drift.base_speed) or 45) * level_scale
+    local arena_speed = ((self.runtimeCfg.drift and self.runtimeCfg.drift.base_speed) or 45) * level_scale * p.area_movement_speed
+
+    -- Get shape definition: custom vertices or translate shape name to sides
+    local arena_vertices = self.variant and self.variant.area_vertices
+    local sides, shape_rotation = self:getShapeSides(p.area_shape or "circle")
 
     local ArenaController = self.di.components.ArenaController
     self.arena_controller = ArenaController:new({
         safe_zone = true, x = self.game_width/2, y = self.game_height/2,
-        shape = p.area_shape or "circle", morph_type = p.area_morph_type or "shrink",
-        morph_speed = p.area_morph_speed or 1.0,
+        vertices = arena_vertices,  -- nil if not provided, AC will use sides
+        sides = sides, shape_rotation = shape_rotation,
+        sides_cycle = {32, 4, 6},  -- circle, square, hex for shape_shifting
+        morph_type = p.area_morph_type or "shrink", morph_speed = p.area_morph_speed or 1.0,
         -- Raw params: AC computes radius, min_radius, shrink_speed internally
         area_size = p.area_size, initial_radius_fraction = p.initial_safe_radius_fraction or 0.48,
         min_radius_fraction = p.min_safe_radius_fraction or 0.35,
         shrink_seconds = p.safe_zone_shrink_sec or 45, complexity_modifier = self.difficulty_modifiers.complexity,
-        -- Movement: AC computes initial velocity internally
-        movement = (p.area_movement_type == "random") and "drift" or p.area_movement_type,
-        movement_speed = drift_speed * p.area_movement_speed, friction = p.area_friction or 0.95,
-        direction_change_interval = 2.0, container_width = self.game_width,
-        container_height = self.game_height, bounds_padding = 0
+        -- Movement: pure physics, friction only
+        friction = p.area_friction or 0.95,
+        container_width = self.game_width, container_height = self.game_height, bounds_padding = 0
     })
+
+    -- Arena movement behavior state (game-side, not component)
+    self.arena_movement = {
+        type = p.area_movement_type or "random",
+        speed = arena_speed,
+        direction_timer = 0,
+        direction_change_interval = 2.0,
+        target_vx = 0,
+        target_vy = 0
+    }
 
     self.leaving_area_ends_game = p.leaving_area_ends_game
 
@@ -162,17 +171,18 @@ function DodgeGame:setupComponents()
         end
     end
 
-    -- Spawn hole entities via EC
+    -- Spawn hole entities
     if p.holes_count > 0 and p.holes_type ~= "none" then
         local ac = self.arena_controller
-        self.entity_controller:spawnMultiple(p.holes_count, function()
+        for _ = 1, p.holes_count do
             if p.holes_type == "circle" then
                 local angle = math.random() * math.pi * 2
                 local hx, hy = ac:getPointOnShapeBoundary(angle)
-                return game.entity_controller:spawn("hole", hx, hy, {boundary_angle = angle})
+                self.entity_controller:spawn("hole", hx, hy, {boundary_angle = angle})
+            else
+                self.entity_controller:spawn("hole", math.random(8, self.game_width - 8), math.random(8, self.game_height - 8))
             end
-            return game.entity_controller:spawn("hole", math.random(8, game.game_width - 8), math.random(8, game.game_height - 8))
-        end)
+        end
     end
 
     -- Configure entity behaviors for updateBehaviors
@@ -399,6 +409,9 @@ function DodgeGame:updateGameLogic(dt)
     self.entity_controller:updateBehaviors(dt, self.entity_behaviors_config)
     self.projectile_system:update(dt, {x_min = 0, x_max = self.game_width, y_min = 0, y_max = self.game_height})
     if self:checkProjectileCollisions() then return end
+
+    -- Calculate arena movement acceleration (game-side behavior)
+    self:updateArenaMovement(dt)
     self.arena_controller:update(dt)
     self.health_system:update(dt)
     self.visual_effects:update(dt)
@@ -418,10 +431,98 @@ end
 function DodgeGame:updatePlayer(dt)
     local input = self:buildInput()
     local bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height, wrap_x = false, wrap_y = false}
-    self.player.time_elapsed = self.time_elapsed
-    if self.player.rotation then self.player.angle = self.player.rotation end
-    self.movement_controller:update(dt, self.player, input, bounds)
-    self.player.rotation = self.player.angle
+    local p = self.params
+    local mc = self.movement_controller
+    local player = self.player
+
+    player.time_elapsed = self.time_elapsed
+    if player.rotation then player.angle = player.rotation end
+
+    -- Movement behavior based on movement_type
+    local move_type = p.movement_type
+
+    if move_type == "jump" then
+        -- Jump/dash: discrete teleports
+        if mc:isJumping("player") then
+            mc:updateJump(player, "player", dt, bounds, player.time_elapsed)
+        else
+            -- Check for directional input to start jump
+            local dx, dy = 0, 0
+            if input.left then dx = -1
+            elseif input.right then dx = 1
+            elseif input.up then dy = -1
+            elseif input.down then dy = 1 end
+
+            if (dx ~= 0 or dy ~= 0) and mc:canJump("player", player.time_elapsed) then
+                mc:startJump(player, "player", dx, dy, player.time_elapsed, bounds)
+            end
+        end
+        -- Apply decel friction when not jumping
+        if not mc:isJumping("player") then
+            mc:applyFriction(player, p.decel_friction, dt)
+            mc:applyVelocity(player, dt)
+        end
+
+    elseif move_type == "asteroids" then
+        -- Asteroids: rotation + thrust physics
+        if input.left then mc:applyRotation(player, -1, nil, dt) end
+        if input.right then mc:applyRotation(player, 1, nil, dt) end
+
+        local is_thrusting = false
+        if input.up then
+            mc:applyThrust(player, player.angle, nil, dt)
+            mc:applyFriction(player, p.accel_friction, dt)
+            is_thrusting = true
+        end
+        if input.down then
+            -- Game decides what down does based on reverse_mode
+            if p.reverse_mode == "thrust" then
+                -- Reverse thrust (opposite direction)
+                mc:applyThrust(player, player.angle + math.pi, nil, dt)
+                mc:applyFriction(player, p.accel_friction, dt)
+                is_thrusting = true
+            elseif p.reverse_mode == "brake" then
+                -- Active braking
+                mc:applyFriction(player, 0.92, dt)
+            end
+            -- "none" = do nothing
+        end
+        if not is_thrusting then
+            mc:applyFriction(player, p.decel_friction, dt)
+        end
+        mc:applyVelocity(player, dt)
+        mc:applyBounds(player, bounds)
+        mc:applyBounce(player, bounds)
+
+    else
+        -- Direct movement (default)
+        local dx, dy = 0, 0
+        if input.left then dx = dx - 1 end
+        if input.right then dx = dx + 1 end
+        if input.up then dy = dy - 1 end
+        if input.down then dy = dy + 1 end
+
+        local has_momentum = p.accel_friction < 1.0 or p.decel_friction < 1.0
+
+        if has_momentum then
+            if dx ~= 0 or dy ~= 0 then
+                mc:applyDirectionalVelocity(player, dx, dy, nil, dt)
+                mc:applyFriction(player, p.accel_friction, dt)
+                mc:rotateTowardsMovement(player, dx, dy, dt)
+            else
+                mc:applyFriction(player, p.decel_friction, dt)
+            end
+            mc:applyVelocity(player, dt)
+            mc:applyBounds(player, bounds)
+            mc:applyBounce(player, bounds)
+        else
+            mc:applyDirectionalMove(player, dx, dy, nil, dt)
+            mc:rotateTowardsMovement(player, dx, dy, dt)
+            mc:applyBounds(player, bounds)
+        end
+    end
+
+    player.rotation = player.angle
 
     if self.params.area_gravity ~= 0 and self.arena_controller then
         local dx = self.arena_controller.x - self.player.x
@@ -443,6 +544,41 @@ function DodgeGame:updatePlayer(dt)
         PhysicsUtils.clampSpeed(self.player, self.player.max_speed)
     end
     self.arena_controller:clampEntity(self.player)
+end
+
+-- Calculate arena movement acceleration based on movement type
+function DodgeGame:updateArenaMovement(dt)
+    local am = self.arena_movement
+    if not am or am.type == "none" then
+        self.arena_controller:setAcceleration(0, 0)
+        return
+    end
+
+    local ac = self.arena_controller
+    local ax, ay = 0, 0
+
+    if am.type == "random" or am.type == "drift" then
+        -- Random drift: random acceleration each frame
+        ax = (math.random() - 0.5) * am.speed
+        ay = (math.random() - 0.5) * am.speed
+
+    elseif am.type == "cardinal" then
+        -- Cardinal: pick a direction periodically, interpolate velocity toward target
+        am.direction_timer = am.direction_timer + dt
+        if am.direction_timer >= am.direction_change_interval then
+            am.direction_timer = 0
+            local dir = math.random(1, 4)
+            if dir == 1 then am.target_vx, am.target_vy = am.speed, 0
+            elseif dir == 2 then am.target_vx, am.target_vy = -am.speed, 0
+            elseif dir == 3 then am.target_vx, am.target_vy = 0, am.speed
+            else am.target_vx, am.target_vy = 0, -am.speed end
+        end
+        -- Acceleration toward target velocity
+        ax = (am.target_vx - ac.vx) * 2
+        ay = (am.target_vy - ac.vy) * 2
+    end
+
+    ac:setAcceleration(ax, ay)
 end
 
 --------------------------------------------------------------------------------
@@ -611,6 +747,21 @@ function DodgeGame:spawnNext(sx, sy, forced_angle)
         })
     else
         self:spawnEntity(type_name, sx, sy, angle, false)
+    end
+end
+
+-- Translate schema shape name to polygon sides and rotation
+function DodgeGame:getShapeSides(shape_name)
+    if shape_name == "square" then
+        return 4, math.pi / 4  -- 4 sides, rotated 45° for axis-aligned square
+    elseif shape_name == "hex" or shape_name == "hexagon" then
+        return 6, -math.pi / 2  -- 6 sides, rotated to pointy-top
+    elseif shape_name == "triangle" then
+        return 3, -math.pi / 2  -- 3 sides, point at top
+    elseif type(shape_name) == "number" then
+        return shape_name, 0  -- Direct side count
+    else
+        return 32, 0  -- Default: circle (32-gon)
     end
 end
 

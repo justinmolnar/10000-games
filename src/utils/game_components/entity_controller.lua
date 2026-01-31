@@ -1,5 +1,5 @@
 --[[
-EntityController - Phase 11: Generic enemy/obstacle spawning and management system
+EntityController - Generic enemy/obstacle spawning and management system
 
 Handles:
 - Entity type definitions with inheritance
@@ -190,321 +190,33 @@ function EntityController:spawn(type_name, x, y, custom_params)
 end
 
 --[[
-    Spawn entities in a grid layout (Breakout bricks, puzzle games)
-
-    @param type_name string
-    @param rows number
-    @param cols number
-    @param x_offset number - Starting x position
-    @param y_offset number - Starting y position
-    @param spacing_x number - Horizontal spacing between entities
-    @param spacing_y number - Vertical spacing between entities
-]]
-function EntityController:spawnGrid(type_name, rows, cols, x_offset, y_offset, spacing_x, spacing_y)
-    local entity_type = self.entity_types[type_name]
-    if not entity_type then
-        error("Unknown entity type: " .. tostring(type_name))
-    end
-
-    local width = entity_type.width or (entity_type.radius and entity_type.radius * 2) or 32
-    local height = entity_type.height or (entity_type.radius and entity_type.radius * 2) or 16
-
-    for row = 0, rows - 1 do
-        for col = 0, cols - 1 do
-            local x = x_offset + col * (width + spacing_x)
-            local y = y_offset + row * (height + spacing_y)
-            self:spawn(type_name, x, y)
-        end
-    end
-
-    self.grid_spawned = true
-end
-
---[[
-    Spawn entities in a pyramid/triangle layout
-
-    @param type_name string
-    @param rows number
-    @param max_cols number - Columns in first row (decreases each row)
-    @param x_offset number
-    @param y_offset number
-    @param spacing_x number
-    @param spacing_y number
-    @param arena_width number - For centering
-]]
-function EntityController:spawnPyramid(type_name, rows, max_cols, x_offset, y_offset, spacing_x, spacing_y, arena_width)
-    local entity_type = self.entity_types[type_name]
-    if not entity_type then return end
-
-    local width = entity_type.width or (entity_type.radius and entity_type.radius * 2) or 32
-    local height = entity_type.height or (entity_type.radius and entity_type.radius * 2) or 16
-
-    for row = 0, rows - 1 do
-        local cols_this_row = max_cols - row
-        if cols_this_row < 1 then break end
-
-        local total_width = cols_this_row * (width + spacing_x)
-        local start_x = (arena_width - total_width) / 2
-
-        for col = 0, cols_this_row - 1 do
-            local x = start_x + col * (width + spacing_x)
-            local y = y_offset + row * (height + spacing_y)
-            self:spawn(type_name, x, y)
-        end
-    end
-end
-
---[[
-    Spawn entities in concentric circles
-
-    @param type_name string
-    @param rings number
-    @param center_x number
-    @param center_y number
-    @param base_count number - Entities in innermost ring
-    @param ring_spacing number - Distance between rings
-]]
-function EntityController:spawnCircle(type_name, rings, center_x, center_y, base_count, ring_spacing)
-    base_count = base_count or 12
-    ring_spacing = ring_spacing or 40
-
-    for ring = 1, rings do
-        local radius = ring * ring_spacing
-        local count = base_count + (ring - 1) * 2
-
-        for i = 1, count do
-            local angle = (i / count) * math.pi * 2
-            local x = center_x + math.cos(angle) * radius
-            local y = center_y + math.sin(angle) * radius
-            self:spawn(type_name, x, y)
-        end
-    end
-end
-
---[[
-    Spawn entities in random positions (with optional overlap checking)
-
-    @param type_name string
-    @param count number
-    @param bounds table - {x, y, width, height}
-    @param rng RandomGenerator
-    @param allow_overlap boolean (default false)
-]]
-function EntityController:spawnRandom(type_name, count, bounds, rng, allow_overlap)
-    local entity_type = self.entity_types[type_name]
-    if not entity_type then return end
-
-    local width = entity_type.width or (entity_type.radius and entity_type.radius * 2) or 32
-    local height = entity_type.height or (entity_type.radius and entity_type.radius * 2) or 16
-    local max_attempts = count * 10
-    local placed = 0
-
-    for _ = 1, max_attempts do
-        if placed >= count then break end
-
-        local x = bounds.x + rng:random() * (bounds.width - width)
-        local y = bounds.y + rng:random() * (bounds.height - height)
-
-        local can_place = true
-        if not allow_overlap then
-            for _, entity in ipairs(self.entities) do
-                if entity.active then
-                    local overlap = x < entity.x + (entity.width or 0) and
-                                   x + width > entity.x and
-                                   y < entity.y + (entity.height or 0) and
-                                   y + height > entity.y
-                    if overlap then
-                        can_place = false
-                        break
-                    end
-                end
-            end
-        end
-
-        if can_place then
-            self:spawn(type_name, x, y)
-            placed = placed + 1
-        end
-    end
-end
-
---[[
-    Spawn entities in deterministic hash-based positions (scatter pattern)
-    Positions are reproducible given the same parameters.
-
-    @param type_name string
-    @param count number - Number of entities to spawn
-    @param config table:
-        - bounds: {x, y, width, height}
-        - padding: number (default from entity size)
-        - hash_x1, hash_x2, hash_y1, hash_y2: hash constants for positioning
-        - extra_fn: function(i) returns extra fields for entity i
-]]
-function EntityController:spawnScatter(type_name, count, config)
-    local entity_type = self.entity_types[type_name]
-    if not entity_type then return end
-
-    config = config or {}
-    local bounds = config.bounds or {x = 0, y = 0, width = 800, height = 600}
-    local size = entity_type.size or entity_type.width or (entity_type.radius and entity_type.radius * 2) or 20
-    local padding = config.padding or size
-
-    local hash_x1 = config.hash_x1 or 17
-    local hash_x2 = config.hash_x2 or 47
-    local hash_y1 = config.hash_y1 or 23
-    local hash_y2 = config.hash_y2 or 53
-
-    for i = 1, count do
-        local hx = (i * hash_x1) % hash_x2
-        local hy = (i * hash_y1) % hash_y2
-        local x = bounds.x + padding + (hx / hash_x2) * (bounds.width - 2 * padding)
-        local y = bounds.y + padding + (hy / hash_y2) * (bounds.height - 2 * padding)
-
-        local extra = config.extra_fn and config.extra_fn(i) or {id = i}
-        self:spawn(type_name, x, y, extra)
-    end
-end
-
--- Spawn multiple entities using a spawner function
-function EntityController:spawnMultiple(count, spawner_fn)
-    for _ = 1, count do
-        spawner_fn()
-    end
-end
-
-function EntityController:spawnAtCells(type_name, cells, is_valid_fn)
-    for _, cell in ipairs(cells) do
-        if not is_valid_fn or is_valid_fn(cell.x, cell.y) then
-            self:spawn(type_name, cell.x, cell.y)
-        end
-    end
-end
-
---[[
-    Spawn entity near an existing entity (cluster spawning)
+    Spawn entities at given positions
 
     @param type_name string - Entity type to spawn
-    @param ref_entity table - Reference entity to spawn near (or nil to pick random existing)
-    @param radius number - Max distance from reference (default 3)
-    @param bounds table - {min_x, max_x, min_y, max_y} to clamp position
-    @param is_valid_fn function(x, y) - Optional validation function
-    @param custom_params table - Optional params to pass to spawn
-    @return entity or nil
+    @param positions table - Array of {x, y, ...} positions (extra fields merged into entity)
+    @param custom_params table (optional) - Base params applied to all entities
+    @return table - Array of spawned entities
 ]]
-function EntityController:spawnCluster(type_name, ref_entity, radius, bounds, is_valid_fn, custom_params)
-    radius = radius or 3
-
-    -- If no reference provided, pick random existing entity of same type
-    if not ref_entity then
-        local existing = self:getEntitiesByType(type_name)
-        if #existing == 0 then return nil end
-        ref_entity = existing[math.random(#existing)]
-    end
-
-    local max_attempts = 50
-    for _ = 1, max_attempts do
-        local offset_x = math.random(-radius, radius)
-        local offset_y = math.random(-radius, radius)
-        local x = ref_entity.x + offset_x
-        local y = ref_entity.y + offset_y
-
-        -- Clamp to bounds if provided
-        if bounds then
-            x = math.max(bounds.min_x or 0, math.min(bounds.max_x or 9999, x))
-            y = math.max(bounds.min_y or 0, math.min(bounds.max_y or 9999, y))
+function EntityController:spawnAtPositions(type_name, positions, custom_params)
+    local entities = {}
+    for _, pos in ipairs(positions) do
+        -- Merge position data with custom_params
+        local params = {}
+        if custom_params then
+            for k, v in pairs(custom_params) do params[k] = v end
         end
-
-        -- Check validation function
-        local valid = true
-        if is_valid_fn then
-            valid = is_valid_fn(x, y)
+        -- Position fields (row, col, index, etc) get merged in
+        for k, v in pairs(pos) do
+            if k ~= "x" and k ~= "y" then
+                params[k] = v
+            end
         end
-
-        if valid then
-            return self:spawn(type_name, x, y, custom_params)
+        local entity = self:spawn(type_name, pos.x, pos.y, params)
+        if entity then
+            table.insert(entities, entity)
         end
     end
-
-    return nil
-end
-
--- Spawn pattern functions: each returns x, y given bounds, config, and state
-EntityController.SPAWN_PATTERNS = {
-    random = function(bounds)
-        if bounds.is_grid then
-            return math.random(bounds.min_x, bounds.max_x), math.random(bounds.min_y, bounds.max_y)
-        end
-        return bounds.min_x + math.random() * (bounds.max_x - bounds.min_x),
-               bounds.min_y + math.random() * (bounds.max_y - bounds.min_y)
-    end,
-
-    cluster = function(bounds, config, state, controller)
-        local ref = config.ref_entity
-        if not ref then
-            local existing = controller:getEntitiesByCategory(config.category)
-            if #existing > 0 then ref = existing[math.random(#existing)] end
-        end
-        if not ref then return EntityController.SPAWN_PATTERNS.random(bounds) end
-        local r = config.radius or 3
-        return ref.x + math.random(-r, r), ref.y + math.random(-r, r)
-    end,
-
-    line = function(bounds, config)
-        local pos = config.position or math.floor((bounds.min_y + bounds.max_y) / 2)
-        local variance = config.variance or 2
-        if config.axis == "x" then
-            return pos + math.random(-variance, variance), math.random(bounds.min_y, bounds.max_y)
-        end
-        return math.random(bounds.min_x, bounds.max_x), pos + math.random(-variance, variance)
-    end,
-
-    spiral = function(bounds, config, state)
-        state.spiral = state.spiral or {angle = 0, radius = 2, expanding = true}
-        local s = state.spiral
-        local cx = config.center_x or (bounds.min_x + bounds.max_x) / 2
-        local cy = config.center_y or (bounds.min_y + bounds.max_y) / 2
-        local min_r, max_r = config.min_radius or 2, config.max_radius or math.min(bounds.max_x - bounds.min_x, bounds.max_y - bounds.min_y) * 0.4
-        s.angle = s.angle + 0.5
-        s.radius = s.radius + (s.expanding and 0.5 or -0.5)
-        if s.radius >= max_r then s.expanding = false elseif s.radius <= min_r then s.expanding = true end
-        return math.floor(cx + math.cos(s.angle) * s.radius), math.floor(cy + math.sin(s.angle) * s.radius)
-    end,
-}
-
-function EntityController:spawnWithPattern(type_name, pattern, config, custom_params)
-    config = config or {}
-    local bounds = config.bounds or {min_x = 0, max_x = 100, min_y = 0, max_y = 100}
-    local pattern_fn = EntityController.SPAWN_PATTERNS[pattern] or EntityController.SPAWN_PATTERNS.random
-    self.pattern_state = self.pattern_state or {}
-
-    for _ = 1, config.max_attempts or 50 do
-        local x, y = pattern_fn(bounds, config, self.pattern_state, self)
-        x = math.max(bounds.min_x, math.min(bounds.max_x, x))
-        y = math.max(bounds.min_y, math.min(bounds.max_y, y))
-        if not config.is_valid_fn or config.is_valid_fn(x, y) then
-            return self:spawn(type_name, x, y, custom_params)
-        end
-    end
-    return nil
-end
-
---[[
-    Spawn entity in a region with optional direction facing
-
-    @param type_name string
-    @param config table - Spawn configuration (see calculateSpawnPosition)
-    @param custom_params table - Optional params to pass to spawn
-    @return entity, direction - spawned entity and calculated direction
-]]
-function EntityController:spawnInRegion(type_name, config, custom_params)
-    local x, y, direction = self:calculateSpawnPosition(config)
-
-    local entity = self:spawn(type_name, x, y, custom_params)
-    if entity then
-        entity.spawn_direction = direction
-    end
-
-    return entity, direction
+    return entities
 end
 
 --[[
@@ -630,103 +342,6 @@ function EntityController:ensureInboundAngle(x, y, angle, bounds)
     end
     return angle
 end
-
---[[
-    Spawn entity with min_distance_from constraint
-
-    @param type_name string
-    @param bounds table - {min_x, max_x, min_y, max_y}
-    @param constraints table - {min_distance_from = {x, y, distance}, is_valid_fn = function}
-    @param custom_params table - Optional params to pass to spawn
-    @return entity or nil
-]]
-function EntityController:spawnWithConstraints(type_name, bounds, constraints, custom_params)
-    constraints = constraints or {}
-    local max_attempts = constraints.max_attempts or 100
-    local is_grid = bounds.is_grid
-
-    for _ = 1, max_attempts do
-        local x, y
-        if is_grid then
-            x = math.random(bounds.min_x, bounds.max_x)
-            y = math.random(bounds.min_y, bounds.max_y)
-        else
-            x = bounds.min_x + math.random() * (bounds.max_x - bounds.min_x)
-            y = bounds.min_y + math.random() * (bounds.max_y - bounds.min_y)
-        end
-
-        local valid = true
-
-        -- Check min_distance_from constraint
-        if constraints.min_distance_from and valid then
-            local mdf = constraints.min_distance_from
-            local dx = x - mdf.x
-            local dy = y - mdf.y
-            local dist = math.sqrt(dx * dx + dy * dy)
-            if dist < mdf.distance then
-                valid = false
-            end
-        end
-
-        -- Check custom validation function
-        if constraints.is_valid_fn and valid then
-            valid = constraints.is_valid_fn(x, y)
-        end
-
-        if valid then
-            return self:spawn(type_name, x, y, custom_params)
-        end
-    end
-
-    return nil
-end
-
---[[
-    Spawn entities in a checkerboard pattern
-
-    @param type_name string
-    @param rows number
-    @param cols number
-    @param x_offset number
-    @param y_offset number
-    @param spacing_x number
-    @param spacing_y number
-]]
-function EntityController:spawnCheckerboard(type_name, rows, cols, x_offset, y_offset, spacing_x, spacing_y)
-    local entity_type = self.entity_types[type_name]
-    if not entity_type then return end
-
-    local width = entity_type.width or (entity_type.radius and entity_type.radius * 2) or 32
-    local height = entity_type.height or (entity_type.radius and entity_type.radius * 2) or 16
-
-    for row = 0, rows - 1 do
-        for col = 0, cols - 1 do
-            if (row + col) % 2 == 0 then
-                local x = x_offset + col * (width + spacing_x)
-                local y = y_offset + row * (height + spacing_y)
-                self:spawn(type_name, x, y)
-            end
-        end
-    end
-end
-
---[[
-    Spawn entities using a named layout pattern
-    Dispatches to spawnGrid, spawnPyramid, spawnCircle, spawnRandom, or spawnCheckerboard
-
-    @param type_name string - Entity type to spawn
-    @param layout string - "grid", "pyramid", "circle", "random", "checkerboard"
-    @param config table - Layout configuration:
-        - rows, cols: Grid dimensions
-        - x, y: Starting position offset
-        - spacing_x, spacing_y: Spacing between entities
-        - arena_width: For centering (pyramid)
-        - bounds: {x, y, width, height} for random spawning
-        - rng: Random generator for random spawning
-        - can_overlap: Allow overlapping (random)
-        - center_x, center_y: Center point (circle)
-        - base_count, ring_spacing: Circle parameters
-]]
 
 --[[
     Calculate grid layout dimensions for fitting items in a container.
@@ -1024,97 +639,6 @@ function EntityController:completeGridShuffle()
     self.grid_shuffle = nil
 end
 
-function EntityController:spawnLayout(type_name, layout, config)
-    config = config or {}
-    local rows = config.rows or 5
-    local cols = config.cols or 10
-    local start_x = config.x or 0
-    local start_y = config.y or 60
-    local spacing_x = config.spacing_x or 2
-    local spacing_y = config.spacing_y or 2
-
-    if layout == "pyramid" then
-        self:spawnPyramid(type_name, rows, cols, start_x, start_y, spacing_x, spacing_y, config.arena_width or 800)
-    elseif layout == "circle" then
-        self:spawnCircle(type_name, rows, config.center_x or 400, config.center_y or 200, config.base_count or 12, config.ring_spacing or 40)
-    elseif layout == "random" then
-        local bounds = config.bounds or {x = 40, y = 40, width = 720, height = 200}
-        self:spawnRandom(type_name, rows * cols, bounds, config.rng, config.can_overlap or false)
-    elseif layout == "checkerboard" then
-        self:spawnCheckerboard(type_name, rows, cols, start_x, start_y, spacing_x, spacing_y)
-    elseif layout == "v_shape" then
-        local count = config.count or 5
-        local center_x = config.center_x or 400
-        local y = config.y or 0
-        local spacing = config.spacing_x or 60
-        for i = 1, count do
-            local offset = (i - math.ceil(count / 2)) * spacing
-            local y_offset = math.abs(offset) * 0.5
-            self:spawn(type_name, center_x + offset, y - y_offset, config.extra)
-        end
-    elseif layout == "line" then
-        local count = config.count or 6
-        local x = config.x or 0
-        local y = config.y or 0
-        local spacing = config.spacing_x or 100
-        for i = 1, count do
-            self:spawn(type_name, x + (i - 1) * spacing, y, config.extra)
-        end
-    elseif layout == "spiral" then
-        local count = config.count or 8
-        local center_x = config.center_x or 400
-        local center_y = config.center_y or 100
-        local radius = config.radius or 100
-        for i = 1, count do
-            local angle = (i / count) * math.pi * 2
-            self:spawn(type_name, center_x + math.cos(angle) * radius, center_y + math.sin(angle) * radius * 0.3, config.extra)
-        end
-    elseif layout == "scatter" then
-        self:spawnScatter(type_name, config.count or (rows * cols), config)
-    else -- "grid" is default
-        for row = 1, rows do
-            for col = 1, cols do
-                local x = start_x + (col - 1) * spacing_x
-                local y = start_y + (row - 1) * spacing_y
-                local extra = {}
-                if config.extra then
-                    for k, v in pairs(config.extra) do extra[k] = v end
-                end
-                extra.grid_row = row
-                extra.grid_col = col
-                self:spawn(type_name, x, y, extra)
-            end
-        end
-    end
-end
-
---[[
-    Spawn entity using weighted random selection from configs
-
-    @param type_name string - Entity type to spawn
-    @param weighted_configs table - Array of {weight, ...properties}
-    @param x number - Spawn X position
-    @param y number - Spawn Y position
-    @param base_extra table - Base properties merged into chosen config
-]]
-function EntityController:spawnWeighted(type_name, weighted_configs, x, y, base_extra)
-    local total = 0
-    for _, cfg in ipairs(weighted_configs) do total = total + (cfg.weight or 1) end
-
-    local r = math.random() * total
-    local chosen = weighted_configs[1]
-    for _, cfg in ipairs(weighted_configs) do
-        r = r - (cfg.weight or 1)
-        if r <= 0 then chosen = cfg; break end
-    end
-
-    local extra = {}
-    for k, v in pairs(base_extra or {}) do extra[k] = v end
-    for k, v in pairs(chosen) do if k ~= "weight" then extra[k] = v end end
-
-    return self:spawn(type_name, x, y, extra)
-end
-
 --[[
     Pick a type name from weighted configs with optional time-based growth.
     Configs: array of {name = "type_name", weight = N} or {name = "type_name", weight = {base = N, growth = N}}
@@ -1269,11 +793,9 @@ function EntityController:update(dt, game_state)
                 entity.update(entity, dt, game_state)
             end
 
-            -- Update basic movement (if linear)
-            if entity.movement_type == "linear" then
-                entity.x = entity.x + (entity.vx or 0) * dt
-                entity.y = entity.y + (entity.vy or 0) * dt
-            end
+            -- Update position from velocity
+            entity.x = entity.x + (entity.vx or 0) * dt
+            entity.y = entity.y + (entity.vy or 0) * dt
 
             -- Update timers
             if entity.lifetime then
@@ -1813,29 +1335,25 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             end
         end
 
-        -- Pattern movement behavior (calls PatternMovement.update for non-dominated patterns)
-        if config.pattern_movement then
-            local dominated = entity.movement_pattern == 'grid' or
-                             entity.movement_pattern == 'formation'
-            if not dominated and entity.movement_pattern then
-                local pm = config.pattern_movement
-                if pm.speed then entity.speed = entity.speed or pm.speed end
-                if pm.direction then entity.direction = entity.direction or pm.direction end
+        -- Pattern movement behavior
+        if config.pattern_movement and entity.movement_pattern and not entity.skip_pattern_movement then
+            local pm = config.pattern_movement
+            if pm.speed then entity.speed = entity.speed or pm.speed end
+            if pm.direction then entity.direction = entity.direction or pm.direction end
 
-                -- Update target for tracking/teleporter patterns
-                if pm.tracking_target and (entity.movement_pattern == 'tracking' or entity.movement_pattern == 'teleporter') then
-                    entity.target_x = pm.tracking_target.x
-                    entity.target_y = pm.tracking_target.y
-                end
+            -- Set target coordinates if tracking_target provided (pattern decides whether to use it)
+            if pm.tracking_target then
+                entity.target_x = pm.tracking_target.x
+                entity.target_y = pm.tracking_target.y
+            end
 
-                -- Update difficulty scaler from game state if provided
-                if pm.get_difficulty_scaler then
-                    entity.difficulty_scaler = pm.get_difficulty_scaler(entity)
-                end
+            -- Update difficulty scaler from game state if provided
+            if pm.get_difficulty_scaler then
+                entity.difficulty_scaler = pm.get_difficulty_scaler(entity)
+            end
 
-                if pm.PatternMovement then
-                    pm.PatternMovement.update(dt, entity, pm.bounds)
-                end
+            if pm.PatternMovement then
+                pm.PatternMovement.update(dt, entity, pm.bounds)
             end
         end
 
@@ -1869,24 +1387,21 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             entity.rotation = (entity.rotation or 0) + entity.rotation_speed * dt
         end
 
-        -- Bounce movement (uses PatternMovement-compatible fields: vx, vy, radius)
-        if config.bounce_movement and entity.movement_pattern == 'bounce' then
+        -- Wall bouncing behavior (entity reverses velocity at boundaries)
+        if config.bounce_movement and entity.bounces_off_walls then
             local bm = config.bounce_movement
             local r = entity.radius or 0
             local w, h = bm.width or 800, bm.height or 600
 
-            -- Track when bouncer enters play area
-            if not entity.has_entered then
+            -- Track when entity enters play area (optional: skip bouncing until inside)
+            if entity.track_entry and not entity.has_entered then
                 if entity.x >= r and entity.x <= w - r and entity.y >= r and entity.y <= h - r then
                     entity.has_entered = true
                 end
             end
 
-            -- Only bounce after entering
-            if entity.has_entered then
-                entity.x = entity.x + (entity.vx or 0) * dt
-                entity.y = entity.y + (entity.vy or 0) * dt
-
+            -- Only bounce after entering (or immediately if not tracking entry)
+            if not entity.track_entry or entity.has_entered then
                 local bounced = false
                 if entity.x < r or entity.x > w - r then
                     entity.vx = -(entity.vx or 0)
@@ -1899,19 +1414,15 @@ function EntityController:updateBehaviors(dt, config, collision_check)
                     bounced = true
                 end
 
-                -- Count bounces and check max
-                if bounced then
+                -- Count bounces and check max (optional)
+                if bounced and bm.max_bounces then
                     entity.bounce_count = (entity.bounce_count or 0) + 1
-                    if bm.max_bounces and entity.bounce_count >= bm.max_bounces then
+                    if entity.bounce_count >= bm.max_bounces then
                         entity.was_dodged = true
                         entity.removal_reason = "max_bounces"
                         entity.marked_for_removal = true
                     end
                 end
-            else
-                -- Move toward play area before entering
-                entity.x = entity.x + (entity.vx or 0) * dt
-                entity.y = entity.y + (entity.vy or 0) * dt
             end
         end
 
@@ -2057,78 +1568,6 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             end
         end
     end
-
-    -- Grid unit movement (all entities move as one unit, Space Invaders style)
-    if config.grid_unit_movement then
-        local gum = config.grid_unit_movement
-
-        -- Count only grid entities
-        local grid_count = 0
-        for _, e in ipairs(self.entities) do
-            if e.active and not e.marked_for_removal and e.movement_pattern == 'grid' then
-                grid_count = grid_count + 1
-            end
-        end
-
-        self.grid_movement_state = self.grid_movement_state or {
-            direction = 1,
-            initial_count = gum.initial_count or grid_count
-        }
-        local state = self.grid_movement_state
-
-        -- Speed increases as entities die
-        local speed_mult = 1.0
-        if gum.speed_scaling and state.initial_count > 0 and grid_count > 0 then
-            speed_mult = 1 + (1 - grid_count / state.initial_count) * (gum.speed_scale_factor or 2)
-        end
-
-        local base_speed = gum.speed or 50
-        local move = base_speed * speed_mult * dt * state.direction
-        local hit_edge = false
-
-        for _, e in ipairs(self.entities) do
-            if e.active and not e.marked_for_removal and e.movement_pattern == 'grid' then
-                e.x = e.x + move
-                if e.x <= (gum.bounds_left or 0) or
-                   e.x + (e.width or 0) >= (gum.bounds_right or 800) then
-                    hit_edge = true
-                end
-            end
-        end
-
-        if hit_edge then
-            state.direction = -state.direction
-            -- Clamp all grid entities back inside bounds to prevent repeated edge triggers
-            for _, e in ipairs(self.entities) do
-                if e.active and e.movement_pattern == 'grid' then
-                    local w = e.width or 0
-                    if e.x <= (gum.bounds_left or 0) then
-                        e.x = (gum.bounds_left or 0) + 1
-                    elseif e.x + w >= (gum.bounds_right or 800) then
-                        e.x = (gum.bounds_right or 800) - w - 1
-                    end
-                end
-            end
-            if gum.descent then
-                for _, e in ipairs(self.entities) do
-                    if e.active and e.movement_pattern == 'grid' then
-                        e.y = e.y + gum.descent
-                    end
-                end
-            end
-        end
-
-        -- Mark grid entities for removal when they go off the bottom
-        if gum.bounds_bottom then
-            for _, e in ipairs(self.entities) do
-                if e.active and e.movement_pattern == 'grid' and e.y > gum.bounds_bottom then
-                    e.removal_reason = "out_of_bounds"
-                    e.marked_for_removal = true
-                end
-            end
-        end
-    end
-
 end
 
 return EntityController

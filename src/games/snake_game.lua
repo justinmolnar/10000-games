@@ -80,14 +80,14 @@ function SnakeGame:_initializeObstacles()
     self:createEdgeObstacles()
     if not self._obstacles_created then
         local count = math.floor(self.params.obstacle_count * self.difficulty_modifiers.complexity)
-        self.entity_controller:spawnMultiple(count, function() self:spawnObstacleEntity() end)
+        for _ = 1, count do self:spawnObstacleEntity() end
         self._obstacles_created = true
     end
 end
 
 function SnakeGame:_spawnInitialFood()
     if #self:getFoods() == 0 and not self._foods_spawned then
-        self.entity_controller:spawnMultiple(self.params.food_count, function() self:spawnFoodEntity() end)
+        for _ = 1, self.params.food_count do self:spawnFoodEntity() end
         self._foods_spawned = true
     end
 end
@@ -202,13 +202,33 @@ function SnakeGame:setupComponents()
     self.arena_controller.current_height = self.grid_height
     self.arena_controller.min_width = math.max(self.params.min_arena_cells, math.floor(self.grid_width * self.params.min_arena_ratio))
     self.arena_controller.min_height = math.max(self.params.min_arena_cells, math.floor(self.grid_height * self.params.min_arena_ratio))
-    -- Set center and radius for shaped arenas (used by isInside and drawBoundary)
+    -- Set grid mode and container dimensions (prevents pixel-based recentering)
+    self.arena_controller.grid_mode = true  -- Snake uses grid coordinates
+    self.arena_controller.cell_size = 1     -- 1 grid cell = 1 unit in arena_controller
+    self.arena_controller.container_width = self.grid_width
+    self.arena_controller.container_height = self.grid_height
+    self.arena_controller.bounds_padding = 0  -- Disable movement clamping
+    self.arena_controller.vx = 0  -- No arena movement
+    self.arena_controller.vy = 0
+    self.arena_controller.on_shrink = function(margins) self:onArenaShrink(margins) end
+
+    -- Set center and radius for shaped arenas (MUST be set AFTER container)
+    -- Enable safe_zone_mode for non-rectangle shapes OR custom vertices
+    local has_custom_vertices = self.variant and self.variant.arena_vertices
+    self.arena_controller.safe_zone_mode = (self.params.arena_shape ~= "rectangle") or has_custom_vertices
     self.arena_controller.x = self.grid_width / 2
     self.arena_controller.y = self.grid_height / 2
     self.arena_controller.radius = math.min(self.grid_width, self.grid_height) / 2 - 1
     self.arena_controller.initial_radius = self.arena_controller.radius
-    self.arena_controller.safe_zone_mode = (self.params.arena_shape ~= "rectangle")
-    self.arena_controller.on_shrink = function(margins) self:onArenaShrink(margins) end
+
+    -- Set polygon vertices based on arena_shape or custom arena_vertices
+    if self.variant and self.variant.arena_vertices then
+        -- Custom vertices from variant (normalized to radius=1)
+        self.arena_controller.vertices = self.variant.arena_vertices
+    else
+        local sides, rotation = self:getShapeSides(self.params.arena_shape)
+        self.arena_controller.vertices = self.arena_controller:generateRegularPolygon(sides, rotation)
+    end
 
     for i, psnake in ipairs(self.snakes) do
         local entity_id = (i == 1) and "snake" or ("snake_" .. i)
@@ -245,7 +265,7 @@ function SnakeGame:_respawnFood()
     if self.params.food_spawn_mode == "continuous" then
         self:spawnFoodEntity()
     elseif self.params.food_spawn_mode == "batch" and #self:getFoods() == 0 then
-        self.entity_controller:spawnMultiple(self.params.food_count, function() self:spawnFoodEntity() end)
+        for _ = 1, self.params.food_count do self:spawnFoodEntity() end
     end
 end
 
@@ -256,38 +276,92 @@ function SnakeGame:_getFoodType()
 end
 
 function SnakeGame:spawnFoodEntity()
-    -- Safeguard: ensure valid grid dimensions
     if not self.grid_width or not self.grid_height or self.grid_width < 3 or self.grid_height < 3 then
         return nil
     end
-    -- Spawn inside the playable area (avoid boundary cells where walls exist)
     local margin = (self.params.wall_mode == "wrap") and 0 or 1
     local bounds = {
-        min_x = margin,
-        max_x = self.grid_width - 1 - margin,
-        min_y = margin,
-        max_y = self.grid_height - 1 - margin,
-        is_grid = true
+        min_x = margin, max_x = self.grid_width - 1 - margin,
+        min_y = margin, max_y = self.grid_height - 1 - margin
     }
-    return self.entity_controller:spawnWithPattern(self:_getFoodType(), self.params.food_spawn_pattern or "random", {
-        bounds = bounds,
-        is_valid_fn = function(x, y) return not self:checkCollision({x = x, y = y}) end,
-        category = "food",
-        position = math.floor(self.grid_height / 2)  -- for line pattern
-    }, {lifetime = 0, category = "food"})
+    local pattern = self.params.food_spawn_pattern or "random"
+    local x, y = self:getPatternSpawnPosition(pattern, bounds)
+    if x then
+        return self.entity_controller:spawn(self:_getFoodType(), x, y, {lifetime = 0, category = "food"})
+    end
+    return nil
 end
 
 function SnakeGame:spawnObstacleEntity()
     local type_name = self.params.obstacle_type == "moving_blocks" and "obstacle_moving" or "obstacle_static"
-    local bounds = {min_x = 0, max_x = self.grid_width - 1, min_y = 0, max_y = self.grid_height - 1, is_grid = true}
-    local custom = {category = "obstacle", type = self.params.obstacle_type}
-    if self.params.obstacle_type == "moving_blocks" then
-        custom.vx, custom.vy = math.random() < 0.5 and 1 or -1, 0
+    local bounds = {min_x = 0, max_x = self.grid_width - 1, min_y = 0, max_y = self.grid_height - 1}
+    local x, y = self:getPatternSpawnPosition("random", bounds)
+    if x then
+        local custom = {category = "obstacle", type = self.params.obstacle_type}
+        if self.params.obstacle_type == "moving_blocks" then
+            custom.vx, custom.vy = math.random() < 0.5 and 1 or -1, 0
+        end
+        return self.entity_controller:spawn(type_name, x, y, custom)
     end
-    return self.entity_controller:spawnWithPattern(type_name, "random", {
-        bounds = bounds,
-        is_valid_fn = function(x, y) return not self:checkCollision({x = x, y = y}) end
-    }, custom)
+    return nil
+end
+
+function SnakeGame:getPatternSpawnPosition(pattern, bounds)
+    self.spawn_pattern_state = self.spawn_pattern_state or {}
+
+    for _ = 1, 50 do
+        local x, y
+
+        if pattern == "cluster" then
+            -- Spawn near existing food
+            local foods = self:getFoods()
+            if #foods > 0 then
+                local ref = foods[math.random(#foods)]
+                local r = 3
+                x = ref.x + math.random(-r, r)
+                y = ref.y + math.random(-r, r)
+            else
+                x = math.random(bounds.min_x, bounds.max_x)
+                y = math.random(bounds.min_y, bounds.max_y)
+            end
+
+        elseif pattern == "line" then
+            -- Spawn along horizontal center line with variance
+            local center_y = math.floor((bounds.min_y + bounds.max_y) / 2)
+            local variance = 2
+            x = math.random(bounds.min_x, bounds.max_x)
+            y = center_y + math.random(-variance, variance)
+
+        elseif pattern == "spiral" then
+            -- Expanding spiral from center
+            local state = self.spawn_pattern_state.spiral or {angle = 0, radius = 2, expanding = true}
+            local cx = (bounds.min_x + bounds.max_x) / 2
+            local cy = (bounds.min_y + bounds.max_y) / 2
+            local min_r, max_r = 2, math.min(bounds.max_x - bounds.min_x, bounds.max_y - bounds.min_y) * 0.4
+
+            state.angle = state.angle + 0.5
+            state.radius = state.radius + (state.expanding and 0.5 or -0.5)
+            if state.radius >= max_r then state.expanding = false
+            elseif state.radius <= min_r then state.expanding = true end
+
+            x = math.floor(cx + math.cos(state.angle) * state.radius)
+            y = math.floor(cy + math.sin(state.angle) * state.radius)
+            self.spawn_pattern_state.spiral = state
+
+        else -- random (default)
+            x = math.random(bounds.min_x, bounds.max_x)
+            y = math.random(bounds.min_y, bounds.max_y)
+        end
+
+        -- Clamp to bounds
+        x = math.max(bounds.min_x, math.min(bounds.max_x, x))
+        y = math.max(bounds.min_y, math.min(bounds.max_y, y))
+
+        if not self:checkCollision({x = x, y = y}) then
+            return x, y
+        end
+    end
+    return nil, nil
 end
 
 --------------------------------------------------------------------------------
@@ -308,6 +382,26 @@ function SnakeGame:setPlayArea(width, height)
             self.arena_controller.base_height = self.grid_height
             self.arena_controller.current_width = self.grid_width
             self.arena_controller.current_height = self.grid_height
+
+            -- Ensure grid mode is set for Snake
+            self.arena_controller.grid_mode = true
+            self.arena_controller.cell_size = 1
+            -- Set container dimensions to grid dimensions (prevents pixel-based recentering)
+            self.arena_controller.container_width = self.grid_width
+            self.arena_controller.container_height = self.grid_height
+            self.arena_controller.bounds_padding = 0  -- Disable movement clamping
+            self.arena_controller.vx = 0  -- No arena movement
+            self.arena_controller.vy = 0
+
+            -- Update arena center and radius for shaped/custom arenas (MUST be set AFTER container)
+            local has_custom_vertices = self.variant and self.variant.arena_vertices
+            if self.params.arena_shape ~= "rectangle" or has_custom_vertices then
+                self.arena_controller.safe_zone_mode = true
+                self.arena_controller.x = self.grid_width / 2
+                self.arena_controller.y = self.grid_height / 2
+                self.arena_controller.radius = math.min(self.grid_width, self.grid_height) / 2 - 1
+                self.arena_controller.initial_radius = self.arena_controller.radius
+            end
 
             self:_regenerateEdgeObstacles()
         end
@@ -453,6 +547,14 @@ function SnakeGame:_moveGridSnake(snake)
         new_head.x, new_head.y = self:wrapPosition(new_head.x, new_head.y, self.grid_width, self.grid_height)
     end
 
+    -- Check shaped arena bounds (no wall entities for circle/hex/custom shapes)
+    if self.arena_controller.safe_zone_mode and self.arena_controller.vertices and #self.arena_controller.vertices > 0 then
+        if not self:isInsideArena(new_head) then
+            if is_primary then self:onComplete() else snake.alive = false end
+            return
+        end
+    end
+
     -- Check collisions at proposed position (walls/obstacles before moving)
     local died = false
     self.entity_controller:checkCollision({x = new_head.x, y = new_head.y, grid = true}, {
@@ -530,12 +632,52 @@ end
 
 function SnakeGame:keypressed(key)
     SnakeGame.super.keypressed(self, key)
-    return self.movement_controller:handleInput(key, self.snakes, self.snake.direction)
+
+    -- Determine direction from key
+    local dir = nil
+    if key == 'left' or key == 'a' then dir = {x = -1, y = 0}
+    elseif key == 'right' or key == 'd' then dir = {x = 1, y = 0}
+    elseif key == 'up' or key == 'w' then dir = {x = 0, y = -1}
+    elseif key == 'down' or key == 's' then dir = {x = 0, y = 1}
+    end
+    if not dir then return false end
+
+    -- Queue direction for each player snake
+    for i, snake in ipairs(self.snakes) do
+        if snake.behavior then goto continue end  -- skip AI
+
+        local entity_id = (i == 1) and "snake" or ("snake_" .. i)
+        local current_dir = (i == 1) and self.snake.direction or snake.direction
+
+        -- Grid mode: queue direction
+        if self.movement_controller:queueGridDirection(entity_id, dir.x, dir.y, current_dir) then
+            if i > 1 then snake.next_direction = {x = dir.x, y = dir.y} end
+        end
+
+        -- Smooth mode: set turn flags
+        local smooth_state = self.movement_controller:getSmoothState(entity_id)
+        if smooth_state then
+            if key == 'left' or key == 'a' then smooth_state.turn_left = true end
+            if key == 'right' or key == 'd' then smooth_state.turn_right = true end
+        end
+
+        ::continue::
+    end
+    return true
 end
 
 function SnakeGame:keyreleased(key)
     SnakeGame.super.keyreleased(self, key)
-    self.movement_controller:handleInputRelease(key, self.snakes)
+
+    -- Update smooth turn flags on key release
+    for i, snake in ipairs(self.snakes) do
+        local entity_id = (i == 1) and "snake" or ("snake_" .. i)
+        local smooth_state = self.movement_controller:getSmoothState(entity_id)
+        if smooth_state then
+            if key == 'left' or key == 'a' then smooth_state.turn_left = false end
+            if key == 'right' or key == 'd' then smooth_state.turn_right = false end
+        end
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -578,10 +720,20 @@ function SnakeGame:_updateSmoothSnake(snake, entity_id, dt, head_radius, food_ra
     snake.smooth_trail:addPoint(snake.smooth_x, snake.smooth_y, math.sqrt(dx*dx + dy*dy))
     snake.smooth_trail:trimToDistance(snake.smooth_target_length)
 
-    -- Arena bounds check
-    if self.params.wall_mode == "death" and out_of_bounds then
-        if is_primary then self:onComplete() else snake.alive = false end
-        return
+    -- Arena bounds check (shaped arenas use polygon, rectangular uses out_of_bounds)
+    if self.params.wall_mode == "death" then
+        local outside = false
+        if self.arena_controller.safe_zone_mode and self.arena_controller.vertices and #self.arena_controller.vertices > 0 then
+            -- Shaped/custom arena: use polygon collision
+            outside = not self:isInsideArena({x = snake.smooth_x, y = snake.smooth_y}, nil, true)
+        else
+            -- Rectangle: use simple bounds check
+            outside = out_of_bounds
+        end
+        if outside then
+            if is_primary then self:onComplete() else snake.alive = false end
+            return
+        end
     end
 
     -- Self-collision (trail-specific)
@@ -633,7 +785,7 @@ function SnakeGame:_findBounceAngle(x, y, current_angle)
             for _, obs in ipairs(self:getObstacles()) do
                 if PhysicsUtils.circleCollision(cx, cy, 0.1, obs.x + 0.5, obs.y + 0.5, 0.5) then return step - 1 end
             end
-            if self.params.arena_shape ~= "rectangle" and not self:isInsideArena({x = cx - 0.5, y = cy - 0.5}) then
+            if self.arena_controller.safe_zone_mode and not self:isInsideArena({x = cx, y = cy}, nil, true) then
                 return step - 1
             end
         end
@@ -647,16 +799,19 @@ end
 --------------------------------------------------------------------------------
 
 function SnakeGame:createEdgeObstacles()
-    if self.params.wall_mode == "wrap" or self.params.arena_shape ~= "rectangle" then return end
+    -- Skip edge walls for wrap mode or shaped/custom arenas (they use polygon collision)
+    if self.params.wall_mode == "wrap" or self.arena_controller.safe_zone_mode then return end
 
     local wall_type = (self.params.wall_mode == "bounce") and "wall_bounce" or "wall_death"
     local cells = self.arena_controller:getBoundaryCells(self.grid_width, self.grid_height)
     local occupied = {}
     for _, seg in ipairs(self.snake.body or {}) do occupied[seg.x .. "," .. seg.y] = true end
 
-    self.entity_controller:spawnAtCells(wall_type, cells, function(x, y)
-        return not occupied[x .. "," .. y]
-    end)
+    for _, cell in ipairs(cells) do
+        if not occupied[cell.x .. "," .. cell.y] then
+            self.entity_controller:spawn(wall_type, cell.x, cell.y)
+        end
+    end
 end
 
 function SnakeGame:onArenaShrink(margins)
@@ -671,7 +826,11 @@ function SnakeGame:onArenaShrink(margins)
     end
 end
 
-function SnakeGame:isInsideArena(pos, margin)
+function SnakeGame:isInsideArena(pos, margin, is_smooth)
+    if is_smooth then
+        -- Smooth mode: position is already a precise float, check directly
+        return self.arena_controller:isInside(pos.x, pos.y, margin)
+    end
     return self.arena_controller:isInsideGrid(pos.x, pos.y, margin)
 end
 
@@ -755,8 +914,8 @@ end
 function SnakeGame:checkCollision(pos)
     if not pos then return false end
 
-    -- Check arena bounds for shaped arenas (no wall entities)
-    if self.params.arena_shape ~= "rectangle" and not self:isInsideArena(pos) then
+    -- Check arena bounds for shaped/custom arenas (no wall entities)
+    if self.arena_controller.safe_zone_mode and not self:isInsideArena(pos) then
         return true
     end
 
@@ -774,6 +933,21 @@ function SnakeGame:checkCollision(pos)
     end
 
     return false
+end
+
+-- Translate schema shape name to polygon sides and rotation
+function SnakeGame:getShapeSides(shape_name)
+    if shape_name == "circle" then
+        return 32, 0
+    elseif shape_name == "hexagon" or shape_name == "hex" then
+        return 6, math.pi / 6  -- flat-top hex for grid alignment
+    elseif shape_name == "square" then
+        return 4, math.pi / 4
+    elseif type(shape_name) == "number" then
+        return shape_name, 0
+    else
+        return 4, 0  -- rectangle default (4 sides)
+    end
 end
 
 return SnakeGame

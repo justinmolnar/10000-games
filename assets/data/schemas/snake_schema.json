@@ -360,7 +360,6 @@
         "movement_controller": {
             "type": "MovementController",
             "config": {
-                "mode": "grid",
                 "cells_per_second": "$snake_speed",
                 "allow_reverse": false
             }
@@ -375,7 +374,6 @@
         "arena_controller": {
             "type": "ArenaController",
             "config": {
-                "shape": "$arena_shape",
                 "grid_mode": true,
                 "cell_size": 1,
                 "shrink": "$shrinking_arena",

@@ -1091,12 +1091,19 @@ function BaseGame:spawnEntity(type_name, config)
         end
     end
 
-    -- Spawn with weighted configs or regular spawn
+    -- Spawn with weighted configs (random property selection) or regular spawn
     if config.weighted_configs and #config.weighted_configs > 0 then
-        return self.entity_controller:spawnWeighted(type_name, config.weighted_configs, x, y, extra)
-    else
-        return self.entity_controller:spawn(type_name, x, y, extra)
+        local total = 0
+        for _, cfg in ipairs(config.weighted_configs) do total = total + (cfg.weight or 1) end
+        local r = math.random() * total
+        local chosen = config.weighted_configs[1]
+        for _, cfg in ipairs(config.weighted_configs) do
+            r = r - (cfg.weight or 1)
+            if r <= 0 then chosen = cfg; break end
+        end
+        for k, v in pairs(chosen) do if k ~= "weight" then extra[k] = v end end
     end
+    return self.entity_controller:spawn(type_name, x, y, extra)
 end
 
 -- Load sprites from variant sprite_set (override default_sprite_set in subclass if needed)

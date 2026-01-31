@@ -78,12 +78,24 @@ end
 function HiddenObject:spawnObjects()
     local p = self.params
     local divisor = math.max(1, p.sprite_variant_divisor - self.difficulty_modifiers.complexity)
-    self.entity_controller:spawnScatter("hidden_object", self.total_objects, {
-        bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height},
-        hash_x1 = p.position_hash_x1, hash_x2 = p.position_hash_x2,
-        hash_y1 = p.position_hash_y1, hash_y2 = p.position_hash_y2,
-        extra_fn = function(i) return {id = i, sprite_variant = math.floor((i - 1) / divisor) + 1} end
-    })
+    local entity_type = self.entity_controller.entity_types["hidden_object"]
+    local size = entity_type and (entity_type.size or entity_type.width or 20) or 20
+    local padding = size
+
+    local hash_x1 = p.position_hash_x1 or 17
+    local hash_x2 = p.position_hash_x2 or 47
+    local hash_y1 = p.position_hash_y1 or 23
+    local hash_y2 = p.position_hash_y2 or 53
+
+    for i = 1, self.total_objects do
+        local hx = (i * hash_x1) % hash_x2
+        local hy = (i * hash_y1) % hash_y2
+        local x = padding + (hx / hash_x2) * (self.game_width - 2 * padding)
+        local y = padding + (hy / hash_y2) * (self.game_height - 2 * padding)
+        self.entity_controller:spawn("hidden_object", x, y, {
+            id = i, sprite_variant = math.floor((i - 1) / divisor) + 1
+        })
+    end
 end
 
 function HiddenObject:mousepressed(x, y, button)
