@@ -81,8 +81,11 @@ function Breakout:setupComponents()
         }
     })
 
-    -- Powerup system from schema
-    self:createPowerupSystemFromSchema({reverse_gravity = false})
+    -- Effect system for timed powerup effects
+    self:createEffectSystem(function(effect_type, data)
+        self:onEffectExpire(effect_type, data)
+    end)
+    self.powerup_entities = {}
 end
 
 function Breakout:setupEntities()
@@ -233,8 +236,9 @@ function Breakout:updateGameLogic(dt)
     -- Update systems
     self.projectile_system:update(dt, bounds)
     self.balls = self.projectile_system:getProjectilesByTeam("player")
-    self.powerup_system:update(dt, self.paddle, bounds)
-    self.powerups, self.active_powerups = self.powerup_system:getPowerupsForRendering(), self.powerup_system:getActivePowerupsForHUD()
+    self:updatePowerups(dt, bounds)
+    self.effect_system:update(dt)
+    self.powerups, self.active_powerups = self.powerup_entities, self.effect_system:getActiveEffects()
     self.visual_effects:update(dt)
     self:updateFlashMap(dt)
     self.popup_manager:update(dt)
@@ -423,13 +427,163 @@ function Breakout:onBrickDestroyed(brick)
     self:handleEntityDestroyed(brick, {
         destroyed_counter = "bricks_destroyed",
         remaining_counter = "bricks_left",
-        spawn_powerup = true,
+        on_spawn_powerup = function(x, y) self:spawnPowerup(x, y) end,
         effects = {particles = true, shake = 0.15},
         scoring = {base = "brick_score_multiplier", combo_mult = "combo_multiplier"},
         popup = {enabled = "score_popup_enabled", milestone_combos = {5, 10, 15}},
         color_func = function(b) return {1, 0.5 + (b.max_health - 1) * 0.1, 0} end,
         extra_life_check = true
     })
+end
+
+--------------------------------------------------------------------------------
+-- Powerups
+--------------------------------------------------------------------------------
+
+Breakout.POWERUP_COLORS = {
+    multi_ball = {0, 1, 1},
+    paddle_extend = {0, 1, 0},
+    paddle_shrink = {1, 0, 0},
+    slow_motion = {0.5, 0.5, 1},
+    fast_ball = {1, 0.5, 0},
+    laser = {1, 0, 1},
+    sticky_paddle = {1, 1, 0},
+    extra_life = {0, 1, 0.5},
+    shield = {0.3, 0.7, 1},
+    penetrating_ball = {1, 0.3, 0},
+    fireball = {1, 0.2, 0},
+    magnet = {0.7, 0.7, 0.7}
+}
+
+function Breakout:spawnPowerup(x, y)
+    local p = self.params
+    if not p.powerup_enabled then return end
+    if self.rng:random() > (p.brick_powerup_drop_chance or 0.2) then return end
+
+    local types = p.powerup_types or {}
+    if #types == 0 then return end
+
+    local powerup_type = types[self.rng:random(1, #types)]
+    local size = p.powerup_size or 20
+    table.insert(self.powerup_entities, {
+        x = x - size / 2,
+        y = y - size / 2,
+        width = size,
+        height = size,
+        type = powerup_type,
+        color = Breakout.POWERUP_COLORS[powerup_type] or {1, 1, 1},
+        vy = p.powerup_fall_speed or 100
+    })
+end
+
+function Breakout:updatePowerups(dt, bounds)
+    local Physics = self.di.components.PhysicsUtils
+    for i = #self.powerup_entities, 1, -1 do
+        local powerup = self.powerup_entities[i]
+        powerup.y = powerup.y + powerup.vy * dt
+
+        -- Check collection with paddle
+        local px, py = self.paddle.x - self.paddle.width / 2, self.paddle.y - self.paddle.height / 2
+        if Physics.rectCollision(powerup.x, powerup.y, powerup.width, powerup.height,
+                                  px, py, self.paddle.width, self.paddle.height) then
+            self:collectPowerup(powerup)
+            table.remove(self.powerup_entities, i)
+        elseif powerup.y > bounds.height then
+            table.remove(self.powerup_entities, i)
+        end
+    end
+end
+
+function Breakout:collectPowerup(powerup)
+    local p = self.params
+    local effect_type = powerup.type
+    local duration = p.powerup_duration or 10.0
+    local data = {}
+
+    -- Apply effect and store original values for reversion
+    if effect_type == "paddle_extend" then
+        data.orig_width = self.paddle.width
+        self.paddle.width = self.paddle.width * 1.5
+    elseif effect_type == "paddle_shrink" then
+        data.orig_width = self.paddle.width
+        self.paddle.width = self.paddle.width * 0.5
+    elseif effect_type == "slow_motion" then
+        data.orig_ball_speed = p.ball_speed
+        p.ball_speed = p.ball_speed * 0.5
+        for _, ball in ipairs(self.balls) do
+            ball.vx, ball.vy = ball.vx * 0.5, ball.vy * 0.5
+        end
+    elseif effect_type == "fast_ball" then
+        data.orig_ball_speed = p.ball_speed
+        p.ball_speed = p.ball_speed * 1.5
+        for _, ball in ipairs(self.balls) do
+            ball.vx, ball.vy = ball.vx * 1.5, ball.vy * 1.5
+        end
+    elseif effect_type == "laser" then
+        data.orig_can_shoot = p.paddle_can_shoot
+        p.paddle_can_shoot = true
+    elseif effect_type == "sticky_paddle" then
+        data.orig_sticky = p.paddle_sticky
+        p.paddle_sticky = true
+    elseif effect_type == "extra_life" then
+        self.health_system:addLife(1)
+        self.lives = self.health_system.lives
+        return  -- No duration tracking needed
+    elseif effect_type == "shield" then
+        self.shield_active = true
+    elseif effect_type == "penetrating_ball" or effect_type == "fireball" then
+        data.orig_pierce = p.ball_phase_through_bricks
+        p.ball_phase_through_bricks = 5
+        for _, ball in ipairs(self.balls) do
+            ball.pierce_count = 5
+        end
+    elseif effect_type == "magnet" then
+        data.orig_magnet_range = p.paddle_magnet_range
+        p.paddle_magnet_range = 150
+    elseif effect_type == "multi_ball" then
+        -- Spawn extra balls from existing balls
+        for _, ball in ipairs(self.balls) do
+            if ball.active then
+                local speed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
+                local angle = math.atan2(ball.vy, ball.vx)
+                for j = 1, 2 do
+                    local offset = (j - 1.5) * 0.5
+                    self.projectile_system:shoot("ball", ball.x, ball.y, angle + offset, speed / p.ball_speed,
+                        {radius = ball.radius, trail = {}})
+                end
+                break  -- Only from first active ball
+            end
+        end
+        return  -- No duration tracking needed
+    end
+
+    self.effect_system:activate(effect_type, duration, data)
+end
+
+function Breakout:onEffectExpire(effect_type, data)
+    local p = self.params
+    if effect_type == "paddle_extend" or effect_type == "paddle_shrink" then
+        self.paddle.width = data.orig_width
+    elseif effect_type == "slow_motion" or effect_type == "fast_ball" then
+        local ratio = data.orig_ball_speed / p.ball_speed
+        p.ball_speed = data.orig_ball_speed
+        for _, ball in ipairs(self.balls) do
+            ball.vx, ball.vy = ball.vx * ratio, ball.vy * ratio
+        end
+    elseif effect_type == "laser" then
+        p.paddle_can_shoot = data.orig_can_shoot
+    elseif effect_type == "sticky_paddle" then
+        p.paddle_sticky = data.orig_sticky
+    elseif effect_type == "shield" then
+        self.shield_active = false
+    elseif effect_type == "penetrating_ball" or effect_type == "fireball" then
+        p.ball_phase_through_bricks = data.orig_pierce
+        for _, ball in ipairs(self.balls) do
+            ball.pierce_count = 0
+        end
+    elseif effect_type == "magnet" then
+        p.paddle_magnet_range = data.orig_magnet_range
+    end
 end
 
 --------------------------------------------------------------------------------

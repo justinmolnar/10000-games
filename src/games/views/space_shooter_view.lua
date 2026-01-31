@@ -93,9 +93,8 @@ function SpaceShooterView:drawContent()
     end
 
     -- Draw power-ups
-    for i, powerup in ipairs(game.powerups) do
-        local color = self:getIndexedColor(i)
-        g.setColor(color)
+    for _, powerup in ipairs(game.powerups) do
+        g.setColor(powerup.color or {1, 1, 1})
         g.circle("fill", powerup.x + powerup.width/2, powerup.y + powerup.height/2, powerup.width/2)
         g.setColor(1, 1, 1)
         g.circle("line", powerup.x + powerup.width/2, powerup.y + powerup.height/2, powerup.width/2)

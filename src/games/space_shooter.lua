@@ -88,13 +88,12 @@ function SpaceShooter:setupComponents()
     -- Victory condition from schema (loss target uses params.lives_count which includes cheat modifier)
     self:createVictoryConditionFromSchema()
 
-    -- Powerup system from schema (timer-based spawning)
-    self:createPowerupSystemFromSchema({
-        spawn_mode = "timer",
-        spawn_drop_chance = 1.0,  -- Timer mode always spawns (rate controls frequency)
-        reverse_gravity = p.reverse_gravity,
-        on_collect = function(powerup) self:playSound("powerup", 1.0) end
-    })
+    -- Effect system for timed powerup effects
+    self:createEffectSystem(function(effect_type, data)
+        self:onEffectExpire(effect_type, data)
+    end)
+    self.powerup_entities = {}
+    self.powerup_spawn_timer = p.powerup_spawn_rate or 15.0
 end
 
 function SpaceShooter:setupEntities()
@@ -274,13 +273,14 @@ function SpaceShooter:updateGameLogic(dt)
     self:updateEnemies(dt)
     self:updateBullets(dt)
 
-    --Update PowerupSystem
+    -- Update powerups
     local game_bounds = {width = self.game_width, height = self.game_height}
-    self.powerup_system:update(dt, self.player, game_bounds)
+    self:updatePowerups(dt, game_bounds)
+    self.effect_system:update(dt)
 
-    --Sync arrays for view compatibility
-    self.powerups = self.powerup_system:getPowerupsForRendering()
-    self.active_powerups = self.powerup_system:getActivePowerupsForHUD()
+    -- Sync arrays for view compatibility
+    self.powerups = self.powerup_entities
+    self.active_powerups = self.effect_system:getActiveEffects()
 
     --Environmental hazards (asteroids, meteors via generic behaviors)
     if self.params.asteroid_density > 0 or self.params.meteor_frequency > 0 then
@@ -1016,6 +1016,132 @@ function SpaceShooter:updateHazards(dt)
         self.projectile_system:checkCollisions(self.asteroids, function(_, a) game.entity_controller:removeEntity(a) end, "player")
     end
     self.projectile_system:checkCollisions(self.meteors, function(_, m) game.entity_controller:removeEntity(m) end, "player")
+end
+
+--------------------------------------------------------------------------------
+-- Powerups
+--------------------------------------------------------------------------------
+
+SpaceShooter.POWERUP_COLORS = {
+    speed = {0, 1, 1},
+    rapid_fire = {1, 0.5, 0},
+    pierce = {1, 0, 1},
+    shield = {0.3, 0.7, 1},
+    triple_shot = {0, 1, 0},
+    spread_shot = {1, 1, 0}
+}
+
+function SpaceShooter:spawnPowerup(x, y)
+    local p = self.params
+    local types = p.powerup_types or {}
+    if #types == 0 then return end
+
+    local powerup_type = types[self.rng:random(1, #types)]
+    local size = p.powerup_size or 20
+    local vy = (p.powerup_drop_speed or 150) * (p.reverse_gravity and -1 or 1)
+    table.insert(self.powerup_entities, {
+        x = x,
+        y = y,
+        width = size,
+        height = size,
+        type = powerup_type,
+        color = SpaceShooter.POWERUP_COLORS[powerup_type] or {1, 1, 1},
+        vy = vy
+    })
+end
+
+function SpaceShooter:updatePowerups(dt, bounds)
+    local p = self.params
+    if not p.powerup_enabled then return end
+
+    -- Timer-based spawning
+    self.powerup_spawn_timer = self.powerup_spawn_timer - dt
+    if self.powerup_spawn_timer <= 0 then
+        local x = self.rng:random(0, bounds.width - (p.powerup_size or 20))
+        local y = p.reverse_gravity and bounds.height or 0
+        self:spawnPowerup(x, y)
+        self.powerup_spawn_timer = p.powerup_spawn_rate or 15.0
+    end
+
+    -- Move and check collection
+    local Physics = self.di.components.PhysicsUtils
+    for i = #self.powerup_entities, 1, -1 do
+        local powerup = self.powerup_entities[i]
+        powerup.y = powerup.y + powerup.vy * dt
+
+        -- Check collection with player (circle collision)
+        if Physics.circleCollision(powerup.x + powerup.width/2, powerup.y + powerup.height/2, powerup.width/2,
+                                    self.player.x, self.player.y, self.player.radius or 15) then
+            self:collectPowerup(powerup)
+            table.remove(self.powerup_entities, i)
+        elseif (not p.reverse_gravity and powerup.y > bounds.height) or
+               (p.reverse_gravity and powerup.y + powerup.height < 0) then
+            table.remove(self.powerup_entities, i)
+        end
+    end
+end
+
+function SpaceShooter:collectPowerup(powerup)
+    local p = self.params
+    local effect_type = powerup.type
+    local duration = p.powerup_duration or 8.0
+    local data = {}
+
+    self:playSound("powerup", 1.0)
+
+    -- Apply effect and store original values
+    if effect_type == "speed" then
+        data.orig_speed = p.movement_speed
+        p.movement_speed = p.movement_speed * (p.powerup_speed_multiplier or 1.5)
+    elseif effect_type == "rapid_fire" then
+        data.orig_cooldown = p.fire_cooldown
+        p.fire_cooldown = p.fire_cooldown * (p.powerup_rapid_fire_multiplier or 0.5)
+    elseif effect_type == "pierce" then
+        data.orig_pierce = p.bullet_piercing
+        p.bullet_piercing = true
+    elseif effect_type == "shield" then
+        data.orig_shield = p.shield
+        data.orig_shield_enabled = self.health_system and self.health_system.shield_enabled
+        p.shield = true
+        if self.health_system then
+            self.health_system.shield_enabled = true
+            self.health_system.shield_active = true
+            self.health_system.shield_hits_remaining = self.health_system.shield_max_hits or 3
+        end
+    elseif effect_type == "triple_shot" then
+        data.orig_pattern = p.bullet_pattern
+        p.bullet_pattern = "triple"
+    elseif effect_type == "spread_shot" then
+        data.orig_pattern = p.bullet_pattern
+        data.orig_bullets = p.bullets_per_shot
+        p.bullet_pattern = "spread"
+        p.bullets_per_shot = 5
+    end
+
+    self.effect_system:activate(effect_type, duration, data)
+end
+
+function SpaceShooter:onEffectExpire(effect_type, data)
+    local p = self.params
+    if effect_type == "speed" then
+        p.movement_speed = data.orig_speed
+    elseif effect_type == "rapid_fire" then
+        p.fire_cooldown = data.orig_cooldown
+    elseif effect_type == "pierce" then
+        p.bullet_piercing = data.orig_pierce
+    elseif effect_type == "shield" then
+        p.shield = data.orig_shield
+        if self.health_system then
+            self.health_system.shield_enabled = data.orig_shield_enabled
+            self.health_system.shield_active = false
+            self.health_system.shield_hits_remaining = 0
+        end
+    elseif effect_type == "triple_shot" then
+        p.bullet_pattern = data.orig_pattern
+    elseif effect_type == "spread_shot" then
+        p.bullet_pattern = data.orig_pattern
+        p.bullets_per_shot = data.orig_bullets
+    end
 end
 
 --------------------------------------------------------------------------------

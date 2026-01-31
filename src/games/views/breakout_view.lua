@@ -99,9 +99,8 @@ function BreakoutView:drawContent()
     end
 
     -- Draw power-ups
-    for i, powerup in ipairs(self.game.powerups) do
-        local color = self:getIndexedColor(i)
-        love.graphics.setColor(color)
+    for _, powerup in ipairs(self.game.powerups) do
+        love.graphics.setColor(powerup.color or {1, 1, 1})
         love.graphics.rectangle('fill', powerup.x, powerup.y, powerup.width, powerup.height)
         love.graphics.setColor(1, 1, 1)
         love.graphics.rectangle('line', powerup.x, powerup.y, powerup.width, powerup.height)

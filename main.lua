@@ -115,7 +115,7 @@ function love.load()
         LivesHealthSystem = require('src.utils.game_components.lives_health_system'),
         EntityController = require('src.utils.game_components.entity_controller'),
         ProjectileSystem = require('src.utils.game_components.projectile_system'),
-        PowerupSystem = require('src.utils.game_components.powerup_system'),
+        EffectSystem = require('src.utils.game_components.effect_system'),
         SchemaLoader = require('src.utils.game_components.schema_loader'),
         PopupManager = require('src.games.score_popup').PopupManager,
         Collision = require('src.utils.collision'),

@@ -217,28 +217,15 @@ function BaseGame:createEntityControllerFromSchema(callbacks, extra_config)
     return self.entity_controller
 end
 
--- Create PowerupSystem from schema powerup_effect_configs
-function BaseGame:createPowerupSystemFromSchema(extra_config)
+-- Create EffectSystem for tracking timed effects
+-- on_expire: function(effect_type, data) called when effect expires
+function BaseGame:createEffectSystem(on_expire)
     local C = self.di and self.di.components
-    if not C or not self.params then return nil end
+    if not C then return nil end
+    if not on_expire then error("createEffectSystem: on_expire callback required") end
 
-    local p = self.params
-    local config = extra_config or {}
-
-    config.enabled = p.powerup_enabled
-    config.spawn_mode = config.spawn_mode or "event"
-    config.spawn_drop_chance = config.spawn_drop_chance or p.brick_powerup_drop_chance or p.powerup_drop_chance or 1.0
-    config.spawn_rate = p.powerup_spawn_rate
-    config.powerup_size = p.powerup_size
-    config.drop_speed = p.powerup_fall_speed
-    config.default_duration = p.powerup_duration
-    config.powerup_types = p.powerup_types
-    -- Resolve $param references in powerup configs
-    config.powerup_configs = p.powerup_effect_configs and self:resolveConfig(p.powerup_effect_configs) or nil
-
-    self.powerup_system = C.PowerupSystem:new(config)
-    self.powerup_system.game = self
-    return self.powerup_system
+    self.effect_system = C.EffectSystem:new({on_expire = on_expire})
+    return self.effect_system
 end
 
 -- Create VictoryCondition from schema victory_conditions mapping
@@ -596,9 +583,9 @@ function BaseGame:handleEntityDestroyed(entity, config)
         self[config.remaining_counter] = (self[config.remaining_counter] or 0) - 1
     end
 
-    -- Spawn powerup
-    if config.spawn_powerup and self.powerup_system then
-        self.powerup_system:spawn(cx, cy)
+    -- Spawn powerup callback (games handle spawning)
+    if config.on_spawn_powerup then
+        config.on_spawn_powerup(cx, cy, entity)
     end
 
     -- Visual effects
@@ -1013,10 +1000,12 @@ function BaseGame:takeDamage(amount, sound)
     amount = amount or 1
     sound = sound or "hit"
 
+    local lives_before = self.health_system.lives
     local absorbed = self.health_system:takeDamage(amount)
     self:playSound(sound, 1.0)
 
-    if not absorbed then
+    -- Track deaths when lives are actually lost (not just shield damage)
+    if self.health_system.lives < lives_before then
         self.deaths = (self.deaths or 0) + 1
         self.lives = self.health_system.lives
         self.combo = 0
