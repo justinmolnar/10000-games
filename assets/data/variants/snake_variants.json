@@ -806,6 +806,27 @@
     "victory_limit": 25,
     "flavor_text": "TEST: Smooth movement in shrinking arena",
     "intro_cutscene": null
+  },
+  {
+    "clone_index": 47,
+    "name": "TEST: Inverted Trapezoid Arena",
+    "palette": "purple",
+    "music_track": "snake_theme_2",
+    "sfx_pack": "retro_beeps",
+    "background": "grid_purple",
+    "difficulty_modifier": 1.2,
+    "wall_mode": "death",
+    "arena_vertices": [
+      {"x": -0.5, "y": -0.7},
+      {"x": 0.5, "y": -0.7},
+      {"x": 0.9, "y": 0.5},
+      {"x": -0.9, "y": 0.5}
+    ],
+    "obstacle_count": 5,
+    "food_count": 2,
+    "victory_limit": 20,
+    "flavor_text": "TEST: Custom inverted trapezoid shape - wider at bottom",
+    "intro_cutscene": null
   }
 ]
 }

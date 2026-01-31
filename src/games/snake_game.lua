@@ -56,7 +56,9 @@ function SnakeGame:_initSmoothState(x, y)
     if not self.params.use_trail then return {} end
     return {
         smooth_x = x + 0.5, smooth_y = y + 0.5, smooth_angle = 0,
-        smooth_trail = PhysicsUtils.createTrailSystem({track_distance = true}),
+        smooth_trail = PhysicsUtils.createTrailSystem({
+            max_length = 0, track_distance = true, color = {1,1,1,1}, line_width = 1, angle_offset = 0
+        }),
         smooth_target_length = self.params.smooth_initial_length
     }
 end
@@ -458,7 +460,9 @@ function SnakeGame:updateGameLogic(dt)
     for _, obs in ipairs(self:getObstacles()) do
         if obs.vx and self.entity_controller:tickTimer(obs, "move_timer", 2, dt) then
             obs.x, obs.y = obs.x + obs.vx, obs.y + (obs.vy or 0)
-            PhysicsUtils.handleBounds(obs, {width = self.grid_width, height = self.grid_height}, {mode = "bounce"})
+            PhysicsUtils.handleBounds(obs, {width = self.grid_width, height = self.grid_height}, {w = 0.5, h = 0.5}, function(e, info)
+                PhysicsUtils.bounceEdge(e, info, 1.0)
+            end)
         end
     end
 
@@ -738,7 +742,9 @@ function SnakeGame:_updateSmoothSnake(snake, entity_id, dt, head_radius, food_ra
 
     -- Self-collision (trail-specific)
     if is_primary and not self.params.phase_through_tail then
-        if snake.smooth_trail:checkSelfCollision(snake.smooth_x, snake.smooth_y, self.params.girth or 1) then
+        if snake.smooth_trail:checkSelfCollision(snake.smooth_x, snake.smooth_y, self.params.girth or 1, {
+            skip_multiplier = 1.0, collision_base = 0.1, collision_multiplier = 0.3
+        }) then
             self:onComplete()
             return
         end

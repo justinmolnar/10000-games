@@ -126,7 +126,8 @@ function DodgeGame:setupComponents()
 
     -- Player trail
     self.player_trail = PhysicsUtils.createTrailSystem({
-        max_length = p.player_trail_length, color = {0.5, 0.7, 1.0, 0.3}, line_width = 3
+        max_length = p.player_trail_length, track_distance = false,
+        color = {0.5, 0.7, 1.0, 0.3}, line_width = 3, angle_offset = 0
     })
 
     -- Alias for createEntityControllerFromSchema (expects entity_types)
@@ -259,7 +260,7 @@ function DodgeGame:setupComponents()
                         game:spawnEntity("obstacle", entity.x, entity.y, a, false, {
                             radius = math.max(def.shard_radius_min or 6, math.floor(entity.radius * (def.shard_radius_factor or 0.6))),
                             speed = game.object_speed * (def.shard_speed_factor or 0.36),
-                            movement_pattern = 'straight', type = 'linear'
+                            use_direction = true, type = 'linear'
                         })
                     end
                     return true  -- remove entity
@@ -338,11 +339,13 @@ function DodgeGame:setupEntities()
     self.current_combo = 0
 
     -- Wind state (uses PhysicsUtils.updateDirectionalForce)
-    local wind_type_map = {steady = "constant", turbulent = "turbulent", changing_steady = "rotating", changing_turbulent = "rotating_turbulent"}
+    local is_rotating = p.wind_type == "changing_steady" or p.wind_type == "changing_turbulent"
+    local is_turbulent = p.wind_type == "turbulent" or p.wind_type == "changing_turbulent"
     self.wind_state = {
         angle = type(p.wind_direction) == "number" and math.rad(p.wind_direction) or math.random() * math.pi * 2,
         strength = p.wind_strength or 0,
-        type = wind_type_map[p.wind_type] or "constant",
+        is_rotating = is_rotating,
+        is_turbulent = is_turbulent,
         timer = 0,
         change_interval = 3.0,
         change_amount = math.rad(30),
@@ -438,89 +441,65 @@ function DodgeGame:updatePlayer(dt)
     player.time_elapsed = self.time_elapsed
     if player.rotation then player.angle = player.rotation end
 
-    -- Movement behavior based on movement_type
-    local move_type = p.movement_type
+    -- Build input direction
+    local dx, dy = 0, 0
+    if input.left then dx = dx - 1 end
+    if input.right then dx = dx + 1 end
+    if input.up then dy = dy - 1 end
+    if input.down then dy = dy + 1 end
 
-    if move_type == "jump" then
-        -- Jump/dash: discrete teleports
+    -- Apply movement behaviors based on schema flags
+    local dominated_by_jump = p.use_jump and mc:isJumping("player")
+
+    if p.use_jump then
         if mc:isJumping("player") then
             mc:updateJump(player, "player", dt, bounds, player.time_elapsed)
-        else
-            -- Check for directional input to start jump
-            local dx, dy = 0, 0
-            if input.left then dx = -1
-            elseif input.right then dx = 1
-            elseif input.up then dy = -1
-            elseif input.down then dy = 1 end
-
-            if (dx ~= 0 or dy ~= 0) and mc:canJump("player", player.time_elapsed) then
-                mc:startJump(player, "player", dx, dy, player.time_elapsed, bounds)
-            end
-        end
-        -- Apply decel friction when not jumping
-        if not mc:isJumping("player") then
-            mc:applyFriction(player, p.decel_friction, dt)
-            mc:applyVelocity(player, dt)
-        end
-
-    elseif move_type == "asteroids" then
-        -- Asteroids: rotation + thrust physics
-        if input.left then mc:applyRotation(player, -1, nil, dt) end
-        if input.right then mc:applyRotation(player, 1, nil, dt) end
-
-        local is_thrusting = false
-        if input.up then
-            mc:applyThrust(player, player.angle, nil, dt)
-            mc:applyFriction(player, p.accel_friction, dt)
-            is_thrusting = true
-        end
-        if input.down then
-            -- Game decides what down does based on reverse_mode
-            if p.reverse_mode == "thrust" then
-                -- Reverse thrust (opposite direction)
-                mc:applyThrust(player, player.angle + math.pi, nil, dt)
-                mc:applyFriction(player, p.accel_friction, dt)
-                is_thrusting = true
-            elseif p.reverse_mode == "brake" then
-                -- Active braking
-                mc:applyFriction(player, 0.92, dt)
-            end
-            -- "none" = do nothing
-        end
-        if not is_thrusting then
-            mc:applyFriction(player, p.decel_friction, dt)
-        end
-        mc:applyVelocity(player, dt)
-        mc:applyBounds(player, bounds)
-        mc:applyBounce(player, bounds)
-
-    else
-        -- Direct movement (default)
-        local dx, dy = 0, 0
-        if input.left then dx = dx - 1 end
-        if input.right then dx = dx + 1 end
-        if input.up then dy = dy - 1 end
-        if input.down then dy = dy + 1 end
-
-        local has_momentum = p.accel_friction < 1.0 or p.decel_friction < 1.0
-
-        if has_momentum then
-            if dx ~= 0 or dy ~= 0 then
-                mc:applyDirectionalVelocity(player, dx, dy, nil, dt)
-                mc:applyFriction(player, p.accel_friction, dt)
-                mc:rotateTowardsMovement(player, dx, dy, dt)
-            else
-                mc:applyFriction(player, p.decel_friction, dt)
-            end
-            mc:applyVelocity(player, dt)
-            mc:applyBounds(player, bounds)
-            mc:applyBounce(player, bounds)
-        else
-            mc:applyDirectionalMove(player, dx, dy, nil, dt)
-            mc:rotateTowardsMovement(player, dx, dy, dt)
-            mc:applyBounds(player, bounds)
+        elseif (dx ~= 0 or dy ~= 0) and mc:canJump("player", player.time_elapsed) then
+            mc:startJump(player, "player", dx, dy, player.time_elapsed, bounds)
         end
     end
+
+    if not dominated_by_jump then
+        if p.use_rotation then
+            if input.left then mc:applyRotation(player, -1, nil, dt) end
+            if input.right then mc:applyRotation(player, 1, nil, dt) end
+        end
+
+        if p.use_thrust and input.up then
+            mc:applyThrust(player, player.angle, nil, dt)
+            mc:applyFriction(player, p.accel_friction, dt)
+        end
+
+        if p.use_reverse_thrust and input.down then
+            mc:applyThrust(player, player.angle + math.pi, nil, dt)
+            mc:applyFriction(player, p.accel_friction, dt)
+        end
+
+        if p.use_brake and input.down then
+            mc:applyFriction(player, 0.92, dt)
+        end
+
+        if p.use_directional and (dx ~= 0 or dy ~= 0) then
+            if p.use_velocity then
+                mc:applyDirectionalVelocity(player, dx, dy, nil, dt)
+                mc:applyFriction(player, p.accel_friction, dt)
+            else
+                mc:applyDirectionalMove(player, dx, dy, nil, dt)
+            end
+            mc:rotateTowardsMovement(player, dx, dy, dt)
+        end
+
+        -- Apply decel friction when not actively moving
+        local is_moving = (p.use_thrust and input.up) or (p.use_reverse_thrust and input.down) or
+                          (p.use_directional and (dx ~= 0 or dy ~= 0))
+        if not is_moving and p.decel_friction < 1.0 then
+            mc:applyFriction(player, p.decel_friction, dt)
+        end
+    end
+
+    if p.use_velocity then mc:applyVelocity(player, dt) end
+    mc:applyBounds(player, bounds)
+    if p.use_bounce then mc:applyBounce(player, bounds) end
 
     player.rotation = player.angle
 
@@ -664,13 +643,7 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
     local sprite_rotation = (sprite_settings and sprite_settings.rotation) or 0
     local sprite_direction = (sprite_settings and sprite_settings.direction) or "movement_based"
 
-    -- Movement pattern mapping
-    local movement_pattern_map = {
-        zigzag = 'zigzag', sine = 'wave',
-        seeker = 'tracking', chaser = 'tracking',
-        teleporter = 'teleporter', bouncer = 'bounce'
-    }
-
+    -- Base movement params
     local custom_params = {
         warned = warned,
         radius = final_radius,
@@ -681,22 +654,31 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
         sprite_rotation_speed = sprite_rotation,
         sprite_direction_mode = sprite_direction,
         angle = angle or 0,
-        direction = angle or 0,
-        vx = math.cos(angle or 0) * final_speed,
-        vy = math.sin(angle or 0) * final_speed,
-        movement_pattern = movement_pattern_map[base_type] or 'straight',
         turn_rate = math.rad(self.params.seeker_turn_rate or 54)
     }
 
-    -- Type-specific params (read from enemy_def first, runtimeCfg fallback)
-    if base_type == 'zigzag' or base_type == 'sine' then
+    -- Movement flags based on enemy type (from schema enemy_def or defaults)
+    if base_type == 'seeker' or base_type == 'chaser' then
+        custom_params.use_steering = true
+    elseif base_type == 'bouncer' then
+        -- Bouncers use velocity-based movement
+        custom_params.use_velocity = true
+        custom_params.use_bounce = true
+        custom_params.vx = math.cos(angle or 0) * final_speed
+        custom_params.vy = math.sin(angle or 0) * final_speed
+        custom_params.bounce_count = 0
+        custom_params.has_entered = false
+    elseif base_type == 'zigzag' or base_type == 'sine' then
+        custom_params.use_direction = true
         local zig_cfg = (self.runtimeCfg.objects and self.runtimeCfg.objects.zigzag) or {}
         local wave_speed_min = enemy_def.wave_speed_min or zig_cfg.wave_speed_min or 6
         local wave_speed_range = enemy_def.wave_speed_range or zig_cfg.wave_speed_range or 4
         custom_params.wave_speed = wave_speed_min + math.random() * wave_speed_range
         custom_params.wave_amp = enemy_def.wave_amp or zig_cfg.wave_amp or 30
+        custom_params.sine_amplitude = custom_params.wave_amp
         custom_params.wave_phase = math.random() * math.pi * 2
     elseif base_type == 'shooter' then
+        custom_params.use_direction = true
         local shoot_interval = enemy_def.shoot_interval
             or (self.variant and self.variant.shooter and self.variant.shooter.shoot_interval)
             or (self.runtimeCfg.objects and self.runtimeCfg.objects.shooter and self.runtimeCfg.objects.shooter.shoot_interval)
@@ -704,12 +686,13 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
         custom_params.shoot_timer = shoot_interval
         custom_params.shoot_interval = shoot_interval
     elseif base_type == 'teleporter' then
+        custom_params.use_direction = true
         custom_params.teleport_timer = enemy_def.teleport_interval or 3.0
         custom_params.teleport_interval = enemy_def.teleport_interval or 3.0
         custom_params.teleport_range = enemy_def.teleport_range or 100
-    elseif base_type == 'bouncer' then
-        custom_params.bounce_count = 0
-        custom_params.has_entered = false
+    else
+        -- Default: basic obstacle, splitter, etc. - just move in direction
+        custom_params.use_direction = true
     end
 
     if self.params.obstacle_trails and self.params.obstacle_trails > 0 then

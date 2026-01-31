@@ -360,6 +360,13 @@
             "max": 500,
             "description": "Range of paddle magnet attraction (0 = disabled)"
         },
+        "paddle_magnet_strength": {
+            "type": "number",
+            "default": 800,
+            "min": 0,
+            "max": 2000,
+            "description": "Strength of paddle magnet attraction"
+        },
         "paddle_aim_mode": {
             "type": "enum",
             "values": ["default", "position"],

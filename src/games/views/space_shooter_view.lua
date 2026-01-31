@@ -28,7 +28,7 @@ function SpaceShooterView:drawContent()
     -- Draw player (sprite or fallback)
     if game.player then
         -- Note: player.angle is already in radians from movement_controller
-        local rotation = game.params.movement_type == "asteroids" and (game.player.angle or 0) or 0
+        local rotation = game.params.use_rotation and (game.player.angle or 0) or 0
         -- Rotate 180 degrees in reverse gravity mode so player faces downward
         if game.params.reverse_gravity then
             rotation = rotation + math.pi

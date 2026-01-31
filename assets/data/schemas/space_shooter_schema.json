@@ -2,11 +2,40 @@
     "name": "space_shooter_schema",
     "description": "Schema for Space Shooter game parameters - all configurable values for space shooter variants",
     "parameters": {
-        "movement_type": {
-            "type": "enum",
-            "values": ["direct", "asteroids", "rail", "jump"],
-            "default": "rail",
-            "description": "Player movement style"
+        "use_rotation": {
+            "type": "boolean",
+            "default": false,
+            "description": "Left/right keys rotate player facing"
+        },
+        "use_thrust": {
+            "type": "boolean",
+            "default": false,
+            "description": "Up key applies thrust in facing direction"
+        },
+        "use_jump": {
+            "type": "boolean",
+            "default": false,
+            "description": "Directional keys trigger discrete jumps"
+        },
+        "use_directional": {
+            "type": "boolean",
+            "default": false,
+            "description": "Directional keys move player directly"
+        },
+        "use_rail": {
+            "type": "boolean",
+            "default": true,
+            "description": "Only horizontal movement (left/right)"
+        },
+        "use_velocity": {
+            "type": "boolean",
+            "default": false,
+            "description": "Apply velocity to position each frame"
+        },
+        "use_bounce": {
+            "type": "boolean",
+            "default": false,
+            "description": "Bounce off arena walls"
         },
         "movement_speed": {
             "type": "number",
@@ -902,6 +931,25 @@
         "survival": {
             "victory": {"type": "endless"},
             "loss": {"type": "threshold", "metric": "deaths", "target": "$lives_count"}
+        }
+    },
+    "movement_modes": {
+        "default": {
+            "use_rail": true
+        },
+        "rail": {
+            "use_rail": true
+        },
+        "asteroids": {
+            "use_rotation": true,
+            "use_thrust": true,
+            "use_velocity": true,
+            "use_bounce": true,
+            "use_rail": false
+        },
+        "jump": {
+            "use_jump": true,
+            "use_directional": true
         }
     }
 }

@@ -17,9 +17,8 @@ function PhysicsUtils.applyHomingForce(entity, target_x, target_y, strength, dt)
     local dy = target_y - entity.y
     local dist = math.sqrt(dx * dx + dy * dy)
     if dist > 0 then
-        local force = strength * 50
-        entity.vx = entity.vx + (dx / dist) * force * dt
-        entity.vy = entity.vy + (dy / dist) * force * dt
+        entity.vx = entity.vx + (dx / dist) * strength * dt
+        entity.vy = entity.vy + (dy / dist) * strength * dt
     end
 end
 
@@ -36,11 +35,9 @@ function PhysicsUtils.applyMagnetForce(entity, target_x, target_y, range, streng
 end
 
 -- Apply gravity well pull (modifies velocity like homing - entities curve toward well)
--- strength_multiplier: optional multiplier (default 1.0)
 -- For entities with vx/vy: modifies velocity (bullets curve smoothly)
 -- For entities without vx/vy: modifies position directly (player gets pulled)
 function PhysicsUtils.applyGravityWell(entity, well, dt, strength_multiplier)
-    strength_multiplier = strength_multiplier or 1.0
     local entity_cx = entity.x + (entity.width or 0) / 2
     local entity_cy = entity.y + (entity.height or 0) / 2
     local dx = well.x - entity_cx
@@ -71,7 +68,10 @@ end
 -- magnetTarget: optional {x, y} for magnet force
 function PhysicsUtils.applyForces(entity, params, dt, findTarget, magnetTarget)
     if params.gravity and params.gravity > 0 then
-        PhysicsUtils.applyGravity(entity, params.gravity, params.gravity_direction or 270, dt)
+        if params.gravity_direction == nil then
+            error("applyForces: gravity_direction required when gravity is set")
+        end
+        PhysicsUtils.applyGravity(entity, params.gravity, params.gravity_direction, dt)
     end
     if params.homing_strength and params.homing_strength > 0 and findTarget then
         local target = findTarget()
@@ -85,47 +85,31 @@ function PhysicsUtils.applyForces(entity, params, dt, findTarget, magnetTarget)
     end
     local magnet_immune = entity.magnet_immunity_timer and entity.magnet_immunity_timer > 0
     if params.magnet_range and params.magnet_range > 0 and not magnet_immune and magnetTarget then
-        if not entity.stuck and entity.vy > 0 then
-            PhysicsUtils.applyMagnetForce(entity, magnetTarget.x, magnetTarget.y, params.magnet_range, 800, dt)
+        if not entity.stuck then
+            if not params.magnet_strength then error("applyForces: magnet_strength required when magnet_range is set") end
+            PhysicsUtils.applyMagnetForce(entity, magnetTarget.x, magnetTarget.y, params.magnet_range, params.magnet_strength, dt)
         end
     end
     -- Gravity wells: array of {x, y, radius, strength}
     if params.gravity_wells then
-        local strength_mult = params.gravity_well_strength_multiplier or 1.0
+        if params.gravity_well_strength_multiplier == nil then error("applyForces: gravity_well_strength_multiplier required when gravity_wells is set") end
         for _, well in ipairs(params.gravity_wells) do
-            PhysicsUtils.applyGravityWell(entity, well, dt, strength_mult)
+            PhysicsUtils.applyGravityWell(entity, well, dt, params.gravity_well_strength_multiplier)
         end
     end
 end
 
 -- Handle kill plane on any edge with optional shield
--- edge: "bottom", "top", "left", "right"
--- boundary: the coordinate of the kill plane
+-- edge_info: {pos_field, vel_field, inside_dir, check_fn} - from caller
 -- Returns true if entity was killed, false otherwise
-function PhysicsUtils.handleKillPlane(entity, edge, boundary, config)
-    config = config or {}
+function PhysicsUtils.handleKillPlane(entity, edge_info, boundary, config)
     local radius = entity.radius or 0
-    local pos, vel, inside_dir
-
-    if edge == "bottom" then
-        if entity.y - radius <= boundary then return false end
-        pos, vel, inside_dir = "y", "vy", -1
-    elseif edge == "top" then
-        if entity.y + radius >= boundary then return false end
-        pos, vel, inside_dir = "y", "vy", 1
-    elseif edge == "right" then
-        if entity.x - radius <= boundary then return false end
-        pos, vel, inside_dir = "x", "vx", -1
-    elseif edge == "left" then
-        if entity.x + radius >= boundary then return false end
-        pos, vel, inside_dir = "x", "vx", 1
-    else
-        return false
-    end
+    if not edge_info.check_fn(entity, boundary, radius) then return false end
 
     if config.kill_enabled == false then
-        entity[pos] = boundary + inside_dir * radius
-        entity[vel] = inside_dir * math.abs(entity[vel]) * (config.restitution or 1.0)
+        if not config.restitution then error("handleKillPlane: restitution required when kill_enabled is false") end
+        entity[edge_info.pos_field] = boundary + edge_info.inside_dir * radius
+        entity[edge_info.vel_field] = edge_info.inside_dir * math.abs(entity[edge_info.vel_field]) * config.restitution
         if config.bounce_randomness and config.rng then
             PhysicsUtils.addBounceRandomness(entity, config.bounce_randomness, config.rng)
         end
@@ -134,8 +118,8 @@ function PhysicsUtils.handleKillPlane(entity, edge, boundary, config)
 
     if config.shield_active then
         if config.on_shield_use then config.on_shield_use() end
-        entity[pos] = boundary + inside_dir * radius
-        entity[vel] = inside_dir * math.abs(entity[vel])
+        entity[edge_info.pos_field] = boundary + edge_info.inside_dir * radius
+        entity[edge_info.vel_field] = edge_info.inside_dir * math.abs(entity[edge_info.vel_field])
         return false
     end
 
@@ -203,7 +187,7 @@ end
 
 -- Attach an entity to a parent, storing position offsets and zeroing velocity
 function PhysicsUtils.attachToEntity(entity, parent, y_offset)
-    y_offset = y_offset or 0
+    if not y_offset then error("attachToEntity: y_offset required") end
     entity.stuck = true
     entity.stuck_offset_x = entity.x - parent.x
     entity.y = parent.y + y_offset
@@ -255,59 +239,44 @@ function PhysicsUtils.circleLineCollision(cx, cy, cr, x1, y1, x2, y2)
 end
 
 -- Shape-aware collision check between two entities
+-- shape1, shape2: "circle" or "rect" (required)
+-- circle entities must have: x, y, radius
+-- rect entities must have: x, y, width, height
 function PhysicsUtils.checkCollision(e1, e2, shape1, shape2)
-    shape1 = shape1 or (e1.shape or (e1.radius and "circle") or "rect")
-    shape2 = shape2 or (e2.shape or (e2.radius and "circle") or "rect")
-
-    local x1, y1 = e1.x, e1.y
-    local x2, y2 = e2.x, e2.y
+    if not shape1 then error("checkCollision: shape1 required") end
+    if not shape2 then error("checkCollision: shape2 required") end
 
     if shape1 == "circle" and shape2 == "circle" then
-        local r1 = e1.radius or (e1.width or e1.size or 0) / 2
-        local r2 = e2.radius or (e2.width or e2.size or 0) / 2
-        local cx1 = x1 + (e1.width and e1.width/2 or 0)
-        local cy1 = y1 + (e1.height and e1.height/2 or 0)
-        local cx2 = x2 + (e2.width and e2.width/2 or 0)
-        local cy2 = y2 + (e2.height and e2.height/2 or 0)
-        return PhysicsUtils.circleCollision(cx1, cy1, r1, cx2, cy2, r2)
+        return PhysicsUtils.circleCollision(e1.x, e1.y, e1.radius, e2.x, e2.y, e2.radius)
     end
 
-    if shape1 == "circle" and shape2 ~= "circle" then
-        local r1 = e1.radius or (e1.width or e1.size or 0) / 2
-        local w2, h2 = e2.width or e2.size or 0, e2.height or e2.size or 0
-        return PhysicsUtils.circleVsRect(x1, y1, r1, x2, y2, w2, h2)
+    if shape1 == "circle" and shape2 == "rect" then
+        return PhysicsUtils.circleVsRect(e1.x, e1.y, e1.radius, e2.x, e2.y, e2.width, e2.height)
     end
 
-    if shape1 ~= "circle" and shape2 == "circle" then
-        local r2 = e2.radius or (e2.width or e2.size or 0) / 2
-        local w1, h1 = e1.width or e1.size or 0, e1.height or e1.size or 0
-        local cx2 = x2 + (e2.width and e2.width/2 or 0)
-        local cy2 = y2 + (e2.height and e2.height/2 or 0)
-        return PhysicsUtils.circleVsRect(cx2, cy2, r2, x1, y1, w1, h1)
+    if shape1 == "rect" and shape2 == "circle" then
+        return PhysicsUtils.circleVsRect(e2.x, e2.y, e2.radius, e1.x, e1.y, e1.width, e1.height)
     end
 
-    local w1, h1 = e1.width or e1.size or 0, e1.height or e1.size or 0
-    local w2, h2 = e2.width or e2.size or 0, e2.height or e2.size or 0
-    return PhysicsUtils.rectCollision(x1, y1, w1, h1, x2, y2, w2, h2)
+    return PhysicsUtils.rectCollision(e1.x, e1.y, e1.width, e1.height, e2.x, e2.y, e2.width, e2.height)
 end
 
 -- Batch collision check against array of targets
+-- config.filter: function(target) returning whether to check target (required)
+-- config.check_func: function(entity, target) returning hit boolean (required)
+-- config.on_hit: function(entity, target) called when hit (optional)
+-- config.stop_on_first: stop after first hit (default true)
 function PhysicsUtils.checkCollisions(entity, targets, config)
-    config = config or {}
+    if not config.filter then error("checkCollisions: filter required") end
+    if not config.check_func then error("checkCollisions: check_func required") end
     local hit_any = false
     local stop_on_first = config.stop_on_first ~= false
 
     for _, target in ipairs(targets) do
-        local include = config.filter and config.filter(target) or target.alive
-        if include then
-            local hit = config.check_func and config.check_func(entity, target) or PhysicsUtils.checkCollision(entity, target)
-
-            if hit then
+        if config.filter(target) then
+            if config.check_func(entity, target) then
                 hit_any = true
                 if config.on_hit then config.on_hit(entity, target) end
-                if config.resolve ~= false then
-                    PhysicsUtils.resolveCollision(entity, target, config.resolve_config)
-                end
                 if stop_on_first then break end
             end
         end
@@ -326,7 +295,7 @@ local function circleNormal(center_x, center_y, point_x, point_y)
     local dy = point_y - center_y
     local len = math.sqrt(dx * dx + dy * dy)
     if len > 0 then return dx / len, dy / len end
-    return 0, -1
+    return 1, 0  -- default to right if exactly on center (arbitrary but consistent)
 end
 
 -- Internal: reflect velocity off surface normal (preserves speed)
@@ -343,35 +312,30 @@ local function reflectOffNormal(entity, nx, ny)
     end
 end
 
--- Unified collision response: bounce off rects, circles, paddles
+-- Unified collision response: bounce off rects or circles
+-- config.shape: "rect" or "circle" (required)
+-- config.restitution: velocity multiplier after bounce (required)
 function PhysicsUtils.resolveCollision(moving, solid, config)
-    config = config or {}
-    local restitution = config.restitution or 1.0
-    local shape = solid.type or solid.shape or ((solid.width and solid.height) and "rect") or (solid.radius and "circle") or "rect"
+    if not config.shape then error("resolveCollision: shape required") end
+    if not config.restitution then error("resolveCollision: restitution required") end
     local result = {edge = nil, nx = 0, ny = 0}
 
-    if shape == "circle" then
-        local cx = solid.cx or solid.x + (solid.width or solid.radius * 2 or 0) / 2
-        local cy = solid.cy or solid.y + (solid.height or solid.radius * 2 or 0) / 2
-        local cr = solid.radius or (solid.width or solid.size or 0) / 2
-
-        local nx, ny = circleNormal(cx, cy, moving.x, moving.y)
+    if config.shape == "circle" then
+        local nx, ny = circleNormal(solid.x, solid.y, moving.x, moving.y)
         reflectOffNormal(moving, nx, ny)
-        moving.vx = moving.vx * restitution
-        moving.vy = moving.vy * restitution
+        moving.vx = moving.vx * config.restitution
+        moving.vy = moving.vy * config.restitution
 
-        local separation = cr + moving.radius + 1
-        moving.x = cx + nx * separation
-        moving.y = cy + ny * separation
+        local separation = solid.radius + moving.radius + 1
+        moving.x = solid.x + nx * separation
+        moving.y = solid.y + ny * separation
         result.edge = "circle"
         result.nx, result.ny = nx, ny
     else
-        local rx = solid.x or 0
-        local ry = solid.y or 0
-        local rw = solid.width or solid.size or 0
-        local rh = solid.height or solid.size or 0
+        local rx, ry = solid.x, solid.y
+        local rw, rh = solid.width, solid.height
 
-        if solid.centered or config.centered then
+        if config.centered then
             rx = rx - rw / 2
             ry = ry - rh / 2
         end
@@ -382,47 +346,59 @@ function PhysicsUtils.resolveCollision(moving, solid, config)
         local pen_bottom = (ry + rh) - (moving.y - moving.radius)
         local min_pen = math.min(pen_left, pen_right, pen_top, pen_bottom)
 
-        if config.position_angle then
+        if config.bounce_direction then
             local surface_center = rx + rw / 2
-            local surface_width = config.surface_width or rw
+            local surface_width = config.surface_width
             local offset = moving.x - surface_center
             local normalized = math.max(-1, math.min(1, offset / (surface_width / 2)))
 
-            if config.position_angle == "angle" or config.position_angle == "position" then
-                local speed = math.sqrt(moving.vx * moving.vx + moving.vy * moving.vy) * restitution
-                local angle = -math.pi / 2 + normalized * (math.pi / 4)
+            local bounce_dir = config.bounce_direction
+            if config.use_angle_mode then
+                local speed = math.sqrt(moving.vx * moving.vx + moving.vy * moving.vy) * config.restitution
+                if not config.base_angle then error("resolveCollision: base_angle required for use_angle_mode") end
+                if not config.angle_range then error("resolveCollision: angle_range required for use_angle_mode") end
+                local angle = config.base_angle + normalized * config.angle_range
                 moving.vx = math.cos(angle) * speed
                 moving.vy = math.sin(angle) * speed
             else
-                moving.vy = -math.abs(moving.vy) * restitution
-                moving.vx = moving.vx * restitution + normalized * 100
+                if not config.spin_influence then error("resolveCollision: spin_influence required when use_angle_mode is false") end
+                moving.vy = bounce_dir * math.abs(moving.vy) * config.restitution
+                moving.vx = moving.vx * config.restitution + normalized * config.spin_influence
             end
-            moving.y = ry - moving.radius - 1
-            result.edge = "top"
-            result.ny = -1
+            if not config.separation then error("resolveCollision: separation required when bounce_direction is set") end
+            local separation = config.separation
+            if bounce_dir < 0 then
+                moving.y = ry - moving.radius - separation
+                result.edge = "top"
+                result.ny = -1
+            else
+                moving.y = ry + rh + moving.radius + separation
+                result.edge = "bottom"
+                result.ny = 1
+            end
         else
             if min_pen == pen_top then
                 moving.y = ry - moving.radius - 1
-                moving.vy = -math.abs(moving.vy) * restitution
-                moving.vx = moving.vx * restitution
+                moving.vy = -math.abs(moving.vy) * config.restitution
+                moving.vx = moving.vx * config.restitution
                 result.edge = "top"
                 result.ny = -1
             elseif min_pen == pen_bottom then
                 moving.y = ry + rh + moving.radius + 1
-                moving.vy = math.abs(moving.vy) * restitution
-                moving.vx = moving.vx * restitution
+                moving.vy = math.abs(moving.vy) * config.restitution
+                moving.vx = moving.vx * config.restitution
                 result.edge = "bottom"
                 result.ny = 1
             elseif min_pen == pen_left then
                 moving.x = rx - moving.radius - 1
-                moving.vx = -math.abs(moving.vx) * restitution
-                moving.vy = moving.vy * restitution
+                moving.vx = -math.abs(moving.vx) * config.restitution
+                moving.vy = moving.vy * config.restitution
                 result.edge = "left"
                 result.nx = -1
             else
                 moving.x = rx + rw + moving.radius + 1
-                moving.vx = math.abs(moving.vx) * restitution
-                moving.vy = moving.vy * restitution
+                moving.vx = math.abs(moving.vx) * config.restitution
+                moving.vy = moving.vy * config.restitution
                 result.edge = "right"
                 result.nx = 1
             end
@@ -433,94 +409,98 @@ function PhysicsUtils.resolveCollision(moving, solid, config)
     return result
 end
 
--- Unified bounds handling: bounce, wrap, clamp, or callback per edge
-function PhysicsUtils.handleBounds(entity, bounds, config)
-    config = config or {}
-    local mode = config.mode or "bounce"
-    local restitution = config.restitution or 1.0
-    local per_edge = config.per_edge or {}
+-- Generic bounds handling - calls on_edge callback when entity crosses boundary
+-- bounds: {width, height} (required) - uses 0,0 as origin
+-- entity_half_size: {w, h} (required) - half width/height of entity for collision
+-- on_edge(entity, edge_info) where edge_info = {edge, pos_field, vel_field, boundary, inside_dir, half_size, bounds}
+-- Returns {hit = bool, edges = {left, right, top, bottom}}
+function PhysicsUtils.handleBounds(entity, bounds, entity_half_size, on_edge)
+    if not bounds.width then error("handleBounds: bounds.width required") end
+    if not bounds.height then error("handleBounds: bounds.height required") end
+    if not entity_half_size then error("handleBounds: entity_half_size required") end
 
-    local left = bounds.left or bounds.x or 0
-    local top = bounds.top or bounds.y or 0
-    local right = bounds.right or (left + (bounds.width or 800))
-    local bottom = bounds.bottom or (top + (bounds.height or 600))
-
-    local radius = entity.radius or 0
-    local half_w = radius > 0 and radius or (entity.width or 0) / 2
-    local half_h = radius > 0 and radius or (entity.height or 0) / 2
+    local left, top = 0, 0
+    local right, bottom = bounds.width, bounds.height
+    local half_w, half_h = entity_half_size.w, entity_half_size.h
 
     local result = {hit = false, edges = {left = false, right = false, top = false, bottom = false}}
-
-    local function handleEdge(edge, pos_field, vel_field, boundary, inside_dir)
-        local edge_mode = per_edge[edge] or mode
-        if edge_mode == "none" then
-            result.hit = true
-            result.edges[edge] = true
-            if config.on_exit then config.on_exit(entity, edge) end
-            return
-        end
-
-        result.hit = true
-        result.edges[edge] = true
-
-        if edge_mode == "bounce" then
-            entity[pos_field] = boundary + inside_dir * half_w
-            entity[vel_field] = inside_dir * math.abs(entity[vel_field]) * restitution
-            if config.bounce_randomness and config.rng then
-                PhysicsUtils.addBounceRandomness(entity, config.bounce_randomness, config.rng)
-            end
-        elseif edge_mode == "wrap" then
-            if inside_dir > 0 then
-                entity[pos_field] = (edge == "left" or edge == "right") and (right - half_w) or (bottom - half_h)
-            else
-                entity[pos_field] = (edge == "left" or edge == "right") and (left + half_w) or (top + half_h)
-            end
-        elseif edge_mode == "clamp" then
-            entity[pos_field] = boundary + inside_dir * half_w
-            entity[vel_field] = 0
-        end
-
-        if config.on_exit then config.on_exit(entity, edge) end
-    end
+    local bounds_info = {left = left, right = right, top = top, bottom = bottom}
 
     if entity.x - half_w < left then
-        handleEdge("left", "x", "vx", left, 1)
+        result.hit, result.edges.left = true, true
+        on_edge(entity, {edge = "left", pos_field = "x", vel_field = "vx", boundary = left, inside_dir = 1, half_size = half_w, bounds = bounds_info})
     elseif entity.x + half_w > right then
-        handleEdge("right", "x", "vx", right, -1)
+        result.hit, result.edges.right = true, true
+        on_edge(entity, {edge = "right", pos_field = "x", vel_field = "vx", boundary = right, inside_dir = -1, half_size = half_w, bounds = bounds_info})
     end
 
     if entity.y - half_h < top then
-        handleEdge("top", "y", "vy", top, 1)
+        result.hit, result.edges.top = true, true
+        on_edge(entity, {edge = "top", pos_field = "y", vel_field = "vy", boundary = top, inside_dir = 1, half_size = half_h, bounds = bounds_info})
     elseif entity.y + half_h > bottom then
-        handleEdge("bottom", "y", "vy", bottom, -1)
+        result.hit, result.edges.bottom = true, true
+        on_edge(entity, {edge = "bottom", pos_field = "y", vel_field = "vy", boundary = bottom, inside_dir = -1, half_size = half_h, bounds = bounds_info})
     end
 
     return result
 end
 
+-- Edge handler: bounce off boundary
+function PhysicsUtils.bounceEdge(entity, info, restitution)
+    entity[info.pos_field] = info.boundary + info.inside_dir * info.half_size
+    entity[info.vel_field] = info.inside_dir * math.abs(entity[info.vel_field]) * (restitution or 1)
+end
+
+-- Edge handler: wrap to opposite side
+function PhysicsUtils.wrapEdge(entity, info)
+    local b = info.bounds
+    if info.inside_dir > 0 then
+        entity[info.pos_field] = (info.edge == "left" or info.edge == "right") and (b.right - info.half_size) or (b.bottom - info.half_size)
+    else
+        entity[info.pos_field] = (info.edge == "left" or info.edge == "right") and (b.left + info.half_size) or (b.top + info.half_size)
+    end
+end
+
+-- Edge handler: clamp to boundary and stop
+function PhysicsUtils.clampEdge(entity, info)
+    entity[info.pos_field] = info.boundary + info.inside_dir * info.half_size
+    entity[info.vel_field] = 0
+end
+
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║                      PADDLE COLLISION                              ║
+-- ║                   CENTERED RECT COLLISION                          ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
--- Handle paddle collision with sticky/bounce/randomness
--- config: {sticky, aim_mode, bounce_randomness, max_speed, rng, on_hit}
+-- Handle collision with centered rect (paddle, platform, etc.) with sticky/bounce/randomness
+-- config: {sticky, sticky_dir, use_angle_mode, base_angle, angle_range, bounce_direction, spin_influence, bounce_randomness, max_speed, rng, on_hit}
+-- sticky_dir: -1 = above rect, 1 = below rect (required when sticky=true)
 -- Returns true if collision occurred
-function PhysicsUtils.handlePaddleCollision(entity, paddle, config)
-    config = config or {}
-    local half_w = paddle.width / 2
-    local half_h = paddle.height / 2
+function PhysicsUtils.handleCenteredRectCollision(entity, rect, config)
+    local half_w = rect.width / 2
+    local half_h = rect.height / 2
 
-    if not PhysicsUtils.circleVsCenteredRect(entity.x, entity.y, entity.radius, paddle.x, paddle.y, half_w, half_h) then
+    if not PhysicsUtils.circleVsCenteredRect(entity.x, entity.y, entity.radius, rect.x, rect.y, half_w, half_h) then
         return false
     end
 
     if config.sticky and not entity.stuck then
-        PhysicsUtils.attachToEntity(entity, paddle, -entity.radius - half_h)
+        if not config.sticky_dir then error("handleCenteredRectCollision: sticky_dir required when sticky is true") end
+        local sticky_offset = config.sticky_dir * (entity.radius + half_h)
+        PhysicsUtils.attachToEntity(entity, rect, sticky_offset)
     else
-        PhysicsUtils.resolveCollision(entity, paddle, {
+        if not config.restitution then error("handleCenteredRectCollision: restitution required") end
+        if not config.separation then error("handleCenteredRectCollision: separation required") end
+        PhysicsUtils.resolveCollision(entity, rect, {
+            shape = "rect",
             centered = true,
-            position_angle = config.aim_mode or "spin",
-            surface_width = paddle.width
+            restitution = config.restitution,
+            use_angle_mode = config.use_angle_mode,
+            base_angle = config.base_angle,
+            angle_range = config.angle_range,
+            bounce_direction = config.bounce_direction,
+            spin_influence = config.spin_influence,
+            surface_width = rect.width,
+            separation = config.separation
         })
         if config.bounce_randomness and config.rng then
             PhysicsUtils.addBounceRandomness(entity, config.bounce_randomness, config.rng)
@@ -530,23 +510,28 @@ function PhysicsUtils.handlePaddleCollision(entity, paddle, config)
         end
     end
 
-    if config.on_hit then config.on_hit(entity, paddle) end
+    if config.on_hit then config.on_hit(entity, rect) end
     return true
 end
 
 -- Release all stuck entities from anchor, launching them
--- config: {launch_speed, immunity_timer, base_angle, angle_range}
+-- config: {launch_speed, magnet_immunity_timer, base_angle, angle_range, release_dir_y}
 function PhysicsUtils.releaseStuckEntities(entities, anchor, config)
-    config = config or {}
-    local launch_speed = config.launch_speed or 300
-    local immunity_timer = config.immunity_timer or 0.3
+    if not config.base_angle then error("releaseStuckEntities: base_angle required") end
+    if not config.release_dir_y then error("releaseStuckEntities: release_dir_y required") end
+    if not config.launch_speed then error("releaseStuckEntities: launch_speed required") end
+    if not config.angle_range then error("releaseStuckEntities: angle_range required") end
 
     for _, entity in ipairs(entities) do
         if entity.stuck then
             entity.stuck = false
-            entity.y = anchor.y - entity.radius - (anchor.height or 0) / 2 - 1
-            PhysicsUtils.launchFromOffset(entity, entity.stuck_offset_x or 0, anchor.width, launch_speed, config.base_angle, config.angle_range)
-            entity.magnet_immunity_timer = immunity_timer
+            local separation = entity.radius + (anchor.height or 0) / 2 + 1
+            entity.x = anchor.x + (entity.stuck_offset_x or 0)
+            entity.y = anchor.y + config.release_dir_y * separation
+            PhysicsUtils.launchFromOffset(entity, entity.stuck_offset_x or 0, anchor.width, config.launch_speed, config.base_angle, config.angle_range)
+            if config.magnet_immunity_timer then
+                entity.magnet_immunity_timer = config.magnet_immunity_timer
+            end
         end
     end
 end
@@ -561,10 +546,10 @@ function PhysicsUtils.launchAtAngle(entity, angle_radians, speed)
 end
 
 function PhysicsUtils.launchFromOffset(entity, offset_x, anchor_width, speed, base_angle, angle_range)
-    base_angle = base_angle or -math.pi / 2
-    angle_range = angle_range or math.pi / 6
+    if not base_angle then error("launchFromOffset: base_angle required") end
+    if not angle_range then error("launchFromOffset: angle_range required") end
     local max_offset = anchor_width / 2
-    local normalized = math.max(-1, math.min(1, offset_x / max_offset))
+    local normalized = max_offset > 0 and math.max(-1, math.min(1, offset_x / max_offset)) or 0
     local angle = base_angle + normalized * angle_range
     entity.vx = math.cos(angle) * speed
     entity.vy = math.sin(angle) * speed
@@ -604,12 +589,17 @@ function PhysicsUtils.wrapPosition(x, y, entity_width, entity_height, bounds_wid
 end
 
 function PhysicsUtils.createTrailSystem(config)
-    config = config or {}
+    if config.max_length == nil then error("createTrailSystem: max_length required (use 0 for unlimited)") end
+    if config.track_distance == nil then error("createTrailSystem: track_distance required") end
+    if config.color == nil then error("createTrailSystem: color required") end
+    if config.line_width == nil then error("createTrailSystem: line_width required") end
+    if config.angle_offset == nil then error("createTrailSystem: angle_offset required") end
     local trail = {
         max_length = config.max_length,
-        track_distance = config.track_distance or false,
-        color = config.color or {1, 1, 1, 1},
-        line_width = config.line_width or 2,
+        track_distance = config.track_distance,
+        color = config.color,
+        line_width = config.line_width,
+        angle_offset = config.angle_offset,
         buffer = {},
         distance = 0
     }
@@ -619,16 +609,17 @@ function PhysicsUtils.createTrailSystem(config)
         if self.track_distance and dist then
             self.distance = self.distance + dist
         end
-        if self.max_length then
+        if self.max_length > 0 then
             while #self.buffer > self.max_length do
                 table.remove(self.buffer, 1)
             end
         end
     end
 
-    function trail:updateFromEntity(entity)
+    function trail:updateFromEntity(entity, angle_offset)
         if not self.max_length or self.max_length <= 0 then return end
-        local angle = (entity.angle or entity.rotation or 0) + math.pi / 2
+        local offset = angle_offset or self.angle_offset
+        local angle = (entity.angle or 0) + offset
         local radius = entity.radius or 0
         local x = entity.x + math.cos(angle) * radius
         local y = entity.y + math.sin(angle) * radius
@@ -669,9 +660,12 @@ function PhysicsUtils.createTrailSystem(config)
     function trail:getDistance() return self.distance end
     function trail:getPoints() return self.buffer end
 
-    function trail:checkSelfCollision(head_x, head_y, girth)
-        local skip_dist = 1.0 * girth
-        local coll_dist = 0.1 + (girth * 0.3)
+    function trail:checkSelfCollision(head_x, head_y, girth, config)
+        if not config.skip_multiplier then error("checkSelfCollision: skip_multiplier required") end
+        if not config.collision_base then error("checkSelfCollision: collision_base required") end
+        if not config.collision_multiplier then error("checkSelfCollision: collision_multiplier required") end
+        local skip_dist = config.skip_multiplier * girth
+        local coll_dist = config.collision_base + (girth * config.collision_multiplier)
         local checked = 0
         for i = #self.buffer, 1, -1 do
             if i < #self.buffer then
@@ -692,29 +686,30 @@ function PhysicsUtils.createTrailSystem(config)
 end
 
 -- Update a directional force that can change over time
--- state = {angle, strength, type, timer, change_interval, change_amount, turbulence_range}
--- type: "constant", "turbulent", "rotating", "rotating_turbulent"
+-- state = {angle, strength, timer, is_rotating, is_turbulent, change_interval, change_amount, turbulence_range}
 -- Returns fx, fy force components
 function PhysicsUtils.updateDirectionalForce(state, dt)
-    state.timer = state.timer or 0
+    if state.angle == nil then error("updateDirectionalForce: state.angle required") end
+    if state.strength == nil then error("updateDirectionalForce: state.strength required") end
+    if state.timer == nil then error("updateDirectionalForce: state.timer required") end
 
-    if state.type == "rotating" or state.type == "rotating_turbulent" then
+    if state.is_rotating then
+        if state.change_interval == nil then error("updateDirectionalForce: state.change_interval required for rotating") end
+        if state.change_amount == nil then error("updateDirectionalForce: state.change_amount required for rotating") end
         state.timer = state.timer + dt
-        local interval = state.change_interval or 3.0
-        if state.timer >= interval then
-            state.timer = state.timer - interval
-            state.angle = state.angle + (state.change_amount or math.rad(30))
+        if state.timer >= state.change_interval then
+            state.timer = state.timer - state.change_interval
+            state.angle = state.angle + state.change_amount
         end
     end
 
-    local angle = state.angle or 0
-    if state.type == "turbulent" or state.type == "rotating_turbulent" then
-        local range = state.turbulence_range or (math.pi * 0.5)
-        angle = angle + (math.random() - 0.5) * range
+    local angle = state.angle
+    if state.is_turbulent then
+        if state.turbulence_range == nil then error("updateDirectionalForce: state.turbulence_range required for turbulent") end
+        angle = angle + (math.random() - 0.5) * state.turbulence_range
     end
 
-    local strength = state.strength or 0
-    return math.cos(angle) * strength, math.sin(angle) * strength
+    return math.cos(angle) * state.strength, math.sin(angle) * state.strength
 end
 
 return PhysicsUtils

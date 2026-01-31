@@ -94,8 +94,11 @@ function SchemaLoader._populateParams(schema, variant, runtime_config)
         end
     end
 
+    -- Apply mode lookups (e.g., movement_type → movement_modes flags)
+    SchemaLoader._applyModeLookups(params, variant, schema)
+
     -- Copy additional schema sections (components, entity_types, projectile_types, etc.)
-    local extra_sections = {"components", "entity_types", "projectile_types", "victory_conditions", "powerup_effect_configs", "enemy_types"}
+    local extra_sections = {"components", "entity_types", "projectile_types", "victory_conditions", "powerup_effect_configs", "enemy_types", "movement_modes", "reverse_modes"}
     for _, section in ipairs(extra_sections) do
         if schema[section] then
             params[section] = schema[section]
@@ -103,6 +106,34 @@ function SchemaLoader._populateParams(schema, variant, runtime_config)
     end
 
     return params
+end
+
+-- Apply mode lookups: variant says "movement_type": "asteroids", schema defines what that means
+function SchemaLoader._applyModeLookups(params, variant, schema)
+    -- Movement mode lookup
+    if schema.movement_modes and variant.movement_type then
+        local mode_def = schema.movement_modes[variant.movement_type]
+        if mode_def then
+            for key, value in pairs(mode_def) do
+                -- Only apply if variant didn't explicitly override this flag
+                if variant[key] == nil then
+                    params[key] = value
+                end
+            end
+        end
+    end
+
+    -- Reverse mode lookup (for asteroids movement)
+    if schema.reverse_modes and variant.reverse_mode then
+        local mode_def = schema.reverse_modes[variant.reverse_mode]
+        if mode_def then
+            for key, value in pairs(mode_def) do
+                if variant[key] == nil then
+                    params[key] = value
+                end
+            end
+        end
+    end
 end
 
 -- Resolve a single parameter value with priority: variant → config → default

@@ -2,11 +2,45 @@
     "name": "dodge_schema",
     "description": "Schema for Dodge game parameters - all configurable values for dodge variants",
     "parameters": {
-        "movement_type": {
-            "type": "enum",
-            "values": ["default", "asteroids", "jump"],
-            "default": "default",
-            "description": "Player movement style: default (direct), asteroids (thrust/rotate), jump (teleport hops)"
+        "use_rotation": {
+            "type": "boolean",
+            "default": false,
+            "description": "Left/right keys rotate player facing"
+        },
+        "use_thrust": {
+            "type": "boolean",
+            "default": false,
+            "description": "Up key applies thrust in facing direction"
+        },
+        "use_reverse_thrust": {
+            "type": "boolean",
+            "default": false,
+            "description": "Down key applies thrust in reverse direction"
+        },
+        "use_brake": {
+            "type": "boolean",
+            "default": false,
+            "description": "Down key applies strong friction (braking)"
+        },
+        "use_jump": {
+            "type": "boolean",
+            "default": false,
+            "description": "Directional keys trigger discrete jumps"
+        },
+        "use_directional": {
+            "type": "boolean",
+            "default": true,
+            "description": "Directional keys move player directly"
+        },
+        "use_velocity": {
+            "type": "boolean",
+            "default": false,
+            "description": "Apply velocity to position each frame (for momentum)"
+        },
+        "use_bounce": {
+            "type": "boolean",
+            "default": false,
+            "description": "Bounce off arena walls"
         },
         "movement_speed": {
             "type": "number",
@@ -49,12 +83,6 @@
             "min": 0,
             "max": 1.0,
             "description": "Energy retained on wall bounce (0 = no bounce, 1.0 = full bounce)"
-        },
-        "reverse_mode": {
-            "type": "enum",
-            "values": ["none", "thrust", "brake"],
-            "default": "none",
-            "description": "Asteroids mode: reverse key behavior"
         },
         "jump_distance": {
             "type": "number",
@@ -438,5 +466,29 @@
             "loss": {"type": "lives_depleted", "metric": "lives"},
             "check_loss_first": true
         }
+    },
+    "movement_modes": {
+        "default": {
+            "use_directional": true
+        },
+        "asteroids": {
+            "use_rotation": true,
+            "use_thrust": true,
+            "use_velocity": true,
+            "use_bounce": true,
+            "use_directional": false
+        },
+        "jump": {
+            "use_jump": true
+        }
+    },
+    "reverse_modes": {
+        "thrust": {
+            "use_reverse_thrust": true
+        },
+        "brake": {
+            "use_brake": true
+        },
+        "none": {}
     }
 }

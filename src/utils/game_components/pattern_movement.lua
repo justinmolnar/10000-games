@@ -1,150 +1,165 @@
--- PatternMovement: Autonomous movement patterns for AI entities
--- Use for enemies, powerups, hazards - anything that moves without player input
+-- PatternMovement: Math primitives for autonomous entity movement
+-- Games compose these to create movement behaviors.
 --
 -- Usage:
---   local PatternMovement = require('src.utils.game_components.pattern_movement')
+--   local PM = require('src.utils.game_components.pattern_movement')
 --
---   -- Update an entity's position based on its pattern:
---   PatternMovement.update(dt, entity, bounds)
---
---   -- Entity should have:
---   --   x, y, width, height (or radius)
---   --   movement_pattern: "straight", "zigzag", "dive", "bezier", "orbit", "bounce"
---   --   speed (or vx/vy for bounce mode)
---   --   Pattern-specific fields (see below)
+--   -- In game update:
+--   PM.applyVelocity(entity, dt)
+--   PM.applySineOffset(entity, "x", dt, frequency, amplitude)
+--   PM.applyBounce(entity, bounds)
 
 local PatternMovement = {}
 
--- Main update function - dispatches to pattern-specific updater
-function PatternMovement.update(dt, entity, bounds)
-    local pattern = entity.movement_pattern or "straight"
+-- ============================================================================
+-- VELOCITY PRIMITIVES
+-- ============================================================================
 
-    if pattern == "straight" then
-        PatternMovement.updateStraight(dt, entity, bounds)
-    elseif pattern == "zigzag" then
-        PatternMovement.updateZigzag(dt, entity, bounds)
-    elseif pattern == "dive" then
-        PatternMovement.updateDive(dt, entity, bounds)
-    elseif pattern == "bezier" then
-        PatternMovement.updateBezier(dt, entity, bounds)
-    elseif pattern == "orbit" then
-        PatternMovement.updateOrbit(dt, entity, bounds)
-    elseif pattern == "bounce" then
-        PatternMovement.updateBounce(dt, entity, bounds)
-    elseif pattern == "wave" then
-        PatternMovement.updateWave(dt, entity, bounds)
-    elseif pattern == "teleporter" then
-        PatternMovement.updateTeleporter(dt, entity, bounds)
-    elseif pattern == "tracking" then
-        PatternMovement.updateTracking(dt, entity, bounds)
+-- Apply velocity to position
+function PatternMovement.applyVelocity(entity, dt)
+    entity.x = entity.x + (entity.vx or 0) * dt
+    entity.y = entity.y + (entity.vy or 0) * dt
+end
+
+-- Set velocity from angle and speed
+function PatternMovement.setVelocityFromAngle(entity, angle, speed)
+    entity.vx = math.cos(angle) * speed
+    entity.vy = math.sin(angle) * speed
+end
+
+-- Set velocity toward a target point
+function PatternMovement.setVelocityToward(entity, target_x, target_y, speed)
+    local dx = target_x - entity.x
+    local dy = target_y - entity.y
+    local dist = math.sqrt(dx * dx + dy * dy)
+    if dist > 0 then
+        entity.vx = (dx / dist) * speed
+        entity.vy = (dy / dist) * speed
     end
 end
 
--- Straight: Move in a constant direction
--- Entity needs: speed, direction (angle in radians, 0 = right, pi/2 = down)
--- Or: speed, dir_x, dir_y (normalized direction vector)
-function PatternMovement.updateStraight(dt, entity, bounds)
+-- Apply directional movement (using dir_x/dir_y, angle, or direction)
+function PatternMovement.applyDirection(entity, dt)
     local speed = entity.speed or 100
-
     if entity.dir_x and entity.dir_y then
         entity.x = entity.x + entity.dir_x * speed * dt
         entity.y = entity.y + entity.dir_y * speed * dt
-    elseif entity.direction then
-        entity.x = entity.x + math.cos(entity.direction) * speed * dt
-        entity.y = entity.y + math.sin(entity.direction) * speed * dt
     else
-        -- Default: move down
-        entity.y = entity.y + speed * dt
+        local angle = entity.angle or entity.direction
+        if angle then
+            entity.x = entity.x + math.cos(angle) * speed * dt
+            entity.y = entity.y + math.sin(angle) * speed * dt
+        else
+            entity.y = entity.y + speed * dt  -- default: down
+        end
     end
 end
 
--- Zigzag: Move in primary direction while oscillating perpendicular
--- Entity needs: speed, zigzag_frequency (oscillations/sec), zigzag_amplitude (pixels)
--- Optional: direction (angle), time (elapsed time for phase)
-function PatternMovement.updateZigzag(dt, entity, bounds)
-    local speed = entity.speed or 100
-    local freq = entity.zigzag_frequency or 2
-    local amp = entity.zigzag_amplitude or 50
+-- ============================================================================
+-- STEERING PRIMITIVES
+-- ============================================================================
 
-    -- Track time for sine wave
-    entity.pattern_time = (entity.pattern_time or 0) + dt
+-- Steer toward target (smooth turning)
+-- Returns new angle, also updates entity.angle if present
+function PatternMovement.steerToward(entity, target_x, target_y, turn_rate, dt)
+    local desired = math.atan2(target_y - entity.y, target_x - entity.x)
+    local current = entity.angle or 0
+    local diff = (desired - current + math.pi) % (2 * math.pi) - math.pi
 
-    -- Primary movement (default: down)
-    local dir = entity.direction or (math.pi / 2)
-    entity.x = entity.x + math.cos(dir) * speed * dt
-    entity.y = entity.y + math.sin(dir) * speed * dt
+    local max_turn = turn_rate * dt
+    if diff > max_turn then diff = max_turn
+    elseif diff < -max_turn then diff = -max_turn end
 
-    -- Perpendicular oscillation
-    local perp = dir + math.pi / 2
-    local offset = math.sin(entity.pattern_time * freq * math.pi * 2) * amp * dt * freq
-    entity.x = entity.x + math.cos(perp) * offset
-    entity.y = entity.y + math.sin(perp) * offset
+    local new_angle = current + diff
+    entity.angle = new_angle
+    return new_angle
 end
 
--- Wave: Smooth sine wave path (different from zigzag - affects position directly)
--- Entity needs: speed, wave_frequency, wave_amplitude
-function PatternMovement.updateWave(dt, entity, bounds)
-    local speed = entity.speed or 100
-    local freq = entity.wave_frequency or 1
-    local amp = entity.wave_amplitude or 30
-
-    entity.pattern_time = (entity.pattern_time or 0) + dt
-
-    -- Move in primary direction
-    local dir = entity.direction or (math.pi / 2)
-    entity.x = entity.x + math.cos(dir) * speed * dt
-    entity.y = entity.y + math.sin(dir) * speed * dt
-
-    -- Apply wave offset to x position based on y progress
-    if entity.start_x then
-        local wave_offset = math.sin(entity.pattern_time * freq * math.pi * 2) * amp
-        entity.x = entity.start_x + wave_offset
-    else
-        entity.start_x = entity.x
-    end
-end
-
--- Dive: Move toward a target point
--- Entity needs: speed, target_x, target_y
--- Optional: arrive_threshold (distance to consider "arrived")
-function PatternMovement.updateDive(dt, entity, bounds)
-    local speed = entity.speed or 100
-    local threshold = entity.arrive_threshold or 5
-
-    if not entity.target_x or not entity.target_y then
-        -- No target, just move down
-        entity.y = entity.y + speed * dt
-        return
-    end
-
-    local dx = entity.target_x - entity.x
-    local dy = entity.target_y - entity.y
+-- Move toward target point, returns true if arrived
+function PatternMovement.moveToward(entity, target_x, target_y, speed, dt, threshold)
+    threshold = threshold or 5
+    local dx = target_x - entity.x
+    local dy = target_y - entity.y
     local dist = math.sqrt(dx * dx + dy * dy)
 
     if dist <= threshold then
-        -- Arrived at target
-        entity.dive_complete = true
-        -- Continue in same direction
-        if entity.last_dir_x and entity.last_dir_y then
-            entity.x = entity.x + entity.last_dir_x * speed * dt
-            entity.y = entity.y + entity.last_dir_y * speed * dt
-        end
+        return true  -- arrived
+    end
+
+    local move = speed * dt
+    if move >= dist then
+        entity.x = target_x
+        entity.y = target_y
+        return true
+    end
+
+    entity.x = entity.x + (dx / dist) * move
+    entity.y = entity.y + (dy / dist) * move
+    return false
+end
+
+-- ============================================================================
+-- OSCILLATION PRIMITIVES
+-- ============================================================================
+
+-- Apply sine wave offset to position
+-- axis: "x" or "y", freq: oscillations per second, amp: max offset in pixels
+function PatternMovement.applySineOffset(entity, axis, dt, frequency, amplitude)
+    entity.pattern_time = (entity.pattern_time or 0) + dt
+    local offset = math.sin(entity.pattern_time * frequency * math.pi * 2) * amplitude * dt * frequency
+    if axis == "x" then
+        entity.x = entity.x + offset
     else
-        -- Move toward target
-        local dir_x = dx / dist
-        local dir_y = dy / dist
-        entity.x = entity.x + dir_x * speed * dt
-        entity.y = entity.y + dir_y * speed * dt
-        entity.last_dir_x = dir_x
-        entity.last_dir_y = dir_y
+        entity.y = entity.y + offset
     end
 end
 
--- Bezier: Follow a quadratic bezier curve
--- Entity needs: bezier_path = {{x,y}, {x,y}, {x,y}}, bezier_duration, bezier_t (0-1 progress)
-function PatternMovement.updateBezier(dt, entity, bounds)
+-- Apply sine wave to position (absolute, not delta)
+-- Requires entity.start_x or entity.start_y as baseline
+function PatternMovement.setSinePosition(entity, axis, frequency, amplitude)
+    entity.pattern_time = entity.pattern_time or 0
+    local offset = math.sin(entity.pattern_time * frequency * math.pi * 2) * amplitude
+    if axis == "x" and entity.start_x then
+        entity.x = entity.start_x + offset
+    elseif axis == "y" and entity.start_y then
+        entity.y = entity.start_y + offset
+    end
+end
+
+-- ============================================================================
+-- ORBIT / CIRCULAR PRIMITIVES
+-- ============================================================================
+
+-- Set position on circle around center point
+function PatternMovement.setPositionOnCircle(entity, center_x, center_y, radius, angle)
+    entity.x = center_x + math.cos(angle) * radius
+    entity.y = center_y + math.sin(angle) * radius
+end
+
+-- Update orbit angle and set position
+function PatternMovement.updateOrbit(entity, center_x, center_y, radius, angular_speed, dt)
+    entity.orbit_angle = (entity.orbit_angle or 0) + angular_speed * dt
+    PatternMovement.setPositionOnCircle(entity, center_x, center_y, radius, entity.orbit_angle)
+end
+
+-- ============================================================================
+-- BEZIER PRIMITIVES
+-- ============================================================================
+
+-- Quadratic bezier interpolation: returns x, y at parameter t (0-1)
+-- p0, p1, p2 are control points: {x, y}
+function PatternMovement.bezierQuadratic(t, p0, p1, p2)
+    local mt = 1 - t
+    local x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x
+    local y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y
+    return x, y
+end
+
+-- Update entity position along bezier curve
+-- Returns true when complete (t >= 1)
+function PatternMovement.updateBezier(entity, dt)
     if not entity.bezier_path or #entity.bezier_path < 3 then
-        return
+        return true
     end
 
     local duration = entity.bezier_duration or 2
@@ -155,140 +170,70 @@ function PatternMovement.updateBezier(dt, entity, bounds)
         entity.bezier_complete = true
     end
 
-    -- Quadratic bezier: B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
-    local t = entity.bezier_t
     local p0 = entity.bezier_path[1]
     local p1 = entity.bezier_path[2]
     local p2 = entity.bezier_path[3]
+    entity.x, entity.y = PatternMovement.bezierQuadratic(entity.bezier_t, p0, p1, p2)
 
-    local mt = 1 - t
-    entity.x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x
-    entity.y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y
+    return entity.bezier_complete
 end
 
--- Orbit: Circle around a center point
--- Entity needs: orbit_center_x, orbit_center_y, orbit_radius, orbit_speed (radians/sec)
--- Optional: orbit_angle (current angle)
-function PatternMovement.updateOrbit(dt, entity, bounds)
-    local cx = entity.orbit_center_x or (bounds and bounds.width / 2) or 400
-    local cy = entity.orbit_center_y or (bounds and bounds.height / 2) or 300
-    local radius = entity.orbit_radius or 100
-    local speed = entity.orbit_speed or 1
-
-    entity.orbit_angle = (entity.orbit_angle or 0) + speed * dt
-
-    entity.x = cx + math.cos(entity.orbit_angle) * radius
-    entity.y = cy + math.sin(entity.orbit_angle) * radius
+-- Build a bezier path from 3 points
+function PatternMovement.buildBezierPath(start_x, start_y, control_x, control_y, end_x, end_y)
+    return {
+        {x = start_x, y = start_y},
+        {x = control_x, y = control_y},
+        {x = end_x, y = end_y}
+    }
 end
 
--- Bounce: Move with velocity, bounce off bounds
--- Entity needs: vx, vy (velocity)
--- Optional: bounce_damping (0-1, velocity retained on bounce)
-function PatternMovement.updateBounce(dt, entity, bounds)
-    if not entity.vx then entity.vx = entity.speed or 100 end
-    if not entity.vy then entity.vy = entity.speed or 100 end
+-- ============================================================================
+-- BOUNCE PRIMITIVES
+-- ============================================================================
 
-    local damping = entity.bounce_damping or 1.0
+-- Bounce off rectangular bounds, returns true if bounced
+function PatternMovement.applyBounce(entity, bounds, damping)
+    damping = damping or 1.0
+    local bounced = false
 
-    entity.x = entity.x + entity.vx * dt
-    entity.y = entity.y + entity.vy * dt
+    local w = entity.width or (entity.radius and entity.radius * 2) or 0
+    local h = entity.height or (entity.radius and entity.radius * 2) or 0
 
-    if bounds then
-        local w = entity.width or (entity.radius and entity.radius * 2) or 0
-        local h = entity.height or (entity.radius and entity.radius * 2) or 0
-
-        -- Bounce off walls
-        if entity.x < bounds.x then
-            entity.x = bounds.x
-            entity.vx = -entity.vx * damping
-        elseif entity.x + w > bounds.x + bounds.width then
-            entity.x = bounds.x + bounds.width - w
-            entity.vx = -entity.vx * damping
-        end
-
-        if entity.y < bounds.y then
-            entity.y = bounds.y
-            entity.vy = -entity.vy * damping
-        elseif entity.y + h > bounds.y + bounds.height then
-            entity.y = bounds.y + bounds.height - h
-            entity.vy = -entity.vy * damping
-        end
-    end
-end
-
--- Teleporter: Periodically teleport near a target and move toward it
--- Entity needs: teleport_timer, teleport_interval, teleport_range, target_x, target_y
--- Updates angle, vx, vy to point toward target after teleport
-function PatternMovement.updateTeleporter(dt, entity, bounds)
-    entity.teleport_timer = entity.teleport_timer - dt
-    if entity.teleport_timer <= 0 then
-        entity.teleport_timer = entity.teleport_interval or 3.0
-        local angle = math.random() * math.pi * 2
-        local dist = entity.teleport_range or 100
-        local target_x = entity.target_x or (bounds and bounds.width / 2) or 400
-        local target_y = entity.target_y or (bounds and bounds.height / 2) or 300
-        entity.x = target_x + math.cos(angle) * dist
-        entity.y = target_y + math.sin(angle) * dist
-
-        -- Clamp to bounds
-        if bounds then
-            local r = entity.radius or 0
-            entity.x = math.max(r, math.min(bounds.width - r, entity.x))
-            entity.y = math.max(r, math.min(bounds.height - r, entity.y))
-        end
-
-        -- Update velocity toward target
-        local dx = target_x - entity.x
-        local dy = target_y - entity.y
-        local new_angle = math.atan2(dy, dx)
-        entity.angle = new_angle
-        local speed = entity.speed or 100
-        entity.vx = math.cos(new_angle) * speed
-        entity.vy = math.sin(new_angle) * speed
+    if entity.x < bounds.x then
+        entity.x = bounds.x
+        entity.vx = -(entity.vx or 0) * damping
+        bounced = true
+    elseif entity.x + w > bounds.x + bounds.width then
+        entity.x = bounds.x + bounds.width - w
+        entity.vx = -(entity.vx or 0) * damping
+        bounced = true
     end
 
-    -- Move between teleports
-    entity.x = entity.x + (entity.vx or 0) * dt
-    entity.y = entity.y + (entity.vy or 0) * dt
+    if entity.y < bounds.y then
+        entity.y = bounds.y
+        entity.vy = -(entity.vy or 0) * damping
+        bounced = true
+    elseif entity.y + h > bounds.y + bounds.height then
+        entity.y = bounds.y + bounds.height - h
+        entity.vy = -(entity.vy or 0) * damping
+        bounced = true
+    end
+
+    return bounced
 end
 
--- Tracking: Smoothly turn toward a target (angle-based steering)
--- Entity needs: angle, speed, tracking_strength (0-1), target_x, target_y
--- Optional: turn_rate (radians/sec base), difficulty_scaler
-function PatternMovement.updateTracking(dt, entity, bounds)
-    if not entity.target_x or not entity.target_y then return end
-
-    local tracking = entity.tracking_strength or 1.0
-    if tracking <= 0 then return end
-
-    local desired = math.atan2(entity.target_y - entity.y, entity.target_x - entity.x)
-    local diff = (desired - entity.angle + math.pi) % (2 * math.pi) - math.pi
-
-    local base_turn = entity.turn_rate or math.rad(180)
-    local scaler = entity.difficulty_scaler or 1.0
-    local max_turn = base_turn * tracking * scaler * dt
-
-    if diff > max_turn then diff = max_turn
-    elseif diff < -max_turn then diff = -max_turn end
-
-    entity.angle = entity.angle + diff
-    local speed = entity.speed or 100
-    entity.vx = math.cos(entity.angle) * speed
-    entity.vy = math.sin(entity.angle) * speed
-    entity.x = entity.x + entity.vx * dt
-    entity.y = entity.y + entity.vy * dt
+-- Clamp position to bounds
+function PatternMovement.clampToBounds(entity, bounds)
+    local r = entity.radius or 0
+    entity.x = math.max(bounds.x + r, math.min(bounds.x + bounds.width - r, entity.x))
+    entity.y = math.max(bounds.y + r, math.min(bounds.y + bounds.height - r, entity.y))
 end
 
--- Sprite rotation: Visual spinning effect (doesn't affect movement)
--- Entity needs: sprite_rotation_speed (degrees/sec)
--- Updates: sprite_rotation_angle
-function PatternMovement.updateSpriteRotation(dt, entity)
-    if not entity.sprite_rotation_speed or entity.sprite_rotation_speed == 0 then return end
-    entity.sprite_rotation_angle = (entity.sprite_rotation_angle or 0) + (entity.sprite_rotation_speed * dt)
-    entity.sprite_rotation_angle = entity.sprite_rotation_angle % 360
-end
+-- ============================================================================
+-- UTILITY FUNCTIONS
+-- ============================================================================
 
--- Utility: Check if entity is off screen
+-- Check if entity is off screen
 function PatternMovement.isOffScreen(entity, bounds, margin)
     margin = margin or 0
     local w = entity.width or (entity.radius and entity.radius * 2) or 0
@@ -300,111 +245,85 @@ function PatternMovement.isOffScreen(entity, bounds, margin)
         or entity.y > bounds.y + bounds.height + margin
 end
 
--- Utility: Initialize pattern-specific fields with defaults
-function PatternMovement.initPattern(entity, pattern, config)
-    config = config or {}
-    entity.movement_pattern = pattern
-    entity.pattern_time = 0
-
-    if pattern == "zigzag" then
-        entity.zigzag_frequency = config.frequency or 2
-        entity.zigzag_amplitude = config.amplitude or 50
-        entity.direction = config.direction or (math.pi / 2)
-        entity.speed = config.speed or 100
-
-    elseif pattern == "wave" then
-        entity.wave_frequency = config.frequency or 1
-        entity.wave_amplitude = config.amplitude or 30
-        entity.direction = config.direction or (math.pi / 2)
-        entity.speed = config.speed or 100
-        entity.start_x = entity.x
-
-    elseif pattern == "dive" then
-        entity.target_x = config.target_x
-        entity.target_y = config.target_y
-        entity.speed = config.speed or 100
-        entity.arrive_threshold = config.threshold or 5
-
-    elseif pattern == "bezier" then
-        entity.bezier_path = config.path
-        entity.bezier_duration = config.duration or 2
-        entity.bezier_t = 0
-
-    elseif pattern == "orbit" then
-        entity.orbit_center_x = config.center_x
-        entity.orbit_center_y = config.center_y
-        entity.orbit_radius = config.radius or 100
-        entity.orbit_speed = config.speed or 1
-        entity.orbit_angle = config.start_angle or 0
-
-    elseif pattern == "bounce" then
-        entity.vx = config.vx or config.speed or 100
-        entity.vy = config.vy or config.speed or 100
-        entity.bounce_damping = config.damping or 1.0
-
-    elseif pattern == "straight" then
-        entity.speed = config.speed or 100
-        entity.direction = config.direction or (math.pi / 2)
-        if config.dir_x and config.dir_y then
-            entity.dir_x = config.dir_x
-            entity.dir_y = config.dir_y
-        end
-
-    elseif pattern == "teleporter" then
-        entity.speed = config.speed or 100
-        entity.teleport_timer = config.teleport_interval or 3.0
-        entity.teleport_interval = config.teleport_interval or 3.0
-        entity.teleport_range = config.teleport_range or 100
-        entity.target_x = config.target_x
-        entity.target_y = config.target_y
-
-    elseif pattern == "tracking" then
-        entity.speed = config.speed or 100
-        entity.tracking_strength = config.tracking_strength or 1.0
-        entity.turn_rate = config.turn_rate or math.rad(180)
-        entity.difficulty_scaler = config.difficulty_scaler or 1.0
-        entity.target_x = config.target_x
-        entity.target_y = config.target_y
-    end
-
-    return entity
+-- Distance between two points
+function PatternMovement.distance(x1, y1, x2, y2)
+    local dx = x2 - x1
+    local dy = y2 - y1
+    return math.sqrt(dx * dx + dy * dy)
 end
 
---[[
-    Build a bezier path for common patterns
+-- Angle from one point to another
+function PatternMovement.angleTo(x1, y1, x2, y2)
+    return math.atan2(y2 - y1, x2 - x1)
+end
 
-    @param pattern string - "swoop", "dive", "loop", "arc", or "straight"
-    @param p table - Parameters: start_x, start_y, end_x, end_y, curve_y, target_x, target_y, exit_x, exit_y, mid_x, mid_y
-    @return table - Array of {x, y} control points
-]]
-function PatternMovement.buildPath(pattern, p)
-    if pattern == "swoop" then
-        return {
-            {x = p.start_x, y = p.start_y},
-            {x = (p.start_x + p.end_x) / 2, y = p.curve_y or (p.end_y + 100)},
-            {x = p.end_x, y = p.end_y}
-        }
-    elseif pattern == "dive" then
-        return {
-            {x = p.start_x, y = p.start_y},
-            {x = p.target_x, y = p.target_y},
-            {x = p.exit_x or p.start_x, y = p.exit_y}
-        }
-    elseif pattern == "loop" then
-        return {
-            {x = p.start_x, y = p.start_y},
-            {x = p.mid_x, y = p.mid_y or p.curve_y},
-            {x = p.end_x, y = p.end_y}
-        }
-    elseif pattern == "arc" then
-        return {
-            {x = p.start_x, y = p.start_y},
-            {x = p.mid_x, y = p.mid_y},
-            {x = p.end_x, y = p.end_y}
-        }
-    else
-        return {{x = p.start_x, y = p.start_y}, {x = p.end_x, y = p.end_y}}
+-- Normalize angle to -pi to pi
+function PatternMovement.normalizeAngle(angle)
+    while angle > math.pi do angle = angle - 2 * math.pi end
+    while angle < -math.pi do angle = angle + 2 * math.pi end
+    return angle
+end
+
+-- Update pattern time (for oscillations)
+function PatternMovement.updateTime(entity, dt)
+    entity.pattern_time = (entity.pattern_time or 0) + dt
+end
+
+-- Generic update: applies movement based on entity flags
+-- Entity flags: use_steering, use_direction, use_velocity, sine_amplitude, use_bounce, etc.
+function PatternMovement.update(dt, entity, bounds)
+    if not entity then return end
+
+    -- Steering toward target
+    if entity.use_steering and entity.target_x and entity.target_y then
+        local turn_rate = entity.turn_rate or math.rad(90)
+        PatternMovement.steerToward(entity, entity.target_x, entity.target_y, turn_rate, dt)
+        PatternMovement.setVelocityFromAngle(entity, entity.angle, entity.speed or 100)
     end
+
+    -- Directional movement (uses dir_x/dir_y or angle)
+    if entity.use_direction then
+        PatternMovement.applyDirection(entity, dt)
+    end
+
+    -- Velocity-based movement (steering also uses velocity)
+    if entity.use_velocity or entity.use_steering then
+        PatternMovement.applyVelocity(entity, dt)
+    end
+
+    -- Sine wave oscillation
+    if entity.sine_amplitude then
+        PatternMovement.updateTime(entity, dt)
+        local axis = entity.sine_axis or "x"
+        local freq = entity.wave_speed or entity.sine_frequency or 5
+        local amp = entity.wave_amp or entity.sine_amplitude
+        PatternMovement.applySineOffset(entity, axis, dt, freq, amp)
+    end
+
+    -- Orbit movement
+    if entity.orbit_radius then
+        PatternMovement.updateOrbit(entity,
+            entity.orbit_center_x or (bounds and bounds.width/2) or 0,
+            entity.orbit_center_y or (bounds and bounds.height/2) or 0,
+            entity.orbit_radius, entity.orbit_speed or 1, dt)
+    end
+
+    -- Bezier path
+    if entity.use_bezier and entity.bezier_path then
+        PatternMovement.updateBezier(entity, dt)
+    end
+
+    -- Bouncing off walls
+    if entity.use_bounce and bounds then
+        PatternMovement.applyBounce(entity, bounds, entity.bounce_damping)
+    end
+end
+
+-- Sprite rotation (visual only, doesn't affect movement)
+function PatternMovement.updateSpriteRotation(entity, dt)
+    if not entity.sprite_rotation_speed or entity.sprite_rotation_speed == 0 then return end
+    entity.sprite_rotation_angle = (entity.sprite_rotation_angle or 0) + (entity.sprite_rotation_speed * dt)
+    entity.sprite_rotation_angle = entity.sprite_rotation_angle % 360
 end
 
 return PatternMovement

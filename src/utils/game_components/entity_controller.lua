@@ -1335,8 +1335,8 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             end
         end
 
-        -- Pattern movement behavior
-        if config.pattern_movement and entity.movement_pattern and not entity.skip_pattern_movement then
+        -- Pattern movement behavior (flags on entity drive behavior)
+        if config.pattern_movement and not entity.skip_pattern_movement then
             local pm = config.pattern_movement
             if pm.speed then entity.speed = entity.speed or pm.speed end
             if pm.direction then entity.direction = entity.direction or pm.direction end
@@ -1361,7 +1361,7 @@ function EntityController:updateBehaviors(dt, config, collision_check)
         if config.sprite_rotation then
             local pm = config.pattern_movement and config.pattern_movement.PatternMovement
             if pm and pm.updateSpriteRotation then
-                pm.updateSpriteRotation(dt, entity)
+                pm.updateSpriteRotation(entity, dt)
             end
         end
 

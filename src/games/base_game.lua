@@ -936,8 +936,8 @@ function BaseGame:playerShoot(charge_multiplier)
     local center_y = player.y + player.height / 2
     local spawn_x, spawn_y, angle
 
-    if p.movement_type == "asteroids" then
-        -- Asteroids mode: shoot from front of ship in facing direction
+    if p.use_rotation then
+        -- Rotation mode: shoot from front of ship in facing direction
         -- Note: player.angle is already in radians from movement_controller
         local rad = player.angle or 0
         local offset_distance = player.height / 2
@@ -1043,45 +1043,23 @@ function BaseGame:spawnEntity(type_name, config)
         extra.formation_slot = config.formation_slot
     end
 
-    -- Handle entrance animation (named presets: "swoop_left", "swoop_right", "loop_left", etc.)
+    -- Handle entrance animation (config specifies bezier control points)
     if config.entrance then
-        local PatternMovement = self.di and self.di.components and self.di.components.PatternMovement
-        if PatternMovement then
-            local ent = type(config.entrance) == "string" and {pattern = config.entrance} or config.entrance
-            local pattern = ent.pattern or "swoop_left"
+        local PM = self.di and self.di.components and self.di.components.PatternMovement
+        if PM then
+            local ent = type(config.entrance) == "table" and config.entrance or {}
+            local side = ent.side or "left"
 
-            -- Parse named presets (pattern_side)
-            local base_pattern, side = pattern:match("^(%w+)_(%w+)$")
-            if not base_pattern then base_pattern, side = pattern, "left" end
-
-            local start_x = ent.start and ent.start.x or (side == "left" and -50 or (self.game_width + 50))
-            local start_y = ent.start and ent.start.y or -50
+            local start_x = ent.start_x or (side == "left" and -50 or (self.game_width + 50))
+            local start_y = ent.start_y or -50
             local target_x, target_y = x, y
 
-            local bezier_path
-            if base_pattern == "loop" then
-                local mid_x = side == "left" and self.game_width * 0.3 or self.game_width * 0.7
-                bezier_path = PatternMovement.buildPath("loop", {
-                    start_x = start_x, start_y = start_y,
-                    mid_x = mid_x, mid_y = self.game_height * 0.5,
-                    end_x = target_x, end_y = target_y
-                })
-            elseif base_pattern == "dive" then
-                bezier_path = PatternMovement.buildPath("dive", {
-                    start_x = start_x, start_y = start_y,
-                    target_x = target_x, target_y = target_y,
-                    exit_x = start_x, exit_y = self.game_height + 50
-                })
-            else -- swoop
-                bezier_path = PatternMovement.buildPath("swoop", {
-                    start_x = start_x, start_y = start_y,
-                    end_x = target_x, end_y = target_y,
-                    curve_y = self.game_height * 0.5
-                })
-            end
+            -- Control point defaults based on side
+            local control_x = ent.control_x or (side == "left" and self.game_width * 0.3 or self.game_width * 0.7)
+            local control_y = ent.control_y or self.game_height * 0.5
 
-            extra.movement_pattern = 'bezier'
-            extra.bezier_path = bezier_path
+            extra.use_bezier = true
+            extra.bezier_path = PM.buildBezierPath(start_x, start_y, control_x, control_y, target_x, target_y)
             extra.bezier_t = 0
             extra.bezier_duration = ent.duration or 2.0
             extra.bezier_complete = false

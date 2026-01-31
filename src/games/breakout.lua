@@ -240,7 +240,13 @@ function Breakout:updateGameLogic(dt)
     self.popup_manager:update(dt)
 
     -- Update paddle
-    self.paddle_movement:update(dt, self.paddle, {left = self:isKeyDown('a', 'left'), right = self:isKeyDown('d', 'right')}, bounds)
+    local left = self:isKeyDown('a', 'left')
+    local right = self:isKeyDown('d', 'right')
+    local dx = (right and 1 or 0) - (left and 1 or 0)
+    if dx ~= 0 then
+        self.paddle_movement:applyDirectionalMove(self.paddle, dx, 0, self.params.paddle_speed, dt)
+    end
+    self.paddle_movement:applyBounds(self.paddle, bounds)
     if self.params.paddle_sticky then
         local aim_delta = (self:isKeyDown('d', 'right') and 2 or 0) - (self:isKeyDown('a', 'left') and 2 or 0)
         self.paddle.sticky_aim_angle = math.max(-math.pi * 0.95, math.min(-math.pi * 0.05, self.paddle.sticky_aim_angle + aim_delta * dt))
@@ -282,7 +288,7 @@ function Breakout:updateBall(ball, dt)
     Physics.applyForces(ball, {
         gravity = p.ball_gravity, gravity_direction = p.ball_gravity_direction,
         homing_strength = p.ball_homing_strength,
-        magnet_range = p.paddle_magnet_range
+        magnet_range = p.paddle_magnet_range, magnet_strength = p.paddle_magnet_strength
     }, dt,
         function() return self.entity_controller:findNearest(ball.x, ball.y, function(e) return e.alive end) end,
         self.paddle
@@ -297,16 +303,24 @@ function Breakout:updateBall(ball, dt)
 
     -- Wall collisions
     local restitution = ({normal = 1.0, damped = 0.9, sticky = 0.6})[p.wall_bounce_mode] or 1.0
-    Physics.handleBounds(ball, {width = self.arena_width, height = self.arena_height}, {
-        mode = "bounce", restitution = restitution,
-        per_edge = {top = p.ceiling_enabled and "bounce" or "none", bottom = "none"},
-        bounce_randomness = p.ball_bounce_randomness, rng = self.rng,
-        on_exit = function(e, edge) if edge == "top" and not p.ceiling_enabled then e.active = false end end
-    })
+    Physics.handleBounds(ball, {width = self.arena_width, height = self.arena_height}, {w = ball.radius, h = ball.radius}, function(e, info)
+        if info.edge == "bottom" then return end  -- handled by kill plane
+        if info.edge == "top" and not p.ceiling_enabled then
+            e.active = false
+            return
+        end
+        Physics.bounceEdge(e, info, restitution)
+        if p.ball_bounce_randomness > 0 then
+            Physics.addBounceRandomness(e, p.ball_bounce_randomness, self.rng)
+        end
+    end)
     if not ball.active then return end
 
     -- Bottom boundary with shield
-    if Physics.handleKillPlane(ball, "bottom", self.arena_height, {
+    if Physics.handleKillPlane(ball, {
+        pos_field = "y", vel_field = "vy", inside_dir = -1,
+        check_fn = function(e, boundary, r) return e.y - r > boundary end
+    }, self.arena_height, {
         kill_enabled = p.bottom_kill_enabled,
         shield_active = self.shield_active,
         on_shield_use = function() game.shield_active = false end,
@@ -314,31 +328,76 @@ function Breakout:updateBall(ball, dt)
     }) then return end
 
     -- Paddle collision
-    Physics.handlePaddleCollision(ball, self.paddle, {
-        sticky = p.paddle_sticky, aim_mode = p.paddle_aim_mode,
+    Physics.handleCenteredRectCollision(ball, self.paddle, {
+        sticky = p.paddle_sticky, sticky_dir = -1,
+        use_angle_mode = p.paddle_aim_mode == "position",
+        base_angle = -math.pi / 2, angle_range = math.pi / 4, bounce_direction = -1,
+        spin_influence = 100, restitution = 1.0, separation = 1,
         bounce_randomness = p.ball_bounce_randomness, max_speed = p.ball_max_speed, rng = self.rng,
         on_hit = function() game.combo = 0 end
     })
 
     -- Brick collisions
     local PNGCollision = self.di.components.PNGCollision
+    local brick_hit = false
     Physics.checkCollisions(ball, self.bricks, {
         filter = function(brick) return brick.alive end,
         check_func = function(b, brick)
             return brick.collision_image and PNGCollision.checkBall(brick.collision_image, brick.x, brick.y, b.x, b.y, b.radius, brick.alpha_threshold or 0.5)
-                or Physics.checkCollision(b, brick, "circle", brick.shape)
+                or Physics.circleVsRect(b.x, b.y, b.radius, brick.x, brick.y, brick.width, brick.height)
         end,
         on_hit = function(b, brick)
             self.entity_controller:hitEntity(brick, 1, b)
-            Physics.applyBounceEffects(b, {speed_increase = p.ball_speed_increase_per_bounce, max_speed = p.ball_max_speed, bounce_randomness = p.ball_bounce_randomness}, self.rng)
-        end
+            if not brick_hit then
+                brick_hit = true
+                -- Simple bounce: determine axis by overlap depth (corner-based coords)
+                local brick_cx, brick_cy = brick.x + brick.width / 2, brick.y + brick.height / 2
+                local dx, dy = b.x - brick_cx, b.y - brick_cy
+                local half_w, half_h = brick.width / 2, brick.height / 2
+                local overlap_x = half_w + b.radius - math.abs(dx)
+                local overlap_y = half_h + b.radius - math.abs(dy)
+                if overlap_x < overlap_y then
+                    b.vx = -b.vx
+                    b.x = brick_cx + (dx > 0 and (half_w + b.radius + 1) or -(half_w + b.radius + 1))
+                else
+                    b.vy = -b.vy
+                    b.y = brick_cy + (dy > 0 and (half_h + b.radius + 1) or -(half_h + b.radius + 1))
+                end
+            end
+        end,
+        stop_on_first = false
     })
+    if brick_hit then
+        Physics.applyBounceEffects(ball, {speed_increase = p.ball_speed_increase_per_bounce, max_speed = p.ball_max_speed, bounce_randomness = p.ball_bounce_randomness}, self.rng)
+    end
 
     -- Obstacle collisions
+    local obs_hit = false
     Physics.checkCollisions(ball, self.obstacles, {
         filter = function(obs) return obs.alive end,
-        on_hit = function(b) Physics.applyBounceEffects(b, {bounce_randomness = p.ball_bounce_randomness}, self.rng) end
+        check_func = function(b, obs) return Physics.circleVsRect(b.x, b.y, b.radius, obs.x, obs.y, obs.width, obs.height) end,
+        on_hit = function(b, obs)
+            if not obs_hit then
+                obs_hit = true
+                local obs_cx, obs_cy = obs.x + obs.width / 2, obs.y + obs.height / 2
+                local dx, dy = b.x - obs_cx, b.y - obs_cy
+                local half_w, half_h = obs.width / 2, obs.height / 2
+                local overlap_x = half_w + b.radius - math.abs(dx)
+                local overlap_y = half_h + b.radius - math.abs(dy)
+                if overlap_x < overlap_y then
+                    b.vx = -b.vx
+                    b.x = obs_cx + (dx > 0 and (half_w + b.radius + 1) or -(half_w + b.radius + 1))
+                else
+                    b.vy = -b.vy
+                    b.y = obs_cy + (dy > 0 and (half_h + b.radius + 1) or -(half_h + b.radius + 1))
+                end
+            end
+        end,
+        stop_on_first = false
     })
+    if obs_hit then
+        Physics.applyBounceEffects(ball, {bounce_randomness = p.ball_bounce_randomness}, self.rng)
+    end
 
     if p.ball_max_speed then Physics.clampSpeed(ball, p.ball_max_speed) end
 end
@@ -386,7 +445,12 @@ function Breakout:keypressed(key)
         end
 
         -- Release any stuck balls
-        self.di.components.PhysicsUtils.releaseStuckEntities(self.balls, self.paddle, {launch_speed = 300})
+        self.di.components.PhysicsUtils.releaseStuckEntities(self.balls, self.paddle, {
+            launch_speed = 300,
+            base_angle = -math.pi / 2,
+            angle_range = math.pi / 6,
+            release_dir_y = -1
+        })
     end
 end
 

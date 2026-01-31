@@ -152,11 +152,18 @@ function SpaceShooter:setupEntities()
                     and {range = {min = p.enemy_health_min, max = p.enemy_health_max}, multipliers = {enemy_def.health or 1}, bounds = {min = 1}}
                     or {variance = p.enemy_health_variance, multipliers = {enemy_def.health or 1}, bounds = {min = 1}}
                 local health = math.floor(self:getScaledValue(p.enemy_health, health_config) + 0.5)
-                table.insert(self.enemy_weighted_configs, {
-                    weight = ed.multiplier, movement_pattern = enemy_def.movement_pattern,
+                local cfg = {
+                    weight = ed.multiplier,
                     enemy_type = enemy_def.name, type = ed.type, health = health, max_health = health,
-                    speed_multiplier = enemy_def.speed_multiplier or 1.0, shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0
-                })
+                    speed_multiplier = enemy_def.speed_multiplier or 1.0, shoot_rate_multiplier = enemy_def.shoot_rate_multiplier or 1.0,
+                    use_direction = true
+                }
+                -- Convert movement_pattern to flags
+                if enemy_def.movement_pattern == "zigzag" then
+                    cfg.sine_amplitude = 50
+                    cfg.sine_frequency = p.zigzag_frequency or 2
+                end
+                table.insert(self.enemy_weighted_configs, cfg)
             end
         end
     end
@@ -285,7 +292,7 @@ function SpaceShooter:updateGameLogic(dt)
     self.blackout_zones = self.entity_controller:getEntitiesByType("blackout_zone")
     if #self.gravity_wells > 0 then
         local PhysicsUtils = self.di.components.PhysicsUtils
-        PhysicsUtils.applyForces(self.player, {gravity_wells = self.gravity_wells}, dt)
+        PhysicsUtils.applyForces(self.player, {gravity_wells = self.gravity_wells, gravity_well_strength_multiplier = 1.0}, dt)
         for _, bullet in ipairs(self.player_bullets) do
             PhysicsUtils.applyForces(bullet, {gravity_wells = self.gravity_wells, gravity_well_strength_multiplier = 0.7}, dt)
         end
@@ -306,7 +313,7 @@ function SpaceShooter:updateGameLogic(dt)
 end
 
 function SpaceShooter:updatePlayer(dt)
-    -- Movement via MovementController primitives
+    -- Movement via MovementController primitives (schema flags drive behavior)
     local p = self.params
     local mc = self.movement_controller
     local player = self.player
@@ -320,78 +327,63 @@ function SpaceShooter:updatePlayer(dt)
     local up = self:isKeyDown('up', 'w')
     local down = self:isKeyDown('down', 's')
 
-    local move_type = p.movement_type
+    local dx, dy = 0, 0
+    if left then dx = dx - 1 end
+    if right then dx = dx + 1 end
+    if up then dy = dy - 1 end
+    if down then dy = dy + 1 end
 
-    if move_type == "rail" then
-        -- Rail: horizontal only (default for shooters)
-        if left then player.x = player.x - p.movement_speed * dt end
-        if right then player.x = player.x + p.movement_speed * dt end
-        -- Clamp horizontal
-        if player.width then
-            player.x = math.max(bounds.x, math.min(bounds.x + bounds.width - player.width, player.x))
-        elseif player.radius then
-            player.x = math.max(bounds.x + player.radius, math.min(bounds.x + bounds.width - player.radius, player.x))
-        end
+    local dominated_by_jump = p.use_jump and mc:isJumping("player")
 
-    elseif move_type == "jump" then
-        -- Jump/dash movement
+    -- Jump system
+    if p.use_jump then
         if mc:isJumping("player") then
             mc:updateJump(player, "player", dt, bounds, player.time_elapsed)
-        else
-            local dx, dy = 0, 0
-            if left then dx = -1
-            elseif right then dx = 1
-            elseif up then dy = -1
-            elseif down then dy = 1 end
-
-            if (dx ~= 0 or dy ~= 0) and mc:canJump("player", player.time_elapsed) then
-                mc:startJump(player, "player", dx, dy, player.time_elapsed, bounds)
-            end
+        elseif (dx ~= 0 or dy ~= 0) and mc:canJump("player", player.time_elapsed) then
+            mc:startJump(player, "player", dx, dy, player.time_elapsed, bounds)
         end
-        if not mc:isJumping("player") then
-            mc:applyFriction(player, p.decel_friction, dt)
-            mc:applyVelocity(player, dt)
+    end
+
+    if not dominated_by_jump then
+        -- Rail: horizontal only
+        if p.use_rail then
+            if left then player.x = player.x - p.movement_speed * dt end
+            if right then player.x = player.x + p.movement_speed * dt end
         end
 
-    elseif move_type == "asteroids" then
-        -- Asteroids: rotation + thrust
-        if left then mc:applyRotation(player, -1, nil, dt) end
-        if right then mc:applyRotation(player, 1, nil, dt) end
-        if up then
+        -- Rotation
+        if p.use_rotation then
+            if left then mc:applyRotation(player, -1, nil, dt) end
+            if right then mc:applyRotation(player, 1, nil, dt) end
+        end
+
+        -- Thrust
+        if p.use_thrust and up then
             mc:applyThrust(player, player.angle, nil, dt)
             mc:applyFriction(player, p.accel_friction, dt)
-        else
-            mc:applyFriction(player, p.decel_friction, dt)
         end
-        mc:applyVelocity(player, dt)
-        mc:applyBounds(player, bounds)
-        mc:applyBounce(player, bounds)
 
-    else
-        -- Direct movement
-        local dx, dy = 0, 0
-        if left then dx = dx - 1 end
-        if right then dx = dx + 1 end
-        if up then dy = dy - 1 end
-        if down then dy = dy + 1 end
-
-        local has_momentum = p.accel_friction < 1.0 or p.decel_friction < 1.0
-
-        if has_momentum then
-            if dx ~= 0 or dy ~= 0 then
+        -- Directional movement
+        if p.use_directional and (dx ~= 0 or dy ~= 0) then
+            if p.use_velocity then
                 mc:applyDirectionalVelocity(player, dx, dy, p.movement_speed, dt)
                 mc:applyFriction(player, p.accel_friction, dt)
             else
-                mc:applyFriction(player, p.decel_friction, dt)
+                mc:applyDirectionalMove(player, dx, dy, p.movement_speed, dt)
             end
-            mc:applyVelocity(player, dt)
-            mc:applyBounds(player, bounds)
-            mc:applyBounce(player, bounds)
-        else
-            mc:applyDirectionalMove(player, dx, dy, p.movement_speed, dt)
-            mc:applyBounds(player, bounds)
+        end
+
+        -- Decel friction when not actively moving
+        local is_moving = (p.use_thrust and up) or (p.use_directional and (dx ~= 0 or dy ~= 0))
+        if not is_moving and p.decel_friction < 1.0 then
+            mc:applyFriction(player, p.decel_friction, dt)
         end
     end
+
+    -- Always apply these
+    if p.use_velocity then mc:applyVelocity(player, dt) end
+    mc:applyBounds(player, bounds)
+    if p.use_bounce then mc:applyBounce(player, bounds) end
 
     -- Shield regeneration handled by health_system (updated in updateGameLogic)
 
@@ -413,17 +405,54 @@ end
 
 
 function SpaceShooter:updateEnemies(dt)
-    local PatternMovement = self.di.components.PatternMovement
+    local PM = self.di.components.PatternMovement
     local bounds = {x = 0, y = 0, width = self.game_width, height = self.game_height}
     local game = self
 
-    -- Update movement for standard patterns (speed/direction set at spawn time)
+    -- Update movement using primitives (entity flags drive behavior)
     for _, enemy in ipairs(self.enemies) do
-        if enemy.movement_pattern ~= 'grid' and enemy.movement_pattern ~= 'bezier' and enemy.movement_pattern ~= 'formation' then
-            enemy.skip_offscreen_removal = false
-            PatternMovement.update(dt, enemy, bounds)
-        else
+        -- Skip special modes handled elsewhere
+        if enemy.use_grid or enemy.use_bezier or enemy.use_formation then
             enemy.skip_offscreen_removal = true
+        else
+            enemy.skip_offscreen_removal = false
+
+            -- Apply behaviors based on entity flags
+            if enemy.use_steering then
+                PM.steerToward(enemy, enemy.target_x or self.player.x, enemy.target_y or self.player.y,
+                    enemy.turn_rate or math.rad(180), dt)
+                PM.setVelocityFromAngle(enemy, enemy.angle, enemy.speed or 100)
+            end
+
+            if enemy.use_direction then
+                PM.applyDirection(enemy, dt)
+            end
+
+            if enemy.use_velocity then
+                PM.applyVelocity(enemy, dt)
+            end
+
+            if enemy.sine_amplitude then
+                PM.updateTime(enemy, dt)
+                PM.applySineOffset(enemy, enemy.sine_axis or "x", dt,
+                    enemy.sine_frequency or 2, enemy.sine_amplitude)
+            end
+
+            if enemy.orbit_radius then
+                PM.updateOrbit(enemy, enemy.orbit_center_x or bounds.width/2,
+                    enemy.orbit_center_y or bounds.height/2, enemy.orbit_radius,
+                    enemy.orbit_speed or 1, dt)
+            end
+
+            if enemy.use_bounce then
+                PM.applyBounce(enemy, bounds, enemy.bounce_damping)
+            end
+
+            if enemy.move_toward_target and not enemy.dive_complete then
+                if PM.moveToward(enemy, enemy.target_x, enemy.target_y, enemy.speed or 100, dt, enemy.arrive_threshold) then
+                    enemy.dive_complete = true
+                end
+            end
         end
     end
 
@@ -479,7 +508,7 @@ function SpaceShooter:spawnEnemy()
     local speed = base_speed * p.enemy_speed_multiplier * math.sqrt(self.difficulty_scale)
     local shoot_rate = math.max(0.5, (p.enemy_shoot_rate_max - self.difficulty_modifiers.complexity * p.enemy_shoot_rate_complexity)) / p.enemy_fire_rate
     local direction = p.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
-    local extra = {movement_pattern = 'straight', speed = speed, direction = direction, zigzag_frequency = p.zigzag_frequency, zigzag_amplitude = speed * 0.5, shoot_rate = shoot_rate, health = p.enemy_health}
+    local extra = {use_direction = true, speed = speed, direction = direction, zigzag_frequency = p.zigzag_frequency, zigzag_amplitude = speed * 0.5, shoot_interval = shoot_rate, health = p.enemy_health}
 
     -- Formation spawning
     if p.enemy_formation == "v_formation" then
@@ -515,11 +544,13 @@ function SpaceShooter:spawnEnemy()
         local health = math.floor(self:getScaledValue(p.enemy_health, health_config) + 0.5)
 
         local spawn_extra = {
-            width = p.enemy_width, height = p.enemy_height, movement_pattern = movement,
+            width = p.enemy_width, height = p.enemy_height,
+            use_direction = true,
+            sine_amplitude = (movement == 'zigzag') and (speed * 0.5) or nil,
+            sine_frequency = (movement == 'zigzag') and p.zigzag_frequency or nil,
             speed = speed, direction = p.reverse_gravity and (-math.pi / 2) or (math.pi / 2),
-            zigzag_frequency = p.zigzag_frequency, zigzag_amplitude = speed * 0.5,
             shoot_timer = math.random() * (p.enemy_shoot_rate_max - p.enemy_shoot_rate_min) + p.enemy_shoot_rate_min,
-            shoot_rate = shoot_rate, health = health, is_variant_enemy = use_weighted
+            shoot_interval = shoot_rate, health = health, is_variant_enemy = use_weighted
         }
 
         local enemy = self:spawnEntity("enemy", {
@@ -878,12 +909,11 @@ function SpaceShooter:updateGalagaFormation(dt)
             diver.bezier_t = 0
             diver.bezier_complete = false
             diver.bezier_duration = 3.0
-            diver.bezier_path = PatternMovement.buildPath("dive", {
-                start_x = diver.x, start_y = diver.y,
-                target_x = self.player.x + self.player.width / 2,
-                target_y = self.player.y + self.player.height / 2,
-                exit_x = diver.x, exit_y = self.game_height + 50
-            })
+            diver.bezier_path = PatternMovement.buildBezierPath(
+                diver.x, diver.y,  -- start
+                self.player.x + self.player.width / 2, self.player.y + self.player.height / 2,  -- control (dive target)
+                diver.x, self.game_height + 50  -- end (exit)
+            )
             self.galaga_state.diving_count = self.galaga_state.diving_count + 1
         end
         self.galaga_state.dive_timer = dive_freq
@@ -892,7 +922,7 @@ function SpaceShooter:updateGalagaFormation(dt)
     -- Update enemy states (use PatternMovement.updateBezier instead of inline math)
     for _, enemy in ipairs(self.enemies) do
         if enemy.formation_state == 'entering' then
-            PatternMovement.updateBezier(dt, enemy, nil)
+            PatternMovement.updateBezier(enemy, dt)
             if enemy.bezier_complete then
                 enemy.formation_state = 'in_formation'
                 enemy.x, enemy.y = enemy.home_x, enemy.home_y
@@ -903,7 +933,7 @@ function SpaceShooter:updateGalagaFormation(dt)
             enemy.x, enemy.y = enemy.home_x, enemy.home_y
 
         elseif enemy.formation_state == 'diving' then
-            PatternMovement.updateBezier(dt, enemy, nil)
+            PatternMovement.updateBezier(enemy, dt)
             if enemy.bezier_complete then
                 self.entity_controller:removeEntity(enemy)
                 self.galaga_state.diving_count = self.galaga_state.diving_count - 1
@@ -953,7 +983,7 @@ function SpaceShooter:updateHazards(dt)
                     local spawn_y = p.reverse_gravity and game.game_height or -size
                     ec:spawn("asteroid", math.random(0, game.game_width - size), spawn_y, {
                         width = size, height = size,
-                        movement_pattern = 'straight', speed = p.asteroid_speed, direction = direction,
+                        use_direction = true, speed = p.asteroid_speed, direction = direction,
                         rotation = math.random() * math.pi * 2, rotation_speed = (math.random() - 0.5) * 2
                     })
                 end
@@ -963,7 +993,7 @@ function SpaceShooter:updateHazards(dt)
             on_spawn = function(warning, ds)
                 local spawn_y = p.reverse_gravity and game.game_height or -30
                 game.entity_controller:spawn("meteor", warning.x, spawn_y, {
-                    movement_pattern = 'straight', speed = p.meteor_speed, direction = direction
+                    use_direction = true, speed = p.meteor_speed, direction = direction
                 })
             end
         },
