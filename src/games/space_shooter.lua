@@ -235,6 +235,7 @@ function SpaceShooter:updateGameLogic(dt)
         -- Default enemy spawning based on pattern
         if self.params.enemy_spawn_pattern == "waves" then
             local result = self:updateWaveState(self.wave_state, {
+                pause_duration = self.params.wave_pause_duration,
                 count_func = function() return self.wave_state.enemies_remaining end,
                 on_start = function() self.wave_state.enemies_remaining = math.floor(self.params.wave_enemies_per_wave * self.difficulty_scale); self.spawn_timer = 0 end
             }, dt)
@@ -872,6 +873,7 @@ function SpaceShooter:updateSpaceInvadersGrid(dt)
         self.grid_state.pause_timer = self.grid_state.wave_pause_timer
 
         local result = self:updateWaveState(self.grid_state, {
+            pause_duration = self.params.wave_pause_duration,
             count_func = function()
                 for _, enemy in ipairs(game.enemies) do
                     if enemy.movement_pattern == 'grid' then return 1 end
@@ -1061,6 +1063,7 @@ function SpaceShooter:updateGalagaFormation(dt)
         self.galaga_state.pause_timer = self.galaga_state.wave_pause_timer
 
         local result = self:updateWaveState(self.galaga_state, {
+            pause_duration = self.params.wave_pause_duration,
             count_func = function()
                 for _, enemy in ipairs(game.enemies) do
                     if enemy.formation_state then return 1 end

@@ -475,6 +475,13 @@
             "max": 1.0,
             "description": "Rate of difficulty increase"
         },
+        "difficulty_max": {
+            "type": "number",
+            "default": 5.0,
+            "min": 1.0,
+            "max": 20.0,
+            "description": "Maximum difficulty multiplier"
+        },
         "powerup_enabled": {
             "type": "boolean",
             "default": false,

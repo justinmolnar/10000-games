@@ -32,7 +32,10 @@ function Breakout:init(game_data, cheats, di, variant_override)
     })
 
     self.bricks_destroyed, self.bricks_left, self.balls_lost, self.last_extra_ball_threshold = 0, 0, 0, 0
-    self:createPaddle()
+    self:createPaddle({
+        width = self.params.paddle_width,
+        height = self.params.paddle_height
+    })
     self:setupComponents()
     self:setupEntities()
     self.view = BreakoutView:new(self)
@@ -288,7 +291,7 @@ function Breakout:updateGameLogic(dt)
     -- Update bricks and check for ball loss
     self:updateBricks(dt)
     self:handleEntityDepleted(function() return TableUtils.countActive(self.balls) end, {
-        loss_counter = "balls_lost", combo_reset = true, damage_reason = "ball_lost",
+        loss_counter = "balls_lost", combo_reset = true, damage = 1, damage_reason = "ball_lost",
         on_respawn = function(g) g:spawnBall() end
     })
 
@@ -641,6 +644,46 @@ function Breakout:keypressed(key)
             angle_range = math.pi / 6,
             release_dir_y = -1
         })
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Play Area
+--------------------------------------------------------------------------------
+
+function Breakout:setPlayArea(width, height)
+    local old_width = self.arena_width or width
+    local offset_x = (width - old_width) / 2
+
+    -- Call parent to set dimensions
+    Breakout.super.setPlayArea(self, width, height)
+
+    -- Reposition paddle (clamp to bounds, don't shift)
+    if self.paddle then
+        self.paddle.y = height - 50
+        self.paddle.x = math.max(self.paddle.width / 2, math.min(self.paddle.x, width - self.paddle.width / 2))
+    end
+
+    -- Reposition balls
+    if self.balls then
+        for _, ball in ipairs(self.balls) do
+            ball.x = math.max(ball.radius, math.min(width - ball.radius, ball.x + offset_x))
+            ball.y = math.max(ball.radius, math.min(height - ball.radius, ball.y))
+        end
+    end
+
+    -- Reposition bricks
+    if self.entity_controller then
+        for _, entity in ipairs(self.entity_controller:getEntities()) do
+            entity.x = entity.x + offset_x
+        end
+    end
+
+    -- Reposition obstacles
+    if self.obstacles then
+        for _, obstacle in ipairs(self.obstacles) do
+            obstacle.x = obstacle.x + offset_x
+        end
     end
 end
 

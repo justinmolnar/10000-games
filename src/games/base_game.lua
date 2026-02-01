@@ -30,7 +30,7 @@ function BaseGame:init(game_data, cheats, di, variant_override)
     self.victory = false
     self.score = 0
 
-    -- Common arena state
+    -- Common arena state (initial values, overwritten by setPlayArea)
     self.arena_width = 800
     self.arena_height = 600
     self.combo = 0
@@ -109,9 +109,12 @@ end
 -- Expects params to have: arena_base_width, arena_base_height, camera_zoom, camera_mode
 -- Expects variant to optionally have: arena_size
 function BaseGame:setupArenaDimensions()
+    if not self.params.arena_base_width then error("setupArenaDimensions: params.arena_base_width required") end
+    if not self.params.arena_base_height then error("setupArenaDimensions: params.arena_base_height required") end
+
     self.is_fixed_arena = (self.variant and self.variant.arena_size ~= nil)
-    local base_w = self.params.arena_base_width or 800
-    local base_h = self.params.arena_base_height or 600
+    local base_w = self.params.arena_base_width
+    local base_h = self.params.arena_base_height
 
     if self.is_fixed_arena then
         self.game_width = math.floor(base_w * self.params.arena_size)
@@ -120,7 +123,7 @@ function BaseGame:setupArenaDimensions()
         self.game_width, self.game_height = base_w, base_h
     end
 
-    self.camera_zoom = self.is_fixed_arena and 1 or (self.params.camera_zoom or 1)
+    self.camera_zoom = self.is_fixed_arena and 1 or self.params.camera_zoom
     self.lock_aspect_ratio = (self.is_fixed_arena and self.params.camera_mode == "fixed")
 end
 
@@ -184,7 +187,7 @@ function BaseGame:createProjectileSystemFromSchema(config)
 
     config = config or {}
     if not config.max_projectiles then error("createProjectileSystemFromSchema: max_projectiles required") end
-    if not config.out_of_bounds_margin then config.out_of_bounds_margin = 100 end
+    if not config.out_of_bounds_margin then error("createProjectileSystemFromSchema: out_of_bounds_margin required") end
 
     self.projectile_system = C.ProjectileSystem:new(config)
     return self.projectile_system
@@ -230,16 +233,17 @@ end
 function BaseGame:createVictoryConditionFromSchema(bonuses)
     local C = self.di and self.di.components
     if not C or not self.params then return nil end
+    if not self.params.victory_condition then error("createVictoryConditionFromSchema: params.victory_condition required") end
 
     local vc_map = self.params.victory_conditions
-    local vc_key = self.params.victory_condition or "clear_bricks"
+    local vc_key = self.params.victory_condition
 
     local vc_config = {}
     if vc_map and vc_map[vc_key] then
         vc_config = self:resolveConfig(vc_map[vc_key])
     end
 
-    -- Default loss condition
+    -- Default loss condition (reasonable default - most games use lives)
     vc_config.loss = vc_config.loss or {type = "lives_depleted", metric = "lives"}
     vc_config.check_loss_first = true
     vc_config.bonuses = bonuses
@@ -321,50 +325,13 @@ function BaseGame:updateGameLogic(dt)
     -- This is called from both updateBase (variable dt) and fixedUpdate (fixed dt)
 end
 
--- Resize play area and reposition entities
--- Games can set self.on_resize callback for custom resize handling
+-- Resize play area
+-- Games override this method for custom entity repositioning
 function BaseGame:setPlayArea(width, height)
-    local old_width = self.arena_width
-    local offset_x = (width - old_width) / 2
-
     self.arena_width = width
     self.arena_height = height
     self.game_width = width
     self.game_height = height
-
-    -- Call resize callback if set (for games needing custom repositioning)
-    if self.on_resize then
-        self.on_resize(width, height)
-        return
-    end
-
-    -- Default: Reposition entities if they exist
-    if self.entity_controller then
-        for _, entity in ipairs(self.entity_controller:getEntities()) do
-            entity.x = entity.x + offset_x
-        end
-    end
-
-    -- Reposition paddle if exists
-    if self.paddle then
-        self.paddle.y = height - 50
-        self.paddle.x = math.max(self.paddle.width / 2, math.min(self.paddle.x, width - self.paddle.width / 2))
-    end
-
-    -- Reposition balls if they exist
-    if self.balls then
-        for _, ball in ipairs(self.balls) do
-            ball.x = math.max(ball.radius, math.min(width - ball.radius, ball.x + offset_x))
-            ball.y = math.max(ball.radius, math.min(height - ball.radius, ball.y))
-        end
-    end
-
-    -- Reposition obstacles if they exist
-    if self.obstacles then
-        for _, obstacle in ipairs(self.obstacles) do
-            obstacle.x = obstacle.x + offset_x
-        end
-    end
 end
 
 function BaseGame:draw()
@@ -479,11 +446,13 @@ function BaseGame:checkComplete()
 end
 
 function BaseGame:onComplete()
-    -- Play win/lose sound
-    if self.victory then
-        self:playSound(self.params and self.params.win_sound or "success", 1.0)
-    else
-        self:playSound(self.params and self.params.lose_sound or "death", 1.0)
+    -- Play win/lose sound (params must define win_sound and lose_sound)
+    if self.params then
+        if self.victory then
+            self:playSound(self.params.win_sound, 1.0)
+        else
+            self:playSound(self.params.lose_sound, 1.0)
+        end
     end
 
     -- Stop music
@@ -521,7 +490,7 @@ function BaseGame:syncMetrics(mapping)
 end
 
 -- Handle entity depletion (no balls, no lives, etc.)
--- config: {loss_counter, damage, combo_reset, on_respawn, on_game_over}
+-- config: {loss_counter, damage, damage_reason, combo_reset, on_respawn, on_game_over}
 -- Returns true if game over, false if respawned
 function BaseGame:handleEntityDepleted(count_func, config)
     config = config or {}
@@ -539,9 +508,10 @@ function BaseGame:handleEntityDepleted(count_func, config)
         self.combo = 0
     end
 
-    -- Take damage
-    local damage = config.damage or 1
-    self.health_system:takeDamage(damage, config.damage_reason or "entity_lost")
+    -- Take damage (require damage and damage_reason)
+    if not config.damage then error("handleEntityDepleted: config.damage required") end
+    if not config.damage_reason then error("handleEntityDepleted: config.damage_reason required") end
+    self.health_system:takeDamage(config.damage, config.damage_reason)
     self.lives = self.health_system.lives
 
     -- Check death
@@ -592,8 +562,8 @@ function BaseGame:handleEntityDestroyed(entity, config)
             self.visual_effects.particles:emitBrickDestruction(cx, cy, color)
         end
         if config.effects.shake then
-            local intensity = self.params.camera_shake_intensity or 5
-            self.visual_effects:shake({intensity = intensity, duration = config.effects.shake, mode = "timer"})
+            if not self.params.camera_shake_intensity then error("handleEntityDestroyed: params.camera_shake_intensity required for shake") end
+            self.visual_effects:shake({intensity = self.params.camera_shake_intensity, duration = config.effects.shake, mode = "timer"})
         end
     end
 
@@ -602,8 +572,13 @@ function BaseGame:handleEntityDestroyed(entity, config)
         self.combo = (self.combo or 0) + 1
         self.max_combo = math.max(self.max_combo or 0, self.combo)
 
-        local base = self.params[config.scoring.base] or 10
-        local combo_mult = self.params[config.scoring.combo_mult] or 0
+        -- Support both param names (strings) and direct values (numbers)
+        local base_key = config.scoring.base
+        local combo_key = config.scoring.combo_mult
+        local base = type(base_key) == "number" and base_key or self.params[base_key]
+        local combo_mult = type(combo_key) == "number" and combo_key or self.params[combo_key]
+        if not base then error("handleEntityDestroyed: config.scoring.base must be a number or valid param key") end
+        if combo_mult == nil then error("handleEntityDestroyed: config.scoring.combo_mult must be a number or valid param key") end
         local points = base * (1 + self.combo * combo_mult)
         self.score = (self.score or 0) + points
 
@@ -666,8 +641,9 @@ end
 
 -- Flash system for temporary visual feedback on entities
 function BaseGame:flashEntity(entity, duration)
+    if not duration then error("flashEntity: duration required") end
     self.flash_map = self.flash_map or {}
-    self.flash_map[entity] = duration or 0.1
+    self.flash_map[entity] = duration
 end
 
 function BaseGame:updateFlashMap(dt)
@@ -690,19 +666,36 @@ function BaseGame:isFlashing(entity)
 end
 
 -- Create player entity from params
+-- config: {entity_name, width, height, x, y, radius, extra}
+-- Requires either: width+height (rect player), or radius (circle player)
+-- Falls back to params.player_width/player_height if not in config
 function BaseGame:createPlayer(config)
     config = config or {}
     local p = self.params or {}
     local entity_name = config.entity_name or "player"
-    local width = config.width or p.player_width or p.paddle_width or 100
-    local height = config.height or p.player_height or p.paddle_height or 20
+
+    -- Determine dimensions: radius-based or width/height-based
+    local width, height, radius
+    if config.radius then
+        -- Circle-based player: derive width/height from radius
+        radius = config.radius
+        width = radius * 2
+        height = radius * 2
+    else
+        -- Rect-based player: require width/height
+        width = config.width or p.player_width
+        height = config.height or p.player_height
+        if not width then error("createPlayer: config.width, config.radius, or params.player_width required") end
+        if not height then error("createPlayer: config.height, config.radius, or params.player_height required") end
+        radius = math.max(width, height) / 2
+    end
 
     local player = {
         x = config.x or self.arena_width / 2,
         y = config.y or self.arena_height - 50,
         width = width,
         height = height,
-        radius = config.radius or math.max(width, height) / 2,
+        radius = radius,
         centered = true,
         active = true,
         alive = true,
@@ -721,18 +714,11 @@ function BaseGame:createPlayer(config)
 end
 
 -- Alias for paddle-based games
-function BaseGame:createPaddle(extra_fields)
-    return self:createPlayer({entity_name = "paddle", extra = extra_fields})
-end
-
--- Multiply velocity of all entities in an array
-function BaseGame:multiplyEntitySpeed(entities, multiplier)
-    for _, e in ipairs(entities) do
-        if e.active and e.vx and e.vy then
-            e.vx = e.vx * multiplier
-            e.vy = e.vy * multiplier
-        end
-    end
+-- config: {width, height, x, y, extra}
+function BaseGame:createPaddle(config)
+    config = config or {}
+    config.entity_name = "paddle"
+    return self:createPlayer(config)
 end
 
 -- Returns cardinal direction (-1, 0, or 1) from point A to point B
@@ -751,46 +737,10 @@ function BaseGame:getCardinalDirection(from_x, from_y, to_x, to_y)
     end
 end
 
--- Returns nearest cardinal direction {x, y} from angle in radians
-function BaseGame:getCardinalFromAngle(angle)
-    -- Normalize angle to 0-2π
-    angle = angle % (2 * math.pi)
-    if angle < 0 then angle = angle + 2 * math.pi end
-
-    -- Map angle to cardinal: right=0, down=π/2, left=π, up=3π/2
-    if angle < math.pi / 4 or angle >= 7 * math.pi / 4 then
-        return BaseGame.CARDINAL_DIRECTIONS.right
-    elseif angle < 3 * math.pi / 4 then
-        return BaseGame.CARDINAL_DIRECTIONS.down
-    elseif angle < 5 * math.pi / 4 then
-        return BaseGame.CARDINAL_DIRECTIONS.left
-    else
-        return BaseGame.CARDINAL_DIRECTIONS.up
-    end
-end
-
 -- Wrap position within bounds (for grid or pixel coordinates)
 -- Returns wrapped x, y. For grid: 0 to width-1. For pixels: 0 to width.
 function BaseGame:wrapPosition(x, y, width, height)
     return (x + width) % width, (y + height) % height
-end
-
--- Find safe position using random search
--- Auto-detects grid (integer bounds) vs continuous (float bounds)
-function BaseGame:findSafePosition(min_x, max_x, min_y, max_y, is_safe_fn, max_attempts)
-    max_attempts = max_attempts or 500
-    local is_grid = (min_x % 1 == 0) and (max_x % 1 == 0) and (min_y % 1 == 0) and (max_y % 1 == 0)
-
-    for _ = 1, max_attempts do
-        local x = is_grid and math.random(min_x, max_x) or (min_x + math.random() * (max_x - min_x))
-        local y = is_grid and math.random(min_y, max_y) or (min_y + math.random() * (max_y - min_y))
-        if is_safe_fn(x, y) then
-            return x, y, true
-        end
-    end
-    local cx, cy = (min_x + max_x) / 2, (min_y + max_y) / 2
-    if is_grid then cx, cy = math.floor(cx), math.floor(cy) end
-    return cx, cy, false
 end
 
 -- Clamp all entities in given arrays to bounds
@@ -849,12 +799,16 @@ function BaseGame:getScaledValue(base, config)
 end
 
 -- Update difficulty scaling based on params.difficulty_curve
+-- Requires params: difficulty_scaling_rate, difficulty_curve, difficulty_max
 function BaseGame:updateDifficulty(dt)
     if not self.params then return end
+    if not self.params.difficulty_scaling_rate then error("updateDifficulty: params.difficulty_scaling_rate required") end
+    if not self.params.difficulty_curve then error("updateDifficulty: params.difficulty_curve required") end
+    if not self.params.difficulty_max then error("updateDifficulty: params.difficulty_max required") end
 
-    local rate = self.params.difficulty_scaling_rate or 0.01
-    local curve = self.params.difficulty_curve or "linear"
-    local max_scale = self.params.difficulty_max or 5.0
+    local rate = self.params.difficulty_scaling_rate
+    local curve = self.params.difficulty_curve
+    local max_scale = self.params.difficulty_max
 
     self.difficulty_scale = self.difficulty_scale or 1.0
 
@@ -881,14 +835,14 @@ end
 -- config: {count_func, on_depleted, on_start, pause_duration}
 -- Returns: "active" if wave running, "paused" if between waves, "started" if new wave just began
 function BaseGame:updateWaveState(state, config, dt)
-    local pause_duration = config.pause_duration or (self.params and self.params.wave_pause_duration) or 2.0
+    if not config.pause_duration then error("updateWaveState: config.pause_duration required") end
 
     if state.active then
         -- Check if wave is depleted
         local count = config.count_func and config.count_func() or 0
         if count <= 0 then
             state.active = false
-            state.pause_timer = pause_duration
+            state.pause_timer = config.pause_duration
             if config.on_depleted then config.on_depleted() end
             return "paused"
         end
