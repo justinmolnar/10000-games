@@ -60,20 +60,9 @@ function SpaceShooter:setupComponents()
         self.movement_controller.jump_distance = self.game_width * self.params.jump_distance
     end
 
-    -- Projectile system from schema
+    -- Projectile system (minimal - game handles fire modes/patterns/collision)
     self:createProjectileSystemFromSchema({
-        pooling = true, max_projectiles = 500,
-        ammo = self.params.ammo_enabled and {
-            enabled = true,
-            capacity = self.params.ammo_capacity,
-            reload_time = self.params.ammo_reload_time
-        } or nil,
-        heat = self.params.overheat_enabled and {
-            enabled = true,
-            max = self.params.overheat_threshold,
-            cooldown = self.params.overheat_cooldown,
-            dissipation = self.params.overheat_heat_dissipation
-        } or nil
+        pooling = true, max_projectiles = 500, out_of_bounds_margin = 100
     })
 
     -- Entity controller from schema with callbacks
@@ -226,8 +215,8 @@ function SpaceShooter:updateGameLogic(dt)
     self.projectile_system:update(dt, game_bounds)
 
     --Sync bullets with ProjectileSystem
-    self.player_bullets = self.projectile_system:getProjectilesByTeam("player")
-    self.enemy_bullets = self.projectile_system:getProjectilesByTeam("enemy")
+    self.player_bullets = self.projectile_system:getByTeam("player")
+    self.enemy_bullets = self.projectile_system:getByTeam("enemy")
 
     self:updatePlayer(dt)
 
@@ -387,20 +376,235 @@ function SpaceShooter:updatePlayer(dt)
 
     -- Shield regeneration handled by health_system (updated in updateGameLogic)
 
-    --Fire Mode Handling
-    self.projectile_system:updateFireMode(dt, self.player, self.params.fire_mode, {
-        cooldown = self.params.fire_cooldown,
-        fire_rate = self.params.fire_rate,
-        charge_time = self.params.charge_time,
-        burst_count = self.params.burst_count,
-        burst_delay = self.params.burst_delay
-    }, self:isKeyDown('space'), function(charge_mult)
-        self:playerShoot(charge_mult)
-    end)
+    -- Fire mode handling (game-side)
+    self:updateFireMode(dt, self:isKeyDown('space'))
 
-    -- Ammo/heat via ProjectileSystem
-    self.projectile_system:updateResources(dt)
-    if self:isKeyDown('r') then self.projectile_system:reload() end
+    -- Ammo/heat resource management (game-side)
+    self:updateResources(dt)
+    if self:isKeyDown('r') then self:reload() end
+end
+
+-- Fire mode handling (moved from ProjectileSystem to game)
+function SpaceShooter:updateFireMode(dt, is_fire_pressed)
+    local p = self.params
+    local player = self.player
+    local mode = p.fire_mode or "manual"
+
+    if mode == "manual" then
+        player.fire_cooldown = (player.fire_cooldown or 0) - dt
+        if is_fire_pressed and player.fire_cooldown <= 0 and self:canShoot() then
+            self:playerShoot(1.0)
+            player.fire_cooldown = p.fire_cooldown or 0.2
+        end
+    elseif mode == "auto" then
+        player.auto_fire_timer = (player.auto_fire_timer or 0) - dt
+        if is_fire_pressed and player.auto_fire_timer <= 0 and self:canShoot() then
+            self:playerShoot(1.0)
+            player.auto_fire_timer = 1.0 / (p.fire_rate or 5)
+        end
+    elseif mode == "charge" then
+        if is_fire_pressed then
+            if not player.is_charging then
+                player.is_charging = true
+                player.charge_progress = 0
+            end
+            player.charge_progress = math.min((player.charge_progress or 0) + dt, p.charge_time or 1)
+        else
+            if player.is_charging and self:canShoot() then
+                local charge_mult = player.charge_progress / (p.charge_time or 1)
+                self:playerShoot(charge_mult)
+                player.is_charging = false
+                player.charge_progress = 0
+            end
+        end
+    elseif mode == "burst" then
+        if (player.burst_remaining or 0) > 0 then
+            player.burst_timer = (player.burst_timer or 0) + dt
+            if player.burst_timer >= (p.burst_delay or 0.05) and self:canShoot() then
+                self:playerShoot(1.0)
+                player.burst_remaining = player.burst_remaining - 1
+                player.burst_timer = 0
+            end
+        else
+            player.fire_cooldown = (player.fire_cooldown or 0) - dt
+            if is_fire_pressed and player.fire_cooldown <= 0 then
+                player.burst_remaining = p.burst_count or 3
+                player.burst_timer = 0
+                player.fire_cooldown = p.fire_cooldown or 0.5
+            end
+        end
+    end
+end
+
+-- Ammo/heat resource system (moved from ProjectileSystem to game)
+function SpaceShooter:canShoot()
+    local p = self.params
+    local player = self.player
+    if p.ammo_enabled and player.is_reloading then return false end
+    if p.ammo_enabled and (player.ammo or 0) <= 0 then
+        player.is_reloading = true
+        player.reload_timer = p.ammo_reload_time or 2.0
+        return false
+    end
+    if p.overheat_enabled and player.is_overheated then return false end
+    return true
+end
+
+function SpaceShooter:onShoot()
+    local p = self.params
+    local player = self.player
+    if p.ammo_enabled then
+        player.ammo = (player.ammo or p.ammo_capacity) - 1
+    end
+    if p.overheat_enabled then
+        player.heat = (player.heat or 0) + 1
+        if player.heat >= (p.overheat_threshold or 10) then
+            player.is_overheated = true
+            player.overheat_timer = p.overheat_cooldown or 2.0
+            player.heat = p.overheat_threshold or 10
+        end
+    end
+end
+
+function SpaceShooter:updateResources(dt)
+    local p = self.params
+    local player = self.player
+    if p.ammo_enabled and player.is_reloading then
+        player.reload_timer = (player.reload_timer or 0) - dt
+        if player.reload_timer <= 0 then
+            player.is_reloading = false
+            player.ammo = p.ammo_capacity
+        end
+    end
+    if p.overheat_enabled then
+        if player.is_overheated then
+            player.overheat_timer = (player.overheat_timer or 0) - dt
+            if player.overheat_timer <= 0 then
+                player.is_overheated = false
+                player.heat = 0
+            end
+        elseif (player.heat or 0) > 0 then
+            player.heat = math.max(0, player.heat - dt * (p.overheat_heat_dissipation or 1))
+        end
+    end
+end
+
+function SpaceShooter:reload()
+    local p = self.params
+    local player = self.player
+    if p.ammo_enabled and not player.is_reloading and (player.ammo or 0) < p.ammo_capacity then
+        player.is_reloading = true
+        player.reload_timer = p.ammo_reload_time or 2.0
+    end
+end
+
+-- Player shooting with pattern support
+function SpaceShooter:playerShoot(charge_multiplier)
+    charge_multiplier = charge_multiplier or 1.0
+    local p = self.params
+    local spawn_x, spawn_y, base_angle = self:getPlayerShootParams()
+    local speed = (p.bullet_speed or 400) * charge_multiplier
+    local pattern = p.bullet_pattern or "single"
+
+    if pattern == "single" then
+        self:spawnBullet(spawn_x, spawn_y, base_angle, speed, "player")
+    elseif pattern == "double" then
+        local offset = 5
+        local perp_x = -math.sin(base_angle) * offset
+        local perp_y = math.cos(base_angle) * offset
+        self:spawnBullet(spawn_x - perp_x, spawn_y - perp_y, base_angle, speed, "player")
+        self:spawnBullet(spawn_x + perp_x, spawn_y + perp_y, base_angle, speed, "player")
+    elseif pattern == "triple" then
+        local spread = math.rad(15)
+        self:spawnBullet(spawn_x, spawn_y, base_angle, speed, "player")
+        self:spawnBullet(spawn_x, spawn_y, base_angle - spread, speed, "player")
+        self:spawnBullet(spawn_x, spawn_y, base_angle + spread, speed, "player")
+    elseif pattern == "spread" then
+        local count = p.bullets_per_shot or 5
+        local arc = math.rad(p.bullet_arc or 60)
+        local start_angle = base_angle - arc / 2
+        local step = count > 1 and (arc / (count - 1)) or 0
+        for i = 0, count - 1 do
+            self:spawnBullet(spawn_x, spawn_y, start_angle + step * i, speed, "player")
+        end
+    elseif pattern == "spiral" then
+        local count = 6
+        local angle_step = (math.pi * 2) / count
+        local spiral_offset = math.rad((love.timer.getTime() * 200) % 360)
+        for i = 0, count - 1 do
+            self:spawnBullet(spawn_x, spawn_y, base_angle + (i * angle_step) + spiral_offset, speed, "player")
+        end
+    elseif pattern == "wave" then
+        -- Wave pattern: three bullets with sine wave offset
+        self:spawnBullet(spawn_x, spawn_y, base_angle, speed, "player")
+        self:spawnBullet(spawn_x - 10, spawn_y, base_angle, speed, "player")
+        self:spawnBullet(spawn_x + 10, spawn_y, base_angle, speed, "player")
+    elseif pattern == "ring" then
+        local count = 8
+        local angle_step = (math.pi * 2) / count
+        for i = 0, count - 1 do
+            self:spawnBullet(spawn_x, spawn_y, base_angle + (i * angle_step), speed, "player")
+        end
+    end
+
+    self:onShoot()
+    self:playSound("shoot", 0.6)
+end
+
+-- Spawn a single bullet
+function SpaceShooter:spawnBullet(x, y, angle, speed, team)
+    local p = self.params
+    self.projectile_system:spawn({
+        x = x, y = y,
+        vx = math.cos(angle) * speed,
+        vy = math.sin(angle) * speed,
+        team = team,
+        lifetime = p.bullet_lifetime or 5,
+        width = p.bullet_width or 6,
+        height = p.bullet_height or 12,
+        radius = (p.bullet_width or 6) / 2,
+        angle = angle,
+        piercing = p.bullet_piercing,
+        homing = p.bullet_homing and (p.homing_strength or 0) > 0,
+        homing_turn_rate = p.homing_strength or 3
+    })
+end
+
+-- Enemy shooting (override base_game helper)
+function SpaceShooter:entityShoot(entity)
+    local p = self.params
+    local spawn_x, spawn_y, base_angle = self:getEntityShootParams(entity)
+    local speed = p.enemy_bullet_speed or 200
+    local pattern = p.enemy_bullet_pattern or "single"
+
+    if pattern == "single" then
+        self:spawnEnemyBullet(spawn_x, spawn_y, base_angle, speed)
+    elseif pattern == "spread" then
+        local count = p.enemy_bullets_per_shot or 3
+        local arc = math.rad(p.enemy_bullet_spread_angle or 30)
+        local start_angle = base_angle - arc / 2
+        local step = count > 1 and (arc / (count - 1)) or 0
+        for i = 0, count - 1 do
+            self:spawnEnemyBullet(spawn_x, spawn_y, start_angle + step * i, speed)
+        end
+    else
+        self:spawnEnemyBullet(spawn_x, spawn_y, base_angle, speed)
+    end
+end
+
+function SpaceShooter:spawnEnemyBullet(x, y, angle, speed)
+    local p = self.params
+    self.projectile_system:spawn({
+        x = x, y = y,
+        vx = math.cos(angle) * speed,
+        vy = math.sin(angle) * speed,
+        team = "enemy",
+        lifetime = 5,
+        width = p.enemy_bullet_size or 8,
+        height = p.enemy_bullet_size or 8,
+        radius = (p.enemy_bullet_size or 8) / 2,
+        angle = angle
+    })
 end
 
 
@@ -478,20 +682,57 @@ function SpaceShooter:updateEnemies(dt)
 end
 
 function SpaceShooter:updateBullets(dt)
-    -- Set homing targets for HOMING_NEAREST bullets
-    self.projectile_system:setHomingTargets(self.enemies)
+    local Physics = self.di.components.PhysicsUtils
+    local PM = self.di.components.PatternMovement
 
-    -- Player bullets vs enemies
-    local game = self
-    self.projectile_system:checkCollisions(self.enemies, function(bullet, enemy)
-        game.entity_controller:hitEntity(enemy, 1, bullet)
-    end, "player")
+    -- Update homing bullets (player bullets only)
+    for _, bullet in ipairs(self.player_bullets) do
+        if bullet.homing and bullet.homing_turn_rate then
+            -- Find nearest enemy
+            local closest, closest_dist = nil, math.huge
+            for _, enemy in ipairs(self.enemies) do
+                if enemy.active ~= false then
+                    local dx, dy = enemy.x - bullet.x, enemy.y - bullet.y
+                    local dist = dx * dx + dy * dy
+                    if dist < closest_dist then closest, closest_dist = enemy, dist end
+                end
+            end
+            if closest then
+                PM.steerToward(bullet, closest.x, closest.y, bullet.homing_turn_rate, dt)
+                local speed = math.sqrt(bullet.vx * bullet.vx + bullet.vy * bullet.vy)
+                PM.setVelocityFromAngle(bullet, bullet.angle, speed)
+            end
+        end
+    end
 
-    -- Enemy bullets vs player (ProjectileSystem handles bullet removal)
-    self.projectile_system:checkCollisions({self.player}, function(bullet, player)
-        game:takeDamage()
-    end, "enemy")
-    -- Note: Screen wrap for player bullets is now handled by ProjectileSystem via wrap_enabled/max_wraps
+    -- Player bullets vs enemies (using physics_utils)
+    for _, bullet in ipairs(self.player_bullets) do
+        for _, enemy in ipairs(self.enemies) do
+            if enemy.active ~= false and Physics.circleCollision(
+                bullet.x, bullet.y, bullet.radius or 3,
+                enemy.x + enemy.width / 2, enemy.y + enemy.height / 2,
+                math.max(enemy.width, enemy.height) / 2
+            ) then
+                self.entity_controller:hitEntity(enemy, 1, bullet)
+                if not bullet.piercing then
+                    self.projectile_system:remove(bullet)
+                    break
+                end
+            end
+        end
+    end
+
+    -- Enemy bullets vs player (using physics_utils)
+    for _, bullet in ipairs(self.enemy_bullets) do
+        if Physics.circleCollision(
+            bullet.x, bullet.y, bullet.radius or 4,
+            self.player.x + self.player.width / 2, self.player.y + self.player.height / 2,
+            math.max(self.player.width, self.player.height) / 2
+        ) then
+            self:takeDamage()
+            self.projectile_system:remove(bullet)
+        end
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -1012,10 +1253,43 @@ function SpaceShooter:updateHazards(dt)
             game.entity_controller:removeEntity(entity)
         end
     end)
+    -- Player bullets vs asteroids (using physics_utils)
     if p.asteroids_can_be_destroyed then
-        self.projectile_system:checkCollisions(self.asteroids, function(_, a) game.entity_controller:removeEntity(a) end, "player")
+        local Physics = self.di.components.PhysicsUtils
+        for _, bullet in ipairs(self.player_bullets) do
+            for _, asteroid in ipairs(self.asteroids) do
+                if asteroid.active ~= false and Physics.circleCollision(
+                    bullet.x, bullet.y, bullet.radius or 3,
+                    asteroid.x + asteroid.width / 2, asteroid.y + asteroid.height / 2,
+                    asteroid.width / 2
+                ) then
+                    game.entity_controller:removeEntity(asteroid)
+                    if not bullet.piercing then
+                        self.projectile_system:remove(bullet)
+                        break
+                    end
+                end
+            end
+        end
     end
-    self.projectile_system:checkCollisions(self.meteors, function(_, m) game.entity_controller:removeEntity(m) end, "player")
+
+    -- Player bullets vs meteors (using physics_utils)
+    local Physics = self.di.components.PhysicsUtils
+    for _, bullet in ipairs(self.player_bullets) do
+        for _, meteor in ipairs(self.meteors) do
+            if meteor.active ~= false and Physics.circleCollision(
+                bullet.x, bullet.y, bullet.radius or 3,
+                meteor.x + meteor.width / 2, meteor.y + meteor.height / 2,
+                meteor.width / 2
+            ) then
+                game.entity_controller:removeEntity(meteor)
+                if not bullet.piercing then
+                    self.projectile_system:remove(bullet)
+                    break
+                end
+            end
+        end
+    end
 end
 
 --------------------------------------------------------------------------------

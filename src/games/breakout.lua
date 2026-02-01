@@ -46,8 +46,8 @@ function Breakout:setupComponents()
     self:createComponentsFromSchema()
     self.lives = self.health_system.lives
 
-    -- Projectile system from schema
-    self:createProjectileSystemFromSchema({pooling = false, max_projectiles = 50})
+    -- Projectile system (minimal - game handles ball physics/collision)
+    self:createProjectileSystemFromSchema({pooling = false, max_projectiles = 50, out_of_bounds_margin = 100})
 
     -- Entity controller from schema with callbacks
     self:createEntityControllerFromSchema({
@@ -103,19 +103,22 @@ end
 --------------------------------------------------------------------------------
 
 function Breakout:spawnBall()
-    local angle = -math.pi / 2 + (self.rng:random() - 0.5) * self.params.ball_spawn_angle_variance
+    local p = self.params
+    local angle = -math.pi / 2 + (self.rng:random() - 0.5) * p.ball_spawn_angle_variance
+    local speed = p.ball_speed or 300
 
-    self.projectile_system:shoot(
-        "ball",
-        self.paddle.x,
-        self.paddle.y - self.params.ball_radius - 10,
-        angle,
-        1.0,
-        {
-            pierce_count = self.params.ball_phase_through_bricks,
-            trail = {}
-        }
-    )
+    self.projectile_system:spawn({
+        x = self.paddle.x,
+        y = self.paddle.y - p.ball_radius - 10,
+        vx = math.cos(angle) * speed,
+        vy = math.sin(angle) * speed,
+        team = "player",
+        lifetime = 9999,  -- Balls don't expire by time
+        radius = p.ball_radius or 8,
+        pierce_count = p.ball_phase_through_bricks,
+        trail = {},
+        active = true
+    })
 end
 
 function Breakout:generateObstacles()
@@ -235,7 +238,7 @@ function Breakout:updateGameLogic(dt)
 
     -- Update systems
     self.projectile_system:update(dt, bounds)
-    self.balls = self.projectile_system:getProjectilesByTeam("player")
+    self.balls = self.projectile_system:getByTeam("player")
     self:updatePowerups(dt, bounds)
     self.effect_system:update(dt)
     self.powerups, self.active_powerups = self.powerup_entities, self.effect_system:getActiveEffects()
@@ -265,10 +268,20 @@ function Breakout:updateGameLogic(dt)
         end
     end
 
-    -- Paddle bullets hitting bricks
-    self.projectile_system:checkCollisions(self.bricks, function(_, brick)
-        if brick.alive then self.entity_controller:hitEntity(brick, self.params.paddle_shoot_damage, _) end
-    end, "paddle_bullet")
+    -- Paddle bullets hitting bricks (using physics_utils)
+    local paddle_bullets = self.projectile_system:getByTeam("paddle_bullet")
+    for _, bullet in ipairs(paddle_bullets) do
+        for _, brick in ipairs(self.bricks) do
+            if brick.alive and Physics.circleVsRect(
+                bullet.x, bullet.y, bullet.radius or 3,
+                brick.x, brick.y, brick.width, brick.height
+            ) then
+                self.entity_controller:hitEntity(brick, self.params.paddle_shoot_damage, bullet)
+                self.projectile_system:remove(bullet)
+                break
+            end
+        end
+    end
 
     -- Update bricks and check for ball loss
     self:updateBricks(dt)
@@ -548,8 +561,18 @@ function Breakout:collectPowerup(powerup)
                 local angle = math.atan2(ball.vy, ball.vx)
                 for j = 1, 2 do
                     local offset = (j - 1.5) * 0.5
-                    self.projectile_system:shoot("ball", ball.x, ball.y, angle + offset, speed / p.ball_speed,
-                        {radius = ball.radius, trail = {}})
+                    local new_angle = angle + offset
+                    self.projectile_system:spawn({
+                        x = ball.x,
+                        y = ball.y,
+                        vx = math.cos(new_angle) * speed,
+                        vy = math.sin(new_angle) * speed,
+                        team = "player",
+                        lifetime = 9999,
+                        radius = ball.radius,
+                        trail = {},
+                        active = true
+                    })
                 end
                 break  -- Only from first active ball
             end
@@ -594,7 +617,18 @@ function Breakout:keypressed(key)
     if key == "space" then
         -- Shooting
         if self.params.paddle_can_shoot and self.paddle.shoot_cooldown_timer <= 0 then
-            self.projectile_system:shoot("paddle_bullet", self.paddle.x, self.paddle.y - self.paddle.height / 2 - 5, -math.pi / 2)
+            local bullet_speed = self.params.paddle_bullet_speed or 500
+            self.projectile_system:spawn({
+                x = self.paddle.x,
+                y = self.paddle.y - self.paddle.height / 2 - 5,
+                vx = 0,
+                vy = -bullet_speed,
+                team = "paddle_bullet",
+                lifetime = 5,
+                width = 6,
+                height = 12,
+                radius = 3
+            })
             self.paddle.shoot_cooldown_timer = self.params.paddle_shoot_cooldown
         end
 

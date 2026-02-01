@@ -176,18 +176,15 @@ function BaseGame:createComponentsFromSchema()
     end
 end
 
--- Create ProjectileSystem from schema projectile_types
-function BaseGame:createProjectileSystemFromSchema(extra_config)
+-- Create ProjectileSystem (minimal version)
+-- config: {max_projectiles, out_of_bounds_margin, pooling}
+function BaseGame:createProjectileSystemFromSchema(config)
     local C = self.di and self.di.components
-    if not C or not self.params or not self.params.projectile_types then return nil end
+    if not C then return nil end
 
-    local resolved_types = {}
-    for name, type_def in pairs(self.params.projectile_types) do
-        resolved_types[name] = self:resolveConfig(type_def)
-    end
-
-    local config = extra_config or {}
-    config.projectile_types = resolved_types
+    config = config or {}
+    if not config.max_projectiles then error("createProjectileSystemFromSchema: max_projectiles required") end
+    if not config.out_of_bounds_margin then config.out_of_bounds_margin = 100 end
 
     self.projectile_system = C.ProjectileSystem:new(config)
     return self.projectile_system
@@ -909,86 +906,38 @@ function BaseGame:updateWaveState(state, config, dt)
     end
 end
 
--- Player shooting with spawn position and angle calculation
--- Handles asteroids mode (rotational) and normal mode (up/down based on reverse_gravity)
-function BaseGame:playerShoot(charge_multiplier)
-    charge_multiplier = charge_multiplier or 1.0
-    if not self.projectile_system or not self.projectile_system:canShoot() then return end
-
+-- Helper: Calculate player shoot position and angle based on movement mode
+-- Returns: spawn_x, spawn_y, angle
+function BaseGame:getPlayerShootParams()
     local p = self.params
     local player = self.player
-
-    -- Calculate spawn position and angle based on movement type
     local center_x = player.x + player.width / 2
     local center_y = player.y + player.height / 2
-    local spawn_x, spawn_y, angle
 
     if p.use_rotation then
-        -- Rotation mode: shoot from front of ship in facing direction
-        -- Note: player.angle is already in radians from movement_controller
         local rad = player.angle or 0
         local offset_distance = player.height / 2
-        spawn_x = center_x + math.sin(rad) * offset_distance
-        spawn_y = center_y - math.cos(rad) * offset_distance
-        -- Convert to standard angle (atan2 format)
+        local spawn_x = center_x + math.sin(rad) * offset_distance
+        local spawn_y = center_y - math.cos(rad) * offset_distance
         local direction_multiplier = p.reverse_gravity and 1 or -1
-        angle = math.atan2(math.cos(rad) * direction_multiplier, math.sin(rad))
+        local angle = math.atan2(math.cos(rad) * direction_multiplier, math.sin(rad))
+        return spawn_x, spawn_y, angle
     else
-        -- Normal mode: shoot from top (or bottom if reverse_gravity)
-        spawn_x = center_x
-        spawn_y = p.reverse_gravity and (player.y + player.height) or player.y
-        angle = p.reverse_gravity and (math.pi / 2) or (-math.pi / 2)
+        local spawn_x = center_x
+        local spawn_y = p.reverse_gravity and (player.y + player.height) or player.y
+        local angle = p.reverse_gravity and (math.pi / 2) or (-math.pi / 2)
+        return spawn_x, spawn_y, angle
     end
-
-    -- Build pattern config from params
-    local pattern = p.bullet_pattern or "single"
-    local config = {
-        speed_multiplier = charge_multiplier,
-        count = p.bullets_per_shot,
-        arc = p.bullet_arc,
-        spread = 15,
-        offset = 5,
-        time = love.timer.getTime(),
-        custom = {
-            width = p.bullet_width,
-            height = p.bullet_height,
-            piercing = p.bullet_piercing,
-            movement_type = (p.bullet_homing and p.homing_strength and p.homing_strength > 0) and "homing_nearest" or nil,
-            homing_turn_rate = p.homing_strength,
-            wrap_enabled = p.screen_wrap_bullets,
-            max_wraps = p.bullet_max_wraps
-        }
-    }
-
-    self.projectile_system:shootPattern("player_bullet", spawn_x, spawn_y, angle, pattern, config)
-    self.projectile_system:onShoot()
-    self:playSound("shoot", 0.6)
 end
 
--- Entity shooting (enemies, turrets, etc.)
--- Shoots from entity center, angle based on reverse_gravity
-function BaseGame:entityShoot(entity, bullet_type)
-    if not self.projectile_system then return end
-
-    bullet_type = bullet_type or "enemy_bullet"
+-- Helper: Calculate enemy shoot position and angle
+-- Returns: spawn_x, spawn_y, angle
+function BaseGame:getEntityShootParams(entity)
     local p = self.params
-
     local center_x = entity.x + (entity.width or 0) / 2
     local center_y = entity.y + (entity.height or 0)
     local angle = p.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
-
-    local pattern = p.enemy_bullet_pattern or "single"
-    local config = {
-        count = p.enemy_bullets_per_shot,
-        arc = p.enemy_bullet_spread_angle,
-        custom = {
-            width = p.enemy_bullet_size or 8,
-            height = p.enemy_bullet_size or 8,
-            speed = p.enemy_bullet_speed
-        }
-    }
-
-    self.projectile_system:shootPattern(bullet_type, center_x, center_y, angle, pattern, config)
+    return center_x, center_y, angle
 end
 
 -- Take damage with sound and state updates

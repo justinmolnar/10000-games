@@ -67,7 +67,7 @@ function BreakoutView:drawContent()
     end
 
     -- Draw paddle bullets
-    for _, bullet in ipairs(self.game.projectile_system:getProjectilesByTeam("paddle_bullet")) do
+    for _, bullet in ipairs(self.game.projectile_system:getByTeam("paddle_bullet")) do
         love.graphics.push()
         love.graphics.setColor(1, 1, 0.3)
         love.graphics.rectangle('fill',

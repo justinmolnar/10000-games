@@ -281,8 +281,8 @@ function DodgeGame:setupComponents()
     local speed_mod = self.cheats.speed_modifier or 1.0
     self.object_speed = ((p.base_object_speed or 200) * self.difficulty_modifiers.speed * speed_mod) * variant_diff
 
-    -- Projectile system
-    self:createProjectileSystemFromSchema({pooling = true, max_projectiles = 200})
+    -- Projectile system (minimal - game handles collision)
+    self:createProjectileSystemFromSchema({pooling = true, max_projectiles = 200, out_of_bounds_margin = 100})
 
     -- Victory condition from schema
     self:createVictoryConditionFromSchema()
@@ -422,7 +422,7 @@ function DodgeGame:updateGameLogic(dt)
     -- View state
     self.lives = self.health_system.lives
     self.objects = self.entity_controller:getEntities()
-    for _, proj in ipairs(self.projectile_system:getProjectiles()) do
+    for _, proj in ipairs(self.projectile_system:getAll()) do
         table.insert(self.objects, proj)
     end
     if self.player_trail then self.player_trail:updateFromEntity(self.player) end
@@ -577,21 +577,26 @@ function DodgeGame:onEntityShoot(entity)
                        {projectile_size = 0.5, projectile_speed = 0.8}
 
     local projectile_speed = self.object_speed * (shooter_cfg.projectile_speed or 0.8)
-    self.projectile_system:shoot(
-        "enemy_projectile", entity.x, entity.y, proj_angle,
-        projectile_speed / (self.object_speed * 0.8),
-        {
-            radius = (self.params.object_radius or 15) * (shooter_cfg.projectile_size or 0.5),
-            is_projectile = true, warned = false
-        }
-    )
+    local projectile_radius = (self.params.object_radius or 15) * (shooter_cfg.projectile_size or 0.5)
+
+    self.projectile_system:spawn({
+        x = entity.x,
+        y = entity.y,
+        vx = math.cos(proj_angle) * projectile_speed,
+        vy = math.sin(proj_angle) * projectile_speed,
+        team = "enemy",
+        lifetime = 10,
+        radius = projectile_radius,
+        is_projectile = true,
+        warned = false
+    })
 end
 
 -- Check projectile collision with player (entities handled by EntityController)
 function DodgeGame:checkProjectileCollisions()
-    for _, proj in ipairs(self.projectile_system:getProjectiles()) do
+    for _, proj in ipairs(self.projectile_system:getAll()) do
         if PhysicsUtils.circleCollision(self.player.x, self.player.y, self.player.radius, proj.x, proj.y, proj.radius or 10) then
-            self.projectile_system:removeProjectile(proj)
+            self.projectile_system:remove(proj)
             self.metrics.collisions = self.metrics.collisions + 1
             self.current_combo = 0
             self:takeDamage(1, "hit")
