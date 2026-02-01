@@ -303,7 +303,7 @@ function RPS:onRoundWin()
     self.score = self.score + round_points + streak_points
 
     self:showScorePopup(round_points + streak_points)
-    self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")
+    self.visual_effects:flash({color = {0, 1, 0, 0.3}, duration = 0.2, mode = "fade_out"})
 
     if self.current_special_round == "sudden_death" then
         self.victory = true
@@ -326,9 +326,9 @@ function RPS:onPerfectGame()
         local w, h = self.viewport_width or love.graphics.getWidth(), self.viewport_height or love.graphics.getHeight()
         self.popup_manager:add(w / 2, h / 2 - 100, "PERFECT GAME! +" .. p.perfect_game_bonus, {0, 1, 0})
     end
-    if p.celebration_on_perfect then
+    if p.celebration_on_perfect and self.visual_effects.particles then
         local w, h = self.viewport_width or love.graphics.getWidth(), self.viewport_height or love.graphics.getHeight()
-        self.visual_effects:emitConfetti(w / 2, h / 2, 30)
+        self.visual_effects.particles:emitConfetti(w / 2, h / 2, 30)
     end
 end
 
@@ -341,7 +341,7 @@ function RPS:onRoundLose()
         self.score = math.max(0, self.score - p.score_per_round_win)
     end
 
-    self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")
+    self.visual_effects:flash({color = {1, 0, 0, 0.3}, duration = 0.2, mode = "fade_out"})
 
     if self.current_special_round == "sudden_death" then
         self.game_over = true

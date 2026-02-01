@@ -363,10 +363,10 @@ function CoinFlip:onCorrectFlip()
         self.max_streak = self.current_streak
     end
 
-    self.visual_effects:flash({0, 1, 0, 0.3}, 0.2, "fade_out")
-    if self.params.celebration_on_streak and (self.current_streak % 5 == 0) then
+    self.visual_effects:flash({color = {0, 1, 0, 0.3}, duration = 0.2, mode = "fade_out"})
+    if self.params.celebration_on_streak and (self.current_streak % 5 == 0) and self.visual_effects.particles then
         local w, h = love.graphics.getDimensions()
-        self.visual_effects:emitConfetti(w / 2, h / 2, 15)
+        self.visual_effects.particles:emitConfetti(w / 2, h / 2, 15)
     end
 
     if (self.params.result_announce_mode == "voice" or self.params.result_announce_mode == "both") and self.di and self.di.ttsManager then
@@ -393,7 +393,7 @@ function CoinFlip:onIncorrectFlip()
     self.current_streak = 0
     table.insert(self.flip_history, 0)
 
-    self.visual_effects:flash({1, 0, 0, 0.3}, 0.2, "fade_out")
+    self.visual_effects:flash({color = {1, 0, 0, 0.3}, duration = 0.2, mode = "fade_out"})
 
     if (self.params.result_announce_mode == "voice" or self.params.result_announce_mode == "both") and self.di and self.di.ttsManager then
         local tts = self.di.ttsManager

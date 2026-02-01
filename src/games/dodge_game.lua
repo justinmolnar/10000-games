@@ -72,10 +72,10 @@ function DodgeGame:setupComponents()
 
     -- Damage callbacks
     self.health_system.on_shield_break = function()
-        game.visual_effects:shake(nil, p.camera_shake_intensity * 0.5, "exponential")
+        game.visual_effects:shake({intensity = p.camera_shake_intensity * 0.5, decay = 0.9, mode = "exponential"})
     end
     self.health_system.on_damage = function()
-        game.visual_effects:shake(nil, p.camera_shake_intensity, "exponential")
+        game.visual_effects:shake({intensity = p.camera_shake_intensity, decay = 0.9, mode = "exponential"})
     end
 
     -- Movement controller (primitives-based, game handles input mapping)

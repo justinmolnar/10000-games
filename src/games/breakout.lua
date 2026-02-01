@@ -263,7 +263,9 @@ function Breakout:updateGameLogic(dt)
     -- Update balls
     for _, ball in ipairs(self.balls) do
         if ball.active then
-            self.visual_effects:emitBallTrail(ball.x, ball.y, ball.vx, ball.vy)
+            if self.visual_effects.particles then
+                self.visual_effects.particles:emitBallTrail(ball.x, ball.y, ball.vx, ball.vy)
+            end
             self:updateBall(ball, dt)
         end
     end

@@ -587,13 +587,13 @@ function BaseGame:handleEntityDestroyed(entity, config)
 
     -- Visual effects
     if config.effects and self.visual_effects then
-        if config.effects.particles then
+        if config.effects.particles and self.visual_effects.particles then
             local color = config.color_func and config.color_func(entity) or {1, 0.5, 0}
-            self.visual_effects:emitBrickDestruction(cx, cy, color)
+            self.visual_effects.particles:emitBrickDestruction(cx, cy, color)
         end
         if config.effects.shake then
             local intensity = self.params.camera_shake_intensity or 5
-            self.visual_effects:shake(config.effects.shake, intensity, "timer")
+            self.visual_effects:shake({intensity = intensity, duration = config.effects.shake, mode = "timer"})
         end
     end
 
