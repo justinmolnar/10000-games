@@ -15,6 +15,153 @@ Timer-based animation helpers.
 
 ---
 
+## ArenaController
+Manages play area bounds with polygon-based shapes, shrinking, pulsing, morphing, and movement.
+
+### Constructor
+- **new(params)** - Create arena. Params:
+  - Base: width, height, x, y
+  - Shape: vertices (explicit), OR sides + shape_rotation (generates regular polygon)
+  - Shrinking: shrink, shrink_interval, shrink_amount, min_width, min_height
+  - Safe zone: safe_zone, safe_zone_radius, min_radius, shrink_speed
+  - Pulsing: pulse, pulse_speed, pulse_amplitude
+  - Morphing: morph_type ("shrink"/"pulsing"/"shape_shifting"/"deformation"), morph_speed, shape_shift_interval, sides_cycle
+  - Movement: vx, vy, ax, ay, friction, bounds_padding, container_width, container_height
+  - Moving walls: moving_walls, wall_move_interval
+  - Raw schema: area_size, initial_radius_fraction, min_radius_fraction, shrink_seconds, complexity_modifier
+  - Grid: grid_mode, cell_size
+  - Callback: on_shrink
+
+### Core Methods
+- **update(dt)** - Update shrinking, morphing, pulsing, movement, moving walls.
+- **generateRegularPolygon(sides, rotation)** - Generate normalized vertices for regular polygon.
+- **getScaledVertices()** - Get vertices scaled to current radius and translated to position.
+
+### Bounds & Collision
+- **isInside(x, y, margin)** - Point-in-polygon check with optional entity radius margin.
+- **isInsideGrid(grid_x, grid_y, margin)** - Check if grid position is inside (for grid-based games).
+- **getBounds()** - Get current bounds. Returns {x, y, width, height, radius, sides, grid_width, grid_height}.
+- **getEffectiveRadius()** - Get radius + pulse offset.
+- **clampEntity(entity)** - Clamp entity to stay inside arena with optional bounce. Entity: {x, y, vx, vy, radius, bounce_damping}.
+
+### Shape Boundary
+- **getPointOnShapeBoundary(angle, radius)** - Get point on shape boundary at angle (ray-polygon intersection).
+- **getRandomBoundaryPoint(radius)** - Get random point + outward normal angle on boundary (weighted by edge length).
+- **getBoundaryCells(grid_width, grid_height)** - Get array of {x, y} cells outside playable area.
+- **drawBoundary(scale, color)** - Draw arena boundary polygon.
+
+### Shrinking
+- **getShrinkProgress()** - Get shrink progress 0-1 (0=full, 1=min size).
+- **getShrinkMargins()** - Get {left, right, top, bottom} margins for rectangular shrinking.
+
+### Movement & Position
+- **setPosition(x, y)** - Set position directly.
+- **setVelocity(vx, vy)** - Set velocity directly.
+- **setAcceleration(ax, ay)** - Set acceleration (game sets each frame for behavior).
+- **setContainerSize(width, height)** - Update container dimensions.
+- **reset()** - Reset to initial state.
+- **getState()** - Get full state for rendering.
+
+---
+
+## EffectSystem
+Minimal timed effect tracker. Games handle what effects DO via on_expire callback.
+
+### Constructor
+- **new(config)** - Create system. Config: {on_expire} (required callback when effect expires).
+
+### Methods
+- **activate(effect_type, duration, data)** - Start/extend an effect. data passed to on_expire.
+- **deactivate(effect_type)** - End effect early (triggers on_expire).
+- **update(dt)** - Tick all effect timers, call on_expire when they run out.
+- **isActive(effect_type)** - Returns true if effect is active.
+- **getTimeRemaining(effect_type)** - Returns seconds remaining (0 if inactive).
+- **getActiveEffects()** - Returns table of {effect_type = {timer, data}}.
+- **clear()** - Clear all effects (triggers on_expire for each).
+- **getActiveCount()** - Returns number of active effects.
+
+---
+
+## EntityController
+Generic enemy/obstacle spawning and management with pooling.
+
+### Constructor
+- **new(config)** - Create controller. Config: entity_types, spawning {mode, rate, max_concurrent}, pooling, max_entities, grid_cell_size.
+
+### Spawning
+- **spawn(type_name, x, y, custom_params)** - Spawn single entity. Returns entity.
+- **spawnAtPositions(type_name, positions, custom_params)** - Spawn at array of {x, y, ...} positions.
+- **calculateSpawnPosition(config)** - Calculate spawn position without spawning. Config: bounds, center, region ("random"/"center"/"edge"), index, spacing, angle, margin, min_distance_from_center, max_attempts, is_valid_fn. Returns x, y, direction.
+- **calculateSpawnDirection(mode, x, y, center, fixed_direction)** - Calculate direction. Modes: "toward_center", "from_center", or table {x, y}. Returns {x, y}.
+- **resolveSpawnPosition(config)** - Resolve position using named patterns. Patterns: "random_edge", "spiral", "boundary", "clusters". Returns sx, sy, angle or nil if handled internally.
+- **ensureInboundAngle(x, y, angle, bounds)** - Flip angle if pointing away from bounds.
+- **calculateGridLayout(config)** - Pure calculation for fitting items in container. Config: {cols, rows, container_width, container_height, item_width, item_height, spacing, padding, reserved_top}. Returns: {cols, rows, item_width, item_height, start_x, start_y, scale, spacing}.
+- **pickWeightedType(configs, time)** - Pick type from weighted configs. Each: {name, weight} or {name, weight = {base, growth}}.
+
+### Entity Access
+- **getEntityAtPoint(x, y, type_name)** - Point hit test. Returns first entity or nil.
+- **getActiveCount()** / **getTotalCount()** - Get counts.
+- **getEntities()** - Get all active entities.
+- **getEntitiesByType(type_name)** - Get entities of specific type.
+- **getEntitiesByCategory(category)** - Get entities where entity.category matches.
+- **getEntitiesByFilter(filter_fn)** - Get entities where filter_fn(entity) returns true.
+- **forEachByType(type_name, fn)** - Apply function to each entity of type.
+- **findNearest(x, y, filter)** - Find nearest entity. Returns entity, distance.
+
+### Grid Shuffling
+- **repositionGridEntities(type_name, layout)** - Reposition entities by grid_index.
+- **shuffleGridIndices(type_name)** - Fisher-Yates shuffle grid_index values.
+- **animateGridShuffle(entities, count, layout, duration)** - Start animated shuffle.
+- **updateGridShuffle(dt)** - Update animation. Returns true when complete.
+- **isGridShuffling()** - Check if shuffle is active.
+- **getShuffleProgress()** - Get animation progress 0-1.
+- **getShuffleStartPosition(entity)** - Get entity's start position for interpolation.
+- **completeGridShuffle()** - Finalize positions and clear state.
+
+### Entity Lifecycle
+- **hitEntity(entity, damage, by_what)** - Deal damage, trigger callbacks. Returns true if killed.
+- **killEntity(entity)** - Trigger death callback, mark for removal.
+- **removeEntity(entity, removal_reason)** - Remove from list, return to pool. Calls on_remove callbacks.
+- **removeByTypes(types)** - Remove all entities matching type array.
+- **regenerate(types, init_fn)** - Remove types and call init_fn to respawn.
+- **clear()** - Remove all entities.
+- **draw(render_callback)** - Draw all via callback.
+
+### Chain Movement (Snake-style)
+- **moveChain(chain, new_x, new_y)** - Move chain of entities. Each takes previous position. Returns old_tail_x, old_tail_y.
+
+### Collision
+- **checkCollision(obj, handlers)** - Check collision with obj. handlers: function(entity) or table {action_name = fn}. Returns colliding entities.
+- **loadCollisionImage(type_name, image_path, alpha_threshold, di)** - Load PNG for pixel collision.
+- **getRectCollisionCheck(PhysicsUtils)** - Get rect-rect collision check function.
+
+### Update & Behaviors
+- **update(dt, game_state)** - Update spawning and all entities.
+- **tickTimer(entity, field, speed, dt)** - Increment timer field. Returns true when interval reached.
+- **updateBurstSpawning(dt, game_state)** - Burst spawning mode.
+- **updateBehaviors(dt, config, collision_check)** - Per-entity behaviors:
+  - boundary_anchor: {get_boundary_point} - Anchor to boundary point
+  - fall_enabled, fall_speed, fall_death_y, on_fall_death - Falling
+  - move_enabled, move_speed, bounds, can_overlap - Horizontal movement
+  - regen_enabled, regen_time, can_overlap - Regeneration
+  - shooting_enabled, on_shoot - Entity shooting
+  - pattern_movement: {PatternMovement, bounds, tracking_target, get_difficulty_scaler, speed, direction}
+  - sprite_rotation - Visual spinning
+  - trails: {max_length} - Trail positions
+  - track_entered_play: {x, y, width, height} - Track when enters play area
+  - rotation - Rotate by rotation_speed
+  - bounce_movement: {width, height, max_bounces} - Wall bouncing
+  - delayed_spawn: {on_spawn(entity, ds)} - Timer-based conversion
+  - remove_offscreen: {top, bottom, left, right} - Remove when off-screen
+  - collision: {target, check_trails, on_collision(entity, target, type)}
+  - enter_zone: {check_fn or bounds, on_enter(entity)}
+  - timer_spawn: {type_name = {interval, on_spawn}}
+  - gradual_spawn: {slots, on_spawn, interval, max_count, timer, spawned_count}
+
+**Spawn modes:** "continuous", "wave", "burst", "grid", "manual"
+
+---
+
 ## FogOfWar
 Visibility system with stencil or alpha modes.
 
@@ -22,510 +169,397 @@ Visibility system with stencil or alpha modes.
 - **clearSources()** - Clear visibility sources each frame.
 - **addVisibilitySource(x, y, radius)** - Add circular visible area.
 - **render(arena_width, arena_height)** - Draw fog overlay with stencil cutouts.
-- **calculateAlpha(entity_x, entity_y, fog_center_x, fog_center_y)** - Get alpha multiplier based on distance (for alpha mode).
-- **updateMousePosition(x, y)** - Store mouse position in viewport coordinates (call from mousemoved).
-- **getMousePosition()** - Retrieve stored mouse position for alpha calculations.
-- **update(dt)** - Update fog state (call each frame).
-
----
-
-## VariantLoader
-Three-tier parameter loading (variant → runtime_config → default).
-
-- **init(variant, runtime_config, defaults)** - Setup the loader with three config sources.
-- **get(key, fallback)** - Get value with priority lookup. Supports nested keys like "player.speed".
-- **getNumber(key, fallback)** - Get value ensuring it's a number.
-- **getBoolean(key, fallback)** - Get boolean (handles nil vs false correctly).
-- **getString(key, fallback)** - Get value ensuring it's a string.
-- **getTable(key, fallback)** - Get value ensuring it's a table.
-- **getMultiple(keys_and_defaults)** - Batch get multiple values at once.
-- **has(key)** - Check if key exists in any tier.
-- **getSource(key)** - Debug helper: returns which tier a value came from.
-
----
-
-## VisualEffects
-Camera shake, screen flash, and particles in one component.
-
-- **new(params)** - Create effects system. Params: camera_shake_enabled, screen_flash_enabled, particle_effects_enabled, shake_mode, shake_decay.
-- **shake(duration, intensity, mode)** - Trigger camera shake. Modes: "exponential" (smooth decay) or "timer" (linear fade).
-- **getShakeOffset()** - Get current {x, y} shake offset.
-- **applyCameraShake()** - Apply shake translation (call before drawing game).
-- **flash(color, duration, mode)** - Trigger screen flash. Modes: "fade_out", "pulse", "instant".
-- **drawScreenFlash(width, height)** - Draw flash overlay (call after game content).
-- **emitBallTrail(x, y, vx, vy)** - Emit ball trail particles.
-- **emitConfetti(x, y, count)** - Emit confetti particles.
-- **emitBrickDestruction(x, y, color)** - Emit brick destruction particles.
-- **drawParticles()** - Draw all particles.
-- **update(dt)** - Update all effects (shake decay, flash timer, particles).
+- **calculateAlpha(entity_x, entity_y, fog_center_x, fog_center_y)** - Get alpha multiplier (alpha mode).
+- **updateMousePosition(x, y)** - Store mouse position.
+- **getMousePosition()** - Retrieve stored mouse position.
+- **update(dt)** - Update fog state.
 
 ---
 
 ## HUDRenderer
-Standardized HUD with consistent layout across games.
+Standardized HUD with consistent layout.
 
-- **new(config)** - Create HUD. Config: primary, secondary, lives, timer, progress (each with label/key/format).
+- **new(config)** - Create HUD. Config: primary, secondary, lives, timer, progress, extra_stats (each with label/key/format).
 - **draw(viewport_width, viewport_height)** - Draw full HUD. Skips if vm_render_mode.
-- **drawPrimary()** - Draw primary metric (top-left, prominent).
+- **drawPrimary()** - Draw primary metric (top-left).
 - **drawSecondary()** - Draw secondary metric (below primary).
 - **drawLives()** - Draw lives/health (top-right). Styles: "hearts" or "number".
 - **drawTimer()** - Draw timer (top-center). Modes: "elapsed" or "countdown".
 - **drawProgress()** - Draw progress bar (bottom-center).
-- **getValue(key)** - Get value from game state, supports nested keys like "metrics.score".
-- **formatValue(value, format)** - Format value as "number", "float", "percent", "time", or "ratio".
-- **getHeight()** - Returns total height consumed by HUD at top of screen. Accounts for primary, secondary, and margins.
+- **drawExtraStats()** - Draw extra stats row at bottom.
+- **getValue(key)** - Get value from game state, supports nested keys.
+- **formatValue(value, format)** - Format as "number", "float", "percent", "time", or "ratio".
+- **getHeight()** - Returns total height consumed by HUD.
 
 ---
 
 ## LivesHealthSystem
-Unified lives/health/shield management. Modes: LIVES, SHIELD, BINARY, NONE.
+Unified lives/health/shield management.
 
-- **new(config)** - Create system. Config: mode, starting_lives, max_lives, shield_enabled, shield_max_hits, shield_regen_time, invincibility_on_hit, respawn_enabled, callbacks.
-- **update(dt)** - Update invincibility timer, respawn timer, and shield regeneration.
-- **takeDamage(amount, source)** - Apply damage. Returns true if damage was taken. Handles shield absorption, lives loss, invincibility.
-- **die()** - Trigger death. Calls on_death callback, starts respawn timer if enabled.
-- **respawn()** - Respawn after death. Grants brief invincibility.
-- **addLife(count)** - Add lives (capped at max_lives). Returns true if lives increased.
-- **checkExtraLifeAward(score)** - Check if score crossed extra life threshold, auto-awards life.
-- **heal(amount)** - Restore shield hits (shield mode only).
+- **new(config)** - Create system. Config: mode ("lives"/"shield"/"binary"/"none"), starting_lives, max_lives, shield_enabled, shield_max_hits, shield_regen_time, invincibility_on_hit, respawn_enabled, callbacks.
+- **update(dt)** - Update invincibility, respawn, shield regen timers.
+- **takeDamage(amount, source)** - Apply damage. Returns true if damage taken.
+- **die()** - Trigger death.
+- **respawn()** - Respawn after death.
+- **addLife(count)** - Add lives (capped). Returns true if increased.
+- **checkExtraLifeAward(score)** - Check/award extra life at score threshold.
+- **heal(amount)** - Restore shield hits.
 - **isAlive()** - Returns true if not dead.
-- **isInvincible()** - Returns true if currently invincible.
-- **getShieldStrength()** - Returns shield hits remaining as 0-1 ratio.
-- **getShieldHitsRemaining()** - Returns current shield hit count.
-- **isShieldActive()** - Returns true if shield is active.
-- **getLives()** / **setLives(count)** - Get/set current lives.
-- **reset()** - Reset to initial state (lives, shield, timers).
-
----
-
-## ScoringSystem
-Formula-based token calculation with curves and multipliers.
-
-- **new(config)** - Create scorer. Config: formula_string (legacy) OR declarative metrics with base_value, metrics (weight/curve/scale), multipliers.
-- **calculate(metrics, multipliers)** - Calculate token value from metrics table. Applies curves and multipliers.
-- **getBreakdown(metrics, multipliers)** - Get detailed breakdown of calculation (base, each metric's contribution, multipliers, total).
-- **getFormulaString()** - Get formula string for UI display.
-- **CURVE_FUNCTIONS** - Available curves: linear, sqrt, log, exponential, binary, power.
+- **isInvincible()** - Returns true if invincible.
+- **getShieldStrength()** - Returns 0-1 ratio.
+- **getShieldHitsRemaining()** - Returns shield hit count.
+- **isShieldActive()** - Returns true if shield active.
+- **getLives()** / **setLives(count)** - Get/set lives.
+- **reset()** - Reset to initial state.
 
 ---
 
 ## MovementController
-Reusable movement for multiple modes. All deterministic for demo playback.
+Reusable movement primitives. All deterministic for demo playback.
 
-- **new(params)** - Create controller. Params: mode, speed, friction, rotation_speed, jump_distance, cell_size, cells_per_second, etc.
-- **update(dt, entity, input, bounds)** - Main update. Entity needs {x, y, vx, vy, angle, width/height/radius}. Input is {left, right, up, down, jump}. Bounds is {x, y, width, height, wrap_x, wrap_y}.
+### Constructor
+- **new(params)** - Create controller. Params: speed, rotation_speed, bounce_damping, thrust_acceleration, accel_friction, decel_friction, jump_distance, jump_cooldown, jump_speed, cell_size, cells_per_second, allow_reverse.
 
-**Movement Modes:**
-- **updateDirect()** - WASD with optional friction/momentum. Diagonal normalized.
-- **updateAsteroids()** - Rotation + thrust physics. Reverse modes: "thrust", "brake", "none".
-- **updateRail()** - Constrained to one axis (horizontal or vertical paddle).
-- **updateJump()** - Discrete teleport-style jumps with cooldown.
-- **updateGrid()** - Cell-based movement (Snake-style). Direction queuing, no reverse by default.
+### Velocity Primitives
+- **applyThrust(entity, angle, force, dt)** - Apply thrust in direction.
+- **applyDirectionalVelocity(entity, dx, dy, speed, dt)** - Apply directional velocity (dx, dy = -1/0/1).
+- **applyDirectionalMove(entity, dx, dy, speed, dt)** - Apply directional move directly to position.
+- **applyFriction(entity, friction, dt)** - Apply friction to velocity.
+- **stopVelocity(entity)** - Zero velocity.
+- **applyVelocity(entity, dt)** - Update position from velocity.
 
-**Grid helpers (for Snake-style games):**
-- **tickGrid(dt, entity_id)** - Returns true when it's time to move to next cell.
-- **queueGridDirection(entity_id, dir_x, dir_y, current_dir)** - Queue direction change.
-- **applyQueuedDirection(entity_id)** - Apply queued direction, returns {x, y}.
-- **getGridDirection(entity_id)** - Get current direction without modifying state.
-- **initGridState(entity_id, dir_x, dir_y)** - Initialize grid state with starting direction.
-- **setSpeed(speed)** - Dynamically change cells_per_second.
-- **getGridState(entity)** / **setGridDirection()** / **resetGridState()** - Grid state management.
-- **findGridBounceDirection(head, current_dir, is_blocked_fn)** - Find perpendicular direction for bouncing off walls.
+### Rotation Primitives
+- **applyRotation(entity, direction, speed, dt)** - Rotate by amount.
+- **rotateTowardsMovement(entity, dx, dy, dt)** - Rotate toward movement direction.
+- **rotateTowardsVelocity(entity, dt, min_speed)** - Rotate toward velocity direction.
 
-**Smooth mode (continuous angle-based movement):**
-- **initSmoothState(entity_id, angle)** - Initialize smooth state with starting angle.
-- **setSmoothTurn(entity_id, left, right)** - Set turn flags (call on key press/release).
-- **getSmoothState(entity_id)** / **getSmoothAngle(entity_id)** / **setSmoothAngle(entity_id, angle)** - State accessors.
-- **updateSmooth(dt, entity_id, entity, bounds, speed, turn_speed_deg)** - Update angle and position. Entity {x, y} modified. Bounds {width, height, wrap_x, wrap_y}. Returns dx, dy, wrapped, out_of_bounds.
+### Bounds Primitives
+- **applyBounds(entity, bounds)** - Clamp or wrap entity. Bounds: {x, y, width, height, wrap_x, wrap_y}.
+- **applyBounce(entity, bounds, damping)** - Bounce velocity on collision. Returns hit boolean.
 
-**Input handling (for games with multiple entities):**
-- **handleInput(key, entities, primary_direction)** - Handle key press for multiple entities. Maps WASD/arrows to direction queuing. primary_direction is the starting direction for the first entity.
-- **handleInputRelease(key, entities)** - Handle key release for smooth mode turn flags.
-- **initState(entity_id, direction)** - Initialize state (grid or smooth) for an entity with starting direction.
+### Jump/Dash System
+- **canJump(entity_id, current_time)** - Check if jump available.
+- **startJump(entity, entity_id, dx, dy, current_time, bounds)** - Start jump in direction.
+- **updateJump(entity, entity_id, dt, bounds, current_time)** - Update jump. Returns is_still_jumping.
+- **isJumping(entity_id)** - Check if currently jumping.
+- **getJumpDirection(entity_id)** - Get jump direction.
 
-**Helpers:**
-- **applyBounds(entity, bounds)** - Clamp or wrap entity to bounds.
-- **applyBounce(entity, bounds)** - Bounce velocity on boundary collision.
+### Grid Movement System
+- **tickGrid(dt, entity_id)** - Returns true when time to move to next cell.
+- **queueGridDirection(entity_id, dir_x, dir_y, current_dir)** - Queue direction change. Returns false if reverse blocked.
+- **applyQueuedDirection(entity_id)** - Apply queued direction. Returns {x, y}.
+- **getGridDirection(entity_id)** - Get current direction.
+- **initGridState(entity_id, dir_x, dir_y)** - Initialize grid state.
+- **resetGridState(entity_id)** - Clear grid state.
+- **setSpeed(speed)** - Change cells_per_second.
+- **findGridBounceDirection(head, current_dir, is_blocked_fn)** - Find perpendicular bounce direction.
+
+### Smooth Movement System
+- **initSmoothState(entity_id, angle)** - Initialize with starting angle.
+- **setSmoothTurn(entity_id, left, right)** - Set turn flags.
+- **getSmoothState(entity_id)** - Get smooth state.
+- **getSmoothAngle(entity_id)** / **setSmoothAngle(entity_id, angle)** - Angle accessors.
+- **updateSmooth(dt, entity_id, entity, bounds, speed, turn_speed_deg)** - Update angle and position. Returns dx, dy, wrapped, out_of_bounds.
+- **initState(entity_id, direction)** - Initialize both grid and smooth state.
+
+### Helpers
 - **angleDiff(target, current)** - Shortest angular difference.
 
 ---
 
-## ArenaController
-Manages play area bounds, shapes, shrinking, pulsing, movement.
-
-- **new(params)** - Create arena. Params: width, height, shape ("rectangle"/"circle"/"hexagon"), shrink, safe_zone, pulse, movement, grid_mode, etc. Also accepts raw schema params: area_size, initial_radius_fraction, min_radius_fraction, shrink_seconds, complexity_modifier (computes radius/shrink internally). Accepts movement + movement_speed to compute initial velocity for "drift"/"cardinal" types.
-- **update(dt)** - Update shrinking, morphing, pulsing, movement.
-- **getBounds()** - Get current bounds for collision/rendering. Returns {x, y, width, height, radius, shape}.
-- **isInside(x, y)** - Check if position is inside arena (handles all shapes).
-- **isInsideGrid(grid_x, grid_y)** - Check if grid position is inside (for Snake-style games).
-- **getEffectiveRadius()** - Get radius including pulse offset.
-- **getShrinkProgress()** - Get shrink progress 0-1 (0=full, 1=min size).
-- **getShrinkMargins()** - Get {left, right, top, bottom} margin pixels for rectangular shrinking.
-- **getPointOnShapeBoundary(angle, radius)** - Get {x, y} on shape boundary at angle (works for circle/square/hex).
-- **getRandomBoundaryPoint(radius)** - Get random {x, y, outward_angle} on shape boundary with uniform sampling. Returns point + outward normal angle. Works for circle/square/hex.
-- **setPosition(x, y)** / **setVelocity(vx, vy)** - Direct position/velocity control.
-- **reset()** - Reset to initial state.
-- **setContainerSize(w, h)** - Update container dimensions.
-- **getState()** - Get full state for rendering.
-- **drawBoundary(scale, color)** - Draw arena boundary line for circle/hexagon shapes. Scale = pixels per unit (e.g., GRID_SIZE).
-- **getBoundaryCells(grid_width, grid_height)** - Get array of {x, y} cells that form the arena boundary (for wall spawning in grid games).
-- **clampEntity(entity)** - Clamp entity to stay inside arena bounds with optional bounce. Entity: {x, y, vx, vy, radius, bounce_damping}. Handles circle/square/hex shapes.
-
-**Raw schema params (computed in init):**
-- `area_size` + `initial_radius_fraction` + `min_radius_fraction` → radius, initial_radius, min_radius
-- `shrink_seconds` + `complexity_modifier` → shrink_speed
-- `movement` ("drift"/"cardinal") + `movement_speed` → initial vx/vy/target_vx/target_vy
-
-**Morph types:** "none", "shrink", "pulsing", "shape_shifting", "deformation"
-**Movement types:** "none", "drift", "cardinal", "follow", "orbit"
-
----
-
-## VictoryCondition
-Unified victory/loss checking for all games.
-
-- **new(config)** - Create checker. Config: victory {type, metric, target}, loss {type, metric}, check_loss_first, bonuses.
-- **check()** - Returns "victory", "loss", or nil. Auto-applies bonuses on victory.
-- **checkVictory()** / **checkLoss()** - Check individual conditions.
-- **getProgress()** - Returns 0-1 progress toward victory based on condition type. Works for threshold, time_survival, clear_all, streak, rounds. Returns nil for unsupported types.
-- **getValue(key)** - Get value from game state (supports nested keys like "metrics.kills").
-- **applyBonuses()** - Apply configured victory bonuses.
-
-**Victory types:** threshold, time_survival, time_limit, streak, ratio, clear_all, endless, rounds, multi
-**Loss types:** lives_depleted, time_expired, move_limit, death_event, threshold, penalty, none
-
----
-
-## SchemaLoader
-Auto-populates game parameters from JSON schema. Priority: variant → runtime_config → default.
-
-- **SchemaLoader.load(variant, schema_name, runtime_config)** - Load all params from schema file. Returns params table.
-- **SchemaLoader.loadFromTable(variant, schema, runtime_config)** - Load from Lua table (for testing/inline).
-- **SchemaLoader.getSchemaInfo(schema_name)** - Get schema metadata (name, description, parameter list).
-- **SchemaLoader.validateVariant(variant, schema_name)** - Validate variant against schema, returns warnings list.
-- **SchemaLoader.resolveChain(type_name, generic_key, typed_key, sources)** - Cascade through sources for per-type resolution. Checks each source for `source[typed_key][type_name]` first, then `source[generic_key]`. Returns first match or nil. Example: `resolveChain("chaser", "size_range", "enemy_sizes", {variant, runtimeCfg.objects})`.
-
-Internal: _loadSchema, _populateParams, _resolveValue, _coerceType, _validateConstraints, _getNestedValue
-
----
-
 ## PatternMovement
-Autonomous movement patterns for enemies, powerups, hazards.
+Math primitives for autonomous entity movement.
 
-- **update(dt, entity, bounds)** - Main update. Dispatches to pattern-specific updater based on entity.movement_pattern.
-- **updateStraight(dt, entity, bounds)** - Move in constant direction. Entity needs: speed, direction (radians) or dir_x/dir_y.
-- **updateZigzag(dt, entity, bounds)** - Primary direction + perpendicular oscillation. Entity needs: speed, zigzag_frequency, zigzag_amplitude.
-- **updateWave(dt, entity, bounds)** - Sine wave path. Entity needs: speed, wave_frequency, wave_amplitude, start_x.
-- **updateDive(dt, entity, bounds)** - Move toward target point. Entity needs: speed, target_x, target_y. Sets entity.dive_complete when arrived.
-- **updateBezier(dt, entity, bounds)** - Follow quadratic bezier curve. Entity needs: bezier_path [{x,y},{x,y},{x,y}], bezier_duration. Sets entity.bezier_complete.
-- **updateOrbit(dt, entity, bounds)** - Circle around center. Entity needs: orbit_center_x/y, orbit_radius, orbit_speed.
-- **updateBounce(dt, entity, bounds)** - Move with velocity, bounce off bounds. Entity needs: vx, vy.
-- **updateTeleporter(dt, entity, bounds)** - Periodically teleport near target and move toward it. Entity needs: teleport_timer, teleport_interval, teleport_range, target_x, target_y. Updates angle/vx/vy after teleport.
-- **updateTracking(dt, entity, bounds)** - Angle-based homing toward target. Entity needs: angle, speed, tracking_strength (0-1), target_x, target_y. Optional: turn_rate (rad/sec), difficulty_scaler.
-- **updateSpriteRotation(dt, entity)** - Visual sprite spinning (doesn't affect movement). Entity needs: sprite_rotation_speed (deg/sec). Updates: sprite_rotation_angle.
+### Velocity Primitives
+- **applyVelocity(entity, dt)** - Apply velocity to position.
+- **setVelocityFromAngle(entity, angle, speed)** - Set velocity from angle.
+- **setVelocityToward(entity, target_x, target_y, speed)** - Set velocity toward target.
+- **applyDirection(entity, dt)** - Apply directional movement using dir_x/dir_y or angle.
+
+### Steering Primitives
+- **steerToward(entity, target_x, target_y, turn_rate, dt)** - Smooth turning toward target. Returns new angle.
+- **moveToward(entity, target_x, target_y, speed, dt, threshold)** - Move toward target. Returns true if arrived.
+
+### Oscillation Primitives
+- **applySineOffset(entity, axis, dt, frequency, amplitude)** - Apply sine wave delta to position.
+- **setSinePosition(entity, axis, frequency, amplitude)** - Set absolute sine position from start_x/start_y.
+- **updateTime(entity, dt)** - Update entity.pattern_time.
+
+### Orbit / Circular
+- **setPositionOnCircle(entity, center_x, center_y, radius, angle)** - Set position on circle.
+- **updateOrbit(entity, center_x, center_y, radius, angular_speed, dt)** - Update orbit angle and position.
+
+### Bezier
+- **bezierQuadratic(t, p0, p1, p2)** - Quadratic bezier at t (0-1). Returns x, y.
+- **updateBezier(entity, dt)** - Update position along bezier. Returns true when complete.
+- **buildBezierPath(start_x, start_y, control_x, control_y, end_x, end_y)** - Build 3-point path.
+
+### Bounce
+- **applyBounce(entity, bounds, damping)** - Bounce off bounds. Returns bounced boolean.
+- **clampToBounds(entity, bounds)** - Clamp position to bounds.
+
+### Utilities
 - **isOffScreen(entity, bounds, margin)** - Check if entity is outside bounds.
-- **initPattern(entity, pattern, config)** - Initialize pattern-specific fields with defaults.
-- **buildPath(pattern, params)** - Build bezier path for common patterns. Returns array of {x,y} control points. Params: start_x, start_y, end_x, end_y, curve_y, target_x, target_y, exit_x, exit_y, mid_x, mid_y.
+- **distance(x1, y1, x2, y2)** - Distance between points.
+- **angleTo(x1, y1, x2, y2)** - Angle from point 1 to point 2.
+- **normalizeAngle(angle)** - Normalize to -pi to pi.
 
-**Patterns:** "straight", "zigzag", "wave", "dive", "bezier", "orbit", "bounce", "teleporter", "tracking"
-**Path patterns (buildPath):** "swoop", "dive", "loop", "arc"
+### Generic Update
+- **update(dt, entity, bounds)** - Dispatch based on entity flags:
+  - use_steering + target_x/target_y: Steer toward target
+  - use_direction: Apply direction
+  - use_velocity or use_steering: Apply velocity
+  - sine_amplitude: Apply sine oscillation
+  - orbit_radius: Orbit around center
+  - use_bezier + bezier_path: Follow bezier
+  - use_bounce: Bounce off bounds
+- **updateSpriteRotation(entity, dt)** - Visual sprite spinning via sprite_rotation_speed.
 
 ---
 
 ## PhysicsUtils
 Physics helpers: forces, movement, collision detection/response.
 
-**Forces:**
-- **applyGravity(entity, gravity, direction_degrees, dt)** - Apply gravity force to velocity.
+### Forces
+- **applyGravity(entity, gravity, direction_degrees, dt)** - Apply gravity force.
 - **applyHomingForce(entity, target_x, target_y, strength, dt)** - Steer toward target.
 - **applyMagnetForce(entity, target_x, target_y, range, strength, dt)** - Pull toward target within range.
 - **applyGravityWell(entity, well, dt, strength_multiplier)** - Gravity well pull (modifies vx/vy or position).
-- **applyForces(entity, params, dt, findTarget, magnetTarget)** - Apply multiple forces from config.
+- **applyForces(entity, params, dt, findTarget, magnetTarget)** - Apply multiple forces. Requires gravity_direction when gravity set, magnet_strength when magnet_range set, gravity_well_strength_multiplier when gravity_wells set.
+- **handleKillPlane(entity, edge_info, boundary, config)** - Kill plane with optional shield. edge_info: {pos_field, vel_field, inside_dir, check_fn}. config: {kill_enabled, restitution, bounce_randomness, rng, shield_active, on_shield_use}. Returns true if killed.
 
-**Movement:**
+### Movement
 - **move(entity, dt)** - Update position from velocity.
 - **clampSpeed(entity, max_speed)** - Limit velocity magnitude.
-- **increaseSpeed(entity, amount, max_speed)** - Increase speed while preserving direction.
-- **addBounceRandomness(entity, randomness, rng)** - Add random angle variance to velocity.
-- **applyBounceEffects(entity, params, rng)** - Apply speed increase and randomness.
-- **handleAttachment(entity, parent, offset_x_key, offset_y_key)** - Update attached entity position.
-- **attachToEntity(entity, parent, y_offset)** - Attach entity to parent, store offsets.
+- **increaseSpeed(entity, amount, max_speed)** - Increase speed preserving direction.
+- **addBounceRandomness(entity, randomness, rng)** - Add random angle variance.
+- **applyBounceEffects(entity, params, rng)** - Apply speed_increase, max_speed, bounce_randomness.
+- **handleAttachment(entity, parent, offset_x_key, offset_y_key)** - Update attached entity position. Returns true if attached.
+- **attachToEntity(entity, parent, y_offset)** - Attach entity to parent. Requires y_offset.
 
-**Collision Detection:**
+### Collision Detection
 - **circleCollision(x1, y1, r1, x2, y2, r2)** - Circle vs circle.
 - **rectCollision(x1, y1, w1, h1, x2, y2, w2, h2)** - AABB vs AABB.
 - **circleVsRect(cx, cy, cr, rx, ry, rw, rh)** - Circle vs AABB.
 - **circleVsCenteredRect(cx, cy, cr, rect_cx, rect_cy, half_w, half_h)** - Circle vs centered rect.
-- **checkCollision(e1, e2, shape1, shape2)** - Shape-aware collision between entities.
-- **checkCollisions(entity, targets, config)** - Batch collision check with callbacks.
+- **circleLineCollision(cx, cy, cr, x1, y1, x2, y2)** - Circle vs line segment.
+- **checkCollision(e1, e2, shape1, shape2)** - Shape-aware collision. Requires shape1, shape2.
+- **checkCollisions(entity, targets, config)** - Batch check. Requires filter, check_func.
 
-**Collision Response:**
-- **resolveCollision(moving, solid, config)** - Bounce off rects/circles/paddles. Returns {edge, nx, ny}.
-- **handleBounds(entity, bounds, config)** - Per-edge bounce/wrap/clamp. Returns {hit, edges}.
-- **handleKillPlane(entity, edge, boundary, config)** - Kill plane with optional shield.
+### Collision Response
+- **resolveCollision(moving, solid, config)** - Bounce off rects/circles. Requires shape, restitution. Optional: centered, bounce_direction, use_angle_mode, base_angle, angle_range, spin_influence, surface_width, separation, on_collide. Returns {edge, nx, ny}.
+- **handleBounds(entity, bounds, entity_half_size, on_edge)** - Generic bounds handling. Requires bounds.width, bounds.height, entity_half_size. on_edge(entity, info) called per edge. Returns {hit, edges}.
+- **bounceEdge(entity, info, restitution)** - Edge handler: bounce.
+- **wrapEdge(entity, info)** - Edge handler: wrap.
+- **clampEdge(entity, info)** - Edge handler: clamp and stop.
 
-**Paddle:**
-- **handlePaddleCollision(entity, paddle, config)** - Sticky/bounce paddle collision.
-- **releaseStuckEntities(entities, anchor, config)** - Launch all stuck entities.
+### Centered Rect Collision (Paddle)
+- **handleCenteredRectCollision(entity, rect, config)** - Sticky/bounce paddle. Requires restitution, separation (or sticky + sticky_dir). Returns true if hit.
+- **releaseStuckEntities(entities, anchor, config)** - Launch stuck entities. Requires base_angle, release_dir_y, launch_speed, angle_range.
 
-**Launching:**
+### Launching
 - **launchAtAngle(entity, angle_radians, speed)** - Set velocity from angle.
-- **launchFromOffset(entity, offset_x, anchor_width, speed, base_angle, angle_range)** - Launch based on position offset.
+- **launchFromOffset(entity, offset_x, anchor_width, speed, base_angle, angle_range)** - Launch based on offset. Requires base_angle, angle_range.
 
-**Utilities:**
-- **updateTrail(entity, max_length)** - Add current position to trail array.
+### Utilities
+- **updateTrail(entity, max_length)** - Add position to trail array.
 - **wrapPosition(x, y, ew, eh, bw, bh)** - Screen wrap position.
-- **createTrailSystem(config)** - Create trail object. Config: max_length (point count limit), track_distance (enable distance tracking), color, line_width.
-  - Trail methods: addPoint(x, y, dist), updateFromEntity(entity), clear(), draw(), getPoints(), getPointCount(), getDistance(), trimToDistance(target), checkSelfCollision(head_x, head_y, girth).
-- **updateDirectionalForce(state, dt)** - Update a directional force that changes over time. State: {angle, strength, type, timer, change_interval, change_amount, turbulence_range}. Types: "constant", "turbulent", "rotating", "rotating_turbulent". Returns fx, fy force components.
+- **createTrailSystem(config)** - Create trail object. Requires max_length, track_distance, color, line_width, angle_offset.
+  - Methods: addPoint, updateFromEntity, trimToDistance, clear, draw, getPointCount, getDistance, getPoints
+  - **checkSelfCollision(head_x, head_y, girth, config)** - Check trail self-collision. Requires skip_multiplier, collision_base, collision_multiplier.
+- **updateDirectionalForce(state, dt)** - Update directional force. Requires state.angle, state.strength, state.timer. For rotating: change_interval, change_amount. For turbulent: turbulence_range. Returns fx, fy.
 
 ---
 
 ## ProjectileSystem
-Generic projectile/bullet system with pooling and patterns.
+Minimal projectile/bullet system with pooling.
 
-- **new(config)** - Create system. Config: projectile_types (definitions), pooling, max_projectiles, ammo, heat.
-- **shoot(type_name, x, y, angle, speed_multiplier, custom_params)** - Spawn single projectile. Returns projectile.
-- **shootPattern(type_name, x, y, base_angle, pattern, config)** - Spawn pattern. Returns array of projectiles.
-- **update(dt, game_bounds)** - Update all projectiles (movement, lifetime, bounds).
-- **checkCollisions(targets, callback, team_filter)** - Check collisions with targets, call callback(proj, target).
-- **removeProjectile(projectile)** - Remove projectile, return to pool.
+### Constructor
+- **new(config)** - Create system. Requires: max_projectiles, out_of_bounds_margin. Optional: pooling.
+
+### Methods
+- **spawn(config)** - Spawn projectile. Requires: x, y, vx, vy, lifetime. Optional: radius, team, damage, type, color, trail, custom fields.
+- **remove(projectile)** - Remove projectile, return to pool.
+- **update(dt, bounds)** - Update all projectiles (movement, lifetime, bounds removal).
+- **getAll()** - Get all active projectiles.
+- **getByTeam(team)** - Get projectiles filtered by team.
 - **clear()** - Remove all projectiles.
-- **draw(render_callback)** - Draw all active projectiles via callback.
-- **getCount()** / **getProjectiles()** - Get count or array of active projectiles.
-- **getProjectilesByTeam(team)** - Get projectiles filtered by team.
-- **setHomingTargets(targets)** - Set target list for HOMING_NEAREST projectiles.
-- **updateFireMode(dt, entity, mode, config, is_fire_pressed, on_fire)** - Handle fire modes (manual/auto/charge/burst).
-- **canShoot()** - Check if shooting is allowed (ammo/heat restrictions). Auto-triggers reload if empty.
-- **onShoot()** - Call after shooting to consume ammo and add heat.
-- **updateResources(dt)** - Update reload timer and heat dissipation. Call each frame.
-- **reload()** - Manually trigger reload if not full.
-
-**Ammo config:** {enabled, capacity, reload_time}
-**Heat config:** {enabled, max, cooldown, dissipation}
-**State fields:** ammo_current, is_reloading, reload_timer, heat_current, is_overheated, overheat_timer
-
-**Patterns:** "single", "double", "triple", "spread", "spiral", "wave", "ring"
-**Movement types:** LINEAR, HOMING, HOMING_NEAREST, SINE_WAVE, BOUNCE, ARC
+- **getCount()** - Get active projectile count.
 
 ---
 
-## PowerupSystem
-Powerup spawning, collection, and effect management.
+## SchemaLoader
+Auto-populates game parameters from JSON schema. Priority: variant -> runtime_config -> default.
 
-- **new(config)** - Create system. Config: enabled, spawn_mode, spawn_rate, powerup_types, powerup_configs, color_map, hooks.
-- **spawn(x, y, powerup_type)** - Spawn powerup at position. Random type if nil.
-- **update(dt, collector_entity, game_bounds)** - Update movement, collection, effect timers.
-- **collect(powerup)** - Trigger collection and apply effects.
-- **removeEffect(powerup_type)** - End effect early, restore original values.
-- **clear(clear_active)** - Clear all powerups and optionally active effects.
-- **getPowerupsForRendering()** - Get falling powerups array.
-- **getActivePowerupsForHUD()** - Get active effects {type = {duration_remaining, ...}}.
-- **getColorForType(powerup_type)** - Get {r,g,b} color for type.
-- **getPowerupCount()** / **getActiveEffectCount()** - Get counts.
-- **hasActiveEffect(powerup_type)** - Check if effect is active.
-- **getTimeRemaining(powerup_type)** - Get seconds remaining for effect.
-- **checkCollision(powerup, entity)** - AABB collision check.
-
-**Spawn modes:** "timer", "event", "both", "manual"
-**Declarative effects:** multiply_param, enable_param, set_param, set_flag, add_lives, heal_shield, multiply_entity_speed, multiply_entity_field, set_entity_field, spawn_projectiles
+- **SchemaLoader.load(variant, schema_name, runtime_config)** - Load all params from schema file. Returns params table.
+- **SchemaLoader.loadFromTable(variant, schema, runtime_config)** - Load from Lua table.
+- **SchemaLoader.getSchemaInfo(schema_name)** - Get schema metadata.
+- **SchemaLoader.validateVariant(variant, schema_name)** - Validate variant against schema.
+- **SchemaLoader.resolveChain(type_name, generic_key, typed_key, sources)** - Cascade through sources for per-type resolution.
 
 ---
 
-## EntityController
-Generic enemy/obstacle spawning and management with pooling.
+## ScoringSystem
+Formula-based token calculation.
 
-- **new(config)** - Create controller. Config: entity_types (definitions), spawning {mode, rate, max_concurrent}, pooling, max_entities.
-- **spawn(type_name, x, y, custom_params)** - Spawn single entity. Returns entity.
-- **spawnGrid(type_name, rows, cols, x, y, spacing_x, spacing_y)** - Spawn rectangular grid.
-- **spawnPyramid(type_name, rows, max_cols, x, y, spacing_x, spacing_y, arena_width)** - Spawn centered pyramid/triangle.
-- **spawnCircle(type_name, rings, center_x, center_y, base_count, ring_spacing)** - Spawn concentric circles.
-- **spawnRandom(type_name, count, bounds, rng, allow_overlap)** - Spawn randomly in bounds.
-- **spawnScatter(type_name, count, config)** - Spawn in deterministic hash-based positions. Config: bounds, padding, hash_x1/x2/y1/y2, extra_fn(i).
-- **spawnCheckerboard(type_name, rows, cols, x, y, spacing_x, spacing_y)** - Spawn checkerboard pattern.
-- **calculateGridLayout(config)** - Pure calculation for fitting items in a container. Config: {cols, rows, container_width, container_height, item_width, item_height, spacing, padding, reserved_top}. Returns: {cols, rows, item_width, item_height, start_x, start_y, scale, spacing}. Use for memory match, sliding puzzle, minesweeper, etc.
-- **getEntityAtPoint(x, y, type_name)** - Point-in-entity hit testing. Returns first entity at point (rect or circle hit test), or nil. Optional type_name filter.
-- **repositionGridEntities(type_name, layout)** - Reposition entities based on their grid_index. Layout: {start_x, start_y, cols, item_width, item_height, spacing}. Each entity needs grid_index field.
-- **shuffleGridIndices(type_name)** - Fisher-Yates shuffle grid_index values among entities of given type. Use with repositionGridEntities for memory match shuffling.
-- **animateGridShuffle(entities, count, layout, duration)** - Start animated shuffle of entities. Stores start positions, shuffles grid_index values, tracks animation state. Count=0 shuffles all.
-- **updateGridShuffle(dt)** - Update shuffle animation timer. Returns true when animation completes.
-- **isGridShuffling()** - Check if grid shuffle animation is active.
-- **getShuffleProgress()** - Get shuffle animation progress (0-1).
-- **getShuffleStartPosition(entity)** - Get entity's start position for animation interpolation.
-- **completeGridShuffle()** - Finalize shuffle positions and clear animation state.
-- **spawnLayout(type_name, layout, config)** - Dispatch to layout spawner. Layouts: "grid", "pyramid", "circle", "random", "checkerboard", "v_shape", "line", "spiral", "scatter". Grid layout auto-adds grid_row/grid_col to each entity. Config.extra merged into spawned entities.
-- **spawnWeighted(type_name, weighted_configs, x, y, base_extra)** - Spawn using weighted random selection. Each config in array has `weight` plus properties to merge. Returns spawned entity.
-- **update(dt, game_state)** - Update spawning and all entities.
-- **checkCollision(obj, callback)** - Check collision with circle/rect object. Returns colliding entities.
-- **hitEntity(entity, damage, by_what)** - Deal damage, trigger callbacks. Returns true if killed.
-- **killEntity(entity)** - Trigger death callback, mark for removal.
-- **removeEntity(entity, removal_reason)** - Remove from list, return to pool. Calls on_remove callbacks (entity-level, type-level, and controller.on_remove) with (entity, reason).
-- **clear()** - Remove all entities.
-- **draw(render_callback)** - Draw all via callback.
-- **getActiveCount()** / **getTotalCount()** - Get counts.
-- **getEntities()** - Get all active entities.
-- **getEntitiesByType(type_name)** - Get entities of specific type.
-- **forEachByType(type_name, fn)** - Apply function to each entity of type. More efficient than getEntitiesByType + loop.
-- **getEntitiesByCategory(category)** - Get entities where entity.category matches.
-- **getEntitiesByFilter(filter_fn)** - Get entities where filter_fn(entity) returns true.
-- **findNearest(x, y, filter)** - Find nearest entity. Returns entity, distance.
-- **spawnWithPattern(type_name, pattern, config, custom_params)** - Spawn using pattern from SPAWN_PATTERNS. Config: bounds, is_valid_fn, max_attempts, plus pattern-specific options.
-- **spawnMultiple(count, spawner_fn)** - Spawn multiple entities using custom spawner function. Returns array of spawned entities.
-- **spawnAtCells(type_name, cells, is_valid_fn)** - Spawn entities at array of {x, y} cell positions. Optional is_valid_fn(x, y) to filter positions.
-- **spawnCluster(type_name, ref_entity, radius, bounds, is_valid_fn, custom_params)** - Spawn near an existing entity within radius.
-- **spawnInRegion(type_name, config, custom_params)** - Spawn in a region. Config: region ("random"/"center"/"bounds"), bounds, constraints.
-- **spawnWithConstraints(type_name, bounds, constraints, custom_params)** - Spawn with validation constraints. Constraints: min_distance_from, avoid_entities, is_valid_fn.
-- **calculateSpawnPosition(config)** - Calculate spawn position from config. Config: region, bounds, min_distance_from_center, inside_arena. Regions: "random", "center", "edge". Edge mode: random point on bounds edge with optional margin. With angle param: spawn at edge in that direction from center.
-- **calculateSpawnDirection(mode, x, y, center, fixed_direction)** - Calculate spawn direction. Modes: "toward_center", "from_center", "starting_direction", "random".
-- **tickTimer(entity, field, speed, dt)** - Increment entity timer field by speed*dt. Returns true if timer >= 1 (and resets timer).
-- **removeByTypes(types)** - Remove all entities matching array of type names.
-- **regenerate(types, init_fn)** - Remove entities of types and call init_fn to respawn them.
-- **moveChain(chain, new_x, new_y)** - Move chain of entities (snake body segments). Each entity takes previous entity's position. Returns old_tail_x, old_tail_y.
+- **new(config)** - Create scorer. Config: formula_string (legacy) OR declarative: base_value, metrics (weight/curve/scale), multipliers.
+- **calculate(metrics, multipliers)** - Calculate token value.
+- **getBreakdown(metrics, multipliers)** - Get detailed breakdown.
+- **getFormulaString()** - Get formula for UI.
+- **CURVE_FUNCTIONS** - Available curves: linear, sqrt, log, exponential, binary, power.
 
-**SPAWN_PATTERNS** - Data-driven spawn pattern functions:
-- `random` - Random position within bounds
-- `cluster` - Near existing entity of same category (config: ref_entity, radius)
-- `line` - Along an axis (config: axis, position, variance)
-- `spiral` - Expanding/contracting spiral (config: center_x, center_y, min_radius, max_radius)
-- **loadCollisionImage(type_name, image_path, alpha_threshold, di)** - Load PNG for pixel collision.
-- **getRectCollisionCheck(PhysicsUtils)** - Get collision check function for rect-rect.
+---
 
-**updateBehaviors(dt, config, collision_check)** - Per-entity behaviors:
-- `boundary_anchor` - Entities with boundary_angle get repositioned via callback. Config: {get_boundary_point(angle)} returns x, y
-- `fall_enabled` - Entities fall at fall_speed
-- `move_enabled` - Entities move horizontally, bounce off walls
-- `regen_enabled` - Dead entities regenerate after regen_time
-- `shooting_enabled` - Entities fire at shoot_rate, calls on_shoot(entity)
-- `pattern_movement` - Call PatternMovement.update for entities with movement_pattern. Config: {PatternMovement, bounds, tracking_target, get_difficulty_scaler(entity)}
-- `sprite_rotation` - Call PatternMovement.updateSpriteRotation for visual spinning
-- `trails` - Update entity.trail_positions array. Config: {max_length}
-- `track_entered_play` - Set entity.entered_play=true when inside bounds. Config: {x, y, width, height}
-- `rotation` - Entities rotate based on rotation_speed
-- `bounce_movement` - Entities with movement_pattern='bounce' bounce off walls, track has_entered, count bounces. Config: {width, height, max_bounces}. Sets was_dodged=true when max reached.
-- `collision` - Check circle collision + optional trail collision with target. Config: {target, check_trails, on_collision(entity, target, type)}. Returns true from on_collision to remove entity.
-- `enter_zone` - Trigger callback when entity enters zone. Config: {check_fn(entity) or bounds, on_enter(entity)}. Return true from on_enter to remove entity.
-- `delayed_spawn` - Entities with delayed_spawn={timer, spawn_type} convert after timer expires, calls on_spawn(entity, ds)
-- `timer_spawn` - Spawn entities on timers: {type_name = {interval, on_spawn(ec, type_name)}}
-- `remove_offscreen` - Remove entities outside bounds {top, bottom, left, right}
-- `grid_unit_movement` - Space Invaders style: all grid entities move as unit, speed up as count drops
+## VictoryCondition
+Unified victory/loss checking.
 
-- **pickWeightedType(configs, time)** - Pick random type from weighted configs array. Each config: {name, weight} where weight is number or {base, growth} table. With growth, effective weight = base + time * growth. Returns winning config's name.
+- **new(config)** - Create checker. Config: victory {type, metric, target}, loss {type, metric}, check_loss_first, bonuses.
+- **check()** - Returns "victory", "loss", or nil. Auto-applies bonuses.
+- **checkVictory()** / **checkLoss()** - Check individual conditions.
+- **getProgress()** - Returns 0-1 progress toward victory.
+- **getValue(key)** - Get value from game state (nested keys supported).
+- **applyBonuses()** - Apply victory bonuses.
 
-- **ensureInboundAngle(x, y, angle, bounds)** - If entity at (x,y) with direction angle would move away from bounds, flip the relevant component to point inward. Bounds: {min_x, max_x, min_y, max_y}. Returns corrected angle.
+**Victory types:** threshold, time_survival, time_limit, streak, ratio, clear_all, endless, rounds, multi
+**Loss types:** lives_depleted, time_expired, move_limit, death_event, threshold, penalty, none
 
-- **resolveSpawnPosition(config)** - Resolve spawn position using named patterns. Config: {position_pattern, position_config, spawn_func}. Returns sx, sy, angle or nil (if pattern handled spawning internally). Patterns: "random_edge" (default), "spiral" (rotating angle with angle_step), "boundary" (via get_boundary_point callback), "clusters" (multi-spawn per trigger). Used by continuous/burst spawning when position_pattern is set.
+---
 
-**Spawn modes:** "continuous", "wave", "burst", "grid", "manual"
-- **burst** - Spawn burst_count entities at burst_interval rate, pause for burst_pause seconds, repeat. Uses spawn_func callback.
-- **continuous/burst with position_pattern** - When spawning config includes `position_pattern` and `position_config`, calls `resolveSpawnPosition` to get coordinates, then passes them to `spawn_func(ec, sx, sy, angle)` instead of `spawn_func(ec, game_state)`.
+## VisualEffects
+Camera shake, screen flash, and particles. Uses config object API.
 
-**Position patterns:** "random_edge", "spiral", "boundary", "clusters"
-- **position_config fields:** margin, bounds, angle_step (spiral), get_boundary_point (boundary), cluster_min/cluster_max (clusters)
+### Constructor
+- **new(config)** - Create effects. Requires: camera_shake_enabled, screen_flash_enabled, particle_effects_enabled.
+
+### Methods
+- **update(dt)** - Update all effects.
+- **shake(config)** - Trigger camera shake. Requires: intensity, mode ("exponential"/"timer"). For "exponential": decay. For "timer": duration.
+- **getShakeOffset()** - Get current {x, y} shake offset.
+- **applyCameraShake()** - Apply shake translation.
+- **flash(config)** - Trigger screen flash. Requires: color, duration, mode ("fade_out"/"pulse"/"instant").
+- **drawScreenFlash(width, height)** - Draw flash overlay.
+- **drawParticles()** - Draw all particles.
+
+### Particles (accessed via self.visual_effects.particles)
+- **emitBallTrail(x, y, vx, vy)** - Ball trail particles.
+- **emitConfetti(x, y, count)** - Confetti particles.
+- **emitBrickDestruction(x, y, color)** - Brick destruction particles.
 
 ---
 
 ## BaseGame
-Base class for all minigames. Provides common state, fixed timestep, demo playback, and schema-based component creation.
+Base class for all minigames.
 
-### Initialization & State
-- **init(game_data, cheats, di, variant_override)** - Initialize game with data, cheats, DI container, optional variant override.
-- **updateBase(dt)** - Variable timestep update (for normal gameplay). Tracks time_elapsed, checks completion.
-- **updateWithFixedTimestep(dt)** - Accumulator-based fixed timestep wrapper. Calls fixedUpdate() at fixed_dt intervals.
-- **fixedUpdate(dt)** - Deterministic update at fixed_dt (default 1/60). Calls updateGameLogic(dt).
-- **updateGameLogic(dt)** - Override in subclasses for game-specific logic.
-- **setPlayArea(width, height)** - Resize arena and reposition entities.
-- **setupArenaDimensions()** - Calculate game_width/height from arena_base_width/height × arena_size. Sets is_fixed_arena, handles camera_zoom, lock_aspect_ratio.
-- **checkComplete()** - Default: returns victory or game_over.
-- **onComplete()** - Called when game completes. Sets completed = true.
-- **getCompletionRatio()** - Override to report progress 0..1 toward goal.
-- **getMetrics()** / **calculatePerformance()** / **getResults()** - Get metrics and token calculation.
+### Initialization
+- **init(game_data, cheats, di, variant_override)** - Initialize game.
+- **setupArenaDimensions()** - Calculate dimensions from params. Requires: params.arena_base_width, params.arena_base_height. Sets: is_fixed_arena, game_width, game_height, camera_zoom, lock_aspect_ratio.
+
+### Update Loop
+- **updateBase(dt)** - Variable timestep update.
+- **updateWithFixedTimestep(dt)** - Accumulator-based fixed timestep wrapper.
+- **fixedUpdate(dt)** - Deterministic update at fixed_dt (1/60).
+- **updateGameLogic(dt)** - Override in subclasses.
+- **setPlayArea(width, height)** - Set arena dimensions. Override for entity repositioning.
+
+### Completion
+- **checkComplete()** - Check victory/loss conditions. Uses victory_checker if available.
+- **onComplete()** - Called when game completes.
+- **getCompletionRatio()** - Returns 0-1 progress using VictoryCondition:getProgress().
+- **getMetrics()** / **calculatePerformance()** / **getResults()** - Metrics and token calculation.
 
 ### Schema-Based Component Creation
-- **createComponentsFromSchema()** - Create components from params.components definitions. Each entry has {type, config}.
-- **createProjectileSystemFromSchema(extra_config)** - Create ProjectileSystem from params.projectile_types.
-- **createEntityControllerFromSchema(callbacks, extra_config)** - Create EntityController from params.entity_types. Callbacks = {type_name = {on_hit = fn, on_death = fn}}.
-- **createPowerupSystemFromSchema(extra_config)** - Create PowerupSystem from params.powerup_effect_configs.
-- **createVictoryConditionFromSchema(bonuses)** - Create VictoryCondition from params.victory_conditions mapping.
-- **resolveConfig(config)** - Resolve "$param_name" references to actual param values.
+- **createComponentsFromSchema()** - Create from params.components definitions.
+- **createProjectileSystemFromSchema(config)** - Create ProjectileSystem. Requires: max_projectiles, out_of_bounds_margin.
+- **createEntityControllerFromSchema(callbacks, extra_config)** - Create EntityController from params.entity_types.
+- **createEffectSystem(on_expire)** - Create EffectSystem. Requires: on_expire callback.
+- **createVictoryConditionFromSchema(bonuses)** - Create from params.victory_conditions. Requires: params.victory_condition.
+- **resolveConfig(config)** - Resolve "$param_name" references.
 
 ### Cheat Application
-- **applyCheats(mappings)** - Apply cheats to params. Mappings = {speed_modifier = {"param1", "param2"}, advantage_modifier = {...}, performance_modifier = {...}}.
+- **applyCheats(mappings)** - Apply cheats to params. Mappings: {speed_modifier = [...], advantage_modifier = [...], performance_modifier = [...]}.
 
-### Entity Management Helpers
-- **createPlayer(config)** - Create player entity from params. Config: {entity_name, x, y, width, height, radius, extra}.
-- **createPaddle(extra_fields)** - Alias for createPlayer with entity_name = "paddle".
-- **syncMetrics(mapping)** - Sync game fields to metrics. Mapping = {metric_name = "field_name"}.
-- **handleEntityDepleted(count_func, config)** - Handle depletion (no balls, etc.). Config: {loss_counter, damage, combo_reset, damage_reason, on_respawn, on_game_over}. Returns true if game over.
-- **handleEntityDestroyed(entity, config)** - Handle destruction with effects. Config: {destroyed_counter, remaining_counter, spawn_powerup, effects = {particles, shake}, scoring = {base, combo_mult}, popup = {enabled, milestone_combos}, color_func, extra_life_check}.
+### Entity Helpers
+- **createPlayer(config)** - Create player. Config: entity_name, x, y. Requires: width+height OR radius (or params.player_width/player_height).
+- **createPaddle(config)** - Alias for createPlayer with entity_name = "paddle".
+- **syncMetrics(mapping)** - Sync game fields to metrics.
+- **handleEntityDepleted(count_func, config)** - Handle depletion. Requires: config.damage, config.damage_reason. Returns true if game over.
+- **handleEntityDestroyed(entity, config)** - Handle destruction with effects, scoring, popups.
+
+### Flash System
+- **flashEntity(entity, duration)** - Start flash. Requires: duration.
+- **updateFlashMap(dt)** - Update flash timers.
+- **isFlashing(entity)** - Check if flashing.
 
 ### Param Manipulation (for powerups)
-- **multiplyParam(param_name, multiplier)** - Multiply param, return original value.
-- **restoreParam(param_name, original_value)** - Restore param to original.
-- **enableParam(param_name)** - Set param to true, return original.
-- **setParam(param_name, value)** - Set param to value, return original.
-- **multiplyEntitySpeed(entities, multiplier)** - Multiply vx/vy of all entities.
+- **multiplyParam(param_name, multiplier)** - Multiply param, return original.
+- **restoreParam(param_name, original_value)** - Restore param.
+- **enableParam(param_name)** - Set to true, return original.
+- **setParam(param_name, value)** - Set value, return original.
 
-### Position & Direction Helpers
-- **CARDINAL_DIRECTIONS** - Constant table: {right={x=1,y=0}, left={x=-1,y=0}, up={x=0,y=-1}, down={x=0,y=1}}.
-- **getCardinalFromAngle(angle)** - Returns nearest cardinal direction {x, y} from angle in radians.
-- **getCardinalDirection(from_x, from_y, to_x, to_y)** - Returns dir_x, dir_y (-1, 0, or 1) pointing from A toward B. Works with grid or pixel coordinates.
-- **wrapPosition(x, y, width, height)** - Wrap position within bounds. Returns wrapped x, y. Works for grid (0 to width-1) or pixel coordinates.
-- **findSafePosition(min_x, max_x, min_y, max_y, is_safe_fn, max_attempts)** - Random search for safe position. Returns x, y, found. Auto-detects grid (integer bounds) vs continuous (float bounds). Use is_safe_fn callback to reject positions overlapping walls, obstacles, water, etc.
+### Position & Direction
+- **CARDINAL_DIRECTIONS** - Constant: {right, left, up, down} = {x, y}.
+- **getCardinalDirection(from_x, from_y, to_x, to_y)** - Returns dir_x, dir_y (-1/0/1).
+- **wrapPosition(x, y, width, height)** - Wrap within bounds.
+- **clampEntitiesToBounds(entity_arrays, min_x, max_x, min_y, max_y)** - Clamp all entities.
+- **getRandomCardinalDirection()** - Returns random dir_x, dir_y.
 
-### Flash Feedback System
-- **flashEntity(entity, duration)** - Start flash timer for entity (default 0.1s).
-- **updateFlashMap(dt)** - Update flash timers. Call in updateGameLogic().
-- **isFlashing(entity)** - Check if entity is currently flashing.
+### Scaling & Difficulty
+- **getScaledValue(base, config)** - Scale with multipliers, variance, range, bounds.
+- **updateDifficulty(dt)** - Update difficulty_scale. Requires: params.difficulty_scaling_rate, difficulty_curve, difficulty_max.
+- **updateScrolling(dt)** - Update scroll_offset from params.scroll_speed.
+
+### Wave Management
+- **updateWaveState(state, config, dt)** - Generic wave state. Requires: config.pause_duration. Returns: "active"/"paused"/"started".
+
+### Shooting Helpers
+- **getPlayerShootParams()** - Get spawn_x, spawn_y, angle based on movement mode.
+- **getEntityShootParams(entity)** - Get entity shoot position and angle.
+
+### Spawning
+- **spawnEntity(type_name, config)** - Spawn with optional weighted configs and entrance animation.
+
+### Damage
+- **takeDamage(amount, sound)** - Take damage with sound.
 
 ### Input & Demo Playback
-- **setPlaybackMode(enabled)** - Enable/disable demo playback mode.
-- **isInPlaybackMode()** - Check if in playback mode.
-- **isKeyDown(...)** - Check key state (virtual during playback, real otherwise).
-- **buildInput()** - Returns {left, right, up, down, space} input state table. Checks WASD/arrows for movement, space for action.
-- **setVMRenderMode(enabled)** / **isVMRenderMode()** - VM render mode (hides HUD).
+- **setPlaybackMode(enabled)** / **isInPlaybackMode()** - Playback mode control.
+- **isKeyDown(...)** - Check key state (virtual during playback).
+- **buildInput()** - Returns {left, right, up, down, space} input table.
+- **setVMRenderMode(enabled)** / **isVMRenderMode()** - VM render mode.
 
-### Audio
+### Audio & Assets
+- **loadAssets()** - Load sprites and audio. Supports scan_directory mode.
 - **loadAudio()** - Load music and SFX from variant.
 - **playMusic()** / **stopMusic()** - Music control.
-- **playSound(action, volume)** - Play SFX from loaded pack.
-- **speak(text)** - TTS speak text with weirdness config from di.config.tts.weirdness.
+- **playSound(action, volume)** - Play SFX.
+- **speak(text)** - TTS speak with weirdness.
 
 ---
 
 ## Common Patterns
 
-### Damage/Lives Pattern (from Phase 3)
-Games should use LivesHealthSystem for damage handling:
+### Config Object API
+Components now use config objects with required parameters:
 ```lua
-function MyGame:takeDamage()
-    local absorbed = self.health_system:takeDamage(1)
-    self:playSound("hit", 1.0)
-    if not absorbed then
-        self.deaths = self.deaths + 1
-        self.lives = self.health_system.lives
-        self.combo = 0
-    end
-end
+-- Good: explicit config object
+self.visual_effects:shake({intensity = 0.5, duration = 0.2, mode = "timer"})
+
+-- Bad: positional parameters (old API)
+self.visual_effects:shake(0.2, 0.5, "timer")
 ```
 
-### Compute-on-Demand Pattern
-Instead of pre-calculating values in init, compute them when needed:
+### Required Parameters with error()
+Functions now error on missing required params instead of falling back:
 ```lua
-function MyGame:getEnemySpeed()
-    local base = self.params.enemy_speed
-    local difficulty = self.difficulty_modifiers.speed or 1
-    return base * difficulty
-end
+-- Component enforces required params
+if not config.on_expire then error("EffectSystem: on_expire callback required") end
 ```
 
 ### Direct Param Access in Views
-Views should access params directly, not via shim fields:
+Views access params directly:
 ```lua
 -- Good: Use params directly
 g.print("Target: " .. game.params.victory_limit)
--- Bad: Don't create shim fields
-g.print("Target: " .. game.target_kills)
 ```
 
 ---
-
