@@ -55,7 +55,12 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:lovr.org)",
       "WebFetch(domain:itch.io)",
-      "WebFetch(domain:4kbshort.itch.io)"
+      "WebFetch(domain:4kbshort.itch.io)",
+      "Bash(dir:*)",
+      "Bash(echo.)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git -C \"C:\\\\Users\\\\chate\\\\Documents\\\\10000-games\" diff --stat)",
+      "Bash(git -C \"C:\\\\Users\\\\chate\\\\Documents\\\\10000-games\" add docs/breakout_extraction_plan.md docs/coin_flip_functions.md docs/component_extraction_plan.md docs/dodge_game_functions.md docs/game_abstraction_analysis.md docs/hidden_object_functions.md docs/memory_match_functions.md docs/physics_utils_audit.md docs/physics_utils_refactor_plan.md docs/refactor_phases.md docs/rps_functions.md docs/snake_basegame_extraction.md docs/snake_extraction_audit.md docs/snake_game_functions.md docs/space_shooter_audit.md docs/space_shooter_basegame_extraction.md docs/space_shooter_extraction_plan.md docs/space_shooter_functions.md docs/space_shooter_phase2_plan.md docs/space_shooter_phase3_plan.md docs/view_refactoring_plan.md)"
     ],
     "deny": [],
     "ask": []
