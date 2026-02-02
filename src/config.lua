@@ -2112,6 +2112,39 @@ local Config = {
                     affects = {"rounds_to_win"}
                 }
             }
+        },
+
+        Raycaster = {
+            -- Unlock and progression
+            unlock_cost = 0,
+            cost_exponent = 1.0,
+
+            -- Formula and metrics
+            base_formula_string = "(math.floor(1000 / math.max(1, metrics.time_elapsed) * math.max(1, metrics.mazes_completed)) * scaling_constant)",
+            display_formula_string = "speed × mazes",
+            metrics_tracked = {"time_elapsed", "mazes_completed"},
+
+            -- Visual identity
+            icon_sprite = "directory_open_cool-4",
+            visual_identity = {
+                sprite_set_id = "raycaster_set_1",
+                palette_id = "classic_green",
+                metric_sprite_mappings = {
+                    time_elapsed = "clock-0",
+                    mazes_completed = "check-0"
+                },
+                formula_icon_mapping = {
+                    time_elapsed = "clock-0",
+                    mazes_completed = "check-0",
+                    result = "certificate-0"
+                }
+            },
+
+            -- Auto-play and bullet data
+            auto_play_performance = {time_elapsed = 30, mazes_completed = 1},
+            bullet_fire_rate = 1.0,
+            bullet_sprite = "directory_open_cool-4",
+            token_threshold = 0.5
         }
     },
 }

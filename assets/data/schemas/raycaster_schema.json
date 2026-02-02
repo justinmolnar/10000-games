@@ -1,0 +1,251 @@
+{
+    "name": "raycaster_schema",
+    "description": "Schema for 3D raycaster maze game parameters",
+    "parameters": {
+        "maze_width": {
+            "type": "integer",
+            "default": 15,
+            "min": 5,
+            "max": 50,
+            "description": "Maze cell width (output is 2x+1)"
+        },
+        "maze_height": {
+            "type": "integer",
+            "default": 15,
+            "min": 5,
+            "max": 50,
+            "description": "Maze cell height (output is 2x+1)"
+        },
+        "change_direction": {
+            "type": "integer",
+            "default": 30,
+            "min": 1,
+            "max": 100,
+            "description": "Chance to change direction (1-30 = winding, 30+ = straight)"
+        },
+        "sparseness": {
+            "type": "integer",
+            "default": 70,
+            "min": 0,
+            "max": 99,
+            "description": "How sparse the maze is (25-70 typical)"
+        },
+        "dead_end_removal": {
+            "type": "integer",
+            "default": 50,
+            "min": 0,
+            "max": 99,
+            "description": "Chance to remove dead ends (50-99)"
+        },
+        "room_count": {
+            "type": "integer",
+            "default": 2,
+            "min": 0,
+            "max": 10,
+            "description": "Number of rooms to generate"
+        },
+        "room_min_size": {
+            "type": "integer",
+            "default": 2,
+            "min": 1,
+            "max": 5,
+            "description": "Minimum room dimension"
+        },
+        "room_max_size": {
+            "type": "integer",
+            "default": 4,
+            "min": 2,
+            "max": 10,
+            "description": "Maximum room dimension"
+        },
+        "move_speed": {
+            "type": "number",
+            "default": 3.0,
+            "min": 1.0,
+            "max": 10.0,
+            "description": "Player movement speed"
+        },
+        "turn_speed": {
+            "type": "number",
+            "default": 2.5,
+            "min": 0.5,
+            "max": 5.0,
+            "description": "Player rotation speed"
+        },
+        "fov": {
+            "type": "number",
+            "default": 60,
+            "min": 30,
+            "max": 120,
+            "description": "Field of view in degrees"
+        },
+        "ray_count": {
+            "type": "integer",
+            "default": 320,
+            "min": 80,
+            "max": 640,
+            "description": "Number of rays to cast (affects quality)"
+        },
+        "render_distance": {
+            "type": "integer",
+            "default": 20,
+            "min": 5,
+            "max": 50,
+            "description": "How far walls render before fading"
+        },
+        "wall_height": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 2.0,
+            "description": "Wall height multiplier"
+        },
+        "ceiling_color": {
+            "type": "array",
+            "default": [0.2, 0.2, 0.3],
+            "description": "Ceiling color RGB"
+        },
+        "floor_color": {
+            "type": "array",
+            "default": [0.3, 0.25, 0.2],
+            "description": "Floor color RGB"
+        },
+        "wall_color_ns": {
+            "type": "array",
+            "default": [0.7, 0.2, 0.2],
+            "description": "North/South wall color RGB"
+        },
+        "wall_color_ew": {
+            "type": "array",
+            "default": [0.2, 0.2, 0.7],
+            "description": "East/West wall color RGB"
+        },
+        "goal_color": {
+            "type": "array",
+            "default": [0.2, 0.9, 0.3],
+            "description": "Goal marker color RGB"
+        },
+        "show_minimap": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show minimap in corner"
+        },
+        "minimap_size": {
+            "type": "integer",
+            "default": 150,
+            "min": 50,
+            "max": 300,
+            "description": "Minimap size in pixels"
+        },
+        "difficulty_modifier": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 3.0,
+            "description": "Global difficulty multiplier"
+        },
+        "generator": {
+            "type": "string",
+            "default": "divided_maze",
+            "enum": ["uniform", "digger", "rogue", "cellular", "divided_maze", "icey_maze", "eller_maze", "arena", "static"],
+            "description": "Map generator: uniform/digger (rooms), rogue (grid), cellular (caves), *_maze (pure mazes), arena (open), static (predefined)"
+        },
+        "map_name": {
+            "type": "string",
+            "default": "pacman",
+            "description": "For static generator: name of map file in assets/data/maps/ (without .json)"
+        },
+        "enable_edge_wrap": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable Pac-Man style portal wrapping at map edges"
+        },
+        "room_dug_percentage": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 0.9,
+            "description": "For rotLove generators: fraction of map that should be rooms"
+        },
+        "cell_width": {
+            "type": "integer",
+            "default": 3,
+            "min": 2,
+            "max": 10,
+            "description": "For rogue generator: number of room columns in grid"
+        },
+        "cell_height": {
+            "type": "integer",
+            "default": 3,
+            "min": 2,
+            "max": 10,
+            "description": "For rogue generator: number of room rows in grid"
+        },
+        "cellular_iterations": {
+            "type": "integer",
+            "default": 4,
+            "min": 1,
+            "max": 10,
+            "description": "For cellular generator: automata iterations (more = smoother caves)"
+        },
+        "cellular_prob": {
+            "type": "number",
+            "default": 0.45,
+            "min": 0.3,
+            "max": 0.6,
+            "description": "For cellular generator: initial floor probability"
+        },
+        "cellular_connected": {
+            "type": "boolean",
+            "default": true,
+            "description": "For cellular generator: ensure all areas are connected"
+        },
+        "map_seed": {
+            "type": "integer",
+            "default": null,
+            "min": 1,
+            "max": 999999999,
+            "description": "Fixed seed for reproducible maps (null = random)"
+        },
+        "victory_condition": {
+            "type": "enum",
+            "values": ["goal", "dots"],
+            "default": "goal",
+            "description": "Win condition: goal (reach exit) or dots (collect all)"
+        }
+    },
+    "components": {
+        "movement_controller": {
+            "type": "MovementController",
+            "config": {
+                "speed": "$move_speed",
+                "rotation_speed": "$turn_speed"
+            }
+        },
+        "hud": {
+            "type": "HUDRenderer",
+            "config": {
+                "primary": {"label": "Time", "key": "time_elapsed", "format": "time"},
+                "secondary": {"label": "Dots", "key": "dots_collected"}
+            }
+        },
+        "visual_effects": {
+            "type": "VisualEffects",
+            "config": {
+                "camera_shake_enabled": false,
+                "screen_flash_enabled": true,
+                "particle_effects_enabled": false
+            }
+        }
+    },
+    "victory_conditions": {
+        "goal": {
+            "victory": {"type": "threshold", "metric": "goal_reached", "target": 1},
+            "loss": {"type": "none"}
+        },
+        "dots": {
+            "victory": {"type": "threshold", "metric": "dots_collected", "target": "$total_dots"},
+            "loss": {"type": "none"}
+        }
+    }
+}

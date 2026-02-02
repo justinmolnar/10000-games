@@ -121,7 +121,8 @@ function GameRegistry:generateGameID(game_class, clone_index)
         HiddenObject = "hidden_object",
         Breakout = "breakout",
         CoinFlip = "coin_flip",
-        RPS = "rps"
+        RPS = "rps",
+        Raycaster = "raycaster"
     }
 
     local prefix = class_to_prefix[game_class]

@@ -468,6 +468,75 @@ function PhysicsUtils.clampEdge(entity, info)
 end
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
+-- ║                      TILE MAP COLLISION                            ║
+-- ╚═══════════════════════════════════════════════════════════════════╝
+
+-- Check if a tile position is walkable (not a wall)
+-- map: 2D array where 0 = floor, 1 = wall
+function PhysicsUtils.isTileWalkable(map, tile_x, tile_y, map_w, map_h)
+    if tile_x < 1 or tile_x > map_w or tile_y < 1 or tile_y > map_h then
+        return false
+    end
+    return map[tile_y] and map[tile_y][tile_x] == 0
+end
+
+-- Move entity with tile-based collision (slide along walls)
+-- Returns new x, y position after collision resolution
+-- Optional wrap_x/wrap_y: wrap around map edges instead of blocking
+function PhysicsUtils.moveWithTileCollision(x, y, dx, dy, map, map_w, map_h, wrap_x, wrap_y)
+    local new_x = x + dx
+    local new_y = y + dy
+
+    -- Check X movement separately
+    local check_x = math.floor(new_x)
+    local check_y = math.floor(y)
+
+    if wrap_x then
+        if check_x < 1 then
+            new_x = new_x + map_w
+            check_x = math.floor(new_x)
+        elseif check_x > map_w then
+            new_x = new_x - map_w
+            check_x = math.floor(new_x)
+        end
+    end
+
+    if PhysicsUtils.isTileWalkable(map, check_x, check_y, map_w, map_h) then
+        x = new_x
+    end
+
+    -- Check Y movement separately
+    check_x = math.floor(x)
+    check_y = math.floor(new_y)
+
+    if wrap_y then
+        if check_y < 1 then
+            new_y = new_y + map_h
+            check_y = math.floor(new_y)
+        elseif check_y > map_h then
+            new_y = new_y - map_h
+            check_y = math.floor(new_y)
+        end
+    end
+
+    if PhysicsUtils.isTileWalkable(map, check_x, check_y, map_w, map_h) then
+        y = new_y
+    end
+
+    return x, y
+end
+
+-- Get tile coordinate from world position
+function PhysicsUtils.worldToTile(world_x, world_y)
+    return math.floor(world_x), math.floor(world_y)
+end
+
+-- Get world center of a tile
+function PhysicsUtils.tileToWorld(tile_x, tile_y)
+    return tile_x + 0.5, tile_y + 0.5
+end
+
+-- ╔═══════════════════════════════════════════════════════════════════╗
 -- ║                   CENTERED RECT COLLISION                          ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 

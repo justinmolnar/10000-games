@@ -369,6 +369,14 @@ Physics helpers: forces, movement, collision detection/response.
   - **checkSelfCollision(head_x, head_y, girth, config)** - Check trail self-collision. Requires skip_multiplier, collision_base, collision_multiplier.
 - **updateDirectionalForce(state, dt)** - Update directional force. Requires state.angle, state.strength, state.timer. For rotating: change_interval, change_amount. For turbulent: turbulence_range. Returns fx, fy.
 
+### Tile Map Collision
+For grid-based games (maze, dungeon crawlers, raycasters).
+
+- **isTileWalkable(map, tile_x, tile_y, map_w, map_h)** - Check if tile is walkable. Returns true if tile is 0 or nil (floor).
+- **moveWithTileCollision(x, y, dx, dy, map, map_w, map_h, wrap_x, wrap_y)** - Move with wall sliding. Tests X/Y separately. Optional wrap_x/wrap_y for Pac-Man style edge wrapping. Returns new_x, new_y.
+- **worldToTile(world_x, world_y)** - Convert world coords to tile coords (floors to integers).
+- **tileToWorld(tile_x, tile_y)** - Convert tile coords to world center (adds 0.5 offset).
+
 ---
 
 ## ProjectileSystem
@@ -533,6 +541,97 @@ Base class for all minigames.
 - **playMusic()** / **stopMusic()** - Music control.
 - **playSound(action, volume)** - Play SFX.
 - **speak(text)** - TTS speak with weirdness.
+
+---
+
+## RotloveDungeon
+Procedural dungeon/maze generation using rotLove library.
+
+### Constructor
+- **new(config)** - Create generator. Config:
+  - Base: width, height, generator_type ("uniform"/"digger"/"rogue"/"cellular"/"divided_maze"/"icey_maze"/"eller_maze"/"arena")
+  - Rooms: room_width {min, max}, room_height {min, max}, room_dug_percentage, time_limit
+  - Rogue: cell_width, cell_height (grid of rooms)
+  - Cellular: cellular_iterations, cellular_prob, cellular_connected, cellular_born, cellular_survive
+  - seed (optional, for reproducible maps)
+
+### Methods
+- **generate(rng)** - Generate map. Returns {map, width, height, start, goal, rooms, floor_tiles}.
+- **getFloorTiles()** - Get array of {x, y} floor positions.
+- **isWalkable(x, y)** - Check if world position is walkable.
+
+---
+
+## StaticMapLoader
+Load predefined maps from JSON files.
+
+### Constructor
+- **new(config)** - Create loader. Config: map_name (file in assets/data/maps/ without .json).
+
+### Methods
+- **generate(rng)** - Load map. Returns {map, width, height, start, goal, dots, power_pills}.
+
+### Map File Format
+```json
+{
+  "rows": ["#####", "#...#", "#.O.#", "#...#", "#####"],
+  "start": {"x": 2.5, "y": 2.5, "angle": 0},
+  "goal": {"x": 4, "y": 4}
+}
+```
+Characters: `#`/`W`=wall, `.`/`o`=dot, `O`=power pill, space=floor.
+
+---
+
+## RaycastRenderer
+DDA raycasting for 3D wall rendering (Wolfenstein-style).
+
+### Constructor
+- **new(config)** - Create renderer. Config: fov, ray_count, render_distance, wall_height, ceiling_color, floor_color, wall_color_ns, wall_color_ew, goal_color.
+
+### Methods
+- **draw(w, h, player, map, map_w, map_h, goal)** - Draw ceiling, floor, and walls.
+- **drawCeilingAndFloor(w, h)** - Draw sky/ground split.
+- **drawWalls(w, h, player, map, map_w, map_h, goal)** - Cast rays and draw wall slices.
+- **castRay(start_x, start_y, angle, max_dist, map, map_w, map_h)** - DDA algorithm. Returns dist, side, hit_x, hit_y.
+
+---
+
+## MinimapRenderer
+Tile-based minimap with player/goal markers.
+
+### Constructor
+- **new(config)** - Create minimap. Config: size, padding, position ("top_right"/"top_left"/"bottom_right"/"bottom_left"), wall_color, floor_color, player_color, goal_color, direction_color, background_color.
+
+### Methods
+- **draw(viewport_w, viewport_h, map, map_w, map_h, player, goal)** - Draw minimap at configured position.
+- **setPosition(position)** - Change corner position.
+- **setSize(size)** - Change minimap size.
+
+---
+
+## BillboardRenderer
+Sprites in 3D space for raycaster games (enemies, items, pickups).
+
+### Constructor
+- **new(config)** - Create renderer. Config: fov, render_distance.
+
+### Methods
+- **setDepthBuffer(depth_buffer)** - Set depth buffer from RaycastRenderer for occlusion.
+- **draw(w, h, player, billboards)** - Draw all billboards with depth sorting and occlusion.
+
+### Factory Methods
+- **BillboardRenderer.createDiamond(x, y, config)** - Create diamond shape. Config: height, aspect, y_offset, color.
+- **BillboardRenderer.createSprite(x, y, config)** - Create sprite billboard. Config: height, aspect, y_offset, sprite, quad, color.
+- **BillboardRenderer.createEnemy(x, y, config)** - Create enemy billboard. Config: height, aspect, y_offset, color, enemy_type, health, state.
+
+### Billboard Properties
+- **x, y** - World position
+- **height** - Sprite height in world units
+- **aspect** - Width/height ratio
+- **y_offset** - Vertical offset (for floating animation)
+- **color** - RGB color {r, g, b}
+- **draw_column(col, screen_y, height, col_ratio, shade)** - Custom column draw function
 
 ---
 

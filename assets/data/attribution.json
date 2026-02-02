@@ -52,6 +52,26 @@
       "modifications": "None",
       "date_added": "2025-10-27",
       "notes": "Pixel art playing cards for solitaire game"
+    },
+    {
+      "asset_path": "lib/volk3d/*",
+      "asset_type": "code",
+      "author": "Daniel Grinshpon",
+      "license": "MIT",
+      "source_url": "https://github.com/Grinshpon/Volk3D",
+      "modifications": "None",
+      "date_added": "2026-01-31",
+      "notes": "Raycasting engine for 2.5D rendering in LÖVE2D"
+    },
+    {
+      "asset_path": "lib/rotLove/*",
+      "asset_type": "code",
+      "author": "Paul Lewis (rotLove), Ondrej Zara (rot.js), Roland Yonaba (30log)",
+      "license": "MIT/BSD",
+      "source_url": "https://github.com/paulofmandown/rotLove",
+      "modifications": "None",
+      "date_added": "2026-02-01",
+      "notes": "Roguelike toolkit - dungeon generation (Uniform, Digger, Rogue), RNG, FOV, pathfinding. Port of rot.js"
     }
   ],
 

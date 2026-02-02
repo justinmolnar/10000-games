@@ -123,6 +123,12 @@ function love.load()
         PhysicsUtils = require('src.utils.game_components.physics_utils'),
         TableUtils = require('src.utils.table_utils'),
         AnimationSystem = require('src.utils.game_components.animation_system'),
+        -- Raycaster/dungeon components
+        RotloveDungeon = require('src.utils.game_components.rotlove_dungeon'),
+        StaticMapLoader = require('src.utils.game_components.static_map_loader'),
+        BillboardRenderer = require('src.utils.game_components.billboard_renderer'),
+        RaycastRenderer = require('src.utils.game_components.raycast_renderer'),
+        MinimapRenderer = require('src.utils.game_components.minimap_renderer'),
     }
 
     -- == 3. Instantiate Models with DI ==
