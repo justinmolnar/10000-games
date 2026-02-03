@@ -67,10 +67,10 @@
         },
         "turn_speed": {
             "type": "number",
-            "default": 2.5,
-            "min": 0.5,
-            "max": 5.0,
-            "description": "Player rotation speed"
+            "default": 150,
+            "min": 30,
+            "max": 360,
+            "description": "Turn speed in degrees per second"
         },
         "fov": {
             "type": "number",
@@ -125,6 +125,25 @@
             "default": [0.2, 0.9, 0.3],
             "description": "Goal marker color RGB"
         },
+        "door_color": {
+            "type": "array",
+            "default": [0.5, 0.35, 0.2],
+            "description": "Door color RGB (brown/wooden)"
+        },
+        "door_open_distance": {
+            "type": "number",
+            "default": 1.5,
+            "min": 0.5,
+            "max": 3.0,
+            "description": "Distance from door at which it auto-opens"
+        },
+        "door_open_speed": {
+            "type": "number",
+            "default": 3.0,
+            "min": 0.5,
+            "max": 10.0,
+            "description": "How fast doors open (1 = 1 second to fully open)"
+        },
         "show_minimap": {
             "type": "boolean",
             "default": true,
@@ -136,6 +155,11 @@
             "min": 50,
             "max": 300,
             "description": "Minimap size in pixels"
+        },
+        "minimap_show_enemies": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show enemies on minimap"
         },
         "difficulty_modifier": {
             "type": "number",
@@ -209,9 +233,259 @@
         },
         "victory_condition": {
             "type": "enum",
-            "values": ["goal", "dots"],
+            "values": ["goal", "dots", "none"],
             "default": "goal",
-            "description": "Win condition: goal (reach exit) or dots (collect all)"
+            "description": "Win condition: goal (reach exit), dots (collect all), or none (endless)"
+        },
+        "movement_mode": {
+            "type": "string",
+            "default": "smooth",
+            "enum": ["smooth", "grid"],
+            "description": "Movement style: smooth FPS or grid-based dungeon crawler"
+        },
+        "grid_move_time": {
+            "type": "number",
+            "default": 0.15,
+            "min": 0.05,
+            "max": 0.5,
+            "description": "Animation time for one tile movement (grid mode)"
+        },
+        "grid_turn_time": {
+            "type": "number",
+            "default": 0.12,
+            "min": 0.05,
+            "max": 0.3,
+            "description": "Animation time for 90-degree turn (grid mode)"
+        },
+        "grid_hold_to_move": {
+            "type": "boolean",
+            "default": false,
+            "description": "Grid mode: if true, holding a key auto-repeats movement. If false (default), requires discrete key presses."
+        },
+        "room_spawns": {
+            "type": "array",
+            "default": [],
+            "description": "Spawn configs for rooms. Each: {type, count, room_chance (0-1), position (center/random/corners), min_rooms, max_rooms}"
+        },
+        "corridor_spawns": {
+            "type": "array",
+            "default": [],
+            "description": "Spawn configs for corridor tiles (non-room floors). Each: {type, count, tile_chance (0-1), min_count, max_count}"
+        },
+        "floor_spawns": {
+            "type": "array",
+            "default": [],
+            "description": "Spawn configs for any floor tile. Each: {type, density (spawns per N tiles), min_count, max_count}"
+        },
+        "entity_types": {
+            "type": "object",
+            "default": {},
+            "description": "Visual definitions for spawned entities. Each key: {color, height, aspect, y_offset, shape (diamond/square/circle)}"
+        },
+        "shooting_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable shooting with space bar"
+        },
+        "bullet_speed": {
+            "type": "number",
+            "default": 8.0,
+            "min": 2.0,
+            "max": 20.0,
+            "description": "Projectile travel speed"
+        },
+        "bullet_lifetime": {
+            "type": "number",
+            "default": 3.0,
+            "min": 0.5,
+            "max": 10.0,
+            "description": "How long bullets live before despawning"
+        },
+        "fire_rate": {
+            "type": "number",
+            "default": 3.0,
+            "min": 0.5,
+            "max": 20.0,
+            "description": "Shots per second (legacy, use pistol_fire_rate)"
+        },
+        "pistol_fire_rate": {
+            "type": "number",
+            "default": 1.5,
+            "min": 0.5,
+            "max": 5.0,
+            "description": "Pistol shots per second (slow, accurate)"
+        },
+        "machinegun_fire_rate": {
+            "type": "number",
+            "default": 8.0,
+            "min": 2.0,
+            "max": 20.0,
+            "description": "Machine gun shots per second (fast)"
+        },
+        "machinegun_bullet_speed": {
+            "type": "number",
+            "default": 10.0,
+            "min": 5.0,
+            "max": 20.0,
+            "description": "Machine gun bullet speed"
+        },
+        "machinegun_bullet_color": {
+            "type": "array",
+            "default": [1, 0.5, 0],
+            "description": "Machine gun bullet color RGB (orange)"
+        },
+        "bullet_color": {
+            "type": "array",
+            "default": [1, 1, 0],
+            "description": "Bullet color RGB"
+        },
+        "ammo_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable ammo system (can't shoot at 0)"
+        },
+        "starting_ammo": {
+            "type": "integer",
+            "default": 10,
+            "min": 0,
+            "max": 99,
+            "description": "Starting ammo count"
+        },
+        "ammo_capacity": {
+            "type": "integer",
+            "default": 99,
+            "min": 1,
+            "max": 999,
+            "description": "Maximum ammo"
+        },
+        "ammo_pickup_amount": {
+            "type": "integer",
+            "default": 5,
+            "min": 1,
+            "max": 50,
+            "description": "Ammo gained per pickup"
+        },
+        "knife_enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable knife melee weapon (always available when shooting enabled)"
+        },
+        "knife_fire_rate": {
+            "type": "number",
+            "default": 2.0,
+            "min": 0.5,
+            "max": 10.0,
+            "description": "Knife attacks per second"
+        },
+        "knife_speed": {
+            "type": "number",
+            "default": 15.0,
+            "min": 5.0,
+            "max": 30.0,
+            "description": "Knife projectile speed (fast, short range)"
+        },
+        "knife_lifetime": {
+            "type": "number",
+            "default": 0.035,
+            "min": 0.02,
+            "max": 0.5,
+            "description": "Knife projectile lifetime (very short)"
+        },
+        "knife_color": {
+            "type": "array",
+            "default": [0.8, 0.8, 0.8],
+            "description": "Knife projectile color RGB"
+        },
+        "enemy_ai_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable enemy AI (line of sight detection, shooting)"
+        },
+        "enemy_fire_rate": {
+            "type": "number",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 5.0,
+            "description": "Enemy shots per second when active"
+        },
+        "enemy_bullet_speed": {
+            "type": "number",
+            "default": 5.0,
+            "min": 1.0,
+            "max": 15.0,
+            "description": "Enemy projectile speed"
+        },
+        "enemy_bullet_color": {
+            "type": "array",
+            "default": [1, 0.3, 0.3],
+            "description": "Enemy bullet color RGB (red)"
+        },
+        "enemy_bullet_damage_min": {
+            "type": "integer",
+            "default": 5,
+            "min": 1,
+            "max": 50,
+            "description": "Minimum damage per enemy bullet"
+        },
+        "enemy_bullet_damage_max": {
+            "type": "integer",
+            "default": 10,
+            "min": 1,
+            "max": 50,
+            "description": "Maximum damage per enemy bullet"
+        },
+        "enemy_accuracy": {
+            "type": "number",
+            "default": 0.7,
+            "min": 0.1,
+            "max": 1.0,
+            "description": "Enemy aim accuracy (1.0 = perfect)"
+        },
+        "enemy_sight_range": {
+            "type": "number",
+            "default": 15,
+            "min": 3,
+            "max": 30,
+            "description": "How far enemies can see the player"
+        },
+        "enemy_move_speed": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.5,
+            "max": 8.0,
+            "description": "Enemy movement speed during chase"
+        },
+        "player_health": {
+            "type": "integer",
+            "default": 100,
+            "min": 1,
+            "max": 999,
+            "description": "Starting player health"
+        },
+        "health_pickup_amount": {
+            "type": "integer",
+            "default": 25,
+            "min": 1,
+            "max": 100,
+            "description": "Health restored per health pickup"
+        },
+        "player_damage_mode": {
+            "type": "string",
+            "default": "origin",
+            "enum": ["origin", "player", "fixed"],
+            "description": "How player bullet damage is calculated: origin (distance from shot origin), player (distance from current player pos), fixed (flat damage)"
+        },
+        "player_bullet_damage": {
+            "type": "integer",
+            "default": 15,
+            "min": 1,
+            "max": 100,
+            "description": "Fixed damage per bullet (used when player_damage_mode is 'fixed')"
+        },
+        "weighted_spawns": {
+            "type": "object",
+            "default": {},
+            "description": "Map base spawn type to weighted alternatives. E.g. {\"enemy\": [{\"name\": \"guard\", \"weight\": 70}, {\"name\": \"elite\", \"weight\": 30}]}"
         }
     },
     "components": {
@@ -225,8 +499,7 @@
         "hud": {
             "type": "HUDRenderer",
             "config": {
-                "primary": {"label": "Time", "key": "time_elapsed", "format": "time"},
-                "secondary": {"label": "Dots", "key": "dots_collected"}
+                "primary": {"label": "Time", "key": "time_elapsed", "format": "time"}
             }
         },
         "visual_effects": {
@@ -245,6 +518,10 @@
         },
         "dots": {
             "victory": {"type": "threshold", "metric": "dots_collected", "target": "$total_dots"},
+            "loss": {"type": "none"}
+        },
+        "none": {
+            "victory": {"type": "none"},
             "loss": {"type": "none"}
         }
     }

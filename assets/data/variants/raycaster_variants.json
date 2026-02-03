@@ -426,6 +426,17 @@
       "name": "Pac-Man 3D",
       "generator": "static",
       "map_name": "pacman",
+      "marker_types": {"o": "dot", "O": "power"},
+      "victory_condition": "dots",
+      "components": {
+        "hud": {
+          "type": "HUDRenderer",
+          "config": {
+            "primary": {"label": "Dots", "key": "dots_collected"},
+            "secondary": {"label": "Time", "key": "time_elapsed", "format": "time"}
+          }
+        }
+      },
       "move_speed": 4.0,
       "enable_edge_wrap": true,
       "wall_color_ns": [0.1, 0.1, 0.5],
@@ -440,6 +451,17 @@
       "name": "Pac-Man 3D: No Map",
       "generator": "static",
       "map_name": "pacman",
+      "marker_types": {"o": "dot", "O": "power"},
+      "victory_condition": "dots",
+      "components": {
+        "hud": {
+          "type": "HUDRenderer",
+          "config": {
+            "primary": {"label": "Dots", "key": "dots_collected"},
+            "secondary": {"label": "Time", "key": "time_elapsed", "format": "time"}
+          }
+        }
+      },
       "move_speed": 3.5,
       "show_minimap": false,
       "enable_edge_wrap": true,
@@ -455,6 +477,17 @@
       "name": "Pac-Man 3D: Neon",
       "generator": "static",
       "map_name": "pacman",
+      "marker_types": {"o": "dot", "O": "power"},
+      "victory_condition": "dots",
+      "components": {
+        "hud": {
+          "type": "HUDRenderer",
+          "config": {
+            "primary": {"label": "Dots", "key": "dots_collected"},
+            "secondary": {"label": "Time", "key": "time_elapsed", "format": "time"}
+          }
+        }
+      },
       "move_speed": 5.0,
       "enable_edge_wrap": true,
       "wall_color_ns": [1.0, 0.0, 1.0],
@@ -463,6 +496,494 @@
       "ceiling_color": [0, 0, 0],
       "goal_color": [1, 1, 0],
       "flavor_text": "Synthwave Pac-Man. Fast and flashy."
+    },
+
+    {
+      "clone_index": 70,
+      "name": "Dungeon Crawler",
+      "generator": "divided_maze",
+      "maze_width": 15,
+      "maze_height": 15,
+      "movement_mode": "grid",
+      "grid_move_time": 0.15,
+      "grid_turn_time": 0.1,
+      "wall_color_ns": [0.4, 0.35, 0.3],
+      "wall_color_ew": [0.35, 0.3, 0.25],
+      "floor_color": [0.15, 0.12, 0.1],
+      "ceiling_color": [0.1, 0.08, 0.06],
+      "flavor_text": "Old school grid-based movement. One step at a time."
+    },
+    {
+      "clone_index": 71,
+      "name": "Eye of the Beholder",
+      "generator": "rogue",
+      "maze_width": 40,
+      "maze_height": 30,
+      "cell_width": 4,
+      "cell_height": 3,
+      "movement_mode": "grid",
+      "grid_move_time": 0.12,
+      "grid_turn_time": 0.08,
+      "wall_color_ns": [0.5, 0.5, 0.55],
+      "wall_color_ew": [0.45, 0.45, 0.5],
+      "floor_color": [0.2, 0.2, 0.22],
+      "ceiling_color": [0.15, 0.15, 0.18],
+      "flavor_text": "Classic dungeon crawler. 12 rooms to explore."
+    },
+
+    {
+      "clone_index": 80,
+      "name": "Dungeon Loot",
+      "generator": "rogue",
+      "maze_width": 45,
+      "maze_height": 35,
+      "cell_width": 5,
+      "cell_height": 3,
+      "room_spawns": [
+        {"type": "enemy", "count": 2, "room_chance": 1.0, "position": "random"},
+        {"type": "chest", "count": 1, "room_chance": 0.5, "position": "center"}
+      ],
+      "corridor_spawns": [
+        {"type": "health", "tile_chance": 0.05, "count": 1, "max_count": 5}
+      ],
+      "entity_types": {
+        "enemy": {"color": [1, 0.2, 0.2], "height": 0.5, "aspect": 0.8},
+        "chest": {"color": [0.9, 0.7, 0.2], "height": 0.35, "aspect": 1.2},
+        "health": {"color": [0.2, 1, 0.3], "height": 0.25, "aspect": 1.0}
+      },
+      "wall_color_ns": [0.5, 0.4, 0.35],
+      "wall_color_ew": [0.45, 0.35, 0.3],
+      "floor_color": [0.2, 0.18, 0.15],
+      "ceiling_color": [0.15, 0.12, 0.1],
+      "flavor_text": "Roguelike dungeon with enemies in rooms and loot in corridors."
+    },
+    {
+      "clone_index": 81,
+      "name": "Cave Creatures",
+      "generator": "cellular",
+      "maze_width": 40,
+      "maze_height": 40,
+      "cellular_iterations": 4,
+      "cellular_prob": 0.45,
+      "floor_spawns": [
+        {"type": "bat", "density": 20, "min_count": 5, "max_count": 15},
+        {"type": "gem", "density": 50, "min_count": 3, "max_count": 8}
+      ],
+      "entity_types": {
+        "bat": {"color": [0.4, 0.3, 0.5], "height": 0.3, "aspect": 1.5, "y_offset": 0.3},
+        "gem": {"color": [0.3, 0.8, 1], "height": 0.2, "aspect": 0.8}
+      },
+      "wall_color_ns": [0.35, 0.3, 0.28],
+      "wall_color_ew": [0.3, 0.25, 0.22],
+      "floor_color": [0.12, 0.1, 0.08],
+      "ceiling_color": [0.08, 0.06, 0.05],
+      "flavor_text": "Natural caves with bats and glittering gems."
+    },
+    {
+      "clone_index": 82,
+      "name": "Treasure Vault",
+      "generator": "uniform",
+      "maze_width": 35,
+      "maze_height": 35,
+      "room_min_size": 4,
+      "room_max_size": 8,
+      "room_dug_percentage": 0.6,
+      "room_spawns": [
+        {"type": "gold", "count": 3, "room_chance": 1.0, "position": "random"},
+        {"type": "guard", "count": 1, "room_chance": 0.75, "position": "center", "min_rooms": 2}
+      ],
+      "entity_types": {
+        "gold": {"color": [1, 0.85, 0.1], "height": 0.2, "aspect": 1.0},
+        "guard": {"color": [0.8, 0.2, 0.1], "height": 0.6, "aspect": 0.7}
+      },
+      "wall_color_ns": [0.6, 0.55, 0.4],
+      "wall_color_ew": [0.55, 0.5, 0.35],
+      "floor_color": [0.3, 0.28, 0.2],
+      "ceiling_color": [0.4, 0.35, 0.25],
+      "goal_color": [1, 0.9, 0.3],
+      "flavor_text": "Gold-filled vault. Grab treasure, avoid guards, find the exit."
+    },
+
+    {
+      "clone_index": 90,
+      "name": "Dungeon Shooter",
+      "generator": "rogue",
+      "maze_width": 45,
+      "maze_height": 35,
+      "cell_width": 5,
+      "cell_height": 3,
+      "room_spawns": [
+        {"type": "enemy", "count": 2, "room_chance": 1.0, "position": "random"},
+        {"type": "health", "count": 1, "room_chance": 0.4, "position": "random"}
+      ],
+      "entity_types": {
+        "enemy": {"color": [1, 0.2, 0.2], "height": 0.5, "aspect": 0.8},
+        "health": {"color": [0.2, 0.9, 0.3], "height": 0.25, "aspect": 1.0}
+      },
+      "shooting_enabled": true,
+      "bullet_speed": 10.0,
+      "bullet_lifetime": 3.0,
+      "fire_rate": 4.0,
+      "bullet_color": [1, 1, 0],
+      "enemy_ai_enabled": true,
+      "enemy_fire_rate": 0.3,
+      "enemy_bullet_speed": 4.0,
+      "enemy_accuracy": 0.5,
+      "player_health": 100,
+      "wall_color_ns": [0.4, 0.4, 0.45],
+      "wall_color_ew": [0.35, 0.35, 0.4],
+      "floor_color": [0.15, 0.15, 0.18],
+      "ceiling_color": [0.1, 0.1, 0.12],
+      "flavor_text": "Enemies shoot back! Space to fire. Find the exit."
+    },
+    {
+      "clone_index": 91,
+      "name": "Arena Shooter",
+      "generator": "arena",
+      "maze_width": 25,
+      "maze_height": 25,
+      "floor_spawns": [
+        {"type": "enemy", "density": 15, "min_count": 8, "max_count": 20}
+      ],
+      "entity_types": {
+        "enemy": {"color": [1, 0.3, 0.3], "height": 0.6, "aspect": 0.8}
+      },
+      "shooting_enabled": true,
+      "bullet_speed": 12.0,
+      "bullet_lifetime": 2.0,
+      "fire_rate": 6.0,
+      "bullet_color": [0.5, 1, 0.5],
+      "move_speed": 5.0,
+      "wall_color_ns": [0.5, 0.3, 0.3],
+      "wall_color_ew": [0.45, 0.25, 0.25],
+      "floor_color": [0.3, 0.15, 0.1],
+      "ceiling_color": [0.2, 0.1, 0.08],
+      "goal_color": [0.2, 1, 0.3],
+      "flavor_text": "Open arena. Clear all enemies and reach the exit!"
+    },
+    {
+      "clone_index": 92,
+      "name": "Grid Shooter",
+      "generator": "divided_maze",
+      "maze_width": 15,
+      "maze_height": 15,
+      "movement_mode": "grid",
+      "grid_move_time": 0.15,
+      "grid_turn_time": 0.1,
+      "floor_spawns": [
+        {"type": "enemy", "density": 8, "min_count": 5, "max_count": 12}
+      ],
+      "entity_types": {
+        "enemy": {"color": [0.8, 0.2, 0.8], "height": 0.5, "aspect": 0.9}
+      },
+      "shooting_enabled": true,
+      "bullet_speed": 8.0,
+      "bullet_lifetime": 3.0,
+      "fire_rate": 3.0,
+      "bullet_color": [0, 1, 1],
+      "wall_color_ns": [0.3, 0.3, 0.4],
+      "wall_color_ew": [0.25, 0.25, 0.35],
+      "floor_color": [0.1, 0.1, 0.15],
+      "ceiling_color": [0.05, 0.05, 0.08],
+      "flavor_text": "Grid-based dungeon crawler with shooting. Old school FPS."
+    },
+
+    {
+      "clone_index": 100,
+      "name": "Wolfenstein 3D",
+      "generator": "uniform",
+      "maze_width": 40,
+      "maze_height": 40,
+      "room_min_size": 4,
+      "room_max_size": 10,
+      "room_dug_percentage": 0.6,
+      "move_speed": 4.5,
+      "floor_spawns": [
+        {"type": "enemy", "density": 30, "min_count": 15, "max_count": 40},
+        {"type": "ammo", "density": 50, "min_count": 10, "max_count": 20},
+        {"type": "health", "density": 80, "min_count": 5, "max_count": 12}
+      ],
+      "entity_types": {
+        "enemy": {"color": [0.6, 0.4, 0.2], "height": 0.6, "aspect": 0.7, "health": 25},
+        "ammo": {"color": [0.8, 0.6, 0.2], "height": 0.2, "aspect": 1.2},
+        "health": {"color": [0.2, 0.9, 0.3], "height": 0.25, "aspect": 1.0}
+      },
+      "shooting_enabled": true,
+      "player_damage_mode": "origin",
+      "bullet_speed": 12.0,
+      "bullet_lifetime": 3.0,
+      "fire_rate": 4.0,
+      "bullet_color": [1, 1, 0],
+      "ammo_enabled": true,
+      "starting_ammo": 10,
+      "ammo_capacity": 99,
+      "ammo_pickup_amount": 5,
+      "enemy_ai_enabled": true,
+      "enemy_fire_rate": 0.4,
+      "enemy_bullet_speed": 4.0,
+      "enemy_accuracy": 0.6,
+      "enemy_sight_range": 12,
+      "enemy_bullet_damage_min": 7,
+      "enemy_bullet_damage_max": 17,
+      "player_health": 100,
+      "health_pickup_amount": 15,
+      "wall_color_ns": [0.4, 0.4, 0.5],
+      "wall_color_ew": [0.35, 0.35, 0.45],
+      "floor_color": [0.25, 0.25, 0.25],
+      "ceiling_color": [0.3, 0.3, 0.35],
+      "flavor_text": "Classic Wolf3D style. Enemies shoot back! Collect ammo, kill guards, find the exit!"
+    },
+
+    {
+      "clone_index": 101,
+      "name": "Wolf AI Test Arena",
+      "generator": "static",
+      "map_name": "wolf_test",
+      "move_speed": 4.0,
+      "turn_speed": 180,
+      "fov": 75,
+      "marker_types": {
+        "D": "door",
+        "E": "guard"
+      },
+      "entity_types": {
+        "guard": {"color": [0.6, 0.4, 0.2], "height": 0.6, "aspect": 0.7, "health": 25}
+      },
+      "victory_condition": "none",
+      "player_damage_mode": "origin",
+      "shooting_enabled": true,
+      "bullet_speed": 12.0,
+      "fire_rate": 4.0,
+      "ammo_enabled": true,
+      "starting_ammo": 20,
+      "ammo_capacity": 99,
+      "player_health": 100,
+      "enemy_ai_enabled": true,
+      "enemy_fire_rate": 0.5,
+      "enemy_bullet_speed": 5.0,
+      "enemy_accuracy": 0.6,
+      "enemy_sight_range": 15,
+      "wall_color_ns": [0.5, 0.4, 0.3],
+      "wall_color_ew": [0.45, 0.35, 0.25],
+      "floor_color": [0.3, 0.3, 0.3],
+      "ceiling_color": [0.4, 0.4, 0.45],
+      "show_minimap": true,
+      "minimap_show_enemies": true,
+      "flavor_text": "Wolf3D AI test arena. 2 rooms, 1 guard, door between."
+    },
+
+    {
+      "clone_index": 102,
+      "name": "Castle Wolfenstein",
+      "generator": "uniform",
+      "maze_width": 50,
+      "maze_height": 50,
+      "room_min_size": 4,
+      "room_max_size": 10,
+      "room_dug_percentage": 0.6,
+      "move_speed": 4.5,
+      "turn_speed": 180,
+      "fov": 70,
+      "floor_spawns": [
+        {"type": "guard", "density": 25, "min_count": 20, "max_count": 50},
+        {"type": "ammo", "density": 50, "min_count": 10, "max_count": 25},
+        {"type": "health", "density": 80, "min_count": 5, "max_count": 15}
+      ],
+      "entity_types": {
+        "guard": {"color": [0.55, 0.4, 0.25], "height": 0.6, "aspect": 0.7, "health": 25},
+        "ammo": {"color": [0.7, 0.55, 0.15], "height": 0.18, "aspect": 1.3},
+        "health": {"color": [0.9, 0.2, 0.2], "height": 0.22, "aspect": 1.0}
+      },
+      "shooting_enabled": true,
+      "player_damage_mode": "origin",
+      "knife_enabled": true,
+      "bullet_speed": 10.0,
+      "bullet_lifetime": 3.5,
+      "bullet_color": [1, 0.9, 0.3],
+      "ammo_enabled": true,
+      "starting_ammo": 8,
+      "ammo_capacity": 99,
+      "ammo_pickup_amount": 4,
+      "enemy_ai_enabled": true,
+      "enemy_fire_rate": 0.6,
+      "enemy_bullet_speed": 4.5,
+      "enemy_bullet_color": [1, 0.4, 0.2],
+      "enemy_accuracy": 0.55,
+      "enemy_sight_range": 12,
+            "enemy_bullet_damage_min": 8,
+      "enemy_bullet_damage_max": 18,
+      "player_health": 100,
+      "health_pickup_amount": 20,
+      "wall_color_ns": [0.45, 0.38, 0.32],
+      "wall_color_ew": [0.38, 0.32, 0.28],
+      "floor_color": [0.22, 0.18, 0.15],
+      "ceiling_color": [0.28, 0.25, 0.22],
+      "goal_color": [0.3, 1, 0.4],
+      "show_minimap": true,
+      "minimap_show_enemies": false,
+      "difficulty_modifier": 1.5,
+      "flavor_text": "Rooms of Nazi guards. Low ammo, distance matters. Knife when desperate!"
+    },
+
+    {
+      "clone_index": 103,
+      "name": "Bunker Blitz",
+      "generator": "uniform",
+      "maze_width": 45,
+      "maze_height": 45,
+      "room_min_size": 3,
+      "room_max_size": 7,
+      "room_dug_percentage": 0.65,
+      "move_speed": 5.5,
+      "turn_speed": 200,
+      "fov": 80,
+      "room_spawns": [
+        {"type": "guard", "count": 3, "room_chance": 1.0, "position": "random"},
+        {"type": "ammo", "count": 2, "room_chance": 0.7, "position": "random"},
+        {"type": "health", "count": 1, "room_chance": 0.5, "position": "random"}
+      ],
+      "entity_types": {
+        "guard": {"color": [0.3, 0.35, 0.3], "height": 0.55, "aspect": 0.75, "health": 20},
+        "ammo": {"color": [0.6, 0.5, 0.1], "height": 0.15, "aspect": 1.4},
+        "health": {"color": [0.2, 0.8, 0.3], "height": 0.2, "aspect": 1.0}
+      },
+      "shooting_enabled": true,
+      "player_damage_mode": "origin",
+      "knife_enabled": true,
+      "bullet_speed": 12.0,
+      "bullet_color": [1, 1, 0.5],
+      "ammo_enabled": true,
+      "starting_ammo": 15,
+      "ammo_capacity": 99,
+      "ammo_pickup_amount": 6,
+      "enemy_ai_enabled": true,
+      "enemy_fire_rate": 0.8,
+      "enemy_bullet_speed": 5.0,
+      "enemy_accuracy": 0.5,
+      "enemy_sight_range": 10,
+            "enemy_bullet_damage_min": 5,
+      "enemy_bullet_damage_max": 12,
+      "player_health": 100,
+      "health_pickup_amount": 15,
+      "wall_color_ns": [0.35, 0.38, 0.35],
+      "wall_color_ew": [0.32, 0.35, 0.32],
+      "floor_color": [0.18, 0.2, 0.18],
+      "ceiling_color": [0.25, 0.28, 0.25],
+      "goal_color": [0.2, 1, 0.3],
+      "show_minimap": true,
+      "minimap_show_enemies": false,
+      "difficulty_modifier": 1.8,
+      "flavor_text": "Fast-paced military bunker. Lots of guards, lots of ammo. Run and gun!"
+    },
+
+    {
+      "clone_index": 104,
+      "name": "Catacombs",
+      "generator": "uniform",
+      "maze_width": 50,
+      "maze_height": 50,
+      "room_min_size": 3,
+      "room_max_size": 6,
+      "room_dug_percentage": 0.5,
+      "move_speed": 3.5,
+      "turn_speed": 150,
+      "fov": 65,
+      "room_spawns": [
+        {"type": "skeleton", "count": 2, "room_chance": 0.9, "position": "random"},
+        {"type": "ammo", "count": 1, "room_chance": 0.5, "position": "random"},
+        {"type": "health", "count": 1, "room_chance": 0.3, "position": "random"}
+      ],
+      "entity_types": {
+        "skeleton": {"color": [0.85, 0.82, 0.75], "height": 0.55, "aspect": 0.6, "health": 15},
+        "ammo": {"color": [0.5, 0.45, 0.3], "height": 0.15, "aspect": 1.2},
+        "health": {"color": [0.8, 0.15, 0.15], "height": 0.2, "aspect": 1.0}
+      },
+      "shooting_enabled": true,
+      "player_damage_mode": "origin",
+      "knife_enabled": true,
+      "bullet_speed": 8.0,
+      "bullet_color": [0.8, 0.8, 0.6],
+      "ammo_enabled": true,
+      "starting_ammo": 12,
+      "ammo_capacity": 50,
+      "ammo_pickup_amount": 4,
+      "enemy_ai_enabled": true,
+      "enemy_fire_rate": 0.4,
+      "enemy_bullet_speed": 3.5,
+      "enemy_bullet_color": [0.6, 0.8, 0.6],
+      "enemy_accuracy": 0.45,
+      "enemy_sight_range": 8,
+            "enemy_bullet_damage_min": 6,
+      "enemy_bullet_damage_max": 14,
+      "player_health": 80,
+      "health_pickup_amount": 20,
+      "wall_color_ns": [0.3, 0.28, 0.25],
+      "wall_color_ew": [0.25, 0.23, 0.2],
+      "floor_color": [0.12, 0.1, 0.08],
+      "ceiling_color": [0.15, 0.12, 0.1],
+      "goal_color": [0.9, 0.8, 0.4],
+      "show_minimap": false,
+      "difficulty_modifier": 2.0,
+      "flavor_text": "Ancient catacombs. Skeletons lurk in the darkness. No minimap."
+    },
+
+    {
+      "clone_index": 105,
+      "name": "Elite Guard Patrol",
+      "generator": "uniform",
+      "maze_width": 45,
+      "maze_height": 45,
+      "room_min_size": 4,
+      "room_max_size": 9,
+      "room_dug_percentage": 0.6,
+      "move_speed": 4.5,
+      "turn_speed": 180,
+      "fov": 70,
+      "floor_spawns": [
+        {"type": "enemy", "density": 25, "min_count": 20, "max_count": 45},
+        {"type": "ammo", "density": 50, "min_count": 10, "max_count": 20},
+        {"type": "health", "density": 80, "min_count": 5, "max_count": 12}
+      ],
+      "weighted_spawns": {
+        "enemy": [
+          {"name": "guard", "weight": 70},
+          {"name": "elite_guard", "weight": 30}
+        ]
+      },
+      "entity_types": {
+        "guard": {"color": [0.55, 0.4, 0.25], "height": 0.6, "aspect": 0.7, "health": 25},
+        "elite_guard": {"color": [0.3, 0.3, 0.35], "height": 0.65, "aspect": 0.75, "health": 50},
+        "enemy": {"color": [0.55, 0.4, 0.25], "height": 0.6, "aspect": 0.7, "health": 25},
+        "ammo": {"color": [0.7, 0.55, 0.15], "height": 0.18, "aspect": 1.3},
+        "health": {"color": [0.9, 0.2, 0.2], "height": 0.22, "aspect": 1.0}
+      },
+      "shooting_enabled": true,
+      "player_damage_mode": "origin",
+      "knife_enabled": true,
+      "bullet_speed": 10.0,
+      "bullet_color": [1, 0.9, 0.3],
+      "ammo_enabled": true,
+      "starting_ammo": 12,
+      "ammo_capacity": 99,
+      "ammo_pickup_amount": 5,
+      "enemy_ai_enabled": true,
+      "enemy_fire_rate": 0.5,
+      "enemy_bullet_speed": 4.5,
+      "enemy_accuracy": 0.6,
+      "enemy_sight_range": 12,
+            "enemy_bullet_damage_min": 8,
+      "enemy_bullet_damage_max": 15,
+      "player_health": 100,
+      "health_pickup_amount": 25,
+      "wall_color_ns": [0.4, 0.4, 0.45],
+      "wall_color_ew": [0.35, 0.35, 0.4],
+      "floor_color": [0.2, 0.2, 0.22],
+      "ceiling_color": [0.25, 0.25, 0.28],
+      "goal_color": [0.2, 1, 0.3],
+      "show_minimap": true,
+      "minimap_show_enemies": false,
+      "difficulty_modifier": 1.7,
+      "flavor_text": "70% regular guards (25 HP), 30% elite guards (50 HP, darker). Watch out!"
     }
   ]
 }
