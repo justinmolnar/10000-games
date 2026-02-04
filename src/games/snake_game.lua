@@ -561,17 +561,35 @@ function SnakeGame:_moveGridSnake(snake)
 
     -- Check collisions at proposed position (walls/obstacles before moving)
     local died = false
+    local skip_move = false
     self.entity_controller:checkCollision({x = new_head.x, y = new_head.y, grid = true}, {
         bounce = function()
-            snake.direction = self.movement_controller:findGridBounceDirection(
-                head, snake.direction, function(x, y)
-                    for _, e in ipairs(self.entity_controller:checkCollision({x = x, y = y, grid = true})) do
-                        if e.category == "obstacle" then return true end
+            local is_blocked_fn = function(x, y)
+                -- Check arena bounds for shaped arenas
+                if self.arena_controller.safe_zone_mode then
+                    if not self:isInsideArena({x = x, y = y}) then return true end
+                end
+                -- Check all blocking entities (obstacles and other snake bodies)
+                for _, e in ipairs(self.entity_controller:checkCollision({x = x, y = y, grid = true})) do
+                    if e.category == "obstacle" then return true end
+                    -- Check snake body (but allow own tail if phase_through_tail)
+                    if e.category == "snake_body" then
+                        if e.owner ~= snake or not self.params.phase_through_tail then
+                            return true
+                        end
                     end
-                    return false
-                end)
+                end
+                return false
+            end
+            snake.direction = self.movement_controller:findGridBounceDirection(head, snake.direction, is_blocked_fn)
+            local candidate = {x = head.x + snake.direction.x, y = head.y + snake.direction.y}
+            -- Safety: if bounce destination is also blocked, skip movement entirely
+            if is_blocked_fn(candidate.x, candidate.y) then
+                skip_move = true
+            else
+                new_head = candidate
+            end
             if is_primary then self.movement_controller:initGridState("snake", snake.direction.x, snake.direction.y) end
-            new_head = {x = head.x + snake.direction.x, y = head.y + snake.direction.y}
         end,
         death = function(entity)
             if entity.category == "food" then return end
@@ -599,6 +617,7 @@ function SnakeGame:_moveGridSnake(snake)
         end
     })
     if died then return end
+    if skip_move then return end  -- Trapped: wait for space to open
 
     -- Move chain - cascade positions, head moves to new position
     local old_tail_x, old_tail_y = self.entity_controller:moveChain(snake.body, new_head.x, new_head.y)
@@ -689,6 +708,9 @@ end
 --------------------------------------------------------------------------------
 
 function SnakeGame:updateSmoothMovement(dt)
+    -- Safety: ensure movement controller exists and has valid state
+    if not self.movement_controller then return end
+
     local girth = self.params.girth or 1
     local head_radius = 0.3 + (girth * 0.5)
     local food_radius = 0.35 + (girth * 0.5)
@@ -706,18 +728,61 @@ function SnakeGame:updateSmoothMovement(dt)
 end
 
 function SnakeGame:_updateSmoothSnake(snake, entity_id, dt, head_radius, food_radius, is_primary)
-    -- Movement via MovementController
-    local entity = {x = snake.smooth_x, y = snake.smooth_y}
-    local bounds = {
-        width = self.grid_width, height = self.grid_height,
-        wrap_x = (self.params.wall_mode == "wrap"), wrap_y = (self.params.wall_mode == "wrap")
-    }
-    local speed = (self.params.snake_speed or 8) * 0.5
+    -- Safety: ensure smooth state exists
+    if not snake.smooth_x or not snake.smooth_y then
+        snake.smooth_x = snake.body[1].x + 0.5
+        snake.smooth_y = snake.body[1].y + 0.5
+    end
+    if not snake.smooth_trail then
+        local PhysicsUtils = require('src.utils.game_components.physics_utils')
+        snake.smooth_trail = PhysicsUtils.createTrailSystem({
+            max_length = 0, track_distance = true, color = {1,1,1,1}, line_width = 1, angle_offset = 0
+        })
+        snake.smooth_target_length = self.params.smooth_initial_length or 3
+    end
 
-    local dx, dy, wrapped, out_of_bounds = self.movement_controller:updateSmooth(
-        dt, entity_id, entity, bounds, speed, self.params.turn_speed)
-    snake.smooth_x, snake.smooth_y = entity.x, entity.y
+    -- Ensure smooth state exists (recover with current angle if missing)
+    if not self.movement_controller:getSmoothState(entity_id) then
+        self.movement_controller:initSmoothState(entity_id, snake.smooth_angle or 0)
+    end
+
+    -- Set auto-forward movement (snake always moves forward)
+    self.movement_controller:setSmoothMovement(entity_id, true, false, false, false)
+
+    -- Get movement delta from MovementController
+    local speed = (self.params.snake_speed or 8) * 0.5
+    local dx, dy = self.movement_controller:updateSmooth(dt, entity_id, speed, self.params.turn_speed)
+
+    -- Safety: ensure we have valid movement (NaN check)
+    if dx ~= dx then dx = 0 end
+    if dy ~= dy then dy = 0 end
+
+    -- Apply movement
+    snake.smooth_x = snake.smooth_x + dx
+    snake.smooth_y = snake.smooth_y + dy
+
+    -- Safety: if position became NaN, reset to center
+    if snake.smooth_x ~= snake.smooth_x or snake.smooth_y ~= snake.smooth_y then
+        snake.smooth_x = self.grid_width / 2
+        snake.smooth_y = self.grid_height / 2
+    end
+
     snake.smooth_angle = self.movement_controller:getSmoothAngle(entity_id)
+
+    -- Handle wrap/bounds
+    local wrapped, out_of_bounds = false, false
+    local wrap = (self.params.wall_mode == "wrap")
+    if wrap then
+        if snake.smooth_x < 0 then snake.smooth_x = snake.smooth_x + self.grid_width; wrapped = true end
+        if snake.smooth_x >= self.grid_width then snake.smooth_x = snake.smooth_x - self.grid_width; wrapped = true end
+        if snake.smooth_y < 0 then snake.smooth_y = snake.smooth_y + self.grid_height; wrapped = true end
+        if snake.smooth_y >= self.grid_height then snake.smooth_y = snake.smooth_y - self.grid_height; wrapped = true end
+    else
+        if snake.smooth_x < 0 or snake.smooth_x >= self.grid_width or
+           snake.smooth_y < 0 or snake.smooth_y >= self.grid_height then
+            out_of_bounds = true
+        end
+    end
 
     -- Trail management
     if wrapped then snake.smooth_trail:clear() end

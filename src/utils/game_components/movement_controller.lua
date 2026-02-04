@@ -343,8 +343,8 @@ function MovementController:tickGrid(dt, entity_id)
     if not self.grid_state[entity_id] then
         self.grid_state[entity_id] = {
             move_timer = 0,
-            direction = {x = 0, y = 0},
-            next_direction = {x = 0, y = 0}
+            direction = {x = 1, y = 0},      -- Default to right, not zero
+            next_direction = {x = 1, y = 0}  -- Default to right, not zero
         }
     end
     local state = self.grid_state[entity_id]
@@ -387,11 +387,16 @@ end
 function MovementController:applyQueuedDirection(entity_id)
     entity_id = entity_id or "default"
     local state = self.grid_state[entity_id]
-    if not state then return {x = 0, y = 0} end
+    if not state then return {x = 1, y = 0} end  -- Default to right if no state
 
     if state.next_direction.x ~= 0 or state.next_direction.y ~= 0 then
         state.direction.x = state.next_direction.x
         state.direction.y = state.next_direction.y
+    end
+
+    -- Ensure we never return zero direction (prevents softlock)
+    if state.direction.x == 0 and state.direction.y == 0 then
+        state.direction.x = 1  -- Default to right
     end
 
     return {x = state.direction.x, y = state.direction.y}
@@ -408,10 +413,16 @@ end
 -- Initialize grid state
 function MovementController:initGridState(entity_id, dir_x, dir_y)
     entity_id = entity_id or "default"
+    dir_x = dir_x or 0
+    dir_y = dir_y or 0
+    -- Ensure non-zero direction (default to right)
+    if dir_x == 0 and dir_y == 0 then
+        dir_x = 1
+    end
     self.grid_state[entity_id] = {
         move_timer = 0,
-        direction = {x = dir_x or 0, y = dir_y or 0},
-        next_direction = {x = dir_x or 0, y = dir_y or 0}
+        direction = {x = dir_x, y = dir_y},
+        next_direction = {x = dir_x, y = dir_y}
     }
 end
 
@@ -423,11 +434,23 @@ end
 
 -- Set speed dynamically
 function MovementController:setSpeed(speed)
-    self.cells_per_second = speed
+    -- Ensure speed is always positive to prevent freeze
+    self.cells_per_second = math.max(speed or 1, 0.1)
 end
 
 -- Find perpendicular bounce direction for grid movement
 function MovementController:findGridBounceDirection(head, current_dir, is_blocked_fn)
+    -- Handle zero direction: try all four directions
+    if current_dir.x == 0 and current_dir.y == 0 then
+        local all_dirs = {{x = 1, y = 0}, {x = -1, y = 0}, {x = 0, y = 1}, {x = 0, y = -1}}
+        for _, d in ipairs(all_dirs) do
+            if not is_blocked_fn(head.x + d.x, head.y + d.y) then
+                return d
+            end
+        end
+        return {x = 1, y = 0}  -- Fallback to right
+    end
+
     local dirs = current_dir.x ~= 0
         and {{x = 0, y = -1}, {x = 0, y = 1}}
         or {{x = -1, y = 0}, {x = 1, y = 0}}
@@ -440,7 +463,12 @@ function MovementController:findGridBounceDirection(head, current_dir, is_blocke
     if #possible > 0 then
         return possible[math.random(#possible)]
     end
-    return {x = -current_dir.x, y = -current_dir.y}
+    -- If perpendicular directions blocked, try reversing
+    local reverse = {x = -current_dir.x, y = -current_dir.y}
+    if reverse.x == 0 and reverse.y == 0 then
+        return {x = 1, y = 0}  -- Fallback if somehow still zero
+    end
+    return reverse
 end
 
 -- ============================================================================
@@ -453,7 +481,11 @@ function MovementController:initSmoothState(entity_id, angle)
     self.smooth_state[entity_id] = {
         angle = angle or 0,
         turn_left = false,
-        turn_right = false
+        turn_right = false,
+        move_forward = false,
+        move_backward = false,
+        strafe_left = false,
+        strafe_right = false
     }
 end
 
@@ -465,6 +497,20 @@ function MovementController:setSmoothTurn(entity_id, left, right)
         state.turn_left = left
         state.turn_right = right
     end
+end
+
+-- Set movement flags
+function MovementController:setSmoothMovement(entity_id, forward, backward, strafe_left, strafe_right)
+    entity_id = entity_id or "default"
+    local state = self.smooth_state[entity_id]
+    if not state then
+        self:initSmoothState(entity_id, 0)
+        state = self.smooth_state[entity_id]
+    end
+    state.move_forward = forward
+    state.move_backward = backward
+    state.strafe_left = strafe_left
+    state.strafe_right = strafe_right
 end
 
 -- Get smooth state
@@ -483,52 +529,86 @@ end
 function MovementController:setSmoothAngle(entity_id, angle)
     entity_id = entity_id or "default"
     local state = self.smooth_state[entity_id]
-    if state then state.angle = angle end
+    if state then
+        local old_angle = state.angle
+        state.angle = angle
+        local diff = math.abs(angle - old_angle)
+        if diff > math.pi then diff = 2 * math.pi - diff end
+        if diff > math.rad(45) then
+            print(string.format("[MC DEBUG] setSmoothAngle(%s): %.2f -> %.2f (%.1f deg change)",
+                entity_id, math.deg(old_angle), math.deg(angle), math.deg(diff)))
+        end
+    end
 end
 
--- Update smooth movement
-function MovementController:updateSmooth(dt, entity_id, entity, bounds, speed, turn_speed_deg)
+-- Update smooth movement - computes dx, dy from movement flags
+-- Caller is responsible for applying position and handling collision/bounds
+function MovementController:updateSmooth(dt, entity_id, speed, turn_speed_deg)
     entity_id = entity_id or "default"
     local state = self.smooth_state[entity_id]
-    if not state then return 0, 0, false, false end
+    if not state then
+        print("[MC DEBUG] smooth_state missing for " .. entity_id .. ", creating with angle=0")
+        self:initSmoothState(entity_id, 0)
+        state = self.smooth_state[entity_id]
+    end
 
+    local angle_before = state.angle
+
+    -- Update angle from turn flags
     local turn_rate = math.rad(turn_speed_deg or 180) * dt
     if state.turn_left then state.angle = state.angle - turn_rate end
     if state.turn_right then state.angle = state.angle + turn_rate end
 
-    while state.angle > math.pi do state.angle = state.angle - 2 * math.pi end
-    while state.angle < -math.pi do state.angle = state.angle + 2 * math.pi end
+    local angle_after_turn = state.angle
+
+    -- Normalize angle to [-pi, pi] (with safety check for NaN/infinity)
+    if state.angle ~= state.angle or math.abs(state.angle) == math.huge then
+        print("[MC DEBUG] angle was NaN/inf, resetting to 0")
+        state.angle = 0
+    else
+        state.angle = ((state.angle + math.pi) % (2 * math.pi)) - math.pi
+    end
+
+    -- Debug: detect large angle changes (more than 45 degrees in one frame)
+    local angle_diff = math.abs(state.angle - angle_before)
+    if angle_diff > math.pi then angle_diff = 2 * math.pi - angle_diff end
+    if angle_diff > math.rad(45) then
+        print(string.format("[MC DEBUG] LARGE ANGLE CHANGE: before=%.2f after_turn=%.2f after_norm=%.2f diff=%.1f deg, turn_left=%s turn_right=%s dt=%.4f",
+            angle_before, angle_after_turn, state.angle, math.deg(angle_diff),
+            tostring(state.turn_left), tostring(state.turn_right), dt))
+    end
+
+    -- Compute movement from flags
+    local forward = (state.move_forward and 1 or 0) - (state.move_backward and 1 or 0)
+    local strafe = (state.strafe_right and 1 or 0) - (state.strafe_left and 1 or 0)
 
     local move_speed = (speed or 8) * dt
-    local dx = math.cos(state.angle) * move_speed
-    local dy = math.sin(state.angle) * move_speed
+    local strafe_angle = state.angle + math.pi / 2
 
-    entity.x = entity.x + dx
-    entity.y = entity.y + dy
+    local cos_angle = math.cos(state.angle)
+    local sin_angle = math.sin(state.angle)
 
-    local wrapped, out_of_bounds = false, false
+    -- Guard against floating point issues at exact cardinal angles
+    if math.abs(cos_angle) < 1e-10 then cos_angle = 0 end
+    if math.abs(sin_angle) < 1e-10 then sin_angle = 0 end
 
-    if bounds.wrap_x then
-        if entity.x < 0 then entity.x = entity.x + bounds.width; wrapped = true end
-        if entity.x >= bounds.width then entity.x = entity.x - bounds.width; wrapped = true end
-    else
-        if entity.x < 0 or entity.x >= bounds.width then out_of_bounds = true end
-    end
+    local dx = cos_angle * forward * move_speed +
+               math.cos(strafe_angle) * strafe * move_speed
+    local dy = sin_angle * forward * move_speed +
+               math.sin(strafe_angle) * strafe * move_speed
 
-    if bounds.wrap_y then
-        if entity.y < 0 then entity.y = entity.y + bounds.height; wrapped = true end
-        if entity.y >= bounds.height then entity.y = entity.y - bounds.height; wrapped = true end
-    else
-        if entity.y < 0 or entity.y >= bounds.height then out_of_bounds = true end
-    end
-
-    return dx, dy, wrapped, out_of_bounds
+    return dx, dy
 end
 
 -- Initialize both grid and smooth state
 function MovementController:initState(entity_id, direction)
     entity_id = entity_id or "default"
-    local dir_x, dir_y = direction and direction.x or 1, direction and direction.y or 0
+    local dir_x = direction and direction.x or 0
+    local dir_y = direction and direction.y or 0
+    -- Ensure we have a valid non-zero direction (default to right)
+    if dir_x == 0 and dir_y == 0 then
+        dir_x = 1
+    end
     local angle = math.atan2(dir_y, dir_x)
     self:initGridState(entity_id, dir_x, dir_y)
     self:initSmoothState(entity_id, angle)

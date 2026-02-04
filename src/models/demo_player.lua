@@ -107,9 +107,9 @@ function DemoPlayer:update(dt)
     local current_time = love.timer.getTime()
     local time_since_last = current_time - self.last_step_time
     
-    -- Calculate how many 60 FPS frames have elapsed
-    local steps_to_take = math.floor(time_since_last / (1/60))
-    
+    -- Calculate how many 60 FPS frames have elapsed (cap to prevent lag spiral)
+    local steps_to_take = math.min(4, math.floor(time_since_last / (1/60)))
+
     if steps_to_take > 0 then
         -- Take the calculated number of steps
         for i = 1, steps_to_take do

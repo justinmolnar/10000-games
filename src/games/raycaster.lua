@@ -854,6 +854,11 @@ function Raycaster:handleInput(dt)
 end
 
 function Raycaster:handleSmoothInput(dt)
+    -- Ensure smooth state exists (might be missing if movement_controller was recreated)
+    if not self.movement_controller:getSmoothState("player") then
+        self.movement_controller:initSmoothState("player", self.player.angle)
+    end
+
     -- Set turn flags
     local left, right = self:isKeyDown('left', 'a'), self:isKeyDown('right', 'd')
     self.movement_controller:setSmoothTurn("player", left, right)
