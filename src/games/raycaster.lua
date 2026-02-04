@@ -18,10 +18,282 @@ function Raycaster:init(game_data, cheats, di, variant_override)
     self.params = self.di.components.SchemaLoader.load(self.variant, "raycaster_schema", runtimeCfg)
 
     self:applyCheats({speed_modifier = {"move_speed", "turn_speed"}})
+    self:loadSprites()
     self:setupComponents()
     self:generateMaze()
 
+    -- Initialize score
+    self.score = 0
+
     self.view = RaycasterView:new(self)
+end
+
+function Raycaster:loadSprites()
+    self.sprites = {}
+    local sprite_base = "assets/sprites/games/raycaster/pickups/"
+
+    local sprite_files = {
+        -- Health
+        "health_food", "health_medkit", "health_dogfood", "health_blood",
+        -- Ammo
+        "ammo_box", "ammo_clip",
+        -- Treasure
+        "treasure_gold_bar", "treasure_chalice", "treasure_crown", "treasure_chest", "treasure_cross",
+        -- Keys
+        "key_gold", "key_silver"
+    }
+
+    for _, name in ipairs(sprite_files) do
+        local path = sprite_base .. name .. ".png"
+        local success, sprite = pcall(love.graphics.newImage, path)
+        if success then
+            self.sprites[name] = sprite
+        end
+    end
+
+    -- Load guard sprites
+    self:loadGuardSprites()
+end
+
+-- Load sprite, crop to content bounds, scale so largest dim = 64, bottom-align on 64x64 canvas
+-- Returns {image=Image, y_offset=number} or nil
+function Raycaster:loadSpriteWithBounds(path)
+    local success, imageData = pcall(love.image.newImageData, path)
+    if not success then return nil end
+
+    local w = imageData:getWidth()
+    local h = imageData:getHeight()
+
+    -- Find content bounding box
+    local top, bottom, left, right = h, -1, w, -1
+    for y = 0, h - 1 do
+        for x = 0, w - 1 do
+            local _, _, _, a = imageData:getPixel(x, y)
+            if a > 0.1 then
+                if y < top then top = y end
+                if y > bottom then bottom = y end
+                if x < left then left = x end
+                if x > right then right = x end
+            end
+        end
+    end
+
+    -- No content found
+    if bottom < 0 then
+        local image = love.graphics.newImage(imageData)
+        return {image = image, y_offset = 0}
+    end
+
+    -- Crop to content bounds
+    local crop_w = right - left + 1
+    local crop_h = bottom - top + 1
+    local cropped = love.image.newImageData(crop_w, crop_h)
+    cropped:paste(imageData, 0, 0, left, top, crop_w, crop_h)
+
+    -- Scale up so the largest dimension reaches 64
+    local target = 64
+    local scale = math.min(target / crop_w, target / crop_h)
+    local scaled_w = math.floor(crop_w * scale)
+    local scaled_h = math.floor(crop_h * scale)
+
+    -- Draw scaled content onto 64x64 canvas, bottom-aligned
+    local canvas = love.graphics.newCanvas(target, target)
+    local temp_image = love.graphics.newImage(cropped)
+    local prev_canvas = love.graphics.getCanvas()
+    local prev_blend = {love.graphics.getBlendMode()}
+    love.graphics.setCanvas(canvas)
+    love.graphics.clear(0, 0, 0, 0)
+    love.graphics.setBlendMode("replace")
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(temp_image, (target - scaled_w) / 2, target - scaled_h, 0, scale, scale)
+    love.graphics.setBlendMode(unpack(prev_blend))
+    love.graphics.setCanvas(prev_canvas)
+
+    local finalData = canvas:newImageData()
+    local image = love.graphics.newImage(finalData)
+    return {image = image, y_offset = 0}
+end
+
+function Raycaster:loadGuardSprites()
+    self.guard_sprites = {}
+    local base = "assets/sprites/games/raycaster/guards/guard/"
+
+    local directions = {"south", "south-east", "east", "north-east", "north", "north-west", "west", "south-west"}
+
+    -- Load standing rotations
+    self.guard_sprites.stand = {}
+    for _, dir in ipairs(directions) do
+        local data = self:loadSpriteWithBounds(base .. "rotations/" .. dir .. ".png")
+        if data then
+            self.guard_sprites.stand[dir] = data
+        end
+    end
+
+    -- Load walk animations (6 frames per direction)
+    self.guard_sprites.walk = {}
+    for _, dir in ipairs(directions) do
+        self.guard_sprites.walk[dir] = {}
+        for i = 0, 5 do
+            local data = self:loadSpriteWithBounds(base .. "animations/walk/" .. dir .. "/frame_00" .. i .. ".png")
+            if data then
+                table.insert(self.guard_sprites.walk[dir], data)
+            end
+        end
+    end
+
+    -- Load pain animations (4 frames per direction)
+    self.guard_sprites.pain = {}
+    for _, dir in ipairs(directions) do
+        self.guard_sprites.pain[dir] = {}
+        for i = 0, 3 do
+            local data = self:loadSpriteWithBounds(base .. "animations/pain/" .. dir .. "/frame_00" .. i .. ".png")
+            if data then
+                table.insert(self.guard_sprites.pain[dir], data)
+            end
+        end
+    end
+
+    -- Load shoot animation (south only, 4 frames)
+    self.guard_sprites.shoot = {}
+    for i = 0, 3 do
+        local data = self:loadSpriteWithBounds(base .. "animations/shoot/south/frame_00" .. i .. ".png")
+        if data then
+            table.insert(self.guard_sprites.shoot, data)
+        end
+    end
+
+    -- Load falling/death animation (7 frames per direction)
+    self.guard_sprites.fall = {}
+    for _, dir in ipairs(directions) do
+        self.guard_sprites.fall[dir] = {}
+        for i = 0, 6 do
+            local data = self:loadSpriteWithBounds(base .. "animations/falling/" .. dir .. "/frame_00" .. i .. ".png")
+            if data then
+                table.insert(self.guard_sprites.fall[dir], data)
+            end
+        end
+    end
+
+    -- Load dead/corpse animation (4 frames per direction)
+    self.guard_sprites.dead = {}
+    for _, dir in ipairs(directions) do
+        self.guard_sprites.dead[dir] = {}
+        for i = 0, 3 do
+            local data = self:loadSpriteWithBounds(base .. "animations/dead/dying on ground/" .. dir .. "/frame_00" .. i .. ".png")
+            if data then
+                table.insert(self.guard_sprites.dead[dir], data)
+            end
+        end
+    end
+
+    print(string.format("[Raycaster] Loaded guard sprites: stand=%d, walk=%d dirs, pain=%d dirs, shoot=%d, fall=%d dirs, dead=%d dirs",
+        self:countTable(self.guard_sprites.stand),
+        self:countTable(self.guard_sprites.walk),
+        self:countTable(self.guard_sprites.pain),
+        #self.guard_sprites.shoot,
+        self:countTable(self.guard_sprites.fall),
+        self:countTable(self.guard_sprites.dead)))
+end
+
+function Raycaster:countTable(t)
+    local count = 0
+    for _ in pairs(t) do count = count + 1 end
+    return count
+end
+
+-- Get direction name based on angle from player's view to enemy
+function Raycaster:getDirectionFromAngle(enemy, player)
+    -- Calculate angle from player to enemy
+    local dx = enemy.x - player.x
+    local dy = enemy.y - player.y
+    local angle_to_enemy = math.atan2(dy, dx)
+
+    -- Calculate relative angle (enemy facing relative to player's view)
+    local enemy_facing = enemy.angle or 0
+    local relative = enemy_facing - angle_to_enemy + math.pi
+
+    -- Normalize to 0-2pi
+    while relative < 0 do relative = relative + 2 * math.pi end
+    while relative >= 2 * math.pi do relative = relative - 2 * math.pi end
+
+    -- Map to 8 directions (each 45 degrees)
+    local sector = math.floor((relative + math.pi / 8) / (math.pi / 4)) % 8
+    local directions = {"south", "south-west", "west", "north-west", "north", "north-east", "east", "south-east"}
+    return directions[sector + 1]
+end
+
+-- Get current sprite for enemy based on state and animation
+function Raycaster:getEnemySprite(entity, direction)
+    if not self.guard_sprites then return nil end
+
+    local state = entity.state_machine and entity.state_machine.state or "stand"
+    local anim_frame = entity.anim_frame or 0
+
+    -- Lock direction the moment dying begins
+    if state == "die" or state == "dead" or entity.is_corpse then
+        if not entity.death_direction then
+            entity.death_direction = direction
+        end
+        local dir = entity.death_direction
+
+        -- Already finished: show frozen last frame
+        if entity.death_sprite then
+            return entity.death_sprite
+        end
+
+        -- Dying: play fall animation with locked direction
+        if state == "die" then
+            local fall = self.guard_sprites.fall[dir]
+            if fall and #fall > 0 then
+                local frame = math.min(math.floor(anim_frame) + 1, #fall)
+                return fall[frame]
+            end
+        end
+
+        -- Dead/corpse: lock the last frame of dead anim forever
+        local dead = self.guard_sprites.dead[dir]
+        if dead and #dead > 0 then
+            entity.death_sprite = dead[#dead]
+            return entity.death_sprite
+        end
+    end
+
+    -- Pain
+    if state == "pain" then
+        local pain = self.guard_sprites.pain[direction]
+        if pain and #pain > 0 then
+            local frame = math.floor(anim_frame) + 1
+            frame = math.min(frame, #pain)
+            return pain[frame]
+        end
+    end
+
+    -- Attack/shoot
+    if state == "attack" then
+        local shoot = self.guard_sprites.shoot
+        if shoot and #shoot > 0 then
+            local frame = math.floor(anim_frame) + 1
+            frame = math.min(frame, #shoot)
+            return shoot[frame]
+        end
+    end
+
+    -- Chase/walking
+    if state == "chase" then
+        local walk = self.guard_sprites.walk[direction]
+        if walk and #walk > 0 then
+            local frame = (math.floor(anim_frame) % #walk) + 1
+            return walk[frame]
+        end
+    end
+
+    -- Standing (default)
+    local stand = self.guard_sprites.stand[direction]
+    if stand then
+        return stand
+    end
+
+    return nil
 end
 
 function Raycaster:setupComponents()
@@ -62,9 +334,45 @@ function Raycaster:setupComponents()
             aspect = type_def.aspect or 1.0,
             y_offset = type_def.y_offset or 0,
             shape = type_def.shape or "diamond",
-            radius = 0.3,  -- For collision
-            health = type_def.health  -- Enemies have health, pickups don't
+            radius = 0.3,
+            health = type_def.health,
+            sprite = type_def.sprite and self.sprites[type_def.sprite] or nil,
+            pickup_type = type_def.pickup_type,
+            pickup_value = type_def.pickup_value
         }
+    end
+
+    -- Add built-in pickup types with sprites
+    local builtin_pickups = {
+        -- Treasure (points)
+        treasure_gold_bar = {height = 0.3, pickup_type = "treasure", pickup_value = 100, sprite = "treasure_gold_bar", color = {1, 0.85, 0}},
+        treasure_chalice = {height = 0.35, pickup_type = "treasure", pickup_value = 500, sprite = "treasure_chalice", color = {1, 0.85, 0}},
+        treasure_crown = {height = 0.35, pickup_type = "treasure", pickup_value = 1000, sprite = "treasure_crown", color = {1, 0.85, 0}},
+        treasure_chest = {height = 0.4, pickup_type = "treasure", pickup_value = 2500, sprite = "treasure_chest", color = {0.6, 0.4, 0.2}},
+        treasure_cross = {height = 0.4, pickup_type = "treasure", pickup_value = 5000, sprite = "treasure_cross", color = {1, 0.85, 0}},
+        -- Health
+        health_dogfood = {height = 0.25, pickup_type = "health", pickup_value = 4, sprite = "health_dogfood", color = {0.6, 0.4, 0.3}},
+        health_food = {height = 0.3, pickup_type = "health", pickup_value = 10, sprite = "health_food", color = {0.8, 0.6, 0.4}},
+        health_medkit = {height = 0.35, pickup_type = "health", pickup_value = 25, sprite = "health_medkit", color = {1, 1, 1}},
+        health_blood = {height = 0.3, pickup_type = "health", pickup_value = 50, sprite = "health_blood", color = {0.8, 0, 0}},
+        -- Ammo
+        ammo_clip = {height = 0.25, pickup_type = "ammo", pickup_value = 4, sprite = "ammo_clip", color = {0.6, 0.6, 0.2}},
+        ammo_box = {height = 0.3, pickup_type = "ammo", pickup_value = 10, sprite = "ammo_box", color = {0.5, 0.4, 0.2}}
+    }
+
+    for type_name, def in pairs(builtin_pickups) do
+        if not entity_types[type_name] then
+            entity_types[type_name] = {
+                color = def.color,
+                height = def.height,
+                aspect = 1.0,
+                y_offset = 0,
+                radius = 0.3,
+                sprite = self.sprites[def.sprite],
+                pickup_type = def.pickup_type,
+                pickup_value = def.pickup_value
+            }
+        end
     end
 
     if next(entity_types) then
@@ -261,6 +569,11 @@ function Raycaster:generateMaze()
     local door_count = #self.doors
     print(string.format("[Raycaster] %dx%d maze, start=(%.1f,%.1f) goal=(%d,%d) dots=%d entities=%d doors=%d",
         self.map_width, self.map_height, self.player.x, self.player.y, self.goal.x, self.goal.y, self.total_dots, entity_count, door_count))
+
+    -- Compute critical path for debug visualization
+    if self.maze_generator.computeCriticalPath then
+        self.critical_path = self.maze_generator:computeCriticalPath(self.player, self.goal)
+    end
 end
 
 -- Initialize enemy entity with state machine (any entity with health is an enemy)
@@ -272,14 +585,19 @@ function Raycaster:initializeEnemy(entity)
     local dy = entity.y - self.player.y
     entity.angle = math.atan2(dy, dx)
 
+    -- Animation state
+    entity.anim_frame = 0
+    entity.anim_speed = 8  -- frames per second
+    entity.use_guard_sprites = true  -- flag to use guard sprite system
+
     -- Attach state machine for AI
     entity.state_machine = self.di.components.StateMachine:new({
         states = {
             stand = {duration = 0},
             chase = {duration = 0},
             attack = {duration = 30, next = "chase", interruptible = false},
-            pain = {duration = 10, next = "chase", interruptible = false},
-            die = {duration = 60, next = "dead", interruptible = false},
+            pain = {duration = 15, next = "chase", interruptible = false},
+            die = {duration = 45, next = "dead", interruptible = false},
             dead = {duration = 0}
         },
         initial = "stand"
@@ -309,6 +627,7 @@ function Raycaster:updateGameLogic(dt)
     self.metrics.dots_collected = self.dots_collected
     self.metrics.enemies_killed = self.enemies_killed or 0
     self.metrics.ammo = self.player_controller and self.player_controller:getAmmo() or nil
+    self.metrics.score = self.score or 0
 end
 
 function Raycaster:handleShooting(dt)
@@ -411,20 +730,47 @@ function Raycaster:updateEnemyAI(dt)
             -- Update state machine timing (convert dt to tics at 60fps)
             entity.state_machine:update(dt * 60)
 
+            -- Update animation frames
+            local state = entity.state_machine.state
+            local anim_speed = entity.anim_speed or 8
+
+            if state == "pain" then
+                -- Pain: play through 4 frames during pain duration
+                entity.anim_frame = (entity.anim_frame or 0) + dt * anim_speed
+                if entity.anim_frame > 3 then entity.anim_frame = 3 end
+            elseif state == "die" then
+                -- Die/fall: play through 7 frames
+                entity.anim_frame = (entity.anim_frame or 0) + dt * anim_speed
+                if entity.anim_frame > 6 then entity.anim_frame = 6 end
+            elseif state == "attack" then
+                -- Attack: play through 4 frames
+                entity.anim_frame = (entity.anim_frame or 0) + dt * anim_speed
+                if entity.anim_frame > 3 then entity.anim_frame = 3 end
+            elseif state == "chase" then
+                -- Walk: loop through 6 frames
+                entity.anim_frame = (entity.anim_frame or 0) + dt * anim_speed
+            elseif state == "dead" then
+                -- Dead: stay on last frame
+                entity.anim_frame = 6
+            else
+                -- Stand: no animation
+                entity.anim_frame = 0
+            end
+
             local dx = self.player.x - entity.x
             local dy = self.player.y - entity.y
             local dist = math.sqrt(dx * dx + dy * dy)
             local can_see = self:hasLineOfSight(entity.x, entity.y, self.player.x, self.player.y)
 
             -- Attack state: stop moving, wait for animation to finish
-            if entity.state_machine.state == "attack" then
+            if state == "attack" then
                 -- Face player while attacking
                 entity.angle = math.atan2(dy, dx)
                 goto continue
             end
 
             -- Pain state: stagger, can't move or attack, auto-returns to chase
-            if entity.state_machine.state == "pain" then
+            if state == "pain" then
                 -- Clear movement target so they re-evaluate after pain
                 entity.target_x = nil
                 entity.target_y = nil
@@ -432,14 +778,14 @@ function Raycaster:updateEnemyAI(dt)
             end
 
             -- Die state: falling animation
-            if entity.state_machine.state == "die" then
-                entity.die_progress = (entity.die_progress or 0) + dt * 2  -- Fall over ~0.5s
+            if state == "die" then
+                entity.die_progress = (entity.die_progress or 0) + dt * 2
                 if entity.die_progress > 1 then entity.die_progress = 1 end
                 goto continue
             end
 
             -- Dead state: corpse on ground, do nothing
-            if entity.state_machine.state == "dead" then
+            if state == "dead" then
                 entity.is_corpse = true
                 goto continue
             end
@@ -503,6 +849,7 @@ end
 function Raycaster:enterAttack(entity)
     if entity.state_machine.state == "attack" then return end
     entity.state_machine:setState("attack")
+    entity.anim_frame = 0  -- Reset animation
 
     -- Fire projectile at player
     if self.projectile_system then
@@ -797,6 +1144,7 @@ function Raycaster:updateProjectiles(dt)
                                 if entity.state_machine then
                                     entity.state_machine:forceState("die")
                                     entity.die_progress = 0  -- For fall animation
+                                    entity.anim_frame = 0    -- Reset animation
                                 end
                                 self.enemies_killed = (self.enemies_killed or 0) + 1
                                 self.visual_effects:flash({color = {1, 0.5, 0, 0.3}, duration = 0.1, mode = "fade_out"})
@@ -804,6 +1152,7 @@ function Raycaster:updateProjectiles(dt)
                                 -- Enter pain state (interrupts current action)
                                 if entity.state_machine then
                                     entity.state_machine:forceState("pain")
+                                    entity.anim_frame = 0  -- Reset animation
                                 end
                                 self.visual_effects:flash({color = {1, 0.8, 0, 0.2}, duration = 0.05, mode = "fade_out"})
                             end
@@ -1029,42 +1378,99 @@ function Raycaster:updateBillboards(dt)
     -- Add spawned entities to billboards (from EntityController)
     -- EntityController copies type properties directly to entities
     if self.entity_controller then
+        local BillboardRenderer = self.di.components.BillboardRenderer
         for _, entity in ipairs(self.entity_controller:getEntities()) do
-            local bob_phase = entity.bob_offset or (entity.x * 7 + entity.y * 13)
-            local bob = math.sin(self.bob_timer + bob_phase) * 0.1
+            local is_pickup = entity.pickup_type ~= nil
+            local is_enemy = entity.health ~= nil or entity.state_machine ~= nil
+
+            -- Pickups: no bobbing, sit on floor
+            local bob = 0
 
             local height = entity.height or 0.4
             local aspect = entity.aspect or 1.0
-            local y_offset = (entity.y_offset or 0) + bob
+            local y_offset = entity.y_offset or 0
             local color = entity.color or {1, 0, 0}
+            local sprite = entity.sprite
 
-            -- Dying: fall over animation
+            -- Pickups sit on floor
+            if is_pickup then
+                y_offset = -0.5 + height / 2
+            end
+
+            -- Guard sprite system for enemies
+            if entity.use_guard_sprites and self.guard_sprites then
+                local direction = self:getDirectionFromAngle(entity, self.player)
+                local guard_data = self:getEnemySprite(entity, direction)
+
+                if guard_data then
+                    local state = entity.state_machine and entity.state_machine.state or "stand"
+
+                    local guard_color = {1, 1, 1}
+                    if state == "dead" or entity.is_corpse then
+                        guard_color = {0.6, 0.6, 0.6}
+                    end
+
+                    -- Per-sprite y_offset computed from content bounds at load time
+                    local billboard = BillboardRenderer.createSprite(entity.x, entity.y, {
+                        sprite = guard_data.image,
+                        height = 1.0,
+                        aspect = 1.0,
+                        y_offset = guard_data.y_offset,
+                        color = guard_color
+                    })
+                    billboard.entity_ref = entity
+                    table.insert(self.billboards, billboard)
+                    goto next_entity
+                end
+            end
+
+            -- Non-guard enemies: bob up and down
+            if is_enemy and not is_pickup then
+                local bob_phase = entity.bob_offset or (entity.x * 7 + entity.y * 13)
+                bob = math.sin(self.bob_timer + bob_phase) * 0.1
+                y_offset = y_offset + bob
+            end
+
+            -- Dying: fall over animation (for non-sprite enemies)
             if entity.die_progress then
                 local progress = entity.die_progress
-                height = height * (1 - progress * 0.8)  -- Shrink to 20% height
-                aspect = aspect * (1 + progress * 2)     -- Widen as it falls
-                y_offset = -0.4 * progress               -- Move toward ground
-                bob = 0  -- No bobbing while dying
+                height = height * (1 - progress * 0.8)
+                aspect = aspect * (1 + progress * 2)
+                y_offset = -0.4 * progress
             end
 
-            -- Dead: flat on ground
+            -- Dead: flat on ground (for non-sprite enemies)
             if entity.is_corpse then
-                height = (entity.height or 0.4) * 0.15  -- Very flat
-                aspect = (entity.aspect or 1.0) * 3      -- Wide
-                y_offset = -0.45                          -- On ground
-                color = {color[1] * 0.5, color[2] * 0.5, color[3] * 0.5}  -- Darkened
-                bob = 0
+                height = (entity.height or 0.4) * 0.15
+                aspect = (entity.aspect or 1.0) * 3
+                y_offset = -0.45
+                color = {color[1] * 0.5, color[2] * 0.5, color[3] * 0.5}
             end
 
-            table.insert(self.billboards, {
-                x = entity.x,
-                y = entity.y,
-                height = height,
-                aspect = aspect,
-                y_offset = y_offset,
-                color = color,
-                entity_ref = entity
-            })
+            -- Use sprite billboard if sprite available, otherwise color
+            if sprite and BillboardRenderer then
+                local billboard = BillboardRenderer.createSprite(entity.x, entity.y, {
+                    sprite = sprite,
+                    height = height,
+                    aspect = aspect,
+                    y_offset = y_offset,
+                    color = color
+                })
+                billboard.entity_ref = entity
+                table.insert(self.billboards, billboard)
+            else
+                table.insert(self.billboards, {
+                    x = entity.x,
+                    y = entity.y,
+                    height = height,
+                    aspect = aspect,
+                    y_offset = y_offset,
+                    color = color,
+                    entity_ref = entity
+                })
+            end
+
+            ::next_entity::
         end
     end
 
@@ -1106,28 +1512,43 @@ function Raycaster:collectPickups()
     local pickup_radius = 0.5
 
     for _, entity in ipairs(self.entity_controller:getEntities()) do
+        -- Skip enemies (anything with health or state machine)
+        if entity.health or entity.state_machine then
+            goto continue
+        end
+
         local dx, dy = px - entity.x, py - entity.y
         local dist2 = dx * dx + dy * dy
 
         if dist2 < pickup_radius * pickup_radius then
-            -- Ammo pickup
-            if entity.type_name == "ammo" and self.player_controller then
-                self.player_controller:addAmmo(self.params.ammo_pickup_amount or 5)
+            local pickup_type = entity.pickup_type
+            local pickup_value = entity.pickup_value or 0
+
+            if pickup_type == "treasure" then
+                -- Treasure gives points
+                self.score = (self.score or 0) + pickup_value
+                self.entity_controller:removeEntity(entity)
+                self.visual_effects:flash({color = {1, 0.85, 0, 0.3}, duration = 0.1, mode = "fade_out"})
+
+            elseif pickup_type == "health" and self.player_controller then
+                -- Health pickup
+                local current = self.player_controller.health or 100
+                local max = self.player_controller.max_health or 100
+                if current < max then
+                    self.player_controller.health = math.min(max, current + pickup_value)
+                    self.entity_controller:removeEntity(entity)
+                    self.visual_effects:flash({color = {0.2, 1, 0.3, 0.3}, duration = 0.15, mode = "fade_out"})
+                end
+
+            elseif pickup_type == "ammo" and self.player_controller then
+                -- Ammo pickup
+                self.player_controller:addAmmo(pickup_value)
                 self.entity_controller:removeEntity(entity)
                 self.visual_effects:flash({color = {0.5, 0.5, 1, 0.3}, duration = 0.15, mode = "fade_out"})
             end
-
-            -- Health pickup
-            if entity.type_name == "health" and self.player_controller then
-                local heal_amount = self.params.health_pickup_amount or 25
-                self.player_controller.health = math.min(
-                    self.player_controller.max_health,
-                    self.player_controller.health + heal_amount
-                )
-                self.entity_controller:removeEntity(entity)
-                self.visual_effects:flash({color = {0.2, 1, 0.3, 0.3}, duration = 0.15, mode = "fade_out"})
-            end
         end
+
+        ::continue::
     end
 end
 
@@ -1233,6 +1654,12 @@ function Raycaster:keypressed(key)
         elseif key == 'tab' then
             self.player_controller:nextWeapon()
         end
+    end
+
+    -- Toggle critical path debug visualization
+    if key == 'p' then
+        self.show_critical_path = not self.show_critical_path
+        print("[Raycaster] Critical path visualization:", self.show_critical_path and "ON" or "OFF")
     end
 
     -- Track key press for grid mode (ignore OS key repeat)

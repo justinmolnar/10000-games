@@ -15,9 +15,13 @@ function RaycastRenderer:new(config)
     self.wall_color_ns = config.wall_color_ns or {0.7, 0.2, 0.2}
     self.wall_color_ew = config.wall_color_ew or {0.2, 0.2, 0.7}
     self.goal_color = config.goal_color or {0.2, 0.9, 0.3}
+    self.door_color = config.door_color or {0.5, 0.35, 0.2}  -- Brown/wooden
 
     -- Depth buffer for billboard occlusion
     self.depth_buffer = {}
+
+    -- Door lookup (populated before draw)
+    self.doors = {}
 
     return self
 end
@@ -52,7 +56,7 @@ function RaycastRenderer:drawWalls(w, h, player, map, map_w, map_h, goal)
     for i = 0, self.ray_count - 1 do
         local ray_angle = player.angle - fov_rad / 2 + i * ray_angle_step
 
-        local dist, side, hit_x, hit_y = self:castRay(
+        local dist, side, hit_x, hit_y, hit_door, wall_x = self:castRay(
             player.x, player.y, ray_angle,
             self.render_distance, map, map_w, map_h
         )
@@ -81,10 +85,12 @@ function RaycastRenderer:drawWalls(w, h, player, map, map_w, map_h, goal)
             local tile_y = math.floor(hit_y)
             local is_goal = goal and (tile_x == goal.x and tile_y == goal.y)
 
-            -- Wall color
+            -- Wall color (priority: goal > door > normal wall)
             local color
             if is_goal then
                 color = self.goal_color
+            elseif hit_door then
+                color = self.door_color
             elseif side == 0 then
                 color = self.wall_color_ns
             else
@@ -102,6 +108,7 @@ function RaycastRenderer:drawWalls(w, h, player, map, map_w, map_h, goal)
 end
 
 -- DDA raycasting algorithm
+-- Returns: dist, side, hit_x, hit_y, hit_door, wall_x
 function RaycastRenderer:castRay(start_x, start_y, angle, max_dist, map, map_w, map_h)
     local dir_x = math.cos(angle)
     local dir_y = math.sin(angle)
@@ -135,6 +142,7 @@ function RaycastRenderer:castRay(start_x, start_y, angle, max_dist, map, map_w, 
     local side = 0
     local steps = 0
     local max_steps = math.floor(max_dist * 2)
+    local hit_door = nil
 
     while not hit and steps < max_steps do
         if side_dist_x < side_dist_y then
@@ -153,8 +161,41 @@ function RaycastRenderer:castRay(start_x, start_y, angle, max_dist, map, map_w, 
             break
         end
 
+        -- Check for wall
         if map[map_y] and map[map_y][map_x] and map[map_y][map_x] == 1 then
             hit = true
+        end
+
+        -- Check for door (doors are floor tiles that can block)
+        if not hit then
+            local door = self:getDoorAt(map_x, map_y)
+            if door and door.progress < 1 then
+                -- Calculate where on the wall face the ray hits (0-1)
+                local dist
+                if side == 0 then
+                    dist = (map_x - start_x + (1 - step_x) / 2) / dir_x
+                else
+                    dist = (map_y - start_y + (1 - step_y) / 2) / dir_y
+                end
+
+                -- Calculate wall_x (where on the wall we hit, 0-1)
+                local wall_x
+                if side == 0 then
+                    wall_x = start_y + dist * dir_y
+                else
+                    wall_x = start_x + dist * dir_x
+                end
+                wall_x = wall_x - math.floor(wall_x)
+
+                -- Door slides from left to right (wall_x 0->1)
+                -- If wall_x > progress, we hit the open gap; continue ray
+                -- If wall_x <= (1 - progress), we hit the door
+                if wall_x <= (1 - door.progress) then
+                    hit = true
+                    hit_door = door
+                end
+                -- else: ray passes through the open portion, continue
+            end
         end
     end
 
@@ -165,14 +206,44 @@ function RaycastRenderer:castRay(start_x, start_y, angle, max_dist, map, map_w, 
         else
             dist = (map_y - start_y + (1 - step_y) / 2) / dir_y
         end
-        return math.abs(dist), side, map_x, map_y
+
+        -- Calculate wall_x for texture mapping (if needed later)
+        local wall_x
+        if side == 0 then
+            wall_x = start_y + dist * dir_y
+        else
+            wall_x = start_x + dist * dir_x
+        end
+        wall_x = wall_x - math.floor(wall_x)
+
+        return math.abs(dist), side, map_x, map_y, hit_door, wall_x
     end
 
-    return -1, 0, 0, 0
+    return -1, 0, 0, 0, nil, 0
+end
+
+-- Set doors for rendering (call before draw)
+function RaycastRenderer:setDoors(doors)
+    self.doors = {}
+    if doors then
+        for _, door in ipairs(doors) do
+            local key = door.x .. "," .. door.y
+            self.doors[key] = door
+        end
+    end
+end
+
+-- Get door at tile position
+function RaycastRenderer:getDoorAt(x, y)
+    local key = x .. "," .. y
+    return self.doors[key]
 end
 
 -- Convenience method to draw everything
-function RaycastRenderer:draw(w, h, player, map, map_w, map_h, goal)
+function RaycastRenderer:draw(w, h, player, map, map_w, map_h, goal, doors)
+    if doors then
+        self:setDoors(doors)
+    end
     self:drawCeilingAndFloor(w, h)
     self:drawWalls(w, h, player, map, map_w, map_h, goal)
 end

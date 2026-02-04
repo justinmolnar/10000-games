@@ -11,16 +11,35 @@ function MinimapRenderer:new(config)
 
     self.wall_color = config.wall_color or {0.5, 0.5, 0.6, 0.8}
     self.floor_color = config.floor_color or {0.15, 0.15, 0.2, 0.8}
+    self.door_color = config.door_color or {0.5, 0.35, 0.2, 0.9}
     self.player_color = config.player_color or {1, 0.3, 0.3, 0.9}
     self.goal_color = config.goal_color or {0.2, 0.9, 0.3, 0.9}
     self.direction_color = config.direction_color or {1, 1, 0, 0.9}
     self.background_color = config.background_color or {0, 0, 0, 0.5}
+    self.enemy_color = config.enemy_color or {1, 0.2, 0.2, 0.9}
+    self.show_enemies = config.show_enemies ~= false
+
+    -- Critical path visualization
+    self.critical_path_color = config.critical_path_color or {0.2, 0.5, 0.8, 0.8}  -- blue
+    self.off_path_color = config.off_path_color or {0.6, 0.3, 0.1, 0.8}  -- orange/brown
+    self.show_critical_path = config.show_critical_path or false
+
+    -- Door lookup for minimap
+    self.doors = {}
+
+    -- Critical path lookup
+    self.critical_path = {}
 
     return self
 end
 
-function MinimapRenderer:draw(viewport_w, viewport_h, map, map_w, map_h, player, goal)
+function MinimapRenderer:draw(viewport_w, viewport_h, map, map_w, map_h, player, goal, doors, enemies)
     if not map or #map == 0 then return end
+
+    -- Update door lookup
+    if doors then
+        self:setDoors(doors)
+    end
 
     -- Calculate position
     local minimap_x, minimap_y = self:getPosition(viewport_w, viewport_h)
@@ -40,9 +59,25 @@ function MinimapRenderer:draw(viewport_w, viewport_h, map, map_w, map_h, player,
             local px = minimap_x + (x - 1) * tile_size
             local py = minimap_y + (y - 1) * tile_size
 
+            -- Check if this is a door
+            local door = self:getDoorAt(x, y)
+
             if tile == 1 then
                 love.graphics.setColor(self.wall_color[1], self.wall_color[2],
                                        self.wall_color[3], self.wall_color[4])
+            elseif door and door.progress < 1 then
+                -- Draw door (brown) - shows as special until fully open
+                love.graphics.setColor(self.door_color[1], self.door_color[2],
+                                       self.door_color[3], self.door_color[4])
+            elseif self.show_critical_path then
+                -- Color based on critical path
+                if self:isOnCriticalPath(x, y) then
+                    love.graphics.setColor(self.critical_path_color[1], self.critical_path_color[2],
+                                           self.critical_path_color[3], self.critical_path_color[4])
+                else
+                    love.graphics.setColor(self.off_path_color[1], self.off_path_color[2],
+                                           self.off_path_color[3], self.off_path_color[4])
+                end
             else
                 love.graphics.setColor(self.floor_color[1], self.floor_color[2],
                                        self.floor_color[3], self.floor_color[4])
@@ -58,6 +93,18 @@ function MinimapRenderer:draw(viewport_w, viewport_h, map, map_w, map_h, player,
         love.graphics.setColor(self.goal_color[1], self.goal_color[2],
                                self.goal_color[3], self.goal_color[4])
         love.graphics.rectangle('fill', goal_px, goal_py, tile_size, tile_size)
+    end
+
+    -- Draw enemies
+    if self.show_enemies and enemies then
+        love.graphics.setColor(self.enemy_color[1], self.enemy_color[2],
+                               self.enemy_color[3], self.enemy_color[4])
+        local enemy_radius = tile_size * 0.35
+        for _, enemy in ipairs(enemies) do
+            local ex = minimap_x + (enemy.x - 1) * tile_size
+            local ey = minimap_y + (enemy.y - 1) * tile_size
+            love.graphics.circle('fill', ex, ey, enemy_radius)
+        end
     end
 
     -- Draw player
@@ -104,6 +151,37 @@ end
 
 function MinimapRenderer:setSize(size)
     self.size = size
+end
+
+function MinimapRenderer:setDoors(doors)
+    self.doors = {}
+    if doors then
+        for _, door in ipairs(doors) do
+            local key = door.x .. "," .. door.y
+            self.doors[key] = door
+        end
+    end
+end
+
+function MinimapRenderer:getDoorAt(x, y)
+    local key = x .. "," .. y
+    return self.doors[key]
+end
+
+function MinimapRenderer:setCriticalPath(path)
+    self.critical_path = {}
+    if path then
+        for _, tile in ipairs(path) do
+            local key = math.floor(tile.x) .. "," .. math.floor(tile.y)
+            self.critical_path[key] = true
+        end
+    end
+    self.show_critical_path = path and #path > 0
+end
+
+function MinimapRenderer:isOnCriticalPath(x, y)
+    local key = x .. "," .. y
+    return self.critical_path[key] == true
 end
 
 return MinimapRenderer

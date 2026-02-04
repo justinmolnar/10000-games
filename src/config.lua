@@ -12,20 +12,20 @@ local Config = {
 
     -- CPU Speed System (affects page loading, window limits, etc.)
     cpu = {
-        starting_speed = 0.1,          -- Starting CPU multiplier (VERY slow for testing)
+        starting_speed = 1.0,          -- Starting CPU multiplier (Reasonable default)
         max_speed = 10.0,              -- Fully upgraded (modern instant)
         speed_per_upgrade = 0.5,       -- Increase per upgrade level
 
         -- Web browser loading times (base ms, divided by cpu_speed)
         page_load = {
-            element_base = 500,           -- Base elements (SLOW for testing)
+            element_base = 50,            -- Base elements
             text_per_char = 2,            -- Additional time per character in text nodes
-            image_base = 1000,            -- Base image load time (SLOW)
+            image_base = 200,             -- Base image load time
             image_per_pixel = 0.002,      -- Time per pixel (width * height)
-            gif_base = 1500,              -- Base GIF load time (SLOW)
+            gif_base = 300,               -- Base GIF load time
             gif_per_frame = 50,           -- Additional time per frame
-            table_base = 800,             -- Tables take a bit longer
-            table_per_cell = 50,          -- Additional time per cell
+            table_base = 100,             -- Tables take a bit longer
+            table_per_cell = 20,          -- Additional time per cell
             image_scanline_height = 3,    -- Pixels per update for scanline loading effect
         },
     },
@@ -403,13 +403,15 @@ local Config = {
         windowed = {
             width = 1280,
             height = 720,
-            resizable = false
+            resizable = false,
+            display = 2  -- Monitor: 1 = primary, 2 = secondary
         },
         fullscreen = {
             width = 1920,
             height = 1080,
             type = "desktop", -- 'desktop' uses native desktop resolution
-            resizable = false
+            resizable = false,
+            display = 2  -- Monitor: 1 = primary, 2 = secondary
         },
         -- Global default window size/title if a program does not specify window_defaults
         defaults = {

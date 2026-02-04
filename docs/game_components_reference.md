@@ -193,11 +193,25 @@ Standardized HUD with consistent layout.
 
 ---
 
-## LivesHealthSystem
-Unified lives/health/shield management.
+## PlayerController
+Unified player state management: lives, health, shields, ammo, heat/overheat.
 
-- **new(config)** - Create system. Config: mode ("lives"/"shield"/"binary"/"none"), starting_lives, max_lives, shield_enabled, shield_max_hits, shield_regen_time, invincibility_on_hit, respawn_enabled, callbacks.
-- **update(dt)** - Update invincibility, respawn, shield regen timers.
+### Constructor
+- **new(config)** - Create controller. Config options:
+  - mode: "lives"/"shield"/"binary"/"none"
+  - starting_lives, max_lives
+  - shield_enabled, shield_max_hits, shield_regen_time, shield_regen_delay
+  - invincibility_on_hit, invincibility_duration
+  - respawn_enabled, respawn_delay
+  - ammo_enabled, ammo_capacity, ammo_reload_time, auto_reload
+  - heat_enabled, heat_per_shot, heat_threshold, heat_cooldown, heat_dissipation
+  - callbacks: on_damage, on_death, on_respawn, on_life_gained, on_shield_break, on_shield_regen, on_reload_complete, on_overheat, on_overheat_clear
+
+### Lifecycle
+- **update(dt)** - Update all timers (invincibility, respawn, shield regen, reload, heat).
+- **reset()** - Reset to initial state.
+
+### Health/Lives
 - **takeDamage(amount, source)** - Apply damage. Returns true if damage taken.
 - **die()** - Trigger death.
 - **respawn()** - Respawn after death.
@@ -206,11 +220,60 @@ Unified lives/health/shield management.
 - **heal(amount)** - Restore shield hits.
 - **isAlive()** - Returns true if not dead.
 - **isInvincible()** - Returns true if invincible.
+- **getLives()** / **setLives(count)** - Get/set lives.
+
+### Shield
 - **getShieldStrength()** - Returns 0-1 ratio.
 - **getShieldHitsRemaining()** - Returns shield hit count.
 - **isShieldActive()** - Returns true if shield active.
-- **getLives()** / **setLives(count)** - Get/set lives.
-- **reset()** - Reset to initial state.
+
+### Ammo
+- **canFire()** - Returns true if can fire (has ammo, not reloading, not overheated).
+- **consumeAmmo(amount)** - Decrement ammo. Auto-reloads if enabled.
+- **reload()** - Start manual reload.
+- **addAmmo(amount)** - Add ammo (capped at capacity).
+- **getAmmo()** - Returns current ammo.
+- **getAmmoCapacity()** - Returns max ammo.
+- **isReloading()** - Returns true if reloading.
+- **getReloadProgress()** - Returns 0-1 reload progress.
+
+### Heat/Overheat
+- **addHeat(amount)** - Add heat. Triggers overheat if threshold reached.
+- **onShoot(ammo_cost, heat_amount)** - Convenience: consumeAmmo + addHeat.
+- **getHeat()** - Returns current heat.
+- **getHeatPercent()** - Returns 0-1 heat ratio.
+- **isOverheated()** - Returns true if overheated.
+- **getOverheatProgress()** - Returns 0-1 cooldown progress.
+
+---
+
+## MapSpawnProcessor
+Calculates spawn positions for procedurally generated maps. Returns positions - does NOT spawn entities.
+
+- **MapSpawnProcessor.process(config)** - Process spawn configs. Returns array of {type, x, y}. Config:
+  - rooms: Array of room objects (rotLove) with getLeft/getRight/getTop/getBottom/getCenter
+  - floor_tiles: Array of {x, y} walkable tiles
+  - room_spawns: Array of room spawn configs
+  - corridor_spawns: Array of corridor spawn configs
+  - floor_spawns: Array of floor spawn configs
+  - rng: Random number generator with random() method
+
+**room_spawns config:** {type, count, room_chance (0-1), position ("center"/"random"/"corners"), min_rooms, max_rooms}
+**corridor_spawns config:** {type, count, tile_chance (0-1), min_count, max_count}
+**floor_spawns config:** {type, density (1 spawn per N tiles), min_count, max_count}
+
+Usage:
+```lua
+local positions = MapSpawnProcessor.process({
+    rooms = result.rooms,
+    floor_tiles = result.floor_tiles,
+    room_spawns = {{type = "enemy", count = 2, room_chance = 1.0}},
+    rng = self.rng
+})
+for _, pos in ipairs(positions) do
+    entity_controller:spawn(pos.type, pos.x, pos.y)
+end
+```
 
 ---
 
@@ -255,11 +318,12 @@ Reusable movement primitives. All deterministic for demo playback.
 - **findGridBounceDirection(head, current_dir, is_blocked_fn)** - Find perpendicular bounce direction.
 
 ### Smooth Movement System
-- **initSmoothState(entity_id, angle)** - Initialize with starting angle.
+- **initSmoothState(entity_id, angle)** - Initialize with starting angle. State has: angle, turn_left, turn_right, move_forward, move_backward, strafe_left, strafe_right.
 - **setSmoothTurn(entity_id, left, right)** - Set turn flags.
+- **setSmoothMovement(entity_id, forward, backward, strafe_left, strafe_right)** - Set movement flags.
 - **getSmoothState(entity_id)** - Get smooth state.
 - **getSmoothAngle(entity_id)** / **setSmoothAngle(entity_id, angle)** - Angle accessors.
-- **updateSmooth(dt, entity_id, entity, bounds, speed, turn_speed_deg)** - Update angle and position. Returns dx, dy, wrapped, out_of_bounds.
+- **updateSmooth(dt, entity_id, speed, turn_speed_deg)** - Update angle from turn flags, compute dx/dy from movement flags. Returns dx, dy. Caller applies position and handles collision.
 - **initState(entity_id, direction)** - Initialize both grid and smooth state.
 
 ### Helpers

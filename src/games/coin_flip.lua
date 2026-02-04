@@ -8,7 +8,7 @@ local AnimationSystem = require('src.utils.game_components.animation_system')
 local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
-local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
+local PlayerController = require('src.utils.game_components.player_controller')
 local CoinFlip = BaseGame:extend('CoinFlip')
 
 --------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ function CoinFlip:setupComponents()
         on_complete = nil
     })
 
-    self.health_system = LivesHealthSystem:new({
+    self.health_system = PlayerController:new({
         mode = "lives",
         starting_lives = self.starting_lives,
         max_lives = 10

@@ -531,7 +531,7 @@
             "config": {}
         },
         "health_system": {
-            "type": "LivesHealthSystem",
+            "type": "PlayerController",
             "config": {
                 "mode": "lives",
                 "starting_lives": "$lives",

@@ -205,7 +205,8 @@ function SettingsManager.applyFullscreen()
         love.window.setMode(width, height, {
             fullscreen = true,
             fullscreentype = fullscreentype,
-            resizable = resizable
+            resizable = resizable,
+            display = wf.display or 2
         })
         print(string.format("Applied fullscreen: true (%dx%d)", width, height))
     else
@@ -216,7 +217,8 @@ function SettingsManager.applyFullscreen()
         local resizable = (ww.resizable ~= nil) and ww.resizable or false
         love.window.setMode(width, height, {
             fullscreen = false,
-            resizable = resizable
+            resizable = resizable,
+            display = ww.display or 2
         })
         print(string.format("Applied fullscreen: false (%dx%d windowed)", width, height))
     end

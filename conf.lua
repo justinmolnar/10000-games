@@ -6,6 +6,7 @@ function love.conf(t)
     t.window.title = "10,000 Games"
     t.window.width = 1920
     t.window.height = 1080
+    t.window.display = 2  -- Open on monitor 2
     t.window.resizable = false
     t.window.fullscreen = false  -- Disable fullscreen to test vsync
     t.window.fullscreentype = "desktop"

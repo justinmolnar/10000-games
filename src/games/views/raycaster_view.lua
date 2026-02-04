@@ -63,6 +63,14 @@ function RaycasterView:drawContent()
         end
         local vc = p.victory_condition
         local goal = (vc == "goal" or vc == nil) and game.goal or nil
+
+        -- Update critical path visualization
+        if game.show_critical_path and game.critical_path then
+            self.minimap_renderer:setCriticalPath(game.critical_path)
+        else
+            self.minimap_renderer:setCriticalPath(nil)
+        end
+
         self.minimap_renderer:draw(w, h, game.map, game.map_width, game.map_height, game.player, goal, game.doors, enemies)
     end
 
@@ -73,7 +81,8 @@ function RaycasterView:drawContent()
     if not game.vm_render_mode then
         game.hud:draw(w, h)
 
-        local hud_y = 10
+        -- Extra stats below standard HUD
+        local hud_y = game.hud:getHeight()
 
         -- Health display (Wolf3D style)
         if game.player_controller and game.params.enemy_ai_enabled then
@@ -81,42 +90,30 @@ function RaycasterView:drawContent()
             local max_health = game.player_controller.max_health or 100
             local health_pct = health / max_health
             local health_color = health_pct > 0.5 and {0.2, 1, 0.3} or (health_pct > 0.25 and {1, 1, 0} or {1, 0.2, 0.2})
-            love.graphics.setColor(health_color)
-            love.graphics.print("HEALTH: " .. health, w - 100, hud_y)
-            hud_y = hud_y + 20
+            hud_y = game.hud:drawStat("HEALTH", health, hud_y, health_color)
         end
 
         -- Weapon display
         if game.player_controller and game.player_controller.current_weapon then
             local weapon_name = game.player_controller.current_weapon:upper()
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.print(weapon_name, w - 100, hud_y)
-            hud_y = hud_y + 20
+            hud_y = game.hud:drawStat("WEAPON", weapon_name, hud_y, {1, 1, 1})
         end
 
         -- Ammo display (Wolf3D style)
         if game.player_controller and game.params.ammo_enabled then
             local ammo = game.player_controller:getAmmo()
             local ammo_color = ammo > 0 and {1, 1, 0} or {1, 0, 0}
-            love.graphics.setColor(ammo_color)
-            love.graphics.print("AMMO: " .. ammo, w - 100, hud_y)
-            hud_y = hud_y + 20
+            hud_y = game.hud:drawStat("AMMO", ammo, hud_y, ammo_color)
         end
 
         -- Kills display
         if game.enemies_killed and game.enemies_killed > 0 then
-            love.graphics.setColor(1, 0.5, 0.5)
-            love.graphics.print("KILLS: " .. game.enemies_killed, w - 100, hud_y)
-            hud_y = hud_y + 20
+            hud_y = game.hud:drawStat("KILLS", game.enemies_killed, hud_y, {1, 0.5, 0.5})
         end
 
-        -- Debug: First enemy AI state
-        if game.entity_controller then
-            local enemies = game.entity_controller:getEntities()
-            if enemies[1] and enemies[1].state_machine then
-                love.graphics.setColor(1, 0.8, 0.2)
-                love.graphics.print("AI: " .. (enemies[1].state_machine.state or "?"), w - 100, hud_y)
-            end
+        -- Score display
+        if game.score and game.score > 0 then
+            hud_y = game.hud:drawStat("SCORE", game.score, hud_y, {1, 0.85, 0})
         end
 
         -- Controls hint

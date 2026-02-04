@@ -97,11 +97,25 @@ function SchemaLoader._populateParams(schema, variant, runtime_config)
     -- Apply mode lookups (e.g., movement_type → movement_modes flags)
     SchemaLoader._applyModeLookups(params, variant, schema)
 
-    -- Copy additional schema sections (components, entity_types, projectile_types, etc.)
-    local extra_sections = {"components", "entity_types", "projectile_types", "victory_conditions", "powerup_effect_configs", "enemy_types", "movement_modes", "reverse_modes"}
+    -- Copy additional schema sections, variant overrides schema
+    -- Components gets special merge treatment (variant overrides specific components, not all)
+    local extra_sections = {"entity_types", "projectile_types", "victory_conditions", "powerup_effect_configs", "enemy_types", "movement_modes", "reverse_modes", "marker_types"}
     for _, section in ipairs(extra_sections) do
-        if schema[section] then
+        if variant[section] then
+            params[section] = variant[section]
+        elseif schema[section] then
             params[section] = schema[section]
+        end
+    end
+
+    -- Merge components: schema provides defaults, variant overrides specific ones
+    if schema.components or variant.components then
+        params.components = {}
+        for k, v in pairs(schema.components or {}) do
+            params.components[k] = SchemaLoader._deepCopy(v)
+        end
+        for k, v in pairs(variant.components or {}) do
+            params.components[k] = SchemaLoader._deepCopy(v)
         end
     end
 
@@ -134,6 +148,16 @@ function SchemaLoader._applyModeLookups(params, variant, schema)
             end
         end
     end
+end
+
+-- Deep copy a table
+function SchemaLoader._deepCopy(obj)
+    if type(obj) ~= 'table' then return obj end
+    local copy = {}
+    for k, v in pairs(obj) do
+        copy[k] = SchemaLoader._deepCopy(v)
+    end
+    return copy
 end
 
 -- Resolve a single parameter value with priority: variant → config → default

@@ -58,7 +58,7 @@ function WebBrowserState:init(file_system, di)
     self.html_parser = HTMLParser:new()
     self.css_parser = CSSParser:new()
     self.html_layout = HTMLLayout:new()
-    self.html_renderer = HTMLRenderer:new()
+    self.html_renderer = HTMLRenderer:new(love.graphics)
 
     -- Address bar (text input) - unfocus after pressing Enter
     self.address_bar = TextInputController:new({
@@ -630,6 +630,7 @@ function WebBrowserState:updateLoading(dt)
     local cpu_speed = 1.0
     if self.di and self.di.playerData then
         cpu_speed = self.di.playerData:getCPUSpeed()
+        if cpu_speed <= 0 then cpu_speed = 0.001 end -- Safety
     end
 
     -- Get current element

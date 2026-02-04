@@ -17,7 +17,7 @@ Refactor Space Defender from legacy code to use the game components system. This
 **The components you'll use:**
 - `src/utils/game_components/entity_controller.lua` - Enemy spawning
 - `src/utils/game_components/projectile_system.lua` - Bullets
-- `src/utils/game_components/lives_health_system.lua` - Player health
+- `src/utils/game_components/player_controller.lua` - Player health
 - `src/utils/game_components/scoring_system.lua` - Score/tokens
 - `src/utils/game_components/hud_renderer.lua` - UI display
 
@@ -45,7 +45,7 @@ The minigames:
 
 Don't rewrite everything at once. Replace one system at a time:
 
-1. **Phase 1:** Extract player handling → LivesHealthSystem
+1. **Phase 1:** Extract player handling → PlayerController
 2. **Phase 2:** Extract bullets → ProjectileSystem
 3. **Phase 3:** Extract enemies → EntityController
 4. **Phase 4:** Extract scoring → ScoringSystem
@@ -54,7 +54,7 @@ Don't rewrite everything at once. Replace one system at a time:
 
 ---
 
-## Phase 1: LivesHealthSystem
+## Phase 1: PlayerController
 
 ### Step 1.1: Find Current Lives Handling
 
@@ -69,12 +69,12 @@ Search `space_defender_state.lua` for:
 
 At the top of the file, add:
 ```lua
-local LivesHealthSystem = require('src.utils.game_components.lives_health_system')
+local PlayerController = require('src.utils.game_components.player_controller')
 ```
 
 In the init/setup function, create the component:
 ```lua
-self.health_system = LivesHealthSystem:new({
+self.health_system = PlayerController:new({
     mode = "lives",  -- or "health" if it uses HP
     starting_lives = 3,
     max_lives = 5,
@@ -463,7 +463,7 @@ Check:
 
 ## Reference: Component API Quick Reference
 
-### LivesHealthSystem
+### PlayerController
 ```lua
 :takeDamage(amount, source)
 :heal(amount)

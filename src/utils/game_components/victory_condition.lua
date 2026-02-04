@@ -144,7 +144,10 @@ function VictoryCondition:checkSingleVictory(config)
     local game = self.game
     local v_type = config.type
 
-    if v_type == "threshold" then
+    if v_type == "none" then
+        return false
+
+    elseif v_type == "threshold" then
         -- Reach target value: dodges >= 50, kills >= 20, etc
         local value = self:getValue(config.metric)
         local target = config.target or 0

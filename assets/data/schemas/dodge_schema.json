@@ -358,7 +358,7 @@
             }
         },
         "health_system": {
-            "type": "LivesHealthSystem",
+            "type": "PlayerController",
             "config": {
                 "mode": "shield",
                 "starting_lives": "$lives",

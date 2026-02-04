@@ -4,10 +4,11 @@
 local Object = require('lib.class')
 local HTMLRenderer = Object:extend('HTMLRenderer')
 
-function HTMLRenderer:init()
+function HTMLRenderer:init(graphics)
     self.visited_links = {} -- Track visited links for color change
     self.hovered_link = nil -- Current hovered link
     self.fonts = {} -- Font cache
+    self.graphics = graphics or love.graphics -- Fallback for backward compatibility/testing
 end
 
 -- Update animated GIFs
@@ -71,7 +72,7 @@ function HTMLRenderer:render(layout_tree, scroll_y, viewport_x, viewport_y, view
     self.loaded_elements = loaded_elements
     self.image_load_progress = image_load_progress or {}
 
-    local g = love.graphics
+    local g = self.graphics
 
     -- Save original font
     local original_font = g.getFont()
@@ -159,7 +160,7 @@ function HTMLRenderer:renderNode(node, list_type, list_index, viewport_width, vi
         end
     end
 
-    local g = love.graphics
+    local g = self.graphics
     local styles = node.styles or {}
 
     -- Render background (skip body - handled in render() before translate)
@@ -249,7 +250,7 @@ function HTMLRenderer:renderText(node)
         return
     end
 
-    local g = love.graphics
+    local g = self.graphics
     local styles = node.styles or {}
 
     -- Get text color
@@ -322,7 +323,7 @@ end
 
 -- Render horizontal rule
 function HTMLRenderer:renderHR(node)
-    local g = love.graphics
+    local g = self.graphics
     local styles = node.styles or {}
 
     local color = styles["background-color"] or {0.5, 0.5, 0.5}
@@ -342,7 +343,7 @@ function HTMLRenderer:renderImage(node)
         return
     end
 
-    local g = love.graphics
+    local g = self.graphics
     g.setColor(1, 1, 1)
 
     -- Draw width/height (1999 behavior - stretches/squashes to fit)
@@ -411,7 +412,7 @@ end
 
 -- Render list item (with bullet or number)
 function HTMLRenderer:renderListItem(node, list_type, list_index)
-    local g = love.graphics
+    local g = self.graphics
     local styles = node.styles or {}
 
     g.setColor(0, 0, 0)
@@ -446,7 +447,7 @@ function HTMLRenderer:renderTable(node)
         return
     end
 
-    local g = love.graphics
+    local g = self.graphics
     local styles = node.styles or {}
     local border_color = {0, 0, 0}  -- Default black borders
     local border_width = node.table_border_width or 1
@@ -492,7 +493,7 @@ end
 
 -- Render link (with hover effect)
 function HTMLRenderer:renderLink(node, list_type, list_index)
-    local g = love.graphics
+    local g = self.graphics
     local styles = node.styles or {}
 
     -- Get href
@@ -588,11 +589,11 @@ function HTMLRenderer:getFont(size, styles)
 
     if not self.fonts[font_key] then
         -- LÖVE doesn't support font weights/styles easily, so just use size
-        local success, font = pcall(love.graphics.newFont, size)
+        local success, font = pcall(self.graphics.newFont, size)
         if success then
             self.fonts[font_key] = font
         else
-            self.fonts[font_key] = love.graphics.getFont()
+            self.fonts[font_key] = self.graphics.getFont()
         end
     end
 

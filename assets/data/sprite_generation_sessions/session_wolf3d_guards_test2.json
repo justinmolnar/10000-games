@@ -1,0 +1,27 @@
+{
+  "session_name": "wolf3d_guards_test2",
+  "description": "Test batch - explicit front-facing Wolf3D guards",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "raycaster_guards_v2",
+      "output_folder": "assets/sprites/games/raycaster/guards_v2",
+      "description": "Wolf3D style enemy guards - front facing",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "side",
+        "detail": "low detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "guard_01", "prompt": "front view enemy soldier facing camera directly, symmetrical pose, brown uniform, standing still, pixel art game sprite, looking straight at viewer"},
+        {"id": "guard_02", "prompt": "front facing military guard looking at camera, blue uniform, arms at sides, symmetrical, centered, pixel art character sprite"},
+        {"id": "guard_03", "prompt": "soldier standing at attention facing forward, black uniform, direct eye contact with viewer, front view portrait, pixel art"},
+        {"id": "guard_04", "prompt": "guard character front view facing player, green uniform, holding rifle, symmetrical centered pose, retro game enemy sprite"},
+        {"id": "guard_05", "prompt": "zombie soldier front facing camera, tattered uniform, standing upright, direct frontal view, horror game pixel art sprite"}
+      ]
+    }
+  ]
+}

@@ -24,7 +24,7 @@ function WebBrowserView:init(controller, di)
     self.hovered_button = nil
 
     -- HTML renderer
-    self.html_renderer = HTMLRenderer:new()
+    self.html_renderer = HTMLRenderer:new(love.graphics)
 end
 
 -- Update (hover detection)

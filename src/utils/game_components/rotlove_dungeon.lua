@@ -36,6 +36,7 @@ function RotloveDungeon:new(config)
     self.map_height = 0
     self.floor_tiles = {}
     self.rooms = {}
+    self.doors = {}
 
     return self
 end
@@ -133,11 +134,20 @@ function RotloveDungeon:generate(rng)
         self.rooms = generator:getRooms() or {}
     end
 
+    -- Get door data if available
+    self.doors = {}
+    if generator.getDoors then
+        local raw_doors = generator:getDoors() or {}
+        for _, door in ipairs(raw_doors) do
+            table.insert(self.doors, {x = door.x, y = door.y})
+        end
+    end
+
     -- Select start and goal
     local start, goal = self:selectStartAndGoal(rng)
 
-    print(string.format("[RotloveDungeon] Generated %dx%d %s dungeon, %d floor tiles, start=(%.1f,%.1f) goal=(%d,%d)",
-        self.map_width, self.map_height, self.generator_type, #self.floor_tiles,
+    print(string.format("[RotloveDungeon] Generated %dx%d %s dungeon, %d floor tiles, %d doors, start=(%.1f,%.1f) goal=(%d,%d)",
+        self.map_width, self.map_height, self.generator_type, #self.floor_tiles, #self.doors,
         start.x, start.y, goal.x, goal.y))
 
     return {
@@ -146,7 +156,9 @@ function RotloveDungeon:generate(rng)
         height = self.map_height,
         start = start,
         goal = goal,
-        rooms = self.rooms
+        rooms = self.rooms,
+        floor_tiles = self.floor_tiles,
+        doors = self.doors
     }
 end
 
@@ -213,6 +225,123 @@ function RotloveDungeon:isWalkable(x, y)
     end
 
     return self.map[tile_y] and self.map[tile_y][tile_x] == 0
+end
+
+function RotloveDungeon:computeCriticalPath(start, goal)
+    if not start or not goal then
+        return {}
+    end
+
+    local start_x = math.floor(start.x)
+    local start_y = math.floor(start.y)
+    local goal_x = math.floor(goal.x)
+    local goal_y = math.floor(goal.y)
+
+    local map = self.map
+
+    local function passableCallback(x, y)
+        if x < 1 or x > self.map_width or y < 1 or y > self.map_height then
+            return false
+        end
+        return map[y] and map[y][x] == 0
+    end
+
+    local astar = ROT.Path.AStar:new(goal_x, goal_y, passableCallback, {topology = 4})
+
+    -- Get raw A* path
+    local raw_path = {}
+    local path_lookup = {}
+    astar:compute(start_x, start_y, function(x, y)
+        table.insert(raw_path, {x = x, y = y})
+        path_lookup[x .. "," .. y] = true
+    end)
+
+    -- Helper to get room bounds (handles both Room objects and plain tables)
+    local function getRoomBounds(room)
+        if room.getLeft then
+            -- Room object with methods
+            return room:getLeft(), room:getRight(), room:getTop(), room:getBottom()
+        elseif room.x and room.y and room.width and room.height then
+            -- Plain table with x,y,width,height
+            return room.x, room.x + room.width - 1, room.y, room.y + room.height - 1
+        elseif room._x1 then
+            -- Direct access to Room internals
+            return room._x1, room._x2, room._y1, room._y2
+        end
+        return nil
+    end
+
+    -- Find which rooms the path passes through
+    local critical_rooms = {}
+    for i, room in ipairs(self.rooms or {}) do
+        local left, right, top, bottom = getRoomBounds(room)
+        if left then
+            local room_on_path = false
+            for y = top, bottom do
+                for x = left, right do
+                    if path_lookup[x .. "," .. y] then
+                        room_on_path = true
+                        break
+                    end
+                end
+                if room_on_path then break end
+            end
+            if room_on_path then
+                critical_rooms[i] = true
+            end
+        end
+    end
+
+    -- Build expanded path: all tiles in critical rooms + corridor tiles from path
+    local expanded_path = {}
+    local added = {}
+
+    -- Add all tiles from critical rooms
+    for i, room in ipairs(self.rooms or {}) do
+        if critical_rooms[i] then
+            local left, right, top, bottom = getRoomBounds(room)
+            if left then
+                for y = top, bottom do
+                    for x = left, right do
+                        if map[y] and map[y][x] == 0 then
+                            local key = x .. "," .. y
+                            if not added[key] then
+                                table.insert(expanded_path, {x = x, y = y})
+                                added[key] = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Add corridor tiles from raw path (tiles not in any room)
+    for _, tile in ipairs(raw_path) do
+        local key = tile.x .. "," .. tile.y
+        if not added[key] then
+            table.insert(expanded_path, tile)
+            added[key] = true
+        end
+    end
+
+    self.critical_path = expanded_path
+    self.critical_rooms = critical_rooms
+
+    local num_critical = 0
+    for _ in pairs(critical_rooms) do num_critical = num_critical + 1 end
+    print(string.format("[RotloveDungeon] Critical path: %d tiles, %d/%d rooms critical",
+        #expanded_path, num_critical, #(self.rooms or {})))
+
+    return expanded_path
+end
+
+function RotloveDungeon:getCriticalPath()
+    return self.critical_path or {}
+end
+
+function RotloveDungeon:getCriticalRooms()
+    return self.critical_rooms or {}
 end
 
 return RotloveDungeon

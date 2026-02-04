@@ -53,10 +53,10 @@ python scripts/pixellab_batch_generator_pixflux.py <config.json>
 |-----------|---------|-------|
 | `width` | 16-128 | Pixel width |
 | `height` | 16-128 | Pixel height |
-| `view` | `"high top-down"`, `"side"` | Camera angle |
-| `detail` | `"low detail"`, `"medium detail"`, `"high detail"` | Complexity |
-| `shading` | `"flat shading"`, `"basic shading"`, `"detailed shading"` | Lighting |
-| `outline` | `"no outline"`, `"single color outline"`, `"colored outline"` | Edge style |
+| `view` | `"side"`, `"low top-down"`, `"high top-down"` | Camera angle |
+| `detail` | `"low detail"`, `"medium detail"`, `"highly detailed"` | Complexity |
+| `shading` | `"flat shading"`, `"basic shading"`, `"medium shading"`, `"detailed shading"`, `"highly detailed shading"` | Lighting |
+| `outline` | `"lineless"`, `"single color outline"`, `"single color black outline"`, `"selective outline"` | Edge style |
 
 ### Example: Collectibles
 ```json
@@ -76,9 +76,9 @@ python scripts/pixellab_batch_generator_pixflux.py <config.json>
         "outline": "single color outline"
       },
       "sprites": [
-        {"id": "apple", "prompt": "red apple, shiny, fresh fruit, pixel art"},
-        {"id": "coin", "prompt": "gold coin, shiny metallic, pixel art"},
-        {"id": "heart", "prompt": "red heart, health pickup, pixel art"}
+        {"id": "apple", "prompt": "red apple, shiny, fresh fruit"},
+        {"id": "coin", "prompt": "gold coin, shiny metallic"},
+        {"id": "heart", "prompt": "red heart, health pickup"}
       ]
     }
   ]
@@ -150,10 +150,10 @@ Each character generates 8 PNG files:
         "outline": "single color outline"
       },
       "characters": [
-        {"id": "guard_brown", "prompt": "enemy soldier brown uniform, pixel art game enemy"},
-        {"id": "guard_blue", "prompt": "military guard blue uniform, pixel art game enemy"},
-        {"id": "mutant", "prompt": "mutant soldier greenish skin tattered uniform, pixel art horror enemy"},
-        {"id": "officer", "prompt": "military officer white shirt, pixel art game character"}
+        {"id": "guard_brown", "prompt": "enemy soldier brown uniform"},
+        {"id": "guard_blue", "prompt": "military guard blue uniform"},
+        {"id": "mutant", "prompt": "mutant soldier greenish skin tattered uniform"},
+        {"id": "officer", "prompt": "military officer white shirt"}
       ]
     }
   ]
@@ -166,7 +166,6 @@ Each character generates 8 PNG files:
 
 ### Prompts
 - Keep prompts concise but descriptive
-- Include "pixel art" in prompts for consistent style
 - Avoid trademarked names (no "nazi", "wolfenstein", etc.)
 - Describe colors, clothing, pose
 

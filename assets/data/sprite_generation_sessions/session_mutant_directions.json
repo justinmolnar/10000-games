@@ -1,0 +1,30 @@
+{
+  "session_name": "mutant_directions",
+  "description": "8 directional facings for mutant guard",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "mutant_8dir",
+      "output_folder": "assets/sprites/games/raycaster/guards/mutant_8dir",
+      "description": "Mutant soldier 8 directions",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "side",
+        "detail": "low detail",
+        "shading": "basic shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "mutant_front", "prompt": "mutant soldier greenish skin tattered uniform, front view facing camera directly, standing pose, pixel art game sprite"},
+        {"id": "mutant_front_left", "prompt": "mutant soldier greenish skin tattered uniform, front-left 3/4 view, turned slightly left, standing pose, pixel art game sprite"},
+        {"id": "mutant_left", "prompt": "mutant soldier greenish skin tattered uniform, left side profile view, facing left, standing pose, pixel art game sprite"},
+        {"id": "mutant_back_left", "prompt": "mutant soldier greenish skin tattered uniform, back-left 3/4 view, turned away slightly left, standing pose, pixel art game sprite"},
+        {"id": "mutant_back", "prompt": "mutant soldier greenish skin tattered uniform, back view facing away from camera, standing pose, pixel art game sprite"},
+        {"id": "mutant_back_right", "prompt": "mutant soldier greenish skin tattered uniform, back-right 3/4 view, turned away slightly right, standing pose, pixel art game sprite"},
+        {"id": "mutant_right", "prompt": "mutant soldier greenish skin tattered uniform, right side profile view, facing right, standing pose, pixel art game sprite"},
+        {"id": "mutant_front_right", "prompt": "mutant soldier greenish skin tattered uniform, front-right 3/4 view, turned slightly right, standing pose, pixel art game sprite"}
+      ]
+    }
+  ]
+}

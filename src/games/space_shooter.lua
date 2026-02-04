@@ -95,8 +95,7 @@ function SpaceShooter:setupEntities()
         y = player_y,
         extra = {
             fire_cooldown = 0, auto_fire_timer = 0, charge_progress = 0, is_charging = false,
-            burst_remaining = 0, burst_timer = 0, ammo = p.ammo_capacity,
-            reload_timer = 0, is_reloading = false, heat = 0, is_overheated = false, overheat_timer = 0,
+            burst_remaining = 0, burst_timer = 0,
             angle = 0, vx = 0, vy = 0, jump_timer = 0, is_jumping = false, jump_progress = 0,
             jump_start_x = 0, jump_start_y = 0, jump_target_x = 0, jump_target_y = 0
         }
@@ -129,6 +128,13 @@ function SpaceShooter:setupEntities()
     self.wave_state = {active = false, enemies_remaining = 0, pause_timer = 0}
     self.grid_state = {initialized = false, wave_active = false, wave_pause_timer = 0, initial_enemy_count = 0, wave_number = 0}
     self.galaga_state = {formation_positions = {}, dive_timer = p.dive_frequency, diving_count = 0, wave_active = false, wave_pause_timer = 0, initial_enemy_count = 0, wave_number = 0, spawn_timer = 0, spawned_count = 0, wave_modifiers = {}}
+
+    -- Galaga enemy state definitions (duration=0 means infinite, transitions are external)
+    self.galaga_state.state_defs = {
+        entering = { duration = 0 },
+        in_formation = { duration = 0 },
+        diving = { duration = 0 },
+    }
 
     -- Build weighted configs for variant enemy spawning
     self.enemy_weighted_configs = {}
@@ -380,9 +386,8 @@ function SpaceShooter:updatePlayer(dt)
     -- Fire mode handling (game-side)
     self:updateFireMode(dt, self:isKeyDown('space'))
 
-    -- Ammo/heat resource management (game-side)
-    self:updateResources(dt)
-    if self:isKeyDown('r') then self:reload() end
+    -- Ammo/heat resource management (handled by health_system)
+    if self:isKeyDown('r') then self.health_system:reload() end
 end
 
 -- Fire mode handling (moved from ProjectileSystem to game)
@@ -393,13 +398,13 @@ function SpaceShooter:updateFireMode(dt, is_fire_pressed)
 
     if mode == "manual" then
         player.fire_cooldown = (player.fire_cooldown or 0) - dt
-        if is_fire_pressed and player.fire_cooldown <= 0 and self:canShoot() then
+        if is_fire_pressed and player.fire_cooldown <= 0 and self.health_system:canFire() then
             self:playerShoot(1.0)
             player.fire_cooldown = p.fire_cooldown or 0.2
         end
     elseif mode == "auto" then
         player.auto_fire_timer = (player.auto_fire_timer or 0) - dt
-        if is_fire_pressed and player.auto_fire_timer <= 0 and self:canShoot() then
+        if is_fire_pressed and player.auto_fire_timer <= 0 and self.health_system:canFire() then
             self:playerShoot(1.0)
             player.auto_fire_timer = 1.0 / (p.fire_rate or 5)
         end
@@ -411,7 +416,7 @@ function SpaceShooter:updateFireMode(dt, is_fire_pressed)
             end
             player.charge_progress = math.min((player.charge_progress or 0) + dt, p.charge_time or 1)
         else
-            if player.is_charging and self:canShoot() then
+            if player.is_charging and self.health_system:canFire() then
                 local charge_mult = player.charge_progress / (p.charge_time or 1)
                 self:playerShoot(charge_mult)
                 player.is_charging = false
@@ -421,7 +426,7 @@ function SpaceShooter:updateFireMode(dt, is_fire_pressed)
     elseif mode == "burst" then
         if (player.burst_remaining or 0) > 0 then
             player.burst_timer = (player.burst_timer or 0) + dt
-            if player.burst_timer >= (p.burst_delay or 0.05) and self:canShoot() then
+            if player.burst_timer >= (p.burst_delay or 0.05) and self.health_system:canFire() then
                 self:playerShoot(1.0)
                 player.burst_remaining = player.burst_remaining - 1
                 player.burst_timer = 0
@@ -434,68 +439,6 @@ function SpaceShooter:updateFireMode(dt, is_fire_pressed)
                 player.fire_cooldown = p.fire_cooldown or 0.5
             end
         end
-    end
-end
-
--- Ammo/heat resource system (moved from ProjectileSystem to game)
-function SpaceShooter:canShoot()
-    local p = self.params
-    local player = self.player
-    if p.ammo_enabled and player.is_reloading then return false end
-    if p.ammo_enabled and (player.ammo or 0) <= 0 then
-        player.is_reloading = true
-        player.reload_timer = p.ammo_reload_time or 2.0
-        return false
-    end
-    if p.overheat_enabled and player.is_overheated then return false end
-    return true
-end
-
-function SpaceShooter:onShoot()
-    local p = self.params
-    local player = self.player
-    if p.ammo_enabled then
-        player.ammo = (player.ammo or p.ammo_capacity) - 1
-    end
-    if p.overheat_enabled then
-        player.heat = (player.heat or 0) + 1
-        if player.heat >= (p.overheat_threshold or 10) then
-            player.is_overheated = true
-            player.overheat_timer = p.overheat_cooldown or 2.0
-            player.heat = p.overheat_threshold or 10
-        end
-    end
-end
-
-function SpaceShooter:updateResources(dt)
-    local p = self.params
-    local player = self.player
-    if p.ammo_enabled and player.is_reloading then
-        player.reload_timer = (player.reload_timer or 0) - dt
-        if player.reload_timer <= 0 then
-            player.is_reloading = false
-            player.ammo = p.ammo_capacity
-        end
-    end
-    if p.overheat_enabled then
-        if player.is_overheated then
-            player.overheat_timer = (player.overheat_timer or 0) - dt
-            if player.overheat_timer <= 0 then
-                player.is_overheated = false
-                player.heat = 0
-            end
-        elseif (player.heat or 0) > 0 then
-            player.heat = math.max(0, player.heat - dt * (p.overheat_heat_dissipation or 1))
-        end
-    end
-end
-
-function SpaceShooter:reload()
-    local p = self.params
-    local player = self.player
-    if p.ammo_enabled and not player.is_reloading and (player.ammo or 0) < p.ammo_capacity then
-        player.is_reloading = true
-        player.reload_timer = p.ammo_reload_time or 2.0
     end
 end
 
@@ -548,7 +491,7 @@ function SpaceShooter:playerShoot(charge_multiplier)
         end
     end
 
-    self:onShoot()
+    self.health_system:onShoot()
     self:playSound("shoot", 0.6)
 end
 
@@ -1052,6 +995,15 @@ function SpaceShooter:initGalagaFormation()
     self.galaga_state.wave_active = true
 end
 
+function SpaceShooter:createGalagaStateMachine(enemy, initial_state)
+    local StateMachine = self.di.components.StateMachine
+    enemy.state_machine = StateMachine:new({
+        states = self.galaga_state.state_defs,
+        initial = initial_state or "entering",
+    })
+    return enemy.state_machine
+end
+
 function SpaceShooter:updateGalagaFormation(dt)
     local PatternMovement = self.di.components.PatternMovement
     local game = self
@@ -1065,8 +1017,8 @@ function SpaceShooter:updateGalagaFormation(dt)
         local result = self:updateWaveState(self.galaga_state, {
             pause_duration = self.params.wave_pause_duration,
             count_func = function()
-                for _, enemy in ipairs(game.enemies) do
-                    if enemy.formation_state then return 1 end
+                for _, enemy in ipairs(game.entity_controller:getEntitiesByType("enemy")) do
+                    if enemy.galaga_enemy then return 1 end
                 end
                 return 0
             end,
@@ -1092,7 +1044,7 @@ function SpaceShooter:updateGalagaFormation(dt)
                     local side = math.random() > 0.5 and "left" or "right"
                     game:spawnEntity("enemy", {x = slot.x, y = slot.y, formation_slot = slot,
                         entrance = (game.params.entrance_pattern or "swoop") .. "_" .. side,
-                        extra = {formation_state = 'entering', health = game.galaga_state.wave_modifiers.health or game.params.enemy_health}})
+                        extra = {galaga_enemy = true, health = game.galaga_state.wave_modifiers.health or game.params.enemy_health}})
                     game.galaga_state.spawned_count = game.galaga_state.spawned_count + 1
                 end
             end
@@ -1117,7 +1069,7 @@ function SpaceShooter:updateGalagaFormation(dt)
             local side = math.random() > 0.5 and "left" or "right"
             self:spawnEntity("enemy", {x = slot.x, y = slot.y, formation_slot = slot,
                 entrance = (self.params.entrance_pattern or "swoop") .. "_" .. side,
-                extra = {formation_state = 'entering', health = self.galaga_state.wave_modifiers.health or self.params.enemy_health}})
+                extra = {galaga_enemy = true, health = self.galaga_state.wave_modifiers.health or self.params.enemy_health}})
             self.galaga_state.spawned_count = self.galaga_state.spawned_count + 1
         end
     end
@@ -1132,7 +1084,7 @@ function SpaceShooter:updateGalagaFormation(dt)
         local side = math.random() > 0.5 and "left" or "right"
         game:spawnEntity("enemy", {x = slot.x, y = slot.y, formation_slot = slot,
             entrance = (game.params.entrance_pattern or "swoop") .. "_" .. side,
-            extra = {formation_state = 'entering', health = game.galaga_state.wave_modifiers.health or game.params.enemy_health}})
+            extra = {galaga_enemy = true, health = game.galaga_state.wave_modifiers.health or game.params.enemy_health}})
         game.galaga_state.spawned_count = game.galaga_state.spawned_count + 1
     end
     self.entity_controller:updateBehaviors(dt, {gradual_spawn = self.galaga_state.gradual_spawn})
@@ -1143,12 +1095,14 @@ function SpaceShooter:updateGalagaFormation(dt)
     if self.galaga_state.dive_timer <= 0 and self.galaga_state.diving_count < self.params.max_diving_enemies then
         local candidates = {}
         for _, enemy in ipairs(self.enemies) do
-            if enemy.formation_state == 'in_formation' then table.insert(candidates, enemy) end
+            if enemy.state_machine and enemy.state_machine:getState() == 'in_formation' then
+                table.insert(candidates, enemy)
+            end
         end
 
         if #candidates > 0 then
             local diver = candidates[math.random(#candidates)]
-            diver.formation_state = 'diving'
+            diver.state_machine:setState('diving')
             diver.movement_pattern = 'bezier'
             diver.bezier_t = 0
             diver.bezier_complete = false
@@ -1163,31 +1117,41 @@ function SpaceShooter:updateGalagaFormation(dt)
         self.galaga_state.dive_timer = dive_freq
     end
 
-    -- Update enemy states (use PatternMovement.updateBezier instead of inline math)
-    for _, enemy in ipairs(self.enemies) do
-        if enemy.formation_state == 'entering' then
-            PatternMovement.updateBezier(enemy, dt)
-            if enemy.bezier_complete then
-                enemy.formation_state = 'in_formation'
-                enemy.x, enemy.y = enemy.home_x, enemy.home_y
-                enemy.movement_pattern = 'formation'
+    -- Update enemy states via state machine
+    local current_enemies = self.entity_controller:getEntitiesByType("enemy")
+    for _, enemy in ipairs(current_enemies) do
+        if enemy.galaga_enemy then
+            if not enemy.state_machine then
+                self:createGalagaStateMachine(enemy)
             end
 
-        elseif enemy.formation_state == 'in_formation' then
-            enemy.x, enemy.y = enemy.home_x, enemy.home_y
+            enemy.state_machine:update(1)
+            local state = enemy.state_machine:getState()
 
-        elseif enemy.formation_state == 'diving' then
-            PatternMovement.updateBezier(enemy, dt)
-            if enemy.bezier_complete then
-                self.entity_controller:removeEntity(enemy)
-                self.galaga_state.diving_count = self.galaga_state.diving_count - 1
-                if enemy.formation_slot then
-                    enemy.formation_slot.occupied = false
-                    local slot = enemy.formation_slot
-                    local side = math.random() > 0.5 and "left" or "right"
-                    self:spawnEntity("enemy", {x = slot.x, y = slot.y, formation_slot = slot,
-                        entrance = (self.params.entrance_pattern or "swoop") .. "_" .. side,
-                        extra = {formation_state = 'entering', health = self.galaga_state.wave_modifiers.health or self.params.enemy_health}})
+            if state == 'entering' then
+                PatternMovement.updateBezier(enemy, dt)
+                if enemy.bezier_complete then
+                    enemy.state_machine:setState('in_formation')
+                    enemy.x, enemy.y = enemy.home_x, enemy.home_y
+                    enemy.movement_pattern = 'formation'
+                end
+
+            elseif state == 'in_formation' then
+                enemy.x, enemy.y = enemy.home_x, enemy.home_y
+
+            elseif state == 'diving' then
+                PatternMovement.updateBezier(enemy, dt)
+                if enemy.bezier_complete then
+                    self.entity_controller:removeEntity(enemy)
+                    self.galaga_state.diving_count = self.galaga_state.diving_count - 1
+                    if enemy.formation_slot then
+                        enemy.formation_slot.occupied = false
+                        local slot = enemy.formation_slot
+                        local side = math.random() > 0.5 and "left" or "right"
+                        self:spawnEntity("enemy", {x = slot.x, y = slot.y, formation_slot = slot,
+                            entrance = (self.params.entrance_pattern or "swoop") .. "_" .. side,
+                            extra = {galaga_enemy = true, health = self.galaga_state.wave_modifiers.health or self.params.enemy_health}})
+                    end
                 end
             end
         end

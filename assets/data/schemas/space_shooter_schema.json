@@ -860,7 +860,7 @@
             "config": {}
         },
         "health_system": {
-            "type": "LivesHealthSystem",
+            "type": "PlayerController",
             "config": {
                 "mode": "shield",
                 "starting_lives": "$lives_count",
@@ -868,7 +868,14 @@
                 "shield_enabled": "$shield",
                 "shield_max_hits": "$shield_hits",
                 "shield_regen_time": "$shield_regen_time",
-                "shield_regen_delay": 0
+                "shield_regen_delay": 0,
+                "ammo_enabled": "$ammo_enabled",
+                "ammo_capacity": "$ammo_capacity",
+                "ammo_reload_time": "$ammo_reload_time",
+                "heat_enabled": "$overheat_enabled",
+                "heat_threshold": "$overheat_threshold",
+                "heat_cooldown": "$overheat_cooldown",
+                "heat_dissipation": "$overheat_heat_dissipation"
             }
         }
     },

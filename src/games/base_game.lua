@@ -957,6 +957,7 @@ function BaseGame:spawnEntity(type_name, config)
             extra.bezier_complete = false
             extra.home_x = target_x
             extra.home_y = target_y
+            extra.skip_offscreen_removal = true  -- Don't cull while animating on-screen
             x, y = start_x, start_y
         end
     end

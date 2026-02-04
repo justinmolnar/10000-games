@@ -138,24 +138,32 @@ function BillboardRenderer.createDiamond(x, y, config)
     }
 end
 
--- Convenience: create a sprite billboard (for future use with images)
+-- Convenience: create a sprite billboard with actual texture rendering
 function BillboardRenderer.createSprite(x, y, config)
     config = config or {}
+    local sprite = config.sprite
+    local sprite_width = sprite and sprite:getWidth() or 64
+    local sprite_height = sprite and sprite:getHeight() or 64
+
     return {
         x = x,
         y = y,
         height = config.height or 1.0,
         aspect = config.aspect or 1.0,
         y_offset = config.y_offset or 0,
-        sprite = config.sprite,
-        quad = config.quad,
+        sprite = sprite,
         color = config.color or {1, 1, 1},
-        draw_column = config.sprite and function(col, screen_y, height, col_ratio, shade)
-            -- Future: sample sprite column
-            -- For now, fallback to color
+        draw_column = sprite and function(col, screen_y, height, col_ratio, shade)
+            -- Sample sprite column
+            local src_x = math.floor(col_ratio * sprite_width)
+            src_x = math.max(0, math.min(sprite_width - 1, src_x))
+
             local color = config.color or {1, 1, 1}
             love.graphics.setColor(color[1] * shade, color[2] * shade, color[3] * shade)
-            love.graphics.rectangle('fill', col, screen_y, 1, height)
+
+            -- Draw single column of sprite scaled to billboard height
+            local quad = love.graphics.newQuad(src_x, 0, 1, sprite_height, sprite_width, sprite_height)
+            love.graphics.draw(sprite, quad, col, screen_y, 0, 1, height / sprite_height)
         end or nil
     }
 end

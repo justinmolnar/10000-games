@@ -193,7 +193,7 @@ Pub/sub system (`src/utils/event_bus.lua`) for decoupled communication.
 | HUDRenderer | Configurable score/lives/timer display |
 | FogOfWar | Grid-based visibility system |
 | VictoryCondition | Win/loss state management |
-| LivesHealthSystem | Lives, health, invincibility, shields |
+| PlayerController | Lives, health, shields, ammo, heat/overheat |
 | ScoringSystem | Score, combos, multipliers, token calculation |
 | EntityController | Enemy spawning, pooling, wave management |
 | ProjectileSystem | Bullet firing, collision, pooling |

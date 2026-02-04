@@ -112,7 +112,7 @@ function love.load()
         VisualEffects = require('src.utils.game_components.visual_effects'),
         HUDRenderer = require('src.utils.game_components.hud_renderer'),
         VictoryCondition = require('src.utils.game_components.victory_condition'),
-        LivesHealthSystem = require('src.utils.game_components.lives_health_system'),
+        PlayerController = require('src.utils.game_components.player_controller'),
         EntityController = require('src.utils.game_components.entity_controller'),
         ProjectileSystem = require('src.utils.game_components.projectile_system'),
         EffectSystem = require('src.utils.game_components.effect_system'),
@@ -129,6 +129,8 @@ function love.load()
         BillboardRenderer = require('src.utils.game_components.billboard_renderer'),
         RaycastRenderer = require('src.utils.game_components.raycast_renderer'),
         MinimapRenderer = require('src.utils.game_components.minimap_renderer'),
+        MapSpawnProcessor = require('src.utils.game_components.map_spawn_processor'),
+        StateMachine = require('src.utils.game_components.state_machine'),
     }
 
     -- == 3. Instantiate Models with DI ==

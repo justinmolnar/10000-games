@@ -14,22 +14,18 @@ function StaticMapLoader:generate(rng)
     local map_data = self:loadMap(self.map_name)
 
     if not map_data then
-        -- Fallback: tiny test map
         return {
             map = {{1,1,1,1,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,1}},
-            width = 5,
-            height = 5,
+            width = 5, height = 5,
             start = {x = 2.5, y = 2.5, angle = 0},
-            goal = {x = 3, y = 3}
+            goal = {x = 3, y = 3},
+            markers = {}
         }
     end
 
-    -- Convert string map to numeric (1=wall, 0=floor)
-    -- Also track special tile positions
     local map = {}
     local floor_tiles = {}
-    local dot_tiles = {}      -- . or o (small dots)
-    local power_tiles = {}    -- O (power pills)
+    local markers = {}  -- {char = {{x, y}, ...}, ...} - game decides what each char means
     local height = #map_data.rows
     local width = #map_data.rows[1]
 
@@ -37,28 +33,30 @@ function StaticMapLoader:generate(rng)
         map[y] = {}
         for x = 1, #row do
             local char = row:sub(x, x)
-            if char == "#" or char == "W" or char == "G" then
+            if char == "#" then
                 map[y][x] = 1  -- Wall
             else
                 map[y][x] = 0  -- Floor
                 table.insert(floor_tiles, {x = x, y = y})
-                -- Track special tiles
-                if char == "." or char == "o" then
-                    table.insert(dot_tiles, {x = x + 0.5, y = y + 0.5})
-                elseif char == "O" then
-                    table.insert(power_tiles, {x = x + 0.5, y = y + 0.5})
+                -- Track non-floor markers (anything that's not space or dot)
+                if char ~= " " and char ~= "." then
+                    markers[char] = markers[char] or {}
+                    table.insert(markers[char], {x = x + 0.5, y = y + 0.5})
                 end
             end
         end
     end
 
-    -- Use defined start/goal or pick from floor tiles
     local start = map_data.start or self:pickStart(floor_tiles, rng)
     local goal = map_data.goal or self:pickGoal(floor_tiles, start, rng)
 
     self.floor_tiles = floor_tiles
-    self.dot_tiles = dot_tiles
-    self.power_tiles = power_tiles
+    self.markers = markers
+
+    print("[StaticMapLoader] Found markers:")
+    for char, positions in pairs(markers) do
+        print("  char:", char, "count:", #positions)
+    end
 
     return {
         map = map,
@@ -66,8 +64,8 @@ function StaticMapLoader:generate(rng)
         height = height,
         start = start,
         goal = goal,
-        dots = dot_tiles,
-        power_pills = power_tiles
+        floor_tiles = floor_tiles,
+        markers = markers
     }
 end
 

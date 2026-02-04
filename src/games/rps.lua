@@ -75,7 +75,7 @@ end
 function RPS:setupComponents()
     local p = self.params
     local AnimationSystem = self.di.components.AnimationSystem
-    local LivesHealthSystem = self.di.components.LivesHealthSystem
+    local PlayerController = self.di.components.PlayerController
     local PopupManager = self.di.components.PopupManager
 
     -- Score popups
@@ -106,7 +106,7 @@ function RPS:setupComponents()
     end)
 
     -- Lives/Health System
-    self.health_system = LivesHealthSystem:new({
+    self.health_system = PlayerController:new({
         mode = "lives",
         starting_lives = p.lives,
         max_lives = 999
