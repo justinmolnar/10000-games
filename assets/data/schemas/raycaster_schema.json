@@ -486,6 +486,25 @@
             "type": "object",
             "default": {},
             "description": "Map base spawn type to weighted alternatives. E.g. {\"enemy\": [{\"name\": \"guard\", \"weight\": 70}, {\"name\": \"elite\", \"weight\": 30}]}"
+        },
+        "locked_door_count": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 10,
+            "description": "Number of critical-path doors to lock with keys (0 = disabled)"
+        },
+        "locked_door_types": {
+            "type": "array",
+            "default": ["gold"],
+            "description": "Key colors to cycle through for locked doors: gold, silver"
+        },
+        "secret_wall_count": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 20,
+            "description": "Number of non-critical doors to convert to secret push-walls (0 = disabled)"
         }
     },
     "components": {

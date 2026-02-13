@@ -72,6 +72,16 @@
       "modifications": "None",
       "date_added": "2026-02-01",
       "notes": "Roguelike toolkit - dungeon generation (Uniform, Digger, Rogue), RNG, FOV, pathfinding. Port of rot.js"
+    },
+    {
+      "asset_path": "lib/g3d/*",
+      "asset_type": "code",
+      "author": "groverburger",
+      "license": "MIT",
+      "source_url": "https://github.com/groverburger/g3d",
+      "modifications": "None",
+      "date_added": "2026-02-12",
+      "notes": "Simple 3D engine for LÖVE2D - mesh rendering, camera, collisions"
     }
   ],
 

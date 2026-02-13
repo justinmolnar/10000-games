@@ -1,0 +1,42 @@
+{
+  "session_name": "dodge_dog_teeth_retry",
+  "description": "Retry failed sprites from dodge_dog_teeth session",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "dog_teeth_retry",
+      "output_folder": "assets/sprites/games/dodge/teeth",
+      "default_params": {
+        "width": 96,
+        "height": 96,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "fang_large", "prompt": "single large sharp dog canine fang tooth, white ivory, pointed tip, isolated on transparent background"},
+        {"id": "fang_with_gums", "prompt": "sharp dog fang tooth with pink gum tissue at the base, white enamel, exposed root area"},
+        {"id": "molar_with_gums", "prompt": "dog molar tooth with dark pink gum tissue, ridged grinding surface, chunky shape"},
+        {"id": "fang_dripping", "prompt": "sharp white dog fang tooth with saliva dripping from the tip, wet glossy surface"}
+      ]
+    },
+    {
+      "name": "slobber_retry",
+      "output_folder": "assets/sprites/games/dodge/slobber",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "sprites": [
+        {"id": "splat_blob", "prompt": "thick glob of dog slobber, opaque white-clear drool blob, bubbly wet surface"},
+        {"id": "splat_puddle", "prompt": "flat drool puddle splat, thin translucent saliva spread on surface, wet sheen"},
+        {"id": "splat_drip", "prompt": "dripping saliva drop mid-fall, elongated teardrop shape, clear translucent drool"}
+      ]
+    }
+  ]
+}

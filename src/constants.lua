@@ -8,6 +8,8 @@ Constants.state = {
     COMPLETION = 'completion',
     SCREENSAVER = 'screensaver',
     STATISTICS = 'statistics',
+    SHADER_SANDBOX = 'shader_sandbox',
+    SANDBOX_3D = 'sandbox_3d',
 }
 
 -- Virtual filesystem well-known paths

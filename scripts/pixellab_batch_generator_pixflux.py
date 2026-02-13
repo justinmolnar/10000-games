@@ -112,7 +112,7 @@ def generate_sprite_pixflux(sprite_id, prompt, params):
             f"{PIXELLAB_API_BASE}/generate-image-pixflux",
             headers=headers,
             json=payload,
-            timeout=60
+            timeout=300
         )
         response.raise_for_status()
 

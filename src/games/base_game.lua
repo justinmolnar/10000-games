@@ -270,6 +270,11 @@ end
 
 -- Variable timestep update (for normal gameplay)
 function BaseGame:updateBase(dt)
+    -- Update view components (canvas sims must run outside draw phase)
+    if self.view and self.view.update then
+        self.view:update(dt)
+    end
+
     if not self.completed then
         self.time_elapsed = self.time_elapsed + dt
 
@@ -559,7 +564,9 @@ function BaseGame:handleEntityDestroyed(entity, config)
     if config.effects and self.visual_effects then
         if config.effects.particles and self.visual_effects.particles then
             local color = config.color_func and config.color_func(entity) or {1, 0.5, 0}
-            self.visual_effects.particles:emitBrickDestruction(cx, cy, color)
+            self.visual_effects.particles:emit(cx, cy, 8, "explosion", {
+                color = color, speed = 150, lifetime = 0.5, size = 4, gravity = 300
+            })
         end
         if config.effects.shake then
             if not self.params.camera_shake_intensity then error("handleEntityDestroyed: params.camera_shake_intensity required for shake") end
@@ -648,15 +655,10 @@ end
 
 function BaseGame:updateFlashMap(dt)
     if not self.flash_map then return end
-    local TableUtils = self.di and self.di.components and self.di.components.TableUtils
-    if TableUtils then
-        TableUtils.updateTimerMap(self.flash_map, dt)
-    else
-        for entity, timer in pairs(self.flash_map) do
-            self.flash_map[entity] = timer - dt
-            if self.flash_map[entity] <= 0 then
-                self.flash_map[entity] = nil
-            end
+    for entity, timer in pairs(self.flash_map) do
+        self.flash_map[entity] = timer - dt
+        if self.flash_map[entity] <= 0 then
+            self.flash_map[entity] = nil
         end
     end
 end

@@ -116,6 +116,16 @@ function RaycasterView:drawContent()
             hud_y = game.hud:drawStat("SCORE", game.score, hud_y, {1, 0.85, 0})
         end
 
+        -- Key display
+        if game.keys then
+            if game.keys.gold and game.keys.gold > 0 then
+                hud_y = game.hud:drawStat("GOLD KEY", game.keys.gold, hud_y, {1, 0.85, 0})
+            end
+            if game.keys.silver and game.keys.silver > 0 then
+                hud_y = game.hud:drawStat("SILVER KEY", game.keys.silver, hud_y, {0.75, 0.75, 0.8})
+            end
+        end
+
         -- Controls hint
         love.graphics.setColor(1, 1, 1, 0.6)
         local controls = "WASD: Move | Q/E: Strafe | R: New Maze"

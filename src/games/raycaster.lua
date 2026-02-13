@@ -8,6 +8,7 @@
 
 local BaseGame = require('src.games.base_game')
 local RaycasterView = require('src.games.views.raycaster_view')
+local SpriteUtils = require('src.utils.game_components.sprite_utils')
 
 local Raycaster = BaseGame:extend('Raycaster')
 
@@ -58,60 +59,15 @@ end
 -- Load sprite, crop to content bounds, scale so largest dim = 64, bottom-align on 64x64 canvas
 -- Returns {image=Image, y_offset=number} or nil
 function Raycaster:loadSpriteWithBounds(path)
-    local success, imageData = pcall(love.image.newImageData, path)
-    if not success then return nil end
-
-    local w = imageData:getWidth()
-    local h = imageData:getHeight()
-
-    -- Find content bounding box
-    local top, bottom, left, right = h, -1, w, -1
-    for y = 0, h - 1 do
-        for x = 0, w - 1 do
-            local _, _, _, a = imageData:getPixel(x, y)
-            if a > 0.1 then
-                if y < top then top = y end
-                if y > bottom then bottom = y end
-                if x < left then left = x end
-                if x > right then right = x end
-            end
+    local result = SpriteUtils.processSprite(path, {target_size = 64, alignment = "bottom"})
+    if not result then
+        local success, imageData = pcall(love.image.newImageData, path)
+        if success then
+            return {image = love.graphics.newImage(imageData), y_offset = 0}
         end
+        return nil
     end
-
-    -- No content found
-    if bottom < 0 then
-        local image = love.graphics.newImage(imageData)
-        return {image = image, y_offset = 0}
-    end
-
-    -- Crop to content bounds
-    local crop_w = right - left + 1
-    local crop_h = bottom - top + 1
-    local cropped = love.image.newImageData(crop_w, crop_h)
-    cropped:paste(imageData, 0, 0, left, top, crop_w, crop_h)
-
-    -- Scale up so the largest dimension reaches 64
-    local target = 64
-    local scale = math.min(target / crop_w, target / crop_h)
-    local scaled_w = math.floor(crop_w * scale)
-    local scaled_h = math.floor(crop_h * scale)
-
-    -- Draw scaled content onto 64x64 canvas, bottom-aligned
-    local canvas = love.graphics.newCanvas(target, target)
-    local temp_image = love.graphics.newImage(cropped)
-    local prev_canvas = love.graphics.getCanvas()
-    local prev_blend = {love.graphics.getBlendMode()}
-    love.graphics.setCanvas(canvas)
-    love.graphics.clear(0, 0, 0, 0)
-    love.graphics.setBlendMode("replace")
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(temp_image, (target - scaled_w) / 2, target - scaled_h, 0, scale, scale)
-    love.graphics.setBlendMode(unpack(prev_blend))
-    love.graphics.setCanvas(prev_canvas)
-
-    local finalData = canvas:newImageData()
-    local image = love.graphics.newImage(finalData)
-    return {image = image, y_offset = 0}
+    return {image = result.image, y_offset = 0}
 end
 
 function Raycaster:loadGuardSprites()
@@ -357,7 +313,10 @@ function Raycaster:setupComponents()
         health_blood = {height = 0.3, pickup_type = "health", pickup_value = 50, sprite = "health_blood", color = {0.8, 0, 0}},
         -- Ammo
         ammo_clip = {height = 0.25, pickup_type = "ammo", pickup_value = 4, sprite = "ammo_clip", color = {0.6, 0.6, 0.2}},
-        ammo_box = {height = 0.3, pickup_type = "ammo", pickup_value = 10, sprite = "ammo_box", color = {0.5, 0.4, 0.2}}
+        ammo_box = {height = 0.3, pickup_type = "ammo", pickup_value = 10, sprite = "ammo_box", color = {0.5, 0.4, 0.2}},
+        -- Keys
+        key_gold = {height = 0.3, pickup_type = "key", pickup_value = 1, key_color = "gold", sprite = "key_gold", color = {1, 0.85, 0}},
+        key_silver = {height = 0.3, pickup_type = "key", pickup_value = 1, key_color = "silver", sprite = "key_silver", color = {0.75, 0.75, 0.8}}
     }
 
     for type_name, def in pairs(builtin_pickups) do
@@ -370,7 +329,8 @@ function Raycaster:setupComponents()
                 radius = 0.3,
                 sprite = self.sprites[def.sprite],
                 pickup_type = def.pickup_type,
-                pickup_value = def.pickup_value
+                pickup_value = def.pickup_value,
+                key_color = def.key_color
             }
         end
     end
@@ -450,7 +410,20 @@ function Raycaster:setupComponents()
 end
 
 function Raycaster:generateMaze()
-    local result = self.maze_generator:generate(self.rng)
+    -- Retry generation on rotLove failures (some seeds crash uniform generator)
+    local result
+    for attempt = 1, 5 do
+        local ok, res = pcall(self.maze_generator.generate, self.maze_generator, self.rng)
+        if ok then
+            result = res
+            break
+        else
+            print(string.format("[Raycaster] Generation failed (attempt %d/5): %s", attempt, tostring(res)))
+        end
+    end
+    if not result then
+        error("[Raycaster] Map generation failed after 5 attempts")
+    end
 
     self.map, self.map_width, self.map_height = result.map, result.width, result.height
     self.goal = {x = result.goal.x, y = result.goal.y}
@@ -537,6 +510,23 @@ function Raycaster:generateMaze()
         end
     end
 
+    -- Compute critical path BEFORE spawns so path_filter works
+    self.critical_path = nil
+    local critical_rooms = {}
+    local critical_path_lookup = {}
+    if self.maze_generator.computeCriticalPath then
+        self.critical_path = self.maze_generator:computeCriticalPath(self.player, self.goal)
+        critical_rooms = self.maze_generator.critical_rooms or {}
+        if self.critical_path then
+            for _, tile in ipairs(self.critical_path) do
+                critical_path_lookup[math.floor(tile.x) .. "," .. math.floor(tile.y)] = true
+            end
+        end
+    end
+
+    -- Initialize key inventory
+    self.keys = {gold = 0, silver = 0}
+
     -- Process procedural spawns: MapSpawnProcessor calculates positions, EntityController spawns
     if self.entity_controller then
         self.entity_controller:clear()
@@ -546,6 +536,8 @@ function Raycaster:generateMaze()
             room_spawns = self.params.room_spawns,
             corridor_spawns = self.params.corridor_spawns,
             floor_spawns = self.params.floor_spawns,
+            critical_rooms = critical_rooms,
+            critical_path = critical_path_lookup,
             rng = self.rng
         })
         for _, pos in ipairs(spawn_positions) do
@@ -565,15 +557,160 @@ function Raycaster:generateMaze()
         end
     end
 
+    -- Place locked doors, keys, and secret walls AFTER entity spawns
+    self:placeLockedDoorsAndSecrets(critical_path_lookup)
+
     local entity_count = self.entity_controller and self.entity_controller:getActiveCount() or 0
     local door_count = #self.doors
-    print(string.format("[Raycaster] %dx%d maze, start=(%.1f,%.1f) goal=(%d,%d) dots=%d entities=%d doors=%d",
-        self.map_width, self.map_height, self.player.x, self.player.y, self.goal.x, self.goal.y, self.total_dots, entity_count, door_count))
-
-    -- Compute critical path for debug visualization
-    if self.maze_generator.computeCriticalPath then
-        self.critical_path = self.maze_generator:computeCriticalPath(self.player, self.goal)
+    local locked_count = 0
+    local secret_count = 0
+    for _, door in ipairs(self.doors) do
+        if door.locked then locked_count = locked_count + 1 end
+        if door.secret then secret_count = secret_count + 1 end
     end
+    print(string.format("[Raycaster] %dx%d maze, start=(%.1f,%.1f) goal=(%d,%d) dots=%d entities=%d doors=%d locked=%d secrets=%d",
+        self.map_width, self.map_height, self.player.x, self.player.y, self.goal.x, self.goal.y, self.total_dots, entity_count, door_count, locked_count, secret_count))
+end
+
+function Raycaster:placeLockedDoorsAndSecrets(critical_path_lookup)
+    local locked_count = self.params.locked_door_count or 0
+    local secret_count = self.params.secret_wall_count or 0
+    local key_types = self.params.locked_door_types or {"gold"}
+
+    if (locked_count == 0 and secret_count == 0) or not self.doors or #self.doors == 0 then return end
+    if not next(critical_path_lookup) then return end
+
+    -- Build door lookup for flood fill
+    local door_lookup = {}
+    for _, door in ipairs(self.doors) do
+        door_lookup[door.x .. "," .. door.y] = door
+    end
+
+    -- Classify doors: critical path doors vs non-critical doors
+    local critical_doors = {}
+    local noncritical_doors = {}
+    for _, door in ipairs(self.doors) do
+        local neighbors = {{0,1},{0,-1},{1,0},{-1,0}}
+        local has_critical = false
+        local has_noncritical = false
+        for _, n in ipairs(neighbors) do
+            local nx, ny = door.x + n[1], door.y + n[2]
+            if self.map[ny] and self.map[ny][nx] == 0 then
+                local nkey = nx .. "," .. ny
+                if critical_path_lookup[nkey] then
+                    has_critical = true
+                else
+                    has_noncritical = true
+                end
+            end
+        end
+        if has_critical and not has_noncritical then
+            table.insert(critical_doors, door)
+        elseif has_critical and has_noncritical then
+            table.insert(noncritical_doors, door)
+        elseif not has_critical then
+            table.insert(noncritical_doors, door)
+        end
+    end
+
+    -- Shuffle candidates
+    for i = #critical_doors, 2, -1 do
+        local j = math.floor(self.rng:random() * i) + 1
+        critical_doors[i], critical_doors[j] = critical_doors[j], critical_doors[i]
+    end
+    for i = #noncritical_doors, 2, -1 do
+        local j = math.floor(self.rng:random() * i) + 1
+        noncritical_doors[i], noncritical_doors[j] = noncritical_doors[j], noncritical_doors[i]
+    end
+
+    -- Lock doors one at a time, verifying key is reachable each time
+    local actual_locked = 0
+    for i = 1, math.min(locked_count, #critical_doors) do
+        local door = critical_doors[i]
+        local key_type = key_types[((actual_locked) % #key_types) + 1]
+
+        -- Tentatively lock
+        door.locked = key_type
+
+        -- Flood fill from player start, stopping at locked doors
+        local reachable = self:floodFillReachable(door_lookup)
+
+        -- Find reachable non-critical tiles for key placement
+        local key_candidates = {}
+        for tile_key, _ in pairs(reachable) do
+            if not critical_path_lookup[tile_key] then
+                local tx, ty = tile_key:match("(%d+),(%d+)")
+                tx, ty = tonumber(tx), tonumber(ty)
+                local dx = tx + 0.5 - self.player.x
+                local dy = ty + 0.5 - self.player.y
+                if dx * dx + dy * dy > 9 then
+                    table.insert(key_candidates, {x = tx, y = ty})
+                end
+            end
+        end
+
+        if #key_candidates > 0 and self.entity_controller then
+            -- Shuffle and pick one
+            local idx = math.floor(self.rng:random() * #key_candidates) + 1
+            local tile = key_candidates[idx]
+            self.entity_controller:spawn("key_" .. key_type, tile.x + 0.5, tile.y + 0.5)
+            actual_locked = actual_locked + 1
+        else
+            -- Can't place key reachably — unlock this door
+            door.locked = nil
+        end
+    end
+
+    -- Convert non-critical doors to secret walls
+    local actual_secrets = 0
+    for i = 1, math.min(secret_count, #noncritical_doors) do
+        local door = noncritical_doors[i]
+        door.secret = true
+        door.state = "closed"
+        door.progress = 0
+        self.map[door.y][door.x] = 1
+        actual_secrets = actual_secrets + 1
+    end
+
+    print(string.format("[Raycaster] Placed %d locked doors, %d keys, %d secret walls",
+        actual_locked, actual_locked, actual_secrets))
+end
+
+-- Flood fill from player start, returns set of reachable "x,y" keys
+-- Stops at walls and locked doors (unlocked doors are passable)
+function Raycaster:floodFillReachable(door_lookup)
+    local start_x = math.floor(self.player.x)
+    local start_y = math.floor(self.player.y)
+    local visited = {}
+    local queue = {{x = start_x, y = start_y}}
+    visited[start_x .. "," .. start_y] = true
+
+    local head = 1
+    while head <= #queue do
+        local cur = queue[head]
+        head = head + 1
+
+        local neighbors = {{0,1},{0,-1},{1,0},{-1,0}}
+        for _, n in ipairs(neighbors) do
+            local nx, ny = cur.x + n[1], cur.y + n[2]
+            local key = nx .. "," .. ny
+            if not visited[key] and ny >= 1 and ny <= self.map_height and nx >= 1 and nx <= self.map_width then
+                -- Check wall
+                if self.map[ny] and self.map[ny][nx] == 0 then
+                    -- Check if locked door blocks passage
+                    local door = door_lookup[key]
+                    if door and door.locked then
+                        -- Locked door blocks flood fill
+                    else
+                        visited[key] = true
+                        table.insert(queue, {x = nx, y = ny})
+                    end
+                end
+            end
+        end
+    end
+
+    return visited
 end
 
 -- Initialize enemy entity with state machine (any entity with health is an enemy)
@@ -1038,8 +1175,19 @@ end
 function Raycaster:tryOpenDoorAt(tile_x, tile_y)
     if not self.doors then return end
     for _, door in ipairs(self.doors) do
-        if door.x == tile_x and door.y == tile_y and door.state == "closed" then
+        if door.x == tile_x and door.y == tile_y and door.state == "closed"
+           and not door.locked and not door.secret then
             door.state = "opening"
+        end
+    end
+end
+
+function Raycaster:tryOpenSecretWall(tile_x, tile_y)
+    if not self.doors then return end
+    for _, door in ipairs(self.doors) do
+        if door.x == tile_x and door.y == tile_y and door.secret and door.state == "closed" then
+            door.state = "opening"
+            self.visual_effects:flash({color = {0.5, 0.5, 0.5, 0.3}, duration = 0.3, mode = "fade_out"})
         end
     end
 end
@@ -1229,6 +1377,13 @@ function Raycaster:handleSmoothInput(dt)
         self.player.x, self.player.y, dx, dy,
         self.map, self.map_width, self.map_height, wrap, wrap
     )
+
+    -- Check for secret wall bumps (player walking into a wall)
+    if dx ~= 0 or dy ~= 0 then
+        local ahead_x = math.floor(self.player.x + math.cos(self.player.angle) * 1.2)
+        local ahead_y = math.floor(self.player.y + math.sin(self.player.angle) * 1.2)
+        self:tryOpenSecretWall(ahead_x, ahead_y)
+    end
 
     -- Additional door collision check
     if not self:isDoorBlocking(new_x, new_y) then
@@ -1545,6 +1700,14 @@ function Raycaster:collectPickups()
                 self.player_controller:addAmmo(pickup_value)
                 self.entity_controller:removeEntity(entity)
                 self.visual_effects:flash({color = {0.5, 0.5, 1, 0.3}, duration = 0.15, mode = "fade_out"})
+
+            elseif pickup_type == "key" then
+                -- Key pickup
+                local key_type = entity.key_color or "gold"
+                self.keys[key_type] = (self.keys[key_type] or 0) + 1
+                self.entity_controller:removeEntity(entity)
+                local flash_color = key_type == "gold" and {1, 0.85, 0, 0.4} or {0.75, 0.75, 0.8, 0.4}
+                self.visual_effects:flash({color = flash_color, duration = 0.2, mode = "fade_out"})
             end
         end
 
@@ -1593,17 +1756,36 @@ function Raycaster:updateDoors(dt)
         local dy = py - (door.y + 0.5)
         local dist = math.sqrt(dx * dx + dy * dy)
 
+        -- Secret walls: only open when player bumps into them (handled by collision)
+        if door.secret then goto next_door end
+
         -- Check if player is close enough to open
         if dist < open_distance and door.state == "closed" then
-            door.state = "opening"
+            if door.locked then
+                -- Need matching key
+                if self.keys[door.locked] and self.keys[door.locked] > 0 then
+                    self.keys[door.locked] = self.keys[door.locked] - 1
+                    door.locked = nil
+                    door.state = "opening"
+                    self.visual_effects:flash({color = {1, 0.85, 0, 0.4}, duration = 0.2, mode = "fade_out"})
+                end
+            else
+                door.state = "opening"
+            end
         end
 
-        -- Animate door
+        ::next_door::
+
+        -- Animate door (including secret walls once triggered)
         if door.state == "opening" then
             door.progress = door.progress + dt * open_speed
             if door.progress >= 1 then
                 door.progress = 1
                 door.state = "open"
+                -- Secret walls become walkable when fully open
+                if door.secret then
+                    self.map[door.y][door.x] = 0
+                end
             end
         end
     end

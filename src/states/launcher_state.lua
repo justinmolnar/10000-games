@@ -25,14 +25,24 @@ function LauncherState:init(player_data, game_data, state_machine, save_manager,
     self.filtered_games = {}
 
     -- Subscribe to token changes to refresh affordability
+    self._subscriptions = {}
     if self.event_bus then
-        self.event_bus:subscribe('tokens_changed', function()
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('tokens_changed', function()
             -- Re-apply current filter to update affordability
             if self.view and self.view.selected_category then
                 self:updateFilter(self.view.selected_category)
             end
         end)
     end
+end
+
+function LauncherState:destroy()
+    if self.event_bus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.event_bus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
 end
 
 function LauncherState:loadVariantData(game_id)

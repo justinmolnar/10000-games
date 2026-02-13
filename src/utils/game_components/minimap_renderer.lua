@@ -65,10 +65,16 @@ function MinimapRenderer:draw(viewport_w, viewport_h, map, map_w, map_h, player,
             if tile == 1 then
                 love.graphics.setColor(self.wall_color[1], self.wall_color[2],
                                        self.wall_color[3], self.wall_color[4])
-            elseif door and door.progress < 1 then
-                -- Draw door (brown) - shows as special until fully open
-                love.graphics.setColor(self.door_color[1], self.door_color[2],
-                                       self.door_color[3], self.door_color[4])
+            elseif door and door.progress < 1 and not door.secret then
+                -- Draw door - locked doors get special colors
+                if door.locked == "gold" then
+                    love.graphics.setColor(0.8, 0.65, 0.1, 0.9)
+                elseif door.locked == "silver" then
+                    love.graphics.setColor(0.7, 0.7, 0.75, 0.9)
+                else
+                    love.graphics.setColor(self.door_color[1], self.door_color[2],
+                                           self.door_color[3], self.door_color[4])
+                end
             elseif self.show_critical_path then
                 -- Color based on critical path
                 if self:isOnCriticalPath(x, y) then

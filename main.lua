@@ -118,10 +118,7 @@ function love.load()
         EffectSystem = require('src.utils.game_components.effect_system'),
         SchemaLoader = require('src.utils.game_components.schema_loader'),
         PopupManager = require('src.games.score_popup').PopupManager,
-        Collision = require('src.utils.collision'),
-        PNGCollision = require('src.utils.png_collision'),
         PhysicsUtils = require('src.utils.game_components.physics_utils'),
-        TableUtils = require('src.utils.table_utils'),
         AnimationSystem = require('src.utils.game_components.animation_system'),
         -- Raycaster/dungeon components
         RotloveDungeon = require('src.utils.game_components.rotlove_dungeon'),
@@ -131,6 +128,7 @@ function love.load()
         MinimapRenderer = require('src.utils.game_components.minimap_renderer'),
         MapSpawnProcessor = require('src.utils.game_components.map_spawn_processor'),
         StateMachine = require('src.utils.game_components.state_machine'),
+        SpriteUtils = require('src.utils.game_components.sprite_utils'),
     }
 
     -- == 3. Instantiate Models with DI ==
@@ -260,10 +258,14 @@ function love.load()
     local DebugState = require('states.debug_state')
     local DesktopState = require('states.desktop_state')
     local ScreensaverState = require('states.screensaver_state')
+    local ShaderSandboxState = require('states.shader_sandbox_state')
+    local Sandbox3DState = require('states.sandbox_3d_state')
 
     local completion_state = CompletionState:new(state_machine, statistics)
     local debug_state = DebugState:new(di)
     local screensaver_state = ScreensaverState:new(state_machine)
+    local shader_sandbox_state = ShaderSandboxState:new(di)
+    local sandbox_3d_state = Sandbox3DState:new(di)
     local desktop = DesktopState:new(di) -- DesktopState now gets window_controller via di
     desktop.cursors = system_cursors
 
@@ -271,6 +273,8 @@ function love.load()
     state_machine:register(Constants.state.DEBUG, debug_state)
     state_machine:register(Constants.state.DESKTOP, desktop)
     state_machine:register(Constants.state.SCREENSAVER, screensaver_state)
+    state_machine:register(Constants.state.SHADER_SANDBOX, shader_sandbox_state)
+    state_machine:register(Constants.state.SANDBOX_3D, sandbox_3d_state)
 
     -- === Phase 1: ProgramLauncher Extraction ===
     di.desktopState = desktop -- Add desktop instance to DI *before* launcher
@@ -373,6 +377,53 @@ function love.keypressed(key, scancode, isrepeat)
         if player_data then
             player_data.tokens = math.max(0, player_data.tokens - 5000)
             print("DEBUG: Removed 5000 tokens. Total: " .. player_data.tokens)
+        end
+        return
+    end
+
+    -- 3D sandbox toggle (F8) — global, not interceptable by windows
+    if key == 'f8' then
+        if not state_machine then return end
+        local current_name = nil
+        for name, s in pairs(state_machine.states) do
+            if s == state_machine.current_state then current_name = name; break end
+        end
+        if current_name == Constants.state.SANDBOX_3D then
+            state_machine:switch(Constants.state.DESKTOP)
+        else
+            state_machine:switch(Constants.state.SANDBOX_3D, current_name or Constants.state.DESKTOP)
+        end
+        return
+    end
+
+    -- Shader sandbox toggle (F9) — global, not interceptable by windows
+    if key == 'f9' then
+        print("[F9] Shader sandbox toggle pressed")
+        if not state_machine then print("[F9] ERROR: no state_machine"); return end
+        local sandbox = state_machine.states[Constants.state.SHADER_SANDBOX]
+        if not sandbox then print("[F9] ERROR: sandbox state not registered"); return end
+        local current_name = nil
+        for name, s in pairs(state_machine.states) do
+            if s == state_machine.current_state then current_name = name; break end
+        end
+        print("[F9] Current state: " .. tostring(current_name) .. ", switching to sandbox")
+        if current_name == Constants.state.SHADER_SANDBOX then
+            state_machine:switch(Constants.state.DESKTOP)
+        else
+            -- Capture current screen for Bounce Warp's screen mode
+            local sw = love.graphics.getWidth()
+            local sh = love.graphics.getHeight()
+            local capture = love.graphics.newCanvas(sw, sh)
+            love.graphics.setCanvas(capture)
+            love.graphics.clear(0, 0, 0, 1)
+            local ok, err = pcall(function() state_machine.current_state:draw() end)
+            love.graphics.setCanvas()
+            if ok then
+                sandbox.screen_capture = capture
+            else
+                sandbox.screen_capture = nil
+            end
+            state_machine:switch(Constants.state.SHADER_SANDBOX, current_name or Constants.state.DESKTOP)
         end
         return
     end

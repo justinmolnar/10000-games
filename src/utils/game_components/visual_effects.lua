@@ -2,7 +2,7 @@
 -- All effects are visual-only and do not affect game logic or demo playback
 
 local Object = require('lib.class')
-local ParticleSystem = require('src.utils.particle_system')
+local ParticleSystem = require('src.utils.game_components.particle_system')
 local VisualEffects = Object:extend('VisualEffects')
 
 function VisualEffects:new(config)

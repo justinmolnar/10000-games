@@ -2,7 +2,7 @@
 -- Encapsulates desktop icon layout, hit-testing, and drop/arrangement logic
 
 local Object = require('class')
-local Collision = require('src.utils.collision')
+local PhysicsUtils = require('src.utils.game_components.physics_utils')
 
 local DesktopIconController = Object:extend('DesktopIconController')
 
@@ -131,7 +131,7 @@ function DesktopIconController:resolveDropPosition(dropped_icon_id, initial_drop
         for _, program in ipairs(desktop_programs) do
             if program.id ~= dropped_icon_id and not self.desktop_icons:isDeleted(program.id) then
                 local other_pos = self.desktop_icons:getPosition(program.id) or self:getDefaultIconPosition(program.id)
-                if Collision.checkAABB(final_x, final_y, icon_w, icon_h, other_pos.x, other_pos.y, icon_w, icon_h) then
+                if PhysicsUtils.rectCollision(final_x, final_y, icon_w, icon_h, other_pos.x, other_pos.y, icon_w, icon_h) then
                     overlapping_icon_data = { program_id = program.id, pos = other_pos }
                     overlap_resolved = false
                     break
@@ -163,7 +163,7 @@ function DesktopIconController:resolveDropPosition(dropped_icon_id, initial_drop
                 for _, program_check in ipairs(desktop_programs) do
                     if program_check.id ~= dropped_icon_id and not self.desktop_icons:isDeleted(program_check.id) then
                         local check_pos = self.desktop_icons:getPosition(program_check.id) or self:getDefaultIconPosition(program_check.id)
-                        if Collision.checkAABB(valid_x, valid_y, icon_w, icon_h, check_pos.x, check_pos.y, icon_w, icon_h) then
+                        if PhysicsUtils.rectCollision(valid_x, valid_y, icon_w, icon_h, check_pos.x, check_pos.y, icon_w, icon_h) then
                             nudge_overlaps = true; break
                         end
                     end
@@ -266,7 +266,7 @@ function DesktopIconController:mousereleased(x, y, button)
     if recycle_bin_rect and dropped_icon_id ~= "recycle_bin" then
         local icon_w, icon_h = self.desktop_icons:getIconDimensions()
         -- Check if dragged icon overlaps with recycle bin icon
-        if Collision.checkAABB(initial_drop_x, initial_drop_y, icon_w, icon_h,
+        if PhysicsUtils.rectCollision(initial_drop_x, initial_drop_y, icon_w, icon_h,
                                recycle_bin_rect.x, recycle_bin_rect.y, recycle_bin_rect.w, recycle_bin_rect.h) then
             -- Publish recycle event
             if self.event_bus then

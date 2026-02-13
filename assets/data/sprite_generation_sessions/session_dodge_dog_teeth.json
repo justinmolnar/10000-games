@@ -1,0 +1,59 @@
+{
+  "session_name": "dodge_dog_teeth",
+  "description": "Dog teeth and slobber splatters for dodge game bite attack hazards",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "dog_teeth",
+      "output_folder": "assets/sprites/games/dodge/teeth",
+      "default_params": {
+        "width": 96,
+        "height": 96,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "fang_large", "prompt": "single large sharp dog canine fang tooth, white ivory, pointed tip, isolated on transparent background"},
+        {"id": "fang_curved", "prompt": "curved sharp dog canine tooth, slightly yellowed ivory, menacing point, isolated"},
+        {"id": "fang_with_gums", "prompt": "sharp dog fang tooth with pink gum tissue at the base, white enamel, exposed root area"},
+        {"id": "fang_bloody_gums", "prompt": "large pointed canine fang with raw red inflamed gums attached at base, wet looking tooth"},
+        {"id": "incisor_row", "prompt": "row of three small sharp dog incisor teeth with pink gumline above, white enamel"},
+        {"id": "fang_yellowed", "prompt": "old yellowed dog canine fang tooth, stained ivory color, sharp point, worn enamel"},
+        {"id": "fang_massive", "prompt": "oversized menacing dog canine tooth, bright white sharp fang, thick base tapering to needle point", "params": {"width": 128, "height": 128}},
+        {"id": "molar_with_gums", "prompt": "dog molar tooth with dark pink gum tissue, ridged grinding surface, chunky shape"},
+        {"id": "fang_dripping", "prompt": "sharp white dog fang tooth with saliva dripping from the tip, wet glossy surface"},
+        {"id": "fang_pair", "prompt": "two dog canine fangs side by side with gum tissue connecting them, white sharp points"},
+        {"id": "fang_dark_gums", "prompt": "sharp ivory dog fang with dark blackish-pink gums at base, large menacing canine tooth"},
+        {"id": "premolar_row", "prompt": "three pointed dog premolar teeth in a row with pale pink gumline, sharp triangular shapes"}
+      ]
+    },
+    {
+      "name": "slobber_splatters",
+      "output_folder": "assets/sprites/games/dodge/slobber",
+      "default_params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "sprites": [
+        {"id": "splat_large", "prompt": "wet drool splatter puddle, translucent white saliva blob on ground, glossy shiny"},
+        {"id": "splat_stringy", "prompt": "stringy dog drool strand, stretchy translucent saliva string, wet and gooey"},
+        {"id": "splat_spray", "prompt": "spray of small saliva droplets scattered pattern, tiny wet translucent dots"},
+        {"id": "splat_blob", "prompt": "thick glob of dog slobber, opaque white-clear drool blob, bubbly wet surface"},
+        {"id": "splat_puddle", "prompt": "flat drool puddle splat, thin translucent saliva spread on surface, wet sheen"},
+        {"id": "splat_drip", "prompt": "dripping saliva drop mid-fall, elongated teardrop shape, clear translucent drool"},
+        {"id": "splat_foam", "prompt": "foamy dog slobber patch, bubbly white frothy saliva, small bubbles visible"},
+        {"id": "splat_streak", "prompt": "smeared drool streak, dragged wet saliva trail, translucent glossy smear"},
+        {"id": "splat_splatter", "prompt": "impact splatter of dog drool, star-shaped wet splash pattern, clear glossy saliva"},
+        {"id": "splat_dribble", "prompt": "trail of drool dribbles, several small connected saliva drops in a line"},
+        {"id": "splat_thick", "prompt": "thick viscous glob of dog drool, dense white-clear slobber mass, ropy texture"},
+        {"id": "splat_mist", "prompt": "fine mist spray of saliva, tiny scattered wet droplets, light translucent spray pattern"}
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 -- Simple particle system for visual effects
--- Used for brick destruction, celebrations, power-ups, etc.
+-- Generic emit() for explosions, trails, sparkles; emitConfetti() for celebrations
 
 local ParticleSystem = {}
 ParticleSystem.__index = ParticleSystem
@@ -43,44 +43,6 @@ function ParticleSystem:emit(x, y, count, particle_type, options)
 
         table.insert(self.particles, particle)
     end
-end
-
--- Emit brick destruction particles (colored squares)
-function ParticleSystem:emitBrickDestruction(x, y, brick_color)
-    self:emit(x, y, 8, "explosion", {
-        color = brick_color or {1, 0.5, 0},
-        speed = 150,
-        lifetime = 0.5,
-        size = 4,
-        spread = math.pi * 2,
-        gravity = 300  -- Particles fall downward
-    })
-end
-
--- Emit power-up collection particles (sparkles)
-function ParticleSystem:emitPowerUpCollection(x, y)
-    self:emit(x, y, 12, "sparkle", {
-        color = {1, 1, 0, 1},  -- Yellow
-        speed = 80,
-        lifetime = 0.8,
-        size = 3,
-        spread = math.pi * 2
-    })
-end
-
--- Emit ball trail particles (comet tail)
-function ParticleSystem:emitBallTrail(x, y, ball_vx, ball_vy)
-    -- Emit in opposite direction of ball movement
-    local angle = math.atan2(ball_vy, ball_vx) + math.pi
-
-    self:emit(x, y, 2, "trail", {
-        color = {1, 1, 1, 0.8},
-        speed = 20,
-        lifetime = 0.3,
-        size = 3,
-        spread = math.pi / 6,  -- Narrow cone
-        direction = angle
-    })
 end
 
 -- Emit confetti particles (celebration)

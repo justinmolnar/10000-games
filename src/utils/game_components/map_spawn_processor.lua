@@ -47,6 +47,8 @@ function MapSpawnProcessor.process(config)
     local rooms = config.rooms or {}
     local floor_tiles = config.floor_tiles or {}
     local rng = config.rng or {random = function() return math.random() end}
+    local critical_rooms = config.critical_rooms or {}
+    local critical_path = config.critical_path or {}
     local positions = {}
 
     -- Build set of room tiles for corridor detection
@@ -71,7 +73,7 @@ function MapSpawnProcessor.process(config)
 
     -- Process room spawns
     for _, cfg in ipairs(config.room_spawns or {}) do
-        local results = MapSpawnProcessor._processRoomConfig(rooms, cfg, rng)
+        local results = MapSpawnProcessor._processRoomConfig(rooms, cfg, rng, critical_rooms)
         for _, pos in ipairs(results) do table.insert(positions, pos) end
     end
 
@@ -83,14 +85,14 @@ function MapSpawnProcessor.process(config)
 
     -- Process floor spawns
     for _, cfg in ipairs(config.floor_spawns or {}) do
-        local results = MapSpawnProcessor._processFloorConfig(floor_tiles, cfg, rng)
+        local results = MapSpawnProcessor._processFloorConfig(floor_tiles, cfg, rng, critical_path)
         for _, pos in ipairs(results) do table.insert(positions, pos) end
     end
 
     return positions
 end
 
-function MapSpawnProcessor._processRoomConfig(rooms, cfg, rng)
+function MapSpawnProcessor._processRoomConfig(rooms, cfg, rng, critical_rooms)
     local positions = {}
     local spawn_type = cfg.type
     local count = cfg.count or 1
@@ -98,20 +100,36 @@ function MapSpawnProcessor._processRoomConfig(rooms, cfg, rng)
     local position_mode = cfg.position or "random"
     local min_rooms = cfg.min_rooms or 0
     local max_rooms = cfg.max_rooms or #rooms
+    local path_filter = cfg.path_filter
 
     if #rooms == 0 then return positions end
 
+    -- Filter rooms by critical path if requested
+    local candidate_rooms = rooms
+    if path_filter and next(critical_rooms) then
+        candidate_rooms = {}
+        for i, room in ipairs(rooms) do
+            local is_critical = critical_rooms[i] == true
+            if (path_filter == "critical" and is_critical) or
+               (path_filter == "non_critical" and not is_critical) then
+                table.insert(candidate_rooms, room)
+            end
+        end
+    end
+
+    if #candidate_rooms == 0 then return positions end
+
     -- Select rooms based on chance
     local selected = {}
-    for _, room in ipairs(rooms) do
+    for _, room in ipairs(candidate_rooms) do
         if rng:random() < room_chance then
             table.insert(selected, room)
         end
     end
 
     -- Enforce min rooms
-    while #selected < min_rooms and #selected < #rooms do
-        for _, room in ipairs(rooms) do
+    while #selected < min_rooms and #selected < #candidate_rooms do
+        for _, room in ipairs(candidate_rooms) do
             local found = false
             for _, sel in ipairs(selected) do
                 if sel == room then found = true; break end
@@ -228,21 +246,38 @@ function MapSpawnProcessor._processCorridorConfig(corridor_tiles, cfg, rng)
     return positions
 end
 
-function MapSpawnProcessor._processFloorConfig(floor_tiles, cfg, rng)
+function MapSpawnProcessor._processFloorConfig(floor_tiles, cfg, rng, critical_path)
     local positions = {}
     local spawn_type = cfg.type
     local density = cfg.density or 10  -- 1 spawn per N tiles
     local min_count = cfg.min_count or 0
     local max_count = cfg.max_count or 999
+    local path_filter = cfg.path_filter
 
     if #floor_tiles == 0 then return positions end
 
-    local target_count = math.floor(#floor_tiles / density)
+    -- Filter tiles by critical path if requested
+    local candidate_tiles = floor_tiles
+    if path_filter and critical_path and next(critical_path) then
+        candidate_tiles = {}
+        for _, tile in ipairs(floor_tiles) do
+            local key = tile.x .. "," .. tile.y
+            local is_critical = critical_path[key] == true
+            if (path_filter == "critical" and is_critical) or
+               (path_filter == "non_critical" and not is_critical) then
+                table.insert(candidate_tiles, tile)
+            end
+        end
+    end
+
+    if #candidate_tiles == 0 then return positions end
+
+    local target_count = math.floor(#candidate_tiles / density)
     target_count = math.max(min_count, math.min(max_count, target_count))
 
     -- Shuffle floor tiles
     local shuffled = {}
-    for _, tile in ipairs(floor_tiles) do
+    for _, tile in ipairs(candidate_tiles) do
         table.insert(shuffled, tile)
     end
     for i = #shuffled, 2, -1 do

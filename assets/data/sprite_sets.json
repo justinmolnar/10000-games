@@ -139,6 +139,14 @@
       }
     },
     {
+      "id": "dodge_dog_mouth",
+      "sprites": {
+        "player": "assets/sprites/games/dodge/base_1/player.png",
+        "enemy_lunger": "assets/sprites/games/dodge/teeth/fang_large.png",
+        "enemy_obstacle": "assets/sprites/games/dodge/slobber/splat_blob.png"
+      }
+    },
+    {
       "id": "dodge_desserts",
       "sprites": {
         "player": "assets/sprites/shared/food/icecream_cone_01.png",

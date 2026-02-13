@@ -16,6 +16,8 @@ function RaycastRenderer:new(config)
     self.wall_color_ew = config.wall_color_ew or {0.2, 0.2, 0.7}
     self.goal_color = config.goal_color or {0.2, 0.9, 0.3}
     self.door_color = config.door_color or {0.5, 0.35, 0.2}  -- Brown/wooden
+    self.locked_gold_color = config.locked_gold_color or {0.8, 0.65, 0.1}
+    self.locked_silver_color = config.locked_silver_color or {0.7, 0.7, 0.75}
 
     -- Depth buffer for billboard occlusion
     self.depth_buffer = {}
@@ -90,7 +92,13 @@ function RaycastRenderer:drawWalls(w, h, player, map, map_w, map_h, goal)
             if is_goal then
                 color = self.goal_color
             elseif hit_door then
-                color = self.door_color
+                if hit_door.locked == "gold" then
+                    color = self.locked_gold_color
+                elseif hit_door.locked == "silver" then
+                    color = self.locked_silver_color
+                else
+                    color = self.door_color
+                end
             elseif side == 0 then
                 color = self.wall_color_ns
             else

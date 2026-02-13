@@ -188,6 +188,88 @@ function PatternMovement.buildBezierPath(start_x, start_y, control_x, control_y,
 end
 
 -- ============================================================================
+-- EASING FUNCTIONS
+-- ============================================================================
+
+function PatternMovement.easeLinear(t)
+    return t
+end
+
+function PatternMovement.easeIn(t)
+    return t * t
+end
+
+function PatternMovement.easeOut(t)
+    return 1 - (1 - t) * (1 - t)
+end
+
+function PatternMovement.easeInOut(t)
+    if t < 0.5 then
+        return 2 * t * t
+    else
+        return 1 - (-2 * t + 2) * (-2 * t + 2) / 2
+    end
+end
+
+local easing_map = {
+    linear = PatternMovement.easeLinear,
+    ease_in = PatternMovement.easeIn,
+    ease_out = PatternMovement.easeOut,
+    ease_in_out = PatternMovement.easeInOut,
+}
+
+function PatternMovement.getEasing(name)
+    return easing_map[name] or easing_map.ease_in_out
+end
+
+-- ============================================================================
+-- LUNGE PRIMITIVE (move to point and return)
+-- ============================================================================
+
+-- Entity flags (set by game): use_lunge, lunge_origin_x/y, lunge_target_x/y,
+-- lunge_advance_duration, lunge_hold_duration, lunge_return_duration,
+-- lunge_advance_curve, lunge_return_curve
+-- Internal state: lunge_state, lunge_timer, lunge_complete
+function PatternMovement.updateLunge(entity, dt)
+    if not entity.lunge_state then
+        entity.lunge_state = "advancing"
+        entity.lunge_timer = 0
+    end
+
+    entity.lunge_timer = entity.lunge_timer + dt
+
+    if entity.lunge_state == "advancing" then
+        local duration = entity.lunge_advance_duration or 0.8
+        local progress = math.min(entity.lunge_timer / duration, 1)
+        local eased = PatternMovement.getEasing(entity.lunge_advance_curve)(progress)
+        entity.x = entity.lunge_origin_x + (entity.lunge_target_x - entity.lunge_origin_x) * eased
+        entity.y = entity.lunge_origin_y + (entity.lunge_target_y - entity.lunge_origin_y) * eased
+        if progress >= 1 then
+            entity.lunge_state = "holding"
+            entity.lunge_timer = 0
+        end
+
+    elseif entity.lunge_state == "holding" then
+        local hold = entity.lunge_hold_duration or 0.15
+        if entity.lunge_timer >= hold then
+            entity.lunge_state = "returning"
+            entity.lunge_timer = 0
+        end
+
+    elseif entity.lunge_state == "returning" then
+        local duration = entity.lunge_return_duration or 1.2
+        local progress = math.min(entity.lunge_timer / duration, 1)
+        local eased = PatternMovement.getEasing(entity.lunge_return_curve)(progress)
+        entity.x = entity.lunge_target_x + (entity.lunge_origin_x - entity.lunge_target_x) * eased
+        entity.y = entity.lunge_target_y + (entity.lunge_origin_y - entity.lunge_target_y) * eased
+        if progress >= 1 then
+            entity.lunge_complete = true
+            entity.marked_for_removal = true
+        end
+    end
+end
+
+-- ============================================================================
 -- BOUNCE PRIMITIVES
 -- ============================================================================
 
@@ -273,6 +355,12 @@ end
 -- Entity flags: use_steering, use_direction, use_velocity, sine_amplitude, use_bounce, etc.
 function PatternMovement.update(dt, entity, bounds)
     if not entity then return end
+
+    -- Lunge movement (overrides directional)
+    if entity.use_lunge then
+        PatternMovement.updateLunge(entity, dt)
+        return
+    end
 
     -- Steering toward target
     if entity.use_steering and entity.target_x and entity.target_y then

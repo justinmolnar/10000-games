@@ -99,14 +99,13 @@ function EntityController:new(config)
     return instance
 end
 
--- Load collision image for an entity type (for PNG-based collision detection)
--- Requires di.components.PNGCollision to be available
+-- Load collision image for an entity type (pixel-perfect collision via SpriteUtils)
 function EntityController:loadCollisionImage(type_name, image_path, alpha_threshold, di)
     local entity_type = self.entity_types[type_name]
     if not entity_type then return false end
 
-    if di and di.components and di.components.PNGCollision then
-        entity_type.collision_image = di.components.PNGCollision.loadCollisionImage(image_path)
+    if di and di.components and di.components.SpriteUtils then
+        entity_type.collision_image = di.components.SpriteUtils.loadImageData(image_path)
     end
 
     local success, img = pcall(love.graphics.newImage, image_path)
@@ -919,6 +918,32 @@ function EntityController:checkCollision(obj, handlers)
 end
 
 --[[
+    Check collision between an oriented bounding box and a circle.
+    Generic: works for any sprite shape (narrow fang, wide car, etc.)
+
+    @param box_x, box_y number - Center of the OBB
+    @param half_w number - Half-width of box (local X axis)
+    @param half_h number - Half-height of box (local Y axis)
+    @param rotation number - Box rotation in radians
+    @param cx, cy number - Circle center
+    @param cr number - Circle radius
+    @return boolean - True if colliding
+]]
+function EntityController:checkOBBCircleCollision(box_x, box_y, half_w, half_h, rotation, cx, cy, cr)
+    local dx = cx - box_x
+    local dy = cy - box_y
+    local cos_r = math.cos(-rotation)
+    local sin_r = math.sin(-rotation)
+    local local_x = dx * cos_r - dy * sin_r
+    local local_y = dx * sin_r + dy * cos_r
+    local closest_x = math.max(-half_w, math.min(half_w, local_x))
+    local closest_y = math.max(-half_h, math.min(half_h, local_y))
+    local dist_x = local_x - closest_x
+    local dist_y = local_y - closest_y
+    return (dist_x * dist_x + dist_y * dist_y) <= cr * cr
+end
+
+--[[
     Hit an entity (deal damage, trigger callbacks)
 
     @param entity table
@@ -1457,14 +1482,29 @@ function EntityController:updateBehaviors(dt, config, collision_check)
         -- Collision behavior (check against a target like player)
         if config.collision and config.collision.target then
             local target = config.collision.target
-            local tr = target.radius or 10
-            local er = entity.radius or 10
-            local dx = target.x - entity.x
-            local dy = target.y - entity.y
-            local dist_sq = dx * dx + dy * dy
-            local radii = tr + er
+            local tr = target.collision_radius or target.radius or 10
+            local collided = false
 
-            if dist_sq < radii * radii then
+            if entity.collision_half_w and entity.collision_half_h then
+                -- OBB collision (sprite-derived bounding box)
+                collided = self:checkOBBCircleCollision(
+                    entity.x, entity.y,
+                    entity.collision_half_w, entity.collision_half_h,
+                    entity.collision_rotation or 0,
+                    target.x, target.y, tr)
+            else
+                -- Circle-circle collision
+                local er = entity.collision_radius or entity.radius or 10
+                local ex = entity.x + (entity.collision_offset_x or 0)
+                local ey = entity.y + (entity.collision_offset_y or 0)
+                local dx = target.x - ex
+                local dy = target.y - ey
+                local dist_sq = dx * dx + dy * dy
+                local radii = tr + er
+                collided = dist_sq < radii * radii
+            end
+
+            if collided then
                 if config.collision.on_collision then
                     local should_remove = config.collision.on_collision(entity, target)
                     if should_remove ~= false then

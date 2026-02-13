@@ -236,7 +236,7 @@ end
 function Breakout:updateGameLogic(dt)
     if self.game_over or self.victory then return end
 
-    local Physics, TableUtils = self.di.components.PhysicsUtils, self.di.components.TableUtils
+    local Physics = self.di.components.PhysicsUtils
     local bounds = {x = 0, y = 0, width = self.arena_width, height = self.arena_height}
 
     -- Update systems
@@ -267,7 +267,11 @@ function Breakout:updateGameLogic(dt)
     for _, ball in ipairs(self.balls) do
         if ball.active then
             if self.visual_effects.particles then
-                self.visual_effects.particles:emitBallTrail(ball.x, ball.y, ball.vx, ball.vy)
+                local angle = math.atan2(ball.vy, ball.vx) + math.pi
+                self.visual_effects.particles:emit(ball.x, ball.y, 2, "trail", {
+                    color = {1, 1, 1, 0.8}, speed = 20, lifetime = 0.3, size = 3,
+                    spread = math.pi / 6, direction = angle
+                })
             end
             self:updateBall(ball, dt)
         end
@@ -290,7 +294,11 @@ function Breakout:updateGameLogic(dt)
 
     -- Update bricks and check for ball loss
     self:updateBricks(dt)
-    self:handleEntityDepleted(function() return TableUtils.countActive(self.balls) end, {
+    self:handleEntityDepleted(function()
+        local count = 0
+        for _, b in ipairs(self.balls) do if b.active then count = count + 1 end end
+        return count
+    end, {
         loss_counter = "balls_lost", combo_reset = true, damage = 1, damage_reason = "ball_lost",
         on_respawn = function(g) g:spawnBall() end
     })
@@ -360,12 +368,12 @@ function Breakout:updateBall(ball, dt)
     })
 
     -- Brick collisions
-    local PNGCollision = self.di.components.PNGCollision
+    local SpriteUtils = self.di.components.SpriteUtils
     local brick_hit = false
     Physics.checkCollisions(ball, self.bricks, {
         filter = function(brick) return brick.alive end,
         check_func = function(b, brick)
-            return brick.collision_image and PNGCollision.checkBall(brick.collision_image, brick.x, brick.y, b.x, b.y, b.radius, brick.alpha_threshold or 0.5)
+            return brick.collision_image and SpriteUtils.checkCircle(brick.collision_image, brick.x, brick.y, b.x, b.y, b.radius, brick.alpha_threshold or 0.5)
                 or Physics.circleVsRect(b.x, b.y, b.radius, brick.x, brick.y, brick.width, brick.height)
         end,
         on_hit = function(b, brick)

@@ -4,22 +4,8 @@ local DodgeView = GameBaseView:extend('DodgeView')
 function DodgeView:init(game_state, variant)
     DodgeView.super.init(self, game_state, variant)
 
-    -- Game-specific view config
     self.OBJECT_DRAW_SIZE = game_state.OBJECT_SIZE or 15
-    local cfg = ((self.di and self.di.config and self.di.config.games and self.di.config.games.dodge and self.di.config.games.dodge.view) or {})
-    self.bg_color = cfg.bg_color or {0.08, 0.05, 0.1}
-
-    -- Starfield background
-    local sf = cfg.starfield or { count = 180, speed_min = 20, speed_max = 100, size_divisor = 60 }
-    self.stars = {}
-    for i = 1, (sf.count or 180) do
-        table.insert(self.stars, {
-            x = math.random(),
-            y = math.random(),
-            speed = (sf.speed_min or 20) + math.random() * ((sf.speed_max or 100) - (sf.speed_min or 20))
-        })
-    end
-    self.star_size_divisor = sf.size_divisor or 60
+    self:initBackground(variant, game_state.params)
 end
 
 function DodgeView:drawContent()
@@ -34,10 +20,31 @@ function DodgeView:drawContent()
     g.push()
     game.visual_effects:applyCameraShake()
 
-    self:drawBackgroundSolid(game_width, game_height)
-    if self.stars then
-        self:drawBackgroundStarfield(game_width, game_height)
+    local interact_r = game.params.bg_interact_radius or 0
+    if interact_r > 0 then
+        local pts = {}
+        for _, obj in ipairs(game.objects) do
+            if obj.type ~= 'warning' then
+                local ovx = obj.vx or 0
+                local ovy = obj.vy or 0
+                if ovx == 0 and ovy == 0 and obj.speed and obj.speed ~= 0 then
+                    local a = obj.angle or obj.direction or 0
+                    ovx = math.cos(a) * obj.speed
+                    ovy = math.sin(a) * obj.speed
+                end
+                pts[#pts + 1] = {
+                    obj.x / game_width,
+                    obj.y / game_height,
+                    ovx / game_width,
+                    ovy / game_height,
+                }
+            end
+        end
+        if #pts > 0 then
+            self.background:setPoints(pts)
+        end
     end
+    self.background:draw(game_width, game_height)
 
     -- Safe zone ring (generic polygon)
     if game.arena_controller then

@@ -107,6 +107,10 @@ function DesktopState:init(di)
     -- Subscribe to EventBus events
     if self.event_bus then
         self.event_bus:subscribe('window_closed', function(window_id)
+            local window_data = self.window_states[window_id]
+            if window_data and window_data.state and window_data.state.destroy then
+                window_data.state:destroy()
+            end
             self.window_states[window_id] = nil
         end)
         -- Subscribe to wallpaper changes to update live
@@ -817,6 +821,7 @@ function DesktopState:keypressed(key)
              return true
         end
     end
+
 
     -- ESC: close Start Menu if open; else close focused window; else quit app (for fast debug)
      if key == 'escape' then

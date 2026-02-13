@@ -1,6 +1,6 @@
 -- src/models/bullet_system.lua
 local Object = require('class')
-local Collision = require('utils.collision')
+local PhysicsUtils = require('src.utils.game_components.physics_utils')
 -- Config is injected per-instance; avoid requiring module-level config
 -- self.config will be set via injectConfig(config)
 local BulletSystem = Object:extend('BulletSystem')
@@ -149,7 +149,7 @@ function BulletSystem:update(dt, player_pos, enemies, boss)
                 local bullet_y1 = bullet.y - bullet.height/2
                 local enemy_x1 = enemy.x - enemy.width/2
                 local enemy_y1 = enemy.y - enemy.height/2
-                if Collision.checkAABB(bullet_x1, bullet_y1, bullet.width, bullet.height,
+                if PhysicsUtils.rectCollision(bullet_x1, bullet_y1, bullet.width, bullet.height,
                                       enemy_x1, enemy_y1, enemy.width, enemy.height) then
                     local damage_dealt = bullet.damage
                     enemy.hp = enemy.hp - damage_dealt
@@ -175,7 +175,7 @@ function BulletSystem:update(dt, player_pos, enemies, boss)
                 local bullet_y1 = bullet.y - bullet.height/2
                 local boss_x1 = boss.x - boss.width/2
                 local boss_y1 = boss.y - boss.height/2
-                if Collision.checkAABB(bullet_x1, bullet_y1, bullet.width, bullet.height,
+                if PhysicsUtils.rectCollision(bullet_x1, bullet_y1, bullet.width, bullet.height,
                                       boss_x1, boss_y1, boss.width, boss.height) then
                     local damage_dealt = bullet.damage
                     boss.hp = boss.hp - damage_dealt

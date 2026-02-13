@@ -1,6 +1,6 @@
 local Object = require('class')
 local BulletSystem = require('models.bullet_system')
-local Collision = require('src.utils.collision')
+local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local SpaceDefenderView = require('src.views.space_defender_view')
 local json = require('json')
 local Paths = require('src.paths')
@@ -226,7 +226,7 @@ function SpaceDefenderState:updateEnemies(dt)
         if self.player_ship then
             local p_x1 = self.player_ship.x - self.player_ship.width/2
             local p_y1 = self.player_ship.y - self.player_ship.height/2
-            if Collision.checkAABB(
+            if PhysicsUtils.rectCollision(
                 enemy.x - enemy.width/2, enemy.y - enemy.height/2, enemy.width, enemy.height,
                 p_x1, p_y1, self.player_ship.width, self.player_ship.height
             ) then
@@ -277,7 +277,7 @@ function SpaceDefenderState:updateBoss(dt)
     if self.player_ship then
         local p_x1 = self.player_ship.x - self.player_ship.width/2
         local p_y1 = self.player_ship.y - self.player_ship.height/2
-        if Collision.checkAABB(
+        if PhysicsUtils.rectCollision(
             boss.x - boss.width/2, boss.y - boss.height/2, boss.width, boss.height,
             p_x1, p_y1, self.player_ship.width, self.player_ship.height
         ) then self:takeDamage(1) end

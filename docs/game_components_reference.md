@@ -513,9 +513,22 @@ Camera shake, screen flash, and particles. Uses config object API.
 - **drawParticles()** - Draw all particles.
 
 ### Particles (accessed via self.visual_effects.particles)
-- **emitBallTrail(x, y, vx, vy)** - Ball trail particles.
-- **emitConfetti(x, y, count)** - Confetti particles.
-- **emitBrickDestruction(x, y, color)** - Brick destruction particles.
+See **ParticleSystem** below. Games call `emit()` directly with options, or `emitConfetti()` for celebrations.
+
+---
+
+## ParticleSystem
+Simple particle emitter for visual effects (explosions, trails, sparkles, confetti).
+
+### Constructor
+- **new()** - Create empty particle system.
+
+### Methods
+- **emit(x, y, count, particle_type, options)** - Emit particles. Types: "explosion", "sparkle", "confetti", "trail". Options: color, speed, lifetime, size, spread (radians, default 2pi), direction (radians, default 0), gravity.
+- **emitConfetti(x, y, count)** - Emit confetti with random colors and rotation. count defaults to 20.
+- **update(dt)** - Update all particles (movement, gravity, rotation, lifetime, alpha fade).
+- **draw()** - Draw all particles (confetti as rectangles, others as squares).
+- **clear()** - Remove all particles.
 
 ---
 
@@ -696,6 +709,31 @@ Sprites in 3D space for raycaster games (enemies, items, pickups).
 - **y_offset** - Vertical offset (for floating animation)
 - **color** - RGB color {r, g, b}
 - **draw_column(col, screen_y, height, col_ratio, shade)** - Custom column draw function
+
+---
+
+## SpriteUtils
+Sprite processing and pixel-based collision. Load-time: content detection, cropping, rescaling. Runtime: pixel-perfect collision via alpha channel.
+
+### Image Data Loading
+- **loadImageData(file_path)** - Load PNG as ImageData with caching. Returns ImageData or nil.
+- **clearCache()** - Clear the ImageData cache.
+
+### Content Detection
+- **getContentBounds(imageData, alpha_threshold)** - Scan pixels for opaque content bounding box. alpha_threshold defaults to 0.1. Returns {top, bottom, left, right, content_width, content_height} or nil.
+
+### Processing
+- **cropToContent(imageData, bounds)** - Crop ImageData to bounds from getContentBounds. Returns cropped ImageData.
+- **rescaleToCanvas(imageData, target_size, alignment)** - Scale largest dim to target_size, render on square canvas. alignment: "center" (default) or "bottom". Returns Image.
+- **getCollisionInfo(bounds)** - Compute collision ratios from bounds. Returns {width_ratio, height_ratio} (0-1 each).
+
+### Convenience
+- **processSprite(path, config)** - All-in-one: load, scan, crop, rescale. Config: {target_size, alignment, alpha_threshold}. target_size defaults to image's max dimension. Returns {image, collision_info} or nil.
+
+### Pixel Collision
+- **checkPoint(image_data, image_x, image_y, point_x, point_y, alpha_threshold)** - Check if point hits non-transparent pixel. image_x/y is top-left of image in world space. alpha_threshold defaults to 0.5.
+- **checkCircle(image_data, image_x, image_y, cx, cy, radius, alpha_threshold)** - Circle-to-image collision via 8 perimeter samples + center. AABB early rejection. alpha_threshold defaults to 0.5.
+- **estimateNormal(image_data, image_x, image_y, cx, cy, radius, alpha_threshold)** - Estimate surface normal at collision point. Returns normalized nx, ny (fallback: 0, -1).
 
 ---
 

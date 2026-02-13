@@ -13,6 +13,7 @@ local DodgeView = require('src.games.views.dodge_view')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local PatternMovement = require('src.utils.game_components.pattern_movement')
 local SchemaLoader = require('src.utils.game_components.schema_loader')
+local SpriteUtils = require('src.utils.game_components.sprite_utils')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 --------------------------------------------------------------------------------
@@ -52,6 +53,39 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
     self.default_sprite_set = "dodge_base"
     self.view = DodgeView:new(self, self.variant)
     self:loadAssets()
+    self:cropEnemySprites()
+end
+
+-- Crop enemy sprites to content bounds, rescale to fill canvas, and store collision info
+-- sprite_collision_info[key] = {width_ratio, height_ratio} from actual pixel content
+-- Used to derive OBB collision shape from visual size for any sprite
+function DodgeGame:cropEnemySprites()
+    local loader = self.di and self.di.spriteSetLoader
+    if not loader or not loader.sprite_sets then return end
+    local sprite_set_id = (self.variant and self.variant.sprite_set) or self.default_sprite_set
+    local set = loader.sprite_sets[sprite_set_id]
+    if not set or not set.sprites then return end
+
+    self.sprite_collision_info = {}
+    for enemy_type in pairs(self.params.enemy_types or {}) do
+        local key = "enemy_" .. enemy_type
+        local path = set.sprites[key]
+        if path and self.sprites[key] then
+            local cropped, info = self:loadCroppedSprite(path)
+            if cropped then
+                self.sprites[key] = cropped
+                self.sprite_collision_info[key] = info
+            end
+        end
+    end
+end
+
+-- Load sprite, crop to content bounds, scale so largest dim fills canvas, centered
+-- Returns: image, {width_ratio, height_ratio} (each 0..1 relative to draw size)
+function DodgeGame:loadCroppedSprite(path)
+    local result = SpriteUtils.processSprite(path, {alignment = "center"})
+    if not result then return nil end
+    return result.image, result.collision_info
 end
 
 function DodgeGame:setupComponents()
@@ -167,7 +201,9 @@ function DodgeGame:setupComponents()
 
     -- Global on_remove callback for dodge counting
     self.entity_controller.on_remove = function(entity, reason)
-        if reason == "offscreen" and (entity.entered_play or entity.was_dodged) then
+        if entity.lunge_complete then
+            game:onObjectDodged()
+        elseif reason == "offscreen" and entity.entered_play then
             game:onObjectDodged()
         end
     end
@@ -271,7 +307,8 @@ function DodgeGame:setupComponents()
         delayed_spawn = {
             on_spawn = function(warning_entity, ds)
                 local type_name = warning_entity.spawn_type_name or game.entity_controller:pickWeightedType(game.spawn_composition, game.time_elapsed)
-                game:spawnEntity(type_name, warning_entity.x, warning_entity.y, warning_entity.spawn_angle or 0, true)
+                game:spawnEntity(type_name, warning_entity.x, warning_entity.y, warning_entity.spawn_angle or 0, true,
+                    {spawn_target_x = warning_entity.spawn_target_x, spawn_target_y = warning_entity.spawn_target_y})
             end
         }
     }
@@ -695,6 +732,58 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
         custom_params.teleport_timer = enemy_def.teleport_interval or 3.0
         custom_params.teleport_interval = enemy_def.teleport_interval or 3.0
         custom_params.teleport_range = enemy_def.teleport_range or 100
+    elseif base_type == 'lunger' then
+        custom_params.use_lunge = true
+        custom_params.lunge_state = "advancing"
+        custom_params.lunge_timer = 0
+        custom_params.lunge_advance_duration = enemy_def.lunge_advance_duration or self.params.lunge_advance_duration or 0.8
+        custom_params.lunge_hold_duration = enemy_def.lunge_hold_duration or self.params.lunge_hold_duration or 0.15
+        custom_params.lunge_return_duration = enemy_def.lunge_return_duration or self.params.lunge_return_duration or 1.2
+        custom_params.lunge_advance_curve = enemy_def.lunge_advance_curve or self.params.lunge_advance_curve or "ease_out"
+        custom_params.lunge_return_curve = enemy_def.lunge_return_curve or self.params.lunge_return_curve or "ease_in"
+        -- Intended target: the point the tooth's FRONT EDGE should reach
+        local intended_tx, intended_ty
+        if overrides and overrides.spawn_target_x then
+            intended_tx = overrides.spawn_target_x
+            intended_ty = overrides.spawn_target_y
+        else
+            local dist = 150
+            intended_tx = x + math.cos(angle or 0) * dist
+            intended_ty = y + math.sin(angle or 0) * dist
+        end
+        -- Lunge geometry: x,y is the screen edge spawn point
+        -- Tooth front edge starts at edge, slides to intended target
+        -- Back edge always hangs offscreen
+        local ldx = intended_tx - x
+        local ldy = intended_ty - y
+        local lunge_dist = math.sqrt(ldx * ldx + ldy * ldy)
+        if lunge_dist < 1 then lunge_dist = 1 end
+        local dir_x = ldx / lunge_dist
+        local dir_y = ldy / lunge_dist
+        -- Radius: tooth spans edge-to-target, ~5% overhang past edge
+        custom_params.radius = lunge_dist / 1.9
+        local r = custom_params.radius
+        -- Origin center: front edge at spawn point (screen edge)
+        custom_params.lunge_origin_x = x - dir_x * r
+        custom_params.lunge_origin_y = y - dir_y * r
+        -- Target center: front edge at intended target
+        custom_params.lunge_target_x = intended_tx - dir_x * r
+        custom_params.lunge_target_y = intended_ty - dir_y * r
+        -- Start at origin (fully offscreen)
+        custom_params.x = custom_params.lunge_origin_x
+        custom_params.y = custom_params.lunge_origin_y
+        -- OBB collision from actual sprite content shape
+        local info = self.sprite_collision_info and self.sprite_collision_info["enemy_" .. name]
+        if info then
+            custom_params.collision_half_w = r * info.width_ratio
+            custom_params.collision_half_h = r * info.height_ratio
+            custom_params.collision_rotation = math.atan2(dir_y, dir_x) + math.pi / 2
+        end
+        -- Lifecycle managed by updateLunge, not offscreen removal
+        custom_params.skip_offscreen_removal = true
+        -- Direction for sprite rotation (view uses atan2(vy,vx) + pi/2)
+        custom_params.vx = dir_x
+        custom_params.vy = dir_y
     else
         -- Default: basic obstacle, splitter, etc. - just move in direction
         custom_params.use_direction = true
@@ -730,11 +819,12 @@ function DodgeGame:spawnNext(sx, sy, forced_angle)
         self.entity_controller:spawn("warning", sx, sy, {
             type = 'warning', warning_type = 'radial',
             spawn_type_name = type_name, spawn_angle = angle,
+            spawn_target_x = tx, spawn_target_y = ty,
             skip_offscreen_removal = true,
             delayed_spawn = {timer = warning_duration, spawn_type = "warning"}
         })
     else
-        self:spawnEntity(type_name, sx, sy, angle, false)
+        self:spawnEntity(type_name, sx, sy, angle, false, {spawn_target_x = tx, spawn_target_y = ty})
     end
 end
 

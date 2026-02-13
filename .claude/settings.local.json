@@ -64,7 +64,8 @@
       "Bash(del \"C:\\\\Users\\\\chate\\\\Documents\\\\10000-games\\\\src\\\\utils\\\\game_components\\\\lives_health_system.lua\")",
       "WebFetch(domain:wolfenstein.fandom.com)",
       "WebFetch(domain:dhw.wolfenstein3d.com)",
-      "WebFetch(domain:diehardwolfers.wolfenstein3d.com)"
+      "WebFetch(domain:diehardwolfers.wolfenstein3d.com)",
+      "Bash(git clone:*)"
     ],
     "deny": [],
     "ask": []

@@ -11,6 +11,7 @@
 ]]
 
 local Object = require('class')
+local BackgroundRenderer = require('src.utils.game_components.background_renderer')
 local GameBaseView = Object:extend('GameBaseView')
 
 function GameBaseView:init(game_state, variant, config)
@@ -50,6 +51,12 @@ function GameBaseView:getTint(game_type, game_config)
         return {1, 1, 1}
     end
     return self.palette_manager:getTintForVariant(self.variant, game_type, game_config)
+end
+
+function GameBaseView:update(dt)
+    if self.background and self.background.update then
+        self.background:update(dt)
+    end
 end
 
 function GameBaseView:draw()
@@ -117,6 +124,39 @@ end
 --------------------------------------------------------------------------------
 -- BACKGROUND RENDERING
 --------------------------------------------------------------------------------
+
+-- Create a BackgroundRenderer from variant.background string + game params.
+-- Call from subclass init when you want the variant's background field to drive rendering.
+-- Then use self.background:draw(w, h) instead of the manual drawBackground* methods.
+function GameBaseView:initBackground(variant, params)
+    local bg_type = (variant and variant.background) or "solid"
+    local config = { type = bg_type }
+
+    if params then
+        config.color       = params.bg_color
+        config.star_color  = params.bg_star_color
+        config.star_count  = params.bg_star_count
+        config.colors      = params.bg_colors
+        config.speed       = params.bg_speed
+        config.scale       = params.bg_scale
+        config.warp        = params.bg_warp
+        config.contrast    = params.bg_contrast
+        config.point_strength = params.bg_point_strength
+        config.point_radius  = params.bg_point_radius
+        config.point_tail    = params.bg_point_tail
+        config.ink_dye_dissipation = params.bg_ink_dye_dissipation
+        config.ink_vel_dissipation = params.bg_ink_vel_dissipation
+        config.ink_diffusion       = params.bg_ink_diffusion
+        config.ink_amount          = params.bg_ink_amount
+        config.ink_radius          = params.bg_ink_radius
+        config.ink_vel_strength    = params.bg_ink_vel_strength
+        config.ink_sim_steps       = params.bg_ink_sim_steps
+        config.ink_displace        = params.bg_ink_displace
+        config.ink_dye_color       = params.bg_ink_dye_color
+    end
+
+    self.background = BackgroundRenderer:new(config)
+end
 
 function GameBaseView:drawBackground(width, height)
     local game = self.game

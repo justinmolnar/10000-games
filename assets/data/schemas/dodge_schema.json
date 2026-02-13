@@ -328,6 +328,178 @@
             "min": 0,
             "max": 20,
             "description": "Number of holes (danger zones) in arena"
+        },
+        "bg_color": {
+            "type": "array",
+            "default": [0.08, 0.05, 0.1],
+            "description": "Background base color [r,g,b]"
+        },
+        "bg_star_color": {
+            "type": "array",
+            "default": [1, 1, 1],
+            "description": "Starfield star color [r,g,b]"
+        },
+        "bg_star_count": {
+            "type": "integer",
+            "default": 180,
+            "min": 10,
+            "max": 500,
+            "description": "Number of stars in starfield background"
+        },
+        "bg_colors": {
+            "type": "array",
+            "default": null,
+            "description": "Shader colors (array of [r,g,b] arrays, 2-4 colors). Used by flowing background."
+        },
+        "bg_speed": {
+            "type": "number",
+            "default": 0.4,
+            "min": 0.05,
+            "max": 3.0,
+            "description": "Background animation speed multiplier"
+        },
+        "bg_scale": {
+            "type": "number",
+            "default": 1.5,
+            "min": 0.2,
+            "max": 5.0,
+            "description": "Background pattern scale (higher = more zoomed in)"
+        },
+        "bg_warp": {
+            "type": "number",
+            "default": 1.0,
+            "min": 0.0,
+            "max": 3.0,
+            "description": "Background distortion intensity"
+        },
+        "bg_contrast": {
+            "type": "number",
+            "default": 1.2,
+            "min": 0.3,
+            "max": 3.0,
+            "description": "Background color contrast"
+        },
+        "bg_interact_radius": {
+            "type": "number",
+            "default": 0,
+            "min": 0,
+            "max": 1.0,
+            "description": "Enables fluid interaction on background (0 = disabled, any positive = enabled)"
+        },
+        "bg_point_strength": {
+            "type": "number",
+            "default": 3.0,
+            "min": 0,
+            "max": 20.0,
+            "description": "How much points displace the background pattern"
+        },
+        "bg_point_radius": {
+            "type": "number",
+            "default": 0.008,
+            "min": 0.001,
+            "max": 0.5,
+            "description": "Gaussian falloff radius for point displacement"
+        },
+        "bg_point_tail": {
+            "type": "number",
+            "default": 5.0,
+            "min": 1.0,
+            "max": 20.0,
+            "description": "Wake/tail length behind moving points"
+        },
+        "bg_ink_dye_dissipation": {
+            "type": "number",
+            "default": 0.997,
+            "min": 0.95,
+            "max": 1.0,
+            "description": "Ink dye fade rate per sim step (1.0 = never fades)"
+        },
+        "bg_ink_vel_dissipation": {
+            "type": "number",
+            "default": 0.985,
+            "min": 0.9,
+            "max": 1.0,
+            "description": "Ink velocity fade rate per sim step"
+        },
+        "bg_ink_diffusion": {
+            "type": "number",
+            "default": 0.05,
+            "min": 0.0,
+            "max": 0.5,
+            "description": "Ink diffusion/spread rate"
+        },
+        "bg_ink_amount": {
+            "type": "number",
+            "default": 0.4,
+            "min": 0.05,
+            "max": 2.0,
+            "description": "Ink injection amount per point"
+        },
+        "bg_ink_radius": {
+            "type": "number",
+            "default": 0.0005,
+            "min": 0.0001,
+            "max": 0.02,
+            "description": "Ink injection gaussian radius"
+        },
+        "bg_ink_vel_strength": {
+            "type": "number",
+            "default": 3.3,
+            "min": 0.1,
+            "max": 10.0,
+            "description": "Velocity injection strength multiplier"
+        },
+        "bg_ink_sim_steps": {
+            "type": "integer",
+            "default": 1,
+            "min": 1,
+            "max": 6,
+            "description": "Ink simulation steps per frame"
+        },
+        "bg_ink_displace": {
+            "type": "number",
+            "default": 15.0,
+            "min": 0.0,
+            "max": 50.0,
+            "description": "How much ink velocity displaces the flowing pattern"
+        },
+        "bg_ink_dye_color": {
+            "type": "array",
+            "default": [0.05, 0.02, 0.09],
+            "description": "Ink dye color [r,g,b]"
+        },
+        "lunge_advance_duration": {
+            "type": "number",
+            "default": 0.8,
+            "min": 0.1,
+            "max": 5.0,
+            "description": "Seconds for lunger inward movement"
+        },
+        "lunge_hold_duration": {
+            "type": "number",
+            "default": 0.15,
+            "min": 0,
+            "max": 3.0,
+            "description": "Seconds lunger holds at target before returning"
+        },
+        "lunge_return_duration": {
+            "type": "number",
+            "default": 1.2,
+            "min": 0.1,
+            "max": 5.0,
+            "description": "Seconds for lunger retract movement"
+        },
+        "lunge_advance_curve": {
+            "type": "enum",
+            "values": ["linear", "ease_in", "ease_out", "ease_in_out"],
+            "default": "ease_out",
+            "description": "Easing curve for lunger advance phase"
+        },
+        "lunge_return_curve": {
+            "type": "enum",
+            "values": ["linear", "ease_in", "ease_out", "ease_in_out"],
+            "default": "ease_in",
+            "description": "Easing curve for lunger return phase"
         }
     },
     "components": {
@@ -436,6 +608,18 @@
             "shard_radius_factor": 0.6,
             "shard_radius_min": 6,
             "spread_deg": 35
+        },
+        "lunger": {
+            "name": "lunger",
+            "category": "obstacle",
+            "type": "lunger",
+            "speed_multiplier": 1.0,
+            "on_collision": "damage",
+            "lunge_advance_duration": 0.8,
+            "lunge_hold_duration": 0.15,
+            "lunge_return_duration": 1.2,
+            "lunge_advance_curve": "ease_out",
+            "lunge_return_curve": "ease_in"
         },
         "hole": {
             "name": "hole",

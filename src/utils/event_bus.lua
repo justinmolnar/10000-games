@@ -6,13 +6,39 @@ local EventBus = Object:extend('EventBus')
 
 function EventBus:init()
     self.listeners = {}
+    self._next_id = 1
+    self._id_map = {}  -- id -> {event_name, callback}
 end
 
 -- Subscribe a callback function to an event
+-- Returns a subscription ID that can be passed to unsubscribe()
 function EventBus:subscribe(event_name, callback)
-    if not event_name or not callback then return false end
+    if not event_name or not callback then return nil end
     self.listeners[event_name] = self.listeners[event_name] or {}
     table.insert(self.listeners[event_name], callback)
+
+    local id = self._next_id
+    self._next_id = id + 1
+    self._id_map[id] = {event_name = event_name, callback = callback}
+    return id
+end
+
+-- Remove a subscription by the ID returned from subscribe()
+function EventBus:unsubscribe(id)
+    local entry = self._id_map[id]
+    if not entry then return false end
+
+    local list = self.listeners[entry.event_name]
+    if list then
+        for i, cb in ipairs(list) do
+            if cb == entry.callback then
+                table.remove(list, i)
+                break
+            end
+        end
+    end
+
+    self._id_map[id] = nil
     return true
 end
 
