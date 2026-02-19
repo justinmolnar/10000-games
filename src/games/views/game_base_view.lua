@@ -153,6 +153,7 @@ function GameBaseView:initBackground(variant, params)
         config.ink_sim_steps       = params.bg_ink_sim_steps
         config.ink_displace        = params.bg_ink_displace
         config.ink_dye_color       = params.bg_ink_dye_color
+        config.image_path          = params.bg_image
     end
 
     self.background = BackgroundRenderer:new(config)
@@ -384,15 +385,18 @@ function GameBaseView:drawEntityCentered(cx, cy, w, h, sprite_key, fallback_icon
     local rotation = options.rotation or 0
     local palette_id = self:getPaletteId()
 
+    local flip = options.scale_x or 1
+
     if sprite then
         if self.palette_manager then
             love.graphics.push()
             love.graphics.translate(cx, cy)
             love.graphics.rotate(rotation)
+            love.graphics.scale(flip, 1)
             self.palette_manager:drawSpriteWithPalette(sprite, -w/2, -h/2, w, h, palette_id, tint)
             love.graphics.pop()
         else
-            local scale_x, scale_y = w / sprite:getWidth(), h / sprite:getHeight()
+            local scale_x, scale_y = (w / sprite:getWidth()) * flip, h / sprite:getHeight()
             local ox, oy = sprite:getWidth() / 2, sprite:getHeight() / 2
             love.graphics.setColor(tint[1], tint[2], tint[3])
             love.graphics.draw(sprite, cx, cy, rotation, scale_x, scale_y, ox, oy)

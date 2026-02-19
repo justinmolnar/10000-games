@@ -1,0 +1,368 @@
+{
+  "session_name": "dodge_dog_teeth",
+  "started_at": "2026-02-12T19:03:07.243493+00:00",
+  "total_sprites": 24,
+  "generated": [
+    {
+      "id": "fang_curved",
+      "file_path": "assets/sprites/games/dodge/teeth\\fang_curved.png",
+      "prompt": "curved sharp dog canine tooth, slightly yellowed ivory, menacing point, isolated",
+      "params": {
+        "width": 96,
+        "height": 96,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-02-12T19:04:44.760972+00:00",
+      "generation_time_seconds": 33,
+      "size": "96x96",
+      "file_size_bytes": 1030,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "fang_bloody_gums",
+      "file_path": "assets/sprites/games/dodge/teeth\\fang_bloody_gums.png",
+      "prompt": "large pointed canine fang with raw red inflamed gums attached at base, wet looking tooth",
+      "params": {
+        "width": 96,
+        "height": 96,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-02-12T19:06:19.126426+00:00",
+      "generation_time_seconds": 27,
+      "size": "96x96",
+      "file_size_bytes": 2868,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "incisor_row",
+      "file_path": "assets/sprites/games/dodge/teeth\\incisor_row.png",
+      "prompt": "row of three small sharp dog incisor teeth with pink gumline above, white enamel",
+      "params": {
+        "width": 96,
+        "height": 96,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-02-12T19:06:53.170102+00:00",
+      "generation_time_seconds": 31,
+      "size": "96x96",
+      "file_size_bytes": 1663,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "fang_yellowed",
+      "file_path": "assets/sprites/games/dodge/teeth\\fang_yellowed.png",
+      "prompt": "old yellowed dog canine fang tooth, stained ivory color, sharp point, worn enamel",
+      "params": {
+        "width": 96,
+        "height": 96,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-02-12T19:07:53.512211+00:00",
+      "generation_time_seconds": 57,
+      "size": "96x96",
+      "file_size_bytes": 1589,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "fang_massive",
+      "file_path": "assets/sprites/games/dodge/teeth\\fang_massive.png",
+      "prompt": "oversized menacing dog canine tooth, bright white sharp fang, thick base tapering to needle point",
+      "params": {
+        "width": 128,
+        "height": 128,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-02-12T19:08:18.017350+00:00",
+      "generation_time_seconds": 21,
+      "size": "128x128",
+      "file_size_bytes": 964,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "fang_pair",
+      "file_path": "assets/sprites/games/dodge/teeth\\fang_pair.png",
+      "prompt": "two dog canine fangs side by side with gum tissue connecting them, white sharp points",
+      "params": {
+        "width": 96,
+        "height": 96,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-02-12T19:11:13.704366+00:00",
+      "generation_time_seconds": 44,
+      "size": "96x96",
+      "file_size_bytes": 2773,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "fang_dark_gums",
+      "file_path": "assets/sprites/games/dodge/teeth\\fang_dark_gums.png",
+      "prompt": "sharp ivory dog fang with dark blackish-pink gums at base, large menacing canine tooth",
+      "params": {
+        "width": 96,
+        "height": 96,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-02-12T19:11:53.078312+00:00",
+      "generation_time_seconds": 36,
+      "size": "96x96",
+      "file_size_bytes": 2150,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "premolar_row",
+      "file_path": "assets/sprites/games/dodge/teeth\\premolar_row.png",
+      "prompt": "three pointed dog premolar teeth in a row with pale pink gumline, sharp triangular shapes",
+      "params": {
+        "width": 96,
+        "height": 96,
+        "view": "side",
+        "detail": "highly detailed",
+        "shading": "detailed shading",
+        "outline": "single color outline"
+      },
+      "generated_at": "2026-02-12T19:12:25.654780+00:00",
+      "generation_time_seconds": 29,
+      "size": "96x96",
+      "file_size_bytes": 1857,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "splat_large",
+      "file_path": "assets/sprites/games/dodge/slobber\\splat_large.png",
+      "prompt": "wet drool splatter puddle, translucent white saliva blob on ground, glossy shiny",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "generated_at": "2026-02-12T19:13:18.377789+00:00",
+      "generation_time_seconds": 49,
+      "size": "64x64",
+      "file_size_bytes": 1328,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "splat_stringy",
+      "file_path": "assets/sprites/games/dodge/slobber\\splat_stringy.png",
+      "prompt": "stringy dog drool strand, stretchy translucent saliva string, wet and gooey",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "generated_at": "2026-02-12T19:13:31.518692+00:00",
+      "generation_time_seconds": 10,
+      "size": "64x64",
+      "file_size_bytes": 3292,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "splat_spray",
+      "file_path": "assets/sprites/games/dodge/slobber\\splat_spray.png",
+      "prompt": "spray of small saliva droplets scattered pattern, tiny wet translucent dots",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "generated_at": "2026-02-12T19:13:51.750358+00:00",
+      "generation_time_seconds": 17,
+      "size": "64x64",
+      "file_size_bytes": 96,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "splat_foam",
+      "file_path": "assets/sprites/games/dodge/slobber\\splat_foam.png",
+      "prompt": "foamy dog slobber patch, bubbly white frothy saliva, small bubbles visible",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "generated_at": "2026-02-12T19:17:35.863684+00:00",
+      "generation_time_seconds": 28,
+      "size": "64x64",
+      "file_size_bytes": 2038,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "splat_streak",
+      "file_path": "assets/sprites/games/dodge/slobber\\splat_streak.png",
+      "prompt": "smeared drool streak, dragged wet saliva trail, translucent glossy smear",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "generated_at": "2026-02-12T19:18:18.900649+00:00",
+      "generation_time_seconds": 40,
+      "size": "64x64",
+      "file_size_bytes": 1335,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "splat_splatter",
+      "file_path": "assets/sprites/games/dodge/slobber\\splat_splatter.png",
+      "prompt": "impact splatter of dog drool, star-shaped wet splash pattern, clear glossy saliva",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "generated_at": "2026-02-12T19:19:04.928862+00:00",
+      "generation_time_seconds": 43,
+      "size": "64x64",
+      "file_size_bytes": 1988,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "splat_dribble",
+      "file_path": "assets/sprites/games/dodge/slobber\\splat_dribble.png",
+      "prompt": "trail of drool dribbles, several small connected saliva drops in a line",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "generated_at": "2026-02-12T19:19:54.547453+00:00",
+      "generation_time_seconds": 46,
+      "size": "64x64",
+      "file_size_bytes": 281,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "splat_thick",
+      "file_path": "assets/sprites/games/dodge/slobber\\splat_thick.png",
+      "prompt": "thick viscous glob of dog drool, dense white-clear slobber mass, ropy texture",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "generated_at": "2026-02-12T19:20:12.677190+00:00",
+      "generation_time_seconds": 15,
+      "size": "64x64",
+      "file_size_bytes": 1522,
+      "status": "success",
+      "review_flags": []
+    },
+    {
+      "id": "splat_mist",
+      "file_path": "assets/sprites/games/dodge/slobber\\splat_mist.png",
+      "prompt": "fine mist spray of saliva, tiny scattered wet droplets, light translucent spray pattern",
+      "params": {
+        "width": 64,
+        "height": 64,
+        "view": "high top-down",
+        "detail": "medium detail",
+        "shading": "basic shading",
+        "outline": "lineless"
+      },
+      "generated_at": "2026-02-12T19:20:34.407985+00:00",
+      "generation_time_seconds": 18,
+      "size": "64x64",
+      "file_size_bytes": 371,
+      "status": "success",
+      "review_flags": []
+    }
+  ],
+  "failed": [
+    {
+      "id": "fang_large",
+      "prompt": "single large sharp dog canine fang tooth, white ivory, pointed tip, isolated on transparent background",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "fang_with_gums",
+      "prompt": "sharp dog fang tooth with pink gum tissue at the base, white enamel, exposed root area",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "molar_with_gums",
+      "prompt": "dog molar tooth with dark pink gum tissue, ridged grinding surface, chunky shape",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "fang_dripping",
+      "prompt": "sharp white dog fang tooth with saliva dripping from the tip, wet glossy surface",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "splat_blob",
+      "prompt": "thick glob of dog slobber, opaque white-clear drool blob, bubbly wet surface",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "splat_puddle",
+      "prompt": "flat drool puddle splat, thin translucent saliva spread on surface, wet sheen",
+      "error": "Generation or save failed"
+    },
+    {
+      "id": "splat_drip",
+      "prompt": "dripping saliva drop mid-fall, elongated teardrop shape, clear translucent drool",
+      "error": "Generation or save failed"
+    }
+  ],
+  "completed_at": "2026-02-12T19:20:34.407985+00:00"
+}

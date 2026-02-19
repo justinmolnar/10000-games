@@ -28,6 +28,7 @@
 --   if arena:isInside(x, y) then ... end
 
 local Object = require('class')
+local SpriteUtils = require('src.utils.game_components.sprite_utils')
 local ArenaController = Object:extend('ArenaController')
 
 function ArenaController:new(params)
@@ -122,6 +123,20 @@ function ArenaController:new(params)
     self.grid_mode = params.grid_mode or false
     self.cell_size = params.cell_size or 20
 
+    -- Image-based arena mode
+    self.image_mode = false
+    self.image_fill = params.arena_image_fill or false
+    self.image_invert = params.arena_image_invert or false
+    if params.arena_image then
+        self.image_data = SpriteUtils.loadImageData(params.arena_image)
+        if self.image_data then
+            self.image_mode = true
+            self.arena_image_path = params.arena_image
+            self.image = love.graphics.newImage(self.image_data)
+            self:computeImageMapping()
+        end
+    end
+
     return self
 end
 
@@ -145,6 +160,164 @@ function ArenaController:getScaledVertices()
         table.insert(scaled, self.y + v.y * r)
     end
     return scaled
+end
+
+-- ============================================================================
+-- IMAGE-BASED ARENA
+-- ============================================================================
+
+-- Compute image scale to fit within container (game window)
+function ArenaController:computeImageMapping()
+    if not self.image_data then return end
+    local img_w = self.image_data:getWidth()
+    local img_h = self.image_data:getHeight()
+    if self.image_fill then
+        self.image_scale_x = self.container_width / img_w
+        self.image_scale_y = self.container_height / img_h
+    else
+        local s = math.min(self.container_width / img_w, self.container_height / img_h)
+        self.image_scale_x = s
+        self.image_scale_y = s
+    end
+    self.image_scale = self.image_scale_x  -- backward compat for view drawing
+end
+
+-- Get image top-left position in game space (follows arena center)
+function ArenaController:getImageOffset()
+    local img_w = self.image_data:getWidth()
+    local img_h = self.image_data:getHeight()
+    return self.x - (img_w * self.image_scale_x) / 2,
+           self.y - (img_h * self.image_scale_y) / 2
+end
+
+-- Check if a game-space point falls on an opaque image pixel
+function ArenaController:checkImagePixel(game_x, game_y)
+    if not self.image_data then return false end
+    local ox, oy = self:getImageOffset()
+    local px = math.floor((game_x - ox) / self.image_scale_x)
+    local py = math.floor((game_y - oy) / self.image_scale_y)
+    local w = self.image_data:getWidth()
+    local h = self.image_data:getHeight()
+    if px < 0 or px >= w or py < 0 or py >= h then
+        return false
+    end
+    local _, _, _, a = self.image_data:getPixel(px, py)
+    local inside = a >= 0.1
+    if self.image_invert then inside = not inside end
+    return inside
+end
+
+-- Estimate outward-pointing normal at a game-space point near image boundary
+function ArenaController:estimateImageNormal(x, y)
+    local sample_dist = math.max(3, math.max(self.image_scale_x, self.image_scale_y) * 3)
+    local gx, gy = 0, 0
+    for i = -1, 1 do
+        for j = -1, 1 do
+            if i ~= 0 or j ~= 0 then
+                if not self:checkImagePixel(x + i * sample_dist, y + j * sample_dist) then
+                    gx = gx + i
+                    gy = gy + j
+                end
+            end
+        end
+    end
+    local gl = math.sqrt(gx * gx + gy * gy)
+    if gl > 0.1 then return gx / gl, gy / gl end
+    local dx = x - self.x
+    local dy = y - self.y
+    local dl = math.sqrt(dx * dx + dy * dy)
+    if dl > 0.1 then return dx / dl, dy / dl end
+    return 0, -1
+end
+
+-- Ray march from center outward to find boundary at given angle
+-- scale: optional multiplier to extend past boundary (>1 = outside arena, for enemy spawning)
+function ArenaController:getImageBoundaryPoint(angle, scale)
+    scale = scale or 1.0
+    local dx = math.cos(angle)
+    local dy = math.sin(angle)
+    local step = math.max(1, math.max(self.image_scale_x, self.image_scale_y))
+    local max_dist = math.max(self.image_data:getWidth() * self.image_scale_x, self.image_data:getHeight() * self.image_scale_y)
+    local last_x, last_y = self.x, self.y
+    local boundary_dist = 0
+
+    for i = 1, math.ceil(max_dist / step) do
+        local test_x = self.x + dx * step * i
+        local test_y = self.y + dy * step * i
+        if not self:checkImagePixel(test_x, test_y) then
+            boundary_dist = step * i
+            break
+        end
+        last_x, last_y = test_x, test_y
+    end
+
+    if scale ~= 1.0 and boundary_dist > 0 then
+        local scaled_dist = boundary_dist * scale
+        return self.x + dx * scaled_dist, self.y + dy * scaled_dist
+    end
+    return last_x, last_y
+end
+
+-- Clamp entity to stay inside image-based arena
+function ArenaController:clampEntityImage(entity)
+    local ent_radius = entity.radius or 0
+
+    -- Quick check: is entity center inside?
+    if self:checkImagePixel(entity.x, entity.y) then
+        if ent_radius <= 0 then return end
+        -- Check perimeter
+        local all_inside = true
+        for i = 0, 7 do
+            local angle = i * math.pi / 4
+            if not self:checkImagePixel(entity.x + math.cos(angle) * ent_radius, entity.y + math.sin(angle) * ent_radius) then
+                all_inside = false
+                break
+            end
+        end
+        if all_inside then return end
+    end
+
+    -- Estimate normal at current position
+    local nx, ny = self:estimateImageNormal(entity.x, entity.y)
+
+    -- March inward (opposite of normal) to find a valid position
+    local step = math.max(1, math.max(self.image_scale_x, self.image_scale_y))
+    for i = 1, 200 do
+        local test_x = entity.x - nx * step * i
+        local test_y = entity.y - ny * step * i
+        if self:checkImagePixel(test_x, test_y) then
+            entity.x = test_x
+            entity.y = test_y
+            if entity.vx and entity.vy then
+                local bounce = entity.bounce_damping or 0
+                local dot = entity.vx * nx + entity.vy * ny
+                if dot > 0 then
+                    entity.vx = entity.vx - nx * dot * (1.0 + bounce)
+                    entity.vy = entity.vy - ny * dot * (1.0 + bounce)
+                end
+            end
+            return
+        end
+    end
+
+    -- Fallback: march toward center
+    local cdx = self.x - entity.x
+    local cdy = self.y - entity.y
+    local dist = math.sqrt(cdx * cdx + cdy * cdy)
+    if dist > 1 then
+        local sx, sy = cdx / dist, cdy / dist
+        for i = 1, math.ceil(dist / step) do
+            local test_x = entity.x + sx * step * i
+            local test_y = entity.y + sy * step * i
+            if self:checkImagePixel(test_x, test_y) then
+                entity.x = test_x
+                entity.y = test_y
+                return
+            end
+        end
+    end
+    entity.x = self.x
+    entity.y = self.y
 end
 
 -- Main update function
@@ -270,10 +443,21 @@ function ArenaController:updateMovement(dt)
     local min_y = self.bounds_padding + effective_radius
     local max_y = self.container_height - self.bounds_padding - effective_radius
 
-    if self.x < min_x then self.x = min_x; self.vx = math.abs(self.vx) end
-    if self.x > max_x then self.x = max_x; self.vx = -math.abs(self.vx) end
-    if self.y < min_y then self.y = min_y; self.vy = math.abs(self.vy) end
-    if self.y > max_y then self.y = max_y; self.vy = -math.abs(self.vy) end
+    -- When arena is larger than container, center it instead of oscillating
+    if min_x > max_x then
+        self.x = self.container_width / 2
+        self.vx = 0
+    else
+        if self.x < min_x then self.x = min_x; self.vx = math.abs(self.vx) end
+        if self.x > max_x then self.x = max_x; self.vx = -math.abs(self.vx) end
+    end
+    if min_y > max_y then
+        self.y = self.container_height / 2
+        self.vy = 0
+    else
+        if self.y < min_y then self.y = min_y; self.vy = math.abs(self.vy) end
+        if self.y > max_y then self.y = max_y; self.vy = -math.abs(self.vy) end
+    end
 end
 
 -- Set acceleration (called by game each frame to control movement behavior)
@@ -297,6 +481,14 @@ end
 
 -- Get point on shape boundary at given angle (ray-polygon intersection)
 function ArenaController:getPointOnShapeBoundary(angle, radius)
+    if self.image_mode then
+        local scale = 1.0
+        if radius then
+            local eff = self:getEffectiveRadius()
+            if eff > 0 then scale = radius / eff end
+        end
+        return self:getImageBoundaryPoint(angle, scale)
+    end
     radius = radius or self:getEffectiveRadius()
     local dx = math.cos(angle)
     local dy = math.sin(angle)
@@ -336,6 +528,12 @@ end
 
 -- Get random point on boundary (weighted by edge length)
 function ArenaController:getRandomBoundaryPoint(radius)
+    if self.image_mode then
+        local angle = math.random() * math.pi * 2
+        local bx, by = self:getImageBoundaryPoint(angle)
+        local nx, ny = self:estimateImageNormal(bx, by)
+        return bx, by, math.atan2(ny, nx)
+    end
     radius = radius or self:getEffectiveRadius()
     local verts = self.vertices
     local n = #verts
@@ -414,6 +612,18 @@ end
 
 -- Get bounds for rendering/collision
 function ArenaController:getBounds()
+    if self.image_mode then
+        local ox, oy = self:getImageOffset()
+        return {
+            x = ox,
+            y = oy,
+            width = self.image_data:getWidth() * self.image_scale_x,
+            height = self.image_data:getHeight() * self.image_scale_y,
+            image_mode = true,
+            arena_image = self.arena_image_path
+        }
+    end
+
     local effective_radius = self:getEffectiveRadius()
 
     if self.safe_zone_mode then
@@ -442,6 +652,19 @@ end
 -- margin: optional entity radius to shrink effective bounds (for edge collision)
 function ArenaController:isInside(x, y, margin)
     margin = margin or 0
+
+    if self.image_mode then
+        if not self:checkImagePixel(x, y) then return false end
+        if margin > 0 then
+            for i = 0, 7 do
+                local angle = i * math.pi / 4
+                if not self:checkImagePixel(x + math.cos(angle) * margin, y + math.sin(angle) * margin) then
+                    return false
+                end
+            end
+        end
+        return true
+    end
 
     if self.safe_zone_mode then
         -- Generic point-in-polygon using ray casting
@@ -526,16 +749,22 @@ function ArenaController:reset()
     self.wall_offset_x = 0
     self.wall_offset_y = 0
     self.wall_move_timer = 0
+    if self.image_mode then
+        self:computeImageMapping()
+    end
 end
 
 -- Update container dimensions (call when viewport changes)
-function ArenaController:setContainerSize(width, height)
+function ArenaController:setContainerSize(width, height, area_center)
     self.container_width = width
     self.container_height = height
     -- Recenter the arena if it's in safe_zone mode
     if self.safe_zone_mode then
-        self.x = width / 2
-        self.y = height / 2
+        self.x = area_center and (width * area_center[1]) or (width / 2)
+        self.y = area_center and (height * area_center[2]) or (height / 2)
+    end
+    if self.image_mode then
+        self:computeImageMapping()
     end
 end
 
@@ -557,7 +786,10 @@ function ArenaController:getState()
         deformation_offset = self.deformation_offset,
         shrink_progress = self:getShrinkProgress(),
         wall_offset_x = self.wall_offset_x,
-        wall_offset_y = self.wall_offset_y
+        wall_offset_y = self.wall_offset_y,
+        image_mode = self.image_mode,
+        image_scale = self.image_mode and self.image_scale or nil,
+        arena_image = self.image_mode and self.arena_image_path or nil
     }
 end
 
@@ -566,6 +798,14 @@ end
 function ArenaController:drawBoundary(scale, color)
     scale = scale or 1
     color = color or {0.5, 0.5, 0.5, 0.8}
+
+    if self.image_mode and self.image then
+        local ox, oy = self:getImageOffset()
+        love.graphics.setColor(1, 1, 1, 0.3)
+        love.graphics.draw(self.image, ox * scale, oy * scale, 0, self.image_scale_x * scale, self.image_scale_y * scale)
+        love.graphics.setColor(1, 1, 1, 1)
+        return
+    end
 
     love.graphics.setColor(color)
     love.graphics.setLineWidth(3)
@@ -615,6 +855,10 @@ end
 -- Clamp entity to stay inside arena bounds with optional bounce (generic polygon)
 -- entity: {x, y, vx, vy, radius, bounce_damping}
 function ArenaController:clampEntity(entity)
+    if self.image_mode then
+        self:clampEntityImage(entity)
+        return
+    end
     if not self.safe_zone_mode then return end
 
     local ent_radius = entity.radius or 0

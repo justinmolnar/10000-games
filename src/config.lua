@@ -1738,9 +1738,9 @@ local Config = {
             cost_exponent = 1.5,
 
             -- Formula and metrics
-            base_formula_string = "((metrics.objects_dodged - metrics.collisions * 3) * (metrics.objects_dodged - metrics.collisions * 3) * 0.03 * (1 + metrics.combo / math.max(1, metrics.objects_dodged) * 0.3) * scaling_constant)",
-            display_formula_string = "objects_dodged - collisions × combo",
-            metrics_tracked = {"objects_dodged", "collisions", "combo"},
+            base_formula_string = "((metrics.victory_progress - metrics.collisions * 3) * (metrics.victory_progress - metrics.collisions * 3) * 0.03 * (1 + metrics.combo / math.max(1, metrics.victory_progress) * 0.3) * scaling_constant)",
+            display_formula_string = "victory_progress - collisions × combo",
+            metrics_tracked = {"victory_progress", "objects_dodged", "collisions", "combo"},
 
             -- Visual identity
             icon_sprite = "player",

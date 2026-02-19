@@ -1,5 +1,6 @@
 local Object = require('class')
 local Constants = require('src.constants')
+local WadParser = require('src.utils.wad_parser')
 
 -- Load g3d library
 local g3d = require('lib.g3d')
@@ -295,12 +296,34 @@ end
 
 -- Generate extruded 3D mesh from text opacity grid with greedy quad merging
 local function generateTextMesh(grid, grid_w, grid_h, extrude)
+    -- Find tight bounds of actual opaque pixels
+    local min_gx, max_gx = grid_w, 0
+    local min_gy, max_gy = grid_h, 0
+    for gy = 0, grid_h - 1 do
+        for gx = 0, grid_w - 1 do
+            if grid[gy][gx] then
+                if gx < min_gx then min_gx = gx end
+                if gx > max_gx then max_gx = gx end
+                if gy < min_gy then min_gy = gy end
+                if gy > max_gy then max_gy = gy end
+            end
+        end
+    end
+
     local world_w = 4.3
     local sc = world_w / grid_w
-    local world_h = grid_h * sc
-    local ox = grid_w / 2
-    local oy = grid_h / 2
+
+    -- Center on the actual opaque region, not the full grid
+    local ox = (min_gx + max_gx + 1) / 2
+    local oy = (min_gy + max_gy + 1) / 2
     local ez = extrude
+
+    -- Tight half-extents matching visible content
+    local tight_hw = (max_gx - min_gx + 1) * sc / 2
+    local tight_hh = (max_gy - min_gy + 1) * sc / 2
+
+    print(string.format("TEXT BOUNDS: grid=%dx%d opaque=[%d..%d, %d..%d] center=(%.1f,%.1f) tight_hw=%.3f tight_hh=%.3f old_hw=%.3f old_hh=%.3f",
+        grid_w, grid_h, min_gx, max_gx, min_gy, max_gy, ox, oy, tight_hw, tight_hh, world_w/2, grid_h*sc/2))
     local verts = {}
 
     local function isOpaque(gx, gy)
@@ -400,7 +423,7 @@ local function generateTextMesh(grid, grid_w, grid_h, extrude)
         end
     end
 
-    return verts, world_w / 2, world_h / 2
+    return verts, tight_hw, tight_hh
 end
 
 --------------------------------------------------------------------------------
@@ -664,7 +687,11 @@ local function buildPrograms()
             prog.data.wy = 0
             prog.data.vx = 1
             prog.data.vy = 1
+            prog.data.rot_x = 0
+            prog.data.rot_y = 0
+            prog.data.rot_z = 0
             prog.data.last_extrude = nil
+            prog.data.bounce_dbg = false
 
             if not text_frag_shader then
                 local ok, s = pcall(love.graphics.newShader, g3d.shaderpath, TEXT_FRAG_GLSL)
@@ -684,13 +711,6 @@ local function buildPrograms()
             prog.data.text_hw = hw
             prog.data.text_hh = hh
             prog.data.last_extrude = ext
-
-            -- Debug: visible red walls at screen edges
-            local bar = generateCubeAt(0, 0, 0, 1, 1, 0.15, 0.15)
-            prog.data.wall_r = g3d.newModel(bar, white_texture)
-            prog.data.wall_l = g3d.newModel(bar, white_texture)
-            prog.data.wall_t = g3d.newModel(bar, white_texture)
-            prog.data.wall_b = g3d.newModel(bar, white_texture)
         end,
         update = function(prog, dt)
             prog.data.time = prog.data.time + dt
@@ -708,55 +728,15 @@ local function buildPrograms()
             end
 
             -- Rotation (matching shader: spin + sway oscillation)
-            local rot_x = v.spin_x * t + v.sway_x * math.sin(t * 1.0)
-            local rot_y = v.spin_y * t + v.sway_y * math.sin(t * 1.3)
-            local rot_z = v.spin_z * t + v.sway_z * math.sin(t * 0.7)
+            d.rot_x = v.spin_x * t + v.sway_x * math.sin(t * 1.0)
+            d.rot_y = v.spin_y * t + v.sway_y * math.sin(t * 1.3)
+            d.rot_z = v.spin_z * t + v.sway_z * math.sin(t * 0.7)
 
+            -- Drift (bounce happens in draw where actual matrices are available)
             local cam_z = 5.5 / v.text_size
-            local tan_hfov = 1 / 1.5
-            local aspect = love.graphics.getWidth() / love.graphics.getHeight()
-
-            -- Drift
             local speed_scale = cam_z * 0.15
             d.wx = d.wx + d.vx * v.drift_x * speed_scale * dt
             d.wy = d.wy + d.vy * v.drift_y * speed_scale * dt
-
-            -- Bounce: project the 8 bounding box corners and check screen edges
-            local hw, hh, hz = d.text_hw, d.text_hh, v.extrude
-            local ca, sa = math.cos(rot_z), math.sin(rot_z)
-            local cb, sb = math.cos(rot_y), math.sin(rot_y)
-            local cc, sn = math.cos(rot_x), math.sin(rot_x)
-            local r11, r12, r13 = ca*cb, ca*sb*sn - sa*cc, ca*sb*cc + sa*sn
-            local r21, r22, r23 = sa*cb, sa*sb*sn + ca*cc, sa*sb*cc - ca*sn
-            local r31, r32, r33 = -sb, cb*sn, cb*cc
-
-            local off_r, off_l, off_t, off_b = false, false, false, false
-            for i = 1, 8 do
-                local bx = (i <= 4) and -hw or hw
-                local by = (i % 4 <= 1) and -hh or hh
-                local bz = (i % 2 == 1) and -hz or hz
-                local rpx = r11*bx + r12*by + r13*bz
-                local rpy = r21*bx + r22*by + r23*bz
-                local rpz = r31*bx + r32*by + r33*bz
-                local wpx = d.wx + rpx
-                local wpy = d.wy + rpy
-                local depth = cam_z - rpz
-                if depth > 0.01 then
-                    local cx = wpx / (depth * tan_hfov * aspect)
-                    local cy = wpy / (depth * tan_hfov)
-                    if cx > 1 then off_r = true end
-                    if cx < -1 then off_l = true end
-                    if cy > 1 then off_t = true end
-                    if cy < -1 then off_b = true end
-                end
-            end
-
-            if off_r and d.vx > 0 then d.vx = -1 end
-            if off_l and d.vx < 0 then d.vx = 1 end
-            if off_t and d.vy > 0 then d.vy = -1 end
-            if off_b and d.vy < 0 then d.vy = 1 end
-
-            d.model:setTransform({d.wx, d.wy, 0}, {rot_x, rot_y, rot_z})
         end,
         draw = function(prog, w, h)
             if not text_frag_shader then return end
@@ -771,6 +751,83 @@ local function buildPrograms()
             g3d.camera.updateProjectionMatrix()
             g3d.camera.lookAt(0, 0, cam_z, 0, 0, 0)
 
+            -- Set model transform before bounce check
+            d.model:setTransform({d.wx, d.wy, 0}, {d.rot_x, d.rot_y, d.rot_z})
+
+            -- Bounce using the ACTUAL g3d matrices from the rendering pipeline
+            local M = d.model.matrix
+            local P = g3d.camera.projectionMatrix
+
+            local hw, hh, hz = d.text_hw, d.text_hh, v.extrude
+            local max_nx, max_nx_rpx, max_nx_rpz = -math.huge, 0, 0
+            local min_nx, min_nx_rpx, min_nx_rpz =  math.huge, 0, 0
+            local max_ny, max_ny_rpy, max_ny_rpz = -math.huge, 0, 0
+            local min_ny, min_ny_rpy, min_ny_rpz =  math.huge, 0, 0
+
+            for i = 1, 8 do
+                local lx = (i <= 4) and -hw or hw
+                local ly = (i % 4 <= 1) and -hh or hh
+                local lz = (i % 2 == 1) and -hz or hz
+
+                -- Rotated position from the actual model matrix (excludes translation)
+                local rpx = M[1]*lx + M[2]*ly + M[3]*lz
+                local rpy = M[5]*lx + M[6]*ly + M[7]*lz
+                local rpz = M[9]*lx + M[10]*ly + M[11]*lz
+
+                local depth = cam_z - rpz
+                if depth > 0.01 then
+                    -- NDC using actual projection matrix values
+                    local nx = P[1] * (d.wx + rpx) / depth
+                    local ny = P[6] * (d.wy + rpy) / depth
+
+                    if nx > max_nx then max_nx = nx; max_nx_rpx = rpx; max_nx_rpz = rpz end
+                    if nx < min_nx then min_nx = nx; min_nx_rpx = rpx; min_nx_rpz = rpz end
+                    if ny > max_ny then max_ny = ny; max_ny_rpy = rpy; max_ny_rpz = rpz end
+                    if ny < min_ny then min_ny = ny; min_ny_rpy = rpy; min_ny_rpz = rpz end
+                end
+            end
+
+            local bounced = false
+            local bounce_side = ""
+
+            if max_nx > 1 and d.vx > 0 then
+                d.vx = -1
+                local dep = cam_z - max_nx_rpz
+                d.wx = dep / P[1] - max_nx_rpx
+                bounced = true
+                bounce_side = bounce_side .. "R "
+            end
+            if min_nx < -1 and d.vx < 0 then
+                d.vx = 1
+                local dep = cam_z - min_nx_rpz
+                d.wx = -dep / P[1] - min_nx_rpx
+                bounced = true
+                bounce_side = bounce_side .. "L "
+            end
+            if max_ny > 1 and d.vy > 0 then
+                d.vy = -1
+                local dep = cam_z - max_ny_rpz
+                d.wy = dep / P[6] - max_ny_rpy
+                bounced = true
+                bounce_side = bounce_side .. "B "
+            end
+            if min_ny < -1 and d.vy < 0 then
+                d.vy = 1
+                local dep = cam_z - min_ny_rpz
+                d.wy = -dep / P[6] - min_ny_rpy
+                bounced = true
+                bounce_side = bounce_side .. "T "
+            end
+
+            if bounced then
+                d.model:setTransform({d.wx, d.wy, 0}, {d.rot_x, d.rot_y, d.rot_z})
+                if not d.bounce_dbg then
+                    d.bounce_dbg = true
+                    print(string.format("BOUNCE[%s]: P[1]=%.6f P[6]=%.6f cam_z=%.3f hw=%.3f hh=%.3f hz=%.3f w=%d h=%d",
+                        bounce_side, P[1], P[6], cam_z, hw, hh, hz, w, h))
+                end
+            end
+
             text_frag_shader:send("uViewPos", {0, 0, cam_z})
             text_frag_shader:send("uSpecular", v.specular)
             text_frag_shader:send("uSurface", v.surface)
@@ -779,11 +836,703 @@ local function buildPrograms()
 
             d.model:draw(text_frag_shader)
 
-            -- Debug: draw visible walls at screen edges
-            d.wall_r:draw()
-            d.wall_l:draw()
-            d.wall_t:draw()
-            d.wall_b:draw()
+            -- Store edge marker flag for 2D overlay
+            d.show_edges = true
+        end,
+    }
+
+    -- 7. FPS Demo (WASD + mouse look, simple map)
+    programs[#programs+1] = {
+        name = "FPS Demo",
+        params = {
+            {key="move_speed", label="Speed", min=1, max=20, default=8, step=0.5},
+            {key="sensitivity", label="Sens", min=0.1, max=3.0, default=1.0, step=0.05},
+            {key="jump_force", label="Jump", min=1, max=15, default=6, step=0.5},
+            {key="gravity", label="Gravity", min=5, max=30, default=15, step=0.5},
+            {key="fov_deg", label="FOV", min=45, max=120, default=90, step=1},
+        },
+        values = {}, data = {},
+        init = function(prog, w, h)
+            local d = prog.data
+            d.px, d.py, d.pz = 0, -22, 1.7
+            d.vz = 0
+            d.on_ground = true
+            d.dir = math.pi / 2
+            d.pitch = 0
+            d.mouse_captured = false
+            d.mouse_dx, d.mouse_dy = 0, 0
+            d.fps_hud = true
+            d.models = {}
+            d.colliders = {}
+
+            local WT, WH = 0.3, 4
+
+            local function solid(c, cx,cy,cz, sx,sy,sz)
+                local m = g3d.newModel(generateCube(c[1],c[2],c[3]), white_texture)
+                m:setTransform({cx,cy,cz}, {0,0,0}, {sx,sy,sz})
+                d.models[#d.models+1] = m
+                d.colliders[#d.colliders+1] = {x=cx, y=cy, hx=sx/2, hy=sy/2}
+            end
+            local function vis(c, cx,cy,cz, sx,sy,sz)
+                local m = g3d.newModel(generateCube(c[1],c[2],c[3]), white_texture)
+                m:setTransform({cx,cy,cz}, {0,0,0}, {sx,sy,sz})
+                d.models[#d.models+1] = m
+            end
+            local function wall(c, x1,y1, x2,y2)
+                local dx, dy = math.abs(x2-x1), math.abs(y2-y1)
+                solid(c, (x1+x2)/2,(y1+y2)/2,WH/2, dx<0.01 and WT or dx, dy<0.01 and WT or dy, WH)
+            end
+            local function flr(c, x1,y1, x2,y2)
+                vis(c, (x1+x2)/2,(y1+y2)/2,-0.05, math.abs(x2-x1),math.abs(y2-y1),0.1)
+            end
+            local function clg(c, x1,y1, x2,y2)
+                vis(c, (x1+x2)/2,(y1+y2)/2,WH+0.05, math.abs(x2-x1),math.abs(y2-y1),0.1)
+            end
+            local function pil(c, x,y, s)
+                s = s or 0.8
+                solid(c, x,y,WH/2, s,s,WH)
+            end
+            local function orb(r,g,b, x,y,z, rad)
+                local s = g3d.newModel(generateSphere(rad or 0.4, 10, 14, r,g,b), white_texture)
+                s:setTransform({x,y,z}, {0,0,0})
+                d.models[#d.models+1] = s
+            end
+
+            -- Wall colors
+            local stn = {0.50,0.48,0.44}
+            local drk = {0.38,0.35,0.33}
+            local rst = {0.58,0.32,0.28}
+            local tek = {0.32,0.38,0.55}
+            local grn = {0.32,0.50,0.30}
+            local arn = {0.55,0.48,0.38}
+            local plr = {0.60,0.55,0.50}
+            local crt = {0.50,0.38,0.25}
+            local mtl = {0.45,0.45,0.48}
+            local bld = {0.65,0.20,0.18}
+            local tro = {0.45,0.30,0.30}
+            -- Floor colors
+            local fstn = {0.30,0.28,0.26}
+            local fdrk = {0.22,0.20,0.19}
+            local frst = {0.35,0.22,0.20}
+            local ftek = {0.20,0.25,0.35}
+            local fgrn = {0.18,0.28,0.18}
+            local farn = {0.35,0.30,0.24}
+            local ftro = {0.28,0.20,0.20}
+            local cl = {0.25,0.24,0.23}
+
+            -- ===== SPAWN ROOM (-4,-24) to (4,-20) =====
+            flr(fstn, -4,-24, 4,-20)
+            clg(cl, -4,-24, 4,-20)
+            wall(stn, -4,-24, 4,-24)
+            wall(stn, -4,-24, -4,-20)
+            wall(stn, 4,-24, 4,-20)
+            wall(stn, -4,-20, -1.5,-20)
+            wall(stn, 1.5,-20, 4,-20)
+
+            -- ===== SOUTH CORRIDOR (-1.5,-20) to (1.5,-14) =====
+            flr(fdrk, -1.5,-20, 1.5,-14)
+            clg(cl, -1.5,-20, 1.5,-14)
+            wall(drk, -1.5,-20, -1.5,-14)
+            wall(drk, 1.5,-20, 1.5,-14)
+
+            -- ===== ENTRY HALL (-8,-14) to (8,-4) =====
+            flr(fstn, -8,-14, 8,-4)
+            clg(cl, -8,-14, 8,-4)
+            wall(stn, -8,-14, -1.5,-14)
+            wall(stn, 1.5,-14, 8,-14)
+            wall(stn, -8,-4, -1.5,-4)
+            wall(stn, 1.5,-4, 8,-4)
+            wall(stn, -8,-14, -8,-11)
+            wall(stn, -8,-7, -8,-4)
+            wall(stn, 8,-14, 8,-11)
+            wall(stn, 8,-7, 8,-4)
+            pil(plr, -5,-9)
+            pil(plr, 5,-9)
+            -- Light columns
+            solid(stn, -3,-13,1.5, 0.4,0.4,3)
+            solid(stn, 3,-13,1.5, 0.4,0.4,3)
+
+            -- ===== WEST CORRIDOR (-14,-11) to (-8,-7) =====
+            flr(fdrk, -14,-11, -8,-7)
+            clg(cl, -14,-11, -8,-7)
+            wall(drk, -14,-11, -8,-11)
+            wall(drk, -14,-7, -8,-7)
+
+            -- ===== ARMORY (-24,-14) to (-14,-4) =====
+            flr(frst, -24,-14, -14,-4)
+            clg(cl, -24,-14, -14,-4)
+            wall(rst, -24,-14, -14,-14)
+            wall(rst, -24,-4, -14,-4)
+            wall(rst, -24,-14, -24,-4)
+            wall(rst, -14,-14, -14,-11)
+            wall(rst, -14,-7, -14,-4)
+            -- Weapon racks along west wall
+            solid(mtl, -23,-13,1.5, 0.3,1.5,3)
+            solid(mtl, -23,-5.5,1.5, 0.3,1.5,3)
+            -- Crate stacks
+            solid(crt, -18,-12.5,0.5, 1.2,1.2,1)
+            solid(crt, -16.5,-12.5,0.5, 1,1,1)
+            solid(crt, -18,-12.5,1.5, 0.8,0.8,0.8)
+            solid(crt, -20,-6,0.5, 1,1,1)
+            solid(crt, -20,-6,1.5, 0.7,0.7,0.7)
+            pil(rst, -19,-9)
+            -- Ammo shelf
+            solid(mtl, -15.5,-13,1, 0.4,2,2)
+
+            -- ===== EAST CORRIDOR (8,-11) to (14,-7) =====
+            flr(fdrk, 8,-11, 14,-7)
+            clg(cl, 8,-11, 14,-7)
+            wall(drk, 8,-11, 14,-11)
+            wall(drk, 8,-7, 14,-7)
+
+            -- ===== TECH LAB (14,-14) to (24,-4) =====
+            flr(ftek, 14,-14, 24,-4)
+            clg(cl, 14,-14, 24,-4)
+            wall(tek, 14,-14, 24,-14)
+            wall(tek, 14,-4, 24,-4)
+            wall(tek, 24,-14, 24,-4)
+            wall(tek, 14,-14, 14,-11)
+            wall(tek, 14,-7, 14,-4)
+            -- Computer banks along east wall
+            solid(tek, 23,-13,1, 1.5,0.4,2)
+            solid(tek, 23,-5.5,1, 1.5,0.4,2)
+            -- Central console
+            solid(mtl, 19,-9,0.6, 2,0.5,1.2)
+            -- Power core
+            orb(0.3,0.7,0.9, 19,-9,1.6, 0.4)
+            -- Server rack
+            solid(tek, 15.5,-5.5,1.5, 0.5,2,3)
+
+            -- ===== MAIN CORRIDOR (-1.5,-4) to (1.5,10) =====
+            flr(fdrk, -1.5,-4, 1.5,10)
+            clg(cl, -1.5,-4, 1.5,10)
+            wall(drk, -1.5,-4, -1.5,10)
+            wall(drk, 1.5,-4, 1.5,10)
+
+            -- ===== GREAT HALL (-12,10) to (12,26) =====
+            flr(fstn, -12,10, 12,26)
+            clg(cl, -12,10, 12,26)
+            wall(stn, -12,10, -1.5,10)
+            wall(stn, 1.5,10, 12,10)
+            wall(stn, -12,26, -1.5,26)
+            wall(stn, 1.5,26, 12,26)
+            -- West wall: door to crypt at y[14,20]
+            wall(stn, -12,10, -12,14)
+            wall(stn, -12,20, -12,26)
+            -- East wall: door to gallery at y[17,21]
+            wall(stn, 12,10, 12,17)
+            wall(stn, 12,21, 12,26)
+            -- Four grand pillars
+            pil(plr, -6,14, 1.0)
+            pil(plr, 6,14, 1.0)
+            pil(plr, -6,22, 1.0)
+            pil(plr, 6,22, 1.0)
+            -- Raised dais with artifact
+            vis({0.40,0.38,0.35}, 0,18,0.15, 4,4,0.3)
+            orb(0.85,0.82,0.75, 0,18,0.65, 0.35)
+            -- Wall sconces (decorative pillars)
+            solid(stn, -11,18,1.5, 0.35,0.35,3)
+            solid(stn, 11,18,1.5, 0.35,0.35,3)
+
+            -- ===== GALLERY (12,16) to (20,22) =====
+            flr(fstn, 12,16, 20,22)
+            clg(cl, 12,16, 20,22)
+            wall(stn, 12,16, 20,16)
+            wall(stn, 12,22, 20,22)
+            wall(stn, 20,16, 20,22)
+            -- Display pedestals with colored orbs
+            solid(plr, 16,17.5,0.4, 0.6,0.6,0.8)
+            orb(0.9,0.15,0.15, 16,17.5,1.2, 0.3)
+            solid(plr, 16,20.5,0.4, 0.6,0.6,0.8)
+            orb(0.15,0.15,0.9, 16,20.5,1.2, 0.3)
+            solid(plr, 19,19,0.4, 0.6,0.6,0.8)
+            orb(0.15,0.9,0.15, 19,19,1.2, 0.3)
+
+            -- ===== CRYPT (-24,12) to (-12,22) =====
+            flr(fgrn, -24,12, -12,22)
+            clg(cl, -24,12, -12,22)
+            wall(grn, -24,12, -12,12)
+            wall(grn, -24,22, -12,22)
+            wall(grn, -24,12, -24,22)
+            -- East wall covered by Great Hall west wall segments
+            -- Sarcophagi
+            solid(grn, -20,17,0.5, 1.5,3,1)
+            solid(grn, -16,17,0.5, 1.5,3,1)
+            pil(grn, -22.5,14, 0.6)
+            pil(grn, -22.5,20, 0.6)
+            -- Toxic pool (glowing floor decor)
+            vis({0.2,0.7,0.2}, -18,14,0.02, 2.5,2.5,0.04)
+            -- Bone pile
+            vis({0.75,0.72,0.65}, -14,17,0.2, 1,1,0.4)
+
+            -- ===== NORTH CORRIDOR (-1.5,26) to (1.5,34) =====
+            flr(fdrk, -1.5,26, 1.5,34)
+            clg(cl, -1.5,26, 1.5,34)
+            wall(drk, -1.5,26, -1.5,34)
+            wall(drk, 1.5,26, 1.5,34)
+
+            -- ===== ARENA (-12,34) to (12,48) =====
+            flr(farn, -12,34, 12,48)
+            clg(cl, -12,34, 12,48)
+            wall(arn, -12,34, -1.5,34)
+            wall(arn, 1.5,34, 12,34)
+            wall(arn, -12,48, 12,48)
+            -- West wall: door to trophy room at y[40,44]
+            wall(arn, -12,34, -12,40)
+            wall(arn, -12,44, -12,48)
+            wall(arn, 12,34, 12,48)
+            -- Pillars
+            pil(plr, -8,38)
+            pil(plr, 8,38)
+            pil(plr, -8,44)
+            pil(plr, 8,44)
+            pil(plr, -4,46.5)
+            pil(plr, 4,46.5)
+            -- Center platform with trophy
+            vis(arn, 0,41,0.2, 3,3,0.4)
+            orb(0.9,0.8,0.1, 0,41,0.9, 0.5)
+            -- Blood stains
+            vis(bld, -3,39,0.02, 1.8,1,0.04)
+            vis(bld, 4,43,0.02, 1.2,1.5,0.04)
+            vis(bld, -1,45,0.02, 0.8,0.6,0.04)
+            -- Barricade
+            solid(crt, 5,37,0.5, 2,0.4,1)
+            solid(crt, -5,37,0.5, 2,0.4,1)
+
+            -- ===== TROPHY ROOM (-20,38) to (-12,46) =====
+            flr(ftro, -20,38, -12,46)
+            clg(cl, -20,38, -12,46)
+            wall(tro, -20,38, -12,38)
+            wall(tro, -20,46, -12,46)
+            wall(tro, -20,38, -20,46)
+            -- East wall covered by Arena west wall segments
+            -- Trophy pedestals
+            solid(tro, -18,40,0.4, 0.6,0.6,0.8)
+            orb(0.8,0.2,0.8, -18,40,1.2, 0.3)
+            solid(tro, -18,44,0.4, 0.6,0.6,0.8)
+            orb(0.2,0.8,0.8, -18,44,1.2, 0.3)
+            solid(tro, -15,42,0.4, 0.6,0.6,0.8)
+            orb(0.8,0.8,0.2, -15,42,1.2, 0.3)
+            -- Display shelf
+            solid(mtl, -17,42,1.2, 4,0.3,2.4)
+        end,
+        update = function(prog, dt)
+            local v = prog.values
+            local d = prog.data
+
+            -- Mouse look (only when captured)
+            if d.mouse_captured then
+                local sens = v.sensitivity / 300
+                d.dir = d.dir - d.mouse_dx * sens
+                d.pitch = math.max(-math.pi/2 + 0.01, math.min(math.pi/2 - 0.01, d.pitch - d.mouse_dy * sens))
+            end
+            d.mouse_dx, d.mouse_dy = 0, 0
+
+            -- Movement
+            local speed = v.move_speed
+            if d.mouse_captured then
+                -- FPS mode: WASD = forward/back/strafe
+                local mx, my = 0, 0
+                if love.keyboard.isDown('w') then mx = mx + 1 end
+                if love.keyboard.isDown('s') then mx = mx - 1 end
+                if love.keyboard.isDown('a') then my = my + 1 end
+                if love.keyboard.isDown('d') then my = my - 1 end
+
+                if mx ~= 0 or my ~= 0 then
+                    local angle = math.atan2(my, mx)
+                    local dx = math.cos(d.dir + angle) * speed * dt
+                    local dy = math.sin(d.dir + angle) * speed * dt
+
+                    local r = 0.25
+                    local new_px = d.px + dx
+                    local blocked_x = false
+                    for _, c in ipairs(d.colliders) do
+                        if new_px + r > c.x - c.hx and new_px - r < c.x + c.hx and
+                           d.py + r > c.y - c.hy and d.py - r < c.y + c.hy then
+                            blocked_x = true; break
+                        end
+                    end
+                    if not blocked_x then d.px = new_px end
+
+                    local new_py = d.py + dy
+                    local blocked_y = false
+                    for _, c in ipairs(d.colliders) do
+                        if d.px + r > c.x - c.hx and d.px - r < c.x + c.hx and
+                           new_py + r > c.y - c.hy and new_py - r < c.y + c.hy then
+                            blocked_y = true; break
+                        end
+                    end
+                    if not blocked_y then d.py = new_py end
+                end
+
+                -- Jump (FPS mode only)
+                if love.keyboard.isDown('space') and d.on_ground then
+                    d.vz = v.jump_force
+                    d.on_ground = false
+                end
+            else
+                -- Doom mode: A/D turn, W/S forward/back, no strafe, no jump
+                local turn_speed = 3.0
+                if love.keyboard.isDown('a') then d.dir = d.dir + turn_speed * dt end
+                if love.keyboard.isDown('d') then d.dir = d.dir - turn_speed * dt end
+
+                local mx = 0
+                if love.keyboard.isDown('w') then mx = mx + 1 end
+                if love.keyboard.isDown('s') then mx = mx - 1 end
+
+                if mx ~= 0 then
+                    local dx = math.cos(d.dir) * speed * mx * dt
+                    local dy = math.sin(d.dir) * speed * mx * dt
+
+                    local r = 0.25
+                    local new_px = d.px + dx
+                    local blocked_x = false
+                    for _, c in ipairs(d.colliders) do
+                        if new_px + r > c.x - c.hx and new_px - r < c.x + c.hx and
+                           d.py + r > c.y - c.hy and d.py - r < c.y + c.hy then
+                            blocked_x = true; break
+                        end
+                    end
+                    if not blocked_x then d.px = new_px end
+
+                    local new_py = d.py + dy
+                    local blocked_y = false
+                    for _, c in ipairs(d.colliders) do
+                        if d.px + r > c.x - c.hx and d.px - r < c.x + c.hx and
+                           new_py + r > c.y - c.hy and new_py - r < c.y + c.hy then
+                            blocked_y = true; break
+                        end
+                    end
+                    if not blocked_y then d.py = new_py end
+                end
+            end
+
+            d.vz = d.vz - v.gravity * dt
+            d.pz = d.pz + d.vz * dt
+
+            local eye_h = 1.7
+            if d.pz <= eye_h then
+                d.pz = eye_h
+                d.vz = 0
+                d.on_ground = true
+            end
+        end,
+        draw = function(prog, w, h)
+            local v = prog.values
+            local d = prog.data
+
+            g3d.camera.fov = math.rad(v.fov_deg)
+            g3d.camera.aspectRatio = w / h
+            g3d.camera.updateProjectionMatrix()
+
+            -- Build target from direction + pitch
+            local cosPitch = math.cos(d.pitch)
+            local tx = d.px + math.cos(d.dir) * cosPitch
+            local ty = d.py + math.sin(d.dir) * cosPitch
+            local tz = d.pz + math.sin(d.pitch)
+
+            g3d.camera.lookAt(d.px, d.py, d.pz, tx, ty, tz)
+
+            for _, model in ipairs(d.models) do
+                model:draw()
+            end
+
+            -- Flag for HUD overlay
+            d.fps_hud = true
+        end,
+        mousemoved = function(prog, dx, dy)
+            if prog.data.mouse_captured then
+                prog.data.mouse_dx = prog.data.mouse_dx + dx
+                prog.data.mouse_dy = prog.data.mouse_dy + dy
+            end
+        end,
+    }
+
+    -- 8. WAD Viewer (load and display Doom WAD levels)
+    programs[#programs+1] = {
+        name = "WAD Viewer",
+        params = {
+            {key="map_index", label="Map #", min=1, max=32, default=1, step=1},
+            {key="move_speed", label="Speed", min=1, max=40, default=12, step=0.5},
+            {key="sensitivity", label="Sens", min=0.1, max=3.0, default=1.0, step=0.05},
+            {key="fov_deg", label="FOV", min=45, max=120, default=90, step=1},
+        },
+        values = {}, data = {},
+        init = function(prog, w, h)
+            local d = prog.data
+            d.px, d.py, d.pz = 0, 0, 2
+            d.dir = 0
+            d.pitch = 0
+            d.vz = 0  -- vertical velocity for gravity
+            d.mouse_captured = false
+            d.mouse_dx, d.mouse_dy = 0, 0
+            d.fps_hud = true
+            d.noclip = true
+            d.on_ground = false
+            d.models = {}
+            d.collision_lines = {}
+            d.sector_regions = {}
+            d.wad = nil
+            d.map_names = {}
+            d.current_map = 0
+            d.error_msg = nil
+
+            -- Find and parse WAD
+            local wad_files = WadParser.findWadFiles()
+            if #wad_files == 0 then
+                d.error_msg = "No .wad files found in assets/wads/"
+                return
+            end
+
+            local wad, err = WadParser.parse(wad_files[1])
+            if not wad then
+                d.error_msg = "WAD parse error: " .. (err or "unknown")
+                return
+            end
+
+            d.wad = wad
+            d.wad_name = wad_files[1]
+            d.map_names = WadParser.getMapNames(wad)
+            if #d.map_names == 0 then
+                d.error_msg = "No maps found in WAD"
+                return
+            end
+
+            -- Attach loadMap method
+            d.loadMap = function(self, map_idx)
+                map_idx = math.max(1, math.min(map_idx, #self.map_names))
+                self.current_map = map_idx
+                self.models = {}
+
+                local map_name = self.map_names[map_idx]
+                if not map_name then return end
+
+                local map_data = WadParser.loadMap(self.wad, map_name)
+                if not map_data then
+                    self.error_msg = "Failed to load " .. map_name
+                    return
+                end
+
+                local scale = 1 / 32
+                local geom = WadParser.buildGeometry(map_data, scale)
+
+                if #geom.wall_verts >= 3 then
+                    local m = g3d.newModel(geom.wall_verts, white_texture)
+                    m:setTransform({0,0,0}, {0,0,0}, {1,1,1})
+                    self.models[#self.models + 1] = m
+                end
+                if #geom.floor_verts >= 3 then
+                    local m = g3d.newModel(geom.floor_verts, white_texture)
+                    m:setTransform({0,0,0}, {0,0,0}, {1,1,1})
+                    self.models[#self.models + 1] = m
+                end
+                if #geom.ceil_verts >= 3 then
+                    local m = g3d.newModel(geom.ceil_verts, white_texture)
+                    m:setTransform({0,0,0}, {0,0,0}, {1,1,1})
+                    self.models[#self.models + 1] = m
+                end
+
+                for _, thing in ipairs(geom.things) do
+                    local c = thing.color
+                    local sz = thing.size
+                    local m = g3d.newModel(generateCube(c[1], c[2], c[3]), white_texture)
+                    m:setTransform({thing.x, thing.y, sz/2}, {0,0,0}, {sz, sz, sz})
+                    self.models[#self.models + 1] = m
+                end
+
+                self.collision_lines = geom.collision_lines or {}
+                self.sector_regions = geom.sector_regions or {}
+
+                if geom.player_start then
+                    self.px = geom.player_start.x
+                    self.py = geom.player_start.y
+                    self.pz = 1.7
+                    self.vz = 0
+                    self.on_ground = false
+                    self.dir = math.rad(geom.player_start.angle)
+                end
+                self.error_msg = nil
+            end
+
+            -- Load first map
+            d.current_map = 1
+            d:loadMap(1)
+        end,
+        update = function(prog, dt)
+            local v = prog.values
+            local d = prog.data
+            if d.error_msg then return end
+
+            -- Check for map switch
+            local mi = math.floor(v.map_index + 0.5)
+            mi = math.max(1, math.min(mi, #d.map_names))
+            if mi ~= d.current_map and #d.map_names > 0 then
+                d:loadMap(mi)
+            end
+
+            -- Mouse look (only when captured)
+            if d.mouse_captured then
+                local sens = v.sensitivity / 300
+                d.dir = d.dir - d.mouse_dx * sens
+                d.pitch = math.max(-math.pi/2 + 0.01, math.min(math.pi/2 - 0.01, d.pitch - d.mouse_dy * sens))
+            end
+            d.mouse_dx, d.mouse_dy = 0, 0
+
+            local speed = v.move_speed
+
+            -- Compute desired movement delta
+            local move_dx, move_dy = 0, 0
+            if d.mouse_captured then
+                -- FPS mode: WASD strafe
+                local mx, my = 0, 0
+                if love.keyboard.isDown('w') then mx = mx + 1 end
+                if love.keyboard.isDown('s') then mx = mx - 1 end
+                if love.keyboard.isDown('a') then my = my + 1 end
+                if love.keyboard.isDown('d') then my = my - 1 end
+                if mx ~= 0 or my ~= 0 then
+                    local angle = math.atan2(my, mx)
+                    move_dx = math.cos(d.dir + angle) * speed * dt
+                    move_dy = math.sin(d.dir + angle) * speed * dt
+                end
+            else
+                -- Doom mode: A/D turn, W/S forward/back
+                local turn_speed = 3.0
+                if love.keyboard.isDown('a') then d.dir = d.dir + turn_speed * dt end
+                if love.keyboard.isDown('d') then d.dir = d.dir - turn_speed * dt end
+                local mx = 0
+                if love.keyboard.isDown('w') then mx = mx + 1 end
+                if love.keyboard.isDown('s') then mx = mx - 1 end
+                if mx ~= 0 then
+                    move_dx = math.cos(d.dir) * speed * mx * dt
+                    move_dy = math.sin(d.dir) * speed * mx * dt
+                end
+            end
+
+            if d.noclip then
+                -- Noclip: free fly, no collision
+                d.px = d.px + move_dx
+                d.py = d.py + move_dy
+                if love.keyboard.isDown('space') then d.pz = d.pz + speed * dt end
+                if love.keyboard.isDown('lshift') then d.pz = d.pz - speed * dt end
+            else
+                -- Clip mode: wall collision + gravity
+
+                -- Find current floor height via point-in-polygon
+                local function getFloorHeight(px, py)
+                    local best_floor = nil
+                    for _, reg in ipairs(d.sector_regions) do
+                        local poly = reg.polygon
+                        local inside = false
+                        local n = #poly
+                        local j = n
+                        for i = 1, n do
+                            local xi, yi = poly[i].x, poly[i].y
+                            local xj, yj = poly[j].x, poly[j].y
+                            if ((yi > py) ~= (yj > py)) and (px < (xj - xi) * (py - yi) / (yj - yi) + xi) then
+                                inside = not inside
+                            end
+                            j = i
+                        end
+                        if inside then
+                            if not best_floor or reg.floor_h > best_floor then
+                                best_floor = reg.floor_h
+                            end
+                        end
+                    end
+                    return best_floor
+                end
+
+                -- Circle-vs-line-segment collision
+                local PLAYER_RADIUS = 0.5
+                local EYE_HEIGHT = 1.28
+                local new_x = d.px + move_dx
+                local new_y = d.py + move_dy
+
+                -- Iterative push-out (3 passes for corners)
+                for _ = 1, 3 do
+                    for _, cl in ipairs(d.collision_lines) do
+                        local lx, ly = cl.x2 - cl.x1, cl.y2 - cl.y1
+                        local len_sq = lx * lx + ly * ly
+                        if len_sq > 0.0001 then
+                            local t = ((new_x - cl.x1) * lx + (new_y - cl.y1) * ly) / len_sq
+                            t = math.max(0, math.min(1, t))
+                            local closest_x = cl.x1 + t * lx
+                            local closest_y = cl.y1 + t * ly
+                            local dx = new_x - closest_x
+                            local dy = new_y - closest_y
+                            local dist = math.sqrt(dx * dx + dy * dy)
+                            if dist < PLAYER_RADIUS and dist > 0.0001 then
+                                local push = (PLAYER_RADIUS - dist)
+                                new_x = new_x + (dx / dist) * push
+                                new_y = new_y + (dy / dist) * push
+                            end
+                        end
+                    end
+                end
+
+                d.px = new_x
+                d.py = new_y
+
+                -- Gravity and floor tracking
+                local GRAVITY = 20
+                local floor_h = getFloorHeight(d.px, d.py)
+                local target_z = (floor_h or 0) + EYE_HEIGHT
+
+                if floor_h then
+                    d.vz = d.vz - GRAVITY * dt
+                    d.pz = d.pz + d.vz * dt
+
+                    if d.pz <= target_z then
+                        d.pz = target_z
+                        d.vz = 0
+                        d.on_ground = true
+                    else
+                        d.on_ground = false
+                    end
+
+                    -- Jump
+                    if love.keyboard.isDown('space') and d.on_ground then
+                        d.vz = 7
+                        d.on_ground = false
+                    end
+                else
+                    -- No sector found - gentle fall
+                    d.vz = d.vz - GRAVITY * dt
+                    d.pz = d.pz + d.vz * dt
+                    d.on_ground = false
+                end
+            end
+        end,
+        draw = function(prog, w, h)
+            local d = prog.data
+            if d.error_msg then
+                love.graphics.setColor(1, 0.3, 0.3, 1)
+                love.graphics.printf(d.error_msg, 0, h / 2 - 10, w, 'center')
+                return
+            end
+
+            local v = prog.values
+            g3d.camera.fov = math.rad(v.fov_deg)
+            g3d.camera.aspectRatio = w / h
+            g3d.camera.updateProjectionMatrix()
+
+            local cosPitch = math.cos(d.pitch)
+            local tx = d.px + math.cos(d.dir) * cosPitch
+            local ty = d.py + math.sin(d.dir) * cosPitch
+            local tz = d.pz + math.sin(d.pitch)
+            g3d.camera.lookAt(d.px, d.py, d.pz, tx, ty, tz)
+
+            for _, model in ipairs(d.models) do
+                model:draw()
+            end
+
+            d.fps_hud = true
+        end,
+        mousemoved = function(prog, dx, dy)
+            if prog.data.mouse_captured then
+                prog.data.mouse_dx = prog.data.mouse_dx + dx
+                prog.data.mouse_dy = prog.data.mouse_dy + dy
+            end
         end,
     }
 
@@ -825,6 +1574,13 @@ function Sandbox3DState:enter(previous_state_name)
 end
 
 function Sandbox3DState:switchProgram(dir)
+    -- Release mouse capture when switching away from any program
+    love.mouse.setRelativeMode(false)
+    local old_prog = self.programs[self.active_idx]
+    if old_prog and old_prog.data and old_prog.data.mouse_captured ~= nil then
+        old_prog.data.mouse_captured = false
+    end
+
     local old = self.active_idx
     self.active_idx = self.active_idx + dir
     if self.active_idx < 1 then self.active_idx = #self.programs end
@@ -905,6 +1661,54 @@ function Sandbox3DState:draw()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(self.canvas3d, 0, 0)
 
+    -- Draw screen-edge reference lines for 3D Text bounce debugging
+    if prog.data and prog.data.show_edges then
+        love.graphics.setColor(0, 1, 0, 0.6)
+        love.graphics.setLineWidth(2)
+        love.graphics.line(0, 0, 0, sh)          -- left screen edge
+        love.graphics.line(sw - 1, 0, sw - 1, sh) -- right screen edge
+        love.graphics.line(0, 0, sw, 0)           -- top screen edge
+        love.graphics.line(0, sh - 1, sw, sh - 1) -- bottom screen edge
+        love.graphics.setLineWidth(1)
+    end
+
+    -- FPS HUD: crosshair + capture prompt
+    if prog.data and prog.data.fps_hud then
+        local cx = (PANEL_W + sw) / 2
+        local cy = sh / 2
+        if prog.data.mouse_captured then
+            -- Crosshair
+            love.graphics.setColor(1, 1, 1, 0.7)
+            love.graphics.setLineWidth(1)
+            love.graphics.line(cx - 10, cy, cx - 3, cy)
+            love.graphics.line(cx + 3, cy, cx + 10, cy)
+            love.graphics.line(cx, cy - 10, cx, cy - 3)
+            love.graphics.line(cx, cy + 3, cx, cy + 10)
+            -- Mode indicator
+            if prog.data.noclip ~= nil then
+                local mode_str = prog.data.noclip and "NOCLIP" or "CLIP"
+                love.graphics.setColor(1, 1, 0.5, 0.6)
+                love.graphics.printf(mode_str .. "  [N]", PANEL_W, sh - 30, sw - PANEL_W, 'center')
+            end
+        else
+            love.graphics.setColor(1, 1, 1, 0.8)
+            local noclip_str = (prog.data.noclip == false) and "CLIP" or "NOCLIP"
+            local mode_help
+            if prog.data.noclip ~= false then
+                mode_help = "DOOM MODE [" .. noclip_str .. "]: W/S move  |  A/D turn  |  TAB mouselook\nSpace up  |  LShift down  |  N toggle clip"
+            else
+                mode_help = "DOOM MODE [" .. noclip_str .. "]: W/S move  |  A/D turn  |  TAB mouselook\nSpace jump  |  N toggle noclip"
+            end
+            love.graphics.printf(mode_help, PANEL_W, sh / 2 - 20, sw - PANEL_W, 'center')
+        end
+        -- WAD viewer: show current map name
+        if prog.data.map_names and prog.data.current_map > 0 then
+            love.graphics.setColor(1, 1, 0.5, 0.9)
+            local map_str = (prog.data.map_names[prog.data.current_map] or "?") .. " (" .. prog.data.current_map .. "/" .. #prog.data.map_names .. ")"
+            love.graphics.printf(map_str, PANEL_W, 8, sw - PANEL_W, 'center')
+        end
+    end
+
     -- Draw panel background
     love.graphics.setColor(0.05, 0.05, 0.08, 0.85)
     love.graphics.rectangle('fill', 0, 0, PANEL_W, sh)
@@ -970,7 +1774,11 @@ function Sandbox3DState:draw()
     end
 
     love.graphics.setColor(1, 1, 1, 0.3)
-    love.graphics.printf("Left/Right: switch   Ctrl+C: copy   F8/ESC: close", 0, sh - 20, PANEL_W, 'center')
+    local help_text = "Left/Right: switch   Ctrl+C: copy   F8/ESC: close"
+    if prog.data and prog.data.mouse_captured ~= nil then
+        help_text = "Tab: capture mouse   F8/ESC: close"
+    end
+    love.graphics.printf(help_text, 0, sh - 20, PANEL_W, 'center')
 end
 
 function Sandbox3DState:getSliderAtPos(mx, my)
@@ -1028,6 +1836,16 @@ function Sandbox3DState:mousepressed(x, y, button)
             return true
         end
     end
+
+    -- Click in 3D viewport to capture mouse (FPS programs)
+    if x >= PANEL_W then
+        local prog = self.programs[self.active_idx]
+        if prog.data and prog.data.mouse_captured ~= nil and not prog.data.mouse_captured then
+            prog.data.mouse_captured = true
+            love.mouse.setRelativeMode(true)
+            return true
+        end
+    end
 end
 
 function Sandbox3DState:mousereleased(x, y, button)
@@ -1048,16 +1866,52 @@ function Sandbox3DState:wheelmoved(x, y)
     end
 end
 
+function Sandbox3DState:mousemoved(x, y, dx, dy)
+    local prog = self.programs and self.programs[self.active_idx]
+    if prog and prog.mousemoved then
+        prog.mousemoved(prog, dx, dy)
+    end
+end
+
 function Sandbox3DState:keypressed(key)
     if key == 'f8' or key == 'escape' then
+        love.mouse.setRelativeMode(false)
         self.state_machine:switch(self.previous_state)
         return true
     end
-    if key == 'left' then
+
+    -- Tab toggles mouse capture for FPS-style programs
+    if key == 'tab' then
+        local prog = self.programs[self.active_idx]
+        if prog.data and prog.data.mouse_captured ~= nil then
+            prog.data.mouse_captured = not prog.data.mouse_captured
+            love.mouse.setRelativeMode(prog.data.mouse_captured)
+            return true
+        end
+    end
+
+    -- N toggles noclip for WAD viewer / FPS programs
+    if key == 'n' then
+        local prog = self.programs[self.active_idx]
+        if prog.data and prog.data.noclip ~= nil then
+            prog.data.noclip = not prog.data.noclip
+            if not prog.data.noclip then
+                prog.data.vz = 0
+                prog.data.on_ground = false
+            end
+            return true
+        end
+    end
+
+    -- Don't switch programs with arrow keys when mouse is captured (WASD mode)
+    local prog = self.programs[self.active_idx]
+    local captured = prog.data and prog.data.mouse_captured
+
+    if key == 'left' and not captured then
         self:switchProgram(-1)
         return true
     end
-    if key == 'right' then
+    if key == 'right' and not captured then
         self:switchProgram(1)
         return true
     end

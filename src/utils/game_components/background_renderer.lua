@@ -49,6 +49,30 @@ function renderers.solid.draw(self, width, height)
 end
 
 --------------------------------------------------------------------------------
+-- image
+--------------------------------------------------------------------------------
+renderers.image = {}
+
+function renderers.image.setup(self, config)
+    self.color = config.color or {0.1, 0.1, 0.15}
+    if config.image_path then
+        local ok, img = pcall(love.graphics.newImage, config.image_path)
+        if ok then self.image = img end
+    end
+end
+
+function renderers.image.draw(self, width, height)
+    love.graphics.setColor(self.color)
+    love.graphics.rectangle('fill', 0, 0, width, height)
+    if self.image then
+        love.graphics.setColor(1, 1, 1)
+        local sx = width / self.image:getWidth()
+        local sy = height / self.image:getHeight()
+        love.graphics.draw(self.image, 0, 0, 0, sx, sy)
+    end
+end
+
+--------------------------------------------------------------------------------
 -- starfield
 --------------------------------------------------------------------------------
 renderers.starfield = {}

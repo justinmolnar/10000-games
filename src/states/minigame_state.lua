@@ -2,6 +2,7 @@ local Object = require('class')
 local Strings = require('src.utils.strings')
 local MinigameController = require('src.controllers.minigame_controller')
 local MinigameView = require('src.views.minigame_view')
+local StatsRecorder = require('src.utils.stats_recorder')
 local MinigameState = Object:extend('MinigameState')
 
 function MinigameState:init(player_data, game_data_model, state_machine, save_manager, cheat_system, di)
@@ -153,6 +154,9 @@ end
 function MinigameState:update(dt)
     if not self.current_game then return end
     self.controller:update(dt)
+    if self.stats_saved_flash and self.stats_saved_flash > 0 then
+        self.stats_saved_flash = self.stats_saved_flash - dt * 2
+    end
 end
 
 function MinigameState:draw()
@@ -171,6 +175,11 @@ function MinigameState:draw()
 
     if self.controller:isOverlayVisible() then
         self.view:drawOverlay(self.viewport, self.controller:getSnapshot())
+        if self.stats_saved_flash and self.stats_saved_flash > 0 then
+            local alpha = math.min(1, self.stats_saved_flash)
+            love.graphics.setColor(0, 1, 0.3, alpha)
+            love.graphics.printf("[F] Stats saved!", 0, self.viewport.height - 20, self.viewport.width, "center")
+        end
     end
 end
 
@@ -199,8 +208,15 @@ function MinigameState:keypressed(key)
                 print("[MinigameState] Demo discarded")
                 return { type = "content_interaction" }
             end
-        else
-            print("[MinigameState] Overlay visible but no save prompt, key: " .. tostring(key))
+        end
+
+        if key == 'f' then
+            local snapshot = self.controller:getSnapshot()
+            snapshot.cheats_used = self.controller.active_cheats
+            if StatsRecorder.record(snapshot, self.game_data, self.current_game) then
+                self.stats_saved_flash = 1.0
+            end
+            return { type = "content_interaction" }
         end
 
         if key == 'return' then

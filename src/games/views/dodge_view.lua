@@ -46,45 +46,59 @@ function DodgeView:drawContent()
     end
     self.background:draw(game_width, game_height)
 
-    -- Safe zone ring (generic polygon)
-    if game.arena_controller then
+    -- Safe zone ring (generic polygon or image arena)
+    if game.arena_controller and not game.params.hide_arena then
         local ac = game.arena_controller
-        local vertices = ac:getScaledVertices()
 
-        -- Game over flash effect
-        local flash_alpha = 0.2
-        if game.game_over then
-            local flash = (math.sin(love.timer.getTime() * 10) + 1) / 2
-            flash_alpha = 0.2 + flash * 0.3
-            g.setColor(1.0, 0.2, 0.2, flash_alpha)
-        else
-            g.setColor(0.2, 0.8, 1.0, flash_alpha)
-        end
-
-        g.polygon('fill', vertices)
-        if game.game_over then
-            g.setColor(1.0, 0.2, 0.2)
-        else
-            g.setColor(0.2, 0.8, 1.0)
-        end
-        g.setLineWidth(2)
-        g.polygon('line', vertices)
-
-        -- Draw deformation effect for "deformation" morph type
-        if ac.morph_type == "deformation" then
-            g.setColor(0.2, 0.8, 1.0, 0.1)
-            local wobble = math.sin((ac.morph_timer or 0) * 3) * 5
-            local r = ac:getEffectiveRadius()
-            -- Draw wobbled version of the polygon
-            local wobbled = {}
-            for i = 1, #vertices, 2 do
-                table.insert(wobbled, vertices[i] + wobble)
-                table.insert(wobbled, vertices[i+1] + wobble)
+        if ac.image_mode and ac.image then
+            -- Image-based arena: draw the image as the playable area
+            local ox, oy = ac:getImageOffset()
+            local alpha = 0.8
+            if game.game_over then
+                local flash = (math.sin(love.timer.getTime() * 10) + 1) / 2
+                g.setColor(1.0, 0.5 + flash * 0.3, 0.5 + flash * 0.3, alpha)
+            else
+                g.setColor(1, 1, 1, alpha)
             end
-            g.polygon('line', wobbled)
-        end
+            g.draw(ac.image, ox, oy, 0, ac.image_scale_x, ac.image_scale_y)
+        else
+            local vertices = ac:getScaledVertices()
 
-        g.setLineWidth(1)
+            -- Game over flash effect
+            local flash_alpha = 0.2
+            if game.game_over then
+                local flash = (math.sin(love.timer.getTime() * 10) + 1) / 2
+                flash_alpha = 0.2 + flash * 0.3
+                g.setColor(1.0, 0.2, 0.2, flash_alpha)
+            else
+                g.setColor(0.2, 0.8, 1.0, flash_alpha)
+            end
+
+            g.polygon('fill', vertices)
+            if game.game_over then
+                g.setColor(1.0, 0.2, 0.2)
+            else
+                g.setColor(0.2, 0.8, 1.0)
+            end
+            g.setLineWidth(2)
+            g.polygon('line', vertices)
+
+            -- Draw deformation effect for "deformation" morph type
+            if ac.morph_type == "deformation" then
+                g.setColor(0.2, 0.8, 1.0, 0.1)
+                local wobble = math.sin((ac.morph_timer or 0) * 3) * 5
+                local r = ac:getEffectiveRadius()
+                -- Draw wobbled version of the polygon
+                local wobbled = {}
+                for i = 1, #vertices, 2 do
+                    table.insert(wobbled, vertices[i] + wobble)
+                    table.insert(wobbled, vertices[i+1] + wobble)
+                end
+                g.polygon('line', wobbled)
+            end
+
+            g.setLineWidth(1)
+        end
     end
 
     -- Render holes (from EC entity list)
@@ -123,7 +137,8 @@ function DodgeView:drawContent()
     local player_fallback = game.data.icon_sprite or "game_solitaire-0"
     self:drawEntityCentered(game.player.x, game.player.y, player_size, player_size, "player", player_fallback, {
         rotation = player_rotation,
-        tint = tint
+        tint = tint,
+        scale_x = game.player.facing_x
     })
 
     -- Draw shield visual

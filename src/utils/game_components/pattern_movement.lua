@@ -388,7 +388,10 @@ function PatternMovement.update(dt, entity, bounds)
         PatternMovement.applySineOffset(entity, axis, dt, freq, amp)
     end
 
-    -- Orbit movement
+    -- Orbit movement (orbit_descent_speed moves the center downward over time)
+    if entity.orbit_descent_speed then
+        entity.orbit_center_y = (entity.orbit_center_y or entity.y) + entity.orbit_descent_speed * dt
+    end
     if entity.orbit_radius then
         PatternMovement.updateOrbit(entity,
             entity.orbit_center_x or (bounds and bounds.width/2) or 0,

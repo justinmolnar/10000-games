@@ -384,6 +384,7 @@ function love.keypressed(key, scancode, isrepeat)
     -- 3D sandbox toggle (F8) — global, not interceptable by windows
     if key == 'f8' then
         if not state_machine then return end
+        love.mouse.setRelativeMode(false)
         local current_name = nil
         for name, s in pairs(state_machine.states) do
             if s == state_machine.current_state then current_name = name; break end

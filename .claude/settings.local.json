@@ -65,7 +65,19 @@
       "WebFetch(domain:wolfenstein.fandom.com)",
       "WebFetch(domain:dhw.wolfenstein3d.com)",
       "WebFetch(domain:diehardwolfers.wolfenstein3d.com)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "WebFetch(domain:jordansavant.com)",
+      "WebFetch(domain:formats.kaitai.io)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:oblige.sourceforge.net)",
+      "WebFetch(domain:doomwiki.org)",
+      "WebFetch(domain:doom.fandom.com)",
+      "WebFetch(domain:edge.sourceforge.net)",
+      "WebFetch(domain:www.boristhebrave.com)",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:www.gnu.org)",
+      "WebFetch(domain:obsidian-level-maker.github.io)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []

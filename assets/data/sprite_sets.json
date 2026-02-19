@@ -157,6 +157,98 @@
         "enemy_bouncer": "assets/sprites/shared/food/candy_lollipop_01.png",
         "enemy_teleporter": "assets/sprites/shared/food/milkshake_01.png"
       }
+    },
+    {
+      "id": "dodge_school",
+      "sprites": {
+        "player": "assets/sprites/shared/school/student.png",
+        "enemy_obstacle": "assets/sprites/shared/school/pencil.png",
+        "enemy_zigzag": "assets/sprites/shared/school/paper_airplane.png",
+        "enemy_splitter": "assets/sprites/shared/school/crumpled_paper.png",
+        "enemy_bouncer": "assets/sprites/shared/school/eraser.png",
+        "enemy_ruler": "assets/sprites/shared/school/ruler.png"
+      }
+    },
+    {
+      "id": "dodge_blender",
+      "sprites": {
+        "player": "assets/sprites/shared/blender/strawberry.png",
+        "enemy_obstacle": "assets/sprites/shared/blender/blade_whoosh.png",
+        "enemy_splitter": "assets/sprites/shared/blender/banana_chunk.png",
+        "enemy_bouncer": "assets/sprites/shared/blender/blueberry.png"
+      }
+    },
+    {
+      "id": "dodge_microwave",
+      "sprites": {
+        "player": "assets/sprites/shared/microwave/hot_pocket_explosion.png",
+        "enemy_obstacle": "assets/sprites/shared/microwave/splatter.png",
+        "enemy_shooter": "assets/sprites/shared/microwave/sparking_fork.png",
+        "enemy_teleporter": "assets/sprites/shared/microwave/popcorn_kernel.png",
+        "enemy_bouncer": "assets/sprites/shared/microwave/rotating_plate_edge.png"
+      }
+    },
+    {
+      "id": "dodge_tornado",
+      "sprites": {
+        "player": "assets/sprites/shared/tornado/storm_chaser.png",
+        "enemy_obstacle": "assets/sprites/shared/tornado/cow.png",
+        "enemy_bouncer": "assets/sprites/shared/tornado/shopping_cart.png",
+        "enemy_chaser": "assets/sprites/shared/tornado/car_door.png",
+        "enemy_zigzag": "assets/sprites/shared/tornado/lawn_chair.png"
+      }
+    },
+    {
+      "id": "dodge_toilet",
+      "sprites": {
+        "player": "assets/sprites/shared/toilet/rubber_duck.png",
+        "enemy_obstacle": "assets/sprites/shared/toilet/turd.png",
+        "enemy_bouncer": "assets/sprites/shared/toilet/soap_bar.png",
+        "enemy_chaser": "assets/sprites/shared/toilet/toilet_paper.png"
+      }
+    },
+    {
+      "id": "dodge_backrooms",
+      "sprites": {
+        "player": "assets/sprites/shared/backrooms/figure.png",
+        "enemy_chaser": "assets/sprites/shared/backrooms/entity_shadow.png",
+        "enemy_teleporter": "assets/sprites/shared/backrooms/exit_sign.png",
+        "enemy_obstacle": "assets/sprites/shared/backrooms/ceiling_tile.png"
+      }
+    },
+    {
+      "id": "dodge_nostril",
+      "sprites": {
+        "player": "assets/sprites/shared/nostril/dust_particle.png",
+        "enemy_obstacle": "assets/sprites/shared/nostril/pollen.png",
+        "enemy_chaser": "assets/sprites/shared/nostril/booger.png",
+        "enemy_bouncer": "assets/sprites/shared/nostril/tissue_fiber.png",
+        "enemy_splitter": "assets/sprites/shared/nostril/sneeze_droplet.png",
+        "enemy_lunger": "assets/sprites/shared/nostril/finger.png"
+      }
+    },
+    {
+      "id": "ice_rink",
+      "sprites": {
+        "player": "assets/sprites/shared/ice_rink/skater.png",
+        "enemy_lunger": "assets/sprites/shared/ice_rink/ice_chunk.png",
+        "enemy_bouncer": "assets/sprites/shared/ice_rink/puck.png",
+        "enemy_chaser": "assets/sprites/shared/ice_rink/hockey_player.png",
+        "enemy_obstacle": "assets/sprites/shared/ice_rink/zamboni.png",
+        "enemy_zigzag": "assets/sprites/shared/ice_rink/hockey_stick.png",
+        "enemy_shooter": "assets/sprites/shared/ice_rink/cone.png",
+        "enemy_splitter": "assets/sprites/shared/ice_rink/ice_chunk.png",
+        "enemy_teleporter": "assets/sprites/shared/ice_rink/cone.png"
+      }
+    },
+    {
+      "id": "dodge_circus",
+      "sprites": {
+        "player": "assets/sprites/shared/circus/cannon_ball.png",
+        "enemy_obstacle": "assets/sprites/shared/circus/juggling_ball.png",
+        "enemy_chaser": "assets/sprites/shared/circus/clown.png",
+        "enemy_zigzag": "assets/sprites/shared/circus/balloon_animal.png"
+      }
     }
   ]
 }

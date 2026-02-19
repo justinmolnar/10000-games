@@ -126,9 +126,11 @@ function MinigameView:drawOverlay(viewport, snapshot)
     end
 
     love.graphics.setColor(1, 1, 1)
-    local instruction_y = vpHeight - line_height * 2.5
+    local instruction_y = vpHeight - line_height * 3.5
     love.graphics.printf("Press ENTER to play again", 0, instruction_y, vpWidth, "center", 0, text_scale, text_scale)
     love.graphics.printf("Press ESC to close window", 0, instruction_y + line_height, vpWidth, "center", 0, text_scale, text_scale)
+    love.graphics.setColor(0.5, 0.7, 0.5)
+    love.graphics.printf("[F] Save balance stats", 0, instruction_y + line_height * 2, vpWidth, "center", 0, text_scale, text_scale)
 
     love.graphics.pop()
 end

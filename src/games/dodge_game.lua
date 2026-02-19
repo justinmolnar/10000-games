@@ -14,6 +14,7 @@ local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local PatternMovement = require('src.utils.game_components.pattern_movement')
 local SchemaLoader = require('src.utils.game_components.schema_loader')
 local SpriteUtils = require('src.utils.game_components.sprite_utils')
+local FormationSpawner = require('src.utils.game_components.formation_spawner')
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 --------------------------------------------------------------------------------
@@ -33,9 +34,10 @@ function DodgeGame:init(game_data, cheats, di, variant_override)
 
     self:setupArenaDimensions()
     local p = self.params
+    local player_center = self.variant and self.variant.area_center
     self:createPlayer({
-        x = self.game_width / 2,
-        y = self.game_height / 2,
+        x = player_center and (self.game_width * player_center[1]) or (self.game_width / 2),
+        y = player_center and (self.game_height * player_center[2]) or (self.game_height / 2),
         radius = (p.player_base_size or 20) * (p.player_size or 1),
         extra = {
             size = (p.player_base_size or 20) * (p.player_size or 1),
@@ -67,7 +69,15 @@ function DodgeGame:cropEnemySprites()
     if not set or not set.sprites then return end
 
     self.sprite_collision_info = {}
-    for enemy_type in pairs(self.params.enemy_types or {}) do
+    -- Only crop sprites for enemy types actually used by this variant
+    local used_types = {}
+    if self.variant and self.variant.enemies then
+        for _, ed in ipairs(self.variant.enemies) do
+            used_types[ed.type] = true
+        end
+    end
+    if not next(used_types) then used_types["obstacle"] = true end
+    for enemy_type in pairs(used_types) do
         local key = "enemy_" .. enemy_type
         local path = set.sprites[key]
         if path and self.sprites[key] then
@@ -100,6 +110,8 @@ function DodgeGame:setupComponents()
     -- Progress bar based on victory condition
     if p.victory_condition == "time" then
         self.hud.progress = {label = "Survive", current_key = "time_elapsed", total_key = "params.victory_limit", show_bar = true}
+    elseif p.victory_condition == "kills" then
+        self.hud.progress = {label = "Collect", current_key = "metrics.kills", total_key = "params.victory_limit", show_bar = true}
     else
         self.hud.progress = {label = "Dodge", current_key = "metrics.objects_dodged", total_key = "dodge_target", show_bar = true}
     end
@@ -130,9 +142,13 @@ function DodgeGame:setupComponents()
     local arena_vertices = self.variant and self.variant.area_vertices
     local sides, shape_rotation = self:getShapeSides(p.area_shape or "circle")
 
+    local ac_center = self.variant and self.variant.area_center
+    local ac_x = ac_center and (self.game_width * ac_center[1]) or (self.game_width / 2)
+    local ac_y = ac_center and (self.game_height * ac_center[2]) or (self.game_height / 2)
+
     local ArenaController = self.di.components.ArenaController
     self.arena_controller = ArenaController:new({
-        safe_zone = true, x = self.game_width/2, y = self.game_height/2,
+        safe_zone = true, x = ac_x, y = ac_y,
         vertices = arena_vertices,  -- nil if not provided, AC will use sides
         sides = sides, shape_rotation = shape_rotation,
         sides_cycle = {32, 4, 6},  -- circle, square, hex for shape_shifting
@@ -140,10 +156,15 @@ function DodgeGame:setupComponents()
         -- Raw params: AC computes radius, min_radius, shrink_speed internally
         area_size = p.area_size, initial_radius_fraction = p.initial_safe_radius_fraction or 0.48,
         min_radius_fraction = p.min_safe_radius_fraction or 0.35,
-        shrink_seconds = p.safe_zone_shrink_sec or 45, complexity_modifier = self.difficulty_modifiers.complexity,
+        shrink_seconds = (p.area_morph_type ~= "none") and (p.safe_zone_shrink_sec or 45) or 0,
+        complexity_modifier = self.difficulty_modifiers.complexity,
         -- Movement: pure physics, friction only
         friction = p.area_friction or 0.95,
-        container_width = self.game_width, container_height = self.game_height, bounds_padding = 0
+        container_width = self.game_width, container_height = self.game_height, bounds_padding = 0,
+        -- Image-based arena (opaque pixels = playable area)
+        arena_image = p.arena_image,
+        arena_image_fill = p.hide_arena and p.arena_image ~= nil,
+        arena_image_invert = p.arena_image_invert
     })
 
     -- Arena movement behavior state (game-side, not component)
@@ -197,13 +218,25 @@ function DodgeGame:setupComponents()
         spawn_config = {mode = "continuous", rate = 1.0, max_concurrent = 500,
             position_pattern = position_pattern, position_config = position_config, spawn_func = spawn_func}
     end
-    self:createEntityControllerFromSchema({}, {spawning = spawn_config, pooling = true, max_entities = 500})
+    local entity_type_overrides = {}
+    if p.player_auto_fire_interval > 0 then
+        -- All entity types become destroyable (health 1) when player can shoot
+        for type_name, _ in pairs(p.enemy_types) do
+            entity_type_overrides[type_name] = {
+                health = 1,
+                on_death = function(entity) game.metrics.kills = game.metrics.kills + 1 end
+            }
+        end
+    end
+    self:createEntityControllerFromSchema(entity_type_overrides, {spawning = spawn_config, pooling = true, max_entities = 500})
 
     -- Global on_remove callback for dodge counting
     self.entity_controller.on_remove = function(entity, reason)
         if entity.lunge_complete then
             game:onObjectDodged()
         elseif reason == "offscreen" and entity.entered_play then
+            game:onObjectDodged()
+        elseif reason == "max_bounces" then
             game:onObjectDodged()
         end
     end
@@ -271,6 +304,11 @@ function DodgeGame:setupComponents()
                     end
                     return false  -- don't remove hole
                 end
+                if game.collectible_types[entity.type_name] then
+                    game.metrics.kills = game.metrics.kills + 1
+                    game:playSound("dodge", 0.5)
+                    return true  -- collect and remove
+                end
                 game.metrics.collisions = game.metrics.collisions + 1
                 game.current_combo = 0
                 game:takeDamage(1, "hit")
@@ -306,6 +344,7 @@ function DodgeGame:setupComponents()
         },
         delayed_spawn = {
             on_spawn = function(warning_entity, ds)
+                if ds.spawn_type == "formation" then return end
                 local type_name = warning_entity.spawn_type_name or game.entity_controller:pickWeightedType(game.spawn_composition, game.time_elapsed)
                 game:spawnEntity(type_name, warning_entity.x, warning_entity.y, warning_entity.spawn_angle or 0, true,
                     {spawn_target_x = warning_entity.spawn_target_x, spawn_target_y = warning_entity.spawn_target_y})
@@ -340,6 +379,9 @@ function DodgeGame:setupEntities()
         self.entity_controller.spawn_rate = self.spawn_rate
     end
     self.warning_enabled = self.difficulty_modifiers.complexity <= ((self.runtimeCfg.warnings and self.runtimeCfg.warnings.complexity_threshold) or 2)
+    if self.variant and self.variant.warnings == false then
+        self.warning_enabled = false
+    end
     self.dodge_target = p.victory_condition == "dodge_count" and math.floor(p.victory_limit) or 9999
 
     -- Spawn composition for weighted type selection
@@ -365,6 +407,10 @@ function DodgeGame:setupEntities()
                 or {self.object_speed, self.object_speed}
             def.resolved_sprite_settings = def.sprite_settings
                 or SchemaLoader.resolveChain(def.name or type_name, "sprite_settings", "enemy_sprite_settings", sources)
+            def.resolved_movement_axis = def.movement_axis
+                or SchemaLoader.resolveChain(def.name or type_name, "movement_axis", "enemy_movement_axis", sources)
+            def.resolved_wave_amp = SchemaLoader.resolveChain(def.name or type_name, "wave_amp", "enemy_wave_amps", sources)
+            def.resolved_wave_speed = SchemaLoader.resolveChain(def.name or type_name, "wave_speed", "enemy_wave_speeds", sources)
             def.resolved = true
         end
     end
@@ -373,7 +419,26 @@ function DodgeGame:setupEntities()
     self.metrics.objects_dodged = 0
     self.metrics.collisions = 0
     self.metrics.combo = 0
+    self.metrics.kills = 0
+    self.metrics.victory_progress = 0
     self.current_combo = 0
+
+    -- Collectible enemy types (touch to collect, no damage)
+    self.collectible_types = {}
+    if self.variant and self.variant.collectible_enemies then
+        for _, t in ipairs(self.variant.collectible_enemies) do
+            self.collectible_types[t] = true
+        end
+    end
+
+    -- Player auto-fire
+    if p.player_auto_fire_interval > 0 then
+        self.player_auto_fire = {
+            interval = p.player_auto_fire_interval,
+            timer = 0,
+            speed = p.player_projectile_speed,
+        }
+    end
 
     -- Wind state (uses PhysicsUtils.updateDirectionalForce)
     local is_rotating = p.wind_type == "changing_steady" or p.wind_type == "changing_turbulent"
@@ -389,6 +454,47 @@ function DodgeGame:setupEntities()
         turbulence_range = math.pi * 0.5
     }
 
+    -- Phase cycle system (breathing, etc.)
+    if self.variant.phase_cycle then
+        self.phase_cycle = {
+            phases = self.variant.phase_cycle.phases,
+            loop = self.variant.phase_cycle.loop ~= false,
+            current_index = 1,
+            phase_timer = 0,
+        }
+    end
+
+    -- Timed events (one-shot overrides at specific times)
+    if self.variant.timed_events then
+        self.timed_events = {}
+        for _, ev in ipairs(self.variant.timed_events) do
+            table.insert(self.timed_events, {at = ev.at, duration = ev.duration or 0, data = ev, fired = false, active = false})
+        end
+    end
+
+    -- Formation spawner (column/row/grid attack patterns)
+    local formation_cols = p.formation_columns or 0
+    if p.formation_column_width and p.formation_column_width > 0 then
+        formation_cols = math.max(2, math.floor(self.game_width / p.formation_column_width))
+    end
+    if formation_cols > 0 then
+        local zones = FormationSpawner.createColumns(formation_cols, self.game_width, self.game_height)
+        self.formation = FormationSpawner.newState({
+            zones = zones,
+            interval = p.formation_snap_interval or 2.5,
+            warn_duration = p.formation_warn_duration or 1.0,
+            min_safe = p.formation_min_safe or 2,
+            escalation_time = p.formation_escalation_time or 30,
+        })
+        if not self.variant.enemies or #self.variant.enemies == 0 then
+            self.entity_controller.spawning.mode = "manual"
+        end
+    end
+
+    -- Deferred to first update when play area dimensions are finalized
+    if self.variant.static_enemies then
+        self.pending_static_enemies = self.variant.static_enemies
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -398,13 +504,16 @@ end
 function DodgeGame:setPlayArea(width, height)
     self.game_width = width
     self.game_height = height
+    local ac_center = self.variant and self.variant.area_center
     if self.arena_controller then
-        self.arena_controller:setContainerSize(width, height)
+        self.arena_controller:setContainerSize(width, height, ac_center)
     end
     -- Recenter player to match arena
     if self.player then
-        self.player.x = width / 2
-        self.player.y = height / 2
+        self.player.x = ac_center and (width * ac_center[1]) or (width / 2)
+        local p = self.params
+        self.player.y = p.use_horizontal_only and (height * (p.horizontal_y_fraction or 0.5))
+            or (ac_center and (height * ac_center[2]) or (height / 2))
     end
     -- Update entity behaviors config with new dimensions
     if self.entity_behaviors_config then
@@ -419,6 +528,16 @@ function DodgeGame:setPlayArea(width, height)
         self.entity_behaviors_config.track_entered_play.width = width
         self.entity_behaviors_config.track_entered_play.height = height
     end
+    if self.formation then
+        local p = self.params
+        local cols = p.formation_columns or 0
+        if p.formation_column_width and p.formation_column_width > 0 then
+            cols = math.max(2, math.floor(width / p.formation_column_width))
+        end
+        if cols > 0 then
+            self.formation.zones = FormationSpawner.createColumns(cols, width, height)
+        end
+    end
     if self.spawn_bounds then
         self.spawn_bounds.max_x = width
         self.spawn_bounds.max_y = height
@@ -431,6 +550,39 @@ end
 
 function DodgeGame:updateGameLogic(dt)
     if self.game_over or self.completed then return end
+
+    -- Spawn static hazards on first frame (play area dimensions now finalized)
+    if self.pending_static_enemies then
+        local cx, cy = self.arena_controller.x, self.arena_controller.y
+        local max_r = math.min(self.game_width, self.game_height) * 0.3
+        for _, se in ipairs(self.pending_static_enemies) do
+            local type_name = se.type or "obstacle"
+            local angle = math.random() * math.pi * 2
+            local dist = math.random() * max_r
+            self:spawnEntity(type_name, cx + math.cos(angle) * dist, cy + math.sin(angle) * dist, 0, false, {
+                skip_offscreen_removal = true,
+                radius = se.size or 30,
+                speed = 0,
+                sprite_rotation_speed = se.spin or 360,
+            })
+        end
+        self.pending_static_enemies = nil
+    end
+
+    -- Sync victory_progress metric
+    local vc = self.params.victory_condition
+    local vpw = self.params.victory_progress_weight or 1
+    if vc == "time" then
+        self.metrics.victory_progress = self.time_elapsed * vpw
+    elseif vc == "kills" then
+        self.metrics.victory_progress = self.metrics.kills * vpw
+    else
+        self.metrics.victory_progress = self.metrics.objects_dodged * vpw
+    end
+
+    -- Phase cycle and timed events
+    self:updatePhaseCycle(dt)
+    self:updateTimedEvents(dt)
 
     -- Lethal zone check
     if self.leaving_area_ends_game and not self.arena_controller:isInside(self.player.x, self.player.y, self.player.radius) then
@@ -447,8 +599,10 @@ function DodgeGame:updateGameLogic(dt)
     -- Systems
     self.entity_controller:update(dt)
     self.entity_controller:updateBehaviors(dt, self.entity_behaviors_config)
+    self:updateFormation(dt)
     self.projectile_system:update(dt, {x_min = 0, x_max = self.game_width, y_min = 0, y_max = self.game_height})
     if self:checkProjectileCollisions() then return end
+    self:updatePlayerAutoFire(dt)
 
     -- Calculate arena movement acceleration (game-side behavior)
     self:updateArenaMovement(dt)
@@ -484,6 +638,7 @@ function DodgeGame:updatePlayer(dt)
     if input.right then dx = dx + 1 end
     if input.up then dy = dy - 1 end
     if input.down then dy = dy + 1 end
+    if p.use_horizontal_only then dy = 0 end
 
     -- Apply movement behaviors based on schema flags
     local dominated_by_jump = p.use_jump and mc:isJumping("player")
@@ -541,11 +696,24 @@ function DodgeGame:updatePlayer(dt)
     player.rotation = player.angle
 
     if self.params.area_gravity ~= 0 and self.arena_controller then
-        local dx = self.arena_controller.x - self.player.x
-        local dy = self.arena_controller.y - self.player.y
+        local grav_origin = self.params.area_gravity_origin
+        local gx, gy
+        if grav_origin then
+            gx = self.game_width * grav_origin[1]
+            gy = self.game_height * grav_origin[2]
+        else
+            gx = self.arena_controller.x
+            gy = self.arena_controller.y
+        end
+        local dx = gx - self.player.x
+        local dy = gy - self.player.y
         local dist = math.sqrt(dx * dx + dy * dy)
         if dist > 0 then
-            local force = self.params.area_gravity * dt
+            local gravity = self.params.area_gravity
+            if self.params.area_gravity_pulse then
+                gravity = gravity * math.max(0, math.sin(self.time_elapsed * (self.params.area_gravity_pulse_speed or 0.5) * math.pi * 2))
+            end
+            local force = gravity * dt
             self.player.x = self.player.x + (dx / dist) * force
             self.player.y = self.player.y + (dy / dist) * force
         end
@@ -559,7 +727,14 @@ function DodgeGame:updatePlayer(dt)
     if self.player.max_speed > 0 then
         PhysicsUtils.clampSpeed(self.player, self.player.max_speed)
     end
-    self.arena_controller:clampEntity(self.player)
+    if not p.hide_arena or self.arena_controller.image_mode then
+        self.arena_controller:clampEntity(self.player)
+    end
+    if p.use_horizontal_only then
+        player.y = self.game_height * (p.horizontal_y_fraction or 0.5)
+        player.rotation = 0
+        if dx ~= 0 then player.facing_x = dx > 0 and 1 or -1 end
+    end
 end
 
 -- Calculate arena movement acceleration based on movement type
@@ -597,6 +772,194 @@ function DodgeGame:updateArenaMovement(dt)
     ac:setAcceleration(ax, ay)
 end
 
+function DodgeGame:updateFormation(dt)
+    if not self.formation then return end
+    local event = FormationSpawner.update(self.formation, dt)
+    if not event then return end
+
+    local p = self.params
+    local attack_type = p.formation_attack_type or "lunger"
+
+    if attack_type == "falling" then
+        self:updateFormationFalling(event)
+    else
+        self:updateFormationLunger(event)
+    end
+end
+
+function DodgeGame:updateFormationFalling(event)
+    if event.type ~= "attack" then return end
+
+    local p = self.params
+    local fall_speed = 250
+
+    for _, zone in ipairs(event.zones) do
+        local cx = zone.x + zone.w / 2
+        self:spawnEntity("ruler", cx, -20, math.pi / 2, false, {
+            speed = fall_speed,
+            use_direction = true,
+        })
+    end
+
+    if self.visual_effects and p.camera_shake_intensity > 0 then
+        self.visual_effects:shake({intensity = p.camera_shake_intensity * 0.3, mode = "exponential", decay = 0.9})
+    end
+end
+
+function DodgeGame:updateFormationLunger(event)
+    local p = self.params
+    local warn_dur = p.formation_warn_duration or 0.7
+    local col_w = self.formation.zones[1] and self.formation.zones[1].w or 50
+    local snap_dist = self.game_height / 2 + 10
+    local tooth_radius = snap_dist / 1.9
+    local col_collision = {
+        collision_half_w = col_w * 0.4,
+        collision_half_h = tooth_radius * 0.9,
+        collision_rotation = 0,
+    }
+
+    if event.type == "warning" then
+        local peek_depth = self.game_height * 0.25
+        for _, zone in ipairs(event.zones) do
+            local cx = zone.x + zone.w / 2
+            self:spawnEntity("lunger", cx, -10, math.pi / 2, true, {
+                spawn_target_x = cx, spawn_target_y = peek_depth,
+                forced_radius = tooth_radius,
+                collision_half_w = col_collision.collision_half_w,
+                collision_half_h = col_collision.collision_half_h,
+                collision_rotation = math.pi,
+                lunge_advance_duration = 0.15, lunge_hold_duration = math.max(0, warn_dur - 0.3),
+                lunge_return_duration = 0.15, lunge_advance_curve = "ease_out",
+            })
+            self:spawnEntity("lunger", cx, self.game_height + 10, -math.pi / 2, true, {
+                spawn_target_x = cx, spawn_target_y = self.game_height - peek_depth,
+                forced_radius = tooth_radius,
+                collision_half_w = col_collision.collision_half_w,
+                collision_half_h = col_collision.collision_half_h,
+                collision_rotation = 0,
+                lunge_advance_duration = 0.15, lunge_hold_duration = math.max(0, warn_dur - 0.3),
+                lunge_return_duration = 0.15, lunge_advance_curve = "ease_out",
+            })
+        end
+    elseif event.type == "attack" then
+        for _, zone in ipairs(event.zones) do
+            local cx = zone.x + zone.w / 2
+            self:spawnEntity("lunger", cx, -10, math.pi / 2, true, {
+                spawn_target_x = cx, spawn_target_y = self.game_height / 2,
+                collision_half_w = col_collision.collision_half_w,
+                collision_half_h = col_collision.collision_half_h,
+                collision_rotation = math.pi,
+            })
+            self:spawnEntity("lunger", cx, self.game_height + 10, -math.pi / 2, true, {
+                spawn_target_x = cx, spawn_target_y = self.game_height / 2,
+                collision_half_w = col_collision.collision_half_w,
+                collision_half_h = col_collision.collision_half_h,
+                collision_rotation = 0,
+            })
+        end
+        if self.visual_effects and p.camera_shake_intensity > 0 then
+            self.visual_effects:shake({intensity = p.camera_shake_intensity * 0.5, mode = "exponential", decay = 0.9})
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
+-- PHASE CYCLE & TIMED EVENTS
+--------------------------------------------------------------------------------
+
+function DodgeGame:updatePhaseCycle(dt)
+    local pc = self.phase_cycle
+    if not pc then return end
+
+    pc.phase_timer = pc.phase_timer + dt
+    local phase = pc.phases[pc.current_index]
+    if not phase then return end
+
+    -- Advance to next phase when duration expires
+    while pc.phase_timer >= phase.duration do
+        pc.phase_timer = pc.phase_timer - phase.duration
+        pc.current_index = pc.current_index + 1
+        if pc.current_index > #pc.phases then
+            if pc.loop then
+                pc.current_index = 1
+            else
+                pc.current_index = #pc.phases
+                break
+            end
+        end
+        phase = pc.phases[pc.current_index]
+
+        -- Fire burst spawns on phase entry
+        if phase.burst then
+            for _, b in ipairs(phase.burst) do
+                for _ = 1, (b.count or 1) do
+                    local margin = 20
+                    local sx, sy = self.entity_controller:calculateSpawnPosition(
+                        {region = "edge", margin = margin,
+                         bounds = {min_x = 0, max_x = self.game_width, min_y = 0, max_y = self.game_height}})
+                    self:spawnEntity(b.type or "obstacle", sx, sy,
+                        math.atan2(self.game_height/2 - sy, self.game_width/2 - sx), false)
+                end
+            end
+        end
+    end
+
+    -- Apply current phase overrides
+    if phase.area_gravity ~= nil then
+        self.params.area_gravity = phase.area_gravity
+    end
+    if phase.wind_strength ~= nil then
+        self.wind_state.strength = phase.wind_strength
+    end
+    if phase.wind_type ~= nil then
+        self.wind_state.is_rotating = phase.wind_type == "changing_steady" or phase.wind_type == "changing_turbulent"
+        self.wind_state.is_turbulent = phase.wind_type == "turbulent" or phase.wind_type == "changing_turbulent"
+    end
+    if phase.spawn_rate_mult ~= nil then
+        self.entity_controller.spawn_rate = self.spawn_rate / phase.spawn_rate_mult
+    end
+    if phase.arena_movement_speed ~= nil then
+        self.arena_movement.speed = phase.arena_movement_speed
+    end
+    if phase.shake and phase.shake > 0 then
+        self.visual_effects:shake({intensity = phase.shake, decay = 0.95, mode = "exponential"})
+    end
+end
+
+function DodgeGame:updateTimedEvents(dt)
+    if not self.timed_events then return end
+    for _, ev in ipairs(self.timed_events) do
+        if not ev.fired and self.time_elapsed >= ev.at then
+            ev.fired = true
+            ev.active = true
+            ev.end_time = self.time_elapsed + (ev.data.duration or 0)
+            -- Fire burst on event start
+            if ev.data.burst then
+                for _, b in ipairs(ev.data.burst) do
+                    for _ = 1, (b.count or 1) do
+                        local sx, sy = self.entity_controller:calculateSpawnPosition(
+                            {region = "edge", margin = 20,
+                             bounds = {min_x = 0, max_x = self.game_width, min_y = 0, max_y = self.game_height}})
+                        self:spawnEntity(b.type or "obstacle", sx, sy,
+                            math.atan2(self.game_height/2 - sy, self.game_width/2 - sx), false)
+                    end
+                end
+            end
+        end
+        -- Apply overrides while event is active
+        if ev.active then
+            if self.time_elapsed >= ev.end_time then
+                ev.active = false
+            else
+                if ev.data.area_gravity ~= nil then self.params.area_gravity = ev.data.area_gravity end
+                if ev.data.shake then self.visual_effects:shake({intensity = ev.data.shake, decay = 0.95, mode = "exponential"}) end
+                if ev.data.spawn_rate_mult then self.entity_controller.spawn_rate = self.spawn_rate / ev.data.spawn_rate_mult end
+                if ev.data.arena_movement_speed then self.arena_movement.speed = ev.data.arena_movement_speed end
+            end
+        end
+    end
+end
+
 --------------------------------------------------------------------------------
 -- CALLBACKS (EntityController behaviors handle most logic)
 --------------------------------------------------------------------------------
@@ -629,10 +992,10 @@ function DodgeGame:onEntityShoot(entity)
     })
 end
 
--- Check projectile collision with player (entities handled by EntityController)
+-- Check projectile collision with player (enemy projectiles only)
 function DodgeGame:checkProjectileCollisions()
     for _, proj in ipairs(self.projectile_system:getAll()) do
-        if PhysicsUtils.circleCollision(self.player.x, self.player.y, self.player.radius, proj.x, proj.y, proj.radius or 10) then
+        if proj.team ~= "player" and PhysicsUtils.circleCollision(self.player.x, self.player.y, self.player.radius, proj.x, proj.y, proj.radius or 10) then
             self.projectile_system:remove(proj)
             self.metrics.collisions = self.metrics.collisions + 1
             self.current_combo = 0
@@ -646,6 +1009,39 @@ function DodgeGame:checkProjectileCollisions()
         end
     end
     return false
+end
+
+function DodgeGame:updatePlayerAutoFire(dt)
+    local af = self.player_auto_fire
+    if not af then return end
+    af.timer = af.timer + dt
+    if af.timer >= af.interval then
+        af.timer = af.timer - af.interval
+        -- Fire upward from player position
+        local radius = (self.params.object_radius or 15) * 0.4
+        self.projectile_system:spawn({
+            x = self.player.x, y = self.player.y,
+            vx = 0, vy = -af.speed,
+            team = "player", lifetime = 5,
+            radius = radius, is_projectile = true,
+        })
+    end
+    -- Player bullets vs entities
+    local player_bullets = self.projectile_system:getByTeam("player")
+    if player_bullets then
+        for _, bullet in ipairs(player_bullets) do
+            for _, entity in ipairs(self.entity_controller:getEntities()) do
+                if entity.active ~= false and PhysicsUtils.circleCollision(
+                    bullet.x, bullet.y, bullet.radius or 5,
+                    entity.x, entity.y, entity.radius or 15
+                ) then
+                    self.entity_controller:hitEntity(entity, 1, bullet)
+                    self.projectile_system:remove(bullet)
+                    break
+                end
+            end
+        end
+    end
 end
 
 function DodgeGame:onObjectDodged()
@@ -681,6 +1077,15 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
     local base_speed = speed_range[1] + math.random() * (speed_range[2] - speed_range[1])
     local final_speed = base_speed * speed_mult
 
+    -- Axis-locked movement: override spawn position and angle
+    local movement_axis = enemy_def.resolved_movement_axis
+    if movement_axis == "horizontal" then
+        local from_left = math.random() < 0.5
+        x = from_left and -final_radius or (self.game_width + final_radius)
+        y = final_radius + math.random() * math.max(0, self.game_height - final_radius * 2)
+        angle = from_left and 0 or math.pi
+    end
+
     local sprite_settings = enemy_def.resolved_sprite_settings
     local sprite_rotation = (sprite_settings and sprite_settings.rotation) or 0
     local sprite_direction = (sprite_settings and sprite_settings.direction) or "movement_based"
@@ -699,6 +1104,17 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
         turn_rate = math.rad(self.params.seeker_turn_rate or 54)
     }
 
+    -- OBB collision from sprite content shape (same approach as lunger teeth)
+    if movement_axis then
+        local info = self.sprite_collision_info and self.sprite_collision_info["enemy_" .. name]
+        if info then
+            custom_params.collision_half_w = final_radius * info.width_ratio
+            custom_params.collision_half_h = final_radius * info.height_ratio
+            -- Obstacles use obj.angle for view rotation (no +pi/2 since no vx/vy set)
+            custom_params.collision_rotation = angle
+        end
+    end
+
     -- Movement flags based on enemy type (from schema enemy_def or defaults)
     if base_type == 'seeker' or base_type == 'chaser' then
         custom_params.use_steering = true
@@ -706,19 +1122,32 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
         -- Bouncers use velocity-based movement
         custom_params.use_velocity = true
         custom_params.use_bounce = true
+        custom_params.bounces_off_walls = true
         custom_params.vx = math.cos(angle or 0) * final_speed
         custom_params.vy = math.sin(angle or 0) * final_speed
         custom_params.bounce_count = 0
         custom_params.has_entered = false
     elseif base_type == 'zigzag' or base_type == 'sine' then
-        custom_params.use_direction = true
-        local zig_cfg = (self.runtimeCfg.objects and self.runtimeCfg.objects.zigzag) or {}
-        local wave_speed_min = enemy_def.wave_speed_min or zig_cfg.wave_speed_min or 6
-        local wave_speed_range = enemy_def.wave_speed_range or zig_cfg.wave_speed_range or 4
-        custom_params.wave_speed = wave_speed_min + math.random() * wave_speed_range
-        custom_params.wave_amp = enemy_def.wave_amp or zig_cfg.wave_amp or 30
-        custom_params.sine_amplitude = custom_params.wave_amp
-        custom_params.wave_phase = math.random() * math.pi * 2
+        -- Check for orbit override (circular descending motion instead of sine)
+        local orbit_cfg = self.variant and self.variant.enemy_orbit and self.variant.enemy_orbit[name]
+        if orbit_cfg then
+            custom_params.orbit_radius = orbit_cfg.radius or 40
+            custom_params.orbit_speed = (math.random() < 0.5 and 1 or -1) * (orbit_cfg.speed or 3)
+            custom_params.orbit_center_x = x
+            custom_params.orbit_center_y = y
+            custom_params.orbit_descent_speed = orbit_cfg.descent_speed or final_speed
+            custom_params.orbit_angle = math.random() * math.pi * 2
+        else
+            custom_params.use_direction = true
+            local zig_cfg = (self.runtimeCfg.objects and self.runtimeCfg.objects.zigzag) or {}
+            local resolved_ws = enemy_def.resolved_wave_speed
+            local wave_speed_min = (resolved_ws and resolved_ws[1]) or enemy_def.wave_speed_min or zig_cfg.wave_speed_min or 6
+            local wave_speed_range = (resolved_ws and resolved_ws[2]) or enemy_def.wave_speed_range or zig_cfg.wave_speed_range or 4
+            custom_params.wave_speed = wave_speed_min + math.random() * wave_speed_range
+            custom_params.wave_amp = enemy_def.resolved_wave_amp or enemy_def.wave_amp or zig_cfg.wave_amp or 30
+            custom_params.sine_amplitude = custom_params.wave_amp
+            custom_params.wave_phase = math.random() * math.pi * 2
+        end
     elseif base_type == 'shooter' then
         custom_params.use_direction = true
         local shoot_interval = enemy_def.shoot_interval
@@ -760,8 +1189,8 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
         if lunge_dist < 1 then lunge_dist = 1 end
         local dir_x = ldx / lunge_dist
         local dir_y = ldy / lunge_dist
-        -- Radius: tooth spans edge-to-target, ~5% overhang past edge
-        custom_params.radius = lunge_dist / 1.9
+        -- Radius: forced_radius from caller, or computed from lunge distance
+        custom_params.radius = (overrides and overrides.forced_radius) or (lunge_dist / 1.9)
         local r = custom_params.radius
         -- Origin center: front edge at spawn point (screen edge)
         custom_params.lunge_origin_x = x - dir_x * r
@@ -802,16 +1231,42 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
 end
 
 function DodgeGame:spawnNext(sx, sy, forced_angle)
+    local p = self.params
     local bounds = {min_x = 0, max_x = self.game_width, min_y = 0, max_y = self.game_height}
-    if not sx then
-        local margin = (self.params.object_radius or 15) - ((self.runtimeCfg.arena and self.runtimeCfg.arena.spawn_inset) or 2)
+    local margin = (p.object_radius or 15) - ((self.runtimeCfg.arena and self.runtimeCfg.arena.spawn_inset) or 2)
+
+    if p.spawn_edge == "top" then
+        sx = math.random() * self.game_width
+        sy = -margin
+    elseif p.spawn_edge == "bottom" then
+        sx = math.random() * self.game_width
+        sy = self.game_height + margin
+    elseif p.spawn_edge == "left" then
+        sx = -margin
+        sy = math.random() * self.game_height
+    elseif p.spawn_edge == "right" then
+        sx = self.game_width + margin
+        sy = math.random() * self.game_height
+    elseif not sx then
         sx, sy = self.entity_controller:calculateSpawnPosition({region = "edge", margin = margin, bounds = bounds})
     end
-    local ac = self.arena_controller
-    local scale = (self.params.target_ring_min_scale or 1.2) + math.random() * ((self.params.target_ring_max_scale or 1.5) - (self.params.target_ring_min_scale or 1.2))
-    local tx, ty = ac:getPointOnShapeBoundary(math.random() * math.pi * 2, ac:getEffectiveRadius() * scale)
-    local angle = forced_angle or math.atan2(ty - sy, tx - sx)
-    angle = self.entity_controller:ensureInboundAngle(sx, sy, angle, bounds)
+
+    local angle
+    if p.spawn_edge == "top" then
+        angle = forced_angle or (math.pi / 2)
+    elseif p.spawn_edge == "bottom" then
+        angle = forced_angle or (-math.pi / 2)
+    elseif p.spawn_edge == "left" then
+        angle = forced_angle or 0
+    elseif p.spawn_edge == "right" then
+        angle = forced_angle or math.pi
+    else
+        local ac = self.arena_controller
+        local scale = (p.target_ring_min_scale or 1.2) + math.random() * ((p.target_ring_max_scale or 1.5) - (p.target_ring_min_scale or 1.2))
+        local tx, ty = ac:getPointOnShapeBoundary(math.random() * math.pi * 2, ac:getEffectiveRadius() * scale)
+        angle = forced_angle or math.atan2(ty - sy, tx - sx)
+        angle = self.entity_controller:ensureInboundAngle(sx, sy, angle, bounds)
+    end
     local type_name = self.entity_controller:pickWeightedType(self.spawn_composition, self.time_elapsed)
     local warning_chance = (self.runtimeCfg.spawn and self.runtimeCfg.spawn.warning_chance) or 0.7
     if self.warning_enabled and math.random() < warning_chance then

@@ -7,97 +7,7 @@
   "variants": [
     {
       "clone_index": 0,
-      "name": "Dodge Master",
-      "movement_type": "default",
-      "sprite_set": "dodge_pixellab_1",
-      "palette": "blue",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "ink_flow",
-      "bg_interact_radius": 1,
-      "bg_colors": [
-        [0.07, 0.15, 0.17],
-        [0.18, 0.14, 0.21],
-        [0.28, 0.25, 0.21]
-      ],
-      "bg_speed": 0.3,
-      "bg_ink_dye_dissipation": 0.978,
-      "bg_ink_vel_dissipation": 0.985,
-      "bg_ink_diffusion": 0.27,
-      "bg_ink_amount": 0.4,
-      "bg_ink_radius": 0.0005,
-      "bg_ink_vel_strength": 3.3,
-      "bg_ink_sim_steps": 1,
-      "bg_ink_displace": 15.0,
-      "bg_ink_dye_color": [0.05, 0.02, 0.09],
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "rotation_speed": 8.0,
-      "accel_friction": 1.0,
-      "decel_friction": 1.0,
-      "bounce_damping": 0.0,
-      "enemies": [],
-      "flavor_text": "Classic obstacle avoidance! Master the art of dodging.",
-      "intro_cutscene": null
-    },
-    {
-      "clone_index": 1,
-      "name": "Dodge Deluxe",
-      "movement_type": "default",
-      "sprite_set": "dodge_pixellab_2",
-      "palette": "red",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.2,
-      "movement_speed": 280,
-      "enemies": [
-        {
-          "type": "chaser",
-          "multiplier": 1.0
-        },
-        {
-          "type": "shooter",
-          "multiplier": 0.5
-        }
-      ],
-      "flavor_text": "Now with aggressive enemies! Can you handle the heat?",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 2,
-      "name": "Dodge Ice Rink",
-      "movement_type": "default",
-      "use_velocity": true,
-      "use_bounce": true,
-      "sprite_set": "dodge_pixellab_3",
-      "palette": "cyan",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 350,
-      "rotation_speed": 6.0,
-      "accel_friction": 0.98,
-      "decel_friction": 0.96,
-      "bounce_damping": 0.4,
-      "enemies": [],
-      "flavor_text": "Slippery! Slow to start, long drift, soft bounces",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 3,
-      "name": "Dodge Pinball",
+      "name": "Pinball",
       "movement_type": "default",
       "use_velocity": true,
       "use_bounce": true,
@@ -107,21 +17,9 @@
       "sfx_pack": "retro_beeps",
       "background": "flowing",
       "bg_colors": [
-        [
-          0.4,
-          0.0,
-          0.5
-        ],
-        [
-          0.1,
-          0.0,
-          0.3
-        ],
-        [
-          0.6,
-          0.1,
-          0.4
-        ]
+        [0.4, 0.0, 0.5],
+        [0.1, 0.0, 0.3],
+        [0.6, 0.1, 0.4]
       ],
       "bg_speed": 0.6,
       "bg_warp": 1.3,
@@ -132,327 +30,55 @@
       "decel_friction": 0.99,
       "bounce_damping": 0.9,
       "enemies": [
-        {
-          "type": "bouncer",
-          "multiplier": 1.5
-        }
+        {"type": "bouncer", "multiplier": 1},
+        {"type": "obstacle", "multiplier": 2}
       ],
       "flavor_text": "Chaotic bouncing with bouncer enemies!",
       "intro_cutscene": null
     },
     {
-      "clone_index": 4,
-      "name": "Dodge Slippery Slope",
-      "movement_type": "default",
-      "use_velocity": true,
-      "use_bounce": true,
-      "sprite_set": "dodge_food_burger",
-      "palette": "green",
-      "music_track": "dodge_theme_2",
+      "clone_index": 1,
+      "name": "BIG TOP",
+      "movement_type": "horizontal_only",
+      "horizontal_y_fraction": 0.88,
+      "sprite_set": "dodge_circus",
+      "palette": "red",
+      "music_track": "dodge_theme_1",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.1,
+      "background": "image",
+      "bg_image": "assets/backgrounds/circus_ring.jpeg",
+      "bg_color": [0.3, 0.1, 0.05],
+      "difficulty_modifier": 1.0,
       "movement_speed": 320,
-      "accel_friction": 0.95,
-      "decel_friction": 0.92,
-      "bounce_damping": 0.6,
-      "area_morph_type": "pulsing",
+      "victory_condition": "kills",
+      "victory_limit": 15,
+      "victory_progress_weight": 2,
+      "lives": 5,
+      "area_shape": "square",
+      "area_size": 2.0,
+      "hide_arena": true,
+      "area_morph_type": "none",
+      "area_movement_type": "none",
+      "obstacle_spawn_rate": 1.2,
+      "spawn_edge": "top",
+      "seeker_turn_rate": 20,
+      "disable_obstacle_fallback": true,
+      "warnings": false,
+      "collectible_enemies": ["obstacle"],
       "enemies": [
-        {
-          "type": "zigzag",
-          "multiplier": 1.0
-        }
+        {"type": "obstacle", "multiplier": {"base": 50, "growth": 0.3}},
+        {"type": "chaser", "multiplier": {"base": 20, "growth": 0.3}},
+        {"type": "zigzag", "multiplier": {"base": 15, "growth": 0.2}}
       ],
-      "flavor_text": "Heavy drift with zigzagging threats",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        1.0,
-        0.6
-      ]
+      "enemy_sizes": {"obstacle": [25, 35], "chaser": [30, 40]},
+      "enemy_speeds": {"chaser": [60, 90]},
+      "enemy_orbit": {"zigzag": {"radius": 40, "speed": 3, "descent_speed": 80}},
+      "flavor_text": "Circus. Catch 15 balloons. Dodge the clowns.",
+      "intro_cutscene": null
     },
     {
-      "clone_index": 5,
-      "name": "Dodge Tiny Arena",
-      "movement_type": "default",
-      "sprite_set": "dodge_animals_mixed",
-      "palette": "red",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 250,
-      "area_size": 0.6,
-      "area_morph_speed": 1.5,
-      "enemies": [],
-      "flavor_text": "Small spaces, big pressure!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 6,
-      "name": "Dodge Momentum Master",
-      "movement_type": "default",
-      "use_velocity": true,
-      "use_bounce": true,
-      "sprite_set": "dodge_desserts",
-      "palette": "blue",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.2,
-      "movement_speed": 380,
-      "accel_friction": 0.96,
-      "decel_friction": 0.94,
-      "bounce_damping": 0.7,
-      "holes_type": "circle",
-      "holes_count": 4,
-      "enemies": [
-        {
-          "type": "chaser",
-          "multiplier": 1.2
-        }
-      ],
-      "flavor_text": "Control your drift while avoiding holes!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 7,
-      "name": "Dodge Heartbeat",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "purple",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "area_morph_type": "pulsing",
-      "area_morph_speed": 2.0,
-      "enemies": [],
-      "flavor_text": "Sync with the pulse or perish",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 8,
-      "name": "Dodge Fighter",
-      "movement_type": "asteroids",
-      "sprite_set": "base_2",
-      "palette": "red",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "rotation_speed": 4.0,
-      "movement_speed": 600,
-      "accel_friction": 1.0,
-      "decel_friction": 0.98,
-      "bounce_damping": 0.5,
-      "reverse_mode": "thrust",
-      "enemies": [],
-      "flavor_text": "Classic space flight with reverse thrusters",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 9,
-      "name": "Dodge Heavy Tank",
-      "movement_type": "asteroids",
-      "sprite_set": "base_2",
-      "palette": "gray",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "rotation_speed": 1.5,
-      "movement_speed": 400,
-      "accel_friction": 0.95,
-      "decel_friction": 0.93,
-      "bounce_damping": 0.2,
-      "reverse_mode": "brake",
-      "enemies": [],
-      "flavor_text": "Slow turning, heavy momentum, soft impacts",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 10,
-      "name": "Dodge Nimble Scout",
-      "movement_type": "asteroids",
-      "sprite_set": "base_1",
-      "palette": "green",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.1,
-      "rotation_speed": 12.0,
-      "movement_speed": 700,
-      "accel_friction": 1.0,
-      "decel_friction": 0.95,
-      "bounce_damping": 0.6,
-      "reverse_mode": "thrust",
-      "enemies": [
-        {
-          "type": "chaser",
-          "multiplier": 1.5
-        }
-      ],
-      "flavor_text": "Fast, agile - high skill ceiling with chasers",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        1.0,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 11,
-      "name": "Dodge Battlecruiser",
-      "movement_type": "asteroids",
-      "sprite_set": "base_2",
-      "palette": "purple",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.3,
-      "rotation_speed": 2.0,
-      "movement_speed": 500,
-      "accel_friction": 0.92,
-      "decel_friction": 0.9,
-      "bounce_damping": 0.3,
-      "reverse_mode": "brake",
-      "enemies": [
-        {
-          "type": "shooter",
-          "multiplier": 1.0
-        },
-        {
-          "type": "bouncer",
-          "multiplier": 0.8
-        }
-      ],
-      "flavor_text": "Heavy ship, heavy firepower against you",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 12,
-      "name": "Dodge Asteroid Belt",
-      "movement_type": "asteroids",
-      "sprite_set": "base_2",
-      "palette": "orange",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.2,
-      "rotation_speed": 5.0,
-      "movement_speed": 650,
-      "decel_friction": 0.97,
-      "bounce_damping": 0.8,
-      "reverse_mode": "thrust",
-      "holes_type": "background",
-      "holes_count": 8,
-      "enemies": [],
-      "flavor_text": "Navigate the asteroids with bouncy physics",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 13,
-      "name": "Dodge Space Drifter",
-      "movement_type": "asteroids",
-      "sprite_set": "base_1",
-      "palette": "cyan",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "rotation_speed": 3.5,
-      "movement_speed": 550,
-      "accel_friction": 0.98,
-      "decel_friction": 0.96,
-      "bounce_damping": 0.4,
-      "reverse_mode": "none",
-      "area_morph_type": "pulsing",
-      "enemies": [],
-      "flavor_text": "Drift through pulsing space - no reverse!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 14,
-      "name": "Dodge War Zone",
-      "movement_type": "asteroids",
-      "sprite_set": "base_2",
-      "palette": "red",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "8bit_arcade",
-      "background": "starfield",
-      "difficulty_modifier": 1.5,
-      "rotation_speed": 6.0,
-      "movement_speed": 620,
-      "decel_friction": 0.96,
-      "bounce_damping": 0.5,
-      "reverse_mode": "thrust",
-      "enemies": [
-        {
-          "type": "shooter",
-          "multiplier": 1.5
-        },
-        {
-          "type": "chaser",
-          "multiplier": 1.0
-        },
-        {
-          "type": "zigzag",
-          "multiplier": 1.2
-        }
-      ],
-      "flavor_text": "Combat maneuvers under heavy fire!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 15,
-      "name": "Dodge Shapeshifter",
+      "clone_index": 2,
+      "name": "Shapeshifter",
       "movement_type": "asteroids",
       "sprite_set": "base_2",
       "palette": "green",
@@ -469,38 +95,147 @@
       "enemies": [],
       "flavor_text": "Circle, square, hex - adapt your flight!",
       "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        1.0,
-        0.6
-      ]
+      "bg_star_color": [0.6, 1.0, 0.6]
     },
     {
-      "clone_index": 16,
-      "name": "Dodge Tactical Dash",
-      "movement_type": "jump",
-      "sprite_set": "base_1",
-      "palette": "blue",
+      "clone_index": 3,
+      "name": "Zamboni Panic",
+      "movement_type": "asteroids",
+      "sprite_set": "ice_rink",
+      "palette": "cyan",
+      "music_track": "dodge_theme_1",
+      "sfx_pack": "retro_beeps",
+      "background": "solid",
+      "bg_color": [0.08, 0.10, 0.16],
+      "arena_image": "assets/backgrounds/hockey_rink.png",
+      "arena_base_width": 650,
+      "arena_base_height": 400,
+      "area_shape": "circle",
+      "area_morph_type": "none",
+      "area_movement_type": "none",
+      "area_movement_speed": 0,
+      "difficulty_modifier": 1.0,
+      "movement_speed": 280,
+      "rotation_speed": 6.0,
+      "max_speed": 500,
+      "accel_friction": 0.92,
+      "decel_friction": 0.88,
+      "bounce_damping": 0.6,
+      "lives": 5,
+      "victory_condition": "time",
+      "victory_limit": 45,
+      "obstacle_spawn_rate": 0.4,
+      "seeker_turn_rate": 25,
+      "disable_obstacle_fallback": true,
+      "enemy_sizes": {
+        "obstacle": [120, 160]
+      },
+      "enemy_speeds": {
+        "obstacle": [60, 90]
+      },
+      "enemy_movement_axis": {
+        "obstacle": "horizontal"
+      },
+      "enemies": [
+        {"type": "obstacle", "multiplier": 1.0},
+        {"type": "bouncer", "multiplier": 0.6},
+        {"type": "chaser", "multiplier": 0.4}
+      ],
+      "flavor_text": "Ice rink. You're a skater. Zambonis and hockey players don't care about you.",
+      "intro_cutscene": null
+    },
+    {
+      "clone_index": 4,
+      "name": "Giant Hunters",
+      "movement_type": "default",
+      "sprite_set": "dodge_base",
+      "palette": "red",
       "music_track": "dodge_theme_1",
       "sfx_pack": "retro_beeps",
       "background": "starfield",
       "difficulty_modifier": 1.0,
-      "rotation_speed": 8.0,
-      "jump_distance": 80,
-      "jump_cooldown": 0.5,
-      "jump_speed": 600,
-      "enemies": [],
-      "flavor_text": "Quick dashes - plan each move carefully!",
+      "movement_speed": 300,
+      "enemy_sizes": {
+        "chaser": [40, 60]
+      },
+      "enemy_speeds": {
+        "chaser": [80, 120]
+      },
+      "enemies": [
+        {"type": "chaser", "multiplier": 1.0}
+      ],
+      "flavor_text": "Massive slow chasers! Stay ahead of the giants",
       "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
+      "bg_star_color": [1.0, 0.6, 0.6]
     },
     {
-      "clone_index": 17,
-      "name": "Dodge Blink Warp",
+      "clone_index": 5,
+      "name": "FLUSH",
+      "movement_type": "default",
+      "sprite_set": "dodge_toilet",
+      "palette": "blue",
+      "music_track": "dodge_theme_1",
+      "sfx_pack": "retro_beeps",
+      "background": "image",
+      "bg_image": "assets/backgrounds/toilet_bowl.jpeg",
+      "bg_color": [0.08, 0.10, 0.14],
+      "difficulty_modifier": 1.0,
+      "movement_speed": 280,
+      "victory_condition": "time",
+      "victory_limit": 30,
+      "lives": 5,
+      "area_vertices": [
+        {"x": 0.7, "y": 0.0},
+        {"x": 0.686, "y": 0.203},
+        {"x": 0.642, "y": 0.396},
+        {"x": 0.572, "y": 0.571},
+        {"x": 0.476, "y": 0.716},
+        {"x": 0.359, "y": 0.826},
+        {"x": 0.227, "y": 0.897},
+        {"x": 0.085, "y": 0.924},
+        {"x": -0.085, "y": 0.924},
+        {"x": -0.227, "y": 0.897},
+        {"x": -0.359, "y": 0.826},
+        {"x": -0.476, "y": 0.716},
+        {"x": -0.572, "y": 0.571},
+        {"x": -0.642, "y": 0.396},
+        {"x": -0.686, "y": 0.203},
+        {"x": -0.7, "y": 0.0},
+        {"x": -0.686, "y": -0.203},
+        {"x": -0.642, "y": -0.396},
+        {"x": -0.572, "y": -0.571},
+        {"x": -0.476, "y": -0.716},
+        {"x": -0.359, "y": -0.826},
+        {"x": -0.227, "y": -0.897},
+        {"x": -0.085, "y": -0.924},
+        {"x": 0.085, "y": -0.924},
+        {"x": 0.227, "y": -0.897},
+        {"x": 0.359, "y": -0.826},
+        {"x": 0.476, "y": -0.716},
+        {"x": 0.572, "y": -0.571},
+        {"x": 0.642, "y": -0.396},
+        {"x": 0.686, "y": -0.203}
+      ],
+      "area_size": 1.6,
+      "initial_safe_radius_fraction": 0.48,
+      "area_morph_type": "pulsing",
+      "area_morph_speed": 1.5,
+      "area_movement_type": "none",
+      "area_gravity": 150,
+      "obstacle_spawn_rate": 1.0,
+      "camera_shake_intensity": 2,
+      "disable_obstacle_fallback": true,
+      "enemies": [
+        {"type": "bouncer", "multiplier": {"base": 25, "growth": 0.3}},
+        {"type": "obstacle", "multiplier": {"base": 30, "growth": 0.2}},
+        {"type": "chaser", "multiplier": {"base": 10, "growth": 0.25}}
+      ],
+      "flavor_text": "Rubber duck in a flushing toilet. Stay afloat.",
+      "intro_cutscene": null
+    },
+    {
+      "clone_index": 6,
+      "name": "Blink Warp",
       "movement_type": "jump",
       "sprite_set": "base_1",
       "palette": "purple",
@@ -517,461 +252,69 @@
       "enemies": [],
       "flavor_text": "Instant teleports - blink across the arena!",
       "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
+      "bg_star_color": [0.8, 0.6, 1.0]
     },
     {
-      "clone_index": 18,
-      "name": "Dodge Slide Master",
-      "movement_type": "jump",
-      "sprite_set": "base_1",
-      "palette": "cyan",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.1,
-      "rotation_speed": 7.0,
-      "jump_distance": 100,
-      "jump_cooldown": 0.6,
-      "jump_speed": 700,
-      "decel_friction": 0.96,
-      "bounce_damping": 0.4,
-      "enemies": [],
-      "flavor_text": "Dash and slide - control the drift!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 19,
-      "name": "Dodge Rocket Jump",
-      "movement_type": "jump",
-      "sprite_set": "base_1",
-      "palette": "orange",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "rotation_speed": 9.0,
-      "jump_distance": 120,
-      "jump_cooldown": 0.8,
-      "jump_speed": 500,
-      "enemies": [],
-      "flavor_text": "Long jumps, strategic planning required",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 20,
-      "name": "Dodge Phase Shift",
-      "movement_type": "jump",
-      "sprite_set": "base_1",
-      "palette": "purple",
+      "clone_index": 7,
+      "name": "DETENTION",
+      "movement_type": "horizontal_only",
+      "horizontal_y_fraction": 0.9,
+      "sprite_set": "dodge_school",
+      "palette": "green",
       "music_track": "dodge_theme_2",
-      "sfx_pack": "8bit_arcade",
-      "background": "starfield",
-      "difficulty_modifier": 1.2,
-      "rotation_speed": 8.0,
-      "jump_distance": 90,
-      "jump_cooldown": 0.4,
-      "jump_speed": 800,
-      "enemies": [
-        {
-          "type": "teleporter",
-          "multiplier": 1.5
-        }
-      ],
-      "flavor_text": "Teleporters vs your phase shifts!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 21,
-      "name": "Dodge Ice Dash",
-      "movement_type": "jump",
-      "sprite_set": "base_1",
-      "palette": "white",
-      "music_track": "dodge_theme_3",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.2,
-      "rotation_speed": 6.0,
-      "jump_distance": 85,
-      "jump_cooldown": 0.5,
-      "jump_speed": 650,
-      "decel_friction": 0.92,
-      "bounce_damping": 0.7,
-      "holes_type": "circle",
-      "holes_count": 5,
-      "enemies": [],
-      "flavor_text": "Icy slides between hazard holes!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 22,
-      "name": "Dodge One Strike",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "red",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
+      "background": "image",
+      "bg_image": "assets/backgrounds/classroom_floor.jpeg",
+      "bg_color": [0.15, 0.12, 0.08],
       "difficulty_modifier": 1.0,
-      "movement_speed": 280,
-      "leaving_area_ends_game": true,
-      "area_morph_type": "shrink",
-      "enemies": [],
-      "flavor_text": "Cross the line and it's over",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 23,
-      "name": "Dodge Chaos",
-      "movement_type": "default",
-      "use_velocity": true,
-      "use_bounce": true,
-      "sprite_set": "base_1",
-      "palette": "purple",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.5,
       "movement_speed": 320,
-      "accel_friction": 0.97,
-      "decel_friction": 0.95,
-      "bounce_damping": 0.5,
-      "enemies": [
-        {
-          "type": "chaser",
-          "multiplier": 2.0
-        },
-        {
-          "type": "shooter",
-          "multiplier": 1.0
-        },
-        {
-          "type": "bouncer",
-          "multiplier": 1.5
-        },
-        {
-          "type": "zigzag",
-          "multiplier": 1.2
-        }
-      ],
-      "flavor_text": "Absolute mayhem! All enemy types swarm you!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 24,
-      "name": "Dodge Hexagonal Havoc",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "green",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.1,
-      "movement_speed": 300,
-      "area_shape": "hex",
-      "holes_type": "circle",
-      "holes_count": 4,
-      "enemies": [
-        {
-          "type": "bouncer",
-          "multiplier": 1.0
-        }
-      ],
-      "flavor_text": "Six sides, four traps, bouncing enemies",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        1.0,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 25,
-      "name": "Dodge Minefield",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "red",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 290,
-      "holes_type": "background",
-      "holes_count": 10,
-      "area_movement_speed": 1.3,
-      "enemies": [],
-      "flavor_text": "Navigate the landmines!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 26,
-      "name": "Dodge Cardinal Drift",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "blue",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "area_movement_type": "cardinal",
-      "area_friction": 0.85,
-      "area_movement_speed": 1.5,
-      "enemies": [],
-      "flavor_text": "Drifting through the four winds",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 27,
-      "name": "Dodge Speed Demon",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "red",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 500,
-      "rotation_speed": 12.0,
-      "area_movement_speed": 2.5,
-      "area_morph_speed": 2.5,
-      "enemies": [],
-      "flavor_text": "Blink and you're dead",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 28,
-      "name": "Dodge Square Fortress",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "gray",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 280,
+      "victory_condition": "time",
+      "victory_limit": 40,
+      "lives": 3,
+      "hide_arena": true,
+      "spawn_edge": "top",
       "area_shape": "square",
-      "area_movement_type": "cardinal",
-      "area_friction": 1.0,
+      "area_morph_type": "none",
+      "area_movement_type": "none",
+      "obstacle_spawn_rate": 1.5,
+      "disable_obstacle_fallback": true,
+      "camera_shake_intensity": 4,
+      "enemy_sizes": {
+        "zigzag": [30, 48],
+        "obstacle": [24, 36],
+        "splitter": [42, 60],
+        "bouncer": [30, 42]
+      },
+      "enemy_speeds": {
+        "zigzag": [25, 45],
+        "obstacle": [280, 380],
+        "splitter": [90, 130],
+        "bouncer": [140, 200]
+      },
+      "enemy_wave_amps": {
+        "zigzag": 1200
+      },
+      "enemy_wave_speeds": {
+        "zigzag": [0.05, 0.05]
+      },
       "enemies": [
-        {
-          "type": "shooter",
-          "multiplier": 1.0
-        }
+        {"type": "obstacle", "multiplier": {"base": 40, "growth": 0.2}},
+        {"type": "zigzag", "multiplier": {"base": 25, "growth": 0.15}},
+        {"type": "splitter", "multiplier": {"base": 10, "growth": 0.3}},
+        {"type": "bouncer", "multiplier": {"base": 10, "growth": 0.25}}
       ],
-      "flavor_text": "Think in right angles under fire",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
+      "formation_column_width": 150,
+      "formation_snap_interval": 6,
+      "formation_warn_duration": 0,
+      "formation_min_safe": 1,
+      "formation_escalation_time": 40,
+      "formation_attack_type": "falling",
+      "flavor_text": "Classroom. Mr. Henderson left. Things are falling from the ceiling.",
+      "intro_cutscene": null
     },
     {
-      "clone_index": 29,
-      "name": "Dodge Wobble Zone",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "purple",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "area_morph_type": "deformation",
-      "area_morph_speed": 1.5,
-      "enemies": [],
-      "flavor_text": "The walls are... breathing?",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 30,
-      "name": "Dodge Rapid Pulse",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "red",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 310,
-      "area_morph_type": "pulsing",
-      "area_morph_speed": 3.0,
-      "area_size": 0.8,
-      "enemies": [],
-      "flavor_text": "Can you match this tempo?",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 31,
-      "name": "Dodge Gauntlet Run",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "orange",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.2,
-      "movement_speed": 300,
-      "holes_type": "circle",
-      "holes_count": 6,
-      "leaving_area_ends_game": true,
-      "area_morph_type": "pulsing",
-      "enemies": [
-        {
-          "type": "zigzag",
-          "multiplier": 1.0
-        }
-      ],
-      "flavor_text": "For masters only - one mistake ends it",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 32,
-      "name": "Dodge Precision Test",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "green",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 260,
-      "area_size": 0.4,
-      "holes_type": "circle",
-      "holes_count": 3,
-      "leaving_area_ends_game": true,
-      "enemies": [],
-      "flavor_text": "Perfection required",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        1.0,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 33,
-      "name": "Dodge Mega Arena",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "blue",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 350,
-      "area_size": 2.0,
-      "holes_type": "background",
-      "holes_count": 12,
-      "enemies": [],
-      "flavor_text": "Size won't save you from the mines",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 34,
-      "name": "Dodge Elite Squadron",
-      "movement_type": "asteroids",
-      "sprite_set": "base_2",
-      "palette": "gold",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "8bit_arcade",
-      "background": "starfield",
-      "difficulty_modifier": 1.8,
-      "rotation_speed": 7.0,
-      "movement_speed": 680,
-      "decel_friction": 0.96,
-      "bounce_damping": 0.6,
-      "reverse_mode": "thrust",
-      "enemies": [
-        {
-          "type": "teleporter",
-          "multiplier": 2.0
-        },
-        {
-          "type": "shooter",
-          "multiplier": 1.5
-        }
-      ],
-      "flavor_text": "They teleport AND shoot! Only the elite survive.",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 35,
-      "name": "Dodge Fog Runner",
+      "clone_index": 8,
+      "name": "Fog Runner",
       "movement_type": "default",
       "sprite_set": "base_1",
       "palette": "cyan",
@@ -989,89 +332,64 @@
       "enemies": [],
       "flavor_text": "Limited visibility! Survive 45 seconds in the fog",
       "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
+      "bg_star_color": [0.6, 0.8, 1.0]
     },
     {
-      "clone_index": 36,
-      "name": "Dodge Shield Tank",
+      "clone_index": 9,
+      "name": "30 SECONDS",
       "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "gray",
+      "sprite_set": "dodge_microwave",
+      "palette": "yellow",
       "music_track": "dodge_theme_2",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 250,
-      "lives": 3,
-      "shield": 2,
-      "shield_recharge_time": 12,
-      "player_size": 1.5,
-      "obstacle_spawn_rate": 1.3,
-      "enemies": [],
-      "flavor_text": "Big target, regenerating shields! Tank through the chaos",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 37,
-      "name": "Dodge Wind Dancer",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "white",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
+      "background": "image",
+      "bg_image": "assets/backgrounds/dirty_microwave.jpeg",
+      "bg_color": [0.12, 0.10, 0.04],
       "difficulty_modifier": 1.0,
       "movement_speed": 300,
-      "wind_strength": 180,
-      "wind_type": "changing_turbulent",
-      "camera_shake_intensity": 0.4,
-      "player_trail_length": 20,
-      "enemies": [],
-      "flavor_text": "Ride the turbulent winds! Speed bonus activated",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
+      "victory_condition": "time",
+      "victory_limit": 30,
+      "lives": 5,
+      "area_shape": "circle",
+      "area_center": [0.5, 0.85],
+      "area_size": 1.25,
+      "area_vertices": [
+        {"x": 1.000, "y": 0.000},
+        {"x": 0.924, "y": 0.171},
+        {"x": 0.707, "y": 0.318},
+        {"x": 0.383, "y": 0.416},
+        {"x": 0.000, "y": 0.450},
+        {"x": -0.383, "y": 0.416},
+        {"x": -0.707, "y": 0.318},
+        {"x": -0.924, "y": 0.171},
+        {"x": -1.000, "y": 0.000},
+        {"x": -0.924, "y": -0.171},
+        {"x": -0.707, "y": -0.318},
+        {"x": -0.383, "y": -0.416},
+        {"x": 0.000, "y": -0.450},
+        {"x": 0.383, "y": -0.416},
+        {"x": 0.707, "y": -0.318},
+        {"x": 0.924, "y": -0.171}
+      ],
+      "area_morph_type": "none",
+      "area_movement_type": "none",
+      "obstacle_spawn_rate": 1.0,
+      "camera_shake_intensity": 2,
+      "disable_obstacle_fallback": true,
+      "static_enemies": [
+        {"type": "shooter", "size": 55, "spin": 0}
+      ],
+      "enemies": [
+        {"type": "teleporter", "multiplier": {"base": 25, "growth": 0.3}},
+        {"type": "obstacle", "multiplier": {"base": 20, "growth": 0.2}},
+        {"type": "bouncer", "multiplier": {"base": 15, "growth": 0.25}}
+      ],
+      "flavor_text": "Microwave. Fork is sparking. Don't get zapped.",
+      "intro_cutscene": null
     },
     {
-      "clone_index": 38,
-      "name": "Dodge Bullet Hell Nano",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "red",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "8bit_arcade",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 320,
-      "obstacle_spawn_rate": 2.5,
-      "lives": 1,
-      "player_size": 0.6,
-      "fog_of_war_radius": 150,
-      "obstacle_trails": 8,
-      "enemies": [],
-      "flavor_text": "Tiny hitbox, one life, chaos everywhere. Good luck.",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 39,
-      "name": "Dodge Gravity Well",
+      "clone_index": 10,
+      "name": "Gravity Well",
       "movement_type": "default",
       "sprite_set": "base_1",
       "palette": "purple",
@@ -1089,65 +407,117 @@
       "enemies": [],
       "flavor_text": "Pulled to the center, obstacles hunt you down",
       "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
+      "bg_star_color": [0.8, 0.6, 1.0]
     },
     {
-      "clone_index": 40,
-      "name": "Dodge Wave Assault",
+      "clone_index": 11,
+      "name": "LEVEL 0",
       "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "blue",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "obstacle_spawn_pattern": "waves",
-      "lives": 12,
-      "victory_condition": "time",
-      "victory_limit": 60,
-      "obstacle_speed_variance": 0.5,
-      "enemies": [],
-      "flavor_text": "Enemy waves crash over you! Survive 60 seconds",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 41,
-      "name": "Dodge Cluster Bomb",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "orange",
+      "sprite_set": "dodge_backrooms",
+      "palette": "yellow",
       "music_track": "dodge_theme_2",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
+      "background": "image",
+      "bg_image": "assets/backgrounds/backrooms.jpeg",
+      "bg_color": [0.12, 0.10, 0.06],
       "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "obstacle_spawn_pattern": "clusters",
-      "obstacle_size_variance": 0.7,
-      "lives": 6,
-      "camera_shake_intensity": 0.5,
-      "obstacle_trails": 5,
-      "enemies": [],
-      "flavor_text": "Groups of varied-size obstacles explode everywhere",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
+      "movement_speed": 240,
+      "victory_condition": "dodge_count",
+      "victory_limit": 30,
+      "lives": 5,
+      "area_shape": "square",
+      "area_size": 1.5,
+      "area_morph_type": "none",
+      "area_movement_type": "none",
+      "hide_arena": true,
+      "fog_of_war_origin": "player",
+      "fog_of_war_radius": 80,
+      "obstacle_spawn_rate": 0.7,
+      "disable_obstacle_fallback": true,
+      "camera_shake_intensity": 2,
+      "static_enemies": [
+        {"type": "obstacle", "size": 20, "spin": 0},
+        {"type": "obstacle", "size": 25, "spin": 0},
+        {"type": "obstacle", "size": 18, "spin": 0}
+      ],
+      "enemy_sizes": {
+        "chaser": [20, 35],
+        "teleporter": [18, 25],
+        "obstacle": [15, 25]
+      },
+      "enemy_speeds": {
+        "chaser": [40, 70],
+        "teleporter": [60, 100],
+        "obstacle": [120, 180]
+      },
+      "enemies": [
+        {"type": "chaser", "multiplier": {"base": 30, "growth": 0.3}},
+        {"type": "teleporter", "multiplier": {"base": 15, "growth": 0.2}},
+        {"type": "obstacle", "multiplier": {"base": 20, "growth": 0.15}}
+      ],
+      "flavor_text": "The Backrooms. The carpet is damp. Something is here.",
+      "intro_cutscene": null
     },
     {
-      "clone_index": 42,
-      "name": "Dodge Spiral Descent",
+      "clone_index": 12,
+      "name": "One Strike",
+      "movement_type": "default",
+      "sprite_set": "base_1",
+      "palette": "red",
+      "music_track": "dodge_theme_3",
+      "sfx_pack": "retro_beeps",
+      "background": "starfield",
+      "difficulty_modifier": 1.0,
+      "movement_speed": 280,
+      "leaving_area_ends_game": true,
+      "area_morph_type": "shrink",
+      "enemies": [],
+      "flavor_text": "Cross the line and it's over",
+      "intro_cutscene": null,
+      "bg_star_color": [1.0, 0.6, 0.6]
+    },
+    {
+      "clone_index": 13,
+      "name": "WILL IT BLEND?",
+      "movement_type": "default",
+      "sprite_set": "dodge_blender",
+      "palette": "red",
+      "music_track": "dodge_theme_3",
+      "sfx_pack": "retro_beeps",
+      "background": "image",
+      "bg_image": "assets/backgrounds/blender_smoothie.jpeg",
+      "bg_color": [0.15, 0.05, 0.08],
+      "difficulty_modifier": 1.0,
+      "movement_speed": 300,
+      "victory_condition": "time",
+      "victory_limit": 35,
+      "lives": 5,
+      "area_shape": "circle",
+      "area_morph_type": "pulsing",
+      "area_morph_speed": 1.5,
+      "area_movement_type": "none",
+      "area_gravity": 200,
+      "area_gravity_pulse": true,
+      "area_gravity_pulse_speed": 0.3,
+      "obstacle_spawn_pattern": "spiral",
+      "obstacle_spawn_rate": 1.2,
+      "camera_shake_intensity": 3,
+      "disable_obstacle_fallback": true,
+      "static_enemies": [
+        {"type": "obstacle", "size": 30, "spin": 360},
+        {"type": "obstacle", "size": 25, "spin": -270},
+        {"type": "obstacle", "size": 35, "spin": 450}
+      ],
+      "enemies": [
+        {"type": "splitter", "multiplier": {"base": 30, "growth": 0.2}},
+        {"type": "bouncer", "multiplier": {"base": 20, "growth": 0.3}}
+      ],
+      "flavor_text": "You're in a blender. Blades orbit the center. Everything spirals inward.",
+      "intro_cutscene": null
+    },
+    {
+      "clone_index": 14,
+      "name": "Spiral Descent",
       "movement_type": "default",
       "sprite_set": "base_1",
       "palette": "purple",
@@ -1164,221 +534,31 @@
       "enemies": [],
       "flavor_text": "Spiraling obstacles, outward gravity, limited vision",
       "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
+      "bg_star_color": [0.8, 0.6, 1.0]
     },
     {
-      "clone_index": 43,
-      "name": "Dodge Arena Pulse",
+      "clone_index": 15,
+      "name": "Escalation",
       "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "cyan",
+      "sprite_set": "dodge_base",
+      "palette": "default",
       "music_track": "dodge_theme_1",
       "sfx_pack": "retro_beeps",
       "background": "starfield",
       "difficulty_modifier": 1.0,
       "movement_speed": 300,
-      "obstacle_spawn_pattern": "pulse_with_arena",
-      "area_morph_type": "pulsing",
-      "lives": 10,
-      "victory_limit": 50,
-      "enemies": [],
-      "flavor_text": "Obstacles pulse from the arena! Stay centered for bonus",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
+      "disable_obstacle_fallback": true,
+      "enemies": [
+        {"type": "obstacle", "multiplier": {"base": 50, "growth": 0}},
+        {"type": "chaser", "multiplier": {"base": 5, "growth": 0.3}},
+        {"type": "shooter", "multiplier": {"base": 0, "growth": 0.3}}
+      ],
+      "flavor_text": "Starts easy. Gets worse. Shooters appear around 15 seconds.",
+      "intro_cutscene": null
     },
     {
-      "clone_index": 44,
-      "name": "Dodge Edge Lord",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "red",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "lives": 15,
-      "player_size": 0.8,
-      "camera_shake_intensity": 0.2,
-      "fog_of_war_origin": "circle_center",
-      "fog_of_war_radius": 180,
-      "enemies": [],
-      "flavor_text": "Risk-takers rewarded! Play near the edge for score bonus",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 45,
-      "name": "Dodge Homing Nightmare",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "red",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "8bit_arcade",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 320,
-      "obstacle_tracking": 0.9,
-      "obstacle_speed_variance": 0.6,
-      "lives": 5,
-      "shield": 3,
-      "shield_recharge_time": 8,
-      "camera_shake_intensity": 0.6,
-      "enemies": [],
-      "flavor_text": "Everything hunts you. Triple shields won't be enough.",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 46,
-      "name": "Dodge Speed Trial",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "yellow",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "victory_condition": "time",
-      "victory_limit": 30,
-      "max_speed": 900,
-      "player_trail_length": 25,
-      "wind_type": "changing_steady",
-      "wind_strength": 100,
-      "lives": 10,
-      "enemies": [],
-      "flavor_text": "30-second sprint! Speed boost + wind assist",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 47,
-      "name": "Dodge Chaotic Void",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "purple",
-      "music_track": "dodge_theme_3",
-      "sfx_pack": "8bit_arcade",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "wind_type": "turbulent",
-      "wind_strength": 200,
-      "obstacle_speed_variance": 0.9,
-      "obstacle_size_variance": 0.8,
-      "obstacle_tracking": 0.4,
-      "lives": 8,
-      "camera_shake_intensity": 0.7,
-      "enemies": [],
-      "flavor_text": "Pure chaos. Everything is random. Everything is deadly.",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 48,
-      "name": "Dodge Trail Blazer",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "orange",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "obstacle_trails": 15,
-      "player_trail_length": 30,
-      "lives": 6,
-      "fog_of_war_origin": "player",
-      "fog_of_war_radius": 140,
-      "player_size": 0.7,
-      "enemies": [],
-      "flavor_text": "Trails everywhere! Navigate the afterimages",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 49,
-      "name": "Dodge Fortress Defense",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "gray",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 280,
-      "lives": 20,
-      "shield": 5,
-      "shield_recharge_time": 10,
-      "obstacle_spawn_rate": 1.8,
-      "victory_condition": "dodge_count",
-      "victory_limit": 100,
-      "enemies": [],
-      "flavor_text": "You're a fortress. Survive 100 dodges with mega shields",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 50,
-      "name": "Dodge Anti-Gravity Surge",
-      "movement_type": "default",
-      "sprite_set": "base_1",
-      "palette": "purple",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "area_gravity": -300,
-      "wind_direction": "random",
-      "wind_strength": 150,
-      "lives": 10,
-      "player_size": 1.2,
-      "camera_shake_intensity": 0.4,
-      "enemies": [],
-      "flavor_text": "Gravity repels you! Wind pushes randomly! Fight the chaos",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 51,
-      "name": "Dodge Perfect Storm",
+      "clone_index": 16,
+      "name": "Perfect Storm",
       "movement_type": "default",
       "sprite_set": "base_1",
       "palette": "red",
@@ -1398,439 +578,129 @@
       "enemies": [],
       "flavor_text": "The ultimate test. Waves, wind, tracking, minimal survival",
       "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
+      "bg_star_color": [1.0, 0.6, 0.6]
     },
     {
-      "clone_index": 52,
-      "name": "Dodge Giant Hunters",
+      "clone_index": 17,
+      "name": "NASAL PASSAGE",
       "movement_type": "default",
-      "sprite_set": "dodge_base",
+      "sprite_set": "dodge_nostril",
       "palette": "red",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "enemy_sizes": {
-        "chaser": [
-          40,
-          60
-        ]
-      },
-      "enemy_speeds": {
-        "chaser": [
-          80,
-          120
-        ]
-      },
-      "enemies": [
-        {
-          "type": "chaser",
-          "multiplier": 1.0
-        }
-      ],
-      "flavor_text": "Massive slow chasers! Stay ahead of the giants",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 53,
-      "name": "Dodge Size Chaos",
-      "movement_type": "default",
-      "sprite_set": "dodge_base",
-      "palette": "purple",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.2,
-      "movement_speed": 300,
-      "size_range": [
-        5,
-        40
-      ],
-      "enemies": [
-        {
-          "type": "bouncer",
-          "multiplier": 1.0
-        },
-        {
-          "type": "zigzag",
-          "multiplier": 1.0
-        }
-      ],
-      "flavor_text": "Enemies range from tiny to huge! Unpredictable chaos",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 54,
-      "name": "Dodge Speed Roulette",
-      "movement_type": "default",
-      "sprite_set": "dodge_base",
-      "palette": "yellow",
       "music_track": "dodge_theme_3",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.1,
-      "movement_speed": 300,
-      "speed_range": [
-        50,
-        400
-      ],
-      "enemies": [
+      "background": "image",
+      "bg_image": "assets/backgrounds/flesh_tunnel.jpeg",
+      "bg_color": [0.18, 0.06, 0.06],
+      "arena_image": "assets/backgrounds/flesh_tunnel_mask.png",
+      "arena_image_invert": true,
+      "arena_base_width": 650,
+      "arena_base_height": 400,
+      "difficulty_modifier": 1.0,
+      "movement_speed": 280,
+      "victory_condition": "time",
+      "victory_limit": 40,
+      "lives": 5,
+      "area_shape": "circle",
+      "area_morph_type": "none",
+      "area_movement_type": "none",
+      "hide_arena": true,
+      "area_gravity": 0,
+      "area_gravity_origin": [0.6, 0.4],
+      "disable_obstacle_fallback": true,
+      "obstacle_spawn_rate": 1.0,
+      "camera_shake_intensity": 3,
+      "phase_cycle": {
+        "loop": true,
+        "phases": [
+          {"duration": 3, "area_gravity": 150},
+          {"duration": 1, "area_gravity": 0},
+          {"duration": 3, "area_gravity": -150},
+          {"duration": 1, "area_gravity": 0}
+        ]
+      },
+      "timed_events": [
         {
-          "type": "shooter",
-          "multiplier": 1.0
-        },
-        {
-          "type": "chaser",
-          "multiplier": 0.8
+          "at": 20,
+          "duration": 1.5,
+          "area_gravity": 400,
+          "shake": 5,
+          "spawn_rate_mult": 5,
+          "burst": [{"type": "obstacle", "count": 25}]
         }
       ],
-      "flavor_text": "Wildly varying speeds! Some crawl, some lightning fast",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 55,
-      "name": "Dodge Micro Swarm",
-      "movement_type": "default",
-      "sprite_set": "dodge_base",
-      "palette": "cyan",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.3,
-      "movement_speed": 300,
-      "size_range": [
-        3,
-        8
-      ],
-      "speed_range": [
-        250,
-        350
-      ],
-      "obstacle_spawn_rate": 2.0,
       "enemies": [
-        {
-          "type": "zigzag",
-          "multiplier": 2.0
-        }
+        {"type": "obstacle", "multiplier": {"base": 30, "growth": 0.2}},
+        {"type": "chaser", "multiplier": {"base": 15, "growth": 0.3}},
+        {"type": "bouncer", "multiplier": {"base": 15, "growth": 0.2}},
+        {"type": "splitter", "multiplier": {"base": 10, "growth": 0.25}},
+        {"type": "lunger", "multiplier": {"base": 3, "growth": 0.4}}
       ],
-      "flavor_text": "Tiny fast enemies swarm everywhere!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
+      "flavor_text": "Dust mite in a nostril. The breathing cycle IS the game.",
+      "intro_cutscene": null
     },
     {
-      "clone_index": 56,
-      "name": "Dodge Spinning Madness",
+      "clone_index": 18,
+      "name": "Bullet Hell Nano",
       "movement_type": "default",
-      "sprite_set": "dodge_base",
-      "palette": "purple",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
+      "sprite_set": "base_1",
+      "palette": "red",
+      "music_track": "dodge_theme_3",
+      "sfx_pack": "8bit_arcade",
       "background": "starfield",
       "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "enemy_sprite_settings": {
-        "bouncer": {
-          "rotation": 360,
-          "direction": "movement_based"
-        },
-        "zigzag": {
-          "rotation": -180,
-          "direction": "movement_based"
-        },
-        "chaser": {
-          "rotation": 720,
-          "direction": "movement_based"
-        }
-      },
-      "enemies": [
-        {
-          "type": "bouncer",
-          "multiplier": 1.0
-        },
-        {
-          "type": "zigzag",
-          "multiplier": 1.0
-        },
-        {
-          "type": "chaser",
-          "multiplier": 0.5
-        }
-      ],
-      "flavor_text": "Everything spins! Bouncers fast, zigzags backward, chasers ultra-fast",
+      "movement_speed": 320,
+      "obstacle_spawn_rate": 2.5,
+      "lives": 1,
+      "player_size": 0.6,
+      "fog_of_war_radius": 150,
+      "obstacle_trails": 8,
+      "enemies": [],
+      "flavor_text": "Tiny hitbox, one life, chaos everywhere. Good luck.",
       "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
+      "bg_star_color": [1.0, 0.6, 0.6]
     },
     {
-      "clone_index": 57,
-      "name": "Dodge Locked Facings",
+      "clone_index": 19,
+      "name": "STORM CHASER",
       "movement_type": "default",
-      "sprite_set": "dodge_base",
+      "sprite_set": "dodge_tornado",
       "palette": "green",
       "music_track": "dodge_theme_3",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 0.9,
-      "movement_speed": 300,
-      "enemy_sprite_settings": {
-        "obstacle": {
-          "rotation": 0,
-          "direction": 0
-        },
-        "chaser": {
-          "rotation": 0,
-          "direction": 90
-        },
-        "shooter": {
-          "rotation": 0,
-          "direction": 180
-        },
-        "bouncer": {
-          "rotation": 0,
-          "direction": 270
-        }
-      },
-      "enemies": [
-        {
-          "type": "obstacle",
-          "multiplier": 1.0
-        },
-        {
-          "type": "chaser",
-          "multiplier": 0.8
-        },
-        {
-          "type": "shooter",
-          "multiplier": 0.5
-        },
-        {
-          "type": "bouncer",
-          "multiplier": 0.8
-        }
-      ],
-      "flavor_text": "Sprites never rotate! Each type locked to different cardinal direction",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 58,
-      "name": "Dodge Dizzy Spin",
-      "movement_type": "default",
-      "sprite_set": "dodge_base",
-      "palette": "yellow",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.2,
-      "movement_speed": 300,
-      "enemy_sprite_settings": {
-        "teleporter": {
-          "rotation": 540,
-          "direction": 45
-        },
-        "zigzag": {
-          "rotation": -360,
-          "direction": 135
-        }
-      },
-      "enemies": [
-        {
-          "type": "teleporter",
-          "multiplier": 1.0
-        },
-        {
-          "type": "zigzag",
-          "multiplier": 1.5
-        }
-      ],
-      "flavor_text": "Teleporters spin 1.5x/sec facing NE, zigzags spin -1x/sec facing SE",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 59,
-      "name": "Dodge Shooter Carousel",
-      "movement_type": "default",
-      "sprite_set": "dodge_base",
-      "palette": "red",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.1,
-      "movement_speed": 300,
-      "shooter": {
-        "shoot_interval": 1.5,
-        "projectile_size": 0.4,
-        "projectile_speed": 1.0
-      },
-      "enemy_sprite_settings": {
-        "shooter": {
-          "rotation": 180,
-          "direction": "movement_based"
-        }
-      },
-      "enemies": [
-        {
-          "type": "shooter",
-          "multiplier": 2.0
-        }
-      ],
-      "flavor_text": "Shooters spin while tracking you and firing rapidly",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.8,
-        0.6,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 60,
-      "name": "Dodge Asteroid Field",
-      "movement_type": "default",
-      "sprite_set": "dodge_base",
-      "palette": "gray",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
+      "background": "image",
+      "bg_image": "assets/backgrounds/tornado_cornfield.jpeg",
+      "bg_color": [0.06, 0.08, 0.04],
       "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "enemies": [
-        {
-          "type": "splitter",
-          "multiplier": 2.0
-        }
-      ],
-      "flavor_text": "Asteroids split into dangerous shards at the safe zone!",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        0.6,
-        0.8,
-        1.0
-      ]
-    },
-    {
-      "clone_index": 61,
-      "name": "Dodge Shrapnel Storm",
-      "movement_type": "default",
-      "sprite_set": "dodge_base",
-      "palette": "red",
-      "music_track": "dodge_theme_2",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.3,
-      "movement_speed": 300,
+      "movement_speed": 320,
+      "victory_condition": "time",
+      "victory_limit": 40,
+      "lives": 1,
+      "area_shape": "circle",
+      "area_size": 0.8,
+      "area_morph_type": "none",
+      "area_movement_type": "none",
+      "leaving_area_ends_game": true,
+      "wind_type": "changing_turbulent",
+      "wind_strength": 150,
+      "camera_shake_intensity": 4,
+      "obstacle_spawn_rate": 0.8,
       "disable_obstacle_fallback": true,
+      "enemy_speeds": {
+        "zigzag": [80, 120]
+      },
+      "enemy_wave_amps": {
+        "zigzag": 300
+      },
+      "enemy_wave_speeds": {
+        "zigzag": [0.8, 0.4]
+      },
       "enemies": [
-        {
-          "type": "splitter",
-          "multiplier": 1.0
-        },
-        {
-          "type": "chaser",
-          "multiplier": 1.0
-        }
+        {"type": "obstacle", "multiplier": {"base": 30, "growth": 0.2}},
+        {"type": "bouncer", "multiplier": {"base": 20, "growth": 0.25}},
+        {"type": "chaser", "multiplier": {"base": 10, "growth": 0.3}},
+        {"type": "zigzag", "multiplier": {"base": 15, "growth": 0.2}}
       ],
-      "flavor_text": "Splitters rain shards while chasers hunt you down",
-      "intro_cutscene": null,
-      "bg_star_color": [
-        1.0,
-        0.6,
-        0.6
-      ]
-    },
-    {
-      "clone_index": 63,
-      "name": "Dog's Mouth",
-      "movement_type": "default",
-      "sprite_set": "dodge_dog_mouth",
-      "palette": "red",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.1,
-      "movement_speed": 300,
-      "lunge_advance_duration": 0.6,
-      "lunge_hold_duration": 0.2,
-      "lunge_return_duration": 1.0,
-      "enemies": [
-        {"type": "lunger", "multiplier": 2.0},
-        {"type": "obstacle", "multiplier": 0.5}
-      ],
-      "flavor_text": "Teeth lunge from the edges! Don't get bitten!",
-      "intro_cutscene": null,
-      "bg_star_color": [1.0, 0.4, 0.4]
-    },
-    {
-      "clone_index": 62,
-      "name": "Dodge Escalation",
-      "movement_type": "default",
-      "sprite_set": "dodge_base",
-      "palette": "default",
-      "music_track": "dodge_theme_1",
-      "sfx_pack": "retro_beeps",
-      "background": "starfield",
-      "difficulty_modifier": 1.0,
-      "movement_speed": 300,
-      "disable_obstacle_fallback": true,
-      "enemies": [
-        {
-          "type": "obstacle",
-          "multiplier": {
-            "base": 50,
-            "growth": 0
-          }
-        },
-        {
-          "type": "chaser",
-          "multiplier": {
-            "base": 5,
-            "growth": 0.3
-          }
-        },
-        {
-          "type": "shooter",
-          "multiplier": {
-            "base": 0,
-            "growth": 0.3
-          }
-        }
-      ],
-      "flavor_text": "Starts easy. Gets worse. Shooters appear around 15 seconds.",
+      "flavor_text": "Tornado. Stay in the eye. Everything else is in the air.",
       "intro_cutscene": null
     }
   ]

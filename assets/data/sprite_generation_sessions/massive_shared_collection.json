@@ -1,0 +1,1076 @@
+{
+  "session_name": "massive_shared_collection",
+  "description": "A comprehensive collection of sprites across 64 diverse themes with high-quality descriptive prompts and consistent rightward orientation.",
+  "sprite_type": "pixflux",
+  "sprite_groups": [
+    {
+      "name": "space",
+      "output_folder": "assets/sprites/shared/space",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "player_ship", "prompt": "sleek silver sci-fi fighter ship pointing right, glowing blue ion engines, dual laser cannons on wings, metallic sheen"},
+        {"id": "asteroid_small", "prompt": "irregular jagged grey rock fragment, cratered surface, floating in void, subtle rim lighting"},
+        {"id": "asteroid_large", "prompt": "massive tumbling brown space rock, deep craters, sparkling mineral veins, heavy shadow side"},
+        {"id": "comet", "prompt": "icy blue celestial body pointing right, glowing white core, long ethereal trailing vapor tail with light sparkles"},
+        {"id": "satellite", "prompt": "metallic orbital probe pointing right, gold foil insulation, dual solar panels extended, blinking red LED light"},
+        {"id": "space_debris", "prompt": "twisted chunk of burnt metal hull, sparking wires, jagged edges, rusted space junk"},
+        {"id": "alien_probe", "prompt": "organic-looking obsidian sphere pointing right, pulsing violet energy core, thin mechanical tripod legs"},
+        {"id": "star_fragment", "prompt": "shimmering yellow crystalline shard, intense internal glow, sparking light particles, celestial magic"}
+      ]
+    },
+    {
+      "name": "school",
+      "output_folder": "assets/sprites/shared/school",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "student", "prompt": "young student facing right in a bright yellow backpack, holding a blue folder, determined expression, school uniform"},
+        {"id": "pencil", "prompt": "classic yellow No. 2 pencil pointing right, sharp graphite tip, pink rubber eraser with silver band, slightly worn"},
+        {"id": "eraser", "prompt": "rectangular pink rubber eraser, slightly rounded edges from use, graphite smudge marks"},
+        {"id": "crumpled_paper", "prompt": "tightly balled up sheet of white lined notebook paper, messy folds and deep shadows"},
+        {"id": "ruler", "prompt": "transparent plastic 12-inch ruler horizontal, black measurement markings, slight blue tint, reflective surface"},
+        {"id": "glue_stick", "prompt": "purple glue stick tube pointing right, white twist cap, orange label, sticky clear residue at the tip"},
+        {"id": "paper_airplane", "prompt": "folded white paper glider airplane pointing right, sharp nose, wings tilted slightly upward, clean folds"},
+        {"id": "textbook", "prompt": "thick hardcover blue textbook, 'MATH' written on spine, worn corners, protruding bookmarks"},
+        {"id": "chalk", "prompt": "snapped piece of white sidewalk chalk, dusty texture, powdery trail, cylindrical shape"}
+      ]
+    },
+    {
+      "name": "ice_rink",
+      "output_folder": "assets/sprites/shared/ice_rink",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "skater", "prompt": "figure skater facing right in sparkling blue outfit, white skates, graceful pose, spinning movement blur"},
+        {"id": "hockey_player", "prompt": "hockey player facing right in red jersey and pads, black helmet, holding a stick, aggressive stance"},
+        {"id": "puck", "prompt": "flat black rubber hockey puck, frozen texture, white logo on top, slight scuff marks"},
+        {"id": "zamboni", "prompt": "boxy red ice resurfacer machine facing right, large tires, driver in a winter hat, steaming water at the back"},
+        {"id": "ice_chunk", "prompt": "shattered fragment of translucent blue ice, jagged sharp edges, glistening reflection"},
+        {"id": "hockey_stick", "prompt": "wooden hockey stick pointing right, black tape on the blade, curved end, grain texture"},
+        {"id": "cone", "prompt": "bright orange plastic training cone, square base, stackable shape, slightly scuffed"}
+      ]
+    },
+    {
+      "name": "computer_inside",
+      "output_folder": "assets/sprites/shared/computer_inside",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "cursor", "prompt": "glowing white digital arrow cursor pointing right, blue trail, 8-bit aesthetic, sharp edges"},
+        {"id": "capacitor", "prompt": "cylindrical electronic capacitor, blue casing, two silver pins, '100uF' printed on side"},
+        {"id": "spark", "prompt": "bright blue electrical spark, jagged light trails, white center core, energy burst"},
+        {"id": "loose_screw", "prompt": "tiny silver Phillips head screw, metallic shine, thread detail, lying flat"},
+        {"id": "resistor", "prompt": "small beige resistor component horizontal, colorful stripes (brown, black, red, gold), thin wire leads"},
+        {"id": "solder_blob", "prompt": "shiny silver glob of molten solder, rounded shape, metallic reflection, cooling texture"},
+        {"id": "dust_bunny", "prompt": "grey fluffy ball of computer dust, tangled fibers, linty texture, soft edges"},
+        {"id": "static_charge", "prompt": "crackling ball of yellow static electricity, buzzing lines, translucent glow"},
+        {"id": "ram_stick", "prompt": "green circuit board RAM stick horizontal, black memory chips, gold contact pins, technical detail"}
+      ]
+    },
+    {
+      "name": "ocean",
+      "output_folder": "assets/sprites/shared/ocean",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "fish", "prompt": "bright orange clownfish facing right, white stripes with black outlines, swimming motion, glossy scales"},
+        {"id": "jellyfish", "prompt": "translucent pink jellyfish, long flowing stinging tentacles, glowing bell-shaped body"},
+        {"id": "shark_fin", "prompt": "triangular grey shark fin facing right cutting through blue water, white spray, menacing trail"},
+        {"id": "sea_urchin", "prompt": "dark purple ball with long sharp black spines, textured surface, sitting on sand"},
+        {"id": "fishing_hook", "prompt": "silver metal fishing hook pointing right, sharp barb, tied to a thin translucent line, shiny finish"},
+        {"id": "anchor", "prompt": "heavy rusted iron anchor, thick chain attached, barnacles on the surface"},
+        {"id": "bubble_cluster", "prompt": "cluster of shimmering translucent bubbles of varying sizes, rising in blue water"},
+        {"id": "seaweed_clump", "prompt": "wavy dark green seaweed leaves, slimy texture, floating underwater, organic shape"}
+      ]
+    },
+    {
+      "name": "highway",
+      "output_folder": "assets/sprites/shared/highway",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "motorcycle", "prompt": "sporty black motorcycle facing right, red trim, rider in leather jacket and helmet, speeding blur"},
+        {"id": "car_red", "prompt": "shiny red sedan facing right, black tinted windows, glowing headlights, metallic finish"},
+        {"id": "car_blue", "prompt": "modern blue hatchback car facing right, silver rims, aerodynamic shape, glossy paint"},
+        {"id": "truck", "prompt": "large white semi-truck facing right, chrome grill, multi-wheel trailer, exhaust pipe detail"},
+        {"id": "pothole", "prompt": "dark irregular crack in grey asphalt, crumbling edges, shallow puddle inside"},
+        {"id": "tire", "prompt": "thick black rubber tire, deep tread pattern, silver rim in the center, discarded roadside"},
+        {"id": "traffic_cone", "prompt": "bright orange traffic cone, white reflective stripe, heavy black rubber base"},
+        {"id": "oil_slick", "prompt": "shimmering rainbow-colored oil puddle on wet grey pavement, swirling patterns"}
+      ]
+    },
+    {
+      "name": "kitchen",
+      "output_folder": "assets/sprites/shared/kitchen",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "mouse", "prompt": "small brown mouse facing right, pink nose and tail, twitching whiskers, curious expression"},
+        {"id": "knife", "prompt": "sharp silver chef's knife pointing right, black handle, metallic glint on the blade edge"},
+        {"id": "fork", "prompt": "four-tined silver metal fork pointing right, polished finish, slender handle, reflective"},
+        {"id": "flying_pan", "prompt": "black cast iron frying pan pointing right, long handle, sizzling oil droplets, metal texture"},
+        {"id": "hot_pot", "prompt": "large red ceramic cooking pot, steam rising from under the lid, silver handles"},
+        {"id": "tomato", "prompt": "plump ripe red tomato, green stem, shiny skin, fresh garden vegetable"},
+        {"id": "egg", "prompt": "white chicken egg, smooth matte shell, oval shape, sitting on counter"},
+        {"id": "rolling_pin", "prompt": "wooden rolling pin pointing right, smooth light grain, handles on both ends, dusted with flour"},
+        {"id": "flame_burst", "prompt": "bright orange and yellow gas stove flame burst, blue core, flickering heat"}
+      ]
+    },
+    {
+      "name": "picnic",
+      "output_folder": "assets/sprites/shared/picnic",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "ant", "prompt": "tiny black worker ant facing right, segmented body, long antennae, carrying a crumb"},
+        {"id": "shoe", "prompt": "dirty white canvas sneaker pointing right, blue laces, rubber toe cap, heavy shadow on grass"},
+        {"id": "falling_sandwich", "prompt": "triangular ham and cheese sandwich falling right, lettuce and tomato spilling out"},
+        {"id": "grape", "prompt": "single round purple grape, dusty skin, green stem fragment, juicy appearance"},
+        {"id": "soda_drop", "prompt": "large droplet of dark cola, fizzy bubbles inside, splashing on red checkered cloth"},
+        {"id": "fork_stab", "prompt": "plastic white fork pointing right stabbing into a piece of fruit, disposable picnic cutlery"},
+        {"id": "napkin", "prompt": "crumpled white paper napkin, red checkered pattern border, greasy stain"},
+        {"id": "watermelon_seed", "prompt": "small teardrop-shaped black watermelon seed pointing right, slippery texture, matte finish"}
+      ]
+    },
+    {
+      "name": "graveyard",
+      "output_folder": "assets/sprites/shared/graveyard",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "ghost_player", "prompt": "friendly translucent white ghost facing right, glowing blue eyes, ethereal trailing bottom, spooky"},
+        {"id": "tombstone", "prompt": "weathered grey stone grave marker, 'RIP' engraved, moss growing at the base"},
+        {"id": "skeleton_hand", "prompt": "bleached white skeletal hand pointing right reaching up from dark soil, bony fingers"},
+        {"id": "bat", "prompt": "small black bat facing right, leathery wings spread, glowing red eyes, flying silhouette"},
+        {"id": "crow", "prompt": "black crow facing right perched on a branch, sharp beak, iridescent feather sheen"},
+        {"id": "floating_skull", "prompt": "human skull facing right floating in mid-air, eerie green glow from eye sockets, jaw slightly open"},
+        {"id": "wisp", "prompt": "glowing blue orb of spirit energy pointing right, trailing magical particles, translucent"},
+        {"id": "dead_branch", "prompt": "twisted leafless black tree branch pointing right, jagged tips, gnarled wood texture"}
+      ]
+    },
+    {
+      "name": "construction",
+      "output_folder": "assets/sprites/shared/construction",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "hardhat_worker", "prompt": "construction worker facing right in bright yellow hardhat and orange vest, holding a blueprint"},
+        {"id": "falling_beam", "prompt": "heavy steel I-beam pointing right, rusty red color, falling diagonally with motion lines"},
+        {"id": "brick", "prompt": "rectangular red clay brick, rough porous texture, cement dust on surface"},
+        {"id": "wrench", "prompt": "heavy silver adjustable wrench pointing right, metallic shine, greased handle"},
+        {"id": "rivet", "prompt": "round-headed industrial steel rivet, weathered metal, circular shape"},
+        {"id": "cement_glob", "prompt": "wet grey glob of dripping cement, lumpy texture, splattering on floor"},
+        {"id": "crane_hook", "prompt": "massive yellow metal crane hook facing right, thick steel cable, heavy industrial tool"},
+        {"id": "barrel", "prompt": "orange plastic traffic barrel, white reflective stripes, weighted black base"}
+      ]
+    },
+    {
+      "name": "jungle",
+      "output_folder": "assets/sprites/shared/jungle",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "explorer", "prompt": "jungle explorer facing right in khaki outfit and pith helmet, holding a machete and lantern"},
+        {"id": "snake", "prompt": "coiled green viper snake facing right, yellow belly, flicking tongue, scaly texture"},
+        {"id": "coconut", "prompt": "brown hairy coconut shell, three dark holes at the top, cracked open slightly"},
+        {"id": "monkey", "prompt": "small brown monkey facing right swinging by its tail, playful expression, holding a banana"},
+        {"id": "parrot", "prompt": "brightly colored macaw parrot facing right, red, blue, and yellow feathers, sharp beak"},
+        {"id": "vine_swing", "prompt": "thick brown jungle vine pointing right hanging from above, lush green leaves attached"},
+        {"id": "spider", "prompt": "large black tarantula spider facing right, hairy legs, multiple glowing eyes, menacing"},
+        {"id": "dart", "prompt": "small wooden blowgun dart pointing right, colorful feather fletching, sharp poison tip"}
+      ]
+    },
+    {
+      "name": "disco",
+      "output_folder": "assets/sprites/shared/disco",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "dancer", "prompt": "disco dancer facing right in white bell-bottom suit, afro hair, one finger pointing up, groovy pose"},
+        {"id": "disco_ball_shard", "prompt": "broken fragment of a mirror disco ball, reflecting multi-colored light, sharp glass"},
+        {"id": "platform_shoe", "prompt": "shining silver platform shoe pointing right, high heel, 70s fashion, sparkly texture"},
+        {"id": "spinning_dancer", "prompt": "dancer spinning right rapidly, colorful motion blur, sequins reflecting light"},
+        {"id": "spotlight", "prompt": "bright cone of purple and pink light from a stage spotlight pointing right, dust motes visible"},
+        {"id": "vinyl_record", "prompt": "glossy black vinyl record, colorful center label, grooved surface, reflecting light"},
+        {"id": "speaker_blast", "prompt": "large black boombox speaker facing right, vibrating with visible sound wave lines, powerful bass"}
+      ]
+    },
+    {
+      "name": "medieval",
+      "output_folder": "assets/sprites/shared/medieval",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "peasant", "prompt": "medieval peasant facing right in brown tunic and hat, carrying a bundle of wheat, weary expression"},
+        {"id": "arrow", "prompt": "wooden arrow pointing right with white feather fletching and sharp iron tip, flying through air"},
+        {"id": "catapult_rock", "prompt": "large jagged grey boulder pointing right, flying through the air, smoke trail"},
+        {"id": "sword", "prompt": "shiny broadsword pointing right, ornate gold hilt, steel blade with a sharp edge"},
+        {"id": "shield", "prompt": "wooden heater shield facing right, blue and yellow coat of arms, metal rim, battle-worn"},
+        {"id": "flaming_arrow", "prompt": "arrow pointing right with a bundle of burning pitch at the tip, trailing fire and smoke"},
+        {"id": "lance", "prompt": "long wooden jousting lance pointing right, colorful spiral pattern, steel tip, hand guard"},
+        {"id": "cannonball", "prompt": "heavy black iron cannonball pointing right, rough cast texture, flying with great force"}
+      ]
+    },
+    {
+      "name": "bloodstream",
+      "output_folder": "assets/sprites/shared/bloodstream",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "virus", "prompt": "menacing purple virus cell with green protein spikes facing right, glowing core, microscopic"},
+        {"id": "white_blood_cell", "prompt": "large amorphous white blood cell facing right, lumpy texture, engulfing a small bacteria"},
+        {"id": "platelet", "prompt": "small irregular star-shaped platelet pointing right, sticky texture, bright pink color"},
+        {"id": "antibody", "prompt": "Y-shaped glowing blue antibody pointing right, light energy, floating in liquid plasma"},
+        {"id": "red_blood_cell", "prompt": "biconcave disc-shaped red blood cell horizontal, smooth deep red surface, flexible appearance"},
+        {"id": "bacteria", "prompt": "rod-shaped green bacteria facing right, multiple flagella tails, slimy microscopic texture"},
+        {"id": "cell_fragment", "prompt": "broken piece of a cellular membrane pointing right, irregular shape, translucent pink"}
+      ]
+    },
+    {
+      "name": "garden",
+      "output_folder": "assets/sprites/shared/garden",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "ladybug", "prompt": "small round red ladybug facing right, black spots, shiny shell, tiny legs visible"},
+        {"id": "bee", "prompt": "fuzzy yellow and black bumblebee facing right, translucent wings in motion, carrying pollen"},
+        {"id": "lawnmower_blade", "prompt": "spinning silver metal lawnmower blade horizontal, grass clippings flying, motion blur"},
+        {"id": "sprinkler_drop", "prompt": "large clear water droplet pointing right, reflecting sunlight, splashing on a green leaf"},
+        {"id": "garden_gnome", "prompt": "small ceramic garden gnome facing right with red pointy hat and white beard, holding a spade"},
+        {"id": "thorn", "prompt": "sharp brown rose thorn on a green stem pointing right, menacing spike, organic texture"},
+        {"id": "rock", "prompt": "smooth grey garden pebble, speckled texture, sitting in dark mulch"},
+        {"id": "worm", "prompt": "pink segmented earthworm facing right, slimy texture, wiggling through dark brown soil"}
+      ]
+    },
+    {
+      "name": "sewer",
+      "output_folder": "assets/sprites/shared/sewer",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "rat", "prompt": "scruffy grey sewer rat facing right, pink tail and ears, glowing red eyes, filthy fur"},
+        {"id": "sludge_drop", "prompt": "thick glob of neon green toxic sludge dripping right, with bubbles, viscous texture"},
+        {"id": "cockroach", "prompt": "shiny brown cockroach facing right, long twitching antennae, flat body, scurrying on concrete"},
+        {"id": "pipe_drip", "prompt": "rusty iron pipe end pointing right, single drop of murky water falling, industrial decay"},
+        {"id": "trash_float", "prompt": "crumpled soda can and plastic bag floating right in murky brown water, city waste"},
+        {"id": "toxic_bubble", "prompt": "large iridescent bubble pointing right rising from green slime, popping with a puff of gas"},
+        {"id": "grate_piece", "prompt": "heavy rusted metal sewer grate horizontal, vertical bars, dark abyss visible below"}
+      ]
+    },
+    {
+      "name": "tornado",
+      "output_folder": "assets/sprites/shared/tornado",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "storm_chaser", "prompt": "armored grey van facing right with weather sensors on roof, storm chaser logo, mud-splattered"},
+        {"id": "cow", "prompt": "black and white spotted cow facing right spinning in mid-air, surprised expression, hooves flailing"},
+        {"id": "car_door", "prompt": "red car door pointing right torn from its hinges, flying through the air, dented and scratched"},
+        {"id": "fence_post", "prompt": "wooden fence post pointing right with barbed wire attached, flying horizontally, splintered wood"},
+        {"id": "roof_shingle", "prompt": "black asphalt roof shingle pointing right, spinning rapidly, jagged edges, wind-swept"},
+        {"id": "mailbox", "prompt": "metal blue mailbox facing right on a wooden post, mail flying out, spinning in the wind"},
+        {"id": "tree_branch", "prompt": "large leafy oak tree branch pointing right, snapped at the base, flying with debris"},
+        {"id": "shopping_cart", "prompt": "metal wire shopping cart facing right, tumbling through the air, wheels spinning"}
+      ]
+    },
+    {
+      "name": "microscope",
+      "output_folder": "assets/sprites/shared/microscope",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "cell", "prompt": "animal cell facing right with visible nucleus and organelles, translucent pink cytoplasm, microscopic"},
+        {"id": "bacteria_rod", "prompt": "pill-shaped green bacteria cell pointing right, microscopic texture, glowing edges"},
+        {"id": "bacteria_sphere", "prompt": "perfectly round blue bacteria colony, bumpy surface, glowing core"},
+        {"id": "amoeba", "prompt": "shapeless blob-like amoeba facing right, reaching out with pseudopods, translucent grey"},
+        {"id": "paramecium", "prompt": "slipper-shaped paramecium facing right, tiny cilia hairs on edges, swimming motion"},
+        {"id": "virus_particle", "prompt": "geometric-shaped virus particle pointing right, long protein legs, glowing viral core"},
+        {"id": "cell_debris", "prompt": "scattered fragments of organic matter pointing right, irregular shapes, varying microscopic colors"}
+      ]
+    },
+    {
+      "name": "candy_factory",
+      "output_folder": "assets/sprites/shared/candy_factory",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "gummy_bear", "prompt": "squishy translucent green gummy bear facing right, sugary coating, cute bear shape"},
+        {"id": "jawbreaker", "prompt": "large round candy with colorful speckled layers, rock-hard texture"},
+        {"id": "gumball", "prompt": "perfectly round bright red gumball, shiny candy coating, reflective surface"},
+        {"id": "candy_cane_shard", "prompt": "sharp broken piece of red and white striped candy cane pointing right, peppermint texture"},
+        {"id": "lollipop", "prompt": "swirled pink and yellow round lollipop horizontal on a white paper stick, glossy finish"},
+        {"id": "chocolate_chunk", "prompt": "irregular block of dark chocolate pointing right, snapped edges, cocoa dusting"},
+        {"id": "sprinkle_cluster", "prompt": "pile of multi-colored cylindrical sprinkles, bright sugar colors"},
+        {"id": "licorice_whip", "prompt": "long coiled black licorice strand horizontal, glossy rubbery texture, spiraled shape"}
+      ]
+    },
+    {
+      "name": "haunted_house",
+      "output_folder": "assets/sprites/shared/haunted_house",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "kid", "prompt": "scared young boy facing right in pajamas holding a flickering yellow flashlight, wide eyes"},
+        {"id": "floating_chair", "prompt": "old Victorian wooden chair facing right floating in mid-air, ghostly green aura"},
+        {"id": "bat_swarm", "prompt": "cluster of many tiny black bats facing right flying in a chaotic circle, red eyes"},
+        {"id": "ghost", "prompt": "classic white sheet ghost facing right, two black eye holes, floating above floor"},
+        {"id": "painting_eyes", "prompt": "old portrait painting of a man facing right, eyes cut out and moving, eerie lighting"},
+        {"id": "chandelier", "prompt": "dusty crystal chandelier facing right swinging from the ceiling, one lit candle, cobwebs"},
+        {"id": "spider_web", "prompt": "large intricate spider web facing right in a corner, dusty grey, dew-like sticky droplets"},
+        {"id": "candelabra", "prompt": "tarnished silver three-candle holder pointing right, green wax dripping, flickering orange flames"}
+      ]
+    },
+    {
+      "name": "aquarium",
+      "output_folder": "assets/sprites/shared/aquarium",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "small_fish", "prompt": "tiny neon blue tropical fish facing right, yellow tail, schooling movement, shiny scales"},
+        {"id": "big_fish", "prompt": "large slow-moving grey grouper fish facing right, textured skin, moving fins, aquarium glass reflection"},
+        {"id": "pufferfish", "prompt": "round inflated yellow pufferfish facing right, sharp spikes, startled expression"},
+        {"id": "crab", "prompt": "small orange reef crab facing right, one large pincer, scurrying on blue aquarium gravel"},
+        {"id": "starfish", "prompt": "bright pink five-pointed starfish, bumpy texture, clinging to glass"},
+        {"id": "bubble", "prompt": "single large clear air bubble rising from an aerator, shimmering surface"},
+        {"id": "hook", "prompt": "toy plastic treasure chest hook pointing right, bright silver, sitting on the gravel"},
+        {"id": "seashell", "prompt": "spiraled white and orange seashell pointing right, pearlescent interior, sitting on sand"}
+      ]
+    },
+    {
+      "name": "pizza",
+      "output_folder": "assets/sprites/shared/pizza",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "dough_ball", "prompt": "soft round ball of pale pizza dough, dusted with white flour, smooth texture"},
+        {"id": "pepperoni", "prompt": "round slice of spicy red pepperoni, oily surface, slightly curled edges"},
+        {"id": "olive", "prompt": "single black olive ring, smooth shiny skin, hole in the center"},
+        {"id": "mushroom_slice", "prompt": "thinly sliced white mushroom horizontal, grey gills visible, organic shape"},
+        {"id": "anchovy", "prompt": "small silver salty fish fillet pointing right, oily texture, scales reflecting light"},
+        {"id": "pepper_ring", "prompt": "bright green bell pepper ring, crunchy texture, fresh vegetable look"},
+        {"id": "cheese_glob", "prompt": "melted glob of gooey white mozzarella cheese, stringy texture, golden brown spots"},
+        {"id": "sauce_splat", "prompt": "vibrant red tomato sauce splatter pointing right, chunky texture, oregano herb bits"}
+      ]
+    },
+    {
+      "name": "laundromat",
+      "output_folder": "assets/sprites/shared/laundromat",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "sock", "prompt": "single striped blue and white sock pointing right, slightly crumpled, cotton texture"},
+        {"id": "flying_shirt", "prompt": "red t-shirt facing right tumbling in a dryer, arms flailing, cotton fabric texture"},
+        {"id": "detergent_cap", "prompt": "bright blue plastic laundry detergent cap, measuring lines inside, soapy residue"},
+        {"id": "lint_ball", "prompt": "grey fuzzy ball of dryer lint, tangled hair and fibers, soft texture"},
+        {"id": "coat_hanger", "prompt": "thin wire coat hanger horizontal, metallic silver, hooked top, simple shape"},
+        {"id": "button", "prompt": "small round four-holed white shirt button, shiny plastic, reflecting light"},
+        {"id": "zipper", "prompt": "metal zipper pull tab pointing right, brass color, textured grip, industrial look"},
+        {"id": "dryer_sheet", "prompt": "white rectangular dryer sheet horizontal, soft fabric texture, slightly translucent"}
+      ]
+    },
+    {
+      "name": "circus",
+      "output_folder": "assets/sprites/shared/circus",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "clown", "prompt": "funny circus clown facing right in multi-colored polka dot suit, big red nose, frizzy orange hair"},
+        {"id": "juggling_ball", "prompt": "brightly colored red and yellow juggling ball pointing right, flying through the air"},
+        {"id": "flaming_hoop", "prompt": "large circular metal hoop facing right engulfed in orange flames, flickering fire effect"},
+        {"id": "cannon_ball", "prompt": "heavy black iron cannonball pointing right, smoking fuse, flying with power"},
+        {"id": "pie", "prompt": "custard cream pie with a crust pointing right, messy white topping, flying towards a target"},
+        {"id": "balloon_animal", "prompt": "shiny blue balloon facing right twisted into a dog shape, reflective surface, knot tail"},
+        {"id": "trapeze_bar", "prompt": "wooden trapeze bar horizontal hanging from two ropes, swinging motion"},
+        {"id": "peanut", "prompt": "tan textured peanut shell pointing right, hourglass shape, dusty circus floor look"}
+      ]
+    },
+    {
+      "name": "desert",
+      "output_folder": "assets/sprites/shared/desert",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "lizard", "prompt": "sand-colored desert lizard facing right, long tail, scaly skin, quick movement"},
+        {"id": "tumbleweed", "prompt": "round ball of dried brown brambles rolling right, airy branch structure, on sand"},
+        {"id": "scorpion", "prompt": "menacing tan scorpion facing right, curved stinging tail, large pincers, desert predator"},
+        {"id": "cactus_chunk", "prompt": "broken piece of green saguaro cactus pointing right, sharp white needles, fleshy interior"},
+        {"id": "vulture", "prompt": "large black vulture bird facing right, bald red head, hunched posture, sharp beak"},
+        {"id": "sand_devil", "prompt": "small swirling funnel of sand and dust moving right, tan color, wind-blown effect"},
+        {"id": "rattlesnake", "prompt": "coiled rattlesnake facing right, diamond pattern on skin, vibrating rattle tail"},
+        {"id": "sun_beam", "prompt": "intense yellow beam of sunlight pointing right, heat shimmer effect, bright lens flare"}
+      ]
+    },
+    {
+      "name": "supermarket",
+      "output_folder": "assets/sprites/shared/supermarket",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "shopper", "prompt": "person facing right in a green jacket pushing a silver shopping cart, looking at a list"},
+        {"id": "shopping_cart", "prompt": "metal wire shopping cart facing right, red plastic handle, four wheels, empty basket"},
+        {"id": "can_tower", "prompt": "tall stack of shiny soup cans pointing right, colorful labels, wobbling precariously"},
+        {"id": "banana_peel", "prompt": "bright yellow slippery banana peel pointing right, brown spots, discarded on tiled floor"},
+        {"id": "price_tag", "prompt": "small yellow paper price tag pointing right, '$0.99' printed in black, adhesive back"},
+        {"id": "sample_tray", "prompt": "black plastic tray pointing right with small paper cups and toothpicks, free food samples"},
+        {"id": "mop_bucket", "prompt": "yellow plastic industrial mop bucket facing right with a wringer, soapy water inside"},
+        {"id": "falling_sign", "prompt": "hanging cardboard 'SALE' sign pointing right, bright red and white, falling from ceiling"}
+      ]
+    },
+    {
+      "name": "volcano",
+      "output_folder": "assets/sprites/shared/volcano",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "rock_surfer", "prompt": "brave character facing right surfing on a flat obsidian rock over liquid lava, fire trail"},
+        {"id": "lava_bomb", "prompt": "glowing orb of molten orange rock pointing right, trailing smoke, ejected from volcano"},
+        {"id": "ember", "prompt": "small bright red glowing coal ember pointing right, sparking, floating in ash-filled air"},
+        {"id": "ash_cloud", "prompt": "thick billowing grey cloud of volcanic ash pointing right, lightning sparks inside"},
+        {"id": "obsidian_shard", "prompt": "sharp jagged piece of black volcanic glass pointing right, shiny reflective surface"},
+        {"id": "magma_glob", "prompt": "viscous drop of liquid orange magma pointing right, bubbling, high heat effect"},
+        {"id": "steam_vent", "prompt": "jet of white steam and sulfur gas pointing right shooting from a crack in dark rock"},
+        {"id": "sulfur_crystal", "prompt": "bright yellow jagged sulfur crystals pointing right, crystalline texture, volcanic deposit"}
+      ]
+    },
+    {
+      "name": "winter",
+      "output_folder": "assets/sprites/shared/winter",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "penguin", "prompt": "cute black and white penguin facing right, yellow beak, sliding on its belly on ice"},
+        {"id": "snowball", "prompt": "perfectly round white snowball pointing right, powdery texture, flying through the air"},
+        {"id": "icicle", "prompt": "long sharp translucent blue icicle pointing right, dripping water, glistening light"},
+        {"id": "snow_pile", "prompt": "fluffy mound of white snow pointing right, soft shadows, footprint in the side"},
+        {"id": "sled", "prompt": "classic red wooden sled facing right, metal runners, rope handle, winter fun"},
+        {"id": "pine_cone", "prompt": "brown textured pine cone pointing right, dusted with white snow, evergreen needle fragment"},
+        {"id": "ice_chunk", "prompt": "jagged piece of blue glacial ice pointing right, translucent, reflecting winter light"},
+        {"id": "snowflake_large", "prompt": "intricate symmetrical white snowflake crystal, delicate geometric patterns"}
+      ]
+    },
+    {
+      "name": "attic",
+      "output_folder": "assets/sprites/shared/attic",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "mouse", "prompt": "grey attic mouse facing right hiding behind a wooden box, twitching ears, dusty environment"},
+        {"id": "mothball", "prompt": "small fuzzy white spherical mothball, dusty texture, sitting on dark floorboards"},
+        {"id": "spider", "prompt": "long-legged cellar spider facing right, thin body, hanging from a single silk thread"},
+        {"id": "falling_box", "prompt": "cardboard box facing right with 'OLD TOYS' written on it, tumbling down, dust cloud"},
+        {"id": "cobweb", "prompt": "thick dusty grey cobweb pointing right stretching between two beams, trapped moth"},
+        {"id": "old_doll", "prompt": "creepy porcelain doll facing right with a cracked face, faded blue dress, missing one eye"},
+        {"id": "broken_ornament", "prompt": "shattered red glass Christmas ornament pointing right, silver hook, glittery shards"},
+        {"id": "dust_cloud", "prompt": "billowing cloud of grey attic dust pointing right, motes dancing in a sunbeam"}
+      ]
+    },
+    {
+      "name": "beach",
+      "output_folder": "assets/sprites/shared/beach",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "sandcastle", "prompt": "detailed sandcastle facing right with three towers, a moat, and a small red flag"},
+        {"id": "crab", "prompt": "bright red beach crab facing right, large pincers, scurrying across yellow sand"},
+        {"id": "frisbee", "prompt": "bright orange plastic frisbee horizontal, spinning in the air, reflective surface"},
+        {"id": "seagull", "prompt": "white seagull bird facing right with grey wings, yellow beak, flying silhouette"},
+        {"id": "beach_ball", "prompt": "colorful striped beach ball pointing right (red, blue, yellow, white), bouncy texture"},
+        {"id": "shell", "prompt": "spiraled white and orange seashell pointing right, pearlescent sheen, on wet sand"},
+        {"id": "wave_splash", "prompt": "cresting blue ocean wave facing right with white sea foam splash, water droplets"},
+        {"id": "sunscreen_bottle", "prompt": "bright yellow bottle of sunscreen pointing right, blue cap, 'SPF 50' label"}
+      ]
+    },
+    {
+      "name": "office",
+      "output_folder": "assets/sprites/shared/office",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "office_worker", "prompt": "worker facing right in a white shirt and tie, sitting in a grey swivel chair, typing"},
+        {"id": "stapler", "prompt": "heavy black metal stapler pointing right, silver staple magazine, professional look"},
+        {"id": "coffee_mug", "prompt": "white ceramic coffee mug pointing right, 'BOSS' logo, dark brown coffee inside, steam"},
+        {"id": "paperclip", "prompt": "silver metal paperclip horizontal, classic oval shape, metallic glint"},
+        {"id": "binder", "prompt": "thick blue three-ring binder facing right, clear plastic cover, white spine label"},
+        {"id": "rubber_band", "prompt": "tan elastic rubber band horizontal, looped shape, slightly stretched"},
+        {"id": "tape_dispenser", "prompt": "heavy black plastic tape dispenser facing right, clear tape roll, sharp blade"},
+        {"id": "memo_paper", "prompt": "yellow square sticky note pointing right, handwritten 'URGENT' in black ink"}
+      ]
+    },
+    {
+      "name": "toy_box",
+      "output_folder": "assets/sprites/shared/toy_box",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "action_figure", "prompt": "muscular superhero action figure facing right, blue suit, red cape, articulated joints"},
+        {"id": "marble", "prompt": "glass marble pointing right with a colorful swirled center (blue and green), translucent"},
+        {"id": "jack", "prompt": "six-pointed metal toy jack horizontal, silver color, rounded tips, classic game piece"},
+        {"id": "bouncy_ball", "prompt": "bright neon pink rubber bouncy ball, glossy surface, reflective"},
+        {"id": "lego_brick", "prompt": "rectangular red plastic building brick horizontal, eight studs on top, toy texture"},
+        {"id": "spinning_top", "prompt": "wooden spinning top horizontal with colorful painted stripes, blurred motion"},
+        {"id": "toy_car", "prompt": "die-cast metal race car facing right, yellow with black racing stripes, tiny wheels"},
+        {"id": "dice", "prompt": "white six-sided die pointing right with black pips, '6' facing up, rounded corners"}
+      ]
+    },
+    {
+      "name": "subway",
+      "output_folder": "assets/sprites/shared/subway",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "commuter", "prompt": "tired person facing right in a grey trench coat holding a metal pole, subway train look"},
+        {"id": "briefcase", "prompt": "black leather briefcase pointing right, silver latches, professional business tool"},
+        {"id": "newspaper", "prompt": "folded grey newspaper horizontal, 'Daily News' headline, messy ink texture"},
+        {"id": "coffee_cup", "prompt": "paper coffee cup pointing right with a brown cardboard sleeve and white lid"},
+        {"id": "umbrella", "prompt": "closed black umbrella pointing right with a hooked wooden handle, dripping water"},
+        {"id": "backpack", "prompt": "well-worn blue canvas backpack facing right, multiple zippers, heavy appearance"},
+        {"id": "rat", "prompt": "scruffy brown rat facing right scurrying along a grey concrete platform, long tail"},
+        {"id": "turnstile_arm", "prompt": "silver metal subway turnstile arm pointing right, industrial mechanism, reflecting lights"}
+      ]
+    },
+    {
+      "name": "farm",
+      "output_folder": "assets/sprites/shared/farm",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "pig", "prompt": "pink farm pig facing right, curly tail, muddy spots on skin, cute snout"},
+        {"id": "chicken", "prompt": "white chicken facing right with a red comb and wattle, yellow beak, fluffy feathers"},
+        {"id": "hay_bale", "prompt": "rectangular bale of yellow dried hay horizontal, bound with two black wires, textured"},
+        {"id": "pitchfork", "prompt": "long wooden handle pitchfork pointing right with three sharp metal tines, farm tool"},
+        {"id": "egg", "prompt": "single brown chicken egg pointing right, smooth shell, sitting in a nest of straw"},
+        {"id": "corn_cob", "prompt": "ripe yellow corn on the cob horizontal, green husk peeled back, kernel detail"},
+        {"id": "horseshoe", "prompt": "U-shaped heavy iron horseshoe pointing right, rusted texture, nail holes"},
+        {"id": "tractor_wheel", "prompt": "massive black rubber tractor tire pointing right, deep tread, dirty from the field"}
+      ]
+    },
+    {
+      "name": "bakery",
+      "output_folder": "assets/sprites/shared/bakery",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "baker", "prompt": "baker facing right in a white apron and tall chef's hat, holding a tray of fresh bread"},
+        {"id": "rolling_donut", "prompt": "glazed chocolate donut facing right with colorful sprinkles, rolling on its side"},
+        {"id": "baguette", "prompt": "long crusty golden brown baguette horizontal, diagonal cuts on top, flour dusting"},
+        {"id": "flour_cloud", "prompt": "billowing puff of white flour pointing right, powdery texture, soft edges"},
+        {"id": "cupcake", "prompt": "cupcake facing right in a blue paper liner, pink frosting swirl, single red cherry on top"},
+        {"id": "pretzel", "prompt": "twisted golden brown pretzel facing right, large grains of white salt, baked texture"},
+        {"id": "croissant", "prompt": "flaky crescent-shaped croissant pointing right, golden brown buttery layers, shiny finish"},
+        {"id": "whisk", "prompt": "silver metal wire whisk pointing right, wooden handle, splattered with white batter"}
+      ]
+    },
+    {
+      "name": "pond",
+      "output_folder": "assets/sprites/shared/pond",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "frog", "prompt": "bright green pond frog facing right, yellow belly, large eyes, webbed feet, swimming"},
+        {"id": "lily_pad", "prompt": "large round green lily pad pointing right, single notch, floating on blue water"},
+        {"id": "dragonfly", "prompt": "shimmering blue dragonfly facing right, four translucent wings, long thin body"},
+        {"id": "fish_jump", "prompt": "small silver fish facing right leaping out of blue water, white splash and ripples"},
+        {"id": "turtle", "prompt": "pond turtle facing right with a patterned green shell, slow swimming motion, small flipppers"},
+        {"id": "cattail", "prompt": "brown cylindrical cattail plant pointing right, green stem and leaves, pond vegetation"},
+        {"id": "water_ripple", "prompt": "concentric circles of light blue water ripples pointing right, shimmering surface"},
+        {"id": "tadpole", "prompt": "small black tadpole facing right, round head, long wiggly tail, swimming in murky water"}
+      ]
+    },
+    {
+      "name": "junkyard",
+      "output_folder": "assets/sprites/shared/junkyard",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "junkyard_dog", "prompt": "scruffy brown bulldog facing right with a spiked collar, growling expression, messy fur"},
+        {"id": "hubcap", "prompt": "dented silver metal hubcap pointing right, rusted spots, reflecting light, discarded"},
+        {"id": "spring", "prompt": "heavy coiled steel industrial spring pointing right, rusted red color, compressed shape"},
+        {"id": "tire", "prompt": "worn black rubber tire pointing right, flat side, puddle of water inside, junk texture"},
+        {"id": "car_door", "prompt": "rusted blue car door pointing right, shattered window glass, jagged metal edges"},
+        {"id": "magnet", "prompt": "large industrial electromagnetic crane magnet pointing right, rusted iron, heavy chain"},
+        {"id": "rust_chunk", "prompt": "irregular piece of crumbling orange rust pointing right, metallic flakes, weathered"},
+        {"id": "pipe", "prompt": "bent copper pipe pointing right, green oxidation patina, industrial scrap"}
+      ]
+    },
+    {
+      "name": "bowling",
+      "output_folder": "assets/sprites/shared/bowling",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "bowling_pin", "prompt": "white plastic bowling pin pointing right, two red stripes on the neck, glossy finish"},
+        {"id": "bowling_ball", "prompt": "heavy black bowling ball rolling right, three finger holes, reflecting lane lights"},
+        {"id": "shoe", "prompt": "classic red and blue bowling shoe pointing right, tan leather sole, white laces"},
+        {"id": "lane_arrow", "prompt": "triangular lane marker arrow pointing right, dark wood floor background, bowling alley"},
+        {"id": "gutter_guard", "prompt": "long silver metal gutter guard rail horizontal, industrial hinge, lane edge"},
+        {"id": "score_card", "prompt": "white paper score card horizontal, grid lines, handwritten 'X' strikes in black ink"},
+        {"id": "nachos", "prompt": "plastic tray pointing right of yellow tortilla chips, gooey orange cheese sauce, jalapeños"}
+      ]
+    },
+    {
+      "name": "playground",
+      "output_folder": "assets/sprites/shared/playground",
+      "default_params": {
+        "width": 64, "height": 64, "view": "low top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "kid", "prompt": "kid facing right in a red t-shirt and blue shorts, running with arms out, happy expression"},
+        {"id": "kickball", "prompt": "red textured rubber kickball pointing right, bouncy appearance, playground classic"},
+        {"id": "jump_rope", "prompt": "colorful braided jump rope horizontal, plastic handles, mid-swing motion arc"},
+        {"id": "swing_chain", "prompt": "heavy metal link swing chain horizontal, rusted silver color, hanging from above"},
+        {"id": "dodgeball", "prompt": "bright yellow foam dodgeball pointing right, squishy texture, flying through the air"},
+        {"id": "tetherball", "prompt": "yellow ball facing right on a white rope, spiraling around a metal pole, motion blur"},
+        {"id": "pebble", "prompt": "small irregular grey pebble in a sandbox, textured surface, matte finish"},
+        {"id": "whistle", "prompt": "shiny silver metal coach's whistle pointing right, black lanyard attached, reflective"}
+      ]
+    },
+    {
+      "name": "nostril",
+      "output_folder": "assets/sprites/shared/nostril",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "booger", "prompt": "sticky green glob of mucus pointing right, shiny texture, irregular gross shape"},
+        {"id": "nose_hair", "prompt": "thick dark nose hair follicle pointing right, coarse texture, slightly curved"},
+        {"id": "finger", "prompt": "large human finger facing right entering the frame, pink skin, fingernail detail"},
+        {"id": "dust_particle", "prompt": "tiny grey speck of dust pointing right, fuzzy texture, floating in air"},
+        {"id": "pollen", "prompt": "bright yellow microscopic pollen grain pointing right, spiky sphere shape"},
+        {"id": "sneeze_droplet", "prompt": "large clear spray of liquid droplets pointing right, flying through the air"},
+        {"id": "tissue_fiber", "prompt": "thin white strand of cotton tissue fiber pointing right, soft and wispy"}
+      ]
+    },
+    {
+      "name": "toilet",
+      "output_folder": "assets/sprites/shared/toilet",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "rubber_duck", "prompt": "classic yellow rubber ducky facing right, orange beak, floating on blue water"},
+        {"id": "splash", "prompt": "vibrant blue water splash pointing right, droplets flying upward, liquid crown shape"},
+        {"id": "plunger", "prompt": "red rubber plunger head pointing right, long wooden handle, bathroom tool"},
+        {"id": "toilet_paper_roll", "prompt": "roll of soft white toilet paper pointing right, cardboard tube center, hanging strand"},
+        {"id": "bubble", "prompt": "shimmering iridescent soap bubble pointing right, perfectly round, floating in air"},
+        {"id": "drain_swirl", "prompt": "spiraling vortex of blue water pointing right, disappearing into a dark hole"},
+        {"id": "soap_bar", "prompt": "rectangular bar of white soap pointing right, 'SOAP' engraved, slippery texture"}
+      ]
+    },
+    {
+      "name": "fridge",
+      "output_folder": "assets/sprites/shared/fridge",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "fresh_apple", "prompt": "crisp shiny red apple pointing right, green leaf, healthy fridge snack"},
+        {"id": "moldy_cheese", "prompt": "wedge of yellow cheese pointing right with fuzzy green mold spots, gross texture"},
+        {"id": "expired_milk", "prompt": "white plastic milk carton facing right, leaking chunky sour milk, 'EXPIRED' label"},
+        {"id": "mystery_tupperware", "prompt": "translucent plastic container pointing right with unrecognizable grey-green mush inside"},
+        {"id": "old_lettuce", "prompt": "wilted brown lettuce leaf pointing right, slimy texture, forgotten vegetable"},
+        {"id": "sauce_drip", "prompt": "thick drop of red ketchup dripping right from a shelf edge, viscous"},
+        {"id": "ice_crystal", "prompt": "sharp white frost ice crystal pointing right, crystalline structure, freezer burn look"},
+        {"id": "leftover_blob", "prompt": "unidentifiable mound of cold leftovers pointing right, greasy texture, multi-colored"}
+      ]
+    },
+    {
+      "name": "inside_shoe",
+      "output_folder": "assets/sprites/shared/inside_shoe",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "toe", "prompt": "human big toe pointing right in a white sock, wiggling, pink skin tone"},
+        {"id": "pebble", "prompt": "small jagged grey stone pointing right, sharp edges, irritating shoe intruder"},
+        {"id": "fungus_spore", "prompt": "glowing green microscopic spore pointing right, fuzzy texture, gross odor effect"},
+        {"id": "sock_lint", "prompt": "clump of blue cotton sock lint pointing right, fuzzy fibers, tangled mess"},
+        {"id": "shoelace_end", "prompt": "frayed end of a white shoelace pointing right, plastic aglet snapped, cotton threads"},
+        {"id": "insole_crack", "prompt": "cracked foam shoe insole pointing right, dark shadow, worn texture"},
+        {"id": "odor_cloud", "prompt": "puff of green smelly gas pointing right, wavy lines, comic-style stink cloud"}
+      ]
+    },
+    {
+      "name": "spam_inbox",
+      "output_folder": "assets/sprites/shared/spam_inbox",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "cursor", "prompt": "white digital arrow cursor pointing right with a red 'X' cancel icon, glitchy trail"},
+        {"id": "popup_ad", "prompt": "bright window facing right with 'WINNER!' in flashing text, multi-colored border"},
+        {"id": "nigerian_prince", "prompt": "pixel art avatar of a man facing right with a gold crown and green suit, smiling"},
+        {"id": "virus_attachment", "prompt": "paperclip icon facing right with a glowing skull and crossbones, menacing"},
+        {"id": "chain_letter", "prompt": "stack of digital envelopes facing right with a ghost icon, 'FORWARD TO 10 FRIENDS'"},
+        {"id": "flashing_banner", "prompt": "neon yellow banner horizontal with 'CLICK HERE' in flashing red text"},
+        {"id": "free_money", "prompt": "stack of green dollar bills pointing right with wings, flying away, digital look"},
+        {"id": "hot_singles", "prompt": "pixel art heart icon facing right with a '1' notification bubble, spam ad style"}
+      ]
+    },
+    {
+      "name": "couch_cushion",
+      "output_folder": "assets/sprites/shared/couch_cushion",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "coin", "prompt": "shiny gold coin pointing right, partially covered in grey dust, metallic glint"},
+        {"id": "remote_button", "prompt": "black rubber 'VOL+' button facing right torn from a remote, textured grip"},
+        {"id": "crumb", "prompt": "dry jagged yellow cracker crumb pointing right, crunchy texture, small size"},
+        {"id": "pen_cap", "prompt": "blue plastic pen cap pointing right, pocket clip, ink stain at the tip"},
+        {"id": "hair_tie", "prompt": "looped black elastic hair tie horizontal, stretched out, fuzzy texture"},
+        {"id": "chip", "prompt": "curled orange potato chip pointing right, greasy texture, salty crystals"},
+        {"id": "dust_bunny", "prompt": "large grey ball of couch lint and hair pointing right, fluffy and soft"},
+        {"id": "mystery_sticky", "prompt": "unidentifiable brown sticky glob pointing right, stretching between fibers"}
+      ]
+    },
+    {
+      "name": "lava_lamp",
+      "output_folder": "assets/sprites/shared/lava_lamp",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "small_blob", "prompt": "glowing orange wax blob facing right, round and smooth, floating in purple liquid"},
+        {"id": "wax_blob_large", "prompt": "massive amorphous orange wax glob facing right, stretching and dividing, glowing"},
+        {"id": "wax_blob_medium", "prompt": "ovoid glowing wax blob facing right, rising slowly, smooth surface"},
+        {"id": "rising_bubble", "prompt": "tiny air bubble pointing right trapped in liquid, shimmering under the lamp light"},
+        {"id": "heat_wave", "prompt": "wavy distortion lines pointing right above the lamp base, indicating rising heat"},
+        {"id": "wax_strand", "prompt": "thin strand of glowing wax pointing right connecting two larger blobs, organic look"}
+      ]
+    },
+    {
+      "name": "petri_dish",
+      "output_folder": "assets/sprites/shared/petri_dish",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "microbe", "prompt": "single green bacteria microbe facing right, long wiggly flagellum, microscopic"},
+        {"id": "dividing_amoeba", "prompt": "blue amoeba cell facing right splitting into two, translucent cytoplasm, nucleus visible"},
+        {"id": "colony_cluster", "prompt": "cluster of yellow spherical bacteria colonies pointing right, bumpy textured surface"},
+        {"id": "spore", "prompt": "small dark fungal spore pointing right, thick cell wall, microscopic detail"},
+        {"id": "flagellum", "prompt": "long whip-like tail of a bacteria pointing right, moving in a spiral motion"},
+        {"id": "cell_wall_fragment", "prompt": "jagged piece of a cellular membrane pointing right, translucent and colorful"}
+      ]
+    },
+    {
+      "name": "dream",
+      "output_folder": "assets/sprites/shared/dream",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "floating_person", "prompt": "character facing right in pajamas floating weightlessly, dreamy blue aura, peaceful expression"},
+        {"id": "falling_tooth", "prompt": "human molar tooth pointing right falling through a dark void, sparkling magical trail"},
+        {"id": "giant_eye", "prompt": "massive unblinking eye facing right in the sky, colorful iris, surreal dream image"},
+        {"id": "melting_clock", "prompt": "dripping gold pocket watch facing right, liquid numbers, surrealist style"},
+        {"id": "door_nowhere", "prompt": "wooden door facing right standing alone in a white void, golden handle, glowing keyhole"},
+        {"id": "shadow_figure", "prompt": "tall silhouette of a person facing right made of dark smoke, glowing white eyes"},
+        {"id": "staircase_infinite", "prompt": "spiral stone staircase pointing right leading into clouds, impossible geometry"},
+        {"id": "fish_sky", "prompt": "goldfish facing right swimming through pink clouds, glowing scales, surreal"}
+      ]
+    },
+    {
+      "name": "dryer",
+      "output_folder": "assets/sprites/shared/dryer",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "sock", "prompt": "single white sock pointing right tumbling in a circle, motion blur, fluffy texture"},
+        {"id": "static_spark", "prompt": "bright yellow electrical spark pointing right between two pieces of clothing, crackling"},
+        {"id": "button", "prompt": "round silver metal button pointing right hitting the metal dryer drum, sparking"},
+        {"id": "lint_ball", "prompt": "grey fuzzy ball of dryer lint pointing right, soft texture, tangled fibers"},
+        {"id": "zipper", "prompt": "metal zipper pull tab pointing right clanking against glass, brass color, textured"},
+        {"id": "coin", "prompt": "silver quarter pointing right spinning in a dryer, metallic shine, rapid motion"},
+        {"id": "dryer_sheet", "prompt": "white rectangular dryer sheet horizontal, flowing in the air, translucent"},
+        {"id": "hair_tie", "prompt": "looped pink elastic hair tie horizontal, bouncing off the dryer wall"}
+      ]
+    },
+    {
+      "name": "y2k_bunker",
+      "output_folder": "assets/sprites/shared/y2k_bunker",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "survivalist", "prompt": "person facing right in a green tactical vest and gas mask, holding a flashlight"},
+        {"id": "canned_beans", "prompt": "tin can of beans pointing right, rusted edges, 'Y2K' printed on a handwritten label"},
+        {"id": "countdown_number", "prompt": "digital red '00' pointing right on a black monitor, glowing glitchy text"},
+        {"id": "flashlight", "prompt": "heavy black metal flashlight pointing right, beam of yellow light cutting through darkness"},
+        {"id": "radio", "prompt": "portable grey battery-powered radio facing right, long antenna, glowing frequency dial"},
+        {"id": "gas_mask", "prompt": "industrial black rubber gas mask facing right, two glass eye ports, textured filter"},
+        {"id": "water_jug", "prompt": "large blue plastic water jug pointing right, translucent, reflecting bunker lights"},
+        {"id": "conspiracy_paper", "prompt": "crumpled newspaper clipping pointing right with red strings, 'THE END' headline"}
+      ]
+    },
+    {
+      "name": "fondue",
+      "output_folder": "assets/sprites/shared/fondue",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "bread_cube", "prompt": "square cube of toasted bread pointing right, crusty golden surface, being dipped"},
+        {"id": "cheese_drip", "prompt": "thick strand of melted yellow cheese dripping right from a fork, gooey texture"},
+        {"id": "skewer", "prompt": "long thin metal fondue skewer pointing right, colorful plastic handle, sharp tip"},
+        {"id": "cherry_tomato", "prompt": "round red cherry tomato facing right covered in melted cheese, glossy finish"},
+        {"id": "broccoli", "prompt": "green broccoli floret facing right with cheese trapped in the leaves, textured"},
+        {"id": "meat_chunk", "prompt": "brown cooked meat cube pointing right, sizzle lines, dipped in oil"},
+        {"id": "chocolate_drip", "prompt": "viscous drop of dark liquid chocolate pointing right, shiny and smooth"},
+        {"id": "fondue_splash", "prompt": "small splash of melted cheese pointing right from a pot, golden liquid crown"}
+      ]
+    },
+    {
+      "name": "keyboard",
+      "output_folder": "assets/sprites/shared/keyboard",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "keycap", "prompt": "grey plastic mechanical keycap pointing right with 'ESC' printed in white, textured surface"},
+        {"id": "crumb", "prompt": "tiny yellow food crumb pointing right trapped between keys, jagged shape"},
+        {"id": "dust_particle", "prompt": "fuzzy grey speck of dust pointing right on a black plastic surface, soft edges"},
+        {"id": "hair", "prompt": "single long dark hair strand pointing right coiled around a key switch, textured"},
+        {"id": "staple", "prompt": "bent silver metal staple pointing right wedged in a keyboard gap, metallic shine"},
+        {"id": "paper_clip", "prompt": "silver metal paperclip horizontal on a keyboard, reflecting screen light"},
+        {"id": "eraser_shaving", "prompt": "pink rubber eraser shaving pointing right, curled shape, soft texture"},
+        {"id": "coffee_drip", "prompt": "sticky brown coffee droplet pointing right on a white key, reflecting light"}
+      ]
+    },
+    {
+      "name": "first_date",
+      "output_folder": "assets/sprites/shared/first_date",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "heart", "prompt": "pulsing red heart icon pointing right, glowing pink aura, beating animation style"},
+        {"id": "awkward_silence", "prompt": "white speech bubble facing right with three black dots '...', indicating silence"},
+        {"id": "spilled_drink", "prompt": "glass tipped right over, clear liquid splashing on a tablecloth, ice cubes"},
+        {"id": "check_bill", "prompt": "white paper bill facing right in a black leather folder, '$50.00' written on it"},
+        {"id": "wilting_flower", "prompt": "red rose facing right with a drooping stem and falling petals, romantic but sad"},
+        {"id": "phone_buzz", "prompt": "vibrating smartphone horizontal on a table, grey motion lines, glowing screen"},
+        {"id": "breadstick", "prompt": "long golden brown breadstick pointing right in a basket, salt crystals, appetizer"}
+      ]
+    },
+    {
+      "name": "sneeze",
+      "output_folder": "assets/sprites/shared/sneeze",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "healthy_cell", "prompt": "happy round pink cell facing right with a smiling face, glowing aura, microscopic"},
+        {"id": "germ", "prompt": "angry green germ facing right with many eyes and sharp teeth, spikes on its back"},
+        {"id": "droplet", "prompt": "large clear water droplet pointing right flying through the air, reflecting light"},
+        {"id": "pollen", "prompt": "spiky yellow ball of pollen pointing right, microscopic texture, irritating look"},
+        {"id": "dust_mite", "prompt": "ugly grey microscopic dust mite facing right, many legs, textured exoskeleton"},
+        {"id": "mucus_glob", "prompt": "sticky green blob of mucus pointing right, irregular shape, gross texture"},
+        {"id": "tissue_shred", "prompt": "torn piece of white cotton tissue pointing right, soft and wispy, flying"}
+      ]
+    },
+    {
+      "name": "printer",
+      "output_folder": "assets/sprites/shared/printer",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "paper_sheet", "prompt": "blank white sheet of paper sliding right out of a printer, clean edges"},
+        {"id": "ink_cartridge", "prompt": "black plastic ink cartridge facing right, colorful label (CMYK), electronic contacts"},
+        {"id": "paper_jam", "prompt": "crumpled white paper pointing right stuck in a metal roller, industrial look"},
+        {"id": "error_message", "prompt": "glowing orange '!' icon facing right on a small digital screen, 'ERROR' text"},
+        {"id": "toner_dust", "prompt": "puff of black fine toner powder pointing right, messy texture, dark cloud"},
+        {"id": "roller", "prompt": "grey rubber printer roller horizontal, cylindrical shape, textured surface"},
+        {"id": "staple", "prompt": "single silver metal staple pointing right being punched through paper, metallic shine"}
+      ]
+    },
+    {
+      "name": "vending_machine",
+      "output_folder": "assets/sprites/shared/vending_machine",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "snack_bag", "prompt": "bag of blue potato chips facing right with 'CHIPS' on label, crinkled plastic texture"},
+        {"id": "falling_can", "prompt": "red soda can facing right falling through the air, motion blur, condensation"},
+        {"id": "coin", "prompt": "shiny silver quarter pointing right, metallic glint, circular shape"},
+        {"id": "stuck_candy", "prompt": "candy bar facing right caught between a metal spring and glass, frustrating look"},
+        {"id": "spring", "prompt": "coiled black metal vending machine spring horizontal, industrial design"},
+        {"id": "glass_crack", "prompt": "web-like crack horizontal in a clear glass pane, reflecting white light"},
+        {"id": "price_tag", "prompt": "small black digital display facing right with '$1.50' in glowing red numbers"}
+      ]
+    },
+    {
+      "name": "ballpit",
+      "output_folder": "assets/sprites/shared/ballpit",
+      "default_params": {
+        "width": 64, "height": 64, "view": "high top-down", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "ball_red", "prompt": "bright red plastic ball, shiny surface, round and bouncy"},
+        {"id": "ball_blue", "prompt": "bright blue plastic ball, reflective highlight, perfectly spherical"},
+        {"id": "ball_green", "prompt": "vibrant green plastic ball, smooth texture, sitting in a pile"},
+        {"id": "ball_yellow", "prompt": "sunny yellow plastic ball, glossy finish, reflecting light"},
+        {"id": "lost_shoe", "prompt": "child's blue sneaker facing right lost among colorful balls, white laces"},
+        {"id": "bandaid", "prompt": "used tan adhesive bandage pointing right, slightly dirty, discarded in the ball pit"},
+        {"id": "mystery_wet", "prompt": "shimmering puddle of unidentifiable clear liquid among the balls"}
+      ]
+    },
+    {
+      "name": "vacuum",
+      "output_folder": "assets/sprites/shared/vacuum",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "dust_bunny", "prompt": "large fuzzy grey ball of dust and hair being sucked right into a nozzle"},
+        {"id": "lego_brick", "prompt": "small blue plastic building brick pointing right rattling in a vacuum tube"},
+        {"id": "hair_tangle", "prompt": "messy clump of dark hair pointing right tangled around a rotating brush, textured"},
+        {"id": "coin", "prompt": "silver nickel being sucked right, clinking against the plastic wall"},
+        {"id": "cheerio", "prompt": "round toasted oat cereal ring pointing right, crunchy texture, flying towards vacuum"},
+        {"id": "pet_hair", "prompt": "pile of white cat fur pointing right, soft and wispy, being pulled by air"},
+        {"id": "paper_scrap", "prompt": "torn piece of white paper pointing right, fluttering as it gets sucked in"}
+      ]
+    },
+    {
+      "name": "blender",
+      "output_folder": "assets/sprites/shared/blender",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "strawberry", "prompt": "whole red strawberry facing right with green leaves being sliced by a blade"},
+        {"id": "ice_cube", "prompt": "translucent white ice cube horizontal shattering into pieces, cold texture"},
+        {"id": "banana_chunk", "prompt": "soft yellow piece of banana pointing right, mushy texture, being blended"},
+        {"id": "blade_whoosh", "prompt": "spinning silver metal blender blade horizontal, grey motion blur, sharp edges"},
+        {"id": "milk_splash", "prompt": "white liquid splash of milk pointing right, creamy texture, droplets flying"},
+        {"id": "blueberry", "prompt": "round dark blue blueberry, matte skin, being crushed"},
+        {"id": "protein_glob", "prompt": "clump of white protein powder pointing right, dry texture, dissolving in liquid"}
+      ]
+    },
+    {
+      "name": "conspiracy_wall",
+      "output_folder": "assets/sprites/shared/conspiracy_wall",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "pushpin", "prompt": "red plastic pushpin pointing right with a sharp silver needle, sticking into a wall"},
+        {"id": "red_string", "prompt": "thick red yarn string horizontal connecting two points, textured and fuzzy"},
+        {"id": "newspaper_clip", "prompt": "yellowed newspaper clipping facing right with black ink text, jagged torn edges"},
+        {"id": "photo", "prompt": "blurry black and white polaroid photo facing right of a mysterious figure, white border"},
+        {"id": "sticky_note", "prompt": "yellow square sticky note facing right with a large black '?', adhesive top"},
+        {"id": "thumbtack", "prompt": "flat silver metal thumbtack facing right, reflecting light, industrial look"},
+        {"id": "coffee_ring", "prompt": "circular brown coffee stain pointing right on a white paper, dried texture"},
+        {"id": "question_mark", "prompt": "large handwritten black '?' pointing right in thick marker ink, bold and messy"}
+      ]
+    },
+    {
+      "name": "microwave",
+      "output_folder": "assets/sprites/shared/microwave",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "leftover", "prompt": "plate of unrecognizable brown food facing right, messy"},
+        {"id": "sparking_fork", "prompt": "silver metal fork pointing right with bright blue electrical arcs, glowing white core"},
+        {"id": "rotating_plate_edge", "prompt": "edge of a glass turntable plate horizontal with white roller wheels below"},
+        {"id": "hot_pocket_explosion", "prompt": "cracked pastry facing right with red tomato sauce and cheese oozing out, messy"},
+        {"id": "popcorn_kernel", "prompt": "single white puffed popcorn kernel pointing right with a yellow center, crunchy"},
+        {"id": "splatter", "prompt": "messy red sauce splatter pointing right on a white microwave wall, chunky"},
+        {"id": "timer_beep", "prompt": "glowing green '0:00' facing right on a black digital display, sound wave lines"}
+      ]
+    },
+    {
+      "name": "snow_globe",
+      "output_folder": "assets/sprites/shared/snow_globe",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "tiny_person", "prompt": "very small character facing right in a red coat standing inside a glass globe"},
+        {"id": "glitter", "prompt": "sparkling silver glitter flake pointing right, reflecting multi-colored light, tiny"},
+        {"id": "fake_snow", "prompt": "white plastic flake of artificial snow pointing right, soft appearance, floating"},
+        {"id": "tiny_house", "prompt": "small miniature cottage facing right with a brown roof and blue windows, toy-like"},
+        {"id": "tiny_tree", "prompt": "miniature evergreen tree pointing right with white snow on the branches"},
+        {"id": "base_crack", "prompt": "jagged crack horizontal in a wooden snow globe base, dark wood grain"},
+        {"id": "water_bubble", "prompt": "single large air bubble pointing right at the top of a water-filled glass globe"}
+      ]
+    },
+    {
+      "name": "powerpoint",
+      "output_folder": "assets/sprites/shared/powerpoint",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "cursor", "prompt": "white digital arrow cursor pointing right at a button, blue glow"},
+        {"id": "bullet_point", "prompt": "small black circular bullet point, professional presentation style"},
+        {"id": "clip_art", "prompt": "cartoonish 90s style clip art facing right of a smiling sun, bright colors"},
+        {"id": "word_art", "prompt": "curved 'TITLE' text facing right with a blue to green gradient and 3D shadow"},
+        {"id": "pie_chart", "prompt": "3D pie chart facing right with three slices (red, blue, yellow), tilted view"},
+        {"id": "transition_wipe", "prompt": "jagged diagonal line facing right dividing two colors, motion blur effect"},
+        {"id": "comic_sans_text", "prompt": "the word 'HELLO' facing right in black Comic Sans font, messy and informal"},
+        {"id": "stock_photo", "prompt": "blurry photo facing right of people shaking hands, white watermarks over it"}
+      ]
+    },
+    {
+      "name": "backrooms",
+      "output_folder": "assets/sprites/shared/backrooms",
+      "default_params": {
+        "width": 64, "height": 64, "view": "side", "detail": "medium detail", "shading": "basic shading", "outline": "single color outline"
+      },
+      "sprites": [
+        {"id": "wanderer", "prompt": "lost person facing right in a tan jacket looking over their shoulder, scared expression"},
+        {"id": "fluorescent_flicker", "prompt": "yellowish fluorescent light tube horizontal, sparking, buzzing sound lines"},
+        {"id": "damp_carpet_stain", "prompt": "irregular dark brown stain horizontal on a beige carpet, wet texture"},
+        {"id": "entity_shadow", "prompt": "long-limbed dark silhouette facing right stretching across a yellow wall"},
+        {"id": "exit_sign_false", "prompt": "glowing red 'EXIT' sign facing right, flickering, reflecting on a damp floor"},
+        {"id": "wallpaper_peel", "prompt": "strip of yellow floral wallpaper pointing right peeling off a damp wall"},
+        {"id": "ceiling_tile", "prompt": "white textured ceiling tile pointing right, missing a corner, dark hole above"},
+        {"id": "buzzing_light", "prompt": "simple fluorescent bulb horizontal, intense yellow glow, indicating static noise"}
+      ]
+    }
+  ]
+}

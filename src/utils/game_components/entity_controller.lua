@@ -1465,8 +1465,8 @@ function EntityController:updateBehaviors(dt, config, collision_check)
             end
         end
 
-        -- Off-screen removal behavior
-        if config.remove_offscreen and not entity.skip_offscreen_removal then
+        -- Off-screen removal behavior (only after entity has entered play area)
+        if config.remove_offscreen and not entity.skip_offscreen_removal and (entity.entered_play or not config.track_entered_play) then
             local bounds = config.remove_offscreen
             local off_bottom = entity.y > (bounds.bottom or bounds.height or 600)
             local off_top = entity.y + (entity.height or 0) < (bounds.top or 0)
