@@ -140,6 +140,97 @@ function renderers.flowing.draw(self, width, height)
 end
 
 --------------------------------------------------------------------------------
+-- plasma (demoscene sine-layered palette cycling)
+--------------------------------------------------------------------------------
+renderers.plasma = {}
+
+local PLASMA_GLSL = [[
+extern float time;
+extern float palette_speed;
+extern float scale;
+extern float layers;
+extern vec3 color1;
+extern vec3 color2;
+extern vec3 color3;
+extern vec2 resolution;
+
+vec4 effect(vec4 vcolor, Image tex, vec2 tc, vec2 sc) {
+    float aspect = resolution.x / resolution.y;
+    vec2 uv = tc;
+    uv.x *= aspect;
+
+    float v = 0.0;
+    v += sin(uv.x * scale);
+    v += sin(uv.y * scale * 1.3);
+    v += sin((uv.x + uv.y) * scale * 0.7);
+
+    float cx = uv.x - aspect * 0.5;
+    float cy = uv.y - 0.5;
+    v += sin(sqrt(cx * cx + cy * cy) * scale * 1.5);
+
+    if (layers > 4.5) {
+        v += sin(uv.x * scale * 2.1 + uv.y * scale * 0.9) * 0.5;
+        v += sin((uv.x - uv.y) * scale * 1.1) * 0.5;
+    }
+
+    float norm = (layers > 4.5) ? 0.2 : 0.25;
+    v = v * norm + 0.5;
+
+    v = fract(v + time * palette_speed);
+
+    vec3 col;
+    float z = v * 3.0;
+    if (z < 1.0)      col = mix(color1, color2, z);
+    else if (z < 2.0) col = mix(color2, color3, z - 1.0);
+    else               col = mix(color3, color1, z - 2.0);
+
+    return vec4(col, 1.0);
+}
+]]
+
+local plasma_shader = nil
+
+function renderers.plasma.setup(self, config)
+    self.colors = config.colors or {{0.15, 0.0, 0.35}, {0.0, 0.8, 0.9}, {0.9, 0.1, 0.6}}
+    self.palette_speed = config.speed or 0.15
+    self.scale = config.scale or 10.0
+    self.layers = config.plasma_layers or 4.0
+    self.time = 0
+    self.mesh = love.graphics.newMesh({
+        {0, 0, 0, 0, 1, 1, 1, 1},
+        {1, 0, 1, 0, 1, 1, 1, 1},
+        {1, 1, 1, 1, 1, 1, 1, 1},
+        {0, 1, 0, 1, 1, 1, 1, 1},
+    }, 'fan')
+end
+
+function renderers.plasma.update(self, dt)
+    self.time = self.time + dt
+end
+
+function renderers.plasma.draw(self, width, height)
+    if not plasma_shader then
+        local ok, s = pcall(love.graphics.newShader, PLASMA_GLSL)
+        if ok then plasma_shader = s
+        else print("Plasma shader error: " .. tostring(s)); return end
+    end
+
+    love.graphics.setShader(plasma_shader)
+    if plasma_shader:hasUniform('time') then plasma_shader:send('time', self.time) end
+    if plasma_shader:hasUniform('palette_speed') then plasma_shader:send('palette_speed', self.palette_speed) end
+    if plasma_shader:hasUniform('scale') then plasma_shader:send('scale', self.scale) end
+    if plasma_shader:hasUniform('layers') then plasma_shader:send('layers', self.layers) end
+    if plasma_shader:hasUniform('resolution') then plasma_shader:send('resolution', {width, height}) end
+    local c = self.colors
+    if plasma_shader:hasUniform('color1') then plasma_shader:send('color1', c[1] or {0.15, 0.0, 0.35}) end
+    if plasma_shader:hasUniform('color2') then plasma_shader:send('color2', c[2] or {0.0, 0.8, 0.9}) end
+    if plasma_shader:hasUniform('color3') then plasma_shader:send('color3', c[3] or {0.9, 0.1, 0.6}) end
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.draw(self.mesh, 0, 0, 0, width, height)
+    love.graphics.setShader()
+end
+
+--------------------------------------------------------------------------------
 -- ink_flow (advection-diffusion ink sim over flowing noise)
 --
 -- Points inject dye + velocity. The flowing noise pattern is displaced

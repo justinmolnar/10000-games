@@ -134,6 +134,19 @@ function EntityController:spawn(type_name, x, y, custom_params)
         error("Unknown entity type: " .. tostring(type_name))
     end
 
+    -- Per-type max alive check
+    if entity_type.max_alive then
+        local count = 0
+        for _, e in ipairs(self.entities) do
+            if e.active and e.type_name == type_name and not e.marked_for_removal then
+                count = count + 1
+            end
+        end
+        if count >= entity_type.max_alive then
+            return nil
+        end
+    end
+
     -- Get entity from pool or create new
     local entity = nil
     if self.pooling and #self.entity_pool > 0 then

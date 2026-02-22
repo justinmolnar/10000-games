@@ -62,6 +62,7 @@
       "obstacle_spawn_rate": 1.2,
       "spawn_edge": "top",
       "seeker_turn_rate": 20,
+      "seeker_max_steering_angle": 45,
       "disable_obstacle_fallback": true,
       "warnings": false,
       "collectible_enemies": ["obstacle"],
@@ -84,7 +85,9 @@
       "palette": "green",
       "music_track": "dodge_theme_2",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
+      "background": "image",
+      "bg_image": "assets/backgrounds/planets.jpeg",
+      "bg_color": [0.02, 0.02, 0.05],
       "difficulty_modifier": 1.0,
       "rotation_speed": 4.5,
       "movement_speed": 580,
@@ -92,10 +95,16 @@
       "reverse_mode": "brake",
       "area_morph_type": "shape_shifting",
       "area_morph_speed": 1.5,
-      "enemies": [],
+      "enemies": [
+        {"type": "obstacle", "multiplier": 2},
+        {"type": "bouncer", "multiplier": 1.5},
+        {"type": "zigzag", "multiplier": 1}
+      ],
+      "enemy_sizes": {"bouncer": [20, 35], "zigzag": [15, 25]},
+      "enemy_speeds": {"bouncer": [100, 160], "zigzag": [120, 180]},
+      "enemy_wave_amps": {"zigzag": 120},
       "flavor_text": "Circle, square, hex - adapt your flight!",
-      "intro_cutscene": null,
-      "bg_star_color": [0.6, 1.0, 0.6]
+      "intro_cutscene": null
     },
     {
       "clone_index": 3,
@@ -115,12 +124,13 @@
       "area_movement_type": "none",
       "area_movement_speed": 0,
       "difficulty_modifier": 1.0,
-      "movement_speed": 280,
-      "rotation_speed": 6.0,
-      "max_speed": 500,
-      "accel_friction": 0.92,
-      "decel_friction": 0.88,
-      "bounce_damping": 0.6,
+      "movement_speed": 550,
+      "thrust_acceleration": 1000,
+      "rotation_speed": 7.5,
+      "max_speed": 1000,
+      "accel_friction": 0.985,
+      "decel_friction": 0.97,
+      "bounce_damping": 0.7,
       "lives": 5,
       "victory_condition": "time",
       "victory_limit": 45,
@@ -131,10 +141,17 @@
         "obstacle": [120, 160]
       },
       "enemy_speeds": {
-        "obstacle": [60, 90]
+        "obstacle": [60, 90],
+        "chaser": [40, 60]
       },
       "enemy_movement_axis": {
         "obstacle": "horizontal"
+      },
+      "enemy_max_alive": {
+        "obstacle": 2
+      },
+      "enemy_collision": {
+        "chaser": {"damage": 0, "knockback": 600, "remove": false}
       },
       "enemies": [
         {"type": "obstacle", "multiplier": 1.0},
@@ -150,6 +167,8 @@
       "movement_type": "default",
       "sprite_set": "dodge_base",
       "palette": "red",
+      "seeker_max_steering_angle": 360,
+      "seeker_turn_rate": 25,
       "music_track": "dodge_theme_1",
       "sfx_pack": "retro_beeps",
       "background": "starfield",
@@ -160,6 +179,9 @@
       },
       "enemy_speeds": {
         "chaser": [80, 120]
+      },
+      "enemy_max_alive": {
+        "chaser": 8
       },
       "enemies": [
         {"type": "chaser", "multiplier": 1.0}
@@ -241,7 +263,9 @@
       "palette": "purple",
       "music_track": "dodge_theme_2",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
+      "background": "image",
+      "bg_image": "assets/backgrounds/Deep_space_nebula.jpeg",
+      "bg_color": [0.03, 0.01, 0.06],
       "difficulty_modifier": 1.0,
       "rotation_speed": 10.0,
       "jump_distance": 100,
@@ -249,10 +273,15 @@
       "jump_speed": 9999,
       "area_morph_type": "pulsing",
       "area_morph_speed": 1.5,
-      "enemies": [],
+      "enemies": [
+        {"type": "teleporter", "multiplier": 2},
+        {"type": "chaser", "multiplier": 1.5},
+        {"type": "obstacle", "multiplier": 1}
+      ],
+      "enemy_sizes": {"teleporter": [20, 30], "chaser": [10, 18]},
+      "enemy_speeds": {"chaser": [70, 110], "teleporter": [80, 120]},
       "flavor_text": "Instant teleports - blink across the arena!",
-      "intro_cutscene": null,
-      "bg_star_color": [0.8, 0.6, 1.0]
+      "intro_cutscene": null
     },
     {
       "clone_index": 7,
@@ -329,7 +358,13 @@
       "victory_condition": "time",
       "victory_limit": 45,
       "lives": 5,
-      "enemies": [],
+      "enemies": [
+        {"type": "chaser", "multiplier": 1.5},
+        {"type": "teleporter", "multiplier": 1},
+        {"type": "obstacle", "multiplier": 1.5}
+      ],
+      "enemy_sizes": {"chaser": [15, 35], "teleporter": [10, 20]},
+      "enemy_speeds": {"chaser": [50, 90]},
       "flavor_text": "Limited visibility! Survive 45 seconds in the fog",
       "intro_cutscene": null,
       "bg_star_color": [0.6, 0.8, 1.0]
@@ -395,7 +430,10 @@
       "palette": "purple",
       "music_track": "dodge_theme_2",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
+      "background": "plasma",
+      "bg_colors": [[0.04, 0.0, 0.07], [0.0, 0.03, 0.06], [0.05, 0.01, 0.08]],
+      "bg_speed": 0.08,
+      "bg_scale": 8.0,
       "difficulty_modifier": 1.0,
       "movement_speed": 300,
       "area_gravity": 250,
@@ -404,10 +442,16 @@
       "camera_shake_intensity": 0.3,
       "shield": 1,
       "shield_recharge_time": 15,
-      "enemies": [],
+      "enemies": [
+        {"type": "obstacle", "multiplier": 2},
+        {"type": "chaser", "multiplier": 1},
+        {"type": "splitter", "multiplier": 0.8},
+        {"type": "bouncer", "multiplier": 0.7}
+      ],
+      "enemy_sizes": {"splitter": [25, 40], "chaser": [18, 28], "bouncer": [12, 22]},
+      "enemy_speeds": {"chaser": [50, 80], "bouncer": [140, 200]},
       "flavor_text": "Pulled to the center, obstacles hunt you down",
-      "intro_cutscene": null,
-      "bg_star_color": [0.8, 0.6, 1.0]
+      "intro_cutscene": null
     },
     {
       "clone_index": 11,
@@ -466,15 +510,23 @@
       "palette": "red",
       "music_track": "dodge_theme_3",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
+      "background": "image",
+      "bg_image": "assets/backgrounds/Asteroid_field_debris.jpeg",
+      "bg_color": [0.02, 0.02, 0.02],
       "difficulty_modifier": 1.0,
       "movement_speed": 280,
       "leaving_area_ends_game": true,
       "area_morph_type": "shrink",
-      "enemies": [],
+      "enemies": [
+        {"type": "bouncer", "multiplier": 1.5},
+        {"type": "zigzag", "multiplier": 1},
+        {"type": "obstacle", "multiplier": 1.5}
+      ],
+      "enemy_sizes": {"bouncer": [20, 35], "zigzag": [14, 24]},
+      "enemy_speeds": {"bouncer": [120, 180]},
+      "enemy_wave_amps": {"zigzag": 130},
       "flavor_text": "Cross the line and it's over",
-      "intro_cutscene": null,
-      "bg_star_color": [1.0, 0.6, 0.6]
+      "intro_cutscene": null
     },
     {
       "clone_index": 13,
@@ -523,7 +575,11 @@
       "palette": "purple",
       "music_track": "dodge_theme_3",
       "sfx_pack": "retro_beeps",
-      "background": "starfield",
+      "background": "plasma",
+      "bg_colors": [[0.05, 0.0, 0.05], [0.0, 0.02, 0.04], [0.06, 0.01, 0.03]],
+      "bg_speed": 0.1,
+      "bg_scale": 12.0,
+      "bg_plasma_layers": 6,
       "difficulty_modifier": 1.0,
       "movement_speed": 300,
       "obstacle_spawn_pattern": "spiral",
@@ -531,10 +587,17 @@
       "lives": 7,
       "fog_of_war_radius": 200,
       "player_trail_length": 10,
-      "enemies": [],
+      "enemies": [
+        {"type": "obstacle", "multiplier": 1.5},
+        {"type": "zigzag", "multiplier": 1.5},
+        {"type": "bouncer", "multiplier": 1},
+        {"type": "teleporter", "multiplier": 0.5}
+      ],
+      "enemy_sizes": {"zigzag": [14, 26], "bouncer": [18, 30], "teleporter": [10, 18]},
+      "enemy_speeds": {"bouncer": [120, 180], "teleporter": [90, 140]},
+      "enemy_wave_amps": {"zigzag": 100},
       "flavor_text": "Spiraling obstacles, outward gravity, limited vision",
-      "intro_cutscene": null,
-      "bg_star_color": [0.8, 0.6, 1.0]
+      "intro_cutscene": null
     },
     {
       "clone_index": 15,
@@ -564,7 +627,14 @@
       "palette": "red",
       "music_track": "dodge_theme_3",
       "sfx_pack": "8bit_arcade",
-      "background": "starfield",
+      "background": "flowing",
+      "bg_colors": [
+        [0.08, 0.01, 0.02],
+        [0.03, 0.0, 0.04],
+        [0.1, 0.02, 0.01]
+      ],
+      "bg_speed": 0.4,
+      "bg_warp": 1.8,
       "difficulty_modifier": 1.0,
       "movement_speed": 300,
       "wind_type": "changing_turbulent",
@@ -575,10 +645,17 @@
       "shield": 1,
       "shield_recharge_time": 20,
       "camera_shake_intensity": 0.8,
-      "enemies": [],
+      "enemies": [
+        {"type": "zigzag", "multiplier": 1.5},
+        {"type": "chaser", "multiplier": 1},
+        {"type": "obstacle", "multiplier": 1.5}
+      ],
+      "enemy_sizes": {"zigzag": [18, 30], "chaser": [12, 22]},
+      "enemy_speeds": {"chaser": [60, 100]},
+      "enemy_wave_amps": {"zigzag": 150},
+      "enemy_wave_speeds": {"zigzag": [1.0, 1.5]},
       "flavor_text": "The ultimate test. Waves, wind, tracking, minimal survival",
-      "intro_cutscene": null,
-      "bg_star_color": [1.0, 0.6, 0.6]
+      "intro_cutscene": null
     },
     {
       "clone_index": 17,
@@ -646,7 +723,9 @@
       "palette": "red",
       "music_track": "dodge_theme_3",
       "sfx_pack": "8bit_arcade",
-      "background": "starfield",
+      "background": "image",
+      "bg_image": "assets/backgrounds/Solar_wind_plasma.jpeg",
+      "bg_color": [0.03, 0.01, 0.01],
       "difficulty_modifier": 1.0,
       "movement_speed": 320,
       "obstacle_spawn_rate": 2.5,
@@ -654,10 +733,17 @@
       "player_size": 0.6,
       "fog_of_war_radius": 150,
       "obstacle_trails": 8,
-      "enemies": [],
+      "enemies": [
+        {"type": "obstacle", "multiplier": 2},
+        {"type": "bouncer", "multiplier": 1},
+        {"type": "zigzag", "multiplier": 0.8},
+        {"type": "teleporter", "multiplier": 0.5}
+      ],
+      "enemy_sizes": {"bouncer": [8, 16], "zigzag": [8, 14], "teleporter": [8, 14], "obstacle": [8, 16]},
+      "enemy_speeds": {"bouncer": [160, 240], "zigzag": [150, 220], "teleporter": [120, 180]},
+      "enemy_wave_amps": {"zigzag": 60},
       "flavor_text": "Tiny hitbox, one life, chaos everywhere. Good luck.",
-      "intro_cutscene": null,
-      "bg_star_color": [1.0, 0.6, 0.6]
+      "intro_cutscene": null
     },
     {
       "clone_index": 19,

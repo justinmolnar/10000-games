@@ -153,6 +153,7 @@ function GameBaseView:initBackground(variant, params)
         config.ink_sim_steps       = params.bg_ink_sim_steps
         config.ink_displace        = params.bg_ink_displace
         config.ink_dye_color       = params.bg_ink_dye_color
+        config.plasma_layers       = params.bg_plasma_layers
         config.image_path          = params.bg_image
     end
 

@@ -77,6 +77,13 @@
             "max": 1.0,
             "description": "Friction when decelerating (1.0 = instant stop, <1.0 = drift/slide)"
         },
+        "thrust_acceleration": {
+            "type": "number",
+            "default": 600,
+            "min": 100,
+            "max": 3000,
+            "description": "Thrust acceleration for asteroids movement mode (pixels/sec²)"
+        },
         "bounce_damping": {
             "type": "number",
             "default": 0.5,
@@ -200,6 +207,13 @@
             "max": 180,
             "description": "Turn rate for seeker/chaser enemies in degrees per second"
         },
+        "seeker_max_steering_angle": {
+            "type": "number",
+            "default": null,
+            "min": 5,
+            "max": 180,
+            "description": "Max angle deviation (degrees) from spawn direction for seeker/chaser enemies. Null = unlimited."
+        },
         "area_gravity": {
             "type": "number",
             "default": 0.0,
@@ -283,6 +297,13 @@
             "min": 5,
             "max": 500,
             "description": "Target dodge count or survival seconds for victory"
+        },
+        "victory_progress_weight": {
+            "type": "number",
+            "default": 1,
+            "min": 0.1,
+            "max": 10,
+            "description": "Multiplier applied to raw metric for victory_progress calculation"
         },
         "arena_base_width": {
             "type": "integer",
@@ -526,6 +547,13 @@
             "max": 50.0,
             "description": "How much ink velocity displaces the flowing pattern"
         },
+        "bg_plasma_layers": {
+            "type": "number",
+            "default": 4,
+            "min": 4,
+            "max": 6,
+            "description": "Plasma shader sine layers (4 or 6)"
+        },
         "bg_ink_dye_color": {
             "type": "array",
             "default": [0.05, 0.02, 0.09],
@@ -713,9 +741,9 @@
             "type": "zigzag",
             "speed_multiplier": 1.1,
             "on_collision": "damage",
-            "wave_speed_min": 6,
-            "wave_speed_range": 4,
-            "wave_amp": 30
+            "wave_speed_min": 2,
+            "wave_speed_range": 2,
+            "wave_amp": 80
         },
         "teleporter": {
             "name": "teleporter",

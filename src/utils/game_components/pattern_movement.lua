@@ -61,6 +61,8 @@ end
 
 -- Steer toward target (smooth turning)
 -- Returns new angle, also updates entity.angle if present
+-- Respects entity.max_steering_angle (max unwrapped deviation from entity.spawn_angle) if set
+-- Tracks cumulative rotation so entities can't spiral indefinitely in one direction
 function PatternMovement.steerToward(entity, target_x, target_y, turn_rate, dt)
     local desired = math.atan2(target_y - entity.y, target_x - entity.x)
     local current = entity.angle or 0
@@ -70,9 +72,20 @@ function PatternMovement.steerToward(entity, target_x, target_y, turn_rate, dt)
     if diff > max_turn then diff = max_turn
     elseif diff < -max_turn then diff = -max_turn end
 
-    local new_angle = current + diff
-    entity.angle = new_angle
-    return new_angle
+    -- Clamp cumulative deviation from spawn angle (unwrapped, so spiraling hits the limit)
+    if entity.max_steering_angle and entity.spawn_angle then
+        local steering_offset = entity.steering_offset or 0
+        local new_offset = steering_offset + diff
+        if new_offset > entity.max_steering_angle then
+            diff = entity.max_steering_angle - steering_offset
+        elseif new_offset < -entity.max_steering_angle then
+            diff = -entity.max_steering_angle - steering_offset
+        end
+        entity.steering_offset = (entity.steering_offset or 0) + diff
+    end
+
+    entity.angle = current + diff
+    return entity.angle
 end
 
 -- Move toward target point, returns true if arrived
@@ -364,6 +377,9 @@ function PatternMovement.update(dt, entity, bounds)
 
     -- Steering toward target
     if entity.use_steering and entity.target_x and entity.target_y then
+        if entity.spawn_angle == nil then
+            entity.spawn_angle = entity.angle
+        end
         local turn_rate = entity.turn_rate or math.rad(90)
         PatternMovement.steerToward(entity, entity.target_x, entity.target_y, turn_rate, dt)
         PatternMovement.setVelocityFromAngle(entity, entity.angle, entity.speed or 100)

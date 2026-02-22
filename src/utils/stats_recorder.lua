@@ -4,6 +4,64 @@ local StatsRecorder = {}
 
 local STATS_FILE = "balance_stats.json"
 
+-- Pretty-print JSON with indentation for human-readable stats files
+local function prettyEncode(val, indent, current)
+    indent = indent or "  "
+    current = current or ""
+    local t = type(val)
+
+    if t == "nil" then
+        return "null"
+    elseif t == "boolean" then
+        return tostring(val)
+    elseif t == "number" then
+        if val ~= val or val <= -math.huge or val >= math.huge then
+            return "null"
+        end
+        return string.format("%.14g", val)
+    elseif t == "string" then
+        return json.encode(val)
+    elseif t == "table" then
+        -- Check if array
+        local is_array = #val > 0 or next(val) == nil
+        if is_array and #val > 0 then
+            -- Check first element type to decide inline vs multiline
+            local first_type = type(val[1])
+            -- Small arrays of primitives stay inline
+            if first_type ~= "table" and #val <= 6 then
+                local parts = {}
+                for i, v in ipairs(val) do
+                    parts[i] = prettyEncode(v)
+                end
+                return "[" .. table.concat(parts, ", ") .. "]"
+            end
+            -- Array of objects/large arrays get multiline
+            local next_indent = current .. indent
+            local parts = {}
+            for i, v in ipairs(val) do
+                parts[i] = next_indent .. prettyEncode(v, indent, next_indent)
+            end
+            return "[\n" .. table.concat(parts, ",\n") .. "\n" .. current .. "]"
+        elseif not is_array then
+            -- Object
+            local next_indent = current .. indent
+            local parts = {}
+            -- Sort keys for consistent output
+            local keys = {}
+            for k in pairs(val) do keys[#keys + 1] = k end
+            table.sort(keys)
+            for _, k in ipairs(keys) do
+                local v = val[k]
+                parts[#parts + 1] = next_indent .. json.encode(k) .. ": " .. prettyEncode(v, indent, next_indent)
+            end
+            return "{\n" .. table.concat(parts, ",\n") .. "\n" .. current .. "}"
+        else
+            return "[]"
+        end
+    end
+    return "null"
+end
+
 function StatsRecorder.loadStats()
     local content = love.filesystem.read(STATS_FILE)
     if not content then return {} end
@@ -13,7 +71,7 @@ function StatsRecorder.loadStats()
 end
 
 function StatsRecorder.saveStats(stats)
-    local ok, encoded = pcall(json.encode, stats)
+    local ok, encoded = pcall(prettyEncode, stats)
     if not ok then
         print("[StatsRecorder] Encode error: " .. tostring(encoded))
         return false

@@ -130,7 +130,7 @@ function DodgeGame:setupComponents()
         speed = p.movement_speed,
         accel_friction = p.accel_friction, decel_friction = p.decel_friction,
         rotation_speed = p.rotation_speed, bounce_damping = p.bounce_damping,
-        thrust_acceleration = (self.runtimeCfg.player and self.runtimeCfg.player.thrust_acceleration) or 600,
+        thrust_acceleration = p.thrust_acceleration or (self.runtimeCfg.player and self.runtimeCfg.player.thrust_acceleration) or 600,
         jump_distance = p.jump_distance, jump_cooldown = p.jump_cooldown, jump_speed = p.jump_speed
     })
 
@@ -309,14 +309,33 @@ function DodgeGame:setupComponents()
                     game:playSound("dodge", 0.5)
                     return true  -- collect and remove
                 end
+                -- Read collision response from entity (resolved from schema/variant)
+                local col = entity.collision_response or {}
+                local damage = col.damage == nil and 1 or col.damage
+                local knockback = col.knockback or 0
+                local remove = col.remove == nil and true or col.remove
+
                 game.metrics.collisions = game.metrics.collisions + 1
                 game.current_combo = 0
-                game:takeDamage(1, "hit")
-                if not game.health_system:isAlive() then
-                    game:playSound("death", 1.0)
-                    game:onComplete()
+
+                if knockback > 0 then
+                    local dx = target.x - entity.x
+                    local dy = target.y - entity.y
+                    local dist = math.sqrt(dx * dx + dy * dy)
+                    if dist > 0 then
+                        target.vx = (target.vx or 0) + (dx / dist) * knockback
+                        target.vy = (target.vy or 0) + (dy / dist) * knockback
+                    end
                 end
-                return true  -- remove entity
+
+                if damage > 0 then
+                    game:takeDamage(damage, "hit")
+                    if not game.health_system:isAlive() then
+                        game:playSound("death", 1.0)
+                        game:onComplete()
+                    end
+                end
+                return remove
             end
         },
         enter_zone = {
@@ -411,7 +430,13 @@ function DodgeGame:setupEntities()
                 or SchemaLoader.resolveChain(def.name or type_name, "movement_axis", "enemy_movement_axis", sources)
             def.resolved_wave_amp = SchemaLoader.resolveChain(def.name or type_name, "wave_amp", "enemy_wave_amps", sources)
             def.resolved_wave_speed = SchemaLoader.resolveChain(def.name or type_name, "wave_speed", "enemy_wave_speeds", sources)
+            def.max_alive = SchemaLoader.resolveChain(def.name or type_name, "max_alive", "enemy_max_alive", sources)
+            def.resolved_collision_response = SchemaLoader.resolveChain(def.name or type_name, "collision_response", "enemy_collision", sources)
             def.resolved = true
+        end
+        -- Propagate max_alive to entity controller's copy
+        if def.max_alive and self.entity_controller.entity_types[type_name] then
+            self.entity_controller.entity_types[type_name].max_alive = def.max_alive
         end
     end
 
@@ -1101,7 +1126,8 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
         sprite_rotation_speed = sprite_rotation,
         sprite_direction_mode = sprite_direction,
         angle = angle or 0,
-        turn_rate = math.rad(self.params.seeker_turn_rate or 54)
+        turn_rate = math.rad(self.params.seeker_turn_rate or 54),
+        collision_response = enemy_def.resolved_collision_response
     }
 
     -- OBB collision from sprite content shape (same approach as lunger teeth)
@@ -1118,6 +1144,9 @@ function DodgeGame:spawnEntity(type_name, x, y, angle, warned, overrides)
     -- Movement flags based on enemy type (from schema enemy_def or defaults)
     if base_type == 'seeker' or base_type == 'chaser' then
         custom_params.use_steering = true
+        if self.params.seeker_max_steering_angle then
+            custom_params.max_steering_angle = math.rad(self.params.seeker_max_steering_angle)
+        end
     elseif base_type == 'bouncer' then
         -- Bouncers use velocity-based movement
         custom_params.use_velocity = true
