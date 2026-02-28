@@ -136,6 +136,10 @@ function RaycasterView:drawContent()
     end
 end
 
+function RaycasterView:drawWater()
+    -- No-op: water rendered as 3D billboards inside drawContent()
+end
+
 function RaycasterView:getVictorySubtitle()
     return string.format("Time: %.1fs", self.game.time_elapsed)
 end

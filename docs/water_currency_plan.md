@@ -34,6 +34,20 @@ Phased plan for adding a rare universal pickup ("Water") that spawns across all 
 
 ---
 
+## Component Conventions
+
+All water-related code must follow these rules (derived from auditing existing components):
+
+- **Config via plain table** — `init(config)` receives a flat config table, never `di`
+- **Zero globals** — no `_G`, `rawget`, `Config.*`, or `require('src.config')`
+- **Game ref injected after creation** — caller does `component.game = self`, component accesses `self.game`
+- **RNG via `self.game.rng`** — never `math.random` or `love.math.newRandomGenerator`; game owns the RNG for demo determinism
+- **No `love.*` in logic components** — pure data/logic; rendering in views only
+- **Callbacks optional** — passed in config, nil-checked before calling
+- **Validate config in `init()`** — error on missing required fields
+
+---
+
 ## Phase 1: Player Data + Config
 **Goal**: Water exists as a tracked, saved resource. No spawning or spending yet.
 

@@ -911,12 +911,21 @@ function EntityController:checkCollision(obj, handlers)
 
             if collided then
                 table.insert(collisions, entity)
+                local handled = false
                 if type(handlers) == "function" then
                     handlers(entity)
+                    handled = true
                 elseif type(handlers) == "table" then
                     local action = entity.on_collision
                     if action and handlers[action] then
                         handlers[action](entity)
+                        handled = true
+                    end
+                end
+                if not handled and self.universal_handlers then
+                    local action = entity.on_collision
+                    if action and self.universal_handlers[action] then
+                        self.universal_handlers[action](entity)
                     end
                 end
             end

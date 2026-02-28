@@ -62,11 +62,53 @@ end
 function GameBaseView:draw()
     self:ensureLoaded()
     self:drawContent()
+    self:drawWater()
+    self:drawPopups()
     self:drawOverlay()
 end
 
 function GameBaseView:drawContent()
     -- Override in subclasses
+end
+
+function GameBaseView:drawWater()
+    local game = self.game
+    if not game or not game.entity_controller then return end
+
+    local waters = game.entity_controller:getEntitiesByCategory("water")
+    if #waters == 0 then return end
+
+    -- Lazy-load water sprite
+    if not self._water_sprite then
+        local ok, img = pcall(love.graphics.newImage, "assets/sprites/shared/y2k_bunker/water_jug.png")
+        self._water_sprite = ok and img or false
+    end
+
+    local t = love.timer.getTime()
+    for _, entity in ipairs(waters) do
+        local pulse = 1 + 0.1 * math.sin(t * 3)
+        local alpha = 1 - (entity.age or 0) / (entity.lifetime or 1)
+        alpha = math.max(0, math.min(1, alpha))
+
+        if self._water_sprite then
+            local sprite = self._water_sprite
+            local sw, sh = sprite:getWidth(), sprite:getHeight()
+            local scale = pulse * (self._water_draw_size or 24) / math.max(sw, sh)
+            love.graphics.setColor(1, 1, 1, alpha)
+            love.graphics.draw(sprite, entity.x, entity.y, 0, scale, scale, sw / 2, sh / 2)
+        else
+            love.graphics.setColor(0.3, 0.7, 1.0, alpha)
+            love.graphics.circle('fill', entity.x, entity.y, 8 * pulse)
+        end
+    end
+    love.graphics.setColor(1, 1, 1)
+end
+
+function GameBaseView:drawPopups()
+    local game = self.game
+    if game and game.popup_manager then
+        game.popup_manager:draw()
+    end
 end
 
 function GameBaseView:drawOverlay()

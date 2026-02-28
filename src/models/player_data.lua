@@ -47,6 +47,11 @@ function PlayerData:init(statistics_instance, di)
     --   }
     -- }
     self.demos = {}
+
+    -- Water currency (rare manual-play pickup)
+    self.water = 0
+    self.water_lifetime = 0
+    self.water_upgrades = {}  -- { [game_id] = level (0-5) }
 end
 
 function PlayerData:addTokens(amount)
@@ -94,6 +99,46 @@ end
 function PlayerData:hasTokens(amount)
     if type(amount) ~= "number" or amount < 0 then return false end
     return self.tokens >= amount
+end
+
+-- === Water Currency ===
+
+function PlayerData:getWater()
+    return self.water
+end
+
+function PlayerData:addWater(amount)
+    if type(amount) ~= "number" or amount <= 0 then return self.water end
+    amount = math.floor(amount)
+    self.water = self.water + amount
+    self.water_lifetime = self.water_lifetime + amount
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'water_changed', self.water, amount)
+    end
+    return self.water
+end
+
+function PlayerData:spendWater(amount)
+    if type(amount) ~= "number" or amount <= 0 then return false end
+    if not self:hasWater(amount) then return false end
+    self.water = self.water - amount
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'water_changed', self.water, -amount)
+    end
+    return true
+end
+
+function PlayerData:hasWater(amount)
+    if type(amount) ~= "number" or amount < 0 then return false end
+    return self.water >= amount
+end
+
+function PlayerData:getWaterUpgradeLevel(game_id)
+    return self.water_upgrades[game_id] or 0
+end
+
+function PlayerData:setWaterUpgradeLevel(game_id, level)
+    self.water_upgrades[game_id] = level
 end
 
 function PlayerData:unlockGame(game_id)
@@ -579,7 +624,10 @@ function PlayerData:serialize()
         cheat_budget = self.cheat_budget,  -- NEW: Save cheat budget
         cheat_engine_data = self.cheat_engine_data,  -- Contains both old and new cheat data
         upgrades = self.upgrades,
-        demos = self.demos or {}  -- Demo recordings
+        demos = self.demos or {},  -- Demo recordings
+        water = self.water,
+        water_lifetime = self.water_lifetime,
+        water_upgrades = self.water_upgrades,
     }
 end
 

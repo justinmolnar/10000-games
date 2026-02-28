@@ -1,4 +1,5 @@
 local Object = require('class')
+local EntityController = require('src.utils.game_components.entity_controller')
 local BaseGame = Object:extend('BaseGame')
 
 -- Cardinal direction lookup table
@@ -32,6 +33,21 @@ function BaseGame:init(game_data, cheats, di, variant_override, original_variant
     self.game_over = false
     self.victory = false
     self.score = 0
+
+    -- Water currency pickup
+    local wc = di and di.config and di.config.water
+    if wc and di.components then
+        self.water_pickup = di.components.WaterPickup:new({
+            spawn_interval = wc.spawn_interval,
+            spawn_chance = wc.spawn_chance,
+            lifetime = wc.lifetime,
+            value = wc.value,
+            collection_radius = wc.collection_radius,
+            on_collect = function(pickup) self:onWaterCollected(pickup) end,
+            on_despawn = function(pickup) self:onWaterDespawned(pickup) end,
+        })
+        self.water_pickup.game = self
+    end
 
     -- Common arena state (initial values, overwritten by setPlayArea)
     self.arena_width = 800
@@ -331,10 +347,53 @@ function BaseGame:fixedUpdate(dt)
         -- Call game-specific logic
         self:updateGameLogic(dt)
 
+        -- Water pickup system
+        if self.water_pickup and not self.playback_mode then
+            self:setupWaterPickup()
+            if self.water_timer_spawning ~= false then
+                self.water_pickup:update(dt)
+            end
+            -- Collision collection for movement games
+            local player_obj = self.player or self.paddle
+            if player_obj then
+                self.entity_controller:checkCollision(player_obj, {
+                    collect_water = function(entity)
+                        self:onWaterCollected(entity)
+                        self.entity_controller:removeEntity(entity, "collected")
+                    end
+                })
+            end
+        end
+
         if self:checkComplete() then
             self:onComplete()
         end
     end
+end
+
+function BaseGame:setupWaterPickup()
+    if not self.water_pickup or self._water_setup_done then return end
+    if not self.entity_controller then
+        self.entity_controller = EntityController:new({
+            spawning = {mode = "manual"},
+            max_entities = 5,
+        })
+    end
+    self.entity_controller.entity_types["water"] = {
+        category = "water",
+        on_collision = "collect_water",
+        collision_response = {damage = 0, remove = false},
+        radius = self.water_pickup.collection_radius,
+        movement_type = "static",
+        max_alive = self.water_pickup.max_active,
+    }
+    self.entity_controller.universal_handlers = self.entity_controller.universal_handlers or {}
+    self.entity_controller.universal_handlers.collect_water = function(entity)
+        self:onWaterCollected(entity)
+        self.entity_controller:removeEntity(entity, "collected")
+    end
+    self.water_pickup:setBounds(0, 0, self.arena_width, self.arena_height)
+    self._water_setup_done = true
 end
 
 function BaseGame:updateGameLogic(dt)
@@ -349,6 +408,9 @@ function BaseGame:setPlayArea(width, height)
     self.arena_height = height
     self.game_width = width
     self.game_height = height
+    if self.water_pickup then
+        self.water_pickup:setBounds(0, 0, width, height)
+    end
 end
 
 function BaseGame:draw()
@@ -395,7 +457,12 @@ function BaseGame:mousepressed(x, y, button)
     if self.playback_mode then
         return
     end
-    -- Override in subclasses
+    -- Water click-to-collect (non-movement games)
+    if self.water_pickup and button == 1 then
+        if self.water_pickup:checkClick(x, y) then
+            return true
+        end
+    end
 end
 
 -- Enable/disable playback mode
@@ -475,7 +542,24 @@ function BaseGame:onComplete()
     -- Stop music
     self:stopMusic()
 
+    if self.water_pickup then self.water_pickup:clear() end
+
     self.completed = true
+end
+
+function BaseGame:onWaterCollected(entity)
+    if self.di and self.di.playerData then
+        self.di.playerData:addWater(entity.value or 1)
+    end
+    if self.popup_manager then
+        self.popup_manager:add(entity.x, entity.y, "+" .. (entity.value or 1) .. " WATER", {0.3, 0.7, 1.0})
+    end
+    if self.visual_effects then
+        self.visual_effects:flash({color = {0.3, 0.7, 1.0, 0.3}, duration = 0.3, mode = "fade_out"})
+    end
+end
+
+function BaseGame:onWaterDespawned(entity)
 end
 
 function BaseGame:getMetrics()

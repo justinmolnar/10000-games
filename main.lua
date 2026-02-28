@@ -131,6 +131,7 @@ function love.load()
         MapSpawnProcessor = require('src.utils.game_components.map_spawn_processor'),
         StateMachine = require('src.utils.game_components.state_machine'),
         SpriteUtils = require('src.utils.game_components.sprite_utils'),
+        WaterPickup = require('src.utils.game_components.water_pickup'),
     }
 
     -- == 3. Instantiate Models with DI ==
@@ -186,6 +187,10 @@ function love.load()
         player_data.upgrades = player_data.upgrades or { cpu_speed=0, overclock=0, auto_dodge=0 }
         -- Round tokens to integer for readability
         player_data.tokens = math.floor(player_data.tokens or 0)
+        -- Water currency fallbacks
+        player_data.water = math.floor(player_data.water or 0)
+        player_data.water_lifetime = math.floor(player_data.water_lifetime or 0)
+        player_data.water_upgrades = player_data.water_upgrades or {}
     else
         print("No save found or load failed, starting new game")
         player_data:init(statistics, di)

@@ -15,7 +15,6 @@ function CoinFlipView:drawContent()
     love.graphics.rectangle('fill', 0, 0, w, h)
 
     self.game.visual_effects:drawScreenFlash(w, h)
-    self.game.popup_manager:draw()
     self.game.visual_effects:drawParticles()
     self.game.hud:draw(w, h)
 

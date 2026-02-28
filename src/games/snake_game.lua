@@ -14,6 +14,7 @@
 local BaseGame = require('src.games.base_game')
 local SnakeView = require('src.games.views.snake_view')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
+local EntityController = require('src.utils.game_components.entity_controller')
 local SnakeGame = BaseGame:extend('SnakeGame')
 
 --------------------------------------------------------------------------------
@@ -239,6 +240,32 @@ function SnakeGame:setupComponents()
         self.movement_controller:initState(entity_id, psnake.direction)
     end
     self.metrics.snake_length, self.metrics.survival_time = 1, 0
+end
+
+function SnakeGame:setupWaterPickup()
+    if not self.water_pickup or self._water_setup_done then return end
+    if not self.entity_controller then
+        self.entity_controller = EntityController:new({
+            spawning = {mode = "manual"},
+            max_entities = 5,
+        })
+    end
+    self.entity_controller.entity_types["water"] = {
+        category = "water",
+        on_collision = "collect_water",
+        collision_response = {damage = 0, remove = false},
+        radius = self.water_pickup.collection_radius,
+        movement_type = "static",
+        max_alive = self.water_pickup.max_active,
+    }
+    self.entity_controller.universal_handlers = self.entity_controller.universal_handlers or {}
+    self.entity_controller.universal_handlers.collect_water = function(entity)
+        self:onWaterCollected(entity)
+        self.entity_controller:removeEntity(entity, "collected")
+    end
+    -- Grid-space bounds instead of pixel-space
+    self.water_pickup:setBounds(0, 0, self.grid_width, self.grid_height)
+    self._water_setup_done = true
 end
 
 --------------------------------------------------------------------------------

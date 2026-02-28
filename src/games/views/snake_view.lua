@@ -329,6 +329,38 @@ function SnakeView:drawContent()
         })
     end
 
+    -- Draw water pickups
+    if game.entity_controller then
+        local waters = game.entity_controller:getEntitiesByCategory("water")
+        if #waters > 0 then
+            if not self._water_sprite then
+                local ok, img = pcall(love.graphics.newImage, "assets/sprites/shared/y2k_bunker/water_jug.png")
+                self._water_sprite = ok and img or false
+            end
+            local t = love.timer.getTime()
+            for _, entity in ipairs(waters) do
+                local pulse = 1 + 0.1 * math.sin(t * 3)
+                local alpha = 1 - (entity.age or 0) / (entity.lifetime or 1)
+                alpha = math.max(0, math.min(1, alpha))
+                local draw_x = entity.x * GRID_SIZE
+                local draw_y = entity.y * GRID_SIZE
+                local draw_size = GRID_SIZE - 1
+
+                if self._water_sprite then
+                    local sprite = self._water_sprite
+                    local sw, sh = sprite:getWidth(), sprite:getHeight()
+                    local scale = pulse * draw_size / math.max(sw, sh)
+                    love.graphics.setColor(1, 1, 1, alpha)
+                    love.graphics.draw(sprite, draw_x + draw_size / 2, draw_y + draw_size / 2, 0, scale, scale, sw / 2, sh / 2)
+                else
+                    love.graphics.setColor(0.3, 0.7, 1.0, alpha)
+                    love.graphics.circle('fill', draw_x + draw_size / 2, draw_y + draw_size / 2, draw_size / 2 * pulse)
+                end
+            end
+            love.graphics.setColor(1, 1, 1)
+        end
+    end
+
     -- Draw obstacles (skip wall-type obstacles for rectangles - they're rendered by drawArenaBoundaries)
     local is_shaped = game.arena_controller and game.arena_controller.safe_zone_mode
     local obstacle_size = GRID_SIZE - 1
@@ -361,6 +393,10 @@ function SnakeView:drawContent()
     love.graphics.pop()
 
     game.hud:draw(viewport_width, viewport_height)
+end
+
+function SnakeView:drawWater()
+    -- No-op: water drawn inside drawContent() within camera transform
 end
 
 function SnakeView:drawArenaBoundaries()

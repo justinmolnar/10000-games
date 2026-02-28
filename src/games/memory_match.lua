@@ -453,6 +453,7 @@ function MemoryMatch:mousemoved(x, y)
 end
 
 function MemoryMatch:mousepressed(x, y, button)
+    if MemoryMatch.super.mousepressed(self, x, y, button) then return end
     local selected_count = #self.entity_controller:getEntitiesByFilter(function(e) return e.is_selected end)
     if self.memorize_phase or self.match_check_timer:isActive() or selected_count >= self.params.match_requirement then return end
 

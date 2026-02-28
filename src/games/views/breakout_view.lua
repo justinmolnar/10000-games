@@ -106,9 +106,6 @@ function BreakoutView:drawContent()
         love.graphics.rectangle('line', powerup.x, powerup.y, powerup.width, powerup.height)
     end
 
-    -- Draw score popups
-    self.game.popup_manager:draw()
-
     -- Draw particles
     self.game.visual_effects:drawParticles()
 

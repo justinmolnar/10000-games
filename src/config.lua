@@ -10,6 +10,25 @@ local Config = {
         -- Cost multiplier per level: base_cost * (current_level + 1)
     },
 
+    -- Water Currency (rare manual-play pickup)
+    water = {
+        spawn_interval = 3,        -- TESTING: was 30
+        spawn_chance = 1.0,        -- TESTING: was 0.5
+        lifetime = 30,             -- TESTING: was 12
+        value = 1,                 -- Water per pickup
+        vm_drop_rate = 0,          -- Multiplier for VM play (0 = disabled)
+        collection_radius = 20,    -- Pickup radius in pixels
+        raycaster_replace_chance = 0.50, -- TESTING: was 0.05
+    },
+
+    -- Water Upgrades (per-game CE enhancements)
+    water_upgrades = {
+        max_level = 5,
+        costs = {10, 25, 50, 100, 200},
+        budget_bonus_per_level = 50,
+        cost_reduction_per_level = 0.05,
+    },
+
     -- CPU Speed System (affects page loading, window limits, etc.)
     cpu = {
         starting_speed = 1.0,          -- Starting CPU multiplier (Reasonable default)

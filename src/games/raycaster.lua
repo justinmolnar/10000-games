@@ -335,6 +335,18 @@ function Raycaster:setupComponents()
         end
     end
 
+    -- Water entity type for billboard rendering (placed before EC creation so generateMaze can spawn it)
+    entity_types["water"] = {
+        category = "water",
+        color = {0.3, 0.7, 1.0},
+        height = 0.3,
+        aspect = 1.0,
+        y_offset = 0,
+        radius = 0.3,
+        pickup_type = "water",
+        movement_type = "static",
+    }
+
     if next(entity_types) then
         self.entity_controller = self.di.components.EntityController:new({
             entity_types = entity_types,
@@ -342,6 +354,8 @@ function Raycaster:setupComponents()
             max_entities = 200
         })
     end
+
+    self.water_timer_spawning = false
 
     -- Projectile system for shooting
     if self.params.shooting_enabled then
@@ -407,6 +421,19 @@ function Raycaster:setupComponents()
         -- Start with knife
         self.player_controller:switchWeapon("knife")
     end
+end
+
+function Raycaster:setupWaterPickup()
+    if not self.water_pickup or self._water_setup_done then return end
+    -- Water type already registered in setupComponents with billboard properties.
+    -- Just wire up collision handlers and bounds.
+    self.entity_controller.universal_handlers = self.entity_controller.universal_handlers or {}
+    self.entity_controller.universal_handlers.collect_water = function(entity)
+        self:onWaterCollected(entity)
+        self.entity_controller:removeEntity(entity, "collected")
+    end
+    self.water_pickup:setBounds(0, 0, self.params.maze_width or 20, self.params.maze_height or 20)
+    self._water_setup_done = true
 end
 
 function Raycaster:generateMaze()
@@ -540,6 +567,7 @@ function Raycaster:generateMaze()
             critical_path = critical_path_lookup,
             rng = self.rng
         })
+        local water_chance = self.di and self.di.config and self.di.config.water and self.di.config.water.raycaster_replace_chance or 0.05
         for _, pos in ipairs(spawn_positions) do
             -- Resolve weighted spawn types if configured
             local spawn_type = pos.type
@@ -547,12 +575,22 @@ function Raycaster:generateMaze()
             if weighted then
                 spawn_type = self.entity_controller:pickWeightedType(weighted)
             end
+            -- Non-key pickups have a chance to become water
+            local type_def = self.entity_controller.entity_types[spawn_type]
+            if type_def and type_def.pickup_type and type_def.pickup_type ~= "key" and self.rng:random() < water_chance then
+                spawn_type = "water"
+            end
             local entity = self.entity_controller:spawn(spawn_type, pos.x, pos.y)
             self:initializeEnemy(entity)
         end
         -- Spawn entities from map markers
         for _, ent in ipairs(marker_entities) do
-            local entity = self.entity_controller:spawn(ent.type, ent.x, ent.y)
+            local spawn_type = ent.type
+            local type_def = self.entity_controller.entity_types[spawn_type]
+            if type_def and type_def.pickup_type and type_def.pickup_type ~= "key" and self.rng:random() < water_chance then
+                spawn_type = "water"
+            end
+            local entity = self.entity_controller:spawn(spawn_type, ent.x, ent.y)
             self:initializeEnemy(entity)
         end
     end
@@ -1724,6 +1762,10 @@ function Raycaster:collectPickups()
                 self:playSound("key_collect", 0.8)
                 local flash_color = key_type == "gold" and {1, 0.85, 0, 0.4} or {0.75, 0.75, 0.8, 0.4}
                 self.visual_effects:flash({color = flash_color, duration = 0.2, mode = "fade_out"})
+
+            elseif entity.category == "water" then
+                self:onWaterCollected(entity)
+                self.entity_controller:removeEntity(entity, "collected")
             end
         end
 

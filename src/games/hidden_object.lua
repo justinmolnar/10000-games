@@ -99,6 +99,7 @@ function HiddenObject:spawnObjects()
 end
 
 function HiddenObject:mousepressed(x, y, button)
+    if HiddenObject.super.mousepressed(self, x, y, button) then return end
     if self.completed or button ~= 1 then return end
 
     local entity = self.entity_controller:getEntityAtPoint(x, y, "hidden_object")
