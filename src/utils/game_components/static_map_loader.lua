@@ -3,11 +3,10 @@ local json = require('lib.json')
 
 local StaticMapLoader = Object:extend('StaticMapLoader')
 
-function StaticMapLoader:new(config)
+function StaticMapLoader:init(config)
     config = config or {}
     self.map_name = config.map_name or "pacman"
     self.maps_path = "assets/data/maps/"
-    return self
 end
 
 function StaticMapLoader:generate(rng)

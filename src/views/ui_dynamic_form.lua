@@ -8,6 +8,8 @@ function Form:init(opts)
     self.schema_path = opts.schema_path
     self.on_event = opts.on_event -- function(event)
     self.get = opts.get           -- function(id) -> current/pending value
+    self.choices_provider = opts.choices_provider -- function(key) -> choices table (optional)
+    self.di = opts.di
     if opts.di then UI.inject(opts.di) end
     self.label_x = opts.label_x or 16
     self.slider_x = opts.slider_x or 126
@@ -18,6 +20,9 @@ function Form:init(opts)
     self.row_space = opts.row_space or 22
     self.y = opts.y or 60
     self.layout_cache = {}
+    self.open_dropdown = nil -- id of currently open dropdown
+    self.open_dropdown_choices = nil
+    self.open_dropdown_rect = nil
     self.schema = self:_loadSchema(self.schema_path)
 end
 
@@ -60,6 +65,13 @@ function Form:passesWhen(cond)
     return true
 end
 
+function Form:getChoices(el)
+    if el.choices_from and self.choices_provider then
+        return self.choices_provider(el.choices_from) or el.choices or {}
+    end
+    return el.choices or {}
+end
+
 function Form:getSliderWidth()
     return math.max(120, self.right_edge - self.slider_x - self.value_col_w - 8)
 end
@@ -79,19 +91,19 @@ function Form:draw()
                 self:_print((el.label or '') .. ':', self.label_x, cy)
                 local tp_x, tp_y = self.slider_x, cy-4
                 local cur = self.get(el.id)
+                local choices = self:getChoices(el)
                 local label = tostring(cur or '')
-                if el.choices and type(el.choices[1]) == 'table' then
-                    -- find label for current value
-                    local found = false
-                    for _,c in ipairs(el.choices) do
-                        if c.value == cur then label = c.label; found = true; break end
+                local selected_idx = nil
+                if choices and #choices > 0 and type(choices[1]) == 'table' then
+                    for i,c in ipairs(choices) do
+                        if c.value == cur then label = c.label; selected_idx = i; break end
                     end
-                    -- If current value is nil and not found, use first choice label
-                    if not found and cur == nil and el.choices[1] then
-                        label = el.choices[1].label
+                    if not selected_idx and cur == nil and choices[1] then
+                        label = choices[1].label
+                        selected_idx = 1
                     end
                 end
-                UI.drawDropdown(tp_x, tp_y, self.dropdown_w, self.dropdown_h, label, true, false)
+                UI.drawDropdown(tp_x, tp_y, self.dropdown_w, self.dropdown_h, label, true, self.open_dropdown == el.id)
                 self.layout_cache[el.id] = {rect={x=tp_x, y=tp_y, w=self.dropdown_w, h=self.dropdown_h}, el=el}
                 cy = cy + 34
             elseif el.type == 'checkbox' then
@@ -124,30 +136,107 @@ function Form:draw()
             end
         end
     end
+
+    -- Open dropdown overlay via service (renders outside window scissor)
+    local overlay = self.di and self.di.dropdownOverlay
+    if overlay then
+        if self.open_dropdown and self.open_dropdown_rect and self.open_dropdown_choices then
+            if not overlay:isOpen() then
+                local r = self.open_dropdown_rect
+                local sx, sy = love.graphics.transformPoint(r.x, r.y + r.h)
+                local dd_id = self.open_dropdown
+                local choices = self.open_dropdown_choices
+                overlay:open({
+                    x = sx, y = sy, w = self.dropdown_w, item_h = self.dropdown_h,
+                    choices = choices,
+                    current = self.get(dd_id),
+                    on_select = function(value)
+                        if self.on_event then self.on_event({ name='set_pending', id=dd_id, value=value }) end
+                        self.open_dropdown = nil
+                        self.open_dropdown_choices = nil
+                        self.open_dropdown_rect = nil
+                    end,
+                    on_close = function()
+                        self.open_dropdown = nil
+                        self.open_dropdown_choices = nil
+                        self.open_dropdown_rect = nil
+                    end,
+                })
+            end
+        end
+    end
+end
+
+-- Fallback overlay for forms without DI (renders inside window scissor)
+function Form:drawOverlay()
+    if self.di then return end -- DI forms use desktop-level overlay
+    if not self.open_dropdown or not self.open_dropdown_rect or not self.open_dropdown_choices then return end
+    local r = self.open_dropdown_rect
+    local choices = self.open_dropdown_choices
+    local item_h = self.dropdown_h
+    local list_y = r.y + r.h
+    local labels = {}
+    local cur = self.get(self.open_dropdown)
+    local sel_idx = nil
+    for i, c in ipairs(choices) do
+        if type(c) == 'table' then
+            table.insert(labels, c.label)
+            if c.value == cur then sel_idx = i end
+        else
+            table.insert(labels, tostring(c))
+            if tostring(c) == tostring(cur) then sel_idx = i end
+        end
+    end
+    UI.drawDropdownList(r.x, list_y, r.w, item_h, labels, sel_idx)
 end
 
 function Form:mousepressed(x, y, button)
     if button ~= 1 then return end
+
+    -- If a dropdown list is open, check if click is on a list item
+    if self.open_dropdown and self.open_dropdown_rect and self.open_dropdown_choices then
+        local r = self.open_dropdown_rect
+        local choices = self.open_dropdown_choices
+        local item_h = self.dropdown_h
+        local list_x = r.x
+        local list_y = self._open_list_y or (r.y + r.h)
+        local list_w, list_h = r.w, #choices * item_h
+
+        if x >= list_x and x <= list_x + list_w and y >= list_y and y <= list_y + list_h then
+            local idx = math.floor((y - list_y) / item_h) + 1
+            if idx >= 1 and idx <= #choices then
+                local c = choices[idx]
+                local value = type(c) == 'table' and c.value or c
+                if self.on_event then self.on_event({ name='set_pending', id=self.open_dropdown, value=value }) end
+            end
+            self.open_dropdown = nil
+            self.open_dropdown_choices = nil
+            self.open_dropdown_rect = nil
+            return
+        end
+
+        -- Click outside list — close it
+        self.open_dropdown = nil
+        self.open_dropdown_choices = nil
+        self.open_dropdown_rect = nil
+        -- Fall through to check if they clicked another control
+    end
+
     for id,entry in pairs(self.layout_cache) do
         local rect, el = entry.rect, entry.el
         if rect and el then
             if el.type == 'dropdown' and hit(rect, x, y) then
-                local cur = self.get(el.id)
-                local idx = 1
-                if el.choices then
-                    if type(el.choices[1]) == 'table' then
-                        for i,c in ipairs(el.choices) do if c.value == cur then idx = i break end end
-                        idx = idx % #el.choices + 1
-                        if self.on_event then self.on_event({ name='set_pending', id=el.id, value=el.choices[idx].value }) end
-                        return
-                    else
-                        local curS = tostring(cur)
-                        for i,c in ipairs(el.choices) do if tostring(c) == curS then idx = i break end end
-                        idx = idx % #el.choices + 1
-                        if self.on_event then self.on_event({ name='set_pending', id=el.id, value=el.choices[idx] }) end
-                        return
-                    end
+                -- Toggle open/close
+                if self.open_dropdown == el.id then
+                    self.open_dropdown = nil
+                    self.open_dropdown_choices = nil
+                    self.open_dropdown_rect = nil
+                else
+                    self.open_dropdown = el.id
+                    self.open_dropdown_choices = self:getChoices(el)
+                    self.open_dropdown_rect = rect
                 end
+                return
             elseif el.type == 'checkbox' and hit(rect, x, y) then
                 local cur = self.get(el.id)
                 if self.on_event then self.on_event({ name='set_pending', id=el.id, value=not cur }) end

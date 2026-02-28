@@ -68,6 +68,14 @@ function ProgramLauncher:launchProgram(program_id, ...)
     local program = self.di.programRegistry:getProgram(program_id)
     if not program then print("Program definition not found: " .. program_id); return end
     if program.disabled then print("Program disabled: " .. program_id); love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is not available yet.", "info"); return end
+    if program.requires_nc_level and self.di.playerData then
+        local nc_level = self.di.playerData.space_defender_level or 1
+        if nc_level < program.requires_nc_level then
+            local needed = program.requires_nc_level - 1
+            love.window.showMessageBox("Locked", program.name .. " requires Neural Core level " .. needed .. " to unlock.", "info")
+            return
+        end
+    end
     if not program.state_class_path then print("Program missing state_class_path: " .. program_id); return end
 
     local defaults = program.window_defaults or {}
@@ -182,10 +190,11 @@ function ProgramLauncher:launchProgram(program_id, ...)
     local enter_args = {}
     local enter_args_config = program.enter_args
     if program_id == "minigame_runner" then
-        -- Pass both game_data and optional variant_override to MinigameState:enter
+        -- Pass game_data, optional variant_override, and optional original_variant to MinigameState:enter
         if game_data_arg then
             local variant_override = launch_args[2] -- May be nil, that's fine
-            enter_args = { game_data_arg, variant_override }
+            local original_variant = launch_args[3] -- Original variant for token calculation
+            enter_args = { game_data_arg, variant_override, original_variant }
         end
     elseif enter_args_config then
         if enter_args_config.type == "first_launch_arg" then enter_args = {launch_args[1] or enter_args_config.default}

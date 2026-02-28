@@ -19,8 +19,8 @@ local Breakout = BaseGame:extend('Breakout')
 -- Initialization
 --------------------------------------------------------------------------------
 
-function Breakout:init(game_data, cheats, di, variant_override)
-    Breakout.super.init(self, game_data, cheats, di, variant_override)
+function Breakout:init(game_data, cheats, di, variant_override, original_variant)
+    Breakout.super.init(self, game_data, cheats, di, variant_override, original_variant)
 
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.breakout)
     self.params = self.di.components.SchemaLoader.load(self.variant, "breakout_schema", runtimeCfg)
@@ -57,9 +57,11 @@ function Breakout:setupComponents()
         brick = {
             on_hit = function(brick)
                 if p.brick_flash_on_hit then game:flashEntity(brick, 0.1) end
+                game:playSound("brick_crack", 0.5)
             end,
             on_death = function(brick)
                 brick.alive = false
+                game:playSound("brick_break", 0.7)
                 game:onBrickDestroyed(brick)
             end
         },
@@ -300,7 +302,8 @@ function Breakout:updateGameLogic(dt)
         return count
     end, {
         loss_counter = "balls_lost", combo_reset = true, damage = 1, damage_reason = "ball_lost",
-        on_respawn = function(g) g:spawnBall() end
+        skip_damage = self.params.no_life_loss,
+        on_respawn = function(g) g:playSound("ball_launch", 0.7); g:spawnBall() end
     })
 
     -- Check victory/loss
@@ -339,6 +342,7 @@ function Breakout:updateBall(ball, dt)
             e.active = false
             return
         end
+        game:playSound("wall_bounce", 0.4)
         Physics.bounceEdge(e, info, restitution)
         if p.ball_bounce_randomness > 0 then
             Physics.addBounceRandomness(e, p.ball_bounce_randomness, self.rng)
@@ -353,7 +357,7 @@ function Breakout:updateBall(ball, dt)
     }, self.arena_height, {
         kill_enabled = p.bottom_kill_enabled,
         shield_active = self.shield_active,
-        on_shield_use = function() game.shield_active = false end,
+        on_shield_use = function() game.shield_active = false; game:playSound("wall_bounce", 0.6) end,
         restitution = restitution, bounce_randomness = p.ball_bounce_randomness, rng = self.rng
     }) then return end
 
@@ -364,7 +368,7 @@ function Breakout:updateBall(ball, dt)
         base_angle = -math.pi / 2, angle_range = math.pi / 4, bounce_direction = -1,
         spin_influence = 100, restitution = 1.0, separation = 1,
         bounce_randomness = p.ball_bounce_randomness, max_speed = p.ball_max_speed, rng = self.rng,
-        on_hit = function() game.combo = 0 end
+        on_hit = function() game.combo = 0; game:playSound("paddle_hit", 0.6) end
     })
 
     -- Brick collisions
@@ -593,6 +597,7 @@ function Breakout:collectPowerup(powerup)
         return  -- No duration tracking needed
     end
 
+    self:playSound("powerup_appear", 0.8)
     self.effect_system:activate(effect_type, duration, data)
 end
 

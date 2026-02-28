@@ -309,7 +309,8 @@ def run_session(config_filepath):
             print(f"  - {failed['id']}: {failed['error']}")
 
     # Save session metadata for manifest integration (Phase 3)
-    metadata_path = f"session_{session_name}_metadata.json"
+    os.makedirs("sessions/pixellab", exist_ok=True)
+    metadata_path = f"sessions/pixellab/session_{session_name}_metadata.json"
     with open(metadata_path, 'w', encoding='utf-8') as f:
         json.dump(session_metadata, f, indent=2)
     print(f"\n[OK] Session metadata saved: {metadata_path}")

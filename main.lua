@@ -80,6 +80,8 @@ function love.load()
     local ContextMenuService = require('src.utils.context_menu_service') -- Require ContextMenuService
     local GameVariantLoader = require('src.models.game_variant_loader') -- Require GameVariantLoader
     local AudioManager = require('src.utils.audio_manager') -- Phase 3.2/3.3: Audio system
+    local SystemSounds = require('src.utils.system_sounds')
+    local DropdownOverlay = require('src.utils.dropdown_overlay')
     local DemoRecorder = require('src.models.demo_recorder') -- Phase 1: Demo recording system
     local DemoPlayer = require('src.models.demo_player') -- Phase 2: Demo playback system
 
@@ -209,6 +211,13 @@ function love.load()
     -- == 5.5. Initialize Audio System (Phase 3.2/3.3) ==
     local audio_manager = AudioManager:new(di)
     di.audioManager = audio_manager
+
+    -- == 5.55. Initialize System Sounds ==
+    local system_sounds = SystemSounds:new(di)
+    di.systemSounds = system_sounds
+
+    -- == 5.56. Initialize Dropdown Overlay ==
+    di.dropdownOverlay = DropdownOverlay:new()
 
     -- == 5.6. Initialize TTS System ==
     local tts_ok, TTSManager = pcall(require, 'src.utils.tts_manager')

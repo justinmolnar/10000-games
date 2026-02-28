@@ -77,7 +77,16 @@
       "WebFetch(domain:deepwiki.com)",
       "WebFetch(domain:www.gnu.org)",
       "WebFetch(domain:obsidian-level-maker.github.io)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(mv:*)",
+      "WebFetch(domain:elevenlabs.io)",
+      "WebFetch(domain:flexprice.io)",
+      "WebFetch(domain:winsounds.com)",
+      "WebFetch(domain:www.mscs.mu.edu)",
+      "WebFetch(domain:archive.org)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

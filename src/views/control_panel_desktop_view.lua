@@ -75,6 +75,7 @@ function View:drawContent(w, h)
     if form_right < (self.form.slider_x + 200) then form_right = self.form.slider_x + 200 end
     -- Dynamic form area (constrained)
     self.form.right_edge = form_right
+    self.form.viewport_h = h
     self.form:draw()
 
     -- Live preview area on the right
@@ -132,6 +133,7 @@ function View:drawContent(w, h)
 
     -- Buttons
     self._ok_rect, self._cancel_rect, self._apply_rect = UI.drawDialogButtons(w, h, next(pending) ~= nil)
+    self.form:drawOverlay()
 end
 
 local function hit(r, x, y)

@@ -2,7 +2,7 @@ local Object = require('class')
 
 local MinimapRenderer = Object:extend('MinimapRenderer')
 
-function MinimapRenderer:new(config)
+function MinimapRenderer:init(config)
     config = config or {}
 
     self.size = config.size or 150
@@ -30,7 +30,6 @@ function MinimapRenderer:new(config)
     -- Critical path lookup
     self.critical_path = {}
 
-    return self
 end
 
 function MinimapRenderer:draw(viewport_w, viewport_h, map, map_w, map_h, player, goal, doors, enemies)

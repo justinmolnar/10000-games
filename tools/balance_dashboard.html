@@ -82,6 +82,14 @@ tr:hover td { background: #1a2a4e; }
 .sim-config input, .sim-config select { background: #16213e; color: #e0e0e0; border: 1px solid #444; padding: 4px 8px; font-family: inherit; font-size: 12px; border-radius: 3px; width: 80px; }
 .sim-config button { cursor: pointer; background: #3d2a0a; border: 1px solid #f80; color: #f80; padding: 4px 12px; font-family: inherit; font-size: 12px; border-radius: 3px; }
 .sim-config button:hover { background: #f80; color: #000; }
+#sim-charts-grid { grid-template-columns: 1fr; }
+#sim-charts-grid .chart-box { height: 450px; }
+#sim-charts-grid button {
+  cursor: pointer; background: #3d2a0a; border: 1px solid #f80; color: #f80;
+  padding: 4px 12px; font-family: inherit; font-size: 12px; border-radius: 3px;
+}
+#sim-charts-grid button:hover { background: #f80; color: #000; }
+#sim-charts-grid button.active { background: #f80; color: #000; }
 </style>
 </head>
 <body>
@@ -108,6 +116,7 @@ tr:hover td { background: #1a2a4e; }
   </div>
   <div id="sim-dashboard" class="hidden">
     <div class="sim-config" id="sim-config"></div>
+    <div class="grid" id="sim-charts-grid"></div>
     <div id="sim-table-wrap"></div>
   </div>
 </div>
@@ -829,7 +838,7 @@ function simulateVariant(variant) {
   const spawnRateMult = variant.obstacle_spawn_rate || SIM_DEFAULTS.default_obstacle_spawn_rate;
   const diffMod = variant.difficulty_modifier || 1.0;
   const cloneIndex = variant.clone_index || 0;
-  const variantMult = Math.max(1, cloneIndex);
+  const variantMult = Math.max(1, cloneIndex * 2);
 
   // Base spawn interval: base_spawn_rate / (difficulty_count * variant_diff) / obstacle_spawn_rate
   // difficulty_modifiers.count = 1 for clone_index based games (no count scaling)
@@ -993,6 +1002,139 @@ function calculateTokens(victoryProgress, collisions, combo, formulaK, collision
   return Math.floor(base * variantMult);
 }
 
+let simCharts = {};
+let simChartData = null;
+let simChartMode = 'per_game'; // 'per_game' or 'per_sec'
+
+function renderSimCharts(rows, maxLives) {
+  const grid = document.getElementById('sim-charts-grid');
+  grid.innerHTML = '';
+  Object.values(simCharts).forEach(c => c.destroy());
+  simCharts = {};
+
+  // Group rows by clone_index
+  const byIndex = {};
+  rows.forEach(r => {
+    const idx = r.clone_index;
+    if (!byIndex[idx]) byIndex[idx] = [];
+    byIndex[idx].push({ tokens: r.tokenScenarios[0] || 0, duration: r.duration });
+  });
+
+  const indices = Object.keys(byIndex).map(Number).sort((a, b) => a - b);
+  const labels = indices.map(String);
+
+  const avgPerGame = indices.map(idx => {
+    const vals = byIndex[idx].map(v => v.tokens);
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  });
+  const avgPerSec = indices.map(idx => {
+    const vals = byIndex[idx].map(v => v.duration > 0 ? v.tokens / v.duration : 0);
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  });
+
+  simChartData = { labels, indices, byIndex, avgPerGame, avgPerSec };
+
+  // Toggle buttons
+  const toggleWrap = document.createElement('div');
+  toggleWrap.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;';
+  const btnGame = document.createElement('button');
+  btnGame.textContent = 'Tokens / Game';
+  btnGame.id = 'sim-toggle-game';
+  btnGame.className = simChartMode === 'per_game' ? 'active' : '';
+  btnGame.onclick = () => { simChartMode = 'per_game'; updateSimChart(); };
+  const btnSec = document.createElement('button');
+  btnSec.textContent = 'Tokens / Second';
+  btnSec.id = 'sim-toggle-sec';
+  btnSec.className = simChartMode === 'per_sec' ? 'active' : '';
+  btnSec.onclick = () => { simChartMode = 'per_sec'; updateSimChart(); };
+  toggleWrap.appendChild(btnGame);
+  toggleWrap.appendChild(btnSec);
+  grid.appendChild(toggleWrap);
+
+  // Chart
+  const canvas = makeChartBox(grid, '');
+  canvas.parentElement.parentElement.style.gridColumn = '1 / -1';
+  canvas.parentElement.parentElement.style.height = '450px';
+  simCharts._canvas = canvas;
+
+  updateSimChart();
+}
+
+function updateSimChart() {
+  if (!simChartData) return;
+  const { labels, indices, byIndex, avgPerGame, avgPerSec } = simChartData;
+  const isPerSec = simChartMode === 'per_sec';
+  const data = isPerSec ? avgPerSec : avgPerGame;
+  const yLabel = isPerSec ? 'Avg Tokens / Second' : 'Avg Tokens / Game';
+  const dsLabel = isPerSec ? 'Avg Tokens/s (perfect run)' : 'Avg Tokens (perfect run)';
+
+  // Update toggle button styles
+  const btnGame = document.getElementById('sim-toggle-game');
+  const btnSec = document.getElementById('sim-toggle-sec');
+  if (btnGame) btnGame.className = isPerSec ? '' : 'active';
+  if (btnSec) btnSec.className = isPerSec ? 'active' : '';
+
+  // Update chart title
+  const chartBox = simCharts._canvas.parentElement.parentElement;
+  let h3 = chartBox.querySelector('h3');
+  if (h3) h3.textContent = yLabel + ' by Clone Index';
+
+  if (simCharts.avgByIndex) {
+    simCharts.avgByIndex.data.datasets[0].data = data;
+    simCharts.avgByIndex.data.datasets[0].label = dsLabel;
+    simCharts.avgByIndex.options.scales.y.title.text = yLabel;
+    simCharts.avgByIndex.options.plugins.tooltip.callbacks.label = ctx => {
+      const v = ctx.parsed.y;
+      return `${dsLabel}: ${isPerSec ? v.toFixed(2) : Math.round(v)}`;
+    };
+    simCharts.avgByIndex.update();
+    return;
+  }
+
+  simCharts.avgByIndex = new Chart(simCharts._canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: dsLabel,
+        data,
+        borderColor: '#0ff',
+        backgroundColor: 'rgba(0,255,255,0.1)',
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 7,
+        borderWidth: 3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#ccc', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return `${dsLabel}: ${isPerSec ? v.toFixed(2) : Math.round(v)}`;
+            },
+            afterLabel: ctx => {
+              const idx = indices[ctx.dataIndex];
+              const count = byIndex[idx].length;
+              return `(${count} variant${count > 1 ? 's' : ''} at index ${idx})`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Clone Index', color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' } },
+        y: { title: { display: true, text: yLabel, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
 function runSimulation() {
   if (!SIM_VARIANTS) return;
 
@@ -1017,6 +1159,8 @@ function runSimulation() {
 
   // Max lives across all variants (for column count)
   const maxLives = Math.max(...results.map(r => r.lives));
+
+  renderSimCharts(rows, maxLives);
 
   // Build table
   const wrap = document.getElementById('sim-table-wrap');

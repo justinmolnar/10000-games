@@ -117,7 +117,8 @@ local defaults = {
     desktop_bg_r = 0.0,
     desktop_bg_g = 0.5,
     desktop_bg_b = 0.5,
-    desktop_icon_snap = true
+    desktop_icon_snap = true,
+    sound_scheme = "default"
 }
 
 -- (current_settings declared above)

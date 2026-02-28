@@ -501,6 +501,11 @@
             "max": 500,
             "description": "Visibility radius for fog of war"
         },
+        "no_life_loss": {
+            "type": "boolean",
+            "default": false,
+            "description": "Ball loss does not cost a life"
+        },
         "lives": {
             "type": "integer",
             "default": 3,

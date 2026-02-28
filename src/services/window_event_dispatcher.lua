@@ -76,8 +76,8 @@ end
 function WindowEventDispatcher:handleLaunchMinigame(event)
     if event.game_data then
         if self.event_bus then
-            -- Pass both game_data and optional variant to launch_program
-            self.event_bus:publish('launch_program', "minigame_runner", event.game_data, event.variant)
+            -- Pass game_data, optional variant, and optional original_variant to launch_program
+            self.event_bus:publish('launch_program', "minigame_runner", event.game_data, event.variant, event.original_variant)
         end
     else
         print("ERROR: launch_minigame event missing game_data!")
@@ -102,8 +102,13 @@ function WindowEventDispatcher:handleEnsureIconVisible(event)
 end
 
 function WindowEventDispatcher:handleShutdownNow()
-    _G.APP_ALLOW_QUIT = true
-    love.event.quit()
+    local ss = self.di.systemSounds
+    if ss and ss:beginShutdown() then
+        -- Shutdown sound playing; SystemSounds:update() will quit when done
+    else
+        _G.APP_ALLOW_QUIT = true
+        love.event.quit()
+    end
 end
 
 function WindowEventDispatcher:handleRestartNow()
@@ -132,6 +137,7 @@ function WindowEventDispatcher:executeRunCommand(command)
                 self.event_bus:publish('launch_program', program.id)
             end
         else
+            if self.di.systemSounds then self.di.systemSounds:playSystemSound('error') end
             love.window.showMessageBox(
                 Strings.get('messages.error_title', 'Error'),
                 string.format(Strings.get('messages.cannot_find_fmt', "Cannot find '%s'."), command),
@@ -139,6 +145,7 @@ function WindowEventDispatcher:executeRunCommand(command)
             )
         end
     else
+        if self.di.systemSounds then self.di.systemSounds:playSystemSound('error') end
         love.window.showMessageBox(
             Strings.get('messages.error_title', 'Error'),
             string.format(Strings.get('messages.cannot_find_fmt', "Cannot find '%s'."), command),

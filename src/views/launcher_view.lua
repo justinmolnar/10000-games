@@ -433,19 +433,14 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     
     local text_x = icon_x + icon_size + 12
     local text_w = w - (text_x - x) - 120
-    
-    -- Phase 1.5: Display variant name if available
-    local display_name = game_data.display_name
-    if self.variant_loader then
-        local variant = self.variant_loader:getVariantData(game_data.id)
-        if variant and variant.name then
-            display_name = variant.name
-        end
-    end
+
+    -- Fetch variant data once for display name + goal
+    local variant = self.variant_loader and self.variant_loader:getVariantData(game_data.id)
+    local display_name = (variant and variant.name) or game_data.display_name
 
     love.graphics.setColor(1, 1, 1)
     love.graphics.print(display_name, text_x, y + 8, 0, 1.1, 1.1)
-    
+
     local star_y = y + 28
     local difficulty = game_data.difficulty_level or 1
     local stars = math.min(5, math.ceil(difficulty / 2))
@@ -456,6 +451,13 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
             love.graphics.setColor(0.3, 0.3, 0.3)
         end
         love.graphics.print("★", text_x + (i - 1) * 14, star_y, 0, 0.9, 0.9)
+    end
+
+    -- Victory condition / goal text (after stars)
+    local goal_text = self:getGoalText(game_data, variant)
+    if goal_text then
+        love.graphics.setColor(0.6, 0.85, 1)
+        love.graphics.print(goal_text, text_x + 5 * 14 + 8, star_y + 1, 0, 0.8, 0.8)
     end
     
     local formula_y = y + 48
@@ -479,6 +481,67 @@ function LauncherView:drawGameCard(x, y, w, h, game_data, selected, hovered, pla
     
     love.graphics.setColor(1, 1, 0)
     love.graphics.print(string.format("×%.1f", game_data.variant_multiplier), stats_x, y + h - 22, 0, 1.1, 1.1)
+end
+
+-- Schema defaults per game class (victory_condition, victory_limit)
+LauncherView.VICTORY_DEFAULTS = {
+    DodgeGame = {vc = "dodge_count", limit = 30},
+    SnakeGame = {vc = "length", limit = 20},
+    SpaceShooter = {vc = "kills", limit = 20},
+    Breakout = {vc = "clear_bricks"},
+    CoinFlip = {vc = "streak", limit = 10},
+    RPS = {vc = "rounds", limit = 3},
+    Raycaster = {vc = "goal"},
+    HiddenObject = {vc = "find_all"},
+    MemoryMatch = {vc = "match_all"},
+}
+
+function LauncherView:getGoalText(game_data, variant)
+    local defaults = LauncherView.VICTORY_DEFAULTS[game_data.game_class] or {}
+    local d = game_data
+    local vc = d.victory_condition or defaults.vc
+    local limit = d.victory_limit or defaults.limit
+
+    -- Game-specific target fields override generic limit
+    if vc == "streak" then
+        limit = d.streak_target or limit
+    elseif vc == "total" then
+        limit = d.total_correct_target or limit
+    elseif vc == "ratio" then
+        return string.format("%.0f%% accuracy", (d.ratio_target or 0.75) * 100)
+    elseif vc == "first_to" or vc == "rounds" then
+        limit = d.rounds_to_win or limit
+    elseif vc == "score" then
+        limit = d.score_target or limit
+    elseif vc == "destroy_count" then
+        limit = d.destroy_count_target or limit
+    elseif vc == "match_all" then
+        local pairs = d.num_pairs or d.grid_pairs
+        return pairs and string.format("Match %d pairs", pairs) or "Match all pairs"
+    end
+
+    local labels = {
+        clear_bricks = "Clear all bricks",
+        clear_all = "Clear all",
+        dodge_count = limit and string.format("Dodge %d", limit),
+        kills = limit and string.format("Kill %d", limit) or "Kill all",
+        time = limit and string.format("Survive %ds", limit) or "Survive",
+        survival = limit and string.format("Survive %ds", limit) or "Survive",
+        length = limit and string.format("Reach length %d", limit),
+        streak = limit and string.format("%d streak", limit),
+        total = limit and string.format("%d correct", limit),
+        first_to = limit and string.format("Win %d rounds", limit),
+        rounds = limit and string.format("Win %d rounds", limit),
+        goal = "Reach the exit",
+        dots = "Collect all dots",
+        none = "Endless",
+        score = limit and string.format("Score %d", limit),
+        destroy_count = limit and string.format("Destroy %d", limit),
+        find_all = "Find all objects",
+        match_all = "Match all pairs",
+    }
+
+    return labels[vc]
 end
 
 -- Override BaseView's drawWindowed to pass extra parameters
@@ -696,7 +759,17 @@ function LauncherView:drawGameDetailPanel(x, y, w, h, game_data)
             if i <= stars then love.graphics.setColor(1, 1, 0) else love.graphics.setColor(0.3, 0.3, 0.3) end
             love.graphics.print("★", x + 10 + (i - 1) * 16, line_y, 0, 1.0, 1.0)
         end
-        return line_y + 20
+        line_y = line_y + 22
+
+        -- Victory condition / goal
+        local goal_text = self:getGoalText(game_data, variant)
+        if goal_text then
+            love.graphics.setColor(0.6, 0.85, 1)
+            love.graphics.print("Goal: " .. goal_text, x + 10, line_y, 0, 0.95, 0.95)
+            line_y = line_y + 18
+        end
+
+        return line_y
     end
 
     local function drawTierAndCost(line_y)

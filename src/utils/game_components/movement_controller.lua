@@ -11,7 +11,7 @@
 local Object = require('class')
 local MovementController = Object:extend('MovementController')
 
-function MovementController:new(params)
+function MovementController:init(params)
     params = params or {}
 
     -- Common parameters (games can override per-call)
@@ -38,8 +38,6 @@ function MovementController:new(params)
     self.jump_state = {}
     self.grid_state = {}
     self.smooth_state = {}
-
-    return self
 end
 
 -- ============================================================================

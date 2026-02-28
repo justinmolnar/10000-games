@@ -1,0 +1,11 @@
+{
+  "icon_sprite": "settings_gear-0",
+  "elements": [
+    { "type": "section", "label": "Volume" },
+    { "type": "slider", "id": "master_volume", "label": "Master volume", "min": 0, "max": 1, "step": 0.01, "display_as_percent": true, "format": "%d%%" },
+    { "type": "slider", "id": "sfx_volume", "label": "Sound effects", "min": 0, "max": 1, "step": 0.01, "display_as_percent": true, "format": "%d%%" },
+    { "type": "slider", "id": "music_volume", "label": "Music", "min": 0, "max": 1, "step": 0.01, "display_as_percent": true, "format": "%d%%" },
+    { "type": "section", "label": "Sound Scheme" },
+    { "type": "dropdown", "id": "sound_scheme", "label": "Scheme", "choices_from": "sound_schemes" }
+  ]
+}

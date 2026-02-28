@@ -2,7 +2,7 @@ local Object = require('class')
 
 local BillboardRenderer = Object:extend('BillboardRenderer')
 
-function BillboardRenderer:new(config)
+function BillboardRenderer:init(config)
     config = config or {}
 
     self.fov = config.fov or 60
@@ -11,7 +11,6 @@ function BillboardRenderer:new(config)
     -- Depth buffer (populated by RaycastRenderer, used for occlusion)
     self.depth_buffer = {}
 
-    return self
 end
 
 -- Must be called after raycasting to enable proper occlusion

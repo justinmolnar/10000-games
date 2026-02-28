@@ -117,10 +117,13 @@ function CheatSystem:getModifiableParameters(variant_data)
                     value = value,
                     original = value
                 }
-                -- Add range info if available
                 if ranges[key] then
                     param_def.min = ranges[key].min
                     param_def.max = ranges[key].max
+                else
+                    -- Auto-compute reasonable range when none defined
+                    param_def.min = 0
+                    param_def.max = math.max(math.abs(value) * 2, 1)
                 end
                 table.insert(params, param_def)
             elseif param_type == "boolean" then
@@ -130,22 +133,8 @@ function CheatSystem:getModifiableParameters(variant_data)
                     value = value,
                     original = value
                 })
-            elseif param_type == "string" then
-                table.insert(params, {
-                    key = key,
-                    type = "string",
-                    value = value,
-                    original = value
-                })
-            elseif param_type == "table" then
-                -- Array parameters (enemies, holes)
-                table.insert(params, {
-                    key = key,
-                    type = "array",
-                    value = value,
-                    original = value
-                })
             end
+            -- Skip string, table, and array types entirely
         end
     end
 
@@ -157,24 +146,38 @@ end
 
 -- Validate and clamp a parameter value to its defined range
 -- Returns: clamped_value, was_clamped
-function CheatSystem:clampParameterValue(param_key, value)
-    local ranges = self.cheat_config.parameter_ranges or {}
-    local range = ranges[param_key]
+function CheatSystem:clampParameterValue(param_key, value, param_min, param_max)
+    if type(value) ~= "number" then
+        return value, false
+    end
 
-    if not range or type(value) ~= "number" then
+    -- Use explicit param bounds (from getModifiableParameters) if provided,
+    -- otherwise fall back to config ranges
+    local lo = param_min
+    local hi = param_max
+    if not lo or not hi then
+        local ranges = self.cheat_config.parameter_ranges or {}
+        local range = ranges[param_key]
+        if range then
+            lo = lo or range.min
+            hi = hi or range.max
+        end
+    end
+
+    if not lo and not hi then
         return value, false
     end
 
     local clamped = value
     local was_clamped = false
 
-    if range.min and value < range.min then
-        clamped = range.min
+    if lo and value < lo then
+        clamped = lo
         was_clamped = true
     end
 
-    if range.max and value > range.max then
-        clamped = range.max
+    if hi and value > hi then
+        clamped = hi
         was_clamped = true
     end
 
@@ -183,42 +186,57 @@ end
 
 -- Calculate cost for a modification
 -- Returns: cost in credits (number)
-function CheatSystem:calculateModificationCost(param_key, param_type, current_value, new_value, modifications_count, step_size)
+function CheatSystem:calculateModificationCost(param_key, param_type, original_value, new_value, modifications_count, step_size)
     local costs = self.cheat_config.parameter_costs or {}
     local overrides = self.cheat_config.parameter_overrides or {}
+    local global_mult = self.cheat_config.cheat_cost_multiplier or 1.0
+    local exponent = self.cheat_config.cheat_cost_exponent or 1.5
 
     -- Get base cost for this parameter type
-    local type_costs = costs[param_type]
+    -- Map internal types to config keys (config uses "numeric", code uses "number")
+    local type_key = param_type
+    if param_type == "number" then type_key = "numeric" end
+    local type_costs = costs[type_key]
     if not type_costs then
-        -- Fallback if type not found
         return 100
     end
 
     local base_cost = type_costs.base_cost or 100
-    local exp_scale = type_costs.exponential_scale or 1.0
 
     -- Apply override if exists for this specific parameter
     if overrides[param_key] then
         if overrides[param_key].base_cost then
             base_cost = overrides[param_key].base_cost
         end
-        if overrides[param_key].exponential_scale then
-            exp_scale = overrides[param_key].exponential_scale
+        if overrides[param_key].exponent then
+            exponent = overrides[param_key].exponent
         end
     end
 
-    -- Apply exponential scaling based on modification count
-    local scaled_cost = base_cost * (exp_scale ^ (modifications_count or 0))
-
-    -- For numeric types, apply step cost multiplier
-    if param_type == "number" and step_size and type_costs.step_costs then
-        local step_multiplier = type_costs.step_costs[step_size]
-        if step_multiplier then
-            scaled_cost = scaled_cost * step_multiplier
-        end
+    -- If value is back at original, cost is 0 (full refund)
+    if new_value == original_value then
+        return 0
     end
 
-    return math.floor(scaled_cost)
+    -- For numeric params: cost scales with distance from original value
+    -- The further you push a param, the more each step costs
+    if param_type == "number" and type(original_value) == "number" and type(new_value) == "number" then
+        local ranges = self.cheat_config.parameter_ranges or {}
+        local range = ranges[param_key]
+        local lo = range and range.min or 0
+        local hi = range and range.max or math.max(math.abs(original_value) * 2, 1)
+        local span = hi - lo
+        if span <= 0 then span = 1 end
+
+        -- Distance from original as fraction of total range (0.0 to 1.0+)
+        local distance_pct = math.abs(new_value - original_value) / span
+        -- Exponential: small tweaks are cheap, big pushes get expensive fast
+        local cost = base_cost * global_mult * (distance_pct ^ exponent)
+        return math.max(1, math.floor(cost + 0.5))
+    end
+
+    -- Non-numeric types: flat base cost
+    return math.max(1, math.floor(base_cost * global_mult + 0.5))
 end
 
 -- Check if modification is allowed
@@ -255,24 +273,36 @@ function CheatSystem:applyModification(player_data, game_id, param_key, param_ty
         return { success = false, error = can_modify.reason }
     end
 
-    -- Calculate cost
-    local modifications_count = player_data:getGameModificationCount(game_id)
-    local step_size = 1 -- Default step size (will be passed from UI later)
+    -- If moving back to original, just reset the parameter entirely
+    if new_value == original_value then
+        local refund = player_data:removeCheatModification(game_id, param_key)
+        return {
+            success = true,
+            cost = 0,
+            new_budget = player_data:getAvailableBudget(game_id)
+        }
+    end
+
+    -- Calculate cost based on distance from original
     local cost = self:calculateModificationCost(
         param_key,
         param_type,
         original_value,
-        new_value,
-        modifications_count,
-        step_size
+        new_value
     )
 
-    -- Check budget
+    -- Check budget: account for old cost being freed when adjusting existing modification
     local available = player_data:getAvailableBudget(game_id)
-    if cost > available then
+    local old_cost = 0
+    local modifications = player_data:getGameModifications(game_id)
+    if modifications[param_key] then
+        old_cost = modifications[param_key].cost_spent or 0
+    end
+    local net_cost = cost - old_cost
+    if net_cost > available then
         return {
             success = false,
-            error = "Insufficient budget. Need: " .. cost .. ", Have: " .. available
+            error = "Insufficient budget. Need: " .. net_cost .. ", Have: " .. available
         }
     end
 

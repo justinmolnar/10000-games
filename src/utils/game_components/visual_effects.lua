@@ -5,7 +5,7 @@ local Object = require('lib.class')
 local ParticleSystem = require('src.utils.game_components.particle_system')
 local VisualEffects = Object:extend('VisualEffects')
 
-function VisualEffects:new(config)
+function VisualEffects:init(config)
     if not config then error("VisualEffects: config required") end
 
     -- Feature flags (required)
@@ -35,7 +35,6 @@ function VisualEffects:new(config)
     -- Particle system (games call self.particles:emit() directly)
     self.particles = self.particle_effects_enabled and ParticleSystem:new() or nil
 
-    return self
 end
 
 -- Camera Shake: Trigger camera shake effect

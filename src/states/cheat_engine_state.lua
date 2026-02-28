@@ -25,7 +25,7 @@ function CheatEngineState:init(player_data, game_data, state_machine, save_manag
         step_units = 1
     })
     self.param_scrollbar = ScrollbarController:new({
-        unit_size = 25, -- item height (matches CheatEngineView.item_h)
+        unit_size = 32, -- matches CheatEngineView.param_row_h
         step_units = 1
     })
 
@@ -43,7 +43,10 @@ function CheatEngineState:init(player_data, game_data, state_machine, save_manag
     self.selected_param_index = 1
 
     -- Modification controls
-    self.step_size = 1 -- Default step size (1, 5, 10, 100, or "max")
+    self.step_size = 0.05 -- Default step size as fraction of param range (0.05, 0.10, 0.25, or "max")
+
+    -- Slider drag state
+    self.dragging_slider = nil -- { param_index = N, param_key = "key" }
 
     self.viewport = nil
 end
@@ -59,7 +62,7 @@ function CheatEngineState:enter()
     self.unlocked_games = {}
 
     for _, game in ipairs(all_games) do
-        if self.player_data:isGameUnlocked(game.id) then
+        if self.player_data:isGameUnlocked(game.id) and self.player_data:isGameCompleted(game.id) then
             -- Load variant data to get the actual variant name
             local variant_data = self:loadVariantData(game.id)
             local game_entry = {
@@ -217,8 +220,8 @@ function CheatEngineState:modifyParameter(param_key, new_value, step_size)
         return
     end
 
-    -- Clamp value to valid range if applicable
-    local clamped_value, was_clamped = self.cheat_system:clampParameterValue(param_key, new_value)
+    -- Clamp value to valid range (param.min/max always set by getModifiableParameters)
+    local clamped_value, was_clamped = self.cheat_system:clampParameterValue(param_key, new_value, param.min, param.max)
     if was_clamped then
         print(string.format("Value clamped: %s -> %s (range: %s - %s)",
             tostring(new_value), tostring(clamped_value),
@@ -248,11 +251,9 @@ function CheatEngineState:modifyParameter(param_key, new_value, step_size)
             result.cost, result.new_budget))
     else
         print("Modification failed: " .. (result.error or "Unknown error"))
-        love.window.showMessageBox(
-            Strings.get('messages.error_title', 'Error'),
-            result.error or "Modification failed",
-            "warning"
-        )
+        if self.di and self.di.systemSounds then
+            self.di.systemSounds:playSystemSound('error')
+        end
     end
 end
 
@@ -295,19 +296,40 @@ function CheatEngineState:resetAllParameters()
     end
 end
 
+function CheatEngineState:snapSliderValue(param, raw_value)
+    -- Round to integer for integer-valued params
+    if param.original == math.floor(param.original) then
+        raw_value = math.floor(raw_value + 0.5)
+    end
+    return raw_value
+end
+
+function CheatEngineState:resolveStep(param)
+    if self.step_size == "max" then return 99999 end
+    local lo = param.min or 0
+    local hi = param.max or math.max(math.abs(param.original) * 2, 1)
+    local range = hi - lo
+    if range <= 0 then range = 1 end
+    local step = range * self.step_size
+    -- Keep integer steps for integer-valued params
+    if param.original == math.floor(param.original) then
+        step = math.max(1, math.floor(step + 0.5))
+    end
+    return step
+end
+
 function CheatEngineState:incrementParameter()
     if not self.modifiable_params[self.selected_param_index] then return end
 
     local param = self.modifiable_params[self.selected_param_index]
 
     if param.type == "number" then
-        local step = self.step_size == "max" and 99999 or self.step_size
+        local step = self:resolveStep(param)
         local new_value = param.value + step
         self:modifyParameter(param.key, new_value, self.step_size)
     elseif param.type == "boolean" then
         self:modifyParameter(param.key, not param.value, 1)
     end
-    -- TODO: Handle string/enum and array types
 end
 
 function CheatEngineState:decrementParameter()
@@ -316,7 +338,7 @@ function CheatEngineState:decrementParameter()
     local param = self.modifiable_params[self.selected_param_index]
 
     if param.type == "number" then
-        local step = self.step_size == "max" and 99999 or self.step_size
+        local step = self:resolveStep(param)
         local new_value = param.value - step
         self:modifyParameter(param.key, new_value, self.step_size)
     elseif param.type == "boolean" then
@@ -358,11 +380,14 @@ function CheatEngineState:launchGame()
     end
 
     -- Return event for DesktopState to handle
+    -- Pass original variant when modifications exist so token calculation
+    -- uses original difficulty values (cheats = efficiency, not penalty)
     return {
         type = "event",
         name = "launch_minigame",
         game_data = self.selected_game,
-        variant = modified_variant -- Pass modified variant
+        variant = modified_variant,
+        original_variant = next(self.current_modifications) and self.selected_variant or nil
     }
 end
 
@@ -473,20 +498,16 @@ function CheatEngineState:keypressed(key)
 
     -- Step size controls
     elseif key == '1' then
-        self.step_size = 1
-        print("Step size: 1")
+        self.step_size = 0.05
+        print("Step size: 5%")
 
     elseif key == '2' then
-        self.step_size = 5
-        print("Step size: 5")
+        self.step_size = 0.10
+        print("Step size: 10%")
 
     elseif key == '3' then
-        self.step_size = 10
-        print("Step size: 10")
-
-    elseif key == '4' then
-        self.step_size = 100
-        print("Step size: 100")
+        self.step_size = 0.25
+        print("Step size: 25%")
 
     elseif key == 'm' then
         self.step_size = "max"
@@ -576,22 +597,34 @@ function CheatEngineState:mousepressed(x, y, button)
     elseif event.name == "increment_param" then
         local param = self.modifiable_params[event.index]
         if param and param.type == "number" then
-            local step = event.step_size == "max" and 99999 or event.step_size
-            self:modifyParameter(param.key, param.value + step, event.step_size)
+            local step = self:resolveStep(param)
+            self:modifyParameter(param.key, param.value + step, self.step_size)
         end
         result_event = { type = "content_interaction" }
 
     elseif event.name == "decrement_param" then
         local param = self.modifiable_params[event.index]
         if param and param.type == "number" then
-            local step = event.step_size == "max" and 99999 or event.step_size
-            self:modifyParameter(param.key, param.value - step, event.step_size)
+            local step = self:resolveStep(param)
+            self:modifyParameter(param.key, param.value - step, self.step_size)
+        end
+        result_event = { type = "content_interaction" }
+
+    elseif event.name == "slider_set" then
+        local param = self.modifiable_params[event.index]
+        if param and param.type == "number" then
+            self.selected_param_index = event.index
+            local snapped = self:snapSliderValue(param, event.value)
+            self:modifyParameter(param.key, snapped, self.step_size)
+            -- Start dragging
+            self.dragging_slider = { param_index = event.index, param_key = param.key }
         end
         result_event = { type = "content_interaction" }
 
     elseif event.name == "toggle_param" then
         local param = self.modifiable_params[event.index]
         if param and param.type == "boolean" then
+            self.selected_param_index = event.index
             self:modifyParameter(param.key, not param.value, 1)
         end
         result_event = { type = "content_interaction" }
@@ -626,6 +659,19 @@ end
 function CheatEngineState:mousemoved(x, y, dx, dy)
     if not self.viewport then return false end
 
+    -- Handle slider dragging first
+    if self.dragging_slider then
+        local event = self.view:mousemoved(x, y, dx, dy)
+        if event and event.name == "slider_drag" then
+            local param = self.modifiable_params[event.index]
+            if param and param.type == "number" then
+                local snapped = self:snapSliderValue(param, event.value)
+                self:modifyParameter(param.key, snapped, self.step_size)
+            end
+            return { type = 'content_interaction' }
+        end
+    end
+
     -- Handle game list scrollbar dragging
     local game_scroll_event = self.game_scrollbar:mousemoved(x, y, dx, dy)
     if game_scroll_event and game_scroll_event.scrolled then
@@ -645,6 +691,12 @@ end
 
 function CheatEngineState:mousereleased(x, y, button)
     if not self.viewport then return false end
+
+    -- End slider dragging
+    if button == 1 and self.dragging_slider then
+        self.dragging_slider = nil
+        return { type = 'content_interaction' }
+    end
 
     -- End game list scrollbar dragging
     if self.game_scrollbar:mousereleased(x, y, button) then

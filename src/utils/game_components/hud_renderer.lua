@@ -33,23 +33,19 @@ local POSITIONS = {
     progress = {x = nil, y = nil}  -- calculated from center/bottom
 }
 
-function HUDRenderer:new(config)
-    local instance = HUDRenderer.super.new(self)
-
+function HUDRenderer:init(config)
     -- Store configuration
-    instance.primary = config.primary  -- Required: {label, key, format}
-    instance.secondary = config.secondary  -- Optional: {label, key, format}
-    instance.lives = config.lives  -- Optional: {key, max, style = "hearts" or "number"}
-    instance.timer = config.timer  -- Optional: {key, mode = "elapsed" or "countdown"}
-    instance.progress = config.progress  -- Optional: {label, current_key, total_key, show_bar}
+    self.primary = config.primary  -- Required: {label, key, format}
+    self.secondary = config.secondary  -- Optional: {label, key, format}
+    self.lives = config.lives  -- Optional: {key, max, style = "hearts" or "number"}
+    self.timer = config.timer  -- Optional: {key, mode = "elapsed" or "countdown"}
+    self.progress = config.progress  -- Optional: {label, current_key, total_key, show_bar}
 
     -- Styling
-    instance.font_size = config.font_size or 16
-    instance.text_color = config.text_color or {1, 1, 1}
-    instance.label_color = config.label_color or {0.8, 0.8, 0.8}
-    instance.primary_color = config.primary_color or {1, 1, 0}  -- Yellow for primary metric
-
-    return instance
+    self.font_size = config.font_size or 16
+    self.text_color = config.text_color or {1, 1, 1}
+    self.label_color = config.label_color or {0.8, 0.8, 0.8}
+    self.primary_color = config.primary_color or {1, 1, 0}  -- Yellow for primary metric
 end
 
 -- Main draw function

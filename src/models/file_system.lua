@@ -20,12 +20,14 @@ function FileSystem:init(di)
     self:loadFilesystem()
     -- Normalize key views after load so "My Computer" shows refined entries
     self:normalizeMyComputerView()
+    self:normalizeControlPanel()
     -- Load FS recycle bin (persisted)
     self:_loadFsRecycleBin()
     -- Load runtime FS overrides (persisted structural edits)
     self:_loadFsRuntime()
     -- Normalize again in case runtime file lacked some aliases
     self:normalizeMyComputerView()
+    self:normalizeControlPanel()
 end
 
 -- Load filesystem structure from JSON
@@ -113,7 +115,7 @@ function FileSystem:createDefaultFilesystem()
         -- Control Panel structure
         ["/Control Panel"] = {
             type = "folder",
-            children = {"General", "Desktop", "Screensavers"}
+            children = {"General", "Desktop", "Screensavers", "Sounds"}
         },
         ["/Control Panel/General"] = {
             type = "executable",
@@ -126,6 +128,10 @@ function FileSystem:createDefaultFilesystem()
         ["/Control Panel/Screensavers"] = {
             type = "executable",
             program_id = "control_panel_screensavers"
+        },
+        ["/Control Panel/Sounds"] = {
+            type = "executable",
+            program_id = "control_panel_sounds"
         }
     }
     -- Ensure refined My Computer listing in defaults too
@@ -154,6 +160,27 @@ function FileSystem:normalizeMyComputerView()
         fs["/My Computer/Desktop"] = { type = "special", special_type = "desktop_view" }
     end
     -- Leave C:, D: as-is (created in JSON/defaults)
+end
+
+function FileSystem:normalizeControlPanel()
+    local fs = self.filesystem or {}
+    local cp = fs["/Control Panel"]
+    if not cp then
+        fs["/Control Panel"] = { type = "folder", children = {"General", "Desktop", "Screensavers", "Sounds"} }
+        cp = fs["/Control Panel"]
+    end
+    -- Ensure Sounds is in children list
+    local has_sounds = false
+    for _, child in ipairs(cp.children or {}) do
+        if child == "Sounds" then has_sounds = true; break end
+    end
+    if not has_sounds then
+        table.insert(cp.children, "Sounds")
+    end
+    -- Ensure node exists
+    if not fs["/Control Panel/Sounds"] then
+        fs["/Control Panel/Sounds"] = { type = "executable", program_id = "control_panel_sounds" }
+    end
 end
 
 -- Get contents of current directory

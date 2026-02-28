@@ -6,8 +6,8 @@ local RPS = BaseGame:extend('RPS')
 -- INITIALIZATION
 --------------------------------------------------------------------------------
 
-function RPS:init(game_data, cheats, di, variant_override)
-    RPS.super.init(self, game_data, cheats, di, variant_override)
+function RPS:init(game_data, cheats, di, variant_override, original_variant)
+    RPS.super.init(self, game_data, cheats, di, variant_override, original_variant)
 
     local SchemaLoader = self.di.components.SchemaLoader
     local runtimeCfg = self.di.config and self.di.config.games and self.di.config.games.rps
@@ -217,6 +217,7 @@ function RPS:playRound(player_choice)
     self.player_choice = player_choice
     self.waiting_for_input = false
     self.throw_animation:start()
+    self:playSound("throw_windup", 0.7)
     self.rounds_played = self.rounds_played + 1
 
     if #self.opponents > 1 then
@@ -229,6 +230,7 @@ function RPS:playRound(player_choice)
     end
 
     -- Process round result
+    self:playSound("throw_reveal", 0.8)
     if self.round_result == "win" then
         self:onRoundWin()
     elseif self.round_result == "lose" then
@@ -302,6 +304,7 @@ function RPS:onRoundWin()
     local streak_points = (self.current_win_streak > 1) and (p.streak_bonus * self.current_win_streak) or 0
     self.score = self.score + round_points + streak_points
 
+    self:playSound("round_win", 0.8)
     self:showScorePopup(round_points + streak_points)
     self.visual_effects:flash({color = {0, 1, 0, 0.3}, duration = 0.2, mode = "fade_out"})
 
@@ -341,6 +344,7 @@ function RPS:onRoundLose()
         self.score = math.max(0, self.score - p.score_per_round_win)
     end
 
+    self:playSound("round_lose", 0.8)
     self.visual_effects:flash({color = {1, 0, 0, 0.3}, duration = 0.2, mode = "fade_out"})
 
     if self.current_special_round == "sudden_death" then
@@ -353,6 +357,7 @@ end
 
 function RPS:onRoundTie()
     self.ties = self.ties + 1
+    self:playSound("round_tie", 0.6)
     self:handleLifeLoss("tie")
 end
 

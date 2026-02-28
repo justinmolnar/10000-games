@@ -78,6 +78,15 @@ function WebBrowserState:init(file_system, di)
         p = true, h1 = true, h2 = true, h3 = true, h4 = true, h5 = true, h6 = true,
         li = true, tr = true, td = true, th = true, hr = true, img = true, a = true
     }
+
+    -- Audio player state
+    self.audio_source = nil
+    self.audio_playing = false
+    self.audio_track_name = nil
+    self.audio_current_href = nil
+    self.audio_playlist = {}
+    self.audio_playlist_index = 0
+    self.audio_scrubbing = false
 end
 
 -- Set window context
@@ -130,6 +139,8 @@ end
 
 -- Navigate to URL
 function WebBrowserState:navigateTo(url, skip_history)
+    self:stopAudio()
+
     -- Resolve URL to filesystem path
     local filesystem_path = URLResolver.resolve(url, self.current_url)
 
@@ -177,6 +188,10 @@ function WebBrowserState:navigateTo(url, skip_history)
 
     -- Build loading queue for progressive rendering
     self:buildLoadingQueue()
+
+    -- Scan for mp3 links to build audio playlist
+    self.audio_playlist = self:scanMp3Links(self.current_layout)
+    self.audio_playlist_index = 0
 
     -- Add to history
     if not skip_history then
@@ -500,9 +515,126 @@ function WebBrowserState:refresh()
     end
 end
 
+-- Scan layout tree for mp3 link positions
+function WebBrowserState:scanMp3Links(node, results)
+    if not node then return results or {} end
+    results = results or {}
+
+    if node.element and node.element.tag == "a" and node.element.attributes then
+        local href = node.element.attributes.href
+        if href and href:match("%.mp3$") then
+            local name = href:match("([^/]+)%.mp3$")
+            if name then name = name:gsub("%%20", " "):gsub("^%d+%-", "") end
+            table.insert(results, {
+                href = href,
+                name = name or "Unknown",
+                x = node.x or 0,
+                y = node.y or 0,
+                w = node.width or 100,
+                h = node.height or 16,
+            })
+        end
+    end
+
+    if node.children then
+        for _, child in ipairs(node.children) do
+            self:scanMp3Links(child, results)
+        end
+    end
+
+    return results
+end
+
+-- Audio player: play an mp3 file
+function WebBrowserState:playAudioFile(href, file_path, display_name)
+    if self.audio_source then
+        self.audio_source:stop()
+        self.audio_source = nil
+    end
+    local ok, source = pcall(love.audio.newSource, file_path, "stream")
+    if ok and source then
+        local settings = self.di and self.di.settingsManager
+        local master = (settings and settings:get('master_volume')) or 0.8
+        local music = (settings and settings:get('music_volume')) or 0.6
+        source:setVolume(master * music)
+        source:play()
+        self.audio_source = source
+        self.audio_playing = true
+        self.audio_track_name = display_name or "Unknown"
+        self.audio_current_href = href
+    end
+end
+
+function WebBrowserState:stopAudio()
+    if self.audio_source then
+        self.audio_source:stop()
+        self.audio_source = nil
+    end
+    self.audio_playing = false
+    self.audio_track_name = nil
+    self.audio_current_href = nil
+    self.audio_playlist_index = 0
+end
+
+function WebBrowserState:toggleAudioPause()
+    if not self.audio_source then return end
+    if self.audio_playing then
+        self.audio_source:pause()
+        self.audio_playing = false
+    else
+        self.audio_source:play()
+        self.audio_playing = true
+    end
+end
+
+-- Auto-advance to next track
+function WebBrowserState:advanceTrack()
+    if self.audio_playlist_index > 0 and self.audio_playlist_index < #self.audio_playlist then
+        local next_idx = self.audio_playlist_index + 1
+        local next_track = self.audio_playlist[next_idx]
+        local file_path = URLResolver.resolve(next_track.href, self.current_url)
+        if file_path then
+            self.audio_playlist_index = next_idx
+            self:playAudioFile(next_track.href, file_path, next_track.name)
+        end
+    else
+        self:stopAudio()
+    end
+end
+
+-- Get the playlist entry for the currently playing track (for overlay drawing)
+function WebBrowserState:getPlayingTrackInfo()
+    if self.audio_playlist_index > 0 and self.audio_playlist_index <= #self.audio_playlist then
+        return self.audio_playlist[self.audio_playlist_index]
+    end
+    return nil
+end
+
 -- Handle link click
 function WebBrowserState:handleLinkClick(href)
     if not href then
+        return
+    end
+
+    -- Intercept mp3 links — play/pause inline
+    if href:match("%.mp3$") then
+        if self.audio_current_href == href then
+            self:toggleAudioPause()
+        else
+            local file_path = URLResolver.resolve(href, self.current_url)
+            if file_path then
+                local name = href:match("([^/]+)%.mp3$")
+                if name then name = name:gsub("%%20", " "):gsub("^%d+%-", "") end
+                -- Find playlist index
+                for i, entry in ipairs(self.audio_playlist) do
+                    if entry.href == href then
+                        self.audio_playlist_index = i
+                        break
+                    end
+                end
+                self:playAudioFile(href, file_path, name)
+            end
+        end
         return
     end
 
@@ -614,6 +746,12 @@ function WebBrowserState:update(dt)
     -- Progressive loading
     if not self.loading_complete then
         self:updateLoading(dt)
+    end
+
+    -- Auto-advance audio when track ends
+    if self.audio_source and self.audio_playing and not self.audio_source:isPlaying() then
+        self.audio_playing = false
+        self:advanceTrack()
     end
 
     self.view:update(dt, self.viewport.width, self.viewport.height)
@@ -846,6 +984,31 @@ function WebBrowserState:mousepressed(x, y, button)
         return true
     end
 
+    -- Check inline audio scrub bar click (below currently playing track)
+    if self.audio_source and self.audio_playlist_index > 0 then
+        local track_info = self.audio_playlist[self.audio_playlist_index]
+        if track_info then
+            local content_y = 60
+            local bar_y = track_info.y + track_info.h
+            local bar_screen_y = content_y + bar_y - self.scroll_y
+            local bar_h = 4
+            local bar_w = math.min(track_info.w + 60, self.viewport.width - track_info.x - 20)
+
+            if y >= bar_screen_y and y <= bar_screen_y + bar_h
+               and x >= track_info.x and x <= track_info.x + bar_w then
+                local progress = math.max(0, math.min(1, (x - track_info.x) / bar_w))
+                local dur = self.audio_source:getDuration()
+                if dur > 0 then
+                    self.audio_source:seek(progress * dur)
+                end
+                self.audio_scrubbing = true
+                self.audio_scrub_track = track_info
+                self.audio_scrub_bar_w = bar_w
+                return true
+            end
+        end
+    end
+
     -- Handle scrollbar first
     local scroll_event = self.scrollbar:mousepressed(x, y, button, self.scroll_y)
     if scroll_event then
@@ -890,6 +1053,16 @@ end
 
 -- Mouse moved (for scrollbar dragging and address bar selection)
 function WebBrowserState:mousemoved(x, y, dx, dy)
+    -- Audio scrub dragging
+    if self.audio_scrubbing and self.audio_source and self.audio_scrub_track then
+        local progress = math.max(0, math.min(1, (x - self.audio_scrub_track.x) / self.audio_scrub_bar_w))
+        local dur = self.audio_source:getDuration()
+        if dur > 0 then
+            self.audio_source:seek(progress * dur)
+        end
+        return true
+    end
+
     -- Address bar drag selection
     local toolbar_height = 35
     local address_bar_y = toolbar_height
@@ -919,6 +1092,12 @@ end
 
 -- Mouse released (end scrollbar dragging and address bar dragging)
 function WebBrowserState:mousereleased(x, y, button)
+    -- End audio scrub dragging
+    if self.audio_scrubbing then
+        self.audio_scrubbing = false
+        return true
+    end
+
     -- Address bar drag end
     if self.address_bar:mousereleased(x, y, button) then
         return true
@@ -992,6 +1171,11 @@ end
 -- Text input
 function WebBrowserState:textinput(text)
     return self.address_bar:textinput(text)
+end
+
+-- Cleanup on window close
+function WebBrowserState:destroy()
+    self:stopAudio()
 end
 
 return WebBrowserState

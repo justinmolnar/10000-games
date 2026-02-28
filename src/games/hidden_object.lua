@@ -6,8 +6,8 @@ local HiddenObject = BaseGame:extend('HiddenObject')
 -- INITIALIZATION
 --------------------------------------------------------------------------------
 
-function HiddenObject:init(game_data, cheats, di, variant_override)
-    HiddenObject.super.init(self, game_data, cheats, di, variant_override)
+function HiddenObject:init(game_data, cheats, di, variant_override, original_variant)
+    HiddenObject.super.init(self, game_data, cheats, di, variant_override, original_variant)
 
     local SchemaLoader = self.di.components.SchemaLoader
     local runtimeCfg = self.di.config and self.di.config.games and self.di.config.games.hidden_object

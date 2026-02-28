@@ -9,7 +9,7 @@ BaseGame.CARDINAL_DIRECTIONS = {
     down = {x = 0, y = 1}
 }
 
-function BaseGame:init(game_data, cheats, di, variant_override)
+function BaseGame:init(game_data, cheats, di, variant_override, original_variant)
     -- Store game definition
     self.data = game_data
 
@@ -18,6 +18,9 @@ function BaseGame:init(game_data, cheats, di, variant_override)
 
     -- Store active cheats
     self.cheats = cheats or {}
+
+    -- Store original variant for token calculation (nil if not from CheatEngine)
+    self.original_variant = original_variant
 
     -- Performance tracking
     self.metrics = {}
@@ -94,7 +97,7 @@ function BaseGame:init(game_data, cheats, di, variant_override)
             sprite_set = "default",
             palette = "default",
             music_track = nil,
-            sfx_pack = "retro_beeps",
+            sfx_theme = nil,
             background = "default",
             difficulty_modifier = 1.0,
             enemies = {},
@@ -102,6 +105,9 @@ function BaseGame:init(game_data, cheats, di, variant_override)
             intro_cutscene = nil
         }
     end
+
+    -- Load audio (SFX set + music) for all games via DI
+    self:loadAudio()
 end
 
 -- Setup arena dimensions from variant and params
@@ -240,6 +246,12 @@ function BaseGame:createVictoryConditionFromSchema(bonuses)
 
     local vc_config = {}
     if vc_map and vc_map[vc_key] then
+        -- Store raw victory references before resolution (for token metric correction)
+        local raw_victory = vc_map[vc_key].victory
+        if raw_victory then
+            self._vc_metric_ref = raw_victory.metric
+            self._vc_target_ref = raw_victory.target
+        end
         vc_config = self:resolveConfig(vc_map[vc_key])
     end
 
@@ -472,9 +484,73 @@ end
 
 function BaseGame:calculatePerformance()
     if not self.completed then return 0 end
-    -- Note: This returns the *base* performance.
-    -- The MinigameState is responsible for applying performance-modifying cheats.
-    return self.data.formula_function(self.metrics)
+
+    local metrics = self.metrics
+
+    -- If launched from CheatEngine with modifications and player won,
+    -- scale metrics to reflect original difficulty for token calculation.
+    -- Cheats are efficiency tools: easier game, same reward.
+    if self.original_variant and self.victory then
+        metrics = self:_buildOriginalMetrics()
+    end
+
+    return self.data.formula_function(metrics)
+end
+
+-- Build corrected metrics that reflect original variant difficulty.
+-- Uses the victory condition's metric→param mapping to scale the primary
+-- victory metric (and combo) by the ratio of original/cheated target.
+function BaseGame:_buildOriginalMetrics()
+    local corrected = {}
+    for k, v in pairs(self.metrics) do
+        corrected[k] = v
+    end
+
+    if not self._vc_target_ref or not self._vc_metric_ref then
+        return corrected
+    end
+
+    -- Extract param name from "$param_name"
+    local param_name = type(self._vc_target_ref) == "string"
+        and self._vc_target_ref:match("^%$(.+)")
+    -- Extract metric name from "metrics.xxx" or just "xxx"
+    local metric_name = type(self._vc_metric_ref) == "string"
+        and (self._vc_metric_ref:match("^metrics%.(.+)") or self._vc_metric_ref)
+
+    if not param_name or not metric_name then
+        return corrected
+    end
+
+    local original_target = self.original_variant[param_name]
+    local cheated_target = self.variant and self.variant[param_name]
+
+    if not original_target or not cheated_target
+        or type(original_target) ~= "number"
+        or type(cheated_target) ~= "number"
+        or original_target == cheated_target
+        or cheated_target == 0 then
+        return corrected
+    end
+
+    local ratio = original_target / cheated_target
+
+    -- Scale the primary victory metric
+    if corrected[metric_name] and type(corrected[metric_name]) == "number" then
+        corrected[metric_name] = corrected[metric_name] * ratio
+    end
+
+    -- Scale combo proportionally (bounded by primary metric in practice)
+    if corrected.combo and type(corrected.combo) == "number" then
+        corrected.combo = corrected.combo * ratio
+    end
+
+    -- Scale victory_progress if present and not already the primary metric
+    if corrected.victory_progress and metric_name ~= "victory_progress"
+        and type(corrected.victory_progress) == "number" then
+        corrected.victory_progress = corrected.victory_progress * ratio
+    end
+
+    return corrected
 end
 
 -- Get results for demo playback (used by VMManager)
@@ -513,7 +589,12 @@ function BaseGame:handleEntityDepleted(count_func, config)
         self.combo = 0
     end
 
-    -- Take damage (require damage and damage_reason)
+    -- Take damage (unless skip_damage)
+    if config.skip_damage then
+        if config.on_respawn then config.on_respawn(self) end
+        return false
+    end
+
     if not config.damage then error("handleEntityDepleted: config.damage required") end
     if not config.damage_reason then error("handleEntityDepleted: config.damage_reason required") end
     self.health_system:takeDamage(config.damage, config.damage_reason)
@@ -1090,8 +1171,6 @@ function BaseGame:loadAssets()
         end
     end
 
-    -- Load audio after sprites
-    self:loadAudio()
 end
 
 -- Audio helpers (graceful fallback if no audio assets)
@@ -1113,11 +1192,10 @@ function BaseGame:loadAudio()
         self.music = audioManager:loadMusic(self.variant.music_track)
     end
 
-    -- Load SFX pack
-    if self.variant.sfx_pack then
-        audioManager:loadSFXPack(self.variant.sfx_pack)
-        self.sfx_pack = self.variant.sfx_pack
-    end
+    -- Load SFX set (layered: shared/default -> shared/{theme} -> games/{game_type})
+    local game_type = (self.data and self.data.sprite_folder) or nil
+    local sfx_theme = self.variant.sfx_theme
+    self.sfx_set_key = audioManager:loadSFXSet(game_type, sfx_theme)
 end
 
 function BaseGame:playMusic()
@@ -1144,8 +1222,8 @@ end
 
 function BaseGame:playSound(action, volume)
     local audioManager = self.di and self.di.audioManager
-    if audioManager and self.sfx_pack and action then
-        audioManager:playSound(self.sfx_pack, action, volume or 1.0)
+    if audioManager and self.sfx_set_key and action then
+        audioManager:playSound(self.sfx_set_key, action, volume or 1.0)
     end
 end
 

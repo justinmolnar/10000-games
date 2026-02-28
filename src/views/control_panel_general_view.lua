@@ -73,10 +73,12 @@ function View:drawContent(w, h)
 
     -- Dynamic form area
     self.form.right_edge = w - 24
+    self.form.viewport_h = h
     self.form:draw()
 
     -- Buttons (deduped)
     self._ok_rect, self._cancel_rect, self._apply_rect = UI.drawDialogButtons(w, h, next(pending) ~= nil)
+    self.form:drawOverlay()
 end
 
 local function hit(r, x, y)

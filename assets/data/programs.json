@@ -136,6 +136,7 @@
     "icon_color": [0.1, 0.8, 0.1],
     "on_desktop": true,
     "in_start_menu": true,
+    "requires_nc_level": 4,
     "window_defaults": { "w": 650, "h": 550, "resizable": false, "single_instance": true }
   },
   {
@@ -203,6 +204,19 @@
     "in_start_menu": false,
     "disabled": false,
     "window_defaults": { "w": 720, "h": 520, "min_w": 680, "min_h": 480, "resizable": true, "single_instance": true }
+  },
+  {
+    "id": "control_panel_sounds",
+    "name": "Sounds",
+    "executable": "control_sounds.cpl",
+    "state_class_path": "states.control_panel_sounds_state",
+    "dependencies": ["window_controller", "di"],
+    "icon_sprite": "settings_gear-0",
+    "icon_color": [0.8, 0.8, 0.8],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 460, "h": 340, "min_w": 460, "min_h": 320, "resizable": false, "single_instance": true }
   },
   {
     "id": "statistics",

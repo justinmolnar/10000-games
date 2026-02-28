@@ -40,7 +40,7 @@ function MinigameState:setWindowContext(window_id, window_manager)
     self.window_manager = window_manager
 end
 
-function MinigameState:enter(game_data, variant_override)
+function MinigameState:enter(game_data, variant_override, original_variant)
     print("[MinigameState] enter() called for game:", game_data and game_data.id or "UNKNOWN")
     if variant_override then
         print("[MinigameState] Using modified variant from CheatEngine")
@@ -54,6 +54,7 @@ function MinigameState:enter(game_data, variant_override)
 
     self.game_data = game_data
     self.variant_override = variant_override -- Store for restart functionality
+    self.original_variant = original_variant -- Store original variant for token calculation
     
     local class_name = game_data.game_class
 
@@ -87,7 +88,7 @@ function MinigameState:enter(game_data, variant_override)
     local active_cheats = self.cheat_system:getActiveCheats(game_data.id) or {}
 
     -- Pass DI (if present) and variant override into the game constructor
-    local instance_ok, game_instance = pcall(GameClass.new, GameClass, game_data, active_cheats, self.di, variant_override)
+    local instance_ok, game_instance = pcall(GameClass.new, GameClass, game_data, active_cheats, self.di, variant_override, original_variant)
     if not instance_ok or not game_instance then
         print("[MinigameState] ERROR: Failed to instantiate game class '".. class_name .."': " .. tostring(game_instance))
         self.current_game = nil
@@ -226,8 +227,8 @@ function MinigameState:keypressed(key)
             end
 
             if self.game_data then
-                -- Pass variant_override through on restart
-                local restart_event = self:enter(self.game_data, self.variant_override)
+                -- Pass variant_override and original_variant through on restart
+                local restart_event = self:enter(self.game_data, self.variant_override, self.original_variant)
                 if type(restart_event) == 'table' and restart_event.type == "close_window" then
                      return restart_event
                 end

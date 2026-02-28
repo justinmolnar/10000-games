@@ -52,30 +52,26 @@ VictoryCondition.LOSS_TYPES = {
     none = "none"                      -- No loss condition (endless mode)
 }
 
-function VictoryCondition:new(config)
-    local instance = VictoryCondition.super.new(self)
-
+function VictoryCondition:init(config)
     -- Victory configuration
-    instance.victory = config.victory or {}
-    instance.victory.type = instance.victory.type or "threshold"
+    self.victory = config.victory or {}
+    self.victory.type = self.victory.type or "threshold"
 
     -- Loss configuration
-    instance.loss = config.loss or {}
-    instance.loss.type = instance.loss.type or "lives_depleted"
+    self.loss = config.loss or {}
+    self.loss.type = self.loss.type or "lives_depleted"
 
     -- Check priority (which to check first)
-    instance.check_loss_first = config.check_loss_first ~= false  -- Default true
+    self.check_loss_first = config.check_loss_first ~= false  -- Default true
 
     -- Multi-victory configs (for games with multiple win paths)
-    instance.multi_victory = config.multi_victory or nil
+    self.multi_victory = config.multi_victory or nil
 
     -- Victory bonuses (applied when victory is achieved)
-    instance.bonuses = config.bonuses or {}
+    self.bonuses = config.bonuses or {}
 
     -- Game reference (set after creation)
-    instance.game = nil
-
-    return instance
+    self.game = nil
 end
 
 -- Main check function - returns "victory", "loss", or nil

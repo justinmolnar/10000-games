@@ -15,8 +15,8 @@ local CoinFlip = BaseGame:extend('CoinFlip')
 -- INITIALIZATION
 --------------------------------------------------------------------------------
 
-function CoinFlip:init(game_data, cheats, di, variant_override)
-    CoinFlip.super.init(self, game_data, cheats, di, variant_override)
+function CoinFlip:init(game_data, cheats, di, variant_override, original_variant)
+    CoinFlip.super.init(self, game_data, cheats, di, variant_override, original_variant)
     self.di = di
     self.cheats = cheats or {}
 
@@ -289,6 +289,7 @@ function CoinFlip:flipCoin()
     self.waiting_for_guess = false
     self.flip_animation:start()
     self.flip_timer = 0
+    self:playSound("coin_spin", 0.7)
 
     local result = self:generateFlipResult()
     self.last_result = result
@@ -311,6 +312,7 @@ function CoinFlip:makeGuess(guess)
     self.waiting_for_guess = false
     self.flip_animation:start()
     self.flip_timer = 0
+    self:playSound("coin_spin", 0.7)
 
     local result = self:generateFlipResult()
     self.last_result = result
@@ -328,6 +330,7 @@ function CoinFlip:makeGuess(guess)
 end
 
 function CoinFlip:processFlipResult(is_correct, result)
+    self:playSound("coin_land", 0.6)
     if is_correct then
         self:onCorrectFlip()
     else
@@ -344,6 +347,7 @@ function CoinFlip:onCorrectFlip()
     self.correct_total = self.correct_total + 1
     self.current_streak = self.current_streak + 1
     table.insert(self.flip_history, 1)
+    self:playSound("correct", 0.7)
 
     local base_score = self.params.score_per_correct
     local multiplier = 1 + (self.current_streak * self.params.streak_multiplier)
@@ -364,6 +368,9 @@ function CoinFlip:onCorrectFlip()
     end
 
     self.visual_effects:flash({color = {0, 1, 0, 0.3}, duration = 0.2, mode = "fade_out"})
+    if self.current_streak > 0 and self.current_streak % 5 == 0 then
+        self:playSound("streak", 0.8)
+    end
     if self.params.celebration_on_streak and (self.current_streak % 5 == 0) and self.visual_effects.particles then
         local w, h = love.graphics.getDimensions()
         self.visual_effects.particles:emitConfetti(w / 2, h / 2, 15)
@@ -392,6 +399,7 @@ function CoinFlip:onIncorrectFlip()
     self.perfect_streak = false
     self.current_streak = 0
     table.insert(self.flip_history, 0)
+    self:playSound("wrong", 0.7)
 
     self.visual_effects:flash({color = {1, 0, 0, 0.3}, duration = 0.2, mode = "fade_out"})
 
@@ -401,7 +409,7 @@ function CoinFlip:onIncorrectFlip()
         tts:speakWeird("wrong", weirdness)
     end
 
-    if self.lives < 999 then
+    if not self.params.no_life_loss then
         self.health_system:takeDamage(1, "wrong_guess")
         self.lives = self.health_system.lives
         if not self.health_system:isAlive() then

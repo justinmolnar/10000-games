@@ -12,8 +12,8 @@ local SpriteUtils = require('src.utils.game_components.sprite_utils')
 
 local Raycaster = BaseGame:extend('Raycaster')
 
-function Raycaster:init(game_data, cheats, di, variant_override)
-    Raycaster.super.init(self, game_data, cheats, di, variant_override)
+function Raycaster:init(game_data, cheats, di, variant_override, original_variant)
+    Raycaster.super.init(self, game_data, cheats, di, variant_override, original_variant)
 
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.raycaster)
     self.params = self.di.components.SchemaLoader.load(self.variant, "raycaster_schema", runtimeCfg)
@@ -777,6 +777,14 @@ function Raycaster:handleShooting(dt)
     if self:isKeyDown('space') and self.player_controller:canFireWeapon() then
         local weapon = self.player_controller:fireWeapon()
         if weapon then
+            local weapon_name = weapon.name or "pistol"
+            if weapon_name == "machinegun" then
+                self:playSound("machinegun_burst", 0.7)
+            elseif weapon_name == "knife" then
+                self:playSound("knife_slash", 0.7)
+            else
+                self:playSound("pistol_fire", 0.7)
+            end
             local angle = self.player.angle
             local speed = weapon.bullet_speed or 8
             self.projectile_system:spawn({
@@ -978,6 +986,7 @@ end
 function Raycaster:enterChase(entity)
     if entity.state_machine.state == "chase" then return end
     entity.state_machine:setState("chase")
+    self:playSound("enemy_alert", 0.6)
     -- Speed boost on first sight (Wolf3D does 2-5x depending on enemy type)
     entity.chase_speed_mult = 2 + self.rng:random() * 1.5  -- 2x to 3.5x
 end
@@ -1295,6 +1304,7 @@ function Raycaster:updateProjectiles(dt)
                                     entity.anim_frame = 0    -- Reset animation
                                 end
                                 self.enemies_killed = (self.enemies_killed or 0) + 1
+                                self:playSound("enemy_death", 0.8)
                                 self.visual_effects:flash({color = {1, 0.5, 0, 0.3}, duration = 0.1, mode = "fade_out"})
                             else
                                 -- Enter pain state (interrupts current action)
@@ -1302,6 +1312,7 @@ function Raycaster:updateProjectiles(dt)
                                     entity.state_machine:forceState("pain")
                                     entity.anim_frame = 0  -- Reset animation
                                 end
+                                self:playSound("enemy_hit", 0.6)
                                 self.visual_effects:flash({color = {1, 0.8, 0, 0.2}, duration = 0.05, mode = "fade_out"})
                             end
                         end
@@ -1329,6 +1340,7 @@ function Raycaster:updateProjectiles(dt)
                 local max_dmg = self.params.enemy_bullet_damage_max or 10
                 local damage = self.rng:random(min_dmg, max_dmg)
                 self.player_controller:takeDamage(damage)
+                self:playSound("hit", 0.8)
 
                 -- Visual feedback
                 self.visual_effects:flash({color = {1, 0, 0, 0.4}, duration = 0.15, mode = "fade_out"})
@@ -1683,6 +1695,7 @@ function Raycaster:collectPickups()
                 -- Treasure gives points
                 self.score = (self.score or 0) + pickup_value
                 self.entity_controller:removeEntity(entity)
+                self:playSound("treasure_collect", 0.8)
                 self.visual_effects:flash({color = {1, 0.85, 0, 0.3}, duration = 0.1, mode = "fade_out"})
 
             elseif pickup_type == "health" and self.player_controller then
@@ -1692,6 +1705,7 @@ function Raycaster:collectPickups()
                 if current < max then
                     self.player_controller.health = math.min(max, current + pickup_value)
                     self.entity_controller:removeEntity(entity)
+                    self:playSound("health_collect", 0.7)
                     self.visual_effects:flash({color = {0.2, 1, 0.3, 0.3}, duration = 0.15, mode = "fade_out"})
                 end
 
@@ -1699,6 +1713,7 @@ function Raycaster:collectPickups()
                 -- Ammo pickup
                 self.player_controller:addAmmo(pickup_value)
                 self.entity_controller:removeEntity(entity)
+                self:playSound("ammo_collect", 0.7)
                 self.visual_effects:flash({color = {0.5, 0.5, 1, 0.3}, duration = 0.15, mode = "fade_out"})
 
             elseif pickup_type == "key" then
@@ -1706,6 +1721,7 @@ function Raycaster:collectPickups()
                 local key_type = entity.key_color or "gold"
                 self.keys[key_type] = (self.keys[key_type] or 0) + 1
                 self.entity_controller:removeEntity(entity)
+                self:playSound("key_collect", 0.8)
                 local flash_color = key_type == "gold" and {1, 0.85, 0, 0.4} or {0.75, 0.75, 0.8, 0.4}
                 self.visual_effects:flash({color = flash_color, duration = 0.2, mode = "fade_out"})
             end
@@ -1767,10 +1783,14 @@ function Raycaster:updateDoors(dt)
                     self.keys[door.locked] = self.keys[door.locked] - 1
                     door.locked = nil
                     door.state = "opening"
+                    self:playSound("door_open", 0.7)
                     self.visual_effects:flash({color = {1, 0.85, 0, 0.4}, duration = 0.2, mode = "fade_out"})
+                else
+                    self:playSound("door_locked", 0.6)
                 end
             else
                 door.state = "opening"
+                self:playSound("door_open", 0.6)
             end
         end
 

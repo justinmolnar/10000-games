@@ -64,39 +64,35 @@ EntityController.SPAWN_MODES = {
     MANUAL = "manual"           -- No auto-spawning, manual spawn() calls only
 }
 
-function EntityController:new(config)
-    local instance = EntityController.super.new(self)
-
+function EntityController:init(config)
     -- Core configuration
-    instance.entity_types = config.entity_types or {}
-    instance.spawning = config.spawning or {mode = EntityController.SPAWN_MODES.MANUAL}
-    instance.pooling = config.pooling ~= false  -- Default true
-    instance.max_entities = config.max_entities or 200
+    self.entity_types = config.entity_types or {}
+    self.spawning = config.spawning or {mode = EntityController.SPAWN_MODES.MANUAL}
+    self.pooling = config.pooling ~= false  -- Default true
+    self.max_entities = config.max_entities or 200
 
     -- Active entities
-    instance.entities = {}
-    instance.entity_count = 0
+    self.entities = {}
+    self.entity_count = 0
 
     -- Object pool (if enabled)
-    instance.entity_pool = {}
+    self.entity_pool = {}
 
     -- Spawning state
-    instance.spawn_timer = 0
-    instance.spawn_rate = instance.spawning.rate or 1.0
-    instance.max_concurrent = instance.spawning.max_concurrent or 10
+    self.spawn_timer = 0
+    self.spawn_rate = self.spawning.rate or 1.0
+    self.max_concurrent = self.spawning.max_concurrent or 10
 
     -- Grid spawning state (for Breakout-style games)
-    instance.grid_spawned = false
+    self.grid_spawned = false
 
     -- Wave spawning state
-    instance.current_wave = 0
-    instance.wave_complete = true
+    self.current_wave = 0
+    self.wave_complete = true
 
     -- Spatial partitioning (optional - for performance with many entities)
-    instance.spatial_grid = nil
-    instance.grid_cell_size = config.grid_cell_size or 64
-
-    return instance
+    self.spatial_grid = nil
+    self.grid_cell_size = config.grid_cell_size or 64
 end
 
 -- Load collision image for an entity type (pixel-perfect collision via SpriteUtils)

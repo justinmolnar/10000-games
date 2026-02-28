@@ -73,7 +73,8 @@ local Config = {
     cheat_engine = {
         -- Starting budget for testing (set VERY high for testing)
         -- In production, this would start lower and be upgraded
-        default_budget = 999999999, -- Nearly infinite for testing
+        default_budget = 50, -- Starting cheat budget per game (100 at NC level 3)
+        budget_per_nc_level = 25, -- Additional budget gained per Neural Core level
 
         -- Budget upgrades (costs to increase budget cap)
         -- Not used initially - just for future expansion
@@ -85,39 +86,26 @@ local Config = {
             { cost = 1000000, new_cap = 500000 }
         },
 
+        -- Global cheat cost tuning (1.0 = standard, 0.5 = half price, 2.0 = double)
+        cheat_cost_multiplier = 1.0,
+        -- Exponent for distance-from-original scaling (1.0 = linear, 2.0 = quadratic, 1.5 = default)
+        cheat_cost_exponent = 1.5,
+
         -- Parameter modification pricing
-        -- Base cost multipliers by parameter type
+        -- Cost = base_cost * cheat_cost_multiplier * (distance_pct ^ cheat_cost_exponent)
+        -- distance_pct = how far new_value is from original as % of param range
         parameter_costs = {
-            -- Numeric parameters (lives, movement_speed, victory_limit, etc.)
             numeric = {
-                base_cost = 10,  -- Very cheap for testing (production: 100)
-                exponential_scale = 1.0, -- No scaling for testing (production: 1.5)
-                -- Cost multiplier per step size
-                step_costs = {
-                    [1] = 1.0,    -- +/- 1: normal cost
-                    [5] = 1.0,    -- +/- 5: testing - same cost (production: 0.9)
-                    [10] = 1.0,   -- +/- 10: testing - same cost (production: 0.8)
-                    [100] = 1.0,  -- +/- 100: testing - same cost (production: 0.6)
-                    ["max"] = 1.0 -- Set to max/min: testing - same cost (production: 2.0)
-                }
+                base_cost = 500,
             },
-
-            -- Boolean parameters (leaving_area_ends_game, etc.)
             boolean = {
-                base_cost = 10,  -- Very cheap for testing (production: 500)
-                exponential_scale = 1.0 -- Flat cost
+                base_cost = 200,
             },
-
-            -- String/enum parameters (victory_condition, movement_type, etc.)
             enum = {
-                base_cost = 10,  -- Very cheap for testing (production: 5000)
-                exponential_scale = 1.0 -- Flat cost
+                base_cost = 500,
             },
-
-            -- Array parameters (enemies, holes)
             array = {
-                base_cost = 10,  -- Very cheap for testing (production: 1000)
-                exponential_scale = 1.0  -- Flat for testing (production: 1.3)
+                base_cost = 300,
             }
         },
 
@@ -125,217 +113,201 @@ local Config = {
         -- Use this to make specific params more/less expensive
         -- Empty for testing - all use default costs
         parameter_overrides = {
-            -- Example overrides (commented out for testing):
-            -- victory_condition = { base_cost = 5000 }, -- Expensive to change
-            -- lives = { base_cost = 100 },
-            -- victory_limit = { base_cost = 150 },
+            victory_limit = { base_cost = 1000 },
+            card_count = { base_cost = 1000 },
+            rounds_to_win = { base_cost = 1000 },
         },
 
         -- Parameter ranges for validation
-        -- Defines min/max values for numeric parameters to prevent breaking games
+        -- Defines min/max values for numeric parameters.
+        -- Ranges are tight so defaults sit at 40-60% of the range.
+        -- Params with wildly different per-variant values (lives, victory_limit)
+        -- are omitted so auto-compute (min=0, max=2*value) handles them per-variant.
         parameter_ranges = {
-            -- Snake Game Parameters
-            snake_speed = { min = 1, max = 20 },
-            speed_increase_per_food = { min = 0, max = 5 },
-            max_speed_cap = { min = 0, max = 50 },
-            growth_per_food = { min = 0, max = 10 },
-            shrink_over_time = { min = 0, max = 5 },
-            max_length_cap = { min = 1, max = 9999 },
-            girth = { min = 1, max = 10 },
-            girth_growth = { min = 0, max = 50 },
-            arena_size = { min = 0.3, max = 3.0 },
-            food_count = { min = 1, max = 20 },
-            food_lifetime = { min = 0, max = 60 },
-            food_size_variance = { min = 0, max = 1.0 },
-            bad_food_chance = { min = 0, max = 1.0 },
-            golden_food_spawn_rate = { min = 0, max = 1.0 },
-            obstacle_count = { min = 0, max = 50 },
-            obstacle_spawn_over_time = { min = 0, max = 5 },
-            ai_snake_count = { min = 0, max = 10 },
-            ai_speed = { min = 1, max = 20 },
-            snake_count = { min = 1, max = 5 },
-            victory_limit = { min = 1, max = 200 },
-            camera_zoom = { min = 0.5, max = 2.0 },
-            difficulty_modifier = { min = 0.5, max = 3.0 },
-            turn_speed = { min = 1, max = 360 },
+            -- Snake Game Parameters (medians from variant data)
+            snake_speed = { min = 4, max = 18 },                -- med=10 (43%)
+            speed_increase_per_food = { min = 0, max = 0.5 },   -- med=0.2 (40%)
+            max_speed_cap = { min = 8, max = 28 },              -- med=18 (50%)
+            growth_per_food = { min = 1, max = 6 },             -- med=3 (40%)
+            shrink_over_time = { min = 0, max = 2 },            -- med=0.8 (40%)
+            max_length_cap = { min = 5, max = 40 },             -- med=20 (43%)
+            girth = { min = 1, max = 6 },                       -- med=3 (40%)
+            girth_growth = { min = 0, max = 10 },               -- tightened from 50
+            arena_size = { min = 0.5, max = 2.5 },              -- med=1.3 (40%)
+            food_count = { min = 1, max = 6 },                  -- med=3 (40%)
+            food_lifetime = { min = 2, max = 18 },              -- med=8 (38%)
+            food_size_variance = { min = 0, max = 1.0 },        -- keep (0-1 is inherently tight)
+            bad_food_chance = { min = 0, max = 0.8 },           -- med=0.5 (63%, lower=easier)
+            golden_food_spawn_rate = { min = 0, max = 1.0 },    -- keep
+            obstacle_count = { min = 0, max = 7 },              -- med=4 (57%, lower=easier)
+            obstacle_spawn_over_time = { min = 0, max = 4 },    -- med=2 (50%)
+            ai_snake_count = { min = 0, max = 4 },              -- med=2 (50%)
+            ai_speed = { min = 5, max = 18 },                   -- med=12 (54%)
+            snake_count = { min = 1, max = 5 },                 -- keep
+            camera_zoom = { min = 0.5, max = 2.0 },             -- keep
+            turn_speed = { min = 50, max = 360 },               -- med=200 (48%)
 
             -- Dodge Game Parameters
-            rotation_speed = { min = 0.5, max = 20 },
-            movement_speed = { min = 50, max = 600 },
-            jump_distance = { min = 20, max = 200 },
-            jump_cooldown = { min = 0.1, max = 2.0 },
-            jump_speed = { min = 200, max = 9999 },
-            accel_friction = { min = 0.0, max = 1.0 },
-            decel_friction = { min = 0.0, max = 1.0 },
-            bounce_damping = { min = 0.0, max = 1.0 },
-            area_size = { min = 0.3, max = 3.0 },
-            area_morph_speed = { min = 0.0, max = 5.0 },
-            area_movement_speed = { min = 0.0, max = 3.0 },
-            area_friction = { min = 0.8, max = 1.0 },
-            holes_count = { min = 0, max = 15 },
-            player_size = { min = 0.3, max = 3.0 },
-            max_speed = { min = 0, max = 1200 },
-            lives = { min = 1, max = 50 },
-            shield = { min = 0, max = 10 },
-            shield_recharge_time = { min = 0, max = 60 },
-            obstacle_tracking = { min = 0.0, max = 1.0 },
-            obstacle_speed_variance = { min = 0.0, max = 1.0 },
-            obstacle_spawn_rate = { min = 0.1, max = 5.0 },
-            obstacle_size_variance = { min = 0.0, max = 1.0 },
-            obstacle_trails = { min = 0, max = 50 },
-            area_gravity = { min = -500, max = 500 },
-            wind_direction = { min = 0, max = 360 },
-            wind_strength = { min = 0, max = 500 },
+            rotation_speed = { min = 2, max = 16 },             -- med=10 (57%)
+            movement_speed = { min = 150, max = 500 },          -- med=300 (43%, higher=easier)
+            jump_distance = { min = 40, max = 160 },            -- med=100 (50%)
+            jump_cooldown = { min = 0.2, max = 1.2 },           -- med=0.7 (50%)
+            jump_speed = { min = 300, max = 1500 },             -- rare param, reasonable bounds
+            accel_friction = { min = 0.9, max = 1.0 },          -- variants 0.985-1.0
+            decel_friction = { min = 0.9, max = 1.0 },          -- variants 0.97-0.99
+            bounce_damping = { min = 0.5, max = 1.0 },          -- med=0.9
+            area_size = { min = 0.6, max = 2.5 },               -- med=1.5 (47%)
+            area_morph_speed = { min = 0.0, max = 3.0 },        -- med=1.5 (50%)
+            area_movement_speed = { min = 0.0, max = 2.0 },     -- tightened from 3
+            area_friction = { min = 0.8, max = 1.0 },           -- keep
+            holes_count = { min = 0, max = 8 },                 -- tightened from 15
+            player_size = { min = 0.3, max = 1.2 },             -- med=0.6 (33%, smaller=easier)
+            max_speed = { min = 400, max = 1200 },              -- med=1000
+            shield = { min = 0, max = 3 },                      -- med=1 (33%)
+            shield_recharge_time = { min = 1, max = 15 },       -- variants at 8, 10
+            obstacle_tracking = { min = 0.0, max = 1.0 },       -- med=0.6 (60%, lower=easier)
+            obstacle_speed_variance = { min = 0.0, max = 0.5 }, -- tightened from 1.0
+            obstacle_spawn_rate = { min = 0.3, max = 1.8 },     -- med=1 (47%)
+            obstacle_size_variance = { min = 0.0, max = 0.5 },  -- tightened from 1.0
+            obstacle_trails = { min = 0, max = 15 },            -- med=8 (53%)
+            lives = { min = 1, max = 12 },                      -- med=5 (36%, higher=easier)
+            area_gravity = { min = -200, max = 300 },           -- med=150, tightened from +-500
+            wind_direction = { min = 0, max = 360 },            -- keep (circular)
+            wind_strength = { min = 0, max = 400 },             -- med=250 (63%)
 
             -- Memory Match Parameters
-            card_count = { min = 4, max = 48 },
-            columns = { min = 0, max = 8 },
-            match_requirement = { min = 2, max = 4 },
-            flip_speed = { min = 0.1, max = 2.0 },
-            reveal_duration = { min = 0.2, max = 5.0 },
-            memorize_time = { min = 0, max = 30 },
-            auto_shuffle_interval = { min = 0, max = 60 },
-            auto_shuffle_count = { min = 0, max = 48 },
-            time_limit = { min = 0, max = 300 },
-            move_limit = { min = 0, max = 200 },
-            mismatch_penalty = { min = 0, max = 50 },
-            combo_multiplier = { min = 0.0, max = 5.0 },
-            speed_bonus = { min = 0, max = 100 },
-            perfect_bonus = { min = 0, max = 50 },
-            fog_of_war = { min = 0, max = 500 },
-            fog_inner_radius = { min = 0.0, max = 1.0 },
-            fog_darkness = { min = 0.0, max = 1.0 },
-            chain_requirement = { min = 0, max = 10 },
+            card_count = { min = 6, max = 30 },                 -- med=18 (50%)
+            columns = { min = 3, max = 8 },                     -- tightened
+            match_requirement = { min = 2, max = 4 },           -- keep
+            flip_speed = { min = 0.05, max = 0.3 },             -- med=0.15 (40%)
+            reveal_duration = { min = 0.3, max = 2.5 },         -- med=1.2 (41%)
+            memorize_time = { min = 0, max = 10 },              -- med=4 (40%, higher=easier)
+            auto_shuffle_interval = { min = 5, max = 20 },      -- med=12 (47%)
+            auto_shuffle_count = { min = 1, max = 8 },          -- med=4 (43%)
+            time_limit = { min = 30, max = 200 },               -- med=120 (53%)
+            move_limit = { min = 10, max = 50 },                -- med=30 (50%)
+            mismatch_penalty = { min = 0, max = 15 },           -- med=8 (53%)
+            combo_multiplier = { min = 0.3, max = 4.0 },        -- med=2 (46%)
+            speed_bonus = { min = 20, max = 150 },              -- med=80 (46%)
+            perfect_bonus = { min = 10, max = 80 },             -- med=40 (43%)
+            fog_of_war = { min = 50, max = 300 },               -- med=150 (40%)
+            fog_inner_radius = { min = 0.2, max = 0.8 },        -- med=0.5 (50%)
+            fog_darkness = { min = 0.0, max = 0.3 },            -- med=0.05
+            chain_requirement = { min = 2, max = 8 },           -- med=5 (50%)
 
             -- Space Shooter Parameters
-            -- Player Movement
-            player_speed = { min = 50, max = 600 },
-            player_rotation_speed = { min = 0.5, max = 20.0 },
-            player_accel_friction = { min = 0.0, max = 1.0 },
-            player_decel_friction = { min = 0.0, max = 1.0 },
-            player_jump_distance = { min = 20, max = 300 },
-            player_jump_cooldown = { min = 0.1, max = 3.0 },
-            player_jump_speed = { min = 100, max = 1000 },
-            player_size_multiplier = { min = 0.3, max = 3.0 },
-            -- Lives & Shield
-            lives_count = { min = 1, max = 50 },
-            shield_hits = { min = 0, max = 10 },
-            shield_regen_time = { min = 0, max = 60 },
-            -- Weapon System (Phase 3 & 4)
-            fire_rate = { min = 0.1, max = 20.0 },
-            bullet_speed = { min = 50, max = 1000 },
-            bullet_gravity = { min = -500, max = 500 },
-            bullet_lifetime = { min = 1, max = 30 },
-            bullet_damage_multiplier = { min = 0.1, max = 10.0 },
-            homing_strength = { min = 0.0, max = 2.0 },
-            burst_count = { min = 2, max = 10 },
-            burst_delay = { min = 0.05, max = 0.5 },
-            charge_time = { min = 0.3, max = 3.0 },
-            spread_angle = { min = 5, max = 180 },
-            bullet_arc = { min = 15, max = 90 },
-            bullets_per_shot = { min = 1, max = 12 },
-            overheat_threshold = { min = 3, max = 100 },
-            overheat_cooldown = { min = 0.5, max = 10.0 },
-            overheat_heat_dissipation = { min = 0.1, max = 10.0 },
-            ammo_capacity = { min = 5, max = 500 },
-            ammo_reload_time = { min = 0.5, max = 10.0 },
-            -- Enemy System (Phase 5)
-            enemy_spawn_rate_multiplier = { min = 0.1, max = 10.0 },
-            enemy_speed_multiplier = { min = 0.1, max = 5.0 },
-            enemy_health = { min = 1, max = 10 },
-            enemy_health_variance = { min = 0.0, max = 1.0 },
-            enemy_health_min = { min = 1, max = 20 },
-            enemy_health_max = { min = 1, max = 20 },
-            enemy_bullet_speed = { min = 50, max = 800 },
-            enemy_fire_rate = { min = 0.5, max = 10.0 },
-            enemy_bullets_per_shot = { min = 1, max = 20 },
-            enemy_bullet_spread_angle = { min = 10, max = 180 },
-            wave_enemies_per_wave = { min = 1, max = 20 },
-            wave_pause_duration = { min = 0.5, max = 10.0 },
-            difficulty_scaling_rate = { min = 0.0, max = 1.0 },
-            -- Space Invaders / Galaga behavior parameters
-            wave_difficulty_increase = { min = 0.0, max = 1.0 },
-            wave_random_variance = { min = 0.0, max = 1.0 },
-            grid_rows = { min = 1, max = 10 },
-            grid_columns = { min = 2, max = 16 },
-            grid_speed = { min = 10, max = 200 },
-            grid_descent = { min = 5, max = 50 },
-            enemy_density = { min = 0.3, max = 3.0 },
-            dive_frequency = { min = 0.5, max = 10.0 },
-            max_diving_enemies = { min = 1, max = 5 },
-            formation_size = { min = 4, max = 50 },
-            initial_spawn_count = { min = 1, max = 30 },
-            spawn_interval = { min = 0.1, max = 3.0 },
-            -- Power-Up System (Phase 6)
-            powerup_spawn_rate = { min = 1.0, max = 60.0 },
-            powerup_duration = { min = 1.0, max = 30.0 },
-            powerup_drop_speed = { min = 10, max = 400 },
-            powerup_size = { min = 10, max = 50 },
-            powerup_speed_multiplier = { min = 1.1, max = 3.0 },
-            powerup_rapid_fire_multiplier = { min = 0.1, max = 0.9 },
-            -- Environment (Phase 7)
-            scroll_speed = { min = 0, max = 500 },
-            asteroid_density = { min = 0, max = 10 },
-            asteroid_speed = { min = 20, max = 400 },
-            asteroid_size_min = { min = 10, max = 40 },
-            asteroid_size_max = { min = 30, max = 100 },
-            meteor_frequency = { min = 0, max = 10 },
-            meteor_speed = { min = 100, max = 800 },
-            meteor_warning_time = { min = 0.1, max = 3.0 },
-            gravity_wells_count = { min = 0, max = 10 },
-            gravity_well_strength = { min = 50, max = 500 },
-            gravity_well_radius = { min = 50, max = 300 },
-            -- Arena (Phase 8)
-            arena_width = { min = 400, max = 1200 },
-            blackout_zones_count = { min = 0, max = 5 },
-            blackout_zone_radius = { min = 50, max = 200 },
-            bullet_max_wraps = { min = 1, max = 10 },
-            -- Victory Conditions (Phase 8)
-            victory_limit = { min = 1, max = 1000 },
+            player_speed = { min = 100, max = 350 },            -- med=200 (40%, higher=easier)
+            player_rotation_speed = { min = 3, max = 15 },      -- med=9 (50%)
+            player_accel_friction = { min = 0.85, max = 1.0 },  -- tightened
+            player_decel_friction = { min = 0.85, max = 1.0 },  -- tightened
+            player_jump_distance = { min = 0.05, max = 0.3 },   -- med=0.15 (40%)
+            player_jump_cooldown = { min = 0.1, max = 0.5 },    -- med=0.25 (38%)
+            player_jump_speed = { min = 400, max = 1200 },      -- med=800 (50%)
+            player_size_multiplier = { min = 0.5, max = 2.0 },  -- tightened from 0.3-3.0
+            lives_count = { min = 1, max = 18 },                -- med=8 (39%, higher=easier)
+            shield_hits = { min = 0, max = 5 },                 -- med=2 (40%)
+            shield_regen_time = { min = 2, max = 12 },          -- med=6 (40%)
+            fire_rate = { min = 2, max = 14 },                  -- med=6 (33%, higher=easier)
+            bullet_speed = { min = 200, max = 700 },            -- med=450 (50%)
+            bullet_gravity = { min = -300, max = 400 },         -- med=300, tightened
+            bullet_lifetime = { min = 1, max = 10 },            -- tightened from 30
+            bullet_damage_multiplier = { min = 0.3, max = 4.0 },-- tightened from 0.1-10
+            homing_strength = { min = 0.0, max = 2.0 },         -- med=1.2, keep
+            burst_count = { min = 2, max = 8 },                 -- med=5 (50%)
+            burst_delay = { min = 0.05, max = 0.25 },           -- med=0.15 (50%)
+            charge_time = { min = 0.5, max = 2.5 },             -- med=1.5 (50%)
+            spread_angle = { min = 10, max = 90 },              -- tightened from 180
+            bullet_arc = { min = 20, max = 80 },                -- med=60 (67%)
+            bullets_per_shot = { min = 1, max = 10 },           -- med=5 (44%)
+            overheat_threshold = { min = 5, max = 30 },         -- med=15 (40%)
+            overheat_cooldown = { min = 1, max = 6 },           -- med=4 (60%)
+            overheat_heat_dissipation = { min = 0.5, max = 3.0 },-- tightened from 10
+            ammo_capacity = { min = 5, max = 30 },              -- med=15 (40%)
+            ammo_reload_time = { min = 1, max = 6 },            -- med=4 (60%)
+            enemy_spawn_rate_multiplier = { min = 0.3, max = 4.0 },-- med=1.8 (41%)
+            enemy_speed_multiplier = { min = 0.3, max = 2.5 },  -- med=1.2 (41%)
+            enemy_health = { min = 1, max = 10 },               -- keep
+            enemy_health_variance = { min = 0.0, max = 0.5 },   -- tightened from 1.0
+            enemy_health_min = { min = 1, max = 10 },           -- tightened from 20
+            enemy_health_max = { min = 1, max = 15 },           -- tightened from 20
+            enemy_bullet_speed = { min = 50, max = 250 },       -- med=120 (41%)
+            enemy_fire_rate = { min = 0.3, max = 3.0 },         -- med=1.5 (44%)
+            enemy_bullets_per_shot = { min = 3, max = 20 },     -- med=15 (71%, lower=easier)
+            enemy_bullet_spread_angle = { min = 20, max = 120 },-- tightened from 180
+            wave_enemies_per_wave = { min = 3, max = 15 },      -- med=10 (58%)
+            wave_pause_duration = { min = 0.5, max = 5.0 },     -- med=2 (33%)
+            difficulty_scaling_rate = { min = 0.0, max = 0.5 },  -- med=0.2 (40%)
+            wave_difficulty_increase = { min = 0.0, max = 0.4 }, -- med=0.2 (50%)
+            wave_random_variance = { min = 0.0, max = 0.5 },    -- med=0.3 (60%)
+            grid_rows = { min = 2, max = 8 },                   -- med=5 (50%)
+            grid_columns = { min = 4, max = 14 },               -- med=11 (70%)
+            grid_speed = { min = 15, max = 80 },                -- med=40 (38%)
+            grid_descent = { min = 5, max = 30 },               -- med=15 (40%)
+            enemy_density = { min = 0.5, max = 2.0 },           -- med=1.2 (47%)
+            dive_frequency = { min = 1.0, max = 5.0 },          -- med=2.5 (38%)
+            max_diving_enemies = { min = 1, max = 4 },          -- med=2 (33%)
+            formation_size = { min = 8, max = 40 },             -- med=24 (50%)
+            initial_spawn_count = { min = 3, max = 15 },        -- med=8 (42%)
+            spawn_interval = { min = 0.2, max = 1.0 },          -- med=0.5 (38%)
+            powerup_spawn_rate = { min = 2, max = 15 },         -- med=6 (31%)
+            powerup_duration = { min = 4, max = 18 },           -- med=12 (57%)
+            powerup_drop_speed = { min = 30, max = 200 },       -- tightened from 400
+            powerup_size = { min = 15, max = 40 },              -- tightened from 10-50
+            powerup_speed_multiplier = { min = 1.2, max = 3.0 },-- med=2.5
+            powerup_rapid_fire_multiplier = { min = 0.1, max = 0.6 },-- tightened from 0.9
+            scroll_speed = { min = 50, max = 350 },             -- med=200 (50%)
+            asteroid_density = { min = 1, max = 10 },           -- med=6 (56%)
+            asteroid_speed = { min = 60, max = 250 },           -- med=140 (42%)
+            asteroid_size_min = { min = 10, max = 35 },         -- med=20 (40%)
+            asteroid_size_max = { min = 30, max = 80 },         -- med=50 (40%)
+            meteor_frequency = { min = 1, max = 10 },           -- med=6 (56%)
+            meteor_speed = { min = 300, max = 800 },            -- med=600 (60%)
+            meteor_warning_time = { min = 0.3, max = 1.2 },     -- med=0.7 (44%)
+            gravity_wells_count = { min = 0, max = 6 },         -- med=3 (50%)
+            gravity_well_strength = { min = 150, max = 500 },   -- med=350 (57%)
+            gravity_well_radius = { min = 80, max = 250 },      -- med=180 (59%)
+            arena_width = { min = 500, max = 1000 },            -- tightened
+            blackout_zones_count = { min = 0, max = 5 },        -- keep
+            blackout_zone_radius = { min = 80, max = 200 },     -- med=150 (58%)
+            bullet_max_wraps = { min = 1, max = 6 },            -- med=4 (60%)
 
             -- Breakout Parameters
-            paddle_width = { min = 30, max = 300 },
-            paddle_speed = { min = 100, max = 1000 },
-            paddle_friction = { min = 0, max = 1.0 },
-            ball_count = { min = 1, max = 10 },
-            ball_speed = { min = 50, max = 800 },
-            ball_speed_increase_per_bounce = { min = 0, max = 50 },
-            ball_max_speed = { min = 100, max = 2000 },
-            ball_size = { min = 4, max = 30 },
-            ball_gravity = { min = 0, max = 1000 },
-            brick_rows = { min = 1, max = 20 },
-            brick_columns = { min = 1, max = 20 },
-            brick_health = { min = 1, max = 10 },
-            lives = { min = 1, max = 99 },
-            arena_width = { min = 400, max = 1200 },
-            arena_height = { min = 300, max = 900 },
-            powerup_duration = { min = 1, max = 30 },
-            powerup_fall_speed = { min = 50, max = 300 },
+            paddle_width = { min = 60, max = 200 },             -- med=150 (64%, wider=easier)
+            paddle_speed = { min = 200, max = 600 },            -- tightened from 100-1000
+            paddle_friction = { min = 0.8, max = 1.0 },         -- tightened
+            ball_count = { min = 1, max = 5 },                  -- med=3 (40%)
+            ball_speed = { min = 150, max = 500 },              -- med=320 (49%)
+            ball_speed_increase_per_bounce = { min = 0, max = 40 },-- med=20 (50%)
+            ball_max_speed = { min = 400, max = 1000 },         -- med=800 (67%)
+            ball_size = { min = 5, max = 20 },                  -- tightened from 4-30
+            ball_gravity = { min = 0, max = 400 },              -- med=200 (50%)
+            brick_rows = { min = 2, max = 10 },                 -- med=6 (50%)
+            brick_columns = { min = 4, max = 14 },              -- med=10 (60%)
+            brick_health = { min = 1, max = 5 },                -- med=2 (25%)
+            arena_height = { min = 400, max = 800 },            -- tightened
 
             -- Coin Flip Parameters
-            streak_target = { min = 1, max = 50 },
-            coin_bias = { min = 0.0, max = 1.0 },
-            time_per_flip = { min = 0, max = 30 },
-            auto_flip_interval = { min = 0, max = 10 },
-            pattern_history_length = { min = 0, max = 20 },
-            total_correct_target = { min = 1, max = 100 },
-            ratio_target = { min = 0.1, max = 1.0 },
-            ratio_flip_count = { min = 5, max = 100 },
-            time_limit = { min = 10, max = 600 },
+            streak_target = { min = 2, max = 20 },              -- med=10 (44%)
+            coin_bias = { min = 0.3, max = 0.8 },               -- med=0.6 (60%)
+            time_per_flip = { min = 1, max = 6 },               -- med=3 (40%)
+            auto_flip_interval = { min = 1, max = 5 },          -- med=2.5 (38%)
+            pattern_history_length = { min = 3, max = 20 },     -- med=15 (71%)
+            total_correct_target = { min = 10, max = 50 },      -- med=30 (50%)
+            ratio_target = { min = 0.5, max = 1.0 },            -- med=0.75 (50%)
+            ratio_flip_count = { min = 10, max = 40 },          -- med=20 (33%)
 
             -- RPS Parameters
-            rounds_to_win = { min = 1, max = 50 },
-            total_rounds_limit = { min = 3, max = 200 },
-            opponent_count = { min = 1, max = 10 },
-            ai_bias_strength = { min = 0.0, max = 1.0 },
-            ai_pattern_delay = { min = 0, max = 20 },
-            time_per_round = { min = 0, max = 30 },
-            time_per_removal = { min = 0, max = 30 },
-            round_result_display_time = { min = 0.5, max = 10 },
-            history_length = { min = 0, max = 50 },
-            first_to_target = { min = 1, max = 50 },
-            total_wins_target = { min = 1, max = 100 },
-            lives_count = { min = 1, max = 99 },
+            rounds_to_win = { min = 1, max = 15 },              -- med=5 (29%)
+            total_rounds_limit = { min = 5, max = 50 },         -- tightened from 200
+            opponent_count = { min = 1, max = 5 },              -- tightened from 10
+            ai_bias_strength = { min = 0.0, max = 0.5 },        -- tightened from 1.0
+            ai_pattern_delay = { min = 1, max = 6 },            -- med=3 (40%)
+            time_per_round = { min = 2, max = 10 },             -- med=5 (tightened from 30)
+            time_per_removal = { min = 2, max = 10 },           -- med=5 (tightened from 30)
+            round_result_display_time = { min = 0.5, max = 3.0 },-- tightened from 10
+            history_length = { min = 3, max = 20 },             -- med=10 (41%)
+            first_to_target = { min = 3, max = 18 },            -- med=10 (47%)
+            total_wins_target = { min = 5, max = 40 },          -- tightened from 100
         },
 
         -- Which parameters should be hidden/locked
@@ -346,7 +318,7 @@ local Config = {
             "sprite_set",       -- Visual only
             "palette",          -- Visual only
             "music_track",      -- Audio only
-            "sfx_pack",         -- Audio only
+            "sfx_theme",        -- Audio only
             "background",       -- Visual only
             "flavor_text",      -- Text only
             "intro_cutscene",   -- Cutscene data
@@ -376,6 +348,7 @@ local Config = {
             "blackout_zones_count", -- Would show as "blackout_zones" in CheatEngine (Phase 8)
             "enemy_behavior",   -- String enum - default, space_invaders, galaga
             "entrance_pattern", -- String enum - swoop, loop, arc (galaga)
+            "no_life_loss",     -- Game mode flag - not a tweakable param
         },
 
         -- Special unlocks (gate certain modifications behind progression)
@@ -1490,14 +1463,14 @@ local Config = {
             },
             scaling = {
                 -- Boss HP formula: boss_hp_base * (level ^ boss_hp_exponent)
-                boss_hp_base = 5000,
-                boss_hp_exponent = 2.0,
+                boss_hp_base = 500,
+                boss_hp_exponent = 1.5,
                 -- Enemy HP formula: enemy_hp_base * (level ^ enemy_hp_exponent)
-                enemy_hp_base = 500,
-                enemy_hp_exponent = 1.8,
+                enemy_hp_base = 50,
+                enemy_hp_exponent = 1.4,
                 -- Boss attack spawn HP formula: attack_hp_base * (level ^ attack_hp_exponent)
-                attack_hp_base = 50,
-                attack_hp_exponent = 1.5,
+                attack_hp_base = 10,
+                attack_hp_exponent = 1.3,
                 -- Wave count formula: wave_count_base + (level * wave_count_per_level)
                 wave_count_base = 2,
                 wave_count_per_level = 3,

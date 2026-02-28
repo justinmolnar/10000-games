@@ -49,6 +49,7 @@ function View:drawContent(w, h)
 
     -- Draw form
     self.form.right_edge = w - 24
+    self.form.viewport_h = h
     self.form:draw()
 
     -- Card back previewer (right side)
@@ -74,6 +75,7 @@ function View:drawContent(w, h)
 
     -- Buttons (OK/Cancel/Apply)
     self._ok_rect, self._cancel_rect, self._apply_rect = UI.drawDialogButtons(w, h, self.controller:has_pending())
+    self.form:drawOverlay()
 end
 
 local function hit(r, x, y)

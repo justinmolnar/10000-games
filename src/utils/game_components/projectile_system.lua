@@ -18,22 +18,18 @@ Games handle:
 local Object = require('class')
 local ProjectileSystem = Object:extend('ProjectileSystem')
 
-function ProjectileSystem:new(config)
+function ProjectileSystem:init(config)
     if not config then error("ProjectileSystem: config required") end
     if not config.max_projectiles then error("ProjectileSystem: max_projectiles required") end
     if not config.out_of_bounds_margin then error("ProjectileSystem: out_of_bounds_margin required") end
 
-    local instance = ProjectileSystem.super.new(self)
+    self.max_projectiles = config.max_projectiles
+    self.out_of_bounds_margin = config.out_of_bounds_margin
+    self.pooling = config.pooling ~= false  -- Default true
 
-    instance.max_projectiles = config.max_projectiles
-    instance.out_of_bounds_margin = config.out_of_bounds_margin
-    instance.pooling = config.pooling ~= false  -- Default true
-
-    instance.projectiles = {}
-    instance.count = 0
-    instance.pool = {}
-
-    return instance
+    self.projectiles = {}
+    self.count = 0
+    self.pool = {}
 end
 
 --[[

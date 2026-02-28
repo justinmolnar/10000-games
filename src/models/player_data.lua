@@ -117,6 +117,10 @@ function PlayerData:isGameUnlocked(game_id)
     return self.unlocked_games[game_id] == true
 end
 
+function PlayerData:isGameCompleted(game_id)
+    return self.completed_games[game_id] == true
+end
+
 function PlayerData:updateGamePerformance(game_id, metrics, formula_result, is_auto_completion)
     formula_result = tonumber(formula_result) or 0
     is_auto_completion = is_auto_completion or false
@@ -379,15 +383,15 @@ end
 -- NEW: Dynamic Parameter Modification System (CheatEngine)
 -- ============================================================================
 
--- Get the global cheat budget
+-- Get the global cheat budget (base + bonus from Neural Core levels)
 function PlayerData:getCheatBudget()
-    return self.cheat_budget or 999999999
+    local base = (Config.cheat_engine and Config.cheat_engine.default_budget) or 50
+    local per_level = (Config.cheat_engine and Config.cheat_engine.budget_per_nc_level) or 25
+    local nc_level = (self.space_defender_level or 1) - 1 -- level 1 = 0 completions
+    return base + per_level * nc_level
 end
 
--- Set the global cheat budget (used for upgrades)
-function PlayerData:setCheatBudget(new_budget)
-    self.cheat_budget = new_budget
-end
+-- Budget is now computed dynamically from NC level, no setter needed
 
 -- Get current CPU speed multiplier (used for page loading, etc.)
 function PlayerData:getCPUSpeed()
@@ -439,7 +443,7 @@ end
 -- (This is global budget minus budget spent on THIS game)
 function PlayerData:getAvailableBudget(game_id)
     local spent = self:getGameBudgetSpent(game_id)
-    return self.cheat_budget - spent
+    return self:getCheatBudget() - spent
 end
 
 -- Apply a modification to a game parameter

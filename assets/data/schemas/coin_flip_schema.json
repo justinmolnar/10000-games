@@ -16,6 +16,11 @@
             "max": 1.0,
             "description": "Probability of heads (0.5 = fair coin)"
         },
+        "no_life_loss": {
+            "type": "boolean",
+            "default": false,
+            "description": "Wrong guess does not cost a life"
+        },
         "lives": {
             "type": "integer",
             "default": 3,

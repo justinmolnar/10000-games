@@ -21,8 +21,8 @@ local SpaceShooter = BaseGame:extend('SpaceShooter')
 -- Initialization
 --------------------------------------------------------------------------------
 
-function SpaceShooter:init(game_data, cheats, di, variant_override)
-    SpaceShooter.super.init(self, game_data, cheats, di, variant_override)
+function SpaceShooter:init(game_data, cheats, di, variant_override, original_variant)
+    SpaceShooter.super.init(self, game_data, cheats, di, variant_override, original_variant)
     self.default_sprite_set = "fighter_1"
 
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.space_shooter)

@@ -132,25 +132,6 @@ function View:_drawPreviewFrame(frame_x, frame_y, prev_w, prev_h, frame_pad, col
     love.graphics.rectangle('line', frame_x - frame_pad, frame_y - frame_pad, prev_w + 2*frame_pad, prev_h + 2*frame_pad)
 end
 
-function View:_drawDropdownList(dropdown_to_draw)
-    UI.drawDropdownList(
-        dropdown_to_draw.x,
-        dropdown_to_draw.y,
-        dropdown_to_draw.w,
-        dropdown_to_draw.item_h,
-        dropdown_to_draw.labels,
-        nil
-    )
-    self._dropdown_list = {
-        id = dropdown_to_draw.id,
-        x = dropdown_to_draw.x,
-        y = dropdown_to_draw.y,
-        w = dropdown_to_draw.w,
-        h = #dropdown_to_draw.labels * dropdown_to_draw.item_h,
-        item_h = dropdown_to_draw.item_h,
-        items = dropdown_to_draw.items
-    }
-end
 
 -- Simple slider renderer: t in [0,1]
 function View:drawSlider(x, y, w, h, t)
@@ -510,12 +491,31 @@ function View:drawContent(w, h)
     -- Bottom buttons (stick to bottom of panel area)
     self._ok_rect, self._cancel_rect, self._apply_rect = UI.drawDialogButtons(w, h, next(pending) ~= nil)
 
-    -- Draw dropdown list last
-    if dropdown_to_draw then
-        self:_drawDropdownList(dropdown_to_draw)
-    else
-        self._dropdown_list = nil
+    -- Open dropdown overlay via service (renders outside window scissor)
+    local overlay = self.di and self.di.dropdownOverlay
+    if dropdown_to_draw and overlay then
+        if not overlay:isOpen() then
+            local sx, sy = love.graphics.transformPoint(dropdown_to_draw.x, dropdown_to_draw.y)
+            local items = dropdown_to_draw.items
+            local dd_id = dropdown_to_draw.id
+            overlay:open({
+                x = sx, y = sy, w = dropdown_to_draw.w, item_h = dropdown_to_draw.item_h,
+                choices = items,
+                on_select = function(value)
+                    self.dropdown_open_id = nil
+                    if self.controller and self.controller.handle_event then
+                        self.controller:handle_event({ name='set_pending', id=dd_id, value=value })
+                    end
+                end,
+                on_close = function()
+                    self.dropdown_open_id = nil
+                end,
+            })
+        end
+    elseif not dropdown_to_draw and overlay and overlay:isOpen() then
+        -- Dropdown was closed by other means
     end
+    self._dropdown_list = nil
 
     -- Update content height and clamp scroll
     -- Compute full scrollable content height (independent of current offset)
@@ -541,24 +541,6 @@ end
 
 function View:mousepressed(x, y, button, settings, pending)
     if button ~= 1 then return nil end
-    -- Dropdown handling for screensaver_type
-    if self._dropdown_list then
-        -- If list is open, test items first
-        local dl = self._dropdown_list
-        if x >= dl.x and x <= dl.x + dl.w and y >= dl.y and y <= dl.y + dl.h then
-            local idx = math.floor((y - dl.y) / dl.item_h) + 1
-            local choice = dl.items[idx]
-            self.dropdown_open_id = nil
-            if choice then
-                local value = choice
-                if type(choice) == 'table' then value = choice.value end
-                return { name='set_pending', id=dl.id, value=value }
-            end
-        else
-            -- Click outside closes list
-            self.dropdown_open_id = nil
-        end
-    end
     -- Toggle any dropdown hit
     for id,entry in pairs(self.layout_cache) do
         local rect = entry.rect

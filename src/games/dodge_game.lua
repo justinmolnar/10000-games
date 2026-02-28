@@ -21,8 +21,8 @@ local DodgeGame = BaseGame:extend('DodgeGame')
 -- INITIALIZATION
 --------------------------------------------------------------------------------
 
-function DodgeGame:init(game_data, cheats, di, variant_override)
-    DodgeGame.super.init(self, game_data, cheats, di, variant_override)
+function DodgeGame:init(game_data, cheats, di, variant_override, original_variant)
+    DodgeGame.super.init(self, game_data, cheats, di, variant_override, original_variant)
 
     self.runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.dodge) or {}
     self.params = self.di.components.SchemaLoader.load(self.variant, "dodge_schema", self.runtimeCfg)
@@ -309,6 +309,17 @@ function DodgeGame:setupComponents()
                     game:playSound("dodge", 0.5)
                     return true  -- collect and remove
                 end
+                -- Teleporters warp the player instead of dealing damage
+                if entity.type_name == "teleporter" then
+                    local pad = (target.radius or 10) + 10
+                    target.x = pad + math.random() * (game.game_width - pad * 2)
+                    target.y = pad + math.random() * (game.game_height - pad * 2)
+                    target.vx = 0
+                    target.vy = 0
+                    game:playSound("dodge", 0.6)
+                    return false -- don't remove teleporter
+                end
+
                 -- Read collision response from entity (resolved from schema/variant)
                 local col = entity.collision_response or {}
                 local damage = col.damage == nil and 1 or col.damage

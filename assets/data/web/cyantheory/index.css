@@ -1,0 +1,55 @@
+body {
+    background-color: #0a0a1a;
+    color: #aaccdd;
+    font-family: Courier New;
+    margin: 20px;
+}
+
+h1 {
+    color: #66ddff;
+    text-align: center;
+    font-size: 24px;
+}
+
+h2 {
+    color: #4488aa;
+    border-bottom: 1px solid #224466;
+}
+
+.bio {
+    background-color: #0f1a2a;
+    border: 1px solid #224466;
+    padding: 12px;
+    margin: 10px 0;
+    color: #88aabb;
+}
+
+.tracklist {
+    background-color: #0f1a2a;
+    border: 1px solid #224466;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.track {
+    padding: 6px 10px;
+    border-bottom: 1px solid #112233;
+}
+
+a {
+    color: #66ddff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.label {
+    color: #556677;
+    font-size: 12px;
+}
+
+hr {
+    border-color: #224466;
+}

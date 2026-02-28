@@ -33,18 +33,14 @@ local StateMachine = Object:extend('StateMachine')
         sm:getTics()             -- tics in current state
 ]]
 
-function StateMachine:new(config)
-    local instance = StateMachine.super.new(self)
+function StateMachine:init(config)
+    self.states = config.states or {}
+    self.state = config.initial or next(self.states)
+    self.tics = 0
 
-    instance.states = config.states or {}
-    instance.state = config.initial or next(instance.states)
-    instance.tics = 0
-
-    instance.on_enter = config.on_enter
-    instance.on_exit = config.on_exit
-    instance.on_update = config.on_update
-
-    return instance
+    self.on_enter = config.on_enter
+    self.on_exit = config.on_exit
+    self.on_update = config.on_update
 end
 
 function StateMachine:update(tics)

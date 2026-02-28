@@ -1,0 +1,57 @@
+body {
+    background-color: #FFF8F0;
+    color: #443322;
+    font-family: Georgia;
+    margin: 20px;
+}
+
+h1 {
+    color: #886644;
+    text-align: center;
+    font-size: 28px;
+    font-style: italic;
+}
+
+h2 {
+    color: #665533;
+    border-bottom: 1px solid #CCBB99;
+}
+
+.bio {
+    background-color: #FFF0E0;
+    border: 1px solid #DDCCAA;
+    padding: 12px;
+    margin: 10px 0;
+    font-style: italic;
+}
+
+.tracklist {
+    background-color: #FFF5EA;
+    border: 1px solid #DDCCAA;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.track {
+    padding: 6px 10px;
+    border-bottom: 1px solid #EEE0CC;
+}
+
+a {
+    color: #886644;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+hr {
+    border-color: #CCBB99;
+}
+
+.quote {
+    font-style: italic;
+    color: #998866;
+    padding: 10px 20px;
+}

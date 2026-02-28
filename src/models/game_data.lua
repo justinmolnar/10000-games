@@ -35,8 +35,7 @@ function GameData:loadBaseGames()
     -- Register each discovered game (already fully merged by GameRegistry)
     for _, discovered_game in ipairs(discovered_games) do
         -- Calculate variant multiplier from clone_index
-        -- clone_index 0 & 1 = multiplier 1, clone_index 2 = multiplier 2, etc.
-        -- (matches old system where base and first clone both had multiplier 1)
+        -- clone_index 0 = multiplier 1, clone_index 1+ = clone_index
         discovered_game.variant_multiplier = math.max(1, discovered_game.clone_index or 0)
 
         -- Map variant "name" to "display_name" for UI compatibility
@@ -99,6 +98,7 @@ function GameData:createFormulaFunction(formula_string)
         metrics.objects_found = metrics.objects_found or 0
         metrics.time_bonus = metrics.time_bonus or 0
         metrics.combo = metrics.combo or 0
+        metrics.victory_progress = metrics.victory_progress or 0
 
         -- Get current scaling_constant from config
         local scaling_constant = Config.scaling_constant or 1

@@ -236,12 +236,20 @@ function DesktopState:enter()
     if self.show_tutorial and self.event_bus then
         pcall(self.event_bus.publish, self.event_bus, 'tutorial_shown')
     end
+    -- Play startup sound
+    if self.di.systemSounds then
+        self.di.systemSounds:playSystemSound('startup')
+    end
 end
 
 function DesktopState:update(dt)
     -- Defensive defaults in case update is called before init completes fully
     if self.idle_timer == nil then self.idle_timer = 0 end
     if not self.wallpaper_color then self.wallpaper_color = {0, 0.5, 0.5} end
+
+    -- Poll shutdown sound completion
+    if self.di.systemSounds then self.di.systemSounds:update(dt) end
+
     -- Update global systems if they exist
     if self.statistics then self.statistics:addPlaytime(dt) end
 
@@ -359,6 +367,11 @@ function DesktopState:draw()
         self.taskbar_controller:draw()
     end
 
+    -- Draw dropdown overlay (above windows/taskbar, below start menu)
+    if self.di.dropdownOverlay then
+        self.di.dropdownOverlay:draw()
+    end
+
     -- Draw start menu on top of windows and taskbar
     if self.start_menu and self.start_menu:isOpen() then self.start_menu:draw() end
 
@@ -432,6 +445,12 @@ function DesktopState:mousepressed(x, y, button)
     end
 
     local click_handled = false -- General flag if click was processed
+
+    -- --- Dropdown Overlay Handling (Priority 0.5) ---
+    if self.di.dropdownOverlay and self.di.dropdownOverlay:isOpen() then
+        self.di.dropdownOverlay:mousepressed(x, y, button)
+        return
+    end
 
     -- --- Context Menu Handling (Priority 1) ---
     if self.di.contextMenuService and self.di.contextMenuService:isOpen() then
@@ -834,9 +853,13 @@ function DesktopState:keypressed(key)
              self:closeWindowById(focused_id)
              return true
          else
-             -- No focused windows: allow immediate quit (debug convenience)
-             _G.APP_ALLOW_QUIT = true
-             love.event.quit()
+             -- No focused windows: quit (debug convenience)
+             if self.di.systemSounds and self.di.systemSounds:beginShutdown() then
+                 -- Shutdown sound playing; update() will quit when done
+             else
+                 _G.APP_ALLOW_QUIT = true
+                 love.event.quit()
+             end
              return true
          end
     end

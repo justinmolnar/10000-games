@@ -294,7 +294,8 @@
     "score_target": 5000,
     "brick_score_multiplier": 25,
     "combo_multiplier": 0.5,
-    "lives": 999,
+    "no_life_loss": true,
+    "lives": 1,
     "flavor_text": "Phase 10 Test: Reach 5000 score to win!"
   },
   {
@@ -314,7 +315,8 @@
     "victory_condition": "time",
     "time_target": 45,
     "ball_speed": 350,
-    "lives": 999,
+    "no_life_loss": true,
+    "lives": 1,
     "flavor_text": "Phase 10 Test: Survive 45 seconds without losing"
   },
   {

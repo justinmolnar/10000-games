@@ -130,6 +130,7 @@ function WebBrowserView:drawContent(viewport_width, viewport_height)
             love.graphics.pop()
         end
     end
+
 end
 
 -- Draw toolbar
@@ -248,6 +249,39 @@ function WebBrowserView:drawHTMLContent(x, y, width, height, layout, scroll_y, i
     local screen_x = viewport.x + x
     local screen_y = viewport.y + y
     self.html_renderer:render(layout, scroll_y, screen_x, screen_y, width, height, loaded_elements, image_load_progress)
+
+    -- Draw inline audio overlay on currently playing track
+    local ctrl = self.controller
+    if ctrl.audio_source and ctrl.audio_playlist_index > 0 then
+        local track_info = ctrl:getPlayingTrackInfo()
+        if track_info then
+            local ty = track_info.y - scroll_y
+            local bar_w = math.min(track_info.w + 60, width - track_info.x - 20)
+
+            -- Progress bar below the link
+            local bar_y = ty + track_info.h
+            local bar_h = 4
+            local progress = 0
+            local dur = ctrl.audio_source:getDuration()
+            if dur > 0 then
+                progress = ctrl.audio_source:tell() / dur
+            end
+
+            -- Track background
+            g.setColor(0.75, 0.75, 0.75, 0.7)
+            g.rectangle('fill', track_info.x, bar_y, bar_w, bar_h)
+
+            -- Progress fill
+            g.setColor(0.15, 0.15, 0.6, 0.9)
+            g.rectangle('fill', track_info.x, bar_y, bar_w * progress, bar_h)
+
+            -- Play/pause indicator to the left of the link
+            local indicator = ctrl.audio_playing and ">" or "||"
+            local font = g.getFont()
+            g.setColor(0.15, 0.15, 0.6)
+            g.print(indicator, track_info.x - font:getWidth("> ") - 2, ty)
+        end
+    end
 
     g.pop()
 

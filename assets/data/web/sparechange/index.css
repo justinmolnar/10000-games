@@ -1,0 +1,58 @@
+body {
+    background-color: #FFFFCC;
+    font-family: Arial;
+    margin: 20px;
+}
+
+h1 {
+    background-color: #FF6600;
+    color: #FFFFFF;
+    padding: 15px;
+    text-align: center;
+    font-size: 24px;
+}
+
+h2 {
+    color: #CC3300;
+    border-bottom: 2px solid #FF6600;
+}
+
+.bio {
+    background-color: #FFFFFF;
+    border: 2px solid #FF6600;
+    padding: 12px;
+    margin: 10px 0;
+}
+
+.tracklist {
+    background-color: #FFFFFF;
+    border: 2px solid #CC3300;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.track {
+    padding: 6px 10px;
+    border-bottom: 1px solid #FFCC99;
+}
+
+a {
+    color: #CC3300;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.shows {
+    background-color: #FFF0CC;
+    border: 1px solid #FFCC66;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+hr {
+    border-color: #FF6600;
+}

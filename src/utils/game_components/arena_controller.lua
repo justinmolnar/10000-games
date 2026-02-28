@@ -31,7 +31,7 @@ local Object = require('class')
 local SpriteUtils = require('src.utils.game_components.sprite_utils')
 local ArenaController = Object:extend('ArenaController')
 
-function ArenaController:new(params)
+function ArenaController:init(params)
     params = params or {}
 
     -- Base dimensions
@@ -137,7 +137,6 @@ function ArenaController:new(params)
         end
     end
 
-    return self
 end
 
 -- Generate regular polygon vertices (normalized to radius=1)

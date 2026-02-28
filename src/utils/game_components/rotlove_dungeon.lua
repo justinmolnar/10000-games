@@ -3,7 +3,7 @@ local ROT = require('lib.rotLove.src.rot')
 
 local RotloveDungeon = Object:extend('RotloveDungeon')
 
-function RotloveDungeon:new(config)
+function RotloveDungeon:init(config)
     config = config or {}
 
     self.width = config.width or 30
@@ -37,8 +37,6 @@ function RotloveDungeon:new(config)
     self.floor_tiles = {}
     self.rooms = {}
     self.doors = {}
-
-    return self
 end
 
 function RotloveDungeon:generate(rng)

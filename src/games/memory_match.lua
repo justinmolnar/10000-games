@@ -6,8 +6,8 @@ local MemoryMatch = BaseGame:extend('MemoryMatch')
 -- INITIALIZATION
 --------------------------------------------------------------------------------
 
-function MemoryMatch:init(game_data, cheats, di, variant_override)
-    MemoryMatch.super.init(self, game_data, cheats, di, variant_override)
+function MemoryMatch:init(game_data, cheats, di, variant_override, original_variant)
+    MemoryMatch.super.init(self, game_data, cheats, di, variant_override, original_variant)
 
     local SchemaLoader = self.di.components.SchemaLoader
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match)

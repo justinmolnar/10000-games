@@ -86,26 +86,22 @@ ScoringSystem.CURVE_FUNCTIONS = {
             }
         - scaling_constant: Global scaling factor (default: 1)
 ]]
-function ScoringSystem:new(config)
-    local instance = ScoringSystem.super.new(self)
-
-    instance.config = config or {}
-    instance.scaling_constant = config.scaling_constant or 1
+function ScoringSystem:init(config)
+    self.config = config or {}
+    self.scaling_constant = config.scaling_constant or 1
 
     -- If formula_string provided, use legacy formula system
     if config.formula_string then
-        instance.mode = "formula"
-        instance.formula_function = instance:createFormulaFunction(config.formula_string)
-        instance.formula_string = config.formula_string
+        self.mode = "formula"
+        self.formula_function = self:createFormulaFunction(config.formula_string)
+        self.formula_string = config.formula_string
     else
         -- Use declarative metrics system
-        instance.mode = "declarative"
-        instance.base_value = config.base_value or 0
-        instance.metrics_config = config.metrics or {}
-        instance.multipliers_config = config.multipliers or {}
+        self.mode = "declarative"
+        self.base_value = config.base_value or 0
+        self.metrics_config = config.metrics or {}
+        self.multipliers_config = config.multipliers or {}
     end
-
-    return instance
 end
 
 --[[

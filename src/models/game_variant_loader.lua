@@ -39,7 +39,7 @@ function GameVariantLoader:getDefaultVariant()
         sprite_set = "default",
         palette = "default",
         music_track = nil,
-        sfx_pack = "retro_beeps",
+        sfx_theme = nil,
         background = "default",
         difficulty_modifier = 1.0,
         enemies = {},

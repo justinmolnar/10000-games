@@ -15,14 +15,10 @@ function CheatEngineView:init(controller, di)
 
     self.sprite_manager = (di and di.spriteManager) or nil
 
-    -- Layout configuration
-    local C = (self.di and self.di.config) or {}
-    local V = (C.ui and C.ui.views and C.ui.views.cheat_engine) or {}
-
     -- Split panel layout
-    self.split_x = 280 -- Divider between game list and parameter panel
+    self.split_x = 280
     self.padding = 10
-    self.item_h = 25
+    self.item_h = 25  -- game list row height
 
     -- Game list panel
     self.game_list_x = 10
@@ -36,22 +32,24 @@ function CheatEngineView:init(controller, di)
     self.param_panel_w = 700
     self.param_panel_h = 500
 
+    -- Slider row layout
+    self.param_row_h = 32
+    self.rows_start_y = 55  -- relative to param_panel_y (after title + budget/step line)
+    self.slider_rects = {}  -- populated during draw: [param_index] = {x, y, w, h, lo, hi}
+
     -- Hover state
     self.hovered_game_id = nil
     self.hovered_param_index = nil
-    self.hovered_button = nil -- "launch", "reset_all", "reset_X", "step_1", etc.
+    self.hovered_button = nil
 end
 
 function CheatEngineView:updateLayout(viewport_width, viewport_height)
     self.game_list_h = viewport_height - 80
     self.param_panel_h = viewport_height - 80
-
-    -- Adjust parameter panel width based on viewport
     self.param_panel_w = viewport_width - self.split_x - 20
 end
 
 function CheatEngineView:update(dt, games, selected_game_id, params, modifications, step_size, viewport_width, viewport_height)
-    -- Get mouse position relative to viewport
     local mx, my = love.mouse.getPosition()
     local view_x = self.controller.viewport and self.controller.viewport.x or 0
     local view_y = self.controller.viewport and self.controller.viewport.y or 0
@@ -62,7 +60,6 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
     self.hovered_param_index = nil
     self.hovered_button = nil
 
-    -- Check bounds
     if local_mx < 0 or local_mx > viewport_width or local_my < 0 or local_my > viewport_height then
         return
     end
@@ -83,18 +80,18 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
         end
     end
 
-    -- Check parameter list hover
+    -- Check parameter row hover
     if #params > 0 then
         local visible_params = self:getVisibleParamCount(viewport_height)
         local param_scroll = self.controller.param_scroll_offset or 0
-        local header_y = self.param_panel_y + 110
+        local base_y = self.param_panel_y + self.rows_start_y
 
         for i = 0, visible_params - 1 do
             local param_index = param_scroll + i + 1
             if param_index <= #params then
-                local py = header_y + 25 + i * self.item_h
+                local py = base_y + i * self.param_row_h
                 if local_mx >= self.param_panel_x and local_mx <= self.param_panel_x + self.param_panel_w and
-                   local_my >= py and local_my <= py + self.item_h then
+                   local_my >= py and local_my <= py + self.param_row_h then
                     self.hovered_param_index = param_index
                     break
                 end
@@ -103,12 +100,12 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
     end
 
     -- Check step size buttons
-    local step_y = self.param_panel_y + 50
-    local step_sizes = {1, 5, 10, 100, "max"}
+    local step_sizes = {0.05, 0.10, 0.25, "max"}
+    local step_line_y = self.param_panel_y + 28
     for i, size in ipairs(step_sizes) do
-        local btn_x = self.param_panel_x + 100 + (i - 1) * 50
+        local btn_x = self.param_panel_x + 245 + (i - 1) * 50
         if local_mx >= btn_x and local_mx <= btn_x + 45 and
-           local_my >= step_y and local_my <= step_y + 25 then
+           local_my >= step_line_y and local_my <= step_line_y + 25 then
             self.hovered_button = "step_" .. tostring(size)
         end
     end
@@ -183,7 +180,7 @@ function CheatEngineView:drawContent(viewport_width, viewport_height)
 
     -- Footer instructions
     love.graphics.setColor(0.4, 0.4, 0.4)
-    love.graphics.print("ESC: Close | ←→/AD: Modify | ↑↓/WS: Navigate | 1-4/M: Step Size | R: Reset | X: Reset All | Enter: Launch",
+    love.graphics.print("ESC: Close | Click/Drag slider | LeftRight: Step | 1-3/M: Step Size | R: Reset | X: Reset All | Enter: Launch",
         10, viewport_height - 20)
 end
 
@@ -268,37 +265,36 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
     love.graphics.setColor(0.05, 0.05, 0.05)
     love.graphics.rectangle('fill', self.param_panel_x + 1, self.param_panel_y + 21, self.param_panel_w - 2, self.param_panel_h - 22)
 
-    -- Budget display
+    -- Budget + Step size (single line)
     local budget_total = player_data:getCheatBudget()
     local budget_spent = player_data:getGameBudgetSpent(game_id)
     local budget_available = budget_total - budget_spent
+    local line_y = self.param_panel_y + 28
 
     love.graphics.setColor(0.7, 0.7, 0.7)
-    love.graphics.print("Budget:", self.param_panel_x + 10, self.param_panel_y + 30)
+    love.graphics.print("Budget:", self.param_panel_x + 10, line_y + 4)
     love.graphics.setColor(1, 1, 0)
     love.graphics.print(string.format("%d / %d", budget_available, budget_total),
-        self.param_panel_x + 100, self.param_panel_y + 30)
+        self.param_panel_x + 80, line_y + 4)
 
-    -- Step size selector
     love.graphics.setColor(0.7, 0.7, 0.7)
-    love.graphics.print("Step Size:", self.param_panel_x + 10, self.param_panel_y + 55)
+    love.graphics.print("Step:", self.param_panel_x + 200, line_y + 4)
 
-    local step_sizes = {1, 5, 10, 100, "max"}
+    local step_sizes = {0.05, 0.10, 0.25, "max"}
     for i, size in ipairs(step_sizes) do
-        local btn_x = self.param_panel_x + 100 + (i - 1) * 50
-        local btn_y = self.param_panel_y + 50
-        local is_selected = (step_size == size)
+        local btn_x = self.param_panel_x + 245 + (i - 1) * 50
+        local is_active = (step_size == size)
         local is_hovered = (self.hovered_button == "step_" .. tostring(size))
 
+        local label = size == "max" and "MAX" or (math.floor(size * 100 + 0.5) .. "%")
         UIComponents.drawButton(
-            btn_x, btn_y, 45, 25,
-            tostring(size):upper(),
+            btn_x, line_y, 45, 25,
+            label,
             true,
-            is_hovered or is_selected
+            is_hovered or is_active
         )
     end
 
-    -- Parameter table
     if #params == 0 then
         love.graphics.setColor(0.5, 0.5, 0.5)
         love.graphics.printf("No parameters available for this game variant.",
@@ -307,45 +303,39 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
         return
     end
 
-    local table_y = self.param_panel_y + 100
-    local header_y = table_y + 10
-
-    -- Table headers
-    love.graphics.setColor(0, 1, 0)
-    love.graphics.print("Parameter", self.param_panel_x + 10, header_y)
-    love.graphics.print("Type", self.param_panel_x + 180, header_y)
-    love.graphics.print("Original", self.param_panel_x + 250, header_y)
-    love.graphics.print("Modified", self.param_panel_x + 340, header_y)
-    love.graphics.print("Cost", self.param_panel_x + 430, header_y)
-
-    -- Separator line
-    love.graphics.setColor(0, 0.5, 0)
-    love.graphics.line(
-        self.param_panel_x + 10, header_y + 18,
-        self.param_panel_x + self.param_panel_w - 40, header_y + 18
-    )
-
-    -- Parameter rows
+    -- Slider rows
     local visible_params = self:getVisibleParamCount(viewport_height)
     local start_index = (param_scroll or 0) + 1
     local lane_w = UIComponents.getScrollbarLaneWidth()
+    local base_y = self.param_panel_y + self.rows_start_y
+
+    -- Layout constants for slider positioning
+    local name_w = 130
+    local slider_x = self.param_panel_x + name_w + 5
+    local right_text_w = 130
+    local slider_w = self.param_panel_w - name_w - right_text_w - lane_w - 5
+    if slider_w < 50 then slider_w = 50 end
+    local value_x = slider_x + slider_w + 8
+    local cost_x = self.param_panel_x + self.param_panel_w - 60 - lane_w
+
+    self.slider_rects = {}
 
     for i = 0, visible_params - 1 do
         local param_index = start_index + i
         if param_index <= #params then
             local param = params[param_index]
-            local py = header_y + 25 + i * self.item_h
+            local py = base_y + i * self.param_row_h
             local is_selected = (param_index == selected_param_index)
             local is_hovered = (param_index == self.hovered_param_index)
             local is_modified = (param.value ~= param.original)
 
             -- Row background
             if is_selected then
-                love.graphics.setColor(0.3, 0.3, 0.5)
-                love.graphics.rectangle('fill', self.param_panel_x + 2, py - 2, self.param_panel_w - 4 - lane_w, self.item_h)
+                love.graphics.setColor(0.15, 0.15, 0.3)
+                love.graphics.rectangle('fill', self.param_panel_x + 2, py, self.param_panel_w - 4 - lane_w, self.param_row_h)
             elseif is_hovered then
-                love.graphics.setColor(0.15, 0.15, 0.15)
-                love.graphics.rectangle('fill', self.param_panel_x + 2, py - 2, self.param_panel_w - 4 - lane_w, self.item_h)
+                love.graphics.setColor(0.1, 0.1, 0.1)
+                love.graphics.rectangle('fill', self.param_panel_x + 2, py, self.param_panel_w - 4 - lane_w, self.param_row_h)
             end
 
             -- Parameter name
@@ -354,56 +344,55 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
             else
                 love.graphics.setColor(0.7, 0.7, 0.7)
             end
-            love.graphics.print(param.key, self.param_panel_x + 10, py)
+            love.graphics.print(param.key, self.param_panel_x + 10, py + 8)
 
-            -- Type
-            love.graphics.setColor(0.5, 0.5, 0.5)
-            love.graphics.print(param.type, self.param_panel_x + 180, py)
+            if param.type == "number" then
+                self:drawNumberSlider(param, param_index, slider_x, py + 6, slider_w, 14, is_modified)
 
-            -- Range info (if available for numeric types)
-            if param.type == "number" and param.min and param.max then
-                love.graphics.setColor(0.4, 0.4, 0.4)
-                local range_str = string.format("(%s-%s)", tostring(param.min), tostring(param.max))
-                love.graphics.print(range_str, self.param_panel_x + 180, py + 12)
+                -- Value text
+                if is_modified then
+                    love.graphics.setColor(1.0, 1.0, 0.2)
+                else
+                    love.graphics.setColor(0.6, 0.6, 0.6)
+                end
+                love.graphics.print(self:formatValue(param.value, "number"), value_x, py + 8)
+
+            elseif param.type == "boolean" then
+                self:drawBooleanCheckbox(param, param_index, slider_x, py + 6, is_modified)
             end
 
-            -- Original value
-            love.graphics.setColor(0.6, 0.6, 0.6)
-            local orig_str = self:formatValue(param.original, param.type)
-            love.graphics.print(orig_str, self.param_panel_x + 250, py)
-
-            -- Modified value
-            if is_modified then
-                love.graphics.setColor(1.0, 1.0, 0.2)
-            else
-                love.graphics.setColor(0.6, 0.6, 0.6)
-            end
-            local mod_str = self:formatValue(param.value, param.type)
-            love.graphics.print(mod_str, self.param_panel_x + 340, py)
-
-            -- Cost
-            if is_modified and modifications[param.key] then
-                love.graphics.setColor(1.0, 0.5, 0.0)
-                love.graphics.print(tostring(modifications[param.key].cost_spent), self.param_panel_x + 430, py)
+            -- Next step cost
+            local cheat_sys = self.controller and self.controller.cheat_system
+            if cheat_sys and param.type == "number" and step_size ~= "max" then
+                local span = (param.max or 1) - (param.min or 0)
+                local step_val = span * (step_size or 0.05)
+                local next_val = math.min(param.max or 1, param.value + step_val)
+                if next_val == param.value then
+                    next_val = math.max(param.min or 0, param.value - step_val)
+                end
+                local next_cost = cheat_sys:calculateModificationCost(param.key, param.type, param.original, next_val)
+                local current_cost = (modifications[param.key] and modifications[param.key].cost_spent) or 0
+                local net = next_cost - current_cost
+                if net ~= 0 then
+                    love.graphics.setColor(1.0, 0.5, 0.0)
+                    love.graphics.print(tostring(math.abs(net)), cost_x, py + 8)
+                end
             end
         end
     end
 
-    -- Scrollbar for parameters (using state's ScrollbarController)
+    -- Scrollbar for parameters
     if #params > visible_params then
         local scrollbar = self.controller.param_scrollbar
         if scrollbar then
-            scrollbar:setPosition(self.param_panel_x, header_y + 25)
+            scrollbar:setPosition(self.param_panel_x, base_y)
             local max_scroll = math.max(0, #params - visible_params)
-            -- Viewport height: from row start (header_y + 25) to launch buttons (param_panel_h - 35)
-            -- header_y = param_panel_y + 110, so row start = param_panel_y + 135
-            -- Available = (param_panel_y + param_panel_h - 35) - (param_panel_y + 135) = param_panel_h - 170
-            local available_height = self.param_panel_h - 170
-            local geom = scrollbar:compute(self.param_panel_w, available_height, #params * self.item_h, param_scroll or 0, max_scroll)
+            local available_height = self.param_panel_h - self.rows_start_y - 35
+            local geom = scrollbar:compute(self.param_panel_w, available_height, #params * self.param_row_h, param_scroll or 0, max_scroll)
 
             if geom then
                 love.graphics.push()
-                love.graphics.translate(self.param_panel_x, header_y + 25)
+                love.graphics.translate(self.param_panel_x, base_y)
                 UIComponents.drawScrollbar(geom)
                 love.graphics.pop()
             end
@@ -413,7 +402,6 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
     -- Launch button
     local launch_y = self.param_panel_y + self.param_panel_h - 35
     local is_launch_hovered = (self.hovered_button == "launch")
-
     UIComponents.drawButton(
         self.param_panel_x + 10, launch_y, 200, 30,
         "Launch Game",
@@ -433,15 +421,94 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
     end
 end
 
+function CheatEngineView:drawNumberSlider(param, param_index, x, y, w, h, is_modified)
+    local lo = param.min or 0
+    local hi = param.max or math.max(math.abs(param.original) * 2, 1)
+    local range = hi - lo
+    if range <= 0 then range = 1 end
+
+    -- Normalized positions (0..1)
+    local orig_t = math.max(0, math.min(1, (param.original - lo) / range))
+    local curr_t = math.max(0, math.min(1, (param.value - lo) / range))
+
+    -- Store rect for hit testing
+    self.slider_rects[param_index] = {x = x, y = y, w = w, h = h, lo = lo, hi = hi}
+
+    -- Track background
+    love.graphics.setColor(0.15, 0.15, 0.15)
+    love.graphics.rectangle('fill', x, y, w, h)
+
+    -- Fill from original to current (visualizes "how far you've cheated")
+    if is_modified then
+        local fill_start = math.min(orig_t, curr_t)
+        local fill_end = math.max(orig_t, curr_t)
+        love.graphics.setColor(0.0, 0.4, 0.0)
+        love.graphics.rectangle('fill', x + fill_start * w, y, (fill_end - fill_start) * w, h)
+    end
+
+    -- Track border
+    love.graphics.setColor(0, 0.6, 0)
+    love.graphics.rectangle('line', x, y, w, h)
+
+    -- Original marker (permanent tick line)
+    love.graphics.setColor(0.6, 0.6, 0.6)
+    local orig_px = x + orig_t * w
+    love.graphics.setLineWidth(2)
+    love.graphics.line(orig_px, y - 2, orig_px, y + h + 2)
+    love.graphics.setLineWidth(1)
+
+    -- Handle at current value
+    local handle_w = 10
+    local handle_px = x + curr_t * w - handle_w / 2
+    handle_px = math.max(x, math.min(x + w - handle_w, handle_px))
+
+    if is_modified then
+        love.graphics.setColor(0.2, 1.0, 0.2)
+    else
+        love.graphics.setColor(0.7, 0.7, 0.7)
+    end
+    love.graphics.rectangle('fill', handle_px, y - 2, handle_w, h + 4)
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.rectangle('line', handle_px, y - 2, handle_w, h + 4)
+end
+
+function CheatEngineView:drawBooleanCheckbox(param, param_index, x, y, is_modified)
+    local cb_w, cb_h = 18, 18
+
+    -- Store rect for hit testing (mark as checkbox)
+    self.slider_rects[param_index] = {x = x, y = y, w = cb_w, h = cb_h, is_checkbox = true}
+
+    -- Checkbox background
+    love.graphics.setColor(0.15, 0.15, 0.15)
+    love.graphics.rectangle('fill', x, y, cb_w, cb_h)
+    love.graphics.setColor(0, 0.6, 0)
+    love.graphics.rectangle('line', x, y, cb_w, cb_h)
+
+    -- Checkmark
+    if param.value then
+        love.graphics.setColor(0, 1, 0)
+        love.graphics.setLineWidth(3)
+        love.graphics.line(x + 3, y + cb_h / 2, x + cb_w / 2, y + cb_h - 4, x + cb_w - 3, y + 3)
+        love.graphics.setLineWidth(1)
+    end
+
+    -- Label
+    if is_modified then
+        love.graphics.setColor(1.0, 1.0, 0.2)
+    else
+        love.graphics.setColor(0.6, 0.6, 0.6)
+    end
+    love.graphics.print(param.value and "ON" or "OFF", x + cb_w + 8, y)
+end
+
 function CheatEngineView:formatValue(value, value_type)
     if value_type == "boolean" then
         return value and "true" or "false"
     elseif value_type == "number" then
-        return tostring(value)
-    elseif value_type == "string" then
-        return "\"" .. tostring(value) .. "\""
-    elseif value_type == "array" or value_type == "table" then
-        return "[" .. #value .. " items]"
+        if value == math.floor(value) then
+            return tostring(math.floor(value))
+        end
+        return string.format("%.2f", value)
     else
         return tostring(value)
     end
@@ -453,14 +520,21 @@ function CheatEngineView:getVisibleGameCount(viewport_height)
 end
 
 function CheatEngineView:getVisibleParamCount(viewport_height)
-    local available_height = self.param_panel_h - 170 -- Account for headers (135px) + launch buttons (35px)
-    return math.max(1, math.floor(available_height / self.item_h))
+    -- From rows_start_y to launch buttons area (35px from bottom)
+    local available_height = self.param_panel_h - self.rows_start_y - 35
+    return math.max(1, math.floor(available_height / self.param_row_h))
+end
+
+-- Compute slider value from mouse x position for a given slider rect
+function CheatEngineView:sliderValueFromX(mx, rect)
+    if not rect or rect.is_checkbox then return nil end
+    local fraction = (mx - rect.x) / rect.w
+    fraction = math.max(0, math.min(1, fraction))
+    return rect.lo + fraction * (rect.hi - rect.lo)
 end
 
 function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, params, modifications, player_data, step_size, selected_param_index, viewport_width, viewport_height)
     if button ~= 1 then return nil end
-
-    -- Scrollbars are now handled by ScrollbarController in the state, not the view
 
     -- Game list clicks
     local visible_games = self:getVisibleGameCount(viewport_height)
@@ -478,27 +552,50 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, par
     end
 
     -- Step size buttons
-    local step_sizes = {1, 5, 10, 100, "max"}
+    local step_sizes = {0.05, 0.10, 0.25, "max"}
+    local step_line_y = self.param_panel_y + 28
     for i, size in ipairs(step_sizes) do
-        local btn_x = self.param_panel_x + 100 + (i - 1) * 50
-        local btn_y = self.param_panel_y + 50
-        if x >= btn_x and x <= btn_x + 45 and y >= btn_y and y <= btn_y + 25 then
+        local btn_x = self.param_panel_x + 245 + (i - 1) * 50
+        if x >= btn_x and x <= btn_x + 45 and y >= step_line_y and y <= step_line_y + 25 then
             return { name = "set_step_size", value = size }
         end
     end
 
-    -- Parameter list clicks
+    -- Slider / checkbox clicks on parameter rows
     if #params > 0 then
         local visible_params = self:getVisibleParamCount(viewport_height)
         local param_scroll = self.controller.param_scroll_offset or 0
-        local header_y = self.param_panel_y + 110
+        local base_y = self.param_panel_y + self.rows_start_y
 
         for i = 0, visible_params - 1 do
             local param_index = param_scroll + i + 1
             if param_index <= #params then
-                local py = header_y + 25 + i * self.item_h
+                local py = base_y + i * self.param_row_h
+
+                -- Check if click is within this row
                 if x >= self.param_panel_x and x <= self.param_panel_x + self.param_panel_w and
-                   y >= py and y <= py + self.item_h then
+                   y >= py and y <= py + self.param_row_h then
+
+                    -- Check if click is on the slider/checkbox control
+                    local rect = self.slider_rects[param_index]
+                    if rect then
+                        if rect.is_checkbox then
+                            -- Click anywhere in checkbox row area toggles it
+                            if x >= rect.x and x <= rect.x + rect.w + 40 and
+                               y >= rect.y - 4 and y <= rect.y + rect.h + 4 then
+                                return { name = "toggle_param", index = param_index }
+                            end
+                        else
+                            -- Click on slider track
+                            if x >= rect.x - 5 and x <= rect.x + rect.w + 5 and
+                               y >= rect.y - 6 and y <= rect.y + rect.h + 6 then
+                                local value = self:sliderValueFromX(x, rect)
+                                return { name = "slider_set", index = param_index, value = value }
+                            end
+                        end
+                    end
+
+                    -- Click on row but not on control = select param
                     return { name = "select_param", index = param_index }
                 end
             end
@@ -543,24 +640,26 @@ function CheatEngineView:wheelmoved(x, y, game_count, param_count, viewport_widt
         local max_scroll = math.max(0, game_count - visible_games)
         local current_offset = self.controller.game_scroll_offset or 1
 
-        if y > 0 then -- Scroll up
+        if y > 0 then
             new_game_offset = math.max(1, current_offset - 1)
-        elseif y < 0 then -- Scroll down
+        elseif y < 0 then
             new_game_offset = math.min(max_scroll + 1, current_offset + 1)
         end
     end
 
     -- Check if scrolling over parameter list
+    local param_area_top = self.param_panel_y + self.rows_start_y
+    local param_area_bottom = self.param_panel_y + self.param_panel_h - 35
     if local_mx >= self.param_panel_x and local_mx <= self.param_panel_x + self.param_panel_w and
-       local_my >= self.param_panel_y + 100 and local_my <= self.param_panel_y + self.param_panel_h - 50 then
+       local_my >= param_area_top and local_my <= param_area_bottom then
 
         local visible_params = self:getVisibleParamCount(viewport_height)
         local max_scroll = math.max(0, param_count - visible_params)
         local current_offset = self.controller.param_scroll_offset or 0
 
-        if y > 0 then -- Scroll up
+        if y > 0 then
             new_param_offset = math.max(0, current_offset - 1)
-        elseif y < 0 then -- Scroll down
+        elseif y < 0 then
             new_param_offset = math.min(max_scroll, current_offset + 1)
         end
     end
@@ -569,19 +668,23 @@ function CheatEngineView:wheelmoved(x, y, game_count, param_count, viewport_widt
 end
 
 function CheatEngineView:mousemoved(x, y, dx, dy)
-    -- Hover updates handled in update()
+    -- Check if dragging a slider (state tracks this)
+    local dragging = self.controller.dragging_slider
+    if dragging then
+        local rect = self.slider_rects[dragging.param_index]
+        if rect and not rect.is_checkbox then
+            local value = self:sliderValueFromX(x, rect)
+            return { name = "slider_drag", index = dragging.param_index, value = value }
+        end
+    end
+
     return { name = 'content_interaction' }
 end
 
 function CheatEngineView:mousereleased(x, y, button)
-    if button == 1 and self._sb then
-        if self._sb.games and self._sb.games.dragging then
-            self._sb.games.dragging = false
-            self._sb.games.drag = nil
-        end
-        if self._sb.params and self._sb.params.dragging then
-            self._sb.params.dragging = false
-            self._sb.params.drag = nil
+    if button == 1 then
+        if self.controller.dragging_slider then
+            return { name = "slider_drag_end" }
         end
     end
 end

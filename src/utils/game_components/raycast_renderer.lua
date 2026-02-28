@@ -2,7 +2,7 @@ local Object = require('class')
 
 local RaycastRenderer = Object:extend('RaycastRenderer')
 
-function RaycastRenderer:new(config)
+function RaycastRenderer:init(config)
     config = config or {}
 
     self.fov = config.fov or 60
@@ -25,7 +25,6 @@ function RaycastRenderer:new(config)
     -- Door lookup (populated before draw)
     self.doors = {}
 
-    return self
 end
 
 function RaycastRenderer:getDepthBuffer()

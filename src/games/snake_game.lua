@@ -20,8 +20,8 @@ local SnakeGame = BaseGame:extend('SnakeGame')
 -- Initialization
 --------------------------------------------------------------------------------
 
-function SnakeGame:init(game_data, cheats, di, variant_override)
-    SnakeGame.super.init(self, game_data, cheats, di, variant_override)
+function SnakeGame:init(game_data, cheats, di, variant_override, original_variant)
+    SnakeGame.super.init(self, game_data, cheats, di, variant_override, original_variant)
     self.runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.snake) or {}
     self.params = self.di.components.SchemaLoader.load(self.variant, "snake_schema", self.runtimeCfg)
     self.GRID_SIZE = self.runtimeCfg.grid_size or 20
@@ -33,7 +33,9 @@ function SnakeGame:init(game_data, cheats, di, variant_override)
     })
 
     self:setupArena()
-    self:createEntityControllerFromSchema()
+    -- Large arenas (arena_size 1.5+) can have 200+ border wall entities alone
+    local border_estimate = 2 * (self.grid_width + self.grid_height)
+    self:createEntityControllerFromSchema(nil, {max_entities = border_estimate + 100})
     self:createComponentsFromSchema()  -- Creates arena_controller early, needed by setupSnake
     self:setupSnake()
     self:setupComponents()  -- Configures arena_controller and movement_controller (needs self.snakes)
@@ -377,8 +379,13 @@ function SnakeGame:setPlayArea(width, height)
         self.game_width, self.game_height = width, height
         if self.GRID_SIZE then
             local effective_tile_size = self.GRID_SIZE * (self.params.camera_zoom or 1.0)
-            self.grid_width = math.floor(self.game_width / effective_tile_size)
-            self.grid_height = math.floor(self.game_height / effective_tile_size)
+            local new_gw = math.floor(self.game_width / effective_tile_size)
+            local new_gh = math.floor(self.game_height / effective_tile_size)
+
+            -- Only rebuild if grid dimensions actually changed
+            local grid_changed = (new_gw ~= self.grid_width or new_gh ~= self.grid_height)
+            self.grid_width = new_gw
+            self.grid_height = new_gh
 
             self.arena_controller.base_width = self.grid_width
             self.arena_controller.base_height = self.grid_height
@@ -405,7 +412,9 @@ function SnakeGame:setPlayArea(width, height)
                 self.arena_controller.initial_radius = self.arena_controller.radius
             end
 
-            self:_regenerateEdgeObstacles()
+            if grid_changed then
+                self:_regenerateEdgeObstacles()
+            end
         end
     else
         -- Fixed arena: initialize obstacles once (non-fixed already did via _regenerateEdgeObstacles)
@@ -451,7 +460,8 @@ function SnakeGame:updateGameLogic(dt)
 
     -- Shrinking over time
     if self.params.shrink_over_time > 0 and #self.snake.body > 1 and self.entity_controller:tickTimer(self, "shrink_timer", self.params.shrink_over_time, dt) then
-        table.remove(self.snake.body)
+        local removed = table.remove(self.snake.body)
+        if removed then self.entity_controller:removeEntity(removed) end
         self.metrics.snake_length = #self.snake.body
         if #self.snake.body == 0 then self:onComplete(); return end
     end
@@ -597,6 +607,17 @@ function SnakeGame:_moveGridSnake(snake)
                 -- Own body: check phase_through_tail
                 if entity.owner == snake then
                     if self.params.phase_through_tail then return end
+                    -- Skip head and neck - they can never be at new_head in grid mode
+                    if entity == snake.body[1] or entity == snake.body[2] then return end
+                    -- Skip orphaned entities (removed from body but still in entity_controller)
+                    local in_body = false
+                    for _, seg in ipairs(snake.body) do
+                        if seg == entity then in_body = true; break end
+                    end
+                    if not in_body then
+                        entity.marked_for_removal = true
+                        return
+                    end
                 else
                     -- Other snake's body: apply snake_collision_mode
                     local other = entity.owner
@@ -959,7 +980,10 @@ function SnakeGame:collectFood(food, snake)
     elseif growth > 0 then
         self.pending_growth = self.pending_growth + growth
     else
-        for _ = 1, math.min(-growth, #snake.body - 1) do table.remove(snake.body) end
+        for _ = 1, math.min(-growth, #snake.body - 1) do
+            local removed = table.remove(snake.body)
+            if removed then self.entity_controller:removeEntity(removed) end
+        end
     end
 
     -- Speed/sound/girth only for good food

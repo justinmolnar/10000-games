@@ -23,14 +23,12 @@ Usage:
 local Object = require('class')
 local EffectSystem = Object:extend('EffectSystem')
 
-function EffectSystem:new(config)
+function EffectSystem:init(config)
     if not config then error("EffectSystem: config required") end
     if not config.on_expire then error("EffectSystem: on_expire callback required") end
 
-    local instance = EffectSystem.super.new(self)
-    instance.on_expire = config.on_expire
-    instance.active_effects = {}  -- {type = {duration_remaining, data}}
-    return instance
+    self.on_expire = config.on_expire
+    self.active_effects = {}  -- {type = {duration_remaining, data}}
 end
 
 -- Start a timed effect

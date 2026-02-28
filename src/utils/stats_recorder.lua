@@ -114,7 +114,7 @@ function StatsRecorder.record(snapshot, game_data, game_instance)
         base_formula=1, base_formula_string=1, formula_function=1, formula_string=1,
         difficulty_modifiers=1, variant_multiplier=1, unlock_cost=1, cost_exponent=1,
         metrics_tracked=1, sprites=1, sprite_set=1, palette=1,
-        music_track=1, sfx_pack=1, intro_cutscene=1, flavor_text=1
+        music_track=1, sfx_theme=1, intro_cutscene=1, flavor_text=1
     }
     if game_data then
         for k, v in pairs(game_data) do

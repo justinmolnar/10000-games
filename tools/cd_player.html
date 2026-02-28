@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CD Player — 10,000 Games OST</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; color: #e0e0e0; font-family: 'Courier New', monospace; padding: 20px; }
+
+.albums { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+
+.album {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 8px;
+  width: 360px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.album-header {
+  background: #0f3460;
+  padding: 14px 16px;
+  cursor: default;
+}
+.album-header h2 { font-size: 16px; margin-bottom: 2px; }
+.album-header .artist { font-size: 12px; color: #7ec8e3; }
+.album-header .genre { font-size: 11px; color: #888; margin-top: 2px; }
+
+.tracklist {
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.tracklist li {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 1px solid #0a1628;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tracklist li:hover { background: #1a2744; }
+.tracklist li.active { background: #1e3a5f; color: #7ec8e3; }
+.tracklist li .num { color: #555; margin-right: 10px; min-width: 20px; }
+.tracklist li .title { flex: 1; }
+.tracklist li .dur { color: #555; font-size: 11px; }
+
+.player-bar {
+  background: #0a0a1a;
+  padding: 12px 16px;
+  border-top: 1px solid #0f3460;
+}
+.now-playing {
+  font-size: 11px;
+  color: #7ec8e3;
+  margin-bottom: 8px;
+  height: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.controls button {
+  background: #0f3460;
+  border: 1px solid #1a4a7a;
+  color: #e0e0e0;
+  padding: 6px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+}
+.controls button:hover { background: #1a4a7a; }
+.controls button:disabled { opacity: 0.3; cursor: default; }
+
+.scrub-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scrub-row input[type=range] {
+  flex: 1;
+  accent-color: #7ec8e3;
+  height: 6px;
+  cursor: pointer;
+}
+.scrub-row .time {
+  font-size: 11px;
+  color: #888;
+  min-width: 80px;
+  text-align: right;
+}
+
+.tracklist::-webkit-scrollbar { width: 6px; }
+.tracklist::-webkit-scrollbar-track { background: #0a1628; }
+.tracklist::-webkit-scrollbar-thumb { background: #1a4a7a; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="albums" id="albums"></div>
+
+<script>
+const ALBUMS = [
+  {
+    title: "Cyan Dreams",
+    artist: "Cyan Theory",
+    genre: "Downtempo / Ambient",
+    folder: "../assets/audio/music/CDs/Cyan Dreams",
+    tracks: [
+      "01-Sublevel", "02-Route Table", "03-Phosphor", "04-Null Pointer",
+      "05-Last Packet", "06-handshake failed", "07-traceroute",
+      "08-deep sleep", "09-overflow", "10-end of file"
+    ]
+  },
+  {
+    title: "Spare Change",
+    artist: "Spare Change",
+    genre: "Ska-Punk / Pop-Punk",
+    folder: "../assets/audio/music/CDs/Spare Change",
+    tracks: [
+      "01-Rent Money", "02-Tuesday Again", "03-Couch Surfer",
+      "04-Last Call at Dan's House", "05-Checkered Past",
+      "06-Gas Station Sushi", "07-Diploma", "08-Basement Show",
+      "09-Shotgun", "10-See You Monday"
+    ]
+  },
+  {
+    title: "Maren",
+    artist: "Maren",
+    genre: "Singer-Songwriter / Folk",
+    folder: "../assets/audio/music/CDs/Maren",
+    tracks: [
+      "01-Windowsill", "02-Paper Lanturn", "03-Southbound", "04-4am",
+      "05-Garden Level", "06-Borrowed Time", "07-Thrift Store",
+      "08-Postcards", "09-November", "10-Goodnight Song"
+    ]
+  }
+];
+
+function fmt(sec) {
+  if (!sec || isNaN(sec)) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ":" + (s < 10 ? "0" : "") + s;
+}
+
+function createAlbum(album, idx) {
+  const el = document.createElement("div");
+  el.className = "album";
+  el.id = "album-" + idx;
+
+  const audio = new Audio();
+  let currentTrack = -1;
+  let isPlaying = false;
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "album-header";
+  header.innerHTML = `<h2>${album.title}</h2><div class="artist">${album.artist}</div><div class="genre">${album.genre}</div>`;
+  el.appendChild(header);
+
+  // Tracklist
+  const ul = document.createElement("ul");
+  ul.className = "tracklist";
+  album.tracks.forEach((track, ti) => {
+    const li = document.createElement("li");
+    const num = track.match(/^(\d+)/)?.[1] || (ti + 1);
+    const title = track.replace(/^\d+-/, "");
+    li.innerHTML = `<span class="num">${num}</span><span class="title">${title}</span><span class="dur" id="dur-${idx}-${ti}"></span>`;
+    li.onclick = () => playTrack(ti);
+    ul.appendChild(li);
+  });
+  el.appendChild(ul);
+
+  // Player bar
+  const bar = document.createElement("div");
+  bar.className = "player-bar";
+  bar.innerHTML = `
+    <div class="now-playing" id="np-${idx}">—</div>
+    <div class="controls">
+      <button id="prev-${idx}" title="Previous">◀◀</button>
+      <button id="pp-${idx}" title="Play/Pause">▶</button>
+      <button id="stop-${idx}" title="Stop">■</button>
+      <button id="next-${idx}" title="Next">▶▶</button>
+    </div>
+    <div class="scrub-row">
+      <input type="range" id="scrub-${idx}" min="0" max="100" value="0" step="0.1">
+      <span class="time" id="time-${idx}">0:00 / 0:00</span>
+    </div>
+  `;
+  el.appendChild(bar);
+
+  // Controls
+  const ppBtn = () => document.getElementById("pp-" + idx);
+  const stopBtn = () => document.getElementById("stop-" + idx);
+  const prevBtn = () => document.getElementById("prev-" + idx);
+  const nextBtn = () => document.getElementById("next-" + idx);
+  const scrub = () => document.getElementById("scrub-" + idx);
+  const timeEl = () => document.getElementById("time-" + idx);
+  const npEl = () => document.getElementById("np-" + idx);
+
+  function setActive(ti) {
+    ul.querySelectorAll("li").forEach((li, i) => li.classList.toggle("active", i === ti));
+  }
+
+  function playTrack(ti) {
+    if (ti < 0 || ti >= album.tracks.length) return;
+    currentTrack = ti;
+    const src = album.folder + "/" + encodeURIComponent(album.tracks[ti]) + ".mp3";
+    audio.src = src;
+    audio.play();
+    isPlaying = true;
+    ppBtn().textContent = "⏸";
+    setActive(ti);
+    const title = album.tracks[ti].replace(/^\d+-/, "");
+    npEl().textContent = title;
+  }
+
+  function togglePlay() {
+    if (currentTrack < 0) { playTrack(0); return; }
+    if (audio.paused) {
+      audio.play();
+      isPlaying = true;
+      ppBtn().textContent = "⏸";
+    } else {
+      audio.pause();
+      isPlaying = false;
+      ppBtn().textContent = "▶";
+    }
+  }
+
+  function stop() {
+    audio.pause();
+    audio.currentTime = 0;
+    isPlaying = false;
+    ppBtn().textContent = "▶";
+  }
+
+  // Wire buttons after DOM insertion
+  setTimeout(() => {
+    ppBtn().onclick = togglePlay;
+    stopBtn().onclick = stop;
+    prevBtn().onclick = () => { if (currentTrack > 0) playTrack(currentTrack - 1); };
+    nextBtn().onclick = () => { if (currentTrack < album.tracks.length - 1) playTrack(currentTrack + 1); };
+
+    let scrubbing = false;
+    const s = scrub();
+    s.oninput = () => { scrubbing = true; };
+    s.onchange = () => {
+      if (audio.duration) audio.currentTime = (s.value / 100) * audio.duration;
+      scrubbing = false;
+    };
+
+    audio.ontimeupdate = () => {
+      if (!scrubbing && audio.duration) {
+        s.value = (audio.currentTime / audio.duration) * 100;
+      }
+      timeEl().textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+    };
+
+    audio.onended = () => {
+      if (currentTrack < album.tracks.length - 1) {
+        playTrack(currentTrack + 1);
+      } else {
+        isPlaying = false;
+        ppBtn().textContent = "▶";
+      }
+    };
+
+    // Probe durations
+    album.tracks.forEach((track, ti) => {
+      const probe = new Audio();
+      probe.preload = "metadata";
+      probe.src = album.folder + "/" + encodeURIComponent(track) + ".mp3";
+      probe.onloadedmetadata = () => {
+        const durEl = document.getElementById("dur-" + idx + "-" + ti);
+        if (durEl) durEl.textContent = fmt(probe.duration);
+      };
+    });
+  }, 0);
+
+  return el;
+}
+
+const container = document.getElementById("albums");
+ALBUMS.forEach((album, i) => container.appendChild(createAlbum(album, i)));
+</script>
+</body>
+</html>

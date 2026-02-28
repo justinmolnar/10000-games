@@ -11,93 +11,89 @@ PlayerController.MODES = {
     NONE = "none"
 }
 
-function PlayerController:new(config)
-    local instance = PlayerController.super.new(self)
-
+function PlayerController:init(config)
     -- Core configuration
-    instance.mode = config.mode or PlayerController.MODES.LIVES
+    self.mode = config.mode or PlayerController.MODES.LIVES
 
     -- Lives mode configuration
-    instance.starting_lives = config.starting_lives or 3
-    instance.max_lives = config.max_lives or 10
-    instance.lives = instance.starting_lives
+    self.starting_lives = config.starting_lives or 3
+    self.max_lives = config.max_lives or 10
+    self.lives = self.starting_lives
 
     -- Health mode configuration
-    instance.max_health = config.max_health or 100
-    instance.health = instance.max_health
+    self.max_health = config.max_health or 100
+    self.health = self.max_health
 
     -- Shield mode configuration
-    instance.shield_enabled = config.shield_enabled or false
-    instance.shield_max_hits = config.shield_max_hits or 3
-    instance.shield_regen_time = config.shield_regen_time or 5.0
-    instance.shield_regen_delay = config.shield_regen_delay or 2.0
+    self.shield_enabled = config.shield_enabled or false
+    self.shield_max_hits = config.shield_max_hits or 3
+    self.shield_regen_time = config.shield_regen_time or 5.0
+    self.shield_regen_delay = config.shield_regen_delay or 2.0
 
     -- Shield state
-    instance.shield_active = instance.shield_enabled
-    instance.shield_hits_remaining = instance.shield_max_hits
-    instance.shield_regen_timer = 0
-    instance.shield_damage_timer = 0
+    self.shield_active = self.shield_enabled
+    self.shield_hits_remaining = self.shield_max_hits
+    self.shield_regen_timer = 0
+    self.shield_damage_timer = 0
 
     -- Invincibility configuration
-    instance.invincibility_on_hit = config.invincibility_on_hit or false
-    instance.invincibility_duration = config.invincibility_duration or 2.0
+    self.invincibility_on_hit = config.invincibility_on_hit or false
+    self.invincibility_duration = config.invincibility_duration or 2.0
 
     -- Invincibility state
-    instance.invincible = false
-    instance.invincibility_timer = 0
+    self.invincible = false
+    self.invincibility_timer = 0
 
     -- Death/respawn state
-    instance.is_dead = false
-    instance.respawn_enabled = config.respawn_enabled or false
-    instance.respawn_delay = config.respawn_delay or 1.0
-    instance.respawn_timer = 0
-    instance.waiting_to_respawn = false
+    self.is_dead = false
+    self.respawn_enabled = config.respawn_enabled or false
+    self.respawn_delay = config.respawn_delay or 1.0
+    self.respawn_timer = 0
+    self.waiting_to_respawn = false
 
     -- Extra life awards
-    instance.extra_life_enabled = config.extra_life_enabled or false
-    instance.extra_life_threshold = config.extra_life_threshold or 5000
-    instance.last_extra_life_threshold = 0
+    self.extra_life_enabled = config.extra_life_enabled or false
+    self.extra_life_threshold = config.extra_life_threshold or 5000
+    self.last_extra_life_threshold = 0
 
     -- Ammo configuration
-    instance.ammo_enabled = config.ammo_enabled or false
-    instance.ammo_capacity = config.ammo_capacity or 30
-    instance.ammo_reload_time = config.ammo_reload_time or 2.0
-    instance.auto_reload = config.auto_reload ~= false  -- Default true
+    self.ammo_enabled = config.ammo_enabled or false
+    self.ammo_capacity = config.ammo_capacity or 30
+    self.ammo_reload_time = config.ammo_reload_time or 2.0
+    self.auto_reload = config.auto_reload ~= false  -- Default true
 
     -- Ammo state
-    instance.ammo = instance.ammo_capacity
-    instance.is_reloading = false
-    instance.reload_timer = 0
+    self.ammo = self.ammo_capacity
+    self.is_reloading = false
+    self.reload_timer = 0
 
     -- Heat/overheat configuration
-    instance.heat_enabled = config.heat_enabled or false
-    instance.heat_per_shot = config.heat_per_shot or 1
-    instance.heat_threshold = config.heat_threshold or 10
-    instance.heat_cooldown = config.heat_cooldown or 2.0
-    instance.heat_dissipation = config.heat_dissipation or 1.0
+    self.heat_enabled = config.heat_enabled or false
+    self.heat_per_shot = config.heat_per_shot or 1
+    self.heat_threshold = config.heat_threshold or 10
+    self.heat_cooldown = config.heat_cooldown or 2.0
+    self.heat_dissipation = config.heat_dissipation or 1.0
 
     -- Heat state
-    instance.heat = 0
-    instance.is_overheated = false
-    instance.overheat_timer = 0
+    self.heat = 0
+    self.is_overheated = false
+    self.overheat_timer = 0
 
     -- Weapon system
-    instance.weapons = config.weapons or {}  -- {name = {uses_ammo, fire_rate, ...}}
-    instance.current_weapon = config.default_weapon or nil
-    instance.weapon_cooldowns = {}  -- Per-weapon cooldowns
+    self.weapons = config.weapons or {}  -- {name = {uses_ammo, fire_rate, ...}}
+    self.current_weapon = config.default_weapon or nil
+    self.weapon_cooldowns = {}  -- Per-weapon cooldowns
 
     -- Callbacks
-    instance.on_damage = config.on_damage
-    instance.on_death = config.on_death
-    instance.on_respawn = config.on_respawn
-    instance.on_life_gained = config.on_life_gained
-    instance.on_shield_break = config.on_shield_break
-    instance.on_shield_regen = config.on_shield_regen
-    instance.on_reload_complete = config.on_reload_complete
-    instance.on_overheat = config.on_overheat
-    instance.on_overheat_clear = config.on_overheat_clear
-
-    return instance
+    self.on_damage = config.on_damage
+    self.on_death = config.on_death
+    self.on_respawn = config.on_respawn
+    self.on_life_gained = config.on_life_gained
+    self.on_shield_break = config.on_shield_break
+    self.on_shield_regen = config.on_shield_regen
+    self.on_reload_complete = config.on_reload_complete
+    self.on_overheat = config.on_overheat
+    self.on_overheat_clear = config.on_overheat_clear
 end
 
 function PlayerController:update(dt)
