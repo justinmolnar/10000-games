@@ -186,7 +186,7 @@ end
 
 -- Calculate cost for a modification
 -- Returns: cost in credits (number)
-function CheatSystem:calculateModificationCost(param_key, param_type, original_value, new_value, modifications_count, step_size)
+function CheatSystem:calculateModificationCost(param_key, param_type, original_value, new_value, modifications_count, step_size, water_level, skill_reduction)
     local costs = self.cheat_config.parameter_costs or {}
     local overrides = self.cheat_config.parameter_overrides or {}
     local global_mult = self.cheat_config.cheat_cost_multiplier or 1.0
@@ -213,6 +213,15 @@ function CheatSystem:calculateModificationCost(param_key, param_type, original_v
         end
     end
 
+    -- Water discount: each level reduces costs by cost_reduction_per_level, floor at 75%
+    local water_config = self.config.water_upgrades or {}
+    local reduction_per_level = water_config.cost_reduction_per_level or 0.05
+    local water_discount = math.max(0.75, 1 - (water_level or 0) * reduction_per_level)
+
+    -- Skill tree global cost reduction (stacks with water discount, combined floor at 50%)
+    local skill_discount = math.max(0.50, 1 - (skill_reduction or 0))
+    water_discount = math.max(0.50, water_discount * skill_discount)
+
     -- If value is back at original, cost is 0 (full refund)
     if new_value == original_value then
         return 0
@@ -231,12 +240,12 @@ function CheatSystem:calculateModificationCost(param_key, param_type, original_v
         -- Distance from original as fraction of total range (0.0 to 1.0+)
         local distance_pct = math.abs(new_value - original_value) / span
         -- Exponential: small tweaks are cheap, big pushes get expensive fast
-        local cost = base_cost * global_mult * (distance_pct ^ exponent)
+        local cost = base_cost * global_mult * water_discount * (distance_pct ^ exponent)
         return math.max(1, math.floor(cost + 0.5))
     end
 
     -- Non-numeric types: flat base cost
-    return math.max(1, math.floor(base_cost * global_mult + 0.5))
+    return math.max(1, math.floor(base_cost * global_mult * water_discount + 0.5))
 end
 
 -- Check if modification is allowed
@@ -262,7 +271,7 @@ end
 
 -- Apply a modification to a game parameter
 -- Returns: { success = true/false, cost = number, new_budget = number, error = "string" }
-function CheatSystem:applyModification(player_data, game_id, param_key, param_type, original_value, new_value)
+function CheatSystem:applyModification(player_data, game_id, param_key, param_type, original_value, new_value, water_level, skill_reduction)
     if not player_data or not game_id or not param_key then
         return { success = false, error = "Missing required parameters" }
     end
@@ -288,7 +297,11 @@ function CheatSystem:applyModification(player_data, game_id, param_key, param_ty
         param_key,
         param_type,
         original_value,
-        new_value
+        new_value,
+        nil,
+        nil,
+        water_level,
+        skill_reduction
     )
 
     -- Check budget: account for old cost being freed when adjusting existing modification

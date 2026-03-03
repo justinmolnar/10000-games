@@ -55,6 +55,26 @@ function CoinFlipView:drawContent()
         love.graphics.print("Time Left: " .. time_left .. "s", w - 150, 30, 0, 1.2, 1.2)
     end
 
+    -- Water round indicator
+    if self.game.water_round then
+        if not self._water_sprite then
+            local ok, img = pcall(love.graphics.newImage, "assets/sprites/shared/y2k_bunker/water_jug.png")
+            self._water_sprite = ok and img or false
+        end
+        local wx, wy = w / 2 + 120, h / 2 - 100
+        if self._water_sprite then
+            local sw, sh = self._water_sprite:getWidth(), self._water_sprite:getHeight()
+            local scale = 32 / math.max(sw, sh)
+            love.graphics.setColor(1, 1, 1, 0.9)
+            love.graphics.draw(self._water_sprite, wx, wy, 0, scale, scale)
+        else
+            love.graphics.setColor(0.3, 0.7, 1.0)
+            love.graphics.circle('fill', wx + 16, wy + 16, 12)
+        end
+        love.graphics.setColor(0.3, 0.7, 1.0)
+        love.graphics.print("+WATER", wx - 8, wy + 34, 0, 0.8, 0.8)
+    end
+
     -- Coin display area (center)
     local coin_x = w / 2
     local coin_y = h / 2

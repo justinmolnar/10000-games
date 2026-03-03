@@ -2,7 +2,15 @@
 -- View for dynamic parameter modification UI
 local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
+local CracktroEffects = require('src.views.cracktro_effects')
 local CheatEngineView = BaseView:extend('CheatEngineView')
+
+-- NFO-style dot-leader: pad label with dots to fill width chars
+local function dotLeader(label, width)
+    local dots_needed = width - #label - 1
+    if dots_needed < 1 then return label .. ":" end
+    return label .. string.rep(".", dots_needed) .. ":"
+end
 
 function CheatEngineView:init(controller, di)
     CheatEngineView.super.init(self, controller)
@@ -41,6 +49,17 @@ function CheatEngineView:init(controller, di)
     self.hovered_game_id = nil
     self.hovered_param_index = nil
     self.hovered_button = nil
+    self.hovered_skill_node = nil
+
+    -- Skill tree node rects (populated during draw): [node_id] = {x, y, w, h}
+    self.skill_node_rects = {}
+
+    -- Cached small font for compact skill tree nodes
+    self.skill_node_font = love.graphics.newFont(9)
+
+    -- Cracktro effects
+    self.effects = CracktroEffects:new()
+    self.dt = 0
 end
 
 function CheatEngineView:updateLayout(viewport_width, viewport_height)
@@ -49,7 +68,10 @@ function CheatEngineView:updateLayout(viewport_width, viewport_height)
     self.param_panel_w = viewport_width - self.split_x - 20
 end
 
-function CheatEngineView:update(dt, games, selected_game_id, params, modifications, step_size, viewport_width, viewport_height)
+function CheatEngineView:update(dt, games, selected_game_id, params, modifications, step_size, viewport_width, viewport_height, active_tab, player_data)
+    self.dt = dt
+    self.effects:update(dt)
+
     local mx, my = love.mouse.getPosition()
     local view_x = self.controller.viewport and self.controller.viewport.x or 0
     local view_y = self.controller.viewport and self.controller.viewport.y or 0
@@ -59,6 +81,7 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
     self.hovered_game_id = nil
     self.hovered_param_index = nil
     self.hovered_button = nil
+    self.hovered_skill_node = nil
 
     if local_mx < 0 or local_mx > viewport_width or local_my < 0 or local_my > viewport_height then
         return
@@ -78,6 +101,33 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
                 break
             end
         end
+    end
+
+    -- Check tab buttons
+    local tab_w = 90
+    local tab_x = self.param_panel_x + 120
+    local tab_y = self.param_panel_y + 2
+    local tabs = { "params", "skill_tree" }
+    for i, tab_id in ipairs(tabs) do
+        local tx = tab_x + (i - 1) * (tab_w + 4)
+        if local_mx >= tx and local_mx <= tx + tab_w and
+           local_my >= tab_y and local_my <= tab_y + 18 then
+            self.hovered_button = "tab_" .. tab_id
+        end
+    end
+
+    active_tab = active_tab or "params"
+
+    if active_tab == "skill_tree" then
+        -- Check skill tree node hover
+        for node_id, rect in pairs(self.skill_node_rects) do
+            if local_mx >= rect.x and local_mx <= rect.x + rect.w and
+               local_my >= rect.y and local_my <= rect.y + rect.h then
+                self.hovered_skill_node = node_id
+                break
+            end
+        end
+        return
     end
 
     -- Check parameter row hover
@@ -110,6 +160,24 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
         end
     end
 
+    -- Check water upgrade button
+    if selected_game_id then
+        local pd = self.controller.player_data
+        local wc = self.di and self.di.config and self.di.config.water_upgrades
+        local wl = pd and pd:getWaterUpgradeLevel(selected_game_id) or 0
+        local ml = (wc and wc.max_level) or 5
+
+        if wl < ml then
+            local wy = self.param_panel_y + self.param_panel_h - 80
+            local btn_x = self.param_panel_x + self.param_panel_w - 120
+            local btn_y = wy + 20
+            if local_mx >= btn_x and local_mx <= btn_x + 100 and
+               local_my >= btn_y and local_my <= btn_y + 22 then
+                self.hovered_button = "water_upgrade"
+            end
+        end
+    end
+
     -- Check launch button
     local launch_y = self.param_panel_y + self.param_panel_h - 35
     if selected_game_id and
@@ -129,7 +197,7 @@ function CheatEngineView:update(dt, games, selected_game_id, params, modificatio
 end
 
 -- Override BaseView's drawWindowed to pass extra parameters
-function CheatEngineView:drawWindowed(games, selected_game_id, params, modifications, player_data, step_size, selected_param_index, viewport_width, viewport_height, game_scroll, param_scroll)
+function CheatEngineView:drawWindowed(games, selected_game_id, params, modifications, player_data, step_size, selected_param_index, viewport_width, viewport_height, game_scroll, param_scroll, active_tab)
     self.draw_params = {
         games = games,
         selected_game_id = selected_game_id,
@@ -139,7 +207,8 @@ function CheatEngineView:drawWindowed(games, selected_game_id, params, modificat
         step_size = step_size,
         selected_param_index = selected_param_index,
         game_scroll = game_scroll,
-        param_scroll = param_scroll
+        param_scroll = param_scroll,
+        active_tab = active_tab or "params",
     }
     CheatEngineView.super.drawWindowed(self, viewport_width, viewport_height)
 end
@@ -156,49 +225,52 @@ function CheatEngineView:drawContent(viewport_width, viewport_height)
     local selected_param_index = p.selected_param_index
     local game_scroll = p.game_scroll
     local param_scroll = p.param_scroll
+    local active_tab = p.active_tab or "params"
 
-    -- Background
+    -- Background: cracktro effects
     love.graphics.setColor(0, 0, 0)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
+    self.effects:draw(viewport_width, viewport_height)
 
-    -- Title
-    love.graphics.setColor(0, 1, 0)
-    love.graphics.print("CheatEngine v2.0.0 (Dynamic Parameter Editor)", 10, 10)
-    love.graphics.print("===================================================", 10, 25)
+    -- ASCII art logo
+    self.effects:drawLogo(viewport_width)
 
     -- Draw split panels
     self:drawGameListPanel(games, selected_game_id, viewport_height, game_scroll)
 
-    if selected_game_id then
+    -- Tab bar (top of right panel)
+    self:drawTabBar(active_tab)
+
+    if active_tab == "skill_tree" then
+        self:drawSkillTreePanel(player_data, viewport_height)
+    elseif selected_game_id then
         self:drawParameterPanel(params, modifications, player_data, selected_game_id, step_size, selected_param_index, viewport_height, param_scroll)
     else
-        love.graphics.setColor(0.5, 0.5, 0.5)
+        love.graphics.setColor(0.3, 0.5, 0.7)
         love.graphics.printf("No unlocked games available.\n\nUnlock games from the Launcher first.",
             self.param_panel_x, self.param_panel_y + 100,
             self.param_panel_w, "center")
     end
 
-    -- Footer instructions
-    love.graphics.setColor(0.4, 0.4, 0.4)
-    love.graphics.print("ESC: Close | Click/Drag slider | LeftRight: Step | 1-3/M: Step Size | R: Reset | X: Reset All | Enter: Launch",
-        10, viewport_height - 20)
+    -- Sine-wave scroller (replaces static footer)
+    self.effects:drawScroller(viewport_width, viewport_height)
 end
 
 function CheatEngineView:drawGameListPanel(games, selected_game_id, viewport_height, game_scroll)
     -- Panel border
-    love.graphics.setColor(0, 1, 0)
+    love.graphics.setColor(0.0, 0.67, 1.0)
     love.graphics.setLineWidth(2)
     love.graphics.rectangle('line', self.game_list_x, self.game_list_y, self.game_list_w, self.game_list_h)
     love.graphics.setLineWidth(1)
 
-    -- Panel title
-    love.graphics.setColor(0.1, 0.1, 0.1)
+    -- Panel title with box-drawing
+    love.graphics.setColor(0.02, 0.02, 0.06, 0.85)
     love.graphics.rectangle('fill', self.game_list_x + 1, self.game_list_y + 1, self.game_list_w - 2, 20)
-    love.graphics.setColor(0, 1, 0)
-    love.graphics.print("Unlocked Games (" .. #games .. ")", self.game_list_x + 5, self.game_list_y + 4)
+    love.graphics.setColor(0.0, 0.67, 1.0)
+    love.graphics.print("[= GAMES (" .. #games .. ") =]", self.game_list_x + 5, self.game_list_y + 4)
 
-    -- Panel background
-    love.graphics.setColor(0.05, 0.05, 0.05)
+    -- Panel background (semi-transparent)
+    love.graphics.setColor(0.02, 0.02, 0.06, 0.85)
     love.graphics.rectangle('fill', self.game_list_x + 1, self.game_list_y + 21, self.game_list_w - 2, self.game_list_h - 22)
 
     -- Game list
@@ -216,16 +288,20 @@ function CheatEngineView:drawGameListPanel(games, selected_game_id, viewport_hei
 
             -- Background
             if is_selected then
-                love.graphics.setColor(0, 0.5, 0)
+                love.graphics.setColor(0.0, 0.12, 0.25)
             elseif is_hovered then
-                love.graphics.setColor(0.1, 0.1, 0.1)
+                love.graphics.setColor(0.05, 0.05, 0.12)
             else
-                love.graphics.setColor(0.05, 0.05, 0.05)
+                love.graphics.setColor(0.02, 0.02, 0.06, 0.85)
             end
             love.graphics.rectangle('fill', self.game_list_x + 2, gy, self.game_list_w - 4 - lane_w, self.item_h)
 
             -- Text
-            love.graphics.setColor(0, 1, 0)
+            if is_selected then
+                love.graphics.setColor(0.0, 1.0, 1.0)
+            else
+                love.graphics.setColor(0.0, 0.67, 1.0)
+            end
             love.graphics.print(game.display_name or game.id, self.game_list_x + 8, gy + 5)
         end
     end
@@ -250,19 +326,19 @@ end
 
 function CheatEngineView:drawParameterPanel(params, modifications, player_data, game_id, step_size, selected_param_index, viewport_height, param_scroll)
     -- Panel border
-    love.graphics.setColor(0, 1, 0)
+    love.graphics.setColor(0.0, 0.67, 1.0)
     love.graphics.setLineWidth(2)
     love.graphics.rectangle('line', self.param_panel_x, self.param_panel_y, self.param_panel_w, self.param_panel_h)
     love.graphics.setLineWidth(1)
 
-    -- Panel title
-    love.graphics.setColor(0.1, 0.1, 0.1)
+    -- Panel title with box-drawing
+    love.graphics.setColor(0.02, 0.02, 0.06, 0.85)
     love.graphics.rectangle('fill', self.param_panel_x + 1, self.param_panel_y + 1, self.param_panel_w - 2, 20)
-    love.graphics.setColor(0, 1, 0)
-    love.graphics.print("Parameter Editor", self.param_panel_x + 5, self.param_panel_y + 4)
+    love.graphics.setColor(0.0, 0.67, 1.0)
+    love.graphics.print("[= PARAMETERS =]", self.param_panel_x + 5, self.param_panel_y + 4)
 
-    -- Panel background
-    love.graphics.setColor(0.05, 0.05, 0.05)
+    -- Panel background (semi-transparent)
+    love.graphics.setColor(0.02, 0.02, 0.06, 0.85)
     love.graphics.rectangle('fill', self.param_panel_x + 1, self.param_panel_y + 21, self.param_panel_w - 2, self.param_panel_h - 22)
 
     -- Budget + Step size (single line)
@@ -291,7 +367,8 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
             btn_x, line_y, 45, 25,
             label,
             true,
-            is_hovered or is_active
+            is_hovered or is_active,
+            {0.0, 0.12, 0.3}
         )
     end
 
@@ -331,27 +408,27 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
 
             -- Row background
             if is_selected then
-                love.graphics.setColor(0.15, 0.15, 0.3)
+                love.graphics.setColor(0.05, 0.08, 0.2)
                 love.graphics.rectangle('fill', self.param_panel_x + 2, py, self.param_panel_w - 4 - lane_w, self.param_row_h)
             elseif is_hovered then
-                love.graphics.setColor(0.1, 0.1, 0.1)
+                love.graphics.setColor(0.03, 0.05, 0.12)
                 love.graphics.rectangle('fill', self.param_panel_x + 2, py, self.param_panel_w - 4 - lane_w, self.param_row_h)
             end
 
-            -- Parameter name
+            -- Parameter name with NFO dot-leaders
             if is_modified then
-                love.graphics.setColor(0.2, 1.0, 0.2)
+                love.graphics.setColor(0.0, 1.0, 1.0)
             else
                 love.graphics.setColor(0.7, 0.7, 0.7)
             end
-            love.graphics.print(param.key, self.param_panel_x + 10, py + 8)
+            love.graphics.print(dotLeader(param.key, 18), self.param_panel_x + 10, py + 8)
 
             if param.type == "number" then
                 self:drawNumberSlider(param, param_index, slider_x, py + 6, slider_w, 14, is_modified)
 
                 -- Value text
                 if is_modified then
-                    love.graphics.setColor(1.0, 1.0, 0.2)
+                    love.graphics.setColor(1.0, 0.85, 0.0)
                 else
                     love.graphics.setColor(0.6, 0.6, 0.6)
                 end
@@ -370,7 +447,9 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
                 if next_val == param.value then
                     next_val = math.max(param.min or 0, param.value - step_val)
                 end
-                local next_cost = cheat_sys:calculateModificationCost(param.key, param.type, param.original, next_val)
+                local preview_water_level = player_data:getWaterUpgradeLevel(game_id)
+                local preview_skill_reduction = player_data:getSkillTreeBonus("global_cost_reduction")
+                local next_cost = cheat_sys:calculateModificationCost(param.key, param.type, param.original, next_val, nil, nil, preview_water_level, preview_skill_reduction)
                 local current_cost = (modifications[param.key] and modifications[param.key].cost_spent) or 0
                 local net = next_cost - current_cost
                 if net ~= 0 then
@@ -387,7 +466,7 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
         if scrollbar then
             scrollbar:setPosition(self.param_panel_x, base_y)
             local max_scroll = math.max(0, #params - visible_params)
-            local available_height = self.param_panel_h - self.rows_start_y - 35
+            local available_height = self.param_panel_h - self.rows_start_y - 80
             local geom = scrollbar:compute(self.param_panel_w, available_height, #params * self.param_row_h, param_scroll or 0, max_scroll)
 
             if geom then
@@ -399,6 +478,49 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
         end
     end
 
+    -- Water upgrade section
+    local water_y = self.param_panel_y + self.param_panel_h - 80
+    love.graphics.setColor(0.0, 0.3, 0.6)
+    love.graphics.line(self.param_panel_x + 5, water_y, self.param_panel_x + self.param_panel_w - 5, water_y)
+
+    local config = self.di and self.di.config
+    local water_config = config and config.water_upgrades
+    local water_level = player_data:getWaterUpgradeLevel(game_id)
+    local max_level = (water_config and water_config.max_level) or 5
+    local reduction_pct = water_level * math.floor(((water_config and water_config.cost_reduction_per_level) or 0.05) * 100 + 0.5)
+
+    -- "Water Upgrade" label (blue)
+    love.graphics.setColor(0.3, 0.6, 1.0)
+    love.graphics.print("Water Upgrade", self.param_panel_x + 10, water_y + 5)
+
+    -- Level X/5
+    love.graphics.setColor(0.7, 0.7, 0.7)
+    love.graphics.print(string.format("Level %d/%d", water_level, max_level), self.param_panel_x + 120, water_y + 5)
+
+    -- Effect text
+    if water_level > 0 then
+        love.graphics.setColor(0.0, 1.0, 1.0)
+        love.graphics.print(string.format("-%d%% Costs", reduction_pct), self.param_panel_x + 200, water_y + 5)
+    end
+
+    if water_level >= max_level then
+        love.graphics.setColor(0.5, 0.5, 0.5)
+        love.graphics.print("MAX LEVEL", self.param_panel_x + 10, water_y + 25)
+    else
+        local costs = water_config and water_config.costs or {}
+        local next_cost = costs[water_level + 1] or 0
+        local has_water = player_data:hasWater(next_cost)
+        local current_water = player_data:getWater()
+
+        love.graphics.setColor(0.3, 0.6, 1.0)
+        love.graphics.print(string.format("Cost: %d Water (%d available)", next_cost, current_water), self.param_panel_x + 10, water_y + 25)
+
+        local btn_x = self.param_panel_x + self.param_panel_w - 120
+        local btn_y = water_y + 20
+        local is_hovered = (self.hovered_button == "water_upgrade")
+        UIComponents.drawButton(btn_x, btn_y, 100, 22, "UPGRADE", has_water, is_hovered and has_water, {0.0, 0.12, 0.3})
+    end
+
     -- Launch button
     local launch_y = self.param_panel_y + self.param_panel_h - 35
     local is_launch_hovered = (self.hovered_button == "launch")
@@ -406,7 +528,8 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
         self.param_panel_x + 10, launch_y, 200, 30,
         "Launch Game",
         true,
-        is_launch_hovered
+        is_launch_hovered,
+        {0.0, 0.12, 0.3}
     )
 
     -- Reset all button (only if modifications exist)
@@ -416,8 +539,271 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
             self.param_panel_x + 220, launch_y, 150, 30,
             "Reset All",
             true,
-            is_reset_hovered
+            is_reset_hovered,
+            {0.0, 0.12, 0.3}
         )
+    end
+end
+
+function CheatEngineView:drawTabBar(active_tab)
+    local tabs = {
+        { id = "params", label = "Parameters" },
+        { id = "skill_tree", label = "Skill Tree" },
+    }
+    local tab_w = 90
+    local tab_h = 18
+    local tab_x = self.param_panel_x + 120
+    local tab_y = self.param_panel_y + 2
+
+    for i, tab in ipairs(tabs) do
+        local tx = tab_x + (i - 1) * (tab_w + 4)
+        local is_active = (active_tab == tab.id)
+        local is_hovered = (self.hovered_button == "tab_" .. tab.id)
+
+        if is_active then
+            love.graphics.setColor(0.0, 0.12, 0.25)
+            love.graphics.rectangle('fill', tx, tab_y, tab_w, tab_h)
+            love.graphics.setColor(0.0, 1.0, 1.0)
+        elseif is_hovered then
+            love.graphics.setColor(0.05, 0.08, 0.18)
+            love.graphics.rectangle('fill', tx, tab_y, tab_w, tab_h)
+            love.graphics.setColor(0.0, 0.8, 1.0)
+        else
+            love.graphics.setColor(0.02, 0.02, 0.06, 0.85)
+            love.graphics.rectangle('fill', tx, tab_y, tab_w, tab_h)
+            love.graphics.setColor(0.0, 0.4, 0.7)
+        end
+        love.graphics.rectangle('line', tx, tab_y, tab_w, tab_h)
+        love.graphics.printf(tab.label, tx, tab_y + 3, tab_w, "center")
+    end
+end
+
+function CheatEngineView:drawSkillTreePanel(player_data, viewport_height)
+    -- Panel border
+    love.graphics.setColor(0.0, 0.67, 1.0)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle('line', self.param_panel_x, self.param_panel_y, self.param_panel_w, self.param_panel_h)
+    love.graphics.setLineWidth(1)
+
+    -- Panel title background with box-drawing
+    love.graphics.setColor(0.02, 0.02, 0.06, 0.85)
+    love.graphics.rectangle('fill', self.param_panel_x + 1, self.param_panel_y + 1, self.param_panel_w - 2, 20)
+    love.graphics.setColor(0.0, 0.67, 1.0)
+    love.graphics.print("[= SKILL TREE =]", self.param_panel_x + 5, self.param_panel_y + 4)
+
+    -- Panel background (semi-transparent)
+    love.graphics.setColor(0.02, 0.02, 0.06, 0.85)
+    love.graphics.rectangle('fill', self.param_panel_x + 1, self.param_panel_y + 21, self.param_panel_w - 2, self.param_panel_h - 22)
+
+    -- Water balance display
+    local current_water = player_data:getWater()
+    love.graphics.setColor(0.3, 0.6, 1.0)
+    love.graphics.print(string.format("Water: %d", current_water), self.param_panel_x + 10, self.param_panel_y + 28)
+
+    local config = self.di and self.di.config
+    local skill_tree_config = config and config.water_skill_tree
+    if not skill_tree_config or not skill_tree_config.nodes then
+        love.graphics.setColor(0.5, 0.5, 0.5)
+        love.graphics.printf("No skill tree data available.",
+            self.param_panel_x + 10, self.param_panel_y + 100,
+            self.param_panel_w - 20, "center")
+        return
+    end
+
+    -- Organize nodes by tier
+    local tiers = {} -- tiers[tier_number] = { {node_id, node}, ... }
+    local max_tier = 0
+    for node_id, node in pairs(skill_tree_config.nodes) do
+        local tier = node.tier or 1
+        if not tiers[tier] then tiers[tier] = {} end
+        table.insert(tiers[tier], { id = node_id, node = node })
+        if tier > max_tier then max_tier = tier end
+    end
+
+    -- Sort nodes within each tier by position
+    for _, tier_nodes in pairs(tiers) do
+        table.sort(tier_nodes, function(a, b) return a.node.position < b.node.position end)
+    end
+
+    -- Layout: tiers arranged bottom-to-top (compact for 6 per row, 5 tiers)
+    local node_w = 85
+    local node_h = 50
+    local node_gap = 10
+    local tier_spacing = 70
+    local panel_content_y = self.param_panel_y + 50
+    local panel_content_h = self.param_panel_h - 70
+    local panel_cx = self.param_panel_x + self.param_panel_w / 2
+
+    self.skill_node_rects = {}
+
+    -- Draw connection lines first (behind nodes)
+    for tier_num = 1, max_tier do
+        if tiers[tier_num] then
+            for _, entry in ipairs(tiers[tier_num]) do
+                local node = entry.node
+                local node_id = entry.id
+                -- Position of this node
+                local tier_count = #tiers[tier_num]
+                local total_w = tier_count * node_w + (tier_count - 1) * node_gap
+                local start_x = panel_cx - total_w / 2
+                local nx = start_x + (node.position - 1) * (node_w + node_gap)
+                local ny = panel_content_y + panel_content_h - tier_num * tier_spacing
+
+                -- Draw lines to required nodes
+                for _, req_id in ipairs(node.requires) do
+                    local req_node = skill_tree_config.nodes[req_id]
+                    if req_node then
+                        local req_tier = req_node.tier or 1
+                        if tiers[req_tier] then
+                            local req_tier_count = #tiers[req_tier]
+                            local req_total_w = req_tier_count * node_w + (req_tier_count - 1) * node_gap
+                            local req_start_x = panel_cx - req_total_w / 2
+                            local req_x = req_start_x + (req_node.position - 1) * (node_w + node_gap)
+                            local req_y = panel_content_y + panel_content_h - req_tier * tier_spacing
+
+                            local has_req = player_data:getSkillLevel(req_id) >= 1
+                            if has_req then
+                                love.graphics.setColor(0.0, 0.5, 1.0, 0.6)
+                            else
+                                love.graphics.setColor(0.3, 0.3, 0.3, 0.4)
+                            end
+                            love.graphics.setLineWidth(2)
+                            love.graphics.line(
+                                nx + node_w / 2, ny + node_h,
+                                req_x + node_w / 2, req_y
+                            )
+                            love.graphics.setLineWidth(1)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Draw nodes
+    for tier_num = 1, max_tier do
+        if tiers[tier_num] then
+            local tier_count = #tiers[tier_num]
+            local total_w = tier_count * node_w + (tier_count - 1) * node_gap
+            local start_x = panel_cx - total_w / 2
+
+            for _, entry in ipairs(tiers[tier_num]) do
+                local node = entry.node
+                local node_id = entry.id
+                local nx = start_x + (node.position - 1) * (node_w + node_gap)
+                local ny = panel_content_y + panel_content_h - tier_num * tier_spacing
+                local level = player_data:getSkillLevel(node_id)
+                local can_unlock = player_data:canUnlockSkill(node_id, config)
+                local is_maxed = (level >= node.max_level)
+                local is_purchased = (level > 0)
+                local is_hovered = (self.hovered_skill_node == node_id)
+
+                self.skill_node_rects[node_id] = { x = nx, y = ny, w = node_w, h = node_h }
+
+                self:drawSkillNode(node, node_id, nx, ny, node_w, node_h,
+                    level, can_unlock, is_maxed, is_purchased, is_hovered, player_data, config)
+            end
+        end
+    end
+end
+
+function CheatEngineView:drawSkillNode(node, node_id, x, y, w, h, level, can_unlock, is_maxed, is_purchased, is_hovered, player_data, config)
+    -- Background
+    if is_maxed then
+        love.graphics.setColor(0.25, 0.2, 0.0)
+    elseif is_purchased then
+        love.graphics.setColor(0.0, 0.1, 0.2)
+    elseif can_unlock then
+        love.graphics.setColor(0.05, 0.05, 0.12)
+    else
+        love.graphics.setColor(0.04, 0.04, 0.08)
+    end
+    if is_hovered and (can_unlock or is_purchased) and not is_maxed then
+        local r, g, b = love.graphics.getColor()
+        love.graphics.setColor(math.min(1, r + 0.08), math.min(1, g + 0.08), math.min(1, b + 0.08))
+    end
+    love.graphics.rectangle('fill', x, y, w, h)
+
+    -- Border
+    if is_maxed then
+        love.graphics.setColor(0.9, 0.75, 0.0)
+    elseif is_purchased then
+        love.graphics.setColor(0.0, 0.67, 1.0)
+    elseif can_unlock then
+        love.graphics.setColor(0.3, 0.6, 1.0)
+    else
+        love.graphics.setColor(0.3, 0.3, 0.3)
+    end
+    love.graphics.setLineWidth(is_hovered and 2 or 1)
+    love.graphics.rectangle('line', x, y, w, h)
+    love.graphics.setLineWidth(1)
+
+    -- Name (compact for smaller nodes)
+    local small_font = self.skill_node_font
+    local prev_font = love.graphics.getFont()
+    love.graphics.setFont(small_font)
+
+    if is_maxed then
+        love.graphics.setColor(0.9, 0.75, 0.0)
+    elseif is_purchased then
+        love.graphics.setColor(0.2, 0.8, 1.0)
+    elseif can_unlock then
+        love.graphics.setColor(0.9, 0.9, 0.9)
+    else
+        love.graphics.setColor(0.4, 0.4, 0.4)
+    end
+    love.graphics.printf(node.name, x + 2, y + 3, w - 4, "center")
+
+    -- Level indicator
+    local level_text = string.format("%d/%d", level, node.max_level)
+    love.graphics.setColor(0.6, 0.6, 0.6)
+    love.graphics.printf(level_text, x + 2, y + 16, w - 4, "center")
+
+    -- Level dots
+    local dot_y = y + 29
+    local dot_spacing = math.min(10, (w - 8) / node.max_level)
+    local dots_total_w = node.max_level * dot_spacing
+    local dot_start_x = x + (w - dots_total_w) / 2
+    for i = 1, node.max_level do
+        local dx = dot_start_x + (i - 1) * dot_spacing + dot_spacing / 2
+        if i <= level then
+            if is_maxed then
+                love.graphics.setColor(0.9, 0.75, 0.0)
+            else
+                love.graphics.setColor(0.0, 0.67, 1.0)
+            end
+        else
+            love.graphics.setColor(0.25, 0.25, 0.25)
+        end
+        love.graphics.circle('fill', dx, dot_y, 2.5)
+    end
+
+    -- Cost or MAX text
+    if is_maxed then
+        love.graphics.setColor(0.9, 0.75, 0.0)
+        love.graphics.printf("MAX", x + 2, y + h - 14, w - 4, "center")
+    elseif can_unlock then
+        local cost = player_data:getSkillCost(node_id, config)
+        local has_water = player_data:hasWater(cost)
+        if has_water then
+            love.graphics.setColor(0.3, 0.6, 1.0)
+        else
+            love.graphics.setColor(0.6, 0.3, 0.3)
+        end
+        love.graphics.printf(cost .. "W", x + 2, y + h - 14, w - 4, "center")
+    else
+        love.graphics.setColor(0.3, 0.3, 0.3)
+        love.graphics.printf("LOCKED", x + 2, y + h - 14, w - 4, "center")
+    end
+
+    love.graphics.setFont(prev_font)
+
+    -- Tooltip on hover: show description
+    if is_hovered then
+        love.graphics.setFont(small_font)
+        love.graphics.setColor(0.8, 0.8, 0.8)
+        love.graphics.printf(node.description, x - 30, y + h + 3, w + 60, "center")
+        love.graphics.setFont(prev_font)
     end
 end
 
@@ -442,12 +828,12 @@ function CheatEngineView:drawNumberSlider(param, param_index, x, y, w, h, is_mod
     if is_modified then
         local fill_start = math.min(orig_t, curr_t)
         local fill_end = math.max(orig_t, curr_t)
-        love.graphics.setColor(0.0, 0.4, 0.0)
+        love.graphics.setColor(0.0, 0.15, 0.35)
         love.graphics.rectangle('fill', x + fill_start * w, y, (fill_end - fill_start) * w, h)
     end
 
     -- Track border
-    love.graphics.setColor(0, 0.6, 0)
+    love.graphics.setColor(0.0, 0.4, 0.8)
     love.graphics.rectangle('line', x, y, w, h)
 
     -- Original marker (permanent tick line)
@@ -463,7 +849,7 @@ function CheatEngineView:drawNumberSlider(param, param_index, x, y, w, h, is_mod
     handle_px = math.max(x, math.min(x + w - handle_w, handle_px))
 
     if is_modified then
-        love.graphics.setColor(0.2, 1.0, 0.2)
+        love.graphics.setColor(0.0, 1.0, 1.0)
     else
         love.graphics.setColor(0.7, 0.7, 0.7)
     end
@@ -481,12 +867,12 @@ function CheatEngineView:drawBooleanCheckbox(param, param_index, x, y, is_modifi
     -- Checkbox background
     love.graphics.setColor(0.15, 0.15, 0.15)
     love.graphics.rectangle('fill', x, y, cb_w, cb_h)
-    love.graphics.setColor(0, 0.6, 0)
+    love.graphics.setColor(0.0, 0.4, 0.8)
     love.graphics.rectangle('line', x, y, cb_w, cb_h)
 
     -- Checkmark
     if param.value then
-        love.graphics.setColor(0, 1, 0)
+        love.graphics.setColor(0.0, 1.0, 1.0)
         love.graphics.setLineWidth(3)
         love.graphics.line(x + 3, y + cb_h / 2, x + cb_w / 2, y + cb_h - 4, x + cb_w - 3, y + 3)
         love.graphics.setLineWidth(1)
@@ -494,7 +880,7 @@ function CheatEngineView:drawBooleanCheckbox(param, param_index, x, y, is_modifi
 
     -- Label
     if is_modified then
-        love.graphics.setColor(1.0, 1.0, 0.2)
+        love.graphics.setColor(1.0, 0.85, 0.0)
     else
         love.graphics.setColor(0.6, 0.6, 0.6)
     end
@@ -520,8 +906,8 @@ function CheatEngineView:getVisibleGameCount(viewport_height)
 end
 
 function CheatEngineView:getVisibleParamCount(viewport_height)
-    -- From rows_start_y to launch buttons area (35px from bottom)
-    local available_height = self.param_panel_h - self.rows_start_y - 35
+    -- From rows_start_y to water upgrade area (80px from bottom: 45px water + 35px buttons)
+    local available_height = self.param_panel_h - self.rows_start_y - 80
     return math.max(1, math.floor(available_height / self.param_row_h))
 end
 
@@ -533,8 +919,20 @@ function CheatEngineView:sliderValueFromX(mx, rect)
     return rect.lo + fraction * (rect.hi - rect.lo)
 end
 
-function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, params, modifications, player_data, step_size, selected_param_index, viewport_width, viewport_height)
+function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, params, modifications, player_data, step_size, selected_param_index, viewport_width, viewport_height, active_tab)
     if button ~= 1 then return nil end
+
+    -- Tab bar clicks
+    local tab_w = 90
+    local tab_x = self.param_panel_x + 120
+    local tab_y = self.param_panel_y + 2
+    local tabs = { "params", "skill_tree" }
+    for i, tab_id in ipairs(tabs) do
+        local tx = tab_x + (i - 1) * (tab_w + 4)
+        if x >= tx and x <= tx + tab_w and y >= tab_y and y <= tab_y + 18 then
+            return { name = "switch_tab", tab = tab_id }
+        end
+    end
 
     -- Game list clicks
     local visible_games = self:getVisibleGameCount(viewport_height)
@@ -549,6 +947,17 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, par
                 return { name = "select_game", id = games[game_index].id }
             end
         end
+    end
+
+    -- Skill tree node clicks
+    if (active_tab or "params") == "skill_tree" then
+        for node_id, rect in pairs(self.skill_node_rects) do
+            if x >= rect.x and x <= rect.x + rect.w and
+               y >= rect.y and y <= rect.y + rect.h then
+                return { name = "upgrade_skill", node_id = node_id }
+            end
+        end
+        return nil
     end
 
     -- Step size buttons
@@ -598,6 +1007,22 @@ function CheatEngineView:mousepressed(x, y, button, games, selected_game_id, par
                     -- Click on row but not on control = select param
                     return { name = "select_param", index = param_index }
                 end
+            end
+        end
+    end
+
+    -- Water upgrade button
+    if selected_game_id then
+        local wc = self.di and self.di.config and self.di.config.water_upgrades
+        local wl = player_data:getWaterUpgradeLevel(selected_game_id)
+        local ml = (wc and wc.max_level) or 5
+
+        if wl < ml then
+            local wy = self.param_panel_y + self.param_panel_h - 80
+            local btn_x = self.param_panel_x + self.param_panel_w - 120
+            local btn_y = wy + 20
+            if x >= btn_x and x <= btn_x + 100 and y >= btn_y and y <= btn_y + 22 then
+                return { name = "water_upgrade" }
             end
         end
     end

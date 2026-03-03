@@ -22,6 +22,7 @@ function CoinFlip:init(game_data, cheats, di, variant_override, original_variant
 
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.coin_flip)
     self.params = SchemaLoader.load(self.variant, "coin_flip_schema", runtimeCfg)
+    self:applySkillTreeBonuses()
 
     self:applyModifiers()
     self:setupGameState()
@@ -87,6 +88,8 @@ function CoinFlip:setupGameState()
 
     self.score = 0
     self.perfect_streak = true
+    self.water_round = false
+    self._water_round_chance = (self.di and self.di.config and self.di.config.water and self.di.config.water.round_water_chance) or 0
 
     self.metrics = {
         max_streak = 0,
@@ -129,6 +132,8 @@ function CoinFlip:setupComponents()
     self.hud.game = self
 
     self:setupVictoryCondition()
+    self.water_timer_spawning = false
+    self:rollWaterRound()
 end
 
 function CoinFlip:setupVictoryCondition()
@@ -182,6 +187,7 @@ function CoinFlip:updateGameLogic(dt)
             self.show_result = false
             self.result_display_time = 0
             self.waiting_for_guess = true
+            self:rollWaterRound()
 
             if self.params.auto_flip_interval > 0 then
                 self.auto_flip_timer = self.params.auto_flip_interval
@@ -367,6 +373,7 @@ function CoinFlip:onCorrectFlip()
         self.max_streak = self.current_streak
     end
 
+    self:awardWaterRound()
     self.visual_effects:flash({color = {0, 1, 0, 0.3}, duration = 0.2, mode = "fade_out"})
     if self.current_streak > 0 and self.current_streak % 5 == 0 then
         self:playSound("streak", 0.8)
@@ -395,6 +402,7 @@ function CoinFlip:onCorrectFlip()
 end
 
 function CoinFlip:onIncorrectFlip()
+    self.water_round = false
     self.incorrect_total = self.incorrect_total + 1
     self.perfect_streak = false
     self.current_streak = 0
@@ -416,6 +424,24 @@ function CoinFlip:onIncorrectFlip()
             self.game_over = true
         end
     end
+end
+
+function CoinFlip:rollWaterRound()
+    self.water_round = self._water_round_chance > 0 and self.rng:random() < self._water_round_chance
+end
+
+function CoinFlip:awardWaterRound()
+    if not self.water_round then return end
+    self.water_round = false
+    local wc = self.di and self.di.config and self.di.config.water
+    local value = wc and wc.value or 1
+    if self.di and self.di.playerData then
+        self.di.playerData:addWater(value)
+    end
+    if self.water_pickup then self.water_pickup:playCollectSound() end
+    local w = self.viewport_width or love.graphics.getWidth()
+    local h = self.viewport_height or love.graphics.getHeight()
+    self.popup_manager:add(w / 2, h / 2 - 80, "+" .. value .. " WATER", {0.3, 0.7, 1.0})
 end
 
 function CoinFlip:updateMetrics()

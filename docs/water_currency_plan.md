@@ -88,7 +88,7 @@ All water-related code must follow these rules (derived from auditing existing c
 ### Testing (User)
 ### AI Notes
 ### Status
-Not started
+Done
 
 ---
 
@@ -119,7 +119,7 @@ Not started
 ### Testing (User)
 ### AI Notes
 ### Status
-Not started
+Done
 
 ---
 
@@ -158,7 +158,7 @@ Not started
 ### Testing (User)
 ### AI Notes
 ### Status
-Not started
+Done
 
 ---
 
@@ -191,7 +191,7 @@ Not started
 ### Testing (User)
 ### AI Notes
 ### Status
-Not started
+Done
 
 ---
 
@@ -254,7 +254,7 @@ Not started
 ### Testing (User)
 ### AI Notes
 ### Status
-Not started
+Done
 
 ---
 
@@ -291,7 +291,7 @@ Not started
 ### Testing (User)
 ### AI Notes
 ### Status
-Not started
+Not started (next)
 
 ---
 

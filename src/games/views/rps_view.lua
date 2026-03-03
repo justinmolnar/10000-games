@@ -74,6 +74,26 @@ function RPSView:drawContent()
         end
     end
 
+    -- Water round indicator
+    if self.game.water_round then
+        if not self._water_sprite then
+            local ok, img = pcall(love.graphics.newImage, "assets/sprites/shared/y2k_bunker/water_jug.png")
+            self._water_sprite = ok and img or false
+        end
+        local wx, wy = w / 2 + 180, h / 2 - 80
+        if self._water_sprite then
+            local sw, sh = self._water_sprite:getWidth(), self._water_sprite:getHeight()
+            local scale = 32 / math.max(sw, sh)
+            love.graphics.setColor(1, 1, 1, 0.9)
+            love.graphics.draw(self._water_sprite, wx, wy, 0, scale, scale)
+        else
+            love.graphics.setColor(0.3, 0.7, 1.0)
+            love.graphics.circle('fill', wx + 16, wy + 16, 12)
+        end
+        love.graphics.setColor(0.3, 0.7, 1.0)
+        love.graphics.print("+WATER", wx - 8, wy + 34, 0, 0.8, 0.8)
+    end
+
     -- Special round indicator
     local special_to_show = nil
     if self.game.waiting_for_input and self.game.current_special_round then

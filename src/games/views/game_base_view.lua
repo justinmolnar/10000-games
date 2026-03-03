@@ -87,8 +87,11 @@ function GameBaseView:drawWater()
     local t = love.timer.getTime()
     for _, entity in ipairs(waters) do
         local pulse = 1 + 0.1 * math.sin(t * 3)
-        local alpha = 1 - (entity.age or 0) / (entity.lifetime or 1)
-        alpha = math.max(0, math.min(1, alpha))
+        local alpha = 1
+        if entity.water_lifetime then
+            alpha = 1 - (entity.age or 0) / entity.water_lifetime
+            alpha = math.max(0, math.min(1, alpha))
+        end
 
         if self._water_sprite then
             local sprite = self._water_sprite

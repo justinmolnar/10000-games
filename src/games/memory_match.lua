@@ -12,6 +12,7 @@ function MemoryMatch:init(game_data, cheats, di, variant_override, original_vari
     local SchemaLoader = self.di.components.SchemaLoader
     local runtimeCfg = (self.di and self.di.config and self.di.config.games and self.di.config.games.memory_match)
     self.params = SchemaLoader.load(self.variant, "memory_match_schema", runtimeCfg)
+    self:applySkillTreeBonuses()
 
     self:setupEntities()
     self:setupComponents()

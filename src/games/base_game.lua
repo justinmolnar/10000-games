@@ -37,9 +37,12 @@ function BaseGame:init(game_data, cheats, di, variant_override, original_variant
     -- Water currency pickup
     local wc = di and di.config and di.config.water
     if wc and di.components then
+        local spawn_bonus = di.playerData and di.playerData:getSkillTreeBonus("water_spawn_bonus") or 0
+        local effective_chance = math.min(1.0, wc.spawn_chance * (1 + spawn_bonus))
         self.water_pickup = di.components.WaterPickup:new({
             spawn_interval = wc.spawn_interval,
-            spawn_chance = wc.spawn_chance,
+            spawn_chance = effective_chance,
+            chance_increment = wc.spawn_chance_increment or 0,
             lifetime = wc.lifetime,
             value = wc.value,
             collection_radius = wc.collection_radius,
@@ -183,6 +186,31 @@ function BaseGame:applyCheats(mappings)
     end
 end
 
+function BaseGame:applySkillTreeBonuses()
+    local pd = self.di and self.di.playerData
+    if not pd or not self.params then return end
+    local category = self.data and self.data.category
+    if not category then return end
+
+    local mods = pd:getParamModifications(category)
+    for _, mod in ipairs(mods) do
+        local key_list = mod.keys or {}
+        for _, key in ipairs(key_list) do
+            if mod.mode == "set" and mod.level >= 1 then
+                self.params[key] = mod.value
+                break
+            elseif self.params[key] ~= nil then
+                if mod.mode == "add" then
+                    self.params[key] = self.params[key] + mod.value * mod.level
+                elseif mod.mode == "multiply" then
+                    self.params[key] = self.params[key] * (1 + mod.value * mod.level)
+                end
+                break
+            end
+        end
+    end
+end
+
 -- Create components from schema definitions
 -- Schema should have a "components" section with type and config for each component
 function BaseGame:createComponentsFromSchema()
@@ -311,6 +339,21 @@ function BaseGame:updateBase(dt)
              self.time_remaining = math.max(0, self.time_limit - self.time_elapsed)
         end
 
+        -- Water pickup system
+        if self.water_pickup and not self.playback_mode then
+            self:setupWaterPickup()
+            self.water_pickup:update(dt, self.water_timer_spawning == false)
+            local player_obj = self.player or self.paddle
+            if player_obj then
+                self.entity_controller:checkCollision(player_obj, {
+                    collect_water = function(entity)
+                        self:onWaterCollected(entity)
+                        self.entity_controller:removeEntity(entity, "collected")
+                    end
+                })
+            end
+        end
+
         if self:checkComplete() then
             self:onComplete()
         end
@@ -350,9 +393,7 @@ function BaseGame:fixedUpdate(dt)
         -- Water pickup system
         if self.water_pickup and not self.playback_mode then
             self:setupWaterPickup()
-            if self.water_timer_spawning ~= false then
-                self.water_pickup:update(dt)
-            end
+            self.water_pickup:update(dt, self.water_timer_spawning == false)
             -- Collision collection for movement games
             local player_obj = self.player or self.paddle
             if player_obj then
@@ -550,6 +591,9 @@ end
 function BaseGame:onWaterCollected(entity)
     if self.di and self.di.playerData then
         self.di.playerData:addWater(entity.value or 1)
+    end
+    if self.water_pickup then
+        self.water_pickup:playCollectSound()
     end
     if self.popup_manager then
         self.popup_manager:add(entity.x, entity.y, "+" .. (entity.value or 1) .. " WATER", {0.3, 0.7, 1.0})

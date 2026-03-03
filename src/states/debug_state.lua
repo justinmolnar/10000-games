@@ -97,6 +97,10 @@ function DebugState:handleAction(action_id)
         end
         print("Auto-completed " .. count .. " games. Total base power added: " .. math.floor(total_power))
 
+    elseif action_id == "add_water" then
+        self.player_data:addWater(1000)
+        print("Added 1000 water. Total: " .. self.player_data.water)
+
     elseif action_id == "wipe_save" then
     local Config = rawget(_G, 'DI_CONFIG') or {}
     local save_file = (Config and Config.save_file_name) or 'save.json'

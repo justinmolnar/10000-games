@@ -126,6 +126,14 @@ function RaycasterView:drawContent()
             end
         end
 
+        -- Pickup message
+        if game.pickup_message then
+            local msg = game.pickup_message
+            local alpha = math.min(1, msg.timer / 0.3)
+            love.graphics.setColor(msg.color[1], msg.color[2], msg.color[3], alpha)
+            love.graphics.printf(msg.text, 0, h * 0.35, w, "center")
+        end
+
         -- Controls hint
         love.graphics.setColor(1, 1, 1, 0.6)
         local controls = "WASD: Move | Q/E: Strafe | R: New Maze"

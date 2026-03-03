@@ -23,6 +23,7 @@ function HiddenObjectView:drawContent()
     local object_sprite_fallback = game.data.icon_sprite or "magnifying_glass-0"
 
     game.entity_controller:draw(function(obj)
+        if obj.type_name ~= "hidden_object" then return end
         if not obj.found then
             local angle = (obj.id * 13) % 360
             local sprite_key = "object_" .. obj.sprite_variant

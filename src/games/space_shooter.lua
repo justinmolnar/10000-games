@@ -32,6 +32,7 @@ function SpaceShooter:init(game_data, cheats, di, variant_override, original_var
         speed_modifier = {"movement_speed", "bullet_speed", "enemy_base_speed"},
         advantage_modifier = {"player_width", "player_height"}
     })
+    self:applySkillTreeBonuses()
     local extra_deaths = (self.cheats.advantage_modifier or {}).deaths or 0
     self.params.lives_count = self.params.lives_count + extra_deaths
 
@@ -41,6 +42,10 @@ function SpaceShooter:init(game_data, cheats, di, variant_override, original_var
 
     self:setupComponents()
     self:setupEntities()
+
+    -- Water drops from enemies, not timer
+    self.water_timer_spawning = false
+    if self.water_pickup then self.water_pickup.max_active = 10 end
 
     self.view = SpaceShooterView:new(self, self.variant)
     self:loadAssets()
@@ -695,6 +700,10 @@ function SpaceShooter:spawnEnemy()
     local direction = p.reverse_gravity and (-math.pi / 2) or (math.pi / 2)
     local extra = {use_direction = true, speed = speed, direction = direction, zigzag_frequency = p.zigzag_frequency, zigzag_amplitude = speed * 0.5, shoot_interval = shoot_rate, health = p.enemy_health}
 
+    -- Water carrier mutation chance
+    local wc = self.di and self.di.config and self.di.config.water
+    local water_chance = wc and wc.enemy_carrier_chance or 0
+
     -- Formation spawning
     if p.enemy_formation == "v_formation" then
         local positions = {}
@@ -703,14 +712,16 @@ function SpaceShooter:spawnEnemy()
             local offset = (i - math.ceil(count / 2)) * spacing
             positions[i] = {x = center_x + offset, y = spawn_y - math.abs(offset) * 0.5}
         end
-        self.entity_controller:spawnAtPositions("enemy", positions, extra)
+        local enemies = self.entity_controller:spawnAtPositions("enemy", positions, extra)
+        for _, e in ipairs(enemies) do if math.random() < water_chance then e.water_carrier = true end end
     elseif p.enemy_formation == "wall" then
         local positions = {}
         local count, spacing = 6, self.game_width / 7
         for i = 1, count do
             positions[i] = {x = spacing * i, y = spawn_y}
         end
-        self.entity_controller:spawnAtPositions("enemy", positions, extra)
+        local enemies = self.entity_controller:spawnAtPositions("enemy", positions, extra)
+        for _, e in ipairs(enemies) do if math.random() < water_chance then e.water_carrier = true end end
     elseif p.enemy_formation == "spiral" then
         local positions = {}
         local count, center_x, radius = 8, self.game_width / 2, 100
@@ -718,7 +729,8 @@ function SpaceShooter:spawnEnemy()
             local angle = (i / count) * math.pi * 2
             positions[i] = {x = center_x + math.cos(angle) * radius, y = spawn_y + math.sin(angle) * radius * 0.3}
         end
-        self.entity_controller:spawnAtPositions("enemy", positions, extra)
+        local enemies = self.entity_controller:spawnAtPositions("enemy", positions, extra)
+        for _, e in ipairs(enemies) do if math.random() < water_chance then e.water_carrier = true end end
     else
         -- Single enemy spawn - use weighted configs if available (50% chance)
         local use_weighted = #self.enemy_weighted_configs > 0 and math.random() < 0.5
@@ -753,6 +765,11 @@ function SpaceShooter:spawnEnemy()
                 enemy.target_y = self.player.y + self.player.height / 2
             end
         end
+
+        -- Water carrier mutation
+        if enemy and math.random() < water_chance then
+            enemy.water_carrier = true
+        end
     end
 end
 
@@ -767,6 +784,11 @@ function SpaceShooter:onEnemyDestroyed(enemy)
         effects = {particles = false}
     })
     self:playSound("enemy_explode", 1.0)
+
+    -- Water carrier drops water on death
+    if enemy.water_carrier and self.water_pickup then
+        self.water_pickup:spawnAt(enemy.x + (enemy.width or 0) / 2, enemy.y, {vy = 80})
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -795,9 +817,12 @@ function SpaceShooter:initSpaceInvadersGrid()
             })
         end
     end
-    self.entity_controller:spawnAtPositions("enemy", positions, {
+    local enemies = self.entity_controller:spawnAtPositions("enemy", positions, {
         movement_pattern = 'grid', health = wave_health, wave_speed = wave_speed
     })
+    local wc_grid = self.di and self.di.config and self.di.config.water
+    local wc_chance = wc_grid and wc_grid.enemy_carrier_chance or 0
+    for _, e in ipairs(enemies) do if math.random() < wc_chance then e.water_carrier = true end end
 
     self.grid_state.initialized = true
     self.grid_state.initial_enemy_count = wave_rows * wave_columns

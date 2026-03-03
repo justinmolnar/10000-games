@@ -11,8 +11,9 @@ function DebugView:init(controller)
         { id = "add_tokens", text = "Add 10,000 Tokens", x = 50, y = 100, w = 250, h = 40 },
         { id = "unlock_all", text = "Unlock All Games", x = 50, y = 150, w = 250, h = 40 },
         { id = "complete_all", text = "Auto-Complete All Games", x = 50, y = 200, w = 250, h = 40 },
-        { id = "wipe_save", text = "Wipe Save & Reset", x = 50, y = 250, w = 250, h = 40, color = {0.8, 0, 0} },
-        { id = "close", text = "Close Debug Menu (F5)", x = 50, y = 350, w = 250, h = 40 },
+        { id = "add_water", text = "Add 1,000 Water", x = 50, y = 250, w = 250, h = 40 },
+        { id = "wipe_save", text = "Wipe Save & Reset", x = 50, y = 300, w = 250, h = 40, color = {0.8, 0, 0} },
+        { id = "close", text = "Close Debug Menu (F5)", x = 50, y = 400, w = 250, h = 40 },
         -- Add more buttons later (e.g., Go to Level)
     }
     self.hovered_button_id = nil

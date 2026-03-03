@@ -19,6 +19,7 @@ function Raycaster:init(game_data, cheats, di, variant_override, original_varian
     self.params = self.di.components.SchemaLoader.load(self.variant, "raycaster_schema", runtimeCfg)
 
     self:applyCheats({speed_modifier = {"move_speed", "turn_speed"}})
+    self:applySkillTreeBonuses()
     self:loadSprites()
     self:setupComponents()
     self:generateMaze()
@@ -51,6 +52,10 @@ function Raycaster:loadSprites()
             self.sprites[name] = sprite
         end
     end
+
+    -- Water sprite (shared asset)
+    local wok, wimg = pcall(love.graphics.newImage, "assets/sprites/shared/y2k_bunker/water_jug.png")
+    if wok then self.sprites["water"] = wimg end
 
     -- Load guard sprites
     self:loadGuardSprites()
@@ -345,6 +350,7 @@ function Raycaster:setupComponents()
         radius = 0.3,
         pickup_type = "water",
         movement_type = "static",
+        sprite = self.sprites["water"],
     }
 
     if next(entity_types) then
@@ -691,7 +697,15 @@ function Raycaster:placeLockedDoorsAndSecrets(critical_path_lookup)
             -- Shuffle and pick one
             local idx = math.floor(self.rng:random() * #key_candidates) + 1
             local tile = key_candidates[idx]
-            self.entity_controller:spawn("key_" .. key_type, tile.x + 0.5, tile.y + 0.5)
+            -- Remove any existing entity at this tile so key doesn't stack
+            local kx, ky = tile.x + 0.5, tile.y + 0.5
+            for _, existing in ipairs(self.entity_controller:getEntities()) do
+                if math.abs(existing.x - kx) < 0.5 and math.abs(existing.y - ky) < 0.5 then
+                    self.entity_controller:removeEntity(existing, "replaced_by_key")
+                    break
+                end
+            end
+            self.entity_controller:spawn("key_" .. key_type, kx, ky)
             actual_locked = actual_locked + 1
         else
             -- Can't place key reachably — unlock this door
@@ -796,6 +810,11 @@ function Raycaster:updateGameLogic(dt)
     self:collectPickups()
     self:checkGoal()
     self.visual_effects:update(dt)
+
+    if self.pickup_message then
+        self.pickup_message.timer = self.pickup_message.timer - dt
+        if self.pickup_message.timer <= 0 then self.pickup_message = nil end
+    end
 
     self.metrics.time_elapsed = self.time_elapsed
     self.metrics.mazes_completed = self.mazes_completed
@@ -1771,6 +1790,17 @@ function Raycaster:collectPickups()
 
         ::continue::
     end
+end
+
+function Raycaster:onWaterCollected(entity)
+    if self.di and self.di.playerData then
+        self.di.playerData:addWater(entity.value or 1)
+    end
+    self:playSound("treasure_collect", 0.7)
+    if self.visual_effects then
+        self.visual_effects:flash({color = {0.3, 0.7, 1.0, 0.3}, duration = 0.3, mode = "fade_out"})
+    end
+    self.pickup_message = {text = "+" .. (entity.value or 1) .. " WATER", color = {0.3, 0.7, 1.0}, timer = 1.5}
 end
 
 function Raycaster:checkGoal()

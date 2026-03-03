@@ -15,6 +15,7 @@ local PatternMovement = require('src.utils.game_components.pattern_movement')
 local SchemaLoader = require('src.utils.game_components.schema_loader')
 local SpriteUtils = require('src.utils.game_components.sprite_utils')
 local FormationSpawner = require('src.utils.game_components.formation_spawner')
+local PopupManager = require('src.games.score_popup').PopupManager
 local DodgeGame = BaseGame:extend('DodgeGame')
 
 --------------------------------------------------------------------------------
@@ -31,6 +32,7 @@ function DodgeGame:init(game_data, cheats, di, variant_override, original_varian
         advantage_modifier = {"lives", "max_collisions", "safe_zone_size"},
         performance_modifier = {"obstacle_spawn_rate"}
     })
+    self:applySkillTreeBonuses()
 
     self:setupArenaDimensions()
     local p = self.params
@@ -51,6 +53,10 @@ function DodgeGame:init(game_data, cheats, di, variant_override, original_varian
     })
     self:setupComponents()
     self:setupEntities()
+
+    self.water_timer_spawning = false
+    if self.water_pickup then self.water_pickup.max_active = 10 end
+    self.popup_manager = PopupManager:new()
 
     self.default_sprite_set = "dodge_base"
     self.view = DodgeView:new(self, self.variant)
@@ -359,13 +365,19 @@ function DodgeGame:setupComponents()
                     local def = game.params.enemy_types.splitter or {}
                     local n = (game.runtimeCfg.objects and game.runtimeCfg.objects.splitter and game.runtimeCfg.objects.splitter.shards_count) or def.shards_count or 3
                     local spread = math.rad(def.spread_deg or 35)
+                    local inherit_idx = entity.water_carrier and not entity.water_dropped and math.random(1, n) or nil
                     for i = 1, n do
                         local a = entity.angle + (math.random() * 2 - 1) * spread
-                        game:spawnEntity("obstacle", entity.x, entity.y, a, false, {
+                        local child = game:spawnEntity("obstacle", entity.x, entity.y, a, false, {
                             radius = math.max(def.shard_radius_min or 6, math.floor(entity.radius * (def.shard_radius_factor or 0.6))),
                             speed = game.object_speed * (def.shard_speed_factor or 0.36),
                             use_direction = true, type = 'linear'
                         })
+                        if i == inherit_idx and child then
+                            child.water_carrier = true
+                            child.water_dropped = false
+                            entity.water_dropped = true
+                        end
                     end
                     return true  -- remove entity
                 end
@@ -376,8 +388,9 @@ function DodgeGame:setupComponents()
             on_spawn = function(warning_entity, ds)
                 if ds.spawn_type == "formation" then return end
                 local type_name = warning_entity.spawn_type_name or game.entity_controller:pickWeightedType(game.spawn_composition, game.time_elapsed)
-                game:spawnEntity(type_name, warning_entity.x, warning_entity.y, warning_entity.spawn_angle or 0, true,
+                local entity = game:spawnEntity(type_name, warning_entity.x, warning_entity.y, warning_entity.spawn_angle or 0, true,
                     {spawn_target_x = warning_entity.spawn_target_x, spawn_target_y = warning_entity.spawn_target_y})
+                game:tryMutateWaterCarrier(entity)
             end
         }
     }
@@ -585,6 +598,7 @@ end
 --------------------------------------------------------------------------------
 
 function DodgeGame:updateGameLogic(dt)
+    if self.popup_manager then self.popup_manager:update(dt) end
     if self.game_over or self.completed then return end
 
     -- Spawn static hazards on first frame (play area dimensions now finalized)
@@ -635,6 +649,7 @@ function DodgeGame:updateGameLogic(dt)
     -- Systems
     self.entity_controller:update(dt)
     self.entity_controller:updateBehaviors(dt, self.entity_behaviors_config)
+    self:updateWaterCarriers(dt)
     self:updateFormation(dt)
     self.projectile_system:update(dt, {x_min = 0, x_max = self.game_width, y_min = 0, y_max = self.game_height})
     if self:checkProjectileCollisions() then return end
@@ -1091,6 +1106,69 @@ end
 
 
 --------------------------------------------------------------------------------
+-- WATER CARRIERS
+--------------------------------------------------------------------------------
+
+function DodgeGame:tryMutateWaterCarrier(entity)
+    if not entity or not self.water_pickup then return end
+    local wc = self.di and self.di.config and self.di.config.water
+    local chance = wc and wc.enemy_carrier_chance or 0
+    if chance <= 0 or math.random() > chance then return end
+    entity.water_carrier = true
+    entity.water_dropped = false
+end
+
+function DodgeGame:updateWaterCarriers(dt)
+    if not self.water_pickup then return end
+    local mode = self.params.water_drop_mode or "arena"
+    for _, obj in ipairs(self.entity_controller:getEntities()) do
+        if obj.water_carrier and not obj.water_dropped then
+            if mode == "y_axis" then
+                self:updateWaterCarrierAxis(obj, "y")
+            else
+                self:updateWaterCarrierArena(obj, dt)
+            end
+        end
+    end
+end
+
+function DodgeGame:updateWaterCarrierArena(obj, dt)
+    local inside = self.arena_controller:isInside(obj.x, obj.y)
+    if inside then
+        obj.water_inside_time = (obj.water_inside_time or 0) + dt
+        -- Escalating per-frame chance: ramps up the longer they're inside
+        if math.random() < obj.water_inside_time * 0.02 then
+            self:dropWaterAt(obj.x, obj.y)
+            obj.water_dropped = true
+        end
+    elseif obj.water_inside_time then
+        -- Was inside, now leaving — force drop
+        self:dropWaterAt(obj.x, obj.y)
+        obj.water_dropped = true
+    end
+end
+
+function DodgeGame:updateWaterCarrierAxis(obj, axis)
+    if not self.player then return end
+    if axis == "y" then
+        local prev = obj.water_prev_y
+        obj.water_prev_y = obj.y
+        if prev then
+            local py = self.player.y
+            local crossed = (prev < py and obj.y >= py) or (prev > py and obj.y <= py)
+            if crossed then
+                self:dropWaterAt(obj.x, py)
+                obj.water_dropped = true
+            end
+        end
+    end
+end
+
+function DodgeGame:dropWaterAt(x, y)
+    self.water_pickup:spawnAt(x, y)
+end
+
+--------------------------------------------------------------------------------
 -- SPAWNING (Unified Entity System)
 --------------------------------------------------------------------------------
 
@@ -1292,6 +1370,7 @@ function DodgeGame:spawnNext(sx, sy, forced_angle)
     end
 
     local angle
+    local tx, ty
     if p.spawn_edge == "top" then
         angle = forced_angle or (math.pi / 2)
     elseif p.spawn_edge == "bottom" then
@@ -1303,10 +1382,18 @@ function DodgeGame:spawnNext(sx, sy, forced_angle)
     else
         local ac = self.arena_controller
         local scale = (p.target_ring_min_scale or 1.2) + math.random() * ((p.target_ring_max_scale or 1.5) - (p.target_ring_min_scale or 1.2))
-        local tx, ty = ac:getPointOnShapeBoundary(math.random() * math.pi * 2, ac:getEffectiveRadius() * scale)
+        tx, ty = ac:getPointOnShapeBoundary(math.random() * math.pi * 2, ac:getEffectiveRadius() * scale)
         angle = forced_angle or math.atan2(ty - sy, tx - sx)
         angle = self.entity_controller:ensureInboundAngle(sx, sy, angle, bounds)
     end
+
+    -- For edge spawns, compute a target point along the angle inside the arena
+    if not tx then
+        local dist = math.min(self.game_width, self.game_height) * 0.5
+        tx = sx + math.cos(angle) * dist
+        ty = sy + math.sin(angle) * dist
+    end
+
     local type_name = self.entity_controller:pickWeightedType(self.spawn_composition, self.time_elapsed)
     local warning_chance = (self.runtimeCfg.spawn and self.runtimeCfg.spawn.warning_chance) or 0.7
     if self.warning_enabled and math.random() < warning_chance then
@@ -1319,7 +1406,8 @@ function DodgeGame:spawnNext(sx, sy, forced_angle)
             delayed_spawn = {timer = warning_duration, spawn_type = "warning"}
         })
     else
-        self:spawnEntity(type_name, sx, sy, angle, false, {spawn_target_x = tx, spawn_target_y = ty})
+        local entity = self:spawnEntity(type_name, sx, sy, angle, false, {spawn_target_x = tx, spawn_target_y = ty})
+        self:tryMutateWaterCarrier(entity)
     end
 end
 

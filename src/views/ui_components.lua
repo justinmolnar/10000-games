@@ -22,10 +22,17 @@ function UIComponents.inject(di)
     end
 end
 
-function UIComponents.drawButton(x, y, w, h, text, enabled, hovered)
+function UIComponents.drawButton(x, y, w, h, text, enabled, hovered, color)
     -- Background
     if not enabled then
         love.graphics.setColor(0.3, 0.3, 0.3)
+    elseif color then
+        local r, g, b = color[1], color[2], color[3]
+        if hovered then
+            love.graphics.setColor(math.min(1, r + 0.15), math.min(1, g + 0.15), math.min(1, b + 0.15))
+        else
+            love.graphics.setColor(r, g, b)
+        end
     elseif hovered then
         love.graphics.setColor(0.35, 0.6, 0.35)
     else

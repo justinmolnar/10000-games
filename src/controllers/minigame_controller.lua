@@ -131,9 +131,17 @@ function MinigameController:processCompletion()
     local ok_ratio, ratio = self:_safeCall('getCompletionRatio')
     ratio = ok_ratio and (ratio or 1.0) or 1.0
     local threshold = (self.game_data and self.game_data.token_threshold) or DEFAULT_COMPLETION_THRESHOLD
+    local threshold_reduction = self.player_data:getSkillTreeBonus("completion_threshold_reduction")
+    if threshold_reduction > 0 then
+        threshold = math.max(0, threshold - threshold_reduction)
+    end
     self.fail_gate_triggered = (ratio < threshold)
 
     self.current_performance = self.base_performance * (self.performance_mult or 1.0)
+    local token_bonus = self.player_data:getSkillTreeBonus("token_multiplier")
+    if token_bonus > 0 then
+        self.current_performance = self.current_performance * (1 + token_bonus)
+    end
     if self.fail_gate_triggered then self.current_performance = 0 end
 
     local tokens_earned = math.floor(self.current_performance)

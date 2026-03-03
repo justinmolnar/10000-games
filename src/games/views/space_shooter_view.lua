@@ -77,7 +77,8 @@ function SpaceShooterView:drawContent()
     local enemy_sprite_fallback = self.sprite_manager:getMetricSprite(game.data, "kills") or "game_mine_2-0"
     for _, enemy in ipairs(game.enemies) do
         local sprite_key = enemy.type and ("enemy_" .. enemy.type) or nil
-        self:drawEntityAt(enemy.x, enemy.y, enemy.width, enemy.height, sprite_key, enemy_sprite_fallback, {tint = tint})
+        local enemy_tint = enemy.water_carrier and {0.3, 0.7, 1.0} or tint
+        self:drawEntityAt(enemy.x, enemy.y, enemy.width, enemy.height, sprite_key, enemy_sprite_fallback, {tint = enemy_tint})
     end
 
     -- Draw player bullets (sprite or fallback)

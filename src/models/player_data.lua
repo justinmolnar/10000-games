@@ -52,6 +52,7 @@ function PlayerData:init(statistics_instance, di)
     self.water = 0
     self.water_lifetime = 0
     self.water_upgrades = {}  -- { [game_id] = level (0-5) }
+    self.water_skill_tree = {} -- { [node_id] = level }
 end
 
 function PlayerData:addTokens(amount)
@@ -139,6 +140,80 @@ end
 
 function PlayerData:setWaterUpgradeLevel(game_id, level)
     self.water_upgrades[game_id] = level
+end
+
+-- === Water Skill Tree ===
+
+function PlayerData:getSkillLevel(node_id)
+    return self.water_skill_tree[node_id] or 0
+end
+
+function PlayerData:setSkillLevel(node_id, level)
+    self.water_skill_tree[node_id] = level
+end
+
+function PlayerData:getSkillTreeBonus(effect_type)
+    local skill_tree_config = Config.water_skill_tree
+    if not skill_tree_config or not skill_tree_config.nodes then return 0 end
+
+    local total = 0
+    for node_id, node in pairs(skill_tree_config.nodes) do
+        if node.effect and node.effect.type == effect_type then
+            local level = self:getSkillLevel(node_id)
+            total = total + node.effect.value * level
+        end
+    end
+    return total
+end
+
+function PlayerData:canUnlockSkill(node_id, config)
+    local skill_tree_config = config and config.water_skill_tree
+    if not skill_tree_config or not skill_tree_config.nodes then return false end
+
+    local node = skill_tree_config.nodes[node_id]
+    if not node then return false end
+
+    local current_level = self:getSkillLevel(node_id)
+    if current_level >= node.max_level then return false end
+
+    for _, req_id in ipairs(node.requires) do
+        if self:getSkillLevel(req_id) < 1 then
+            return false
+        end
+    end
+    return true
+end
+
+function PlayerData:getSkillCost(node_id, config)
+    local skill_tree_config = config and config.water_skill_tree
+    if not skill_tree_config or not skill_tree_config.nodes then return 0 end
+
+    local node = skill_tree_config.nodes[node_id]
+    if not node then return 0 end
+
+    local current_level = self:getSkillLevel(node_id)
+    return math.floor(node.base_cost * (node.cost_multiplier ^ current_level))
+end
+
+function PlayerData:getParamModifications(category)
+    local mods = {}
+    local tree = Config.water_skill_tree
+    if not tree or not tree.nodes then return mods end
+    for node_id, node in pairs(tree.nodes) do
+        local level = self:getSkillLevel(node_id)
+        if level > 0 and node.effect and node.effect.type == "param_modify" then
+            local applies = false
+            for _, cat in ipairs(node.effect.categories or {}) do
+                if cat == category or cat == "all" then applies = true; break end
+            end
+            if applies then
+                for _, p in ipairs(node.effect.params or {}) do
+                    table.insert(mods, { keys = p.keys, mode = p.mode, value = p.value, level = level })
+                end
+            end
+        end
+    end
+    return mods
 end
 
 function PlayerData:unlockGame(game_id)
@@ -433,7 +508,8 @@ function PlayerData:getCheatBudget()
     local base = (Config.cheat_engine and Config.cheat_engine.default_budget) or 50
     local per_level = (Config.cheat_engine and Config.cheat_engine.budget_per_nc_level) or 25
     local nc_level = (self.space_defender_level or 1) - 1 -- level 1 = 0 completions
-    return base + per_level * nc_level
+    local skill_bonus = self:getSkillTreeBonus("global_budget_bonus")
+    return base + per_level * nc_level + skill_bonus
 end
 
 -- Budget is now computed dynamically from NC level, no setter needed
@@ -628,6 +704,7 @@ function PlayerData:serialize()
         water = self.water,
         water_lifetime = self.water_lifetime,
         water_upgrades = self.water_upgrades,
+        water_skill_tree = self.water_skill_tree,
     }
 end
 

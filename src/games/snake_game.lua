@@ -15,6 +15,7 @@ local BaseGame = require('src.games.base_game')
 local SnakeView = require('src.games.views.snake_view')
 local PhysicsUtils = require('src.utils.game_components.physics_utils')
 local EntityController = require('src.utils.game_components.entity_controller')
+local PopupManager = require('src.games.score_popup').PopupManager
 local SnakeGame = BaseGame:extend('SnakeGame')
 
 --------------------------------------------------------------------------------
@@ -32,6 +33,7 @@ function SnakeGame:init(game_data, cheats, di, variant_override, original_varian
         advantage_modifier = {"victory_limit", "food_count"},
         performance_modifier = {"obstacle_count", "ai_snake_count"}
     })
+    self:applySkillTreeBonuses()
 
     self:setupArena()
     -- Large arenas (arena_size 1.5+) can have 200+ border wall entities alone
@@ -41,6 +43,7 @@ function SnakeGame:init(game_data, cheats, di, variant_override, original_varian
     self:setupSnake()
     self:setupComponents()  -- Configures arena_controller and movement_controller (needs self.snakes)
 
+    self.popup_manager = PopupManager:new()
     self.view = SnakeView:new(self, self.variant)
     self:loadAssets()
 end
@@ -263,9 +266,29 @@ function SnakeGame:setupWaterPickup()
         self:onWaterCollected(entity)
         self.entity_controller:removeEntity(entity, "collected")
     end
-    -- Grid-space bounds instead of pixel-space
-    self.water_pickup:setBounds(0, 0, self.grid_width, self.grid_height)
+    -- Spawn water on grid cells like food, not at random floats
+    self.water_timer_spawning = false
     self._water_setup_done = true
+end
+
+function SnakeGame:spawnWaterEntity()
+    if not self.water_pickup then return nil end
+    local ec = self.game and self.game.entity_controller or self.entity_controller
+    if #ec:getEntitiesByCategory("water") >= self.water_pickup.max_active then return nil end
+    local margin = (self.params.wall_mode == "wrap") and 0 or 1
+    local bounds = {
+        min_x = margin, max_x = self.grid_width - 1 - margin,
+        min_y = margin, max_y = self.grid_height - 1 - margin
+    }
+    local x, y = self:getPatternSpawnPosition("random", bounds)
+    if x then
+        return ec:spawn("water", x, y, {
+            age = 0,
+            water_lifetime = self.water_pickup.lifetime,
+            value = self.water_pickup.value,
+        })
+    end
+    return nil
 end
 
 --------------------------------------------------------------------------------
@@ -455,8 +478,23 @@ function SnakeGame:setPlayArea(width, height)
     self:_spawnInitialFood()
 end
 
+function SnakeGame:onWaterCollected(entity)
+    local px = entity.x * self.GRID_SIZE
+    local py = entity.y * self.GRID_SIZE
+    if self.di and self.di.playerData then
+        self.di.playerData:addWater(entity.value or 1)
+    end
+    if self.popup_manager then
+        self.popup_manager:add(px, py, "+" .. (entity.value or 1) .. " WATER", {0.3, 0.7, 1.0})
+    end
+    if self.visual_effects then
+        self.visual_effects:flash({color = {0.3, 0.7, 1.0, 0.3}, duration = 0.3, mode = "fade_out"})
+    end
+end
+
 function SnakeGame:updateGameLogic(dt)
     self.metrics.survival_time = self.time_elapsed
+    if self.popup_manager then self.popup_manager:update(dt) end
 
     -- Update food movement
     if self.params.food_movement ~= "static" then
@@ -482,6 +520,13 @@ function SnakeGame:updateGameLogic(dt)
                 self:removeFood(food)
                 self:spawnFoodEntity()
             end
+        end
+    end
+
+    -- Water spawning (on grid, like food)
+    if self.water_pickup and self.entity_controller:tickTimer(self, "water_spawn_timer", 1 / self.water_pickup.spawn_interval, dt) then
+        if self.water_pickup:rollChance() then
+            self:spawnWaterEntity()
         end
     end
 

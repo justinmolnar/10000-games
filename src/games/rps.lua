@@ -12,6 +12,7 @@ function RPS:init(game_data, cheats, di, variant_override, original_variant)
     local SchemaLoader = self.di.components.SchemaLoader
     local runtimeCfg = self.di.config and self.di.config.games and self.di.config.games.rps
     self.params = SchemaLoader.load(self.variant, "rps_schema", runtimeCfg)
+    self:applySkillTreeBonuses()
 
     self:setupGameState()
     self:setupComponents()
@@ -70,6 +71,10 @@ function RPS:setupGameState()
 
     -- RNG for deterministic AI
     self.rng = love.math.newRandomGenerator(self.seed or os.time())
+
+    -- Water rounds
+    self.water_round = false
+    self._water_round_chance = (self.di and self.di.config and self.di.config.water and self.di.config.water.round_water_chance) or 0
 end
 
 function RPS:setupComponents()
@@ -98,6 +103,7 @@ function RPS:setupComponents()
         if not self.current_special_round then
             self.current_special_round = self:activateSpecialRound()
         end
+        self:rollWaterRound()
     end)
 
     -- Double hands removal timer
@@ -127,6 +133,8 @@ function RPS:setupComponents()
 
     -- Try to activate special round for first throw
     self.current_special_round = self:activateSpecialRound()
+    self.water_timer_spawning = false
+    self:rollWaterRound()
 end
 
 --------------------------------------------------------------------------------
@@ -306,6 +314,7 @@ function RPS:onRoundWin()
 
     self:playSound("round_win", 0.8)
     self:showScorePopup(round_points + streak_points)
+    self:awardWaterRound()
     self.visual_effects:flash({color = {0, 1, 0, 0.3}, duration = 0.2, mode = "fade_out"})
 
     if self.current_special_round == "sudden_death" then
@@ -336,6 +345,7 @@ function RPS:onPerfectGame()
 end
 
 function RPS:onRoundLose()
+    self.water_round = false
     local p = self.params
     self.ai_wins = self.ai_wins + 1
     self.current_win_streak = 0
@@ -356,6 +366,7 @@ function RPS:onRoundLose()
 end
 
 function RPS:onRoundTie()
+    self.water_round = false
     self.ties = self.ties + 1
     self:playSound("round_tie", 0.6)
     self:handleLifeLoss("tie")
@@ -429,6 +440,28 @@ function RPS:setPlayArea(width, height)
     RPS.super.setPlayArea(self, width, height)
     self.viewport_width = width
     self.viewport_height = height
+end
+
+--------------------------------------------------------------------------------
+-- WATER ROUNDS
+--------------------------------------------------------------------------------
+
+function RPS:rollWaterRound()
+    self.water_round = self._water_round_chance > 0 and self.rng:random() < self._water_round_chance
+end
+
+function RPS:awardWaterRound()
+    if not self.water_round then return end
+    self.water_round = false
+    local wc = self.di and self.di.config and self.di.config.water
+    local value = wc and wc.value or 1
+    if self.di and self.di.playerData then
+        self.di.playerData:addWater(value)
+    end
+    if self.water_pickup then self.water_pickup:playCollectSound() end
+    local w = self.viewport_width or love.graphics.getWidth()
+    local h = self.viewport_height or love.graphics.getHeight()
+    self.popup_manager:add(w / 2, h / 2 - 80, "+" .. value .. " WATER", {0.3, 0.7, 1.0})
 end
 
 --------------------------------------------------------------------------------

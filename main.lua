@@ -191,6 +191,7 @@ function love.load()
         player_data.water = math.floor(player_data.water or 0)
         player_data.water_lifetime = math.floor(player_data.water_lifetime or 0)
         player_data.water_upgrades = player_data.water_upgrades or {}
+        player_data.water_skill_tree = player_data.water_skill_tree or {}
     else
         print("No save found or load failed, starting new game")
         player_data:init(statistics, di)
@@ -394,7 +395,6 @@ function love.keypressed(key, scancode, isrepeat)
         end
         return
     end
-
     -- 3D sandbox toggle (F8) — global, not interceptable by windows
     if key == 'f8' then
         if not state_machine then return end

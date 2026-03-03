@@ -165,7 +165,7 @@ function DodgeView:drawContent()
 
     -- Draw objects/enemies (skip types rendered separately)
     for i, obj in ipairs(game.objects) do
-        if obj.type_name == 'hole' or obj.type_name == 'warning' then goto continue_obj end
+        if obj.type_name == 'hole' or obj.type_name == 'warning' or obj.type_name == 'water' then goto continue_obj end
 
         -- Draw obstacle trail first (behind object)
         if obj.trail_positions and #obj.trail_positions > 1 then
@@ -199,9 +199,11 @@ function DodgeView:drawContent()
 
         local sprite_key = obj.enemy_type and ("enemy_" .. obj.enemy_type) or nil
         local size = obj.radius * 2
+        local carrier_tint = obj.water_carrier and {0.3, 0.7, 1.0} or nil
         self:drawEntityCentered(obj.x, obj.y, size, size, sprite_key, "msg_error-0", {
             rotation = rotation,
-            fallback_tint = self:getIndexedColor(i)
+            tint = carrier_tint,
+            fallback_tint = carrier_tint or self:getIndexedColor(i)
         })
 
     ::continue_obj::
@@ -219,6 +221,9 @@ function DodgeView:drawContent()
         end
         self:renderFog(game_width, game_height, sources, fog_radius)
     end
+
+    GameBaseView.drawWater(self)
+    GameBaseView.drawPopups(self)
 
     -- Close camera shake transform
     g.pop()
@@ -238,5 +243,9 @@ function DodgeView:drawContent()
     end
     y = game.hud:drawStat("Difficulty", game.difficulty_level, y)
 end
+
+-- Drawn inside drawContent (within camera transform) instead
+function DodgeView:drawWater() end
+function DodgeView:drawPopups() end
 
 return DodgeView

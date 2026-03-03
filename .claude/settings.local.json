@@ -86,7 +86,9 @@
       "WebFetch(domain:archive.org)",
       "Bash(python3:*)",
       "Bash(node:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(timeout 5 /c/Program:*)"
     ],
     "deny": [],
     "ask": []

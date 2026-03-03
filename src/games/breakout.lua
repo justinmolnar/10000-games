@@ -30,6 +30,7 @@ function Breakout:init(game_data, cheats, di, variant_override, original_variant
         advantage_modifier = {"paddle_width"},
         performance_modifier = {"ball_count"}
     })
+    self:applySkillTreeBonuses()
 
     self.bricks_destroyed, self.bricks_left, self.balls_lost, self.last_extra_ball_threshold = 0, 0, 0, 0
     self:createPaddle({
@@ -39,6 +40,12 @@ function Breakout:init(game_data, cheats, di, variant_override, original_variant
     self:setupComponents()
     self:setupEntities()
     self.view = BreakoutView:new(self)
+
+    -- Water drops from bricks instead of timer spawning
+    self.water_timer_spawning = false
+    if self.water_pickup then
+        self.water_pickup.max_active = 10
+    end
 end
 
 function Breakout:setupComponents()
@@ -464,6 +471,17 @@ function Breakout:onBrickDestroyed(brick)
         color_func = function(b) return {1, 0.5 + (b.max_health - 1) * 0.1, 0} end,
         extra_life_check = true
     })
+
+    -- Water drop via component
+    if self.water_pickup then
+        local wc = self.di and self.di.config and self.di.config.water
+        local drop_chance = (wc and wc.brick_drop_chance) or 0.5
+        if self.rng:random() <= drop_chance then
+            local bx = brick.x + (brick.width or 0) / 2
+            local by = brick.y + (brick.height or 0) / 2
+            self.water_pickup:spawnAt(bx, by, {vy = self.params.powerup_fall_speed or 100})
+        end
+    end
 end
 
 --------------------------------------------------------------------------------

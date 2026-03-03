@@ -131,7 +131,7 @@
     "name": "CheatEngine",
     "executable": "cheatengine.exe",
     "state_class_path": "states.cheat_engine_state",
-    "dependencies": ["player_data", "game_data", "state_machine", "save_manager", "cheat_system"],
+    "dependencies": ["player_data", "game_data", "state_machine", "save_manager", "cheat_system", "di"],
     "icon_sprite": "gears_tweakui_a-0",
     "icon_color": [0.1, 0.8, 0.1],
     "on_desktop": true,

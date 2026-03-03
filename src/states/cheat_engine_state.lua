@@ -48,6 +48,10 @@ function CheatEngineState:init(player_data, game_data, state_machine, save_manag
     -- Slider drag state
     self.dragging_slider = nil -- { param_index = N, param_key = "key" }
 
+    -- Skill tree tab
+    self.active_tab = "params" -- "params" or "skill_tree"
+    self.hovered_skill_node = nil
+
     self.viewport = nil
 end
 
@@ -228,14 +232,18 @@ function CheatEngineState:modifyParameter(param_key, new_value, step_size)
             tostring(param.min), tostring(param.max)))
     end
 
-    -- Apply modification via CheatSystem
+    -- Apply modification via CheatSystem (with water discount + skill tree discount)
+    local water_level = self.player_data:getWaterUpgradeLevel(self.selected_game_id)
+    local skill_reduction = self.player_data:getSkillTreeBonus("global_cost_reduction")
     local result = self.cheat_system:applyModification(
         self.player_data,
         self.selected_game_id,
         param_key,
         param.type,
         param.original,
-        clamped_value
+        clamped_value,
+        water_level,
+        skill_reduction
     )
 
     if result.success then
@@ -403,7 +411,9 @@ function CheatEngineState:update(dt)
         self.current_modifications,
         self.step_size,
         self.viewport.width,
-        self.viewport.height
+        self.viewport.height,
+        self.active_tab,
+        self.player_data
     )
 end
 
@@ -421,8 +431,96 @@ function CheatEngineState:draw()
         self.viewport.width,
         self.viewport.height,
         self.game_scroll_offset,
-        self.param_scroll_offset
+        self.param_scroll_offset,
+        self.active_tab
     )
+end
+
+function CheatEngineState:upgradeWater()
+    if not self.selected_game_id then
+        print("Water upgrade: no game selected")
+        return
+    end
+
+    local config = self.di and self.di.config
+    local water_config = config and config.water_upgrades
+    if not water_config then
+        print("Water upgrade: no water_config found in di.config")
+        return
+    end
+
+    local current_level = self.player_data:getWaterUpgradeLevel(self.selected_game_id)
+    local max_level = water_config.max_level or 5
+    if current_level >= max_level then
+        print("Water upgrade: already at max level " .. max_level)
+        return
+    end
+
+    local next_level = current_level + 1
+    local costs = water_config.costs or {}
+    local cost = costs[next_level]
+    if not cost then
+        print("Water upgrade: no cost defined for level " .. next_level)
+        return
+    end
+
+    local current_water = self.player_data:getWater()
+    print(string.format("Water upgrade: need %d, have %d", cost, current_water))
+
+    if not self.player_data:hasWater(cost) then
+        print("Water upgrade: insufficient water")
+        if self.di and self.di.systemSounds then
+            self.di.systemSounds:playSystemSound('error')
+        end
+        return
+    end
+
+    self.player_data:spendWater(cost)
+    self.player_data:setWaterUpgradeLevel(self.selected_game_id, next_level)
+    self.save_manager.save(self.player_data)
+
+    if self.di and self.di.systemSounds then
+        self.di.systemSounds:playSystemSound('confirm')
+    end
+
+    -- Refresh modifications display (costs changed)
+    self.current_modifications = self.player_data:getGameModifications(self.selected_game_id)
+
+    print(string.format("Water upgrade: %s now level %d/%d", self.selected_game_id, next_level, max_level))
+end
+
+function CheatEngineState:upgradeSkill(node_id)
+    local config = self.di and self.di.config
+    if not config then return end
+
+    if not self.player_data:canUnlockSkill(node_id, config) then
+        print("Skill upgrade: prerequisites not met for " .. node_id)
+        if self.di and self.di.systemSounds then
+            self.di.systemSounds:playSystemSound('error')
+        end
+        return
+    end
+
+    local cost = self.player_data:getSkillCost(node_id, config)
+    if not self.player_data:hasWater(cost) then
+        print(string.format("Skill upgrade: need %d water, have %d", cost, self.player_data:getWater()))
+        if self.di and self.di.systemSounds then
+            self.di.systemSounds:playSystemSound('error')
+        end
+        return
+    end
+
+    self.player_data:spendWater(cost)
+    local new_level = self.player_data:getSkillLevel(node_id) + 1
+    self.player_data:setSkillLevel(node_id, new_level)
+    self.save_manager.save(self.player_data)
+
+    if self.di and self.di.systemSounds then
+        self.di.systemSounds:playSystemSound('confirm')
+    end
+
+    local node = config.water_skill_tree.nodes[node_id]
+    print(string.format("Skill upgrade: %s now level %d/%d", node_id, new_level, node.max_level))
 end
 
 function CheatEngineState:keypressed(key)
@@ -432,8 +530,15 @@ function CheatEngineState:keypressed(key)
     if key == 'escape' then
         result_event = { type = "close_window" }
 
-    -- Game navigation (up/down and w/s)
-    elseif key == 'up' or key == 'w' then
+    elseif key == 'tab' then
+        self.active_tab = (self.active_tab == "params") and "skill_tree" or "params"
+
+    -- Water upgrade
+    elseif key == 'w' then
+        self:upgradeWater()
+
+    -- Game navigation (up/down)
+    elseif key == 'up' then
         if #self.modifiable_params > 0 then
             -- Navigate parameters
             self.selected_param_index = math.max(1, self.selected_param_index - 1)
@@ -578,7 +683,8 @@ function CheatEngineState:mousepressed(x, y, button)
         self.step_size,
         self.selected_param_index,
         self.viewport.width,
-        self.viewport.height
+        self.viewport.height,
+        self.active_tab
     )
 
     if not event then return false end
@@ -643,6 +749,18 @@ function CheatEngineState:mousepressed(x, y, button)
     elseif event.name == "set_step_size" then
         self.step_size = event.value
         print("Step size: " .. tostring(event.value))
+        result_event = { type = "content_interaction" }
+
+    elseif event.name == "water_upgrade" then
+        self:upgradeWater()
+        result_event = { type = "content_interaction" }
+
+    elseif event.name == "upgrade_skill" then
+        self:upgradeSkill(event.node_id)
+        result_event = { type = "content_interaction" }
+
+    elseif event.name == "switch_tab" then
+        self.active_tab = event.tab
         result_event = { type = "content_interaction" }
 
     elseif event.name == "launch_game" then

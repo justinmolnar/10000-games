@@ -12,6 +12,7 @@ function HiddenObject:init(game_data, cheats, di, variant_override, original_var
     local SchemaLoader = self.di.components.SchemaLoader
     local runtimeCfg = self.di.config and self.di.config.games and self.di.config.games.hidden_object
     self.params = SchemaLoader.load(self.variant, "hidden_object_schema", runtimeCfg)
+    self:applySkillTreeBonuses()
 
     self:setupGameState()
     self:setupComponents()
