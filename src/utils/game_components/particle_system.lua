@@ -38,7 +38,8 @@ function ParticleSystem:emit(x, y, count, particle_type, options)
             color = {color[1], color[2], color[3], color[4] or 1},
             type = particle_type or "explosion",
             alive = true,
-            gravity = options.gravity or 0
+            gravity = options.gravity or 0,
+            friction = options.friction or 1.0
         }
 
         table.insert(self.particles, particle)
@@ -81,6 +82,13 @@ function ParticleSystem:update(dt)
             p.vy = p.vy + p.gravity * dt
         end
 
+        -- Apply friction
+        if p.friction and p.friction < 1.0 then
+            local f = p.friction ^ (dt * 60)
+            p.vx = p.vx * f
+            p.vy = p.vy * f
+        end
+
         -- Update rotation (for confetti)
         if p.rotation_speed then
             p.rotation = (p.rotation or 0) + p.rotation_speed * dt
@@ -110,12 +118,11 @@ function ParticleSystem:draw()
 
         love.graphics.setColor(p.color)
 
+        local draw_size = p.size * (p.lifetime / p.max_lifetime)
         if p.type == "confetti" then
-            -- Draw rectangles for confetti
-            love.graphics.rectangle('fill', -p.size / 2, -p.size / 2, p.size, p.size * 1.5)
+            love.graphics.rectangle('fill', -draw_size / 2, -draw_size / 2, draw_size, draw_size * 1.5)
         else
-            -- Draw squares for everything else
-            love.graphics.rectangle('fill', -p.size / 2, -p.size / 2, p.size, p.size)
+            love.graphics.rectangle('fill', -draw_size / 2, -draw_size / 2, draw_size, draw_size)
         end
 
         love.graphics.pop()

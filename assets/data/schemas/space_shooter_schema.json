@@ -687,6 +687,13 @@
             "max": 500,
             "description": "Target kills or survival seconds"
         },
+        "camera_shake_intensity": {
+            "type": "number",
+            "default": 3.0,
+            "min": 0.0,
+            "max": 20.0,
+            "description": "Intensity of camera shake on enemy death"
+        },
         "player_width": {
             "type": "number",
             "default": 30,
@@ -850,9 +857,9 @@
         "visual_effects": {
             "type": "VisualEffects",
             "config": {
-                "camera_shake_enabled": false,
+                "camera_shake_enabled": true,
                 "particle_effects_enabled": true,
-                "screen_flash_enabled": false
+                "screen_flash_enabled": true
             }
         },
         "popup_manager": {

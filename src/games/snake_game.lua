@@ -203,6 +203,14 @@ function SnakeGame:setupComponents()
     -- Note: createComponentsFromSchema called earlier in init (arena_controller needed by setupSnake)
     self:createVictoryConditionFromSchema()
 
+    -- Manual visual_effects init (no schema section for snake)
+    local VisualEffects = self.di.components.VisualEffects
+    self.visual_effects = VisualEffects:new({
+        camera_shake_enabled = true,
+        screen_flash_enabled = true,
+        particle_effects_enabled = true
+    })
+
     -- Set computed arena values (must set base_width/current_width, not just width)
     self.arena_controller.base_width = self.grid_width
     self.arena_controller.base_height = self.grid_height
@@ -495,6 +503,7 @@ end
 function SnakeGame:updateGameLogic(dt)
     self.metrics.survival_time = self.time_elapsed
     if self.popup_manager then self.popup_manager:update(dt) end
+    if self.visual_effects then self.visual_effects:update(dt) end
 
     -- Update food movement
     if self.params.food_movement ~= "static" then
@@ -1064,6 +1073,16 @@ function SnakeGame:collectFood(food, snake)
             self.params.snake_speed = self.params.snake_speed + self.params.speed_increase_per_food
         end
         self:playSound(food.type == "golden" and "success" or "eat", 0.7)
+
+        if self.visual_effects and self.visual_effects.particles then
+            local GRID_SIZE = self.GRID_SIZE or 20
+            local fx = food.x * GRID_SIZE + GRID_SIZE / 2
+            local fy = food.y * GRID_SIZE + GRID_SIZE / 2
+            local color = food.type == "golden" and {1, 0.85, 0.2} or {0.2, 1, 0.2}
+            self.visual_effects.particles:emit(fx, fy, 8, "sparkle", {
+                color = color, speed = 60, lifetime = 0.5, size = 3, friction = 0.93
+            })
+        end
         if self.params.girth_growth > 0 then
             self.segments_for_next_girth = self.segments_for_next_girth - 1
             if self.segments_for_next_girth <= 0 then

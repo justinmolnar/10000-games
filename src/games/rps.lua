@@ -316,6 +316,13 @@ function RPS:onRoundWin()
     self:showScorePopup(round_points + streak_points)
     self:awardWaterRound()
     self.visual_effects:flash({color = {0, 1, 0, 0.3}, duration = 0.2, mode = "fade_out"})
+    if self.visual_effects.particles then
+        local w = self.viewport_width or love.graphics.getWidth()
+        local h = self.viewport_height or love.graphics.getHeight()
+        self.visual_effects.particles:emit(w / 2, h / 2, 8, "sparkle", {
+            color = {0.2, 1, 0.2}, speed = 80, lifetime = 0.5, size = 3, friction = 0.93
+        })
+    end
 
     if self.current_special_round == "sudden_death" then
         self.victory = true
@@ -356,6 +363,13 @@ function RPS:onRoundLose()
 
     self:playSound("round_lose", 0.8)
     self.visual_effects:flash({color = {1, 0, 0, 0.3}, duration = 0.2, mode = "fade_out"})
+    if self.visual_effects.particles then
+        local w = self.viewport_width or love.graphics.getWidth()
+        local h = self.viewport_height or love.graphics.getHeight()
+        self.visual_effects.particles:emit(w / 2, h / 2, 6, "explosion", {
+            color = {1, 0.2, 0.2}, speed = 100, lifetime = 0.4, size = 4, gravity = 200
+        })
+    end
 
     if self.current_special_round == "sudden_death" then
         self.game_over = true

@@ -158,7 +158,16 @@ function MemoryMatchView:drawContent()
         ::continue::
     end
     
+    -- Draw particles and screen flash
+    if game.visual_effects then
+        game.visual_effects:drawParticles()
+    end
+
     game.hud:draw(game.game_width, game.game_height)
+
+    if game.visual_effects then
+        game.visual_effects:drawScreenFlash(game.game_width, game.game_height)
+    end
 
     -- Extra stats
     if not game.vm_render_mode then

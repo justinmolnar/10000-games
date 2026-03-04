@@ -123,6 +123,9 @@ function BreakoutView:drawContent()
     -- Standard HUD - NOT affected by camera shake or fog
     self.game.hud:draw(self.game.arena_width, self.game.arena_height)
 
+    -- Screen flash (over everything)
+    self.game.visual_effects:drawScreenFlash(self.game.arena_width, self.game.arena_height)
+
     -- Extra stats
     local y = 90
     if self.game.combo > 0 then

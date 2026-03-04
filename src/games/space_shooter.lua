@@ -500,6 +500,13 @@ function SpaceShooter:playerShoot(charge_multiplier)
 
     self.health_system:onShoot()
     self:playSound("shoot", 0.6)
+
+    if self.visual_effects and self.visual_effects.particles then
+        self.visual_effects.particles:emit(spawn_x, spawn_y, 2, "trail", {
+            color = {1, 1, 0.3}, speed = 40, lifetime = 0.15, size = 2,
+            direction = -math.pi / 2, spread = math.pi / 4
+        })
+    end
 end
 
 -- Spawn a single bullet
@@ -783,7 +790,8 @@ function SpaceShooter:onEnemyDestroyed(enemy)
     self:handleEntityDestroyed(enemy, {
         destroyed_counter = "kills",
         scoring = {base = 10, combo_mult = 0},
-        effects = {particles = false}
+        effects = {particles = true, shake = 0.1},
+        color_func = function() return {1, 0.8, 0.2} end
     })
     self:playSound("enemy_explode", 1.0)
 
@@ -1384,6 +1392,14 @@ function SpaceShooter:collectPowerup(powerup)
         data.orig_bullets = p.bullets_per_shot
         p.bullet_pattern = "spread"
         p.bullets_per_shot = 5
+    end
+
+    if self.visual_effects and self.visual_effects.particles then
+        local px = self.player.x + (self.player.width or 0) / 2
+        local py = self.player.y + (self.player.height or 0) / 2
+        self.visual_effects.particles:emit(px, py, 6, "sparkle", {
+            color = {0.2, 1, 0.2}, speed = 80, lifetime = 0.5, size = 3, friction = 0.95
+        })
     end
 
     self.effect_system:activate(effect_type, duration, data)

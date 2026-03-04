@@ -580,6 +580,13 @@ function BaseGame:onComplete()
         end
     end
 
+    -- Victory confetti
+    if self.victory and self.visual_effects and self.visual_effects.particles then
+        local w = self.arena_width or self.game_width or self.viewport_width or 400
+        local h = self.arena_height or self.game_height or self.viewport_height or 300
+        self.visual_effects.particles:emitConfetti(w / 2, h / 2, 25)
+    end
+
     -- Stop music
     self:stopMusic()
 
@@ -1105,6 +1112,13 @@ function BaseGame:getEntityShootParams(entity)
     return center_x, center_y, angle
 end
 
+-- Get player/paddle position for effects (games store it differently)
+function BaseGame:getPlayerPosition()
+    if self.player then return self.player.x, self.player.y end
+    if self.paddle then return self.paddle.x, self.paddle.y end
+    return nil, nil
+end
+
 -- Take damage with sound and state updates
 -- amount: damage amount (default 1)
 -- sound: sound to play (default "hit")
@@ -1123,6 +1137,20 @@ function BaseGame:takeDamage(amount, sound)
         self.deaths = (self.deaths or 0) + 1
         self.lives = self.health_system.lives
         self.combo = 0
+
+        -- Hit effects
+        if self.visual_effects then
+            self.visual_effects:flash({color = {1, 0, 0, 0.3}, duration = 0.3, mode = "fade_out"})
+            self.visual_effects:shake({intensity = 3, duration = 0.2, mode = "timer"})
+            if self.visual_effects.particles then
+                local px, py = self:getPlayerPosition()
+                if px then
+                    self.visual_effects.particles:emit(px, py, 12, "explosion", {
+                        color = {1, 0.2, 0.2}, speed = 120, lifetime = 0.4, size = 4, gravity = 200
+                    })
+                end
+            end
+        end
     end
 
     return absorbed

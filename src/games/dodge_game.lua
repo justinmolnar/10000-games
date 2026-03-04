@@ -1102,6 +1102,14 @@ function DodgeGame:onObjectDodged()
     if self.current_combo > self.metrics.combo then
         self.metrics.combo = self.current_combo
     end
+
+    if self.current_combo > 0 and self.current_combo % 5 == 0 then
+        if self.visual_effects and self.visual_effects.particles then
+            self.visual_effects.particles:emit(self.player.x, self.player.y, 6, "sparkle", {
+                color = {0.2, 1, 0.2}, speed = 60, lifetime = 0.5, size = 3, friction = 0.93
+            })
+        end
+    end
 end
 
 

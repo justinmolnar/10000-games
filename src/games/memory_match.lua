@@ -114,6 +114,14 @@ function MemoryMatch:setupComponents()
     -- Create fog_controller and hud from schema
     self:createComponentsFromSchema()
 
+    -- Manual visual_effects init (no schema section for memory_match)
+    local VisualEffects = self.di.components.VisualEffects
+    self.visual_effects = VisualEffects:new({
+        camera_shake_enabled = false,
+        screen_flash_enabled = true,
+        particle_effects_enabled = true
+    })
+
     -- EntityController for cards (game-specific config)
     local EntityController = self.di.components.EntityController
     self.entity_controller = EntityController:new({
@@ -282,6 +290,8 @@ function MemoryMatch:updateGameLogic(dt)
     local p = self.params
     local PhysicsUtils = self.di.components.PhysicsUtils
 
+    if self.visual_effects then self.visual_effects:update(dt) end
+
     -- Update timers (callbacks fire automatically)
     self.memorize_timer:update(dt)
     self.match_check_timer:update(dt)
@@ -427,6 +437,16 @@ function MemoryMatch:onMatchSuccess(matched_value, selected)
     end
 
     self:playSound("match", 1.0)
+
+    if self.visual_effects and self.visual_effects.particles then
+        for _, card in ipairs(selected) do
+            local cx = card.x + self.CARD_WIDTH / 2
+            local cy = card.y + self.CARD_HEIGHT / 2
+            self.visual_effects.particles:emit(cx, cy, 6, "sparkle", {
+                color = {1, 0.85, 0.2}, speed = 60, lifetime = 0.5, size = 3, friction = 0.93
+            })
+        end
+    end
 end
 
 function MemoryMatch:onMatchFailure(selected)
@@ -441,6 +461,16 @@ function MemoryMatch:onMatchFailure(selected)
         card.flip_anim:start(-1)  -- Flip down
     end
     self:playSound("mismatch", 0.8)
+
+    if self.visual_effects and self.visual_effects.particles then
+        for _, card in ipairs(selected) do
+            local cx = card.x + self.CARD_WIDTH / 2
+            local cy = card.y + self.CARD_HEIGHT / 2
+            self.visual_effects.particles:emit(cx, cy, 4, "explosion", {
+                color = {1, 0.3, 0.2}, speed = 40, lifetime = 0.3, size = 2
+            })
+        end
+    end
 end
 
 --------------------------------------------------------------------------------

@@ -375,6 +375,14 @@ function CoinFlip:onCorrectFlip()
 
     self:awardWaterRound()
     self.visual_effects:flash({color = {0, 1, 0, 0.3}, duration = 0.2, mode = "fade_out"})
+    if self.visual_effects.particles then
+        local w = self.viewport_width or love.graphics.getWidth()
+        local h = self.viewport_height or love.graphics.getHeight()
+        self.visual_effects.particles:emit(w / 2, h / 2, 5, "sparkle", {
+            color = {0.2, 1, 0.2}, speed = 60, lifetime = 0.4, size = 3,
+            direction = -math.pi / 2, spread = math.pi
+        })
+    end
     if self.current_streak > 0 and self.current_streak % 5 == 0 then
         self:playSound("streak", 0.8)
     end

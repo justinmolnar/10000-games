@@ -566,7 +566,7 @@
             "config": {
                 "camera_shake_enabled": "$camera_shake_enabled",
                 "particle_effects_enabled": "$particle_effects_enabled",
-                "screen_flash_enabled": false,
+                "screen_flash_enabled": true,
                 "shake_mode": "timer",
                 "shake_decay": 0.9
             }

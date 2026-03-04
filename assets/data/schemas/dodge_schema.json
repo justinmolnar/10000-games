@@ -680,8 +680,8 @@
             "type": "VisualEffects",
             "config": {
                 "camera_shake_enabled": true,
-                "screen_flash_enabled": false,
-                "particle_effects_enabled": false,
+                "screen_flash_enabled": true,
+                "particle_effects_enabled": true,
                 "shake_mode": "exponential",
                 "shake_decay": 0.9
             }

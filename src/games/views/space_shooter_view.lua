@@ -17,6 +17,10 @@ function SpaceShooterView:drawContent()
     local game_width = game.game_width
     local game_height = game.game_height
 
+    -- Apply camera shake
+    g.push()
+    game.visual_effects:applyCameraShake()
+
     -- Draw background
     self:drawBackground()
 
@@ -152,7 +156,15 @@ function SpaceShooterView:drawContent()
         g.circle("line", zone.x, zone.y, zone.radius)
     end
 
+    -- Draw particles
+    game.visual_effects:drawParticles()
+
+    g.pop()  -- End camera shake transform
+
     game.hud:draw(game.game_width, game.game_height)
+
+    -- Screen flash (over everything)
+    game.visual_effects:drawScreenFlash(game_width, game_height)
 
     -- Extra stats
     if not game.vm_render_mode then

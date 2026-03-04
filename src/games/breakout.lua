@@ -310,7 +310,20 @@ function Breakout:updateGameLogic(dt)
     end, {
         loss_counter = "balls_lost", combo_reset = true, damage = 1, damage_reason = "ball_lost",
         skip_damage = self.params.no_life_loss,
-        on_respawn = function(g) g:playSound("ball_launch", 0.7); g:spawnBall() end
+        on_respawn = function(g)
+            -- Particles at last ball position
+            if g.visual_effects and g.visual_effects.particles then
+                for _, b in ipairs(g.balls) do
+                    if not b.active then
+                        g.visual_effects.particles:emit(b.x, b.y, 10, "explosion", {
+                            color = {1, 0.3, 0.2}, speed = 100, lifetime = 0.5, size = 4, gravity = 200
+                        })
+                        break
+                    end
+                end
+            end
+            g:playSound("ball_launch", 0.7); g:spawnBall()
+        end
     })
 
     -- Check victory/loss
@@ -616,6 +629,11 @@ function Breakout:collectPowerup(powerup)
     end
 
     self:playSound("powerup_appear", 0.8)
+    if self.visual_effects and self.visual_effects.particles then
+        self.visual_effects.particles:emit(self.paddle.x, self.paddle.y, 6, "sparkle", {
+            color = {0.2, 1, 0.2}, speed = 80, lifetime = 0.5, size = 3, friction = 0.95
+        })
+    end
     self.effect_system:activate(effect_type, duration, data)
 end
 

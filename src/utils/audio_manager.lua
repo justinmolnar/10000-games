@@ -96,6 +96,7 @@ function AudioManager:playSound(set_key, action, volume_override)
     local ok, err = pcall(function()
         local clone = source:clone()
         clone:setVolume(final_volume)
+        clone:setPitch(0.95 + math.random() * 0.1)
         clone:play()
     end)
 

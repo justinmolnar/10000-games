@@ -225,11 +225,17 @@ function DodgeView:drawContent()
     GameBaseView.drawWater(self)
     GameBaseView.drawPopups(self)
 
+    -- Draw particles (within camera transform)
+    game.visual_effects:drawParticles()
+
     -- Close camera shake transform
     g.pop()
 
     -- Standard HUD - NOT affected by camera shake
     game.hud:draw(game_width, game_height)
+
+    -- Screen flash (over everything)
+    game.visual_effects:drawScreenFlash(game_width, game_height)
 
     -- Extra stats
     local y = 90

@@ -394,10 +394,20 @@ function SnakeView:drawContent()
 
     self:drawPopups()
 
+    -- Draw particles (within camera transform)
+    if game.visual_effects then
+        game.visual_effects:drawParticles()
+    end
+
     -- Reset camera transformation before drawing HUD
     love.graphics.pop()
 
     game.hud:draw(viewport_width, viewport_height)
+
+    -- Screen flash (over everything)
+    if game.visual_effects then
+        game.visual_effects:drawScreenFlash(viewport_width, viewport_height)
+    end
 end
 
 function SnakeView:drawWater()
