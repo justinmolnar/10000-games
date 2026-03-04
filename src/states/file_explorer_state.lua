@@ -5,6 +5,7 @@ local Object = require('class')
 local FileExplorerView = require('src.views.file_explorer_view')
 local Strings = require('src.utils.strings')
 local ScrollbarController = require('src.controllers.scrollbar_controller')
+local MessageBox = require('src.utils.message_box')
 
 local FileExplorerState = Object:extend('FileExplorerState')
 
@@ -503,7 +504,7 @@ function FileExplorerState:handleItemDoubleClick(item)
         end
     elseif action and action.type == "error" then
         print("Error opening item: " .. action.message)
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Cannot open item: " .. action.message, "error")
+    MessageBox.error(Strings.get('messages.error_title', 'Error'), "Cannot open item: " .. action.message)
     end
     return action and { type = "content_interaction" } or nil
 end
@@ -519,7 +520,7 @@ function FileExplorerState:createShortcutOnDesktop(item)
         local name = item.name or "Folder"
         local program = self.program_registry:addFolderShortcut(name, item.path, { on_desktop = true, shortcut_type = 'folder', icon_sprite = 'directory_open_file_mydocs_small-0' })
         if program then
-            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut created on Desktop.", "info")
+            MessageBox.info(Strings.get('messages.info_title', 'Information'), "Shortcut created on Desktop.")
             return { type = "event", name = "ensure_icon_visible", program_id = program.id }
         end
     elseif item.type == "file" then
@@ -527,11 +528,11 @@ function FileExplorerState:createShortcutOnDesktop(item)
         local name = item.name or "File"
         local icon = 'document-0'
         if name:match('%.txt$') then icon = 'notepad_file-0' elseif name:match('%.json$') then icon = 'file_lines-0' elseif name:match('%.exe$') then icon = 'executable-0' end
-        
+
         local program = self.program_registry:addFileShortcut(name, item.path, { on_desktop = true, shortcut_type = 'file', icon_sprite = icon })
 
         if program then
-            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut to " .. name .. " created on Desktop.", "info")
+            MessageBox.info(Strings.get('messages.info_title', 'Information'), "Shortcut to " .. name .. " created on Desktop.")
             return { type = "event", name = "ensure_icon_visible", program_id = program.id }
         end
     end
@@ -548,14 +549,14 @@ function FileExplorerState:createShortcutInStartMenu(item)
         -- Create an FS executable entry in Start Menu Programs pointing to this program
         local name = item.name or (self.program_registry:getProgram(item.program_id) and self.program_registry:getProgram(item.program_id).name) or "Program"
         local path = self.file_system:createExecutable(start_root, name, item.program_id)
-        if path then love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.", "info") end
+        if path then MessageBox.info(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.") end
         return { type = "content_interaction" }
     elseif item.type == "folder" then
         -- Create a real FS folder link under Start Menu Programs so it cascades and mirrors target
         local name = item.name or "Folder"
         local link_path = self.file_system.createFolderLink and self.file_system:createFolderLink(start_root, name, item.path)
         if link_path then
-            love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.", "info")
+            MessageBox.info(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.")
             return { type = "content_interaction" }
         end
     elseif item.type == "file" then
@@ -566,7 +567,7 @@ function FileExplorerState:createShortcutInStartMenu(item)
         local program = self.program_registry:addFolderShortcut(name, item.path, { in_start_menu = false, shortcut_type = 'file', icon_sprite = icon })
         if program and program.id then
             local path = self.file_system:createExecutable(start_root, name, program.id)
-            if path then love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.", "info") end
+            if path then MessageBox.info(Strings.get('messages.info_title', 'Information'), "Shortcut created in Start Menu.") end
             return { type = "content_interaction" }
         end
     end
@@ -639,44 +640,23 @@ end
 -- Restore item using the RecycleBin model
 -- Empty recycle bin using the RecycleBin model
 function FileExplorerState:emptyRecycleBin()
-     -- Confirmation dialog
-    local buttons = {"Yes, Empty", "Cancel"}
-    local pressed = love.window.showMessageBox(
+    MessageBox.confirm(
         Strings.get('messages.info_title', 'Information'),
         "Are you sure you want to permanently delete all items in the Recycle Bin?",
-        buttons, "warning"
+        {"Yes, Empty", "Cancel"},
+        function(index)
+            if index == 1 then
+                local count_desktop = self.recycle_bin:empty()
+                local count_fs = self.file_system.emptyFsRecycleBin and self.file_system:emptyFsRecycleBin() or 0
+                print("Emptied Recycle Bin (desktop=" .. tostring(count_desktop) .. ", fs=" .. tostring(count_fs) .. ")")
+                self:refresh()
+            end
+        end
     )
-
-    if pressed == 1 then -- "Yes, Empty"
-        local count_desktop = self.recycle_bin:empty()
-        local count_fs = self.file_system.emptyFsRecycleBin and self.file_system:emptyFsRecycleBin() or 0
-        print("Emptied Recycle Bin (desktop=" .. tostring(count_desktop) .. ", fs=" .. tostring(count_fs) .. ")")
-        self:refresh() -- Refresh the view
-    end
 end
 
 -- Permanently delete a single item from recycle bin
-function FileExplorerState:permanentlyDeleteFromRecycleBin(program_id)
-     local program = self.program_registry:getProgram(program_id)
-     local name = program and program.name or program_id
-
-     local buttons = {"Yes, Delete", "Cancel"}
-      local pressed = love.window.showMessageBox(
-          Strings.get('messages.info_title', 'Information'),
-        "Are you sure you want to permanently delete '".. name .."'?",
-        buttons, "warning"
-     )
-
-     if pressed == 1 then
-         local success = self.recycle_bin:permanentlyDelete(program_id)
-         if success then
-             print("Permanently deleted " .. program_id)
-             self:refresh()
-         else
-             print("Failed to permanently delete " .. program_id)
-         end
-     end
-end
+-- NOTE: This definition is overridden by the one at ~line 801 below
 
 -- Restore FS-deleted item
 function FileExplorerState:restoreFsDeleted(recycle_id)
@@ -684,41 +664,46 @@ function FileExplorerState:restoreFsDeleted(recycle_id)
     if ok then
         self:refresh()
     else
-        love.window.showMessageBox(Strings.get('messages.error_title','Error'), "Failed to restore item", 'error')
+        MessageBox.error(Strings.get('messages.error_title','Error'), "Failed to restore item")
     end
 end
 
 function FileExplorerState:permanentlyDeleteFsDeleted(recycle_id)
-    local buttons = {"Yes, Delete", "Cancel"}
-    local pressed = love.window.showMessageBox(
+    MessageBox.confirm(
         Strings.get('messages.info_title','Information'),
         "Are you sure you want to permanently delete this item?",
-        buttons,
-        "warning"
+        {"Yes, Delete", "Cancel"},
+        function(index)
+            if index == 1 then
+                local ok = self.file_system:permanentlyDeleteEntry(recycle_id)
+                if ok then self:refresh() end
+            end
+        end
     )
-    if pressed == 1 then
-        local ok = self.file_system:permanentlyDeleteEntry(recycle_id)
-        if ok then self:refresh() end
-    end
 end
 
 -- Delete a normal item (moves to FS recycle bin if allowed)
 function FileExplorerState:deleteItem(item)
     if not item or not item.path then return end
     if not (self.file_system.isDeletable and self.file_system:isDeletable(item.path)) then
-        love.window.showMessageBox(Strings.get('messages.error_title','Error'), "This item cannot be deleted.", 'error')
+        MessageBox.error(Strings.get('messages.error_title','Error'), "This item cannot be deleted.")
         return
     end
-    local buttons = {"Yes, Delete", "Cancel"}
-    local pressed = love.window.showMessageBox(Strings.get('messages.info_title','Information'), "Delete '".. (item.name or 'Item') .."' and move it to Recycle Bin?", buttons, 'warning')
-    if pressed == 1 then
-        local ok, err = self.file_system:deleteEntry(item.path)
-        if not ok then
-            love.window.showMessageBox(Strings.get('messages.error_title','Error'), "Delete failed: ".. tostring(err), 'error')
-        else
-            self:refresh()
+    MessageBox.confirm(
+        Strings.get('messages.info_title','Information'),
+        "Delete '".. (item.name or 'Item') .."' and move it to Recycle Bin?",
+        {"Yes, Delete", "Cancel"},
+        function(index)
+            if index == 1 then
+                local ok, err = self.file_system:deleteEntry(item.path)
+                if not ok then
+                    MessageBox.error(Strings.get('messages.error_title','Error'), "Delete failed: ".. tostring(err))
+                else
+                    self:refresh()
+                end
+            end
         end
-    end
+    )
 end
 
 -- Clipboard operations
@@ -793,7 +778,7 @@ function FileExplorerState:restoreFromRecycleBin(program_id)
         self:refresh() -- Refresh the current view
     else
         print("Failed to restore " .. program_id)
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Failed to restore " .. program_id, "error")
+    MessageBox.error(Strings.get('messages.error_title', 'Error'), "Failed to restore " .. program_id)
     end
 end
 
@@ -802,22 +787,23 @@ function FileExplorerState:permanentlyDeleteFromRecycleBin(program_id)
      local program = self.program_registry:getProgram(program_id)
      local name = program and program.name or program_id
 
-     local buttons = {"Yes, Delete", "Cancel"}
-      local pressed = love.window.showMessageBox(
-          Strings.get('messages.info_title', 'Information'),
-        "Are you sure you want to permanently delete '".. name .."'?",
-        buttons, "warning"
-     )
-     if pressed == 1 then
-         local success = self.recycle_bin:permanentlyDelete(program_id)
-         if success then
-             print("Permanently deleted " .. program_id)
-             self:refresh()
-         else
-             print("Failed to permanently delete " .. program_id)
-             love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Failed to delete " .. program_id, "error")
+     MessageBox.confirm(
+         Strings.get('messages.info_title', 'Information'),
+         "Are you sure you want to permanently delete '".. name .."'?",
+         {"Yes, Delete", "Cancel"},
+         function(index)
+             if index == 1 then
+                 local success = self.recycle_bin:permanentlyDelete(program_id)
+                 if success then
+                     print("Permanently deleted " .. program_id)
+                     self:refresh()
+                 else
+                     print("Failed to permanently delete " .. program_id)
+                     MessageBox.error(Strings.get('messages.error_title', 'Error'), "Failed to delete " .. program_id)
+                 end
+             end
          end
-     end
+     )
 end
 
 -- Handle context menu actions for File Explorer

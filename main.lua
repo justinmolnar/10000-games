@@ -77,6 +77,7 @@ function love.load()
     local WindowChrome = require('src.views.window_chrome')
     local WindowController = require('src.controllers.window_controller') -- Require WindowController
     local ProgramLauncher = require('src.utils.program_launcher') -- Require ProgramLauncher
+    local MessageBox = require('src.utils.message_box') -- Require MessageBox helper
     local ContextMenuService = require('src.utils.context_menu_service') -- Require ContextMenuService
     local GameVariantLoader = require('src.models.game_variant_loader') -- Require GameVariantLoader
     local AudioManager = require('src.utils.audio_manager') -- Phase 3.2/3.3: Audio system
@@ -296,6 +297,7 @@ function love.load()
     local window_chrome_instance = desktop.window_chrome or WindowChrome:new()
     di.windowChrome = window_chrome_instance
     di.programLauncher = ProgramLauncher:new(di) -- Create the launcher service *after* window_controller is in DI
+    MessageBox.init(di) -- Initialize MessageBox helper after ProgramLauncher
 
     -- Pass the window_states map reference from DesktopState to WindowController *after* DesktopState is created
     di.window_controller.window_states = desktop.window_states

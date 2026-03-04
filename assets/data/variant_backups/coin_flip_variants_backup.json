@@ -1,0 +1,195 @@
+{
+  "game_class": "CoinFlip",
+  "sprite_folder": "coin_flip",
+  "default_sprite_set": "coin_flip_base",
+  "category": "luck",
+  "tier": "trash",
+
+  "variants": [
+  {
+    "clone_index": 0,
+    "name": "Coin Flip Classic",
+    "flavor_text": "Standard coin flip - get a streak of 10 heads"
+  },
+  {
+    "clone_index": 1,
+    "name": "Coin Flip Easy Street",
+    "difficulty_modifier": 0.8,
+    "streak_target": 3,
+    "coin_bias": 0.7,
+    "lives": 5,
+    "flavor_text": "Weighted coin, short streak, extra lives - smooth sailing!"
+  },
+  {
+    "clone_index": 2,
+    "name": "Coin Flip Hardcore",
+    "difficulty_modifier": 1.5,
+    "streak_target": 10,
+    "lives": 1,
+    "flavor_text": "One life. Fair coin. Get 10 heads. Don't choke."
+  },
+  {
+    "clone_index": 3,
+    "name": "Coin Flip Guesser",
+    "difficulty_modifier": 1.2,
+    "flip_mode": "guess",
+    "flavor_text": "Call it! Press H for heads or T for tails before the flip"
+  },
+  {
+    "clone_index": 4,
+    "name": "Coin Flip Marathon",
+    "difficulty_modifier": 1.8,
+    "streak_target": 20,
+    "coin_bias": 0.55,
+    "lives": 10,
+    "show_bias_hint": true,
+    "flavor_text": "20-streak challenge with slight bias. Stats shown. Go the distance!"
+  },
+  {
+    "clone_index": 5,
+    "name": "Coin Flip Alternator",
+    "difficulty_modifier": 1.0,
+    "pattern_mode": "alternating",
+    "streak_target": 15,
+    "lives": 5,
+    "flavor_text": "Coin alternates H-T-H-T-H-T. Predict the pattern!"
+  },
+  {
+    "clone_index": 6,
+    "name": "Coin Flip Clusters",
+    "difficulty_modifier": 1.1,
+    "pattern_mode": "clusters",
+    "streak_target": 12,
+    "lives": 4,
+    "flavor_text": "Coin flips in runs (HHHTTTHHH). Ride the clusters!"
+  },
+  {
+    "clone_index": 7,
+    "name": "Coin Flip Collector",
+    "difficulty_modifier": 1.3,
+    "victory_condition": "total",
+    "total_correct_target": 30,
+    "no_life_loss": true,
+    "lives": 1,
+    "flavor_text": "Get 30 total heads. No streak required. Unlimited tries!"
+  },
+  {
+    "clone_index": 8,
+    "name": "Coin Flip Accuracy Test",
+    "difficulty_modifier": 1.4,
+    "victory_condition": "ratio",
+    "ratio_target": 0.75,
+    "ratio_flip_count": 20,
+    "flip_mode": "guess",
+    "no_life_loss": true,
+    "lives": 1,
+    "flavor_text": "Maintain 75% accuracy over 20 flips. Call it right!"
+  },
+  {
+    "clone_index": 9,
+    "name": "Coin Flip Speed Run",
+    "difficulty_modifier": 1.2,
+    "victory_condition": "time",
+    "time_limit": 60,
+    "streak_target": 15,
+    "coin_bias": 0.6,
+    "no_life_loss": true,
+    "lives": 1,
+    "flavor_text": "Get highest streak in 60 seconds. Beat the clock!"
+  },
+  {
+    "clone_index": 10,
+    "name": "Coin Flip Score Hunter",
+    "difficulty_modifier": 1.0,
+    "score_per_correct": 200,
+    "streak_multiplier": 0.2,
+    "streak_target": 15,
+    "flavor_text": "Phase 10 Test: High score rewards with strong streak bonuses"
+  },
+  {
+    "clone_index": 11,
+    "name": "Coin Flip Perfect Challenge",
+    "difficulty_modifier": 1.5,
+    "score_per_correct": 100,
+    "streak_multiplier": 0.1,
+    "perfect_streak_bonus": 5000,
+    "streak_target": 5,
+    "lives": 1,
+    "flavor_text": "Phase 10 Test: One life, huge perfect bonus if you nail it"
+  },
+  {
+    "clone_index": 12,
+    "name": "Coin Flip Party Mode",
+    "difficulty_modifier": 1.0,
+    "celebration_on_streak": true,
+    "screen_flash_enabled": true,
+    "flip_animation_speed": 0.8,
+    "streak_target": 10,
+    "flavor_text": "Phase 11 Test: Full visual effects - confetti, screen flash, smooth flip animation"
+  },
+  {
+    "clone_index": 13,
+    "name": "Coin Flip Minimal",
+    "difficulty_modifier": 1.0,
+    "celebration_on_streak": false,
+    "screen_flash_enabled": false,
+    "flip_animation_speed": 2.0,
+    "streak_target": 10,
+    "flavor_text": "Phase 11 Test: No visual effects, fast flip animation (performance mode)"
+  },
+  {
+    "clone_index": 14,
+    "name": "Coin Flip Celebration",
+    "difficulty_modifier": 0.8,
+    "celebration_on_streak": true,
+    "screen_flash_enabled": true,
+    "flip_animation_speed": 0.3,
+    "coin_bias": 0.65,
+    "streak_target": 25,
+    "flavor_text": "Phase 11 Test: Confetti every 5 streaks, slow dramatic flip animation"
+  },
+  {
+    "clone_index": 15,
+    "name": "Coin Flip History Tracker",
+    "difficulty_modifier": 1.0,
+    "streak_target": 8,
+    "show_pattern_history": true,
+    "pattern_history_length": 15,
+    "pattern_mode": "random",
+    "flavor_text": "Phase 5 Test: Shows last 15 flip results (H/T) in HUD for pattern analysis"
+  },
+  {
+    "clone_index": 16,
+    "name": "Coin Flip Auto Mode",
+    "difficulty_modifier": 0.9,
+    "streak_target": 6,
+    "auto_flip_interval": 2.5,
+    "flip_animation_speed": 1.5,
+    "coin_bias": 0.55,
+    "flavor_text": "Phase 5 Test: Auto-flips every 2.5 seconds, no player input needed"
+  },
+  {
+    "clone_index": 17,
+    "name": "Coin Flip Time Pressure",
+    "difficulty_modifier": 1.2,
+    "streak_target": 8,
+    "time_per_flip": 3,
+    "show_pattern_history": true,
+    "pattern_history_length": 10,
+    "flip_mode": "guess",
+    "flavor_text": "Phase 5 Test: 3 second countdown per flip, guess before time runs out!"
+  },
+  {
+    "clone_index": 18,
+    "name": "Coin Flip Voice Announcer",
+    "difficulty_modifier": 1.0,
+    "streak_target": 8,
+    "result_announce_mode": "both",
+    "flip_mode": "guess",
+    "celebration_on_streak": true,
+    "screen_flash_enabled": true,
+    "lives": 5,
+    "flavor_text": "Phase 5 Test: TTS voice announces CORRECT/WRONG after each flip with visual effects"
+  }
+]
+}

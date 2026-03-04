@@ -2,389 +2,786 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Balance Dashboard</title>
+<title>Balance Dashboard v2</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: Consolas, monospace; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
-h1 { color: #0ff; margin-bottom: 12px; font-size: 20px; }
-.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
-.toolbar label { font-size: 12px; color: #888; }
-.toolbar select, .toolbar input, .toolbar button {
-  background: #16213e; color: #e0e0e0; border: 1px solid #444; padding: 4px 8px;
-  font-family: inherit; font-size: 12px; border-radius: 3px;
+h1 { color: #0ff; margin-bottom: 4px; font-size: 22px; }
+h1 small { font-size: 11px; color: #666; font-weight: normal; }
+h2 { color: #0ff; font-size: 16px; margin: 16px 0 8px; }
+h3 { font-size: 13px; color: #0ff; margin-bottom: 8px; }
+
+/* Loading */
+#load-section { margin: 12px 0; }
+#folder-drop {
+  border: 2px dashed #444; padding: 24px; text-align: center; color: #666;
+  border-radius: 8px; cursor: pointer; transition: border-color 0.2s; margin-bottom: 8px;
 }
-.toolbar button { cursor: pointer; background: #0a3d62; border-color: #0ff; color: #0ff; }
-.toolbar button:hover { background: #0ff; color: #000; }
-.toolbar button.active { background: #0ff; color: #000; }
-#drop-zone {
-  border: 2px dashed #444; padding: 40px; text-align: center; color: #666;
-  margin-bottom: 16px; border-radius: 8px; cursor: pointer; transition: border-color 0.2s;
+#folder-drop.hover { border-color: #0ff; color: #0ff; }
+#folder-drop.loaded { border-color: #0a0; color: #0a0; padding: 10px; font-size: 12px; }
+#load-status { font-size: 11px; color: #888; margin-top: 4px; }
+
+/* Tabs */
+#tab-bar {
+  display: flex; gap: 0; margin: 12px 0 0; border-bottom: 2px solid #333;
+  flex-wrap: wrap;
 }
-#drop-zone.hover { border-color: #0ff; color: #0ff; }
-#drop-zone.loaded { border-color: #0a0; color: #0a0; padding: 8px; font-size: 12px; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.tab {
+  padding: 6px 14px; cursor: pointer; font-size: 12px; font-family: inherit;
+  background: #16213e; color: #888; border: 1px solid #333; border-bottom: none;
+  border-radius: 4px 4px 0 0; margin-bottom: -2px; transition: all 0.15s;
+}
+.tab:hover { color: #ccc; background: #1a2a4e; }
+.tab.active { color: #0ff; background: #1a1a2e; border-color: #0ff; border-bottom: 2px solid #1a1a2e; }
+.tab .count { font-size: 9px; color: #555; margin-left: 3px; }
+.tab.active .count { color: #088; }
+
+/* Global controls */
+.controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+.controls label { font-size: 11px; color: #888; }
+.controls input, .controls select {
+  background: #16213e; color: #e0e0e0; border: 1px solid #444; padding: 3px 6px;
+  font-family: inherit; font-size: 11px; border-radius: 3px; width: 80px;
+}
+.controls button {
+  cursor: pointer; background: #0a3d62; border: 1px solid #0ff; color: #0ff;
+  padding: 3px 10px; font-family: inherit; font-size: 11px; border-radius: 3px;
+}
+.controls button:hover { background: #0ff; color: #000; }
+.controls button.active { background: #0ff; color: #000; }
+
+/* Content */
+#content { margin-top: 12px; }
+.hidden { display: none !important; }
+
+/* Charts */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.chart-grid.single { grid-template-columns: 1fr; }
 .chart-box {
   background: #16213e; border: 1px solid #333; border-radius: 6px; padding: 12px;
-  position: relative; height: 350px;
+  position: relative; height: 380px;
 }
+.chart-box.tall { height: 450px; }
 .chart-box .chart-wrap { position: relative; width: 100%; height: calc(100% - 24px); }
-.chart-box h3 { font-size: 13px; color: #0ff; margin-bottom: 8px; }
-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-th { background: #0a3d62; color: #0ff; padding: 6px 8px; text-align: left; cursor: pointer; position: sticky; top: 0; }
-th:hover { background: #0ff; color: #000; }
-td { padding: 4px 8px; border-bottom: 1px solid #222; }
-tr:hover td { background: #1a2a4e; }
-.win { color: #0f0; } .loss { color: #f44; } .failgate { color: #f80; }
-.num { text-align: right; }
-#table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
-.stats-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
-.stat-card {
-  background: #16213e; border: 1px solid #333; border-radius: 6px; padding: 10px 16px;
-  min-width: 140px; text-align: center;
-}
-.stat-card .val { font-size: 22px; color: #0ff; font-weight: bold; }
-.stat-card .lbl { font-size: 10px; color: #888; margin-top: 2px; }
-.filter-group { display: flex; flex-direction: column; gap: 2px; }
-.multi-select { max-height: 120px; overflow-y: auto; background: #16213e; border: 1px solid #444; border-radius: 3px; padding: 4px; }
-.multi-select label { display: block; font-size: 11px; cursor: pointer; padding: 1px 4px; }
-.multi-select label:hover { background: #1a2a4e; }
-.multi-select input { margin-right: 4px; }
-.hidden { display: none; }
-.group-row td { background: #1a2a3e; font-weight: bold; }
-.group-row td:first-child { color: #0ff; }
-.count-badge { display: inline-block; background: #0a3d62; color: #0ff; padding: 1px 6px; border-radius: 8px; font-size: 10px; margin-left: 4px; font-weight: normal; }
-.winrate-bar { display: inline-block; height: 10px; border-radius: 2px; vertical-align: middle; }
-#table-toolbar { margin-top: 12px; margin-bottom: 4px; }
 
-/* Simulator styles */
-.sim-section { margin-top: 24px; border-top: 2px solid #333; padding-top: 16px; }
-.sim-section h2 { color: #f80; margin-bottom: 12px; font-size: 18px; }
-#sim-drop-zone {
-  border: 2px dashed #444; padding: 20px; text-align: center; color: #666;
-  margin-bottom: 16px; border-radius: 8px; cursor: pointer; transition: border-color 0.2s;
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+th { background: #0a3d62; color: #0ff; padding: 5px 6px; text-align: left; cursor: pointer; position: sticky; top: 0; white-space: nowrap; }
+th:hover { background: #0ff; color: #000; }
+td { padding: 3px 6px; border-bottom: 1px solid #222; white-space: nowrap; }
+tr:hover td { background: #1a2a4e; }
+.num { text-align: right; }
+.table-wrap { max-height: 500px; overflow-y: auto; margin-top: 8px; border: 1px solid #333; border-radius: 4px; }
+
+/* Token coloring */
+.tok-good { color: #0f0; font-weight: bold; }
+.tok-ok { color: #ff0; }
+.tok-bad { color: #f44; }
+.tok-zero { color: #333; }
+
+/* Stats cards */
+.stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.stat-card {
+  background: #16213e; border: 1px solid #333; border-radius: 6px; padding: 8px 14px;
+  min-width: 120px; text-align: center;
 }
-#sim-drop-zone.hover { border-color: #f80; color: #f80; }
-#sim-drop-zone.loaded { border-color: #0a0; color: #0a0; padding: 8px; font-size: 12px; }
-.sim-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
-.sim-table th { background: #3d2a0a; color: #f80; padding: 6px 8px; text-align: left; cursor: pointer; position: sticky; top: 0; }
-.sim-table th:hover { background: #f80; color: #000; }
-.sim-table td { padding: 4px 8px; border-bottom: 1px solid #222; }
-.sim-table tr:hover td { background: #2a1a0e; }
-.sim-table .num { text-align: right; }
-.token-cell { font-weight: bold; }
-.token-good { color: #0f0; }
-.token-ok { color: #ff0; }
-.token-bad { color: #f44; }
-#sim-table-wrap { max-height: 600px; overflow-y: auto; }
-.sim-config { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
-.sim-config label { font-size: 12px; color: #888; }
-.sim-config input, .sim-config select { background: #16213e; color: #e0e0e0; border: 1px solid #444; padding: 4px 8px; font-family: inherit; font-size: 12px; border-radius: 3px; width: 80px; }
-.sim-config button { cursor: pointer; background: #3d2a0a; border: 1px solid #f80; color: #f80; padding: 4px 12px; font-family: inherit; font-size: 12px; border-radius: 3px; }
-.sim-config button:hover { background: #f80; color: #000; }
-#sim-charts-grid { grid-template-columns: 1fr; }
-#sim-charts-grid .chart-box { height: 450px; }
-#sim-charts-grid button {
-  cursor: pointer; background: #3d2a0a; border: 1px solid #f80; color: #f80;
-  padding: 4px 12px; font-family: inherit; font-size: 12px; border-radius: 3px;
+.stat-card .val { font-size: 20px; color: #0ff; font-weight: bold; }
+.stat-card .lbl { font-size: 9px; color: #888; margin-top: 2px; }
+
+/* Formula display */
+.formula-box {
+  background: #0d1117; border: 1px solid #333; border-radius: 4px; padding: 8px 12px;
+  font-size: 11px; margin-bottom: 12px; color: #f80;
 }
-#sim-charts-grid button:hover { background: #f80; color: #000; }
-#sim-charts-grid button.active { background: #f80; color: #000; }
+.formula-box .label { color: #888; font-size: 10px; }
+
+/* Legend for overlay */
+.legend-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer; opacity: 0.9; }
+.legend-item:hover { opacity: 1; }
+.legend-item.dimmed { opacity: 0.3; }
+.legend-swatch { width: 12px; height: 12px; border-radius: 2px; border: 1px solid #555; }
+
+/* Collapsible */
+details { margin-top: 24px; border-top: 2px solid #333; padding-top: 12px; }
+details summary { color: #888; cursor: pointer; font-size: 14px; }
+details summary:hover { color: #0ff; }
 </style>
 </head>
 <body>
-<h1>Balance Dashboard</h1>
+<h1>Balance Dashboard <small>v2 — All Games</small></h1>
 
-<div id="drop-zone" onclick="document.getElementById('file-input').click()">
-  Drop balance_stats.json here or click to browse
-  <input type="file" id="file-input" accept=".json" style="display:none">
+<div id="load-section">
+  <div id="folder-drop" onclick="document.getElementById('folder-input').click()">
+    Drop variant JSON files here, or click to select the <b>assets/data/variants/</b> folder
+    <input type="file" id="folder-input" webkitdirectory multiple accept=".json" style="display:none">
+    <input type="file" id="multi-input" multiple accept=".json" style="display:none">
+  </div>
+  <div id="load-status"></div>
 </div>
 
-<div id="dashboard" class="hidden">
-  <div class="toolbar" id="toolbar"></div>
-  <div class="stats-row" id="summary-cards"></div>
-  <div class="grid" id="charts-grid"></div>
-  <div class="toolbar" id="table-toolbar"></div>
-  <div id="table-wrap"></div>
-</div>
+<div id="main-ui" class="hidden">
+  <div id="tab-bar"></div>
 
-<div class="sim-section">
-  <h2>Spawn Simulator</h2>
-  <div id="sim-drop-zone" onclick="document.getElementById('sim-file-input').click()">
-    Drop dodge_variants.json here or click to browse
-    <input type="file" id="sim-file-input" accept=".json" style="display:none">
+  <div class="controls" id="global-controls">
+    <div>
+      <label>Scaling Constant</label>
+      <input type="number" id="cfg-scaling" value="1" step="0.1" min="0.01">
+    </div>
+    <div>
+      <label>Player Skill</label>
+      <select id="cfg-skill">
+        <option value="perfect">Perfect (0 hits)</option>
+        <option value="good" selected>Good (10% life loss)</option>
+        <option value="average">Average (30% life loss)</option>
+        <option value="poor">Poor (60% life loss)</option>
+      </select>
+    </div>
+    <div>
+      <label>Overlay Y-Axis</label>
+      <select id="cfg-overlay-y">
+        <option value="tokens" selected>Tokens / Game</option>
+        <option value="tpm">Tokens / Minute</option>
+        <option value="tps">Tokens / Second</option>
+        <option value="duration">Duration (s)</option>
+      </select>
+    </div>
+    <div>
+      <label>Overlay X-Axis</label>
+      <select id="cfg-overlay-x">
+        <option value="clone_index" selected>Clone Index</option>
+        <option value="difficulty_modifier">Difficulty Modifier</option>
+      </select>
+    </div>
+    <div>
+      <label>Y Scale</label>
+      <select id="cfg-yscale">
+        <option value="linear" selected>Linear</option>
+        <option value="log">Log</option>
+      </select>
+    </div>
+    <button onclick="recalcAll()">Recalculate</button>
   </div>
-  <div id="sim-dashboard" class="hidden">
-    <div class="sim-config" id="sim-config"></div>
-    <div class="grid" id="sim-charts-grid"></div>
-    <div id="sim-table-wrap"></div>
-  </div>
+
+  <div id="content"></div>
 </div>
 
 <script>
-let RAW = [];
-let filtered = [];
+// ============================================================
+// GAME DEFINITIONS — formulas translated from config.lua
+// ============================================================
+const GAME_DEFS = {
+  SpaceShooter: {
+    id: 'space_shooter', label: 'Space Shooter', color: '#f44',
+    formula: (m, sc) => {
+      const kb = m.kills * m.kills * 0.07 * (1 + m.combo / Math.max(1, m.kills) * 0.3) * sc;
+      const dp = m.deaths * m.deaths * 0.3 * sc;
+      return Math.max(0, kb - dp);
+    },
+    displayFormula: 'kills² × 0.07 × (1 + combo/kills × 0.3) × sc - deaths² × 0.3 × sc',
+    estimate: (v) => {
+      const vc = v.victory_condition || 'kills';
+      const vl = v.victory_limit || 30;
+      const lives = v.lives_count || v.lives || 3;
+      const diffMod = v.difficulty_modifier || 1.0;
+      const spawnRate = v.spawn_rate || 1;
+      // Estimate: kills = victory_limit, duration based on spawn rate
+      const kills = vc === 'time' ? Math.floor(vl * spawnRate * 0.7 * diffMod) : vl;
+      const duration = vc === 'time' ? vl : kills / Math.max(0.3, spawnRate * diffMod * 0.7);
+      return { duration: Math.min(120, Math.max(5, duration)), lives,
+        metrics: { kills, deaths: 0, combo: Math.floor(kills * 0.3) } };
+    },
+    hitMetric: 'deaths',
+  },
+  SnakeGame: {
+    id: 'snake', label: 'Snake', color: '#0f0',
+    formula: (m, sc) => {
+      const l2 = m.snake_length * 2;
+      return (l2 * l2 * sc) / Math.max(1, m.survival_time);
+    },
+    displayFormula: '(snake_length × 2)² × sc / survival_time',
+    estimate: (v) => {
+      const vl = v.victory_limit || 20;
+      const speed = v.snake_speed || 8;
+      const arena = v.arena_size || 1.0;
+      // Rough: each food takes ~(arena/speed) seconds to reach
+      const timePerFood = Math.max(0.5, 3 * arena / (speed / 8));
+      const duration = vl * timePerFood;
+      return { duration: Math.min(120, Math.max(5, duration)), lives: 1,
+        metrics: { snake_length: vl, survival_time: duration } };
+    },
+    hitMetric: null, // snake dies on hit
+  },
+  DodgeGame: {
+    id: 'dodge', label: 'Dodge', color: '#ff0',
+    formula: (m, sc) => {
+      const x = m.victory_progress - m.collisions * 3;
+      if (x <= 0) return 0;
+      return x * x * 0.03 * (1 + m.combo / Math.max(1, m.victory_progress) * 0.3) * sc;
+    },
+    displayFormula: '(vp - collisions×3)² × 0.03 × (1 + combo/vp × 0.3) × sc',
+    estimate: (v) => {
+      const vc = v.victory_condition || 'dodge_count';
+      const vl = v.victory_limit || 30;
+      const lives = v.lives || 10;
+      const diffMod = v.difficulty_modifier || 1.0;
+      const spawnRate = v.obstacle_spawn_rate || 1.0;
+      const baseInterval = 1.0 / (diffMod * spawnRate);
+      let dodges = 0, time = 0;
+      if (vc === 'kills') {
+        // Kills mode: vp = kill count, duration based on spawn rate
+        const duration = vl / Math.max(0.3, spawnRate * diffMod * 0.7);
+        return { duration: Math.min(120, Math.max(5, duration)), lives,
+          metrics: { victory_progress: vl, objects_dodged: vl, collisions: 0, combo: Math.floor(vl * 0.3) } };
+      }
+      const maxTime = vc === 'time' ? vl : 120;
+      const targetDodges = vc === 'dodge_count' ? vl : 9999;
+      while (time < maxTime && dodges < targetDodges) {
+        const accel = 1 + Math.min(2, time / 60);
+        time += baseInterval / accel;
+        dodges++;
+      }
+      const vp = vc === 'time' ? vl : dodges;
+      return { duration: Math.min(120, time), lives,
+        metrics: { victory_progress: vp, objects_dodged: dodges, collisions: 0, combo: Math.floor(dodges * 0.4) } };
+    },
+    hitMetric: 'collisions',
+    hitAffectsMetric: 'victory_progress', // collisions reduce effective vp in formula
+  },
+  MemoryMatch: {
+    id: 'memory_match', label: 'Memory', color: '#f0f',
+    formula: (m, sc) => {
+      return m.matches * m.matches * (m.combo + 1) * 2 * sc / Math.max(1, m.time);
+    },
+    displayFormula: 'matches² × (combo+1) × 2 × sc / time',
+    estimate: (v) => {
+      const cardCount = v.card_count || 12;
+      const pairs = Math.floor(cardCount / 2);
+      // Estimate: ~2.5 seconds per pair for good player
+      const duration = pairs * 2.5;
+      return { duration: Math.min(120, Math.max(5, duration)), lives: 0,
+        metrics: { matches: pairs, time: duration, combo: Math.floor(pairs * 0.5) } };
+    },
+    hitMetric: null,
+  },
+  HiddenObjectGame: {
+    id: 'hidden_object', label: 'Hidden Obj', color: '#888',
+    formula: (m, sc) => m.objects_found * m.time_bonus,
+    displayFormula: 'objects_found × time_bonus',
+    estimate: (v) => {
+      const count = v.object_count || 10;
+      const timeLimit = v.time_limit || 60;
+      const duration = Math.min(timeLimit * 0.7, count * 4);
+      const bonus = Math.max(1, (timeLimit - duration) / 10);
+      return { duration, lives: 0,
+        metrics: { objects_found: count, time_bonus: bonus } };
+    },
+    hitMetric: null,
+  },
+  Breakout: {
+    id: 'breakout', label: 'Breakout', color: '#0ff',
+    formula: (m, sc) => {
+      const bb = m.bricks_destroyed * m.bricks_destroyed * 0.012 * (1 + m.max_combo / Math.max(1, m.bricks_destroyed) * 0.4) * sc;
+      const bp = m.balls_lost * m.balls_lost * 0.5 * sc;
+      return Math.max(0, bb - bp);
+    },
+    displayFormula: 'bricks² × 0.012 × (1 + combo/bricks × 0.4) × sc - balls_lost² × 0.5 × sc',
+    estimate: (v) => {
+      const rows = v.brick_rows || 5;
+      const cols = v.brick_columns || v.bricks_per_row || 10;
+      const health = v.brick_health || 1;
+      const layout = v.brick_layout || 'grid';
+      let bricks;
+      if (layout === 'checkerboard') bricks = Math.ceil(rows * cols / 2);
+      else if (layout === 'pyramid') bricks = rows * (rows + 1) / 2;
+      else if (layout === 'circle') bricks = Math.floor(rows * Math.PI * 2);
+      else bricks = rows * cols;
+      bricks = Math.floor(bricks);
+      // Hazard penalty: falling/moving/regen bricks + obstacles reduce effective clear rate
+      let clearRate = 1.0;
+      if (v.brick_fall_enabled) clearRate -= 0.1;
+      if (v.brick_movement_enabled) clearRate -= 0.1;
+      if (v.brick_regeneration_enabled) clearRate -= 0.15;
+      if (v.obstacles_count > 0) clearRate -= 0.05 * Math.min(4, v.obstacles_count);
+      if (health > 1) clearRate -= 0.05 * (health - 1);
+      bricks = Math.floor(bricks * Math.max(0.5, clearRate));
+      const ballSpeed = v.ball_speed || 300;
+      const lives = v.lives || 3;
+      const duration = bricks * health * 0.8 * (300 / ballSpeed);
+      return { duration: Math.min(180, Math.max(10, duration)), lives,
+        metrics: { bricks_destroyed: bricks, balls_lost: 0, max_combo: Math.floor(bricks * 0.25), score: bricks * 100 } };
+    },
+    hitMetric: 'balls_lost',
+  },
+  CoinFlip: {
+    id: 'coin_flip', label: 'Coin Flip', color: '#f80',
+    formula: (m, sc) => m.max_streak * m.max_streak * 0.3 * sc + m.correct_total * 0.3 * sc,
+    displayFormula: 'streak² × 0.3 × sc + correct × 0.3 × sc',
+    estimate: (v) => {
+      const streak = v.streak_target || 10;
+      const bias = v.coin_bias || 0.5;
+      const lives = v.lives || 3;
+      // Realistic max_streak: expected longest run in N flips ≈ log(N)/log(1/p)
+      // Total flips needed to TRY for streak: roughly streak / bias (optimistic)
+      const expectedFlips = Math.min(200, Math.max(20, streak * 2));
+      // Realistic achievable streak: capped by probability
+      // P(streak of k) = p^k, so realistic max ≈ -log(expectedFlips)/log(p)
+      const realisticStreak = Math.min(streak, Math.max(1, Math.ceil(Math.log(expectedFlips) / Math.log(1 / bias))));
+      const correct = Math.floor(expectedFlips * bias);
+      const duration = expectedFlips * 1.5;
+      return { duration: Math.min(120, Math.max(5, duration)), lives,
+        metrics: { max_streak: realisticStreak, correct_total: correct, flips_total: expectedFlips, accuracy: bias } };
+    },
+    hitMetric: null,
+  },
+  RPS: {
+    id: 'rps', label: 'RPS', color: '#84f',
+    formula: (m, sc) => m.rounds_won * m.rounds_won * 3 * (1 + m.max_win_streak / Math.max(1, m.rounds_won) * 0.5) * sc,
+    displayFormula: 'won² × 3 × (1 + streak/won × 0.5) × sc',
+    estimate: (v) => {
+      const vc = v.victory_condition || 'rounds';
+      const lives = v.lives || 0;
+      const winRate = 0.4;
+      let roundsWon;
+      if (vc === 'streak') {
+        // Player needs streak_target consecutive wins; total wins ~ 2× streak
+        roundsWon = Math.max(1, (v.streak_target || 5) * 2);
+      } else if (vc === 'first_to') {
+        roundsWon = v.first_to_target || 3;
+      } else if (vc === 'time') {
+        // Time-limited: estimate wins in time_limit at ~2s/round
+        const rounds = Math.floor((v.time_limit || 30) / 2);
+        roundsWon = Math.floor(rounds * winRate);
+      } else {
+        // Default rounds mode — use rounds_to_win but cap at reasonable value
+        roundsWon = Math.min(v.rounds_to_win || 3, 15);
+      }
+      const totalRounds = Math.ceil(roundsWon / winRate);
+      const lost = totalRounds - roundsWon;
+      const streak = Math.max(1, Math.floor(roundsWon * 0.3));
+      const duration = totalRounds * 2;
+      return { duration: Math.min(120, Math.max(5, duration)), lives,
+        metrics: { rounds_won: roundsWon, rounds_lost: lost, rounds_total: totalRounds, max_win_streak: streak, accuracy: winRate } };
+    },
+    hitMetric: null,
+  },
+  Raycaster: {
+    id: 'raycaster', label: 'Raycaster', color: '#4f4',
+    formula: (m, sc) => Math.floor(1000 / Math.max(1, m.time_elapsed) * Math.max(1, m.mazes_completed)) * sc,
+    displayFormula: 'floor(1000 / time × mazes) × sc',
+    estimate: (v) => {
+      const w = v.maze_width || 21;
+      const h = v.maze_height || 21;
+      const speed = v.move_speed || 3;
+      // Rough: maze traversal = area * factor / speed
+      const area = w * h;
+      const duration = area * 0.15 / (speed / 3);
+      return { duration: Math.min(300, Math.max(10, duration)), lives: 0,
+        metrics: { time_elapsed: duration, mazes_completed: 1 } };
+    },
+    hitMetric: null,
+  },
+};
+
+// Map game_class names to GAME_DEFS keys
+const CLASS_MAP = {};
+for (const [cls, def] of Object.entries(GAME_DEFS)) CLASS_MAP[cls] = def;
+// Also handle alternate class names
+CLASS_MAP['SpaceShooterGame'] = GAME_DEFS.SpaceShooter;
+CLASS_MAP['HiddenObject'] = GAME_DEFS.HiddenObjectGame;
+
+const GAME_COLORS = {};
+for (const def of Object.values(GAME_DEFS)) GAME_COLORS[def.id] = def.color;
+
+// ============================================================
+// STATE
+// ============================================================
+let ALL_GAMES = {}; // { game_id: { def, variants: [...], results: [...] } }
+let activeTab = 'overlay';
 let charts = {};
-let sortCol = null;
-let sortDir = 1;
+let overlayToggles = {}; // game_id -> visible boolean
+let sortState = {}; // per-table sort state
 
-// File loading
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
+// ============================================================
+// FILE LOADING
+// ============================================================
+const folderDrop = document.getElementById('folder-drop');
+const folderInput = document.getElementById('folder-input');
 
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('hover'); loadFile(e.dataTransfer.files[0]); });
-fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
-
-function loadFile(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      RAW = JSON.parse(e.target.result);
-      dropZone.className = 'loaded';
-      dropZone.textContent = `Loaded ${RAW.length} entries from ${file.name} — click to reload`;
-      init();
-    } catch(err) { alert('JSON parse error: ' + err.message); }
-  };
-  reader.readAsText(file);
-}
-
-// Auto-load from default path
-window.addEventListener('load', () => {
-  // Try fetching from common relative paths
-  const paths = ['../balance_stats.json', 'balance_stats.json'];
-  // Can't auto-load from AppData in browser, user must drop file
+folderDrop.addEventListener('dragover', e => { e.preventDefault(); folderDrop.classList.add('hover'); });
+folderDrop.addEventListener('dragleave', () => folderDrop.classList.remove('hover'));
+folderDrop.addEventListener('drop', e => {
+  e.preventDefault(); folderDrop.classList.remove('hover');
+  const files = [...e.dataTransfer.files].filter(f => f.name.endsWith('.json'));
+  loadFiles(files);
+});
+folderInput.addEventListener('change', e => {
+  const files = [...e.target.files].filter(f => f.name.endsWith('.json') && f.webkitRelativePath.includes('variant'));
+  if (files.length === 0) {
+    // Fallback: load all json files
+    loadFiles([...e.target.files].filter(f => f.name.endsWith('.json')));
+  } else {
+    loadFiles(files);
+  }
 });
 
-function init() {
-  document.getElementById('dashboard').classList.remove('hidden');
-  buildFilters();
-  applyFilters();
-}
+async function loadFiles(files) {
+  ALL_GAMES = {};
+  const status = document.getElementById('load-status');
+  let loaded = 0, skipped = 0;
 
-function getUniqueValues(key) {
-  const vals = new Set();
-  RAW.forEach(e => {
-    let v = e[key];
-    if (v !== undefined && v !== null && typeof v !== 'object') vals.add(String(v));
-  });
-  return [...vals].sort();
-}
+  for (const file of files) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const gameClass = data.game_class;
+      const variants = data.variants || (Array.isArray(data) ? data : null);
+      if (!variants || !gameClass) { skipped++; continue; }
 
-function getEnemyTypes(entry) {
-  const vp = entry.variant_params;
-  if (!vp || !vp.enemies) return [];
-  return vp.enemies.map(e => e.type);
-}
+      const def = CLASS_MAP[gameClass];
+      if (!def) { skipped++; status.textContent = `Skipped unknown game_class: ${gameClass}`; continue; }
 
-function getAllEnemyTypes() {
-  const types = new Set();
-  RAW.forEach(e => getEnemyTypes(e).forEach(t => types.add(t)));
-  return [...types].sort();
-}
-
-function buildFilters() {
-  const toolbar = document.getElementById('toolbar');
-  toolbar.innerHTML = '';
-
-  // Variant filter
-  const variants = getUniqueValues('variant_name');
-  toolbar.appendChild(makeMultiFilter('variant_name', 'Variant', variants));
-
-  // Result filter
-  toolbar.appendChild(makeMultiFilter('result', 'Result', ['victory', 'loss']));
-
-  // Enemy type filter
-  const enemyTypes = getAllEnemyTypes();
-  if (enemyTypes.length > 0) {
-    toolbar.appendChild(makeMultiFilter('_enemy_type', 'Enemy Types', enemyTypes));
+      if (!ALL_GAMES[def.id]) {
+        ALL_GAMES[def.id] = { def, variants: [], meta: { game_class: gameClass, category: data.category, tier: data.tier, sprite_folder: data.sprite_folder } };
+        overlayToggles[def.id] = true;
+      }
+      ALL_GAMES[def.id].variants.push(...variants);
+      loaded++;
+    } catch (err) { skipped++; console.warn('Failed to parse', file.name, err); }
   }
 
-  // Clone index filter
-  const clones = getUniqueValues('clone_index');
-  if (clones.length > 1) {
-    toolbar.appendChild(makeMultiFilter('clone_index', 'Clone #', clones));
+  // Sort variants by clone_index
+  for (const g of Object.values(ALL_GAMES)) {
+    g.variants.sort((a, b) => (a.clone_index || 0) - (b.clone_index || 0));
   }
 
-  // Fail gate filter
-  toolbar.appendChild(makeMultiFilter('fail_gated', 'Fail-gated', ['true', 'false']));
+  folderDrop.className = 'loaded';
+  folderDrop.textContent = `Loaded ${loaded} variant file(s), ${Object.keys(ALL_GAMES).length} game types, ${Object.values(ALL_GAMES).reduce((s, g) => s + g.variants.length, 0)} total variants`;
+  if (skipped > 0) folderDrop.textContent += ` (${skipped} skipped)`;
 
-  // X/Y axis selectors for scatter
-  const numericKeys = getNumericKeys();
-  toolbar.appendChild(makeSelect('x-axis', 'X Axis', numericKeys, 'time_elapsed'));
-  toolbar.appendChild(makeSelect('y-axis', 'Y Axis', numericKeys, 'tokens_per_minute'));
-
-  // Reload button
-  const btn = document.createElement('button');
-  btn.textContent = 'Refresh';
-  btn.onclick = applyFilters;
-  toolbar.appendChild(btn);
+  document.getElementById('main-ui').classList.remove('hidden');
+  recalcAll();
 }
 
-function makeMultiFilter(key, label, values) {
-  const group = document.createElement('div');
-  group.className = 'filter-group';
-  group.innerHTML = `<label>${label}</label>`;
-  const box = document.createElement('div');
-  box.className = 'multi-select';
-  values.forEach(v => {
-    const lbl = document.createElement('label');
-    const cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.checked = true;
-    cb.dataset.filterKey = key; cb.dataset.filterVal = v;
-    cb.onchange = applyFilters;
-    lbl.appendChild(cb);
-    lbl.appendChild(document.createTextNode(v));
-    box.appendChild(lbl);
-  });
-  group.appendChild(box);
-  return group;
+// ============================================================
+// CALCULATION ENGINE
+// ============================================================
+function getSkillFactor() {
+  const v = document.getElementById('cfg-skill')?.value || 'good';
+  return { perfect: 0, good: 0.1, average: 0.3, poor: 0.6 }[v] || 0.1;
 }
 
-function makeSelect(id, label, options, defaultVal) {
-  const group = document.createElement('div');
-  group.className = 'filter-group';
-  group.innerHTML = `<label>${label}</label>`;
-  const sel = document.createElement('select');
-  sel.id = id;
-  options.forEach(o => {
-    const opt = document.createElement('option');
-    opt.value = o; opt.textContent = o;
-    if (o === defaultVal) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  sel.onchange = applyFilters;
-  group.appendChild(sel);
-  return group;
+function recalcAll() {
+  const sc = parseFloat(document.getElementById('cfg-scaling')?.value || 1);
+  const skill = getSkillFactor();
+
+  for (const game of Object.values(ALL_GAMES)) {
+    game.results = game.variants.map(v => calcVariant(game.def, v, sc, skill));
+  }
+
+  buildTabs();
+  renderTab();
 }
 
-function getNumericKeys() {
-  const keys = new Set();
-  RAW.forEach(entry => {
-    for (const [k, v] of Object.entries(entry)) {
-      if (typeof v === 'number') keys.add(k);
-    }
-    if (entry.metrics) {
-      for (const [k, v] of Object.entries(entry.metrics)) {
-        if (typeof v === 'number') keys.add('metrics.' + k);
+function calcVariant(def, variant, sc, skillHitFraction) {
+  const est = def.estimate(variant);
+  const variantMult = Math.max(1, variant.clone_index || 0);
+  const diffMod = variant.difficulty_modifier || 1.0;
+
+  // Calculate token scenarios: 0 hits, 1 hit, ... up to lives
+  const maxHits = Math.max(est.lives, 1);
+  const scenarios = [];
+
+  for (let h = 0; h <= maxHits; h++) {
+    const m = { ...est.metrics };
+    if (def.hitMetric && m[def.hitMetric] !== undefined) {
+      m[def.hitMetric] = h;
+      // Reduce combo proportionally to hits
+      if (m.combo !== undefined && maxHits > 0) {
+        m.combo = Math.max(0, Math.floor(m.combo * (1 - h / maxHits)));
       }
     }
-  });
-  return [...keys].sort();
+    const base = Math.max(0, def.formula(m, sc));
+    scenarios.push(Math.floor(base * variantMult));
+  }
+
+  // Pick the "skill-adjusted" scenario
+  const hitCount = Math.min(maxHits, Math.round(maxHits * skillHitFraction));
+  const tokens = scenarios[hitCount] || scenarios[0] || 0;
+  const tps = est.duration > 0 ? tokens / est.duration : 0;
+  const tpm = tps * 60;
+
+  return {
+    variant,
+    name: variant.name || `Clone ${variant.clone_index}`,
+    clone_index: variant.clone_index || 0,
+    difficulty_modifier: diffMod,
+    variant_mult: variantMult,
+    duration: est.duration,
+    lives: est.lives,
+    tokens,
+    tps,
+    tpm,
+    scenarios,
+    metrics: est.metrics,
+  };
 }
 
-function getNestedVal(entry, key) {
-  if (key.startsWith('metrics.')) return (entry.metrics || {})[key.slice(8)] || 0;
-  return entry[key] || 0;
+// ============================================================
+// TAB BAR
+// ============================================================
+function buildTabs() {
+  const bar = document.getElementById('tab-bar');
+  bar.innerHTML = '';
+
+  // Overlay tab
+  const ot = document.createElement('div');
+  ot.className = 'tab' + (activeTab === 'overlay' ? ' active' : '');
+  ot.innerHTML = 'All Games';
+  ot.onclick = () => { activeTab = 'overlay'; buildTabs(); renderTab(); };
+  bar.appendChild(ot);
+
+  // Per-game tabs
+  for (const [id, game] of Object.entries(ALL_GAMES)) {
+    const t = document.createElement('div');
+    t.className = 'tab' + (activeTab === id ? ' active' : '');
+    t.innerHTML = `${game.def.label} <span class="count">${game.variants.length}</span>`;
+    t.onclick = () => { activeTab = id; buildTabs(); renderTab(); };
+    bar.appendChild(t);
+  }
 }
 
-function getActiveFilters() {
-  const filters = {};
-  document.querySelectorAll('.multi-select input[type=checkbox]').forEach(cb => {
-    const key = cb.dataset.filterKey;
-    if (!filters[key]) filters[key] = { checked: [], unchecked: [] };
-    if (cb.checked) filters[key].checked.push(cb.dataset.filterVal);
-    else filters[key].unchecked.push(cb.dataset.filterVal);
-  });
-  return filters;
+// ============================================================
+// RENDER
+// ============================================================
+function renderTab() {
+  const el = document.getElementById('content');
+  el.innerHTML = '';
+  destroyCharts();
+
+  if (activeTab === 'overlay') renderOverlay(el);
+  else if (ALL_GAMES[activeTab]) renderGameTab(el, ALL_GAMES[activeTab]);
 }
 
-function applyFilters() {
-  const filters = getActiveFilters();
-
-  filtered = RAW.filter(entry => {
-    for (const [key, f] of Object.entries(filters)) {
-      if (f.unchecked.length === 0) continue; // all checked = no filter
-
-      if (key === '_enemy_type') {
-        const types = getEnemyTypes(entry);
-        const hasMatch = types.some(t => f.checked.includes(t));
-        if (!hasMatch && types.length > 0) return false;
-        if (types.length === 0 && f.checked.length < f.checked.length + f.unchecked.length) {
-          // Entry has no enemies - include only if all are checked
-        }
-      } else {
-        const val = String(entry[key] !== undefined ? entry[key] : '');
-        if (!f.checked.includes(val)) return false;
-      }
-    }
-    return true;
-  });
-
-  renderAll();
-}
-
-function renderAll() {
-  renderSummary();
-  renderCharts();
-  renderTable();
-}
-
-function renderSummary() {
-  const el = document.getElementById('summary-cards');
-  if (filtered.length === 0) { el.innerHTML = '<div style="color:#f44">No data matches filters</div>'; return; }
-
-  const wins = filtered.filter(e => e.result === 'victory').length;
-  const avgTime = avg(filtered, 'time_elapsed');
-  const avgTPM = avg(filtered, 'tokens_per_minute');
-  const avgTokens = avg(filtered, 'tokens_earned');
-  const failGated = filtered.filter(e => e.fail_gated).length;
-  const avgCollisions = avg(filtered, e => (e.metrics || {}).collisions || 0);
-  const avgDodged = avg(filtered, e => (e.metrics || {}).objects_dodged || 0);
-
-  el.innerHTML = `
-    <div class="stat-card"><div class="val">${filtered.length}</div><div class="lbl">Games</div></div>
-    <div class="stat-card"><div class="val">${wins}/${filtered.length}</div><div class="lbl">Win Rate (${(wins/filtered.length*100).toFixed(0)}%)</div></div>
-    <div class="stat-card"><div class="val">${avgTime.toFixed(1)}s</div><div class="lbl">Avg Time</div></div>
-    <div class="stat-card"><div class="val">${avgTPM.toFixed(1)}</div><div class="lbl">Avg TPM</div></div>
-    <div class="stat-card"><div class="val">${avgTokens.toFixed(0)}</div><div class="lbl">Avg Tokens</div></div>
-    <div class="stat-card"><div class="val">${failGated}</div><div class="lbl">Fail-gated</div></div>
-    <div class="stat-card"><div class="val">${avgDodged.toFixed(1)}</div><div class="lbl">Avg Dodged</div></div>
-    <div class="stat-card"><div class="val">${avgCollisions.toFixed(1)}</div><div class="lbl">Avg Collisions</div></div>
-  `;
-}
-
-function avg(arr, keyOrFn) {
-  if (arr.length === 0) return 0;
-  const fn = typeof keyOrFn === 'function' ? keyOrFn : (e => e[keyOrFn] || 0);
-  return arr.reduce((s, e) => s + fn(e), 0) / arr.length;
-}
-
-function renderCharts() {
-  const grid = document.getElementById('charts-grid');
-  grid.innerHTML = '';
-
-  // Destroy old charts
-  Object.values(charts).forEach(c => c.destroy());
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e) {} });
   charts = {};
-
-  // 1. TPM by variant (bar)
-  charts.tpm = makeBarChart(grid, 'Tokens/Min by Variant', groupBy('variant_name'), 'tokens_per_minute');
-
-  // 2. Win rate by variant (bar)
-  charts.winrate = makeWinRateChart(grid, 'Win Rate by Variant');
-
-  // 3. Scatter plot (configurable axes)
-  const xKey = document.getElementById('x-axis')?.value || 'time_elapsed';
-  const yKey = document.getElementById('y-axis')?.value || 'tokens_per_minute';
-  charts.scatter = makeScatterChart(grid, `${yKey} vs ${xKey}`, xKey, yKey);
-
-  // 4. Collisions vs Dodged by variant
-  charts.ratio = makeStackedBar(grid, 'Dodged vs Collisions by Variant');
 }
 
-function groupBy(key) {
-  const groups = {};
-  filtered.forEach(e => {
-    const k = e[key] || 'Unknown';
-    if (!groups[k]) groups[k] = [];
-    groups[k].push(e);
+// ============================================================
+// OVERLAY TAB
+// ============================================================
+function renderOverlay(el) {
+  // Legend toggles
+  const legendRow = document.createElement('div');
+  legendRow.className = 'legend-row';
+  for (const [id, game] of Object.entries(ALL_GAMES)) {
+    const item = document.createElement('div');
+    item.className = 'legend-item' + (overlayToggles[id] ? '' : ' dimmed');
+    item.innerHTML = `<div class="legend-swatch" style="background:${game.def.color}"></div>${game.def.label}`;
+    item.onclick = () => { overlayToggles[id] = !overlayToggles[id]; renderTab(); };
+    legendRow.appendChild(item);
+  }
+  el.appendChild(legendRow);
+
+  // Summary cards
+  const cards = document.createElement('div');
+  cards.className = 'stats-row';
+  const totalVariants = Object.values(ALL_GAMES).reduce((s, g) => s + g.variants.length, 0);
+  const allResults = Object.values(ALL_GAMES).flatMap(g => g.results || []);
+  const avgTokens = allResults.length > 0 ? allResults.reduce((s, r) => s + r.tokens, 0) / allResults.length : 0;
+  const avgTPM = allResults.length > 0 ? allResults.reduce((s, r) => s + r.tpm, 0) / allResults.length : 0;
+  const avgDur = allResults.length > 0 ? allResults.reduce((s, r) => s + r.duration, 0) / allResults.length : 0;
+  cards.innerHTML = `
+    <div class="stat-card"><div class="val">${Object.keys(ALL_GAMES).length}</div><div class="lbl">Game Types</div></div>
+    <div class="stat-card"><div class="val">${totalVariants}</div><div class="lbl">Total Variants</div></div>
+    <div class="stat-card"><div class="val">${Math.round(avgTokens)}</div><div class="lbl">Avg Tokens/Game</div></div>
+    <div class="stat-card"><div class="val">${avgTPM.toFixed(1)}</div><div class="lbl">Avg Tokens/Min</div></div>
+    <div class="stat-card"><div class="val">${avgDur.toFixed(1)}s</div><div class="lbl">Avg Duration</div></div>
+  `;
+  el.appendChild(cards);
+
+  // Overlay charts
+  const grid = document.createElement('div');
+  grid.className = 'chart-grid';
+  el.appendChild(grid);
+
+  const xAxis = document.getElementById('cfg-overlay-x')?.value || 'clone_index';
+  const yAxis = document.getElementById('cfg-overlay-y')?.value || 'tokens';
+
+  const yLabels = { tokens: 'Tokens / Game', tpm: 'Tokens / Minute', tps: 'Tokens / Second', duration: 'Duration (s)' };
+  const yKey = { tokens: 'tokens', tpm: 'tpm', tps: 'tps', duration: 'duration' }[yAxis];
+  const xLabel = xAxis === 'clone_index' ? 'Clone Index' : 'Difficulty Modifier';
+
+  // Main overlay chart
+  charts.overlay = makeOverlayLineChart(grid, `${yLabels[yAxis]} by ${xLabel}`, xAxis, yKey, true);
+
+  // Secondary chart: the OTHER metric
+  const y2 = yAxis === 'tokens' ? 'tpm' : 'tokens';
+  const y2Key = { tokens: 'tokens', tpm: 'tpm', tps: 'tps', duration: 'duration' }[y2];
+  charts.overlay2 = makeOverlayLineChart(grid, `${yLabels[y2]} by ${xLabel}`, xAxis, y2Key, false);
+
+  // Comparison table
+  renderComparisonTable(el);
+}
+
+function makeOverlayLineChart(container, title, xKey, yKey, isTall) {
+  const box = document.createElement('div');
+  box.className = 'chart-box' + (isTall ? ' tall' : '');
+  box.innerHTML = `<h3>${title}</h3>`;
+  const wrap = document.createElement('div');
+  wrap.className = 'chart-wrap';
+  const canvas = document.createElement('canvas');
+  wrap.appendChild(canvas);
+  box.appendChild(wrap);
+  container.appendChild(box);
+
+  const datasets = [];
+  for (const [id, game] of Object.entries(ALL_GAMES)) {
+    if (!overlayToggles[id] || !game.results) continue;
+    const points = game.results.map(r => ({
+      x: xKey === 'clone_index' ? r.clone_index : r.difficulty_modifier,
+      y: r[yKey] || 0,
+    })).sort((a, b) => a.x - b.x);
+
+    datasets.push({
+      label: game.def.label,
+      data: points,
+      borderColor: game.def.color,
+      backgroundColor: game.def.color + '22',
+      tension: 0.3,
+      pointRadius: 4,
+      pointHoverRadius: 7,
+      borderWidth: 2,
+      fill: false,
+    });
+  }
+
+  return new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      showLine: true,
+      interaction: { mode: 'nearest', intersect: false },
+      plugins: { legend: { labels: { color: '#ccc', font: { size: 10 } }, onClick: (e, item, legend) => {
+            const idx = item.datasetIndex;
+            const ds = legend.chart.data.datasets[idx];
+            // Find game id by label
+            const gameId = Object.values(ALL_GAMES).find(g => g.def.label === ds.label)?.def.id;
+            if (gameId) { overlayToggles[gameId] = !overlayToggles[gameId]; renderTab(); }
+          } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${typeof ctx.parsed.y === 'number' ? (ctx.parsed.y > 100 ? Math.round(ctx.parsed.y) : ctx.parsed.y.toFixed(2)) : ctx.parsed.y}`,
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: xKey === 'clone_index' ? 'Clone Index' : 'Difficulty Modifier', color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' } },
+        y: {
+          type: document.getElementById('cfg-yscale')?.value === 'log' ? 'logarithmic' : 'linear',
+          title: { display: true, text: yKey, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' },
+          ...(document.getElementById('cfg-yscale')?.value !== 'log' ? { beginAtZero: true } : {}),
+        },
+      }
+    }
   });
-  return groups;
 }
 
-function makeChartBox(container, title) {
+function renderComparisonTable(el) {
+  const wrap = document.createElement('div');
+  wrap.className = 'table-wrap';
+  const tableId = 'comparison';
+
+  const cols = [
+    { key: 'game', label: 'Game', get: r => r._game },
+    { key: 'count', label: 'Variants', num: true, get: r => r._count },
+    { key: 'avgTokens', label: 'Avg Tokens', num: true, get: r => r._avgTokens, fmt: v => Math.round(v) },
+    { key: 'minTokens', label: 'Min Tok', num: true, get: r => r._minTokens, fmt: v => Math.round(v) },
+    { key: 'maxTokens', label: 'Max Tok', num: true, get: r => r._maxTokens, fmt: v => Math.round(v) },
+    { key: 'avgTPM', label: 'Avg TPM', num: true, get: r => r._avgTPM, fmt: v => v.toFixed(1) },
+    { key: 'minTPM', label: 'Min TPM', num: true, get: r => r._minTPM, fmt: v => v.toFixed(1) },
+    { key: 'maxTPM', label: 'Max TPM', num: true, get: r => r._maxTPM, fmt: v => v.toFixed(1) },
+    { key: 'avgDur', label: 'Avg Dur', num: true, get: r => r._avgDur, fmt: v => v.toFixed(1) + 's' },
+    { key: 'avgDiffMod', label: 'Avg Diff', num: true, get: r => r._avgDiff, fmt: v => v.toFixed(2) },
+  ];
+
+  const rows = Object.values(ALL_GAMES).map(g => {
+    const rs = g.results || [];
+    const toks = rs.map(r => r.tokens);
+    const tpms = rs.map(r => r.tpm);
+    return {
+      _game: g.def.label,
+      _count: rs.length,
+      _avgTokens: rs.length ? toks.reduce((a, b) => a + b, 0) / rs.length : 0,
+      _minTokens: rs.length ? Math.min(...toks) : 0,
+      _maxTokens: rs.length ? Math.max(...toks) : 0,
+      _avgTPM: rs.length ? tpms.reduce((a, b) => a + b, 0) / rs.length : 0,
+      _minTPM: rs.length ? Math.min(...tpms) : 0,
+      _maxTPM: rs.length ? Math.max(...tpms) : 0,
+      _avgDur: rs.length ? rs.reduce((s, r) => s + r.duration, 0) / rs.length : 0,
+      _avgDiff: rs.length ? rs.reduce((s, r) => s + r.difficulty_modifier, 0) / rs.length : 0,
+    };
+  });
+
+  wrap.innerHTML = renderSortableTable(tableId, cols, rows);
+  el.appendChild(wrap);
+  bindTableSort(tableId, cols, rows, wrap);
+}
+
+// ============================================================
+// PER-GAME TAB
+// ============================================================
+function renderGameTab(el, game) {
+  const def = game.def;
+  const results = game.results || [];
+
+  // Formula
+  const fb = document.createElement('div');
+  fb.className = 'formula-box';
+  fb.innerHTML = `<div class="label">Token Formula (×variant_mult)</div>${def.displayFormula}`;
+  el.appendChild(fb);
+
+  // Summary cards
+  const cards = document.createElement('div');
+  cards.className = 'stats-row';
+  const toks = results.map(r => r.tokens);
+  const tpms = results.map(r => r.tpm);
+  const avgT = results.length ? toks.reduce((a, b) => a + b, 0) / results.length : 0;
+  const avgTPM = results.length ? tpms.reduce((a, b) => a + b, 0) / results.length : 0;
+  const maxT = results.length ? Math.max(...toks) : 0;
+  const minT = results.length ? Math.min(...toks) : 0;
+  cards.innerHTML = `
+    <div class="stat-card"><div class="val">${results.length}</div><div class="lbl">Variants</div></div>
+    <div class="stat-card"><div class="val">${Math.round(avgT)}</div><div class="lbl">Avg Tokens</div></div>
+    <div class="stat-card"><div class="val">${Math.round(minT)} — ${Math.round(maxT)}</div><div class="lbl">Token Range</div></div>
+    <div class="stat-card"><div class="val">${avgTPM.toFixed(1)}</div><div class="lbl">Avg TPM</div></div>
+  `;
+  el.appendChild(cards);
+
+  // Charts
+  const grid = document.createElement('div');
+  grid.className = 'chart-grid';
+  el.appendChild(grid);
+
+  charts.gameTokens = makeGameLineChart(grid, 'Tokens by Clone Index', results, 'clone_index', 'tokens', def.color);
+  charts.gameTPM = makeGameLineChart(grid, 'Tokens/Min by Clone Index', results, 'clone_index', 'tpm', def.color);
+
+  // Hit scenario chart
+  if (def.hitMetric && results.length > 0) {
+    charts.gameHits = makeHitScenarioChart(grid, `Token Scenarios (${def.hitMetric})`, results, def.color);
+  }
+
+  // Duration chart
+  charts.gameDur = makeGameLineChart(grid, 'Duration by Clone Index', results, 'clone_index', 'duration', def.color);
+
+  // Variant table
+  renderVariantTable(el, game);
+}
+
+function makeGameLineChart(container, title, results, xKey, yKey, color) {
   const box = document.createElement('div');
   box.className = 'chart-box';
   box.innerHTML = `<h3>${title}</h3>`;
@@ -394,860 +791,203 @@ function makeChartBox(container, title) {
   wrap.appendChild(canvas);
   box.appendChild(wrap);
   container.appendChild(box);
-  return canvas;
-}
 
-function makeBarChart(container, title, groups, metric) {
-  const canvas = makeChartBox(container, title);
-
-  const labels = Object.keys(groups);
-  const data = labels.map(k => {
-    const arr = groups[k];
-    return arr.reduce((s, e) => s + (e[metric] || 0), 0) / arr.length;
-  });
-
-  return new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{ label: metric, data, backgroundColor: 'rgba(0,255,255,0.6)', borderColor: '#0ff', borderWidth: 1 }]
-    },
-    options: chartOpts(metric)
-  });
-}
-
-function makeWinRateChart(container, title) {
-  const canvas = makeChartBox(container, title);
-
-  const groups = groupBy('variant_name');
-  const labels = Object.keys(groups);
-  const wins = labels.map(k => groups[k].filter(e => e.result === 'victory').length);
-  const losses = labels.map(k => groups[k].filter(e => e.result === 'loss').length);
-
-  return new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Wins', data: wins, backgroundColor: 'rgba(0,255,0,0.6)' },
-        { label: 'Losses', data: losses, backgroundColor: 'rgba(255,68,68,0.6)' }
-      ]
-    },
-    options: { ...chartOpts('count'), scales: { ...chartOpts('').scales, x: { stacked: true, ticks: { color: '#888' } }, y: { stacked: true, ticks: { color: '#888' }, grid: { color: '#333' } } } }
-  });
-}
-
-function makeScatterChart(container, title, xKey, yKey) {
-  const canvas = makeChartBox(container, title);
-
-  const colorMap = {};
-  const colors = ['#0ff','#f0f','#ff0','#0f0','#f80','#08f','#f44','#4f4','#84f','#fa0','#4ff','#f4f'];
-  let ci = 0;
-  filtered.forEach(e => {
-    if (!colorMap[e.variant_name]) colorMap[e.variant_name] = colors[ci++ % colors.length];
-  });
-
-  // Group by variant for legend
-  const groups = groupBy('variant_name');
-  const datasets = Object.entries(groups).map(([name, entries]) => ({
-    label: name,
-    data: entries.map(e => ({ x: getNestedVal(e, xKey), y: getNestedVal(e, yKey) })),
-    backgroundColor: colorMap[name],
-    pointRadius: 6,
-    pointHoverRadius: 9
-  }));
+  const points = results.map(r => ({ x: r[xKey], y: r[yKey] })).sort((a, b) => a.x - b.x);
 
   return new Chart(canvas, {
     type: 'scatter',
-    data: { datasets },
-    options: {
-      ...chartOpts(''),
-      scales: {
-        x: { title: { display: true, text: xKey, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' } },
-        y: { title: { display: true, text: yKey, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' } }
-      }
-    }
-  });
-}
-
-function makeStackedBar(container, title) {
-  const canvas = makeChartBox(container, title);
-
-  const groups = groupBy('variant_name');
-  const labels = Object.keys(groups);
-  const dodged = labels.map(k => avg(groups[k], e => (e.metrics || {}).objects_dodged || 0));
-  const collisions = labels.map(k => avg(groups[k], e => (e.metrics || {}).collisions || 0));
-
-  return new Chart(canvas, {
-    type: 'bar',
     data: {
-      labels,
-      datasets: [
-        { label: 'Avg Dodged', data: dodged, backgroundColor: 'rgba(0,255,0,0.6)' },
-        { label: 'Avg Collisions', data: collisions, backgroundColor: 'rgba(255,68,68,0.6)' }
-      ]
-    },
-    options: chartOpts('count')
-  });
-}
-
-function chartOpts(label) {
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { labels: { color: '#ccc', font: { size: 10 } } } },
-    scales: {
-      x: { ticks: { color: '#888', maxRotation: 45, font: { size: 9 } }, grid: { color: '#333' } },
-      y: { ticks: { color: '#888' }, grid: { color: '#333' } }
-    }
-  };
-}
-
-// Table
-const TABLE_COLS = [
-  { key: 'variant_name', label: 'Variant' },
-  { key: 'clone_index', label: '#', numeric: true },
-  { key: 'result', label: 'Result' },
-  { key: 'time_elapsed', label: 'Time', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(1) + 's' : v },
-  { key: 'tokens_earned', label: 'Tokens', numeric: true, fmt: v => typeof v === 'number' ? Math.round(v) : v },
-  { key: 'base_tokens', label: 'Base', numeric: true, fmt: v => typeof v === 'number' ? Math.round(v) : v },
-  { key: 'tokens_per_minute', label: 'TPM', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(1) : v },
-  { key: 'tokens_per_hour', label: 'TPH', numeric: true, fmt: v => typeof v === 'number' ? Math.round(v) : v },
-  { key: 'fail_gated', label: 'Fail', fmt: v => v === true ? 'YES' : (typeof v === 'number' ? v + '/' : '') },
-  { key: 'is_new_best', label: 'Best', fmt: v => v === true ? 'NEW' : '' },
-  { key: 'lives_remaining', label: 'Lives', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(1) : v },
-  { key: 'metrics.objects_dodged', label: 'Dodged', numeric: true, getter: e => (e.metrics||{}).objects_dodged||0, fmt: v => typeof v === 'number' ? (v % 1 === 0 ? v : v.toFixed(1)) : v },
-  { key: 'metrics.collisions', label: 'Hits', numeric: true, getter: e => (e.metrics||{}).collisions||0, fmt: v => typeof v === 'number' ? (v % 1 === 0 ? v : v.toFixed(1)) : v },
-  { key: 'metrics.combo', label: 'Combo', numeric: true, getter: e => (e.metrics||{}).combo||0, fmt: v => typeof v === 'number' ? (v % 1 === 0 ? v : v.toFixed(1)) : v },
-  { key: 'metrics.kills', label: 'Kills', numeric: true, getter: e => (e.metrics||{}).kills||0 },
-  { key: 'performance_mult', label: 'Cheat x', numeric: true, fmt: v => v !== 1 && typeof v === 'number' ? v.toFixed(1) + 'x' : '' },
-  { key: 'variant_multiplier', label: 'Var x', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(2) : v },
-];
-
-// Grouped table columns — replaces Result/Best with WinRate/Count
-const GROUP_COLS = [
-  { key: '_group_name', label: 'Group' },
-  { key: '_count', label: 'n', numeric: true },
-  { key: '_win_rate', label: 'Win%', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(0) + '%' : v },
-  { key: 'time_elapsed', label: 'Avg Time', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(1) + 's' : v },
-  { key: 'tokens_earned', label: 'Avg Tokens', numeric: true, fmt: v => typeof v === 'number' ? Math.round(v) : v },
-  { key: 'base_tokens', label: 'Avg Base', numeric: true, fmt: v => typeof v === 'number' ? Math.round(v) : v },
-  { key: 'tokens_per_minute', label: 'Avg TPM', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(1) : v },
-  { key: 'tokens_per_hour', label: 'Avg TPH', numeric: true, fmt: v => typeof v === 'number' ? Math.round(v) : v },
-  { key: '_fail_gated_count', label: 'Fail-gated', numeric: true, fmt: (v, row) => row ? `${v}/${row._count}` : v },
-  { key: 'lives_remaining', label: 'Avg Lives', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(1) : v },
-  { key: 'metrics.objects_dodged', label: 'Avg Dodged', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(1) : v },
-  { key: 'metrics.collisions', label: 'Avg Hits', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(1) : v },
-  { key: 'metrics.combo', label: 'Avg Combo', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(1) : v },
-  { key: 'variant_multiplier', label: 'Avg Var x', numeric: true, fmt: v => typeof v === 'number' ? v.toFixed(2) : v },
-];
-
-let currentGroupBy = 'none';
-
-function buildTableToolbar() {
-  const tb = document.getElementById('table-toolbar');
-  tb.innerHTML = '';
-
-  // Group By select
-  const groupOpts = [
-    { value: 'none', label: 'No grouping (raw rows)' },
-    { value: 'variant_name', label: 'Group by Variant' },
-    { value: '_enemy_type', label: 'Group by Enemy Type' },
-    { value: '_has_enemy_type', label: 'Group by Has Enemy Type' },
-    { value: 'clone_index', label: 'Group by Clone #' },
-    { value: 'result', label: 'Group by Result' },
-    { value: 'variant_multiplier', label: 'Group by Var Multiplier' },
-  ];
-
-  const group = document.createElement('div');
-  group.className = 'filter-group';
-  group.innerHTML = '<label>Table Grouping</label>';
-  const sel = document.createElement('select');
-  sel.id = 'group-by';
-  groupOpts.forEach(o => {
-    const opt = document.createElement('option');
-    opt.value = o.value;
-    opt.textContent = o.label;
-    if (o.value === currentGroupBy) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  sel.onchange = () => { currentGroupBy = sel.value; sortCol = null; renderTable(); };
-  group.appendChild(sel);
-  tb.appendChild(group);
-}
-
-function aggregateGroup(entries) {
-  const row = {};
-  row._count = entries.length;
-  row._win_rate = (entries.filter(e => e.result === 'victory').length / entries.length) * 100;
-  row._fail_gated_count = entries.filter(e => e.fail_gated).length;
-
-  // Average all numeric fields
-  const numKeys = ['time_elapsed', 'tokens_earned', 'base_tokens', 'tokens_per_minute', 'tokens_per_hour',
-    'lives_remaining', 'variant_multiplier', 'performance_mult', 'clone_index'];
-  numKeys.forEach(k => {
-    const vals = entries.map(e => e[k]).filter(v => typeof v === 'number');
-    row[k] = vals.length > 0 ? vals.reduce((a,b) => a+b, 0) / vals.length : 0;
-  });
-
-  // Average metric fields
-  row.metrics = {};
-  const metricKeys = ['objects_dodged', 'collisions', 'combo', 'kills'];
-  metricKeys.forEach(k => {
-    const vals = entries.map(e => (e.metrics || {})[k]).filter(v => typeof v === 'number');
-    row.metrics[k] = vals.length > 0 ? vals.reduce((a,b) => a+b, 0) / vals.length : 0;
-  });
-
-  return row;
-}
-
-function getGroupedData() {
-  if (currentGroupBy === 'none') return null;
-
-  const groups = {};
-
-  if (currentGroupBy === '_enemy_type') {
-    // Each enemy type gets its own group; entries with multiple types appear in multiple groups
-    filtered.forEach(e => {
-      const types = getEnemyTypes(e);
-      if (types.length === 0) {
-        const k = '(no enemies)';
-        if (!(k in groups)) groups[k] = [];
-        groups[k].push(e);
-      } else {
-        types.forEach(t => {
-          if (!(t in groups)) groups[t] = [];
-          groups[t].push(e);
-        });
-      }
-    });
-  } else if (currentGroupBy === '_has_enemy_type') {
-    // Group by unique sorted enemy type combination
-    filtered.forEach(e => {
-      const types = getEnemyTypes(e);
-      const k = types.length > 0 ? types.sort().join(' + ') : '(no enemies)';
-      if (!(k in groups)) groups[k] = [];
-      groups[k].push(e);
-    });
-  } else {
-    filtered.forEach(e => {
-      const k = String(e[currentGroupBy] !== undefined ? e[currentGroupBy] : 'Unknown');
-      if (!(k in groups)) groups[k] = [];
-      groups[k].push(e);
-    });
-  }
-
-  // Build aggregated rows
-  return Object.entries(groups).map(([name, entries]) => {
-    const row = aggregateGroup(entries);
-    row._group_name = name;
-    return row;
-  });
-}
-
-function renderTable() {
-  const wrap = document.getElementById('table-wrap');
-  buildTableToolbar();
-  if (filtered.length === 0) { wrap.innerHTML = ''; return; }
-
-  const grouped = getGroupedData();
-
-  if (grouped) {
-    renderGroupedTable(wrap, grouped);
-  } else {
-    renderRawTable(wrap);
-  }
-}
-
-function renderGroupedTable(wrap, rows) {
-  const cols = GROUP_COLS;
-  let html = '<table><thead><tr>';
-  cols.forEach((col, i) => {
-    const arrow = sortCol === i ? (sortDir === 1 ? ' ▲' : ' ▼') : '';
-    html += `<th onclick="sortTable(${i})">${col.label}${arrow}</th>`;
-  });
-  html += '</tr></thead><tbody>';
-
-  const sorted = [...rows];
-  if (sortCol !== null && sortCol < cols.length) {
-    const col = cols[sortCol];
-    sorted.sort((a, b) => {
-      const va = col.getter ? col.getter(a) : (a[col.key] ?? 0);
-      const vb = col.getter ? col.getter(b) : (b[col.key] ?? 0);
-      if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
-      return ((va || 0) - (vb || 0)) * sortDir;
-    });
-  }
-
-  sorted.forEach(row => {
-    html += '<tr class="group-row">';
-    cols.forEach(col => {
-      let raw;
-      if (col.getter) raw = col.getter(row);
-      else if (col.key.startsWith('metrics.')) raw = (row.metrics || {})[col.key.slice(8)] || 0;
-      else raw = row[col.key];
-
-      const val = col.fmt ? col.fmt(raw, row) : (raw ?? '');
-      const cls = col.numeric ? ' class="num"' : '';
-
-      // Color win rate
-      let style = '';
-      if (col.key === '_win_rate' && typeof raw === 'number') {
-        const g = Math.round(raw * 2.55);
-        const r = Math.round((100 - raw) * 2.55);
-        style = ` style="color:rgb(${r},${g},80)"`;
-      }
-
-      html += `<td${cls}${style}>${val}</td>`;
-    });
-    html += '</tr>';
-  });
-
-  html += '</tbody></table>';
-  wrap.innerHTML = html;
-}
-
-function renderRawTable(wrap) {
-  const cols = TABLE_COLS;
-  let html = '<table><thead><tr>';
-  cols.forEach((col, i) => {
-    const arrow = sortCol === i ? (sortDir === 1 ? ' ▲' : ' ▼') : '';
-    html += `<th onclick="sortTable(${i})">${col.label}${arrow}</th>`;
-  });
-  html += '</tr></thead><tbody>';
-
-  const sorted = [...filtered];
-  if (sortCol !== null && sortCol < cols.length) {
-    const col = cols[sortCol];
-    sorted.sort((a, b) => {
-      const va = col.getter ? col.getter(a) : (a[col.key] ?? 0);
-      const vb = col.getter ? col.getter(b) : (b[col.key] ?? 0);
-      if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
-      return ((va || 0) - (vb || 0)) * sortDir;
-    });
-  }
-
-  sorted.forEach(entry => {
-    html += '<tr>';
-    cols.forEach(col => {
-      const raw = col.getter ? col.getter(entry) : entry[col.key];
-      const val = col.fmt ? col.fmt(raw) : (raw ?? '');
-      const cls = col.numeric ? ' class="num"' : '';
-      let style = '';
-      if (col.key === 'result') style = val === 'victory' ? ' class="win"' : ' class="loss"';
-      if (col.key === 'fail_gated' && val === 'YES') style = ' class="failgate"';
-      html += `<td${cls}${style}>${val}</td>`;
-    });
-    html += '</tr>';
-  });
-
-  html += '</tbody></table>';
-  wrap.innerHTML = html;
-}
-
-window.sortTable = function(colIdx) {
-  if (sortCol === colIdx) sortDir *= -1;
-  else { sortCol = colIdx; sortDir = 1; }
-  renderTable();
-};
-
-document.getElementById('dashboard').classList.remove('hidden');
-document.getElementById('dashboard').classList.add('hidden');
-
-// ============================================================
-// SPAWN SIMULATOR
-// ============================================================
-
-let SIM_VARIANTS = null;
-let SIM_SCHEMA_DEFAULTS = {};
-let simSortCol = null;
-let simSortDir = 1;
-
-// Simulator config
-const SIM_DEFAULTS = {
-  scaling_constant: 1,
-  base_spawn_rate: 1.0,
-  spawn_accel_max: 2.0,
-  spawn_accel_time: 60,
-  default_victory_condition: 'dodge_count',
-  default_victory_limit: 30,
-  default_lives: 10,
-  default_obstacle_spawn_rate: 1.0,
-  arena_width: 400,
-  arena_height: 400,
-  default_object_speed: 200,
-  tick_rate: 60, // simulation ticks per second
-};
-
-// File loading for simulator
-const simDropZone = document.getElementById('sim-drop-zone');
-const simFileInput = document.getElementById('sim-file-input');
-
-simDropZone.addEventListener('dragover', e => { e.preventDefault(); simDropZone.classList.add('hover'); });
-simDropZone.addEventListener('dragleave', () => simDropZone.classList.remove('hover'));
-simDropZone.addEventListener('drop', e => { e.preventDefault(); simDropZone.classList.remove('hover'); loadSimFile(e.dataTransfer.files[0]); });
-simFileInput.addEventListener('change', e => { if (e.target.files[0]) loadSimFile(e.target.files[0]); });
-
-function loadSimFile(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      // Handle both {variants:[...]} and direct array
-      SIM_VARIANTS = data.variants || data;
-      simDropZone.className = 'loaded';
-      simDropZone.textContent = `Loaded ${SIM_VARIANTS.length} variants from ${file.name} — click to reload`;
-      document.getElementById('sim-dashboard').classList.remove('hidden');
-      buildSimConfig();
-      runSimulation();
-    } catch(err) { alert('JSON parse error: ' + err.message); }
-  };
-  reader.readAsText(file);
-}
-
-function buildSimConfig() {
-  const cfg = document.getElementById('sim-config');
-  cfg.innerHTML = `
-    <div class="filter-group">
-      <label>Scaling Constant</label>
-      <input type="number" id="sim-scaling" value="1" step="0.1" min="0.01" onchange="runSimulation()">
-    </div>
-    <div class="filter-group">
-      <label>Formula Constant</label>
-      <input type="number" id="sim-formula-k" value="0.03" step="0.005" min="0.001" onchange="runSimulation()">
-    </div>
-    <div class="filter-group">
-      <label>Collision Penalty</label>
-      <input type="number" id="sim-collision-penalty" value="3" step="1" min="0" onchange="runSimulation()">
-    </div>
-    <button onclick="runSimulation()">Recalculate</button>
-  `;
-}
-
-function getEnemyWeight(multiplier, time) {
-  if (typeof multiplier === 'object' && multiplier !== null) {
-    return (multiplier.base || 0) + time * (multiplier.growth || 0);
-  }
-  return multiplier || 1;
-}
-
-function simulateVariant(variant) {
-  const vc = variant.victory_condition || SIM_DEFAULTS.default_victory_condition;
-  const vl = variant.victory_limit || SIM_DEFAULTS.default_victory_limit;
-  const lives = variant.lives || SIM_DEFAULTS.default_lives;
-  const spawnRateMult = variant.obstacle_spawn_rate || SIM_DEFAULTS.default_obstacle_spawn_rate;
-  const diffMod = variant.difficulty_modifier || 1.0;
-  const cloneIndex = variant.clone_index || 0;
-  const variantMult = Math.max(1, cloneIndex * 2);
-
-  // Base spawn interval: base_spawn_rate / (difficulty_count * variant_diff) / obstacle_spawn_rate
-  // difficulty_modifiers.count = 1 for clone_index based games (no count scaling)
-  const baseSpawnInterval = (SIM_DEFAULTS.base_spawn_rate / 1 / diffMod) / spawnRateMult;
-
-  const dt = 1 / SIM_DEFAULTS.tick_rate;
-  // Fallback to default obstacles if no enemies defined (matches game logic)
-  let enemies = variant.enemies || [];
-  const disableFallback = variant.disable_obstacle_fallback || false;
-  if (enemies.length === 0 && !disableFallback) {
-    enemies = [{ type: 'obstacle', multiplier: 1 }];
-  }
-  const hasEnemies = enemies.length > 0;
-
-  // Enemy speed estimate (for time-on-screen calculation)
-  const defaultSpeed = SIM_DEFAULTS.default_object_speed * diffMod;
-  const arenaSize = Math.max(
-    (variant.arena_base_width || SIM_DEFAULTS.arena_width) * (variant.area_size || 1.0),
-    (variant.arena_base_height || SIM_DEFAULTS.arena_height) * (variant.area_size || 1.0)
-  );
-  // Estimate how long an enemy is on screen: crosses arena diagonal / speed
-  const arenaTraversal = arenaSize * 1.4; // diagonal
-
-  // Static enemies
-  const staticCount = (variant.static_enemies || []).length;
-
-  // Simulation state
-  let time = 0;
-  let spawnTimer = 0;
-  let totalSpawned = 0;
-  let onScreen = staticCount; // start with static enemies
-  let maxOnScreen = staticCount;
-  let onScreenSum = 0;
-  let ticks = 0;
-  let dodgesAccum = 0; // estimated dodges (enemies leaving screen)
-
-  // Track active enemies with their remaining lifetime
-  const activeEnemies = [];
-
-  // For time-based: run until victory_limit
-  // For dodge/kills: run until enough entities have passed through
-  const maxTime = vc === 'time' ? vl : 120; // cap at 120s for non-time
-  const targetDodges = vc === 'dodge_count' ? vl : 9999;
-  const targetKills = vc === 'kills' ? vl : 9999;
-
-  // Burst/formation spawning
-  const hasBurst = variant.formation_snap_interval > 0;
-  let burstTimer = 0;
-
-  while (time < maxTime && dodgesAccum < targetDodges && dodgesAccum < targetKills) {
-    // Spawn acceleration: accel = 1 + min(max, time/accel_time)
-    const accel = 1 + Math.min(SIM_DEFAULTS.spawn_accel_max, time / SIM_DEFAULTS.spawn_accel_time);
-    const currentInterval = baseSpawnInterval / accel;
-
-    // Spawn enemies
-    if (hasEnemies && currentInterval > 0) {
-      spawnTimer += dt;
-      while (spawnTimer >= currentInterval) {
-        spawnTimer -= currentInterval;
-        totalSpawned++;
-
-        // Pick enemy type based on weights at current time
-        const typeName = pickWeightedEnemy(enemies, time);
-
-        // Estimate enemy lifetime on screen
-        let speed = defaultSpeed;
-        if (variant.enemy_speeds && variant.enemy_speeds[typeName]) {
-          const range = variant.enemy_speeds[typeName];
-          speed = (range[0] + range[1]) / 2;
-        }
-        // Bouncers stay longer (bounce ~3-5 times)
-        let lifetime = arenaTraversal / Math.max(10, speed);
-        if (typeName === 'bouncer') lifetime *= 3;
-        if (typeName === 'chaser') lifetime *= 2; // chasers turn, take longer
-        if (typeName === 'teleporter') lifetime *= 1.5;
-
-        activeEnemies.push({ remaining: lifetime });
-      }
-    }
-
-    // Timed events - burst spawns
-    if (variant.timed_events) {
-      for (const ev of variant.timed_events) {
-        if (Math.abs(time - ev.at) < dt && ev.burst) {
-          for (const b of ev.burst) {
-            for (let i = 0; i < (b.count || 1); i++) {
-              totalSpawned++;
-              activeEnemies.push({ remaining: arenaTraversal / defaultSpeed });
-            }
-          }
-        }
-      }
-    }
-
-    // Update active enemies
-    for (let i = activeEnemies.length - 1; i >= 0; i--) {
-      activeEnemies[i].remaining -= dt;
-      if (activeEnemies[i].remaining <= 0) {
-        activeEnemies.splice(i, 1);
-        dodgesAccum++;
-      }
-    }
-
-    onScreen = staticCount + activeEnemies.length;
-    if (onScreen > maxOnScreen) maxOnScreen = onScreen;
-    onScreenSum += onScreen;
-    ticks++;
-    time += dt;
-  }
-
-  const duration = time;
-  const avgOnScreen = ticks > 0 ? onScreenSum / ticks : 0;
-  const spawnsPerSec = duration > 0 ? totalSpawned / duration : 0;
-  const dodgesPerSec = duration > 0 ? dodgesAccum / duration : 0;
-
-  // Victory progress for formula (scaled by victory_progress_weight)
-  const vpw = variant.victory_progress_weight || 1;
-  let victoryProgress;
-  if (vc === 'time') victoryProgress = vl * vpw;
-  else if (vc === 'dodge_count') victoryProgress = vl * vpw;
-  else if (vc === 'kills') victoryProgress = vl * vpw;
-  else victoryProgress = dodgesAccum * vpw;
-
-  return {
-    name: variant.name,
-    clone_index: cloneIndex,
-    variant_mult: variantMult,
-    victory_condition: vc,
-    victory_limit: vl,
-    lives: lives,
-    duration: duration,
-    total_spawned: totalSpawned,
-    static_enemies: staticCount,
-    spawns_per_sec: spawnsPerSec,
-    avg_on_screen: avgOnScreen,
-    max_on_screen: maxOnScreen,
-    dodges_per_sec: dodgesPerSec,
-    total_dodges: dodgesAccum,
-    victory_progress: victoryProgress,
-    enemy_types: enemies.map(e => e.type).join(', ') || '(default obstacles)',
-  };
-}
-
-function pickWeightedEnemy(enemies, time) {
-  let total = 0;
-  for (const e of enemies) total += getEnemyWeight(e.multiplier, time);
-  if (total <= 0) return enemies[0]?.type || 'obstacle';
-  let r = Math.random() * total;
-  for (const e of enemies) {
-    r -= getEnemyWeight(e.multiplier, time);
-    if (r <= 0) return e.type;
-  }
-  return enemies[0]?.type || 'obstacle';
-}
-
-function calculateTokens(victoryProgress, collisions, combo, formulaK, collisionPenalty, scalingConstant, variantMult) {
-  const x = victoryProgress - collisions * collisionPenalty;
-  if (x <= 0) return 0;
-  const comboBonus = 1 + (combo / Math.max(1, victoryProgress)) * 0.3;
-  const base = x * x * formulaK * comboBonus * scalingConstant;
-  return Math.floor(base * variantMult);
-}
-
-let simCharts = {};
-let simChartData = null;
-let simChartMode = 'per_game'; // 'per_game' or 'per_sec'
-
-function renderSimCharts(rows, maxLives) {
-  const grid = document.getElementById('sim-charts-grid');
-  grid.innerHTML = '';
-  Object.values(simCharts).forEach(c => c.destroy());
-  simCharts = {};
-
-  // Group rows by clone_index
-  const byIndex = {};
-  rows.forEach(r => {
-    const idx = r.clone_index;
-    if (!byIndex[idx]) byIndex[idx] = [];
-    byIndex[idx].push({ tokens: r.tokenScenarios[0] || 0, duration: r.duration });
-  });
-
-  const indices = Object.keys(byIndex).map(Number).sort((a, b) => a - b);
-  const labels = indices.map(String);
-
-  const avgPerGame = indices.map(idx => {
-    const vals = byIndex[idx].map(v => v.tokens);
-    return vals.reduce((a, b) => a + b, 0) / vals.length;
-  });
-  const avgPerSec = indices.map(idx => {
-    const vals = byIndex[idx].map(v => v.duration > 0 ? v.tokens / v.duration : 0);
-    return vals.reduce((a, b) => a + b, 0) / vals.length;
-  });
-
-  simChartData = { labels, indices, byIndex, avgPerGame, avgPerSec };
-
-  // Toggle buttons
-  const toggleWrap = document.createElement('div');
-  toggleWrap.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;';
-  const btnGame = document.createElement('button');
-  btnGame.textContent = 'Tokens / Game';
-  btnGame.id = 'sim-toggle-game';
-  btnGame.className = simChartMode === 'per_game' ? 'active' : '';
-  btnGame.onclick = () => { simChartMode = 'per_game'; updateSimChart(); };
-  const btnSec = document.createElement('button');
-  btnSec.textContent = 'Tokens / Second';
-  btnSec.id = 'sim-toggle-sec';
-  btnSec.className = simChartMode === 'per_sec' ? 'active' : '';
-  btnSec.onclick = () => { simChartMode = 'per_sec'; updateSimChart(); };
-  toggleWrap.appendChild(btnGame);
-  toggleWrap.appendChild(btnSec);
-  grid.appendChild(toggleWrap);
-
-  // Chart
-  const canvas = makeChartBox(grid, '');
-  canvas.parentElement.parentElement.style.gridColumn = '1 / -1';
-  canvas.parentElement.parentElement.style.height = '450px';
-  simCharts._canvas = canvas;
-
-  updateSimChart();
-}
-
-function updateSimChart() {
-  if (!simChartData) return;
-  const { labels, indices, byIndex, avgPerGame, avgPerSec } = simChartData;
-  const isPerSec = simChartMode === 'per_sec';
-  const data = isPerSec ? avgPerSec : avgPerGame;
-  const yLabel = isPerSec ? 'Avg Tokens / Second' : 'Avg Tokens / Game';
-  const dsLabel = isPerSec ? 'Avg Tokens/s (perfect run)' : 'Avg Tokens (perfect run)';
-
-  // Update toggle button styles
-  const btnGame = document.getElementById('sim-toggle-game');
-  const btnSec = document.getElementById('sim-toggle-sec');
-  if (btnGame) btnGame.className = isPerSec ? '' : 'active';
-  if (btnSec) btnSec.className = isPerSec ? 'active' : '';
-
-  // Update chart title
-  const chartBox = simCharts._canvas.parentElement.parentElement;
-  let h3 = chartBox.querySelector('h3');
-  if (h3) h3.textContent = yLabel + ' by Clone Index';
-
-  if (simCharts.avgByIndex) {
-    simCharts.avgByIndex.data.datasets[0].data = data;
-    simCharts.avgByIndex.data.datasets[0].label = dsLabel;
-    simCharts.avgByIndex.options.scales.y.title.text = yLabel;
-    simCharts.avgByIndex.options.plugins.tooltip.callbacks.label = ctx => {
-      const v = ctx.parsed.y;
-      return `${dsLabel}: ${isPerSec ? v.toFixed(2) : Math.round(v)}`;
-    };
-    simCharts.avgByIndex.update();
-    return;
-  }
-
-  simCharts.avgByIndex = new Chart(simCharts._canvas, {
-    type: 'line',
-    data: {
-      labels,
       datasets: [{
-        label: dsLabel,
-        data,
-        borderColor: '#0ff',
-        backgroundColor: 'rgba(0,255,255,0.1)',
-        tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 7,
-        borderWidth: 3,
-        fill: true
+        label: yKey,
+        data: points,
+        borderColor: color,
+        backgroundColor: color + '33',
+        tension: 0.3, pointRadius: 5, pointHoverRadius: 8, borderWidth: 2, fill: true, showLine: true,
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { labels: { color: '#ccc', font: { size: 11 } } },
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
         tooltip: {
           callbacks: {
             label: ctx => {
-              const v = ctx.parsed.y;
-              return `${dsLabel}: ${isPerSec ? v.toFixed(2) : Math.round(v)}`;
-            },
-            afterLabel: ctx => {
-              const idx = indices[ctx.dataIndex];
-              const count = byIndex[idx].length;
-              return `(${count} variant${count > 1 ? 's' : ''} at index ${idx})`;
+              const r = results.find(r => r.clone_index === ctx.parsed.x || r.difficulty_modifier === ctx.parsed.x);
+              const name = r ? r.name : '';
+              return `${name}: ${typeof ctx.parsed.y === 'number' ? (ctx.parsed.y > 100 ? Math.round(ctx.parsed.y) : ctx.parsed.y.toFixed(2)) : ctx.parsed.y}`;
             }
           }
         }
       },
       scales: {
-        x: { title: { display: true, text: 'Clone Index', color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' } },
-        y: { title: { display: true, text: yLabel, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' }, beginAtZero: true }
+        x: { title: { display: true, text: xKey, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' } },
+        y: {
+          type: document.getElementById('cfg-yscale')?.value === 'log' ? 'logarithmic' : 'linear',
+          title: { display: true, text: yKey, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' },
+          ...(document.getElementById('cfg-yscale')?.value !== 'log' ? { beginAtZero: true } : {}),
+        },
       }
     }
   });
 }
 
-function runSimulation() {
-  if (!SIM_VARIANTS) return;
+function makeHitScenarioChart(container, title, results, color) {
+  const box = document.createElement('div');
+  box.className = 'chart-box';
+  box.innerHTML = `<h3>${title}</h3>`;
+  const wrap = document.createElement('div');
+  wrap.className = 'chart-wrap';
+  const canvas = document.createElement('canvas');
+  wrap.appendChild(canvas);
+  box.appendChild(wrap);
+  container.appendChild(box);
 
-  const scalingConstant = parseFloat(document.getElementById('sim-scaling')?.value || 1);
-  const formulaK = parseFloat(document.getElementById('sim-formula-k')?.value || 0.03);
-  const collisionPenalty = parseFloat(document.getElementById('sim-collision-penalty')?.value || 3);
+  // Show first 8 variants max
+  const shown = results.slice(0, 12);
+  const maxHits = Math.max(...shown.map(r => r.scenarios.length)) - 1;
+  const hitLabels = [];
+  for (let i = 0; i <= Math.min(maxHits, 10); i++) hitLabels.push(i === 0 ? 'Perfect' : `${i} hit${i > 1 ? 's' : ''}`);
 
-  const results = SIM_VARIANTS.map(v => simulateVariant(v));
+  const colors = ['#0ff', '#f0f', '#ff0', '#0f0', '#f80', '#08f', '#f44', '#4f4', '#84f', '#fa0', '#4ff', '#f4f'];
+  const datasets = shown.map((r, i) => ({
+    label: r.name,
+    data: hitLabels.map((_, h) => r.scenarios[h] ?? null),
+    borderColor: colors[i % colors.length],
+    tension: 0.3, pointRadius: 3, borderWidth: 2, fill: false,
+  }));
 
-  // Calculate token scenarios for each variant using its own lives count
-  const rows = results.map(r => {
-    const tokenScenarios = [];
-    for (let h = 0; h <= r.lives; h++) {
-      // Combo = longest streak of consecutive dodges between hits
-      // If h hits spread evenly over total_dodges, max combo ≈ total_dodges / (h+1)
-      const combo = h === 0 ? r.total_dodges : Math.floor(r.total_dodges / (h + 1));
-      const tokens = calculateTokens(r.victory_progress, h, combo, formulaK, collisionPenalty, scalingConstant, r.variant_mult);
-      tokenScenarios.push(tokens);
-    }
-    return { ...r, tokenScenarios };
-  });
-
-  // Max lives across all variants (for column count)
-  const maxLives = Math.max(...results.map(r => r.lives));
-
-  renderSimCharts(rows, maxLives);
-
-  // Build table
-  const wrap = document.getElementById('sim-table-wrap');
-  let html = '<table class="sim-table"><thead><tr>';
-
-  // Fixed columns
-  const fixedCols = ['#', 'Variant', 'VC', 'VL', 'Lives', 'Duration', 'Spawned', 'Spwn/s', 'Avg On', 'Max On', 'Dodges', 'Dg/s', 'Enemies', 'Var x'];
-  fixedCols.forEach((c, i) => {
-    const arrow = simSortCol === i ? (simSortDir === 1 ? ' ▲' : ' ▼') : '';
-    html += `<th onclick="simSort(${i})">${c}${arrow}</th>`;
-  });
-  // Hit scenario columns — one per life up to max lives
-  for (let h = 0; h <= maxLives; h++) {
-    const colIdx = fixedCols.length + h;
-    const arrow = simSortCol === colIdx ? (simSortDir === 1 ? ' ▲' : ' ▼') : '';
-    const label = h === 0 ? 'Perfect' : h + ' hit' + (h > 1 ? 's' : '');
-    html += `<th onclick="simSort(${colIdx})" title="${h} collisions">${label}${arrow}</th>`;
-  }
-  html += '</tr></thead><tbody>';
-
-  // Sort
-  const sorted = [...rows];
-  if (simSortCol !== null) {
-    sorted.sort((a, b) => {
-      let va, vb;
-      const fixedKeys = ['clone_index', 'name', 'victory_condition', 'victory_limit', 'lives', 'duration', 'total_spawned', 'spawns_per_sec', 'avg_on_screen', 'max_on_screen', 'total_dodges', 'dodges_per_sec', 'enemy_types', 'variant_mult'];
-      if (simSortCol < fixedKeys.length) {
-        va = a[fixedKeys[simSortCol]];
-        vb = b[fixedKeys[simSortCol]];
-      } else {
-        const hitIdx = simSortCol - fixedCols.length;
-        va = a.tokenScenarios[hitIdx] ?? -1;
-        vb = b.tokenScenarios[hitIdx] ?? -1;
+  return new Chart(canvas, {
+    type: 'line',
+    data: { labels: hitLabels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#ccc', font: { size: 9 } } } },
+      scales: {
+        x: { ticks: { color: '#888' }, grid: { color: '#333' } },
+        y: {
+          type: document.getElementById('cfg-yscale')?.value === 'log' ? 'logarithmic' : 'linear',
+          title: { display: true, text: 'Tokens', color: '#888' }, ticks: { color: '#888' }, grid: { color: '#333' },
+          ...(document.getElementById('cfg-yscale')?.value !== 'log' ? { beginAtZero: true } : {}),
+        },
       }
-      if (typeof va === 'string') return va.localeCompare(vb) * simSortDir;
-      return ((va || 0) - (vb || 0)) * simSortDir;
+    }
+  });
+}
+
+// ============================================================
+// VARIANT TABLE
+// ============================================================
+function renderVariantTable(el, game) {
+  const def = game.def;
+  const results = game.results || [];
+  const tableId = 'game-' + def.id;
+
+  const cols = [
+    { key: 'clone_index', label: '#', num: true, get: r => r.clone_index },
+    { key: 'name', label: 'Variant', get: r => r.name },
+    { key: 'difficulty_modifier', label: 'Diff', num: true, get: r => r.difficulty_modifier, fmt: v => v.toFixed(2) },
+    { key: 'variant_mult', label: 'Var×', num: true, get: r => r.variant_mult, fmt: v => v + 'x' },
+    { key: 'duration', label: 'Duration', num: true, get: r => r.duration, fmt: v => v.toFixed(1) + 's' },
+    { key: 'lives', label: 'Lives', num: true, get: r => r.lives },
+    { key: 'tokens', label: 'Tokens', num: true, get: r => r.tokens, fmt: v => Math.round(v), cls: tokClass },
+    { key: 'tpm', label: 'TPM', num: true, get: r => r.tpm, fmt: v => v.toFixed(1), cls: tokClass },
+    { key: 'tps', label: 'TPS', num: true, get: r => r.tps, fmt: v => v.toFixed(2) },
+  ];
+
+  // Add hit scenario columns if applicable
+  if (def.hitMetric) {
+    const maxHits = Math.max(...results.map(r => r.scenarios.length)) - 1;
+    for (let h = 0; h <= Math.min(maxHits, 8); h++) {
+      const hitIdx = h;
+      cols.push({
+        key: `hit_${h}`, label: h === 0 ? 'Perfect' : `${h}h`, num: true,
+        get: r => r.scenarios[hitIdx] ?? 0, fmt: v => Math.round(v), cls: tokClass,
+      });
+    }
+  }
+
+  // Add key metric columns
+  const metricKeys = Object.keys(results[0]?.metrics || {});
+  for (const mk of metricKeys) {
+    cols.push({
+      key: 'metric_' + mk, label: mk.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), num: true,
+      get: r => r.metrics[mk] || 0, fmt: v => typeof v === 'number' ? (v % 1 === 0 ? v : v.toFixed(1)) : v,
     });
   }
 
-  // Find max tokens for color scaling
-  const allTokens = rows.flatMap(r => r.tokenScenarios);
-  const maxTokens = Math.max(1, ...allTokens);
+  const wrap = document.createElement('div');
+  wrap.className = 'table-wrap';
+  wrap.innerHTML = renderSortableTable(tableId, cols, results);
+  el.appendChild(wrap);
+  bindTableSort(tableId, cols, results, wrap);
+}
 
-  sorted.forEach(r => {
+function tokClass(v) {
+  if (v === 0) return 'tok-zero';
+  const maxT = 5000; // rough scale
+  if (v > maxT * 0.5) return 'tok-good';
+  if (v > maxT * 0.1) return 'tok-ok';
+  return 'tok-bad';
+}
+
+// ============================================================
+// GENERIC SORTABLE TABLE
+// ============================================================
+function renderSortableTable(tableId, cols, rows, sortColIdx, sortDirVal) {
+  const sc = sortColIdx ?? (sortState[tableId]?.col ?? null);
+  const sd = sortDirVal ?? (sortState[tableId]?.dir ?? 1);
+
+  let sorted = [...rows];
+  if (sc !== null && sc < cols.length) {
+    const col = cols[sc];
+    sorted.sort((a, b) => {
+      const va = col.get(a);
+      const vb = col.get(b);
+      if (typeof va === 'string') return va.localeCompare(vb) * sd;
+      return ((va || 0) - (vb || 0)) * sd;
+    });
+  }
+
+  let html = `<table data-table-id="${tableId}"><thead><tr>`;
+  cols.forEach((col, i) => {
+    const arrow = sc === i ? (sd === 1 ? ' ▲' : ' ▼') : '';
+    html += `<th data-col="${i}">${col.label}${arrow}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  sorted.forEach(row => {
     html += '<tr>';
-    html += `<td class="num">${r.clone_index}</td>`;
-    html += `<td>${r.name}</td>`;
-    html += `<td>${r.victory_condition}</td>`;
-    html += `<td class="num">${r.victory_limit}</td>`;
-    html += `<td class="num">${r.lives}</td>`;
-    html += `<td class="num">${r.duration.toFixed(1)}s</td>`;
-    html += `<td class="num">${r.total_spawned}</td>`;
-    html += `<td class="num">${r.spawns_per_sec.toFixed(1)}</td>`;
-    html += `<td class="num">${r.avg_on_screen.toFixed(1)}</td>`;
-    html += `<td class="num">${r.max_on_screen}</td>`;
-    html += `<td class="num">${r.total_dodges}</td>`;
-    html += `<td class="num">${r.dodges_per_sec.toFixed(1)}</td>`;
-    html += `<td>${r.enemy_types}</td>`;
-    html += `<td class="num">${r.variant_mult}x</td>`;
-
-    // Token columns — fill up to this variant's lives, rest are empty
-    for (let h = 0; h <= maxLives; h++) {
-      if (h < r.tokenScenarios.length && h < r.lives) {
-        const tokens = r.tokenScenarios[h];
-        const ratio = tokens / maxTokens;
-        let cls = 'token-bad';
-        if (ratio > 0.3) cls = 'token-ok';
-        if (ratio > 0.6) cls = 'token-good';
-        if (tokens === 0) cls = 'token-bad';
-        html += `<td class="num token-cell ${cls}">${tokens}</td>`;
-      } else {
-        html += '<td class="num" style="color:#333"></td>';
-      }
-    }
-
+    cols.forEach(col => {
+      const raw = col.get(row);
+      const val = col.fmt ? col.fmt(raw) : (raw ?? '');
+      const cls = [col.num ? 'num' : '', col.cls ? col.cls(raw) : ''].filter(Boolean).join(' ');
+      html += `<td${cls ? ` class="${cls}"` : ''}>${val}</td>`;
+    });
     html += '</tr>';
   });
 
   html += '</tbody></table>';
-  wrap.innerHTML = html;
+  return html;
 }
 
-window.simSort = function(colIdx) {
-  if (simSortCol === colIdx) simSortDir *= -1;
-  else { simSortCol = colIdx; simSortDir = 1; }
-  runSimulation();
-};
+function bindTableSort(tableId, cols, rows, wrapEl) {
+  wrapEl.querySelectorAll('th').forEach(th => {
+    th.addEventListener('click', () => {
+      const ci = parseInt(th.dataset.col);
+      if (!sortState[tableId]) sortState[tableId] = { col: null, dir: 1 };
+      if (sortState[tableId].col === ci) sortState[tableId].dir *= -1;
+      else { sortState[tableId].col = ci; sortState[tableId].dir = 1; }
+      wrapEl.innerHTML = renderSortableTable(tableId, cols, rows);
+      bindTableSort(tableId, cols, rows, wrapEl);
+    });
+  });
+}
+
+// ============================================================
+// INIT — listen for control changes
+// ============================================================
+document.querySelectorAll('#global-controls input, #global-controls select').forEach(el => {
+  el.addEventListener('change', () => { if (Object.keys(ALL_GAMES).length > 0) recalcAll(); });
+});
 
 </script>
 </body>

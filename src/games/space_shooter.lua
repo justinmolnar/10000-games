@@ -311,6 +311,8 @@ function SpaceShooter:updateGameLogic(dt)
     if self.params.scroll_speed > 0 then
         self:updateScrolling(dt)
     end
+
+    self:syncMetrics({kills = "kills", deaths = "deaths", combo = "max_combo"})
 end
 
 function SpaceShooter:updatePlayer(dt)

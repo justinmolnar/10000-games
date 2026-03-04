@@ -76,6 +76,7 @@ function WaterPickup:rollChance()
 end
 
 function WaterPickup:trySpawn()
+    if self.game.playback_mode then return nil end
     local ec = self.game.entity_controller
     if #ec:getEntitiesByCategory("water") >= self.max_active then return nil end
     if not self.bounds then return nil end
@@ -97,6 +98,7 @@ function WaterPickup:trySpawn()
 end
 
 function WaterPickup:spawnAt(x, y, params)
+    if self.game.playback_mode then return nil end
     local ec = self.game.entity_controller
     if #ec:getEntitiesByCategory("water") >= self.max_active then return nil end
 

@@ -1,6 +1,7 @@
 -- src/utils/program_launcher.lua
 local Object = require('lib.class')
 local Strings = require('src.utils.strings') -- Required for error messages
+local MessageBox = require('src.utils.message_box')
 local ProgramLauncher = Object:extend('ProgramLauncher')
 
 function ProgramLauncher:init(di)
@@ -67,12 +68,12 @@ function ProgramLauncher:launchProgram(program_id, ...)
 
     local program = self.di.programRegistry:getProgram(program_id)
     if not program then print("Program definition not found: " .. program_id); return end
-    if program.disabled then print("Program disabled: " .. program_id); love.window.showMessageBox(Strings.get('messages.not_available','Not Available'), program.name .. " is not available yet.", "info"); return end
+    if program.disabled then print("Program disabled: " .. program_id); MessageBox.info(Strings.get('messages.not_available','Not Available'), program.name .. " is not available yet."); return end
     if program.requires_nc_level and self.di.playerData then
         local nc_level = self.di.playerData.space_defender_level or 1
         if nc_level < program.requires_nc_level then
             local needed = program.requires_nc_level - 1
-            love.window.showMessageBox("Locked", program.name .. " requires Neural Core level " .. needed .. " to unlock.", "info")
+            MessageBox.info("Locked", program.name .. " requires Neural Core level " .. needed .. " to unlock.")
             return
         end
     end
@@ -126,7 +127,7 @@ function ProgramLauncher:launchProgram(program_id, ...)
         if dependency then table.insert(state_args, dependency)
         else print("ERROR: Missing dependency '" .. dep_name .. "' for program '" .. program_id .. "'"); table.insert(missing_deps, dep_name) end
     end
-    if #missing_deps > 0 then love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), "Missing dependencies: " .. table.concat(missing_deps, ", "), "error"); return end
+    if #missing_deps > 0 then MessageBox.error(Strings.get('messages.error_title', 'Error'), "Missing dependencies: " .. table.concat(missing_deps, ", ")); return end
 
     local instance_ok, new_state = pcall(StateClass.new, StateClass, unpack(state_args))
     if not instance_ok or not new_state then print("ERROR instantiating state '" .. program.state_class_path .. "': " .. tostring(new_state)); return end
@@ -233,7 +234,7 @@ function ProgramLauncher:launchProgram(program_id, ...)
     print("Opened window for " .. initial_title .. " ID: " .. window_id)
 
     -- Publish dialog_opened event (remains the same)
-    local dialog_types = {run_dialog=true, shutdown_dialog=true, solitaire_back_picker=true, wallpaper_picker=true, solitaire_settings=true}
+    local dialog_types = {run_dialog=true, shutdown_dialog=true, solitaire_back_picker=true, wallpaper_picker=true, solitaire_settings=true, message_box=true}
     if dialog_types[program_id] and self.di.eventBus then
         pcall(self.di.eventBus.publish, self.di.eventBus, 'dialog_opened', program_id, window_id)
     end

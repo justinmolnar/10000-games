@@ -1349,6 +1349,7 @@ function BaseGame:speak(text)
 end
 
 function BaseGame:playSound(action, volume)
+    if self.playback_mode then return end
     local audioManager = self.di and self.di.audioManager
     if audioManager and self.sfx_set_key and action then
         audioManager:playSound(self.sfx_set_key, action, volume or 1.0)

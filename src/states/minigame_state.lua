@@ -3,6 +3,7 @@ local Strings = require('src.utils.strings')
 local MinigameController = require('src.controllers.minigame_controller')
 local MinigameView = require('src.views.minigame_view')
 local StatsRecorder = require('src.utils.stats_recorder')
+local MessageBox = require('src.utils.message_box')
 local MinigameState = Object:extend('MinigameState')
 
 function MinigameState:init(player_data, game_data_model, state_machine, save_manager, cheat_system, di)
@@ -79,8 +80,7 @@ function MinigameState:enter(game_data, variant_override, original_variant)
     if not require_ok or not GameClass then
         print("[MinigameState] ERROR: Failed to load game class '".. require_path .."': " .. tostring(GameClass))
         self.current_game = nil
-        local S = (self.di and self.di.strings) or Strings
-        love.window.showMessageBox(S.get('messages.error_title', 'Error'), "Failed to load game logic for: " .. (game_data.display_name or class_name), "error")
+        MessageBox.error(Strings.get('messages.error_title', 'Error'), "Failed to load game logic for: " .. (game_data.display_name or class_name))
         return { type = "close_window" }
     end
 
@@ -92,8 +92,7 @@ function MinigameState:enter(game_data, variant_override, original_variant)
     if not instance_ok or not game_instance then
         print("[MinigameState] ERROR: Failed to instantiate game class '".. class_name .."': " .. tostring(game_instance))
         self.current_game = nil
-        local S = (self.di and self.di.strings) or Strings
-        love.window.showMessageBox(S.get('messages.error_title', 'Error'), "Failed to initialize game: " .. (game_data.display_name or class_name), "error")
+        MessageBox.error(Strings.get('messages.error_title', 'Error'), "Failed to initialize game: " .. (game_data.display_name or class_name))
         return { type = "close_window" }
     end
     self.current_game = game_instance

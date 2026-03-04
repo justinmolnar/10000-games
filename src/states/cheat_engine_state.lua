@@ -6,6 +6,7 @@ local Paths = require('src.paths')
 local json = require('lib.json')
 local CheatEngineView = require('src.views.cheat_engine_view')
 local ScrollbarController = require('src.controllers.scrollbar_controller')
+local MessageBox = require('src.utils.message_box')
 local CheatEngineState = Object:extend('CheatEngineState')
 
 function CheatEngineState:init(player_data, game_data, state_machine, save_manager, cheat_system, di)
@@ -356,19 +357,17 @@ end
 
 function CheatEngineState:launchGame()
     if not self.selected_game_id then
-        love.window.showMessageBox(
+        MessageBox.warning(
             Strings.get('messages.error_title', 'Error'),
-            "No game selected.",
-            "warning"
+            "No game selected."
         )
         return nil
     end
 
     if not self.selected_variant or not next(self.selected_variant) then
-        love.window.showMessageBox(
+        MessageBox.error(
             Strings.get('messages.error_title', 'Error'),
-            "Variant data not loaded. Cannot launch game.",
-            "error"
+            "Variant data not loaded. Cannot launch game."
         )
         return nil
     end

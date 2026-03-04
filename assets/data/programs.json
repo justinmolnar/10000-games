@@ -136,7 +136,7 @@
     "icon_color": [0.1, 0.8, 0.1],
     "on_desktop": true,
     "in_start_menu": true,
-    "requires_nc_level": 4,
+    "requires_nc_level": 3,
     "window_defaults": { "w": 650, "h": 550, "resizable": false, "single_instance": true }
   },
   {
@@ -309,6 +309,19 @@
     "in_start_menu": false,
     "disabled": false,
     "window_defaults": { "w": 600, "h": 500, "min_w": 400, "min_h": 300, "resizable": true, "single_instance": false }
+  },
+  {
+    "id": "message_box",
+    "name": "Message",
+    "executable": "msgbox.cpl",
+    "state_class_path": "states.message_box_state",
+    "dependencies": ["di"],
+    "icon_sprite": "msg_information-0",
+    "icon_color": [0.8, 0.8, 0.8],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 360, "h": 180, "min_w": 300, "min_h": 140, "resizable": false, "single_instance": false }
   },
   {
     "id": "web_browser",

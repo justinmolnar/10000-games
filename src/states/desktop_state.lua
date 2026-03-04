@@ -940,7 +940,8 @@ end
 
 
 function DesktopState:showTextFileDialog(title, content)
-    love.window.showMessageBox(title, content or "[Empty File]", "info")
+    local MessageBox = require('src.utils.message_box')
+    MessageBox.info(title, content or "[Empty File]")
 end
 
 
@@ -982,7 +983,7 @@ function DesktopState:closeWindowById(window_id)
 
       -- Publish dialog_closed if it was a dialog and closed successfully
       if closed_successfully then
-          local dialog_types = {run_dialog=true, shutdown_dialog=true, solitaire_back_picker=true, wallpaper_picker=true, solitaire_settings=true}
+          local dialog_types = {run_dialog=true, shutdown_dialog=true, solitaire_back_picker=true, wallpaper_picker=true, solitaire_settings=true, message_box=true}
           if dialog_types[program_id] and self.event_bus then
               -- Assuming 'cancel' as default result for simple close; specific states might publish 'dialog_confirmed' before closing.
               pcall(self.event_bus.publish, self.event_bus, 'dialog_closed', program_id, window_id, 'cancel')

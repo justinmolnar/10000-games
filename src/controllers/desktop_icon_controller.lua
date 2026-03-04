@@ -205,10 +205,10 @@ function DesktopIconController:mousepressed(x, y, button)
     -- Check for disabled program
     if program.disabled then
         local Strings = require('src.utils.strings')
-        love.window.showMessageBox(
+        local MessageBox = require('src.utils.message_box')
+        MessageBox.info(
             Strings.get('messages.not_available', 'Not Available'),
-            program.name .. " is planned.",
-            "info"
+            program.name .. " is planned."
         )
         self.last_icon_click_id = nil
         self.last_icon_click_time = 0

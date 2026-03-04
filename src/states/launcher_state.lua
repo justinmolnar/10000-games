@@ -2,6 +2,7 @@ local Object = require('class')
 local Strings = require('src.utils.strings')
 local LauncherView = require('src.views.launcher_view')
 local ScrollbarController = require('src.controllers.scrollbar_controller')
+local MessageBox = require('src.utils.message_box')
 local LauncherState = Object:extend('LauncherState')
 
 function LauncherState:init(player_data, game_data, state_machine, save_manager, di)
@@ -303,42 +304,43 @@ function LauncherState:showUnlockPrompt(game_data)
 
     if not has_tokens then
         message = "Not enough tokens!\n\n" .. message
-    love.window.showMessageBox(Strings.get('messages.error_title', 'Error'), message, "error")
-        return nil -- Indicate failure or no action needed
+        MessageBox.error(Strings.get('messages.error_title', 'Error'), message)
+        return nil
     end
 
-    local buttons = {"Unlock", "Cancel"}
-    local pressed = love.window.showMessageBox(Strings.get('messages.info_title', 'Information'), message, buttons, "info")
+    MessageBox.confirm(Strings.get('messages.info_title', 'Information'), message, {"Unlock", "Cancel"}, function(index, label)
+        if index == 1 then
+            self:_executeUnlock(game_data)
+        end
+    end)
+    return nil
+end
 
-    if pressed == 1 then
-        if self.player_data:spendTokens(cost) then
-            self.player_data:unlockGame(game_data.id)
-            self.save_manager.save(self.player_data)
-            print("Unlocked: " .. game_data.display_name)
+function LauncherState:_executeUnlock(game_data)
+    local cost = game_data.unlock_cost
+    if self.player_data:spendTokens(cost) then
+        self.player_data:unlockGame(game_data.id)
+        self.save_manager.save(self.player_data)
+        print("Unlocked: " .. game_data.display_name)
 
-            -- Publish game_purchased event
-            if self.event_bus then
-                self.event_bus:publish('game_purchased', game_data.id, cost)
-            end
+        if self.event_bus then
+            self.event_bus:publish('game_purchased', game_data.id, cost)
+        end
+        if self.event_bus then
+            self.event_bus:publish('game_unlocked', game_data.id)
+        end
 
-            -- Publish game_unlocked event
-            if self.event_bus then
-                self.event_bus:publish('game_unlocked', game_data.id)
-            end
+        local variant_data = self:loadVariantData(game_data.id)
 
-            -- Load variant data for the game (to get actual variant name)
-            local variant_data = self:loadVariantData(game_data.id)
-
-            -- Return the launch event instead of switching state
-            return { type = "event", name = "launch_minigame", game_data = game_data, variant = variant_data }
-        else
-            -- Publish purchase_failed event
-            if self.event_bus then
-                self.event_bus:publish('purchase_failed', game_data.id, 'insufficient_tokens')
-            end
+        -- Launch the game directly via eventBus (async callback, can't return events)
+        if self.event_bus then
+            self.event_bus:publish('launch_program', 'minigame_runner', game_data, variant_data)
+        end
+    else
+        if self.event_bus then
+            self.event_bus:publish('purchase_failed', game_data.id, 'insufficient_tokens')
         end
     end
-    return nil -- Indicate cancellation or failure
 end
 
 function LauncherState:showGameDetails(game_id)

@@ -4,6 +4,7 @@
 local Object = require('class')
 local Constants = require('src.constants')
 local Strings = require('src.utils.strings')
+local MessageBox = require('src.utils.message_box')
 
 local WindowEventDispatcher = Object:extend('WindowEventDispatcher')
 
@@ -85,7 +86,7 @@ function WindowEventDispatcher:handleLaunchMinigame(event)
 end
 
 function WindowEventDispatcher:handleShowText(event)
-    love.window.showMessageBox(event.title, event.content or "[Empty File]", "info")
+    MessageBox.info(event.title, event.content or "[Empty File]")
 end
 
 function WindowEventDispatcher:handleShowContextMenu(event)
@@ -138,18 +139,16 @@ function WindowEventDispatcher:executeRunCommand(command)
             end
         else
             if self.di.systemSounds then self.di.systemSounds:playSystemSound('error') end
-            love.window.showMessageBox(
+            MessageBox.error(
                 Strings.get('messages.error_title', 'Error'),
-                string.format(Strings.get('messages.cannot_find_fmt', "Cannot find '%s'."), command),
-                "error"
+                string.format(Strings.get('messages.cannot_find_fmt', "Cannot find '%s'."), command)
             )
         end
     else
         if self.di.systemSounds then self.di.systemSounds:playSystemSound('error') end
-        love.window.showMessageBox(
+        MessageBox.error(
             Strings.get('messages.error_title', 'Error'),
-            string.format(Strings.get('messages.cannot_find_fmt', "Cannot find '%s'."), command),
-            "error"
+            string.format(Strings.get('messages.cannot_find_fmt', "Cannot find '%s'."), command)
         )
     end
 end

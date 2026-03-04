@@ -391,7 +391,8 @@ local Config = {
 
     -- Game Data
     -- Game Cloning
-    clone_cost_exponent = 0.8,            -- Cost scales as base_cost * (multiplier ^ cost_exponent)
+    clone_cost_exponent = 1.5,            -- Base exponent: cost = base_cost * ((clone_index+1) ^ effective_exponent)
+    clone_cost_exponent_growth = 0.05,    -- Exponent grows per clone: effective_exponent = base + (clone_index * growth)
     clone_difficulty_step = 5, -- Every 5 clones, the difficulty level increases by 1
     scaling_constant = 1, -- Global scaling modifier applied to ALL game formulas (separate from clone_index multiplier)
     
@@ -2231,7 +2232,7 @@ local Config = {
             cost_exponent = 1.5,
 
             -- Formula and metrics
-            base_formula_string = "((metrics.bricks_destroyed * metrics.bricks_destroyed * 0.5 * (1 + metrics.max_combo / math.max(1, metrics.bricks_destroyed) * 0.4) * scaling_constant) - (metrics.balls_lost * metrics.balls_lost * 2 * scaling_constant))",
+            base_formula_string = "((metrics.bricks_destroyed * metrics.bricks_destroyed * 0.012 * (1 + metrics.max_combo / math.max(1, metrics.bricks_destroyed) * 0.4) * scaling_constant) - (metrics.balls_lost * metrics.balls_lost * 0.5 * scaling_constant))",
             display_formula_string = "bricks_destroyed × combo - balls_lost",
             metrics_tracked = {"bricks_destroyed", "balls_lost", "max_combo", "score"},
 
@@ -2309,7 +2310,7 @@ local Config = {
             cost_exponent = 1.3,
 
             -- Formula and metrics
-            base_formula_string = "((metrics.max_streak * metrics.max_streak * 10 * scaling_constant) + (metrics.correct_total * 5 * scaling_constant))",
+            base_formula_string = "((metrics.max_streak * metrics.max_streak * 0.3 * scaling_constant) + (metrics.correct_total * 0.3 * scaling_constant))",
             display_formula_string = "max_streak² + correct_total",
             metrics_tracked = {"max_streak", "correct_total", "flips_total", "accuracy"},
 
@@ -2377,7 +2378,7 @@ local Config = {
             cost_exponent = 1.4,
 
             -- Formula and metrics
-            base_formula_string = "((metrics.rounds_won * metrics.rounds_won * 8 * (1 + metrics.max_win_streak / math.max(1, metrics.rounds_won) * 0.5) * scaling_constant))",
+            base_formula_string = "((metrics.rounds_won * metrics.rounds_won * 3 * (1 + metrics.max_win_streak / math.max(1, metrics.rounds_won) * 0.5) * scaling_constant))",
             display_formula_string = "rounds_won × win_streak",
             metrics_tracked = {"rounds_won", "rounds_lost", "rounds_total", "max_win_streak", "accuracy"},
 

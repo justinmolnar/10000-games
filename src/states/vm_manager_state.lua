@@ -3,6 +3,7 @@
 local Object = require('class')
 local VMManagerView = require('views.vm_manager_view')
 local ScrollbarController = require('src.controllers.scrollbar_controller')
+local MessageBox = require('src.utils.message_box')
 local VMManagerState = Object:extend('VMManagerState')
 
 function VMManagerState:init(vm_manager, player_data, game_data, state_machine, save_manager, di)
@@ -346,7 +347,7 @@ function VMManagerState:assignDemoToSlot(demo_id, slot_index)
         self.view.selected_game_id = nil
     else
         print("Failed to assign demo: " .. (err or "unknown error"))
-        love.window.showMessageBox("Error", "Failed to assign demo: " .. (err or "unknown error"), "error")
+        MessageBox.error("Error", "Failed to assign demo: " .. (err or "unknown error"))
     end
 end
 
@@ -369,7 +370,7 @@ function VMManagerState:purchaseNewVM()
         if self.viewport then self.view:updateLayout(self.viewport.width, self.viewport.height) end
     else
         print("Failed to purchase VM: " .. (err or "unknown error"))
-        love.window.showMessageBox("Purchase Failed", "Could not purchase VM: " .. (err or "Not enough tokens?"), "warning")
+        MessageBox.warning("Purchase Failed", "Could not purchase VM: " .. (err or "Not enough tokens?"))
     end
 end
 
