@@ -1,0 +1,7 @@
+{
+  "icon_sprite": "settings_gear-0",
+  "elements": [
+    { "type": "section", "label": "Desktop Theme" },
+    { "type": "dropdown", "id": "theme", "label": "Theme", "choices_from": "available_themes" }
+  ]
+}

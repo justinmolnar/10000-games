@@ -85,25 +85,87 @@ function GameBaseView:drawWater()
     end
 
     local t = love.timer.getTime()
+    local base_size = self._water_draw_size or 24
+
     for _, entity in ipairs(waters) do
-        local pulse = 1 + 0.1 * math.sin(t * 3)
+        local pulse = 1 + 0.15 * math.sin(t * 5)
         local alpha = 1
         if entity.water_lifetime then
             alpha = 1 - (entity.age or 0) / entity.water_lifetime
             alpha = math.max(0, math.min(1, alpha))
         end
 
+        local ex, ey = entity.x, entity.y
+
+        -- Outer glow rings (expanding, fading)
+        for i = 1, 3 do
+            local ring_phase = (t * 2 + i * 2.1) % 3
+            local ring_scale = 1 + ring_phase * 0.8
+            local ring_alpha = (1 - ring_phase / 3) * 0.25 * alpha
+            love.graphics.setColor(0.3, 0.7, 1.0, ring_alpha)
+            love.graphics.circle('line', ex, ey, base_size * ring_scale)
+        end
+
+        -- Inner glow
+        local glow_alpha = (0.15 + 0.1 * math.sin(t * 4)) * alpha
+        love.graphics.setColor(0.3, 0.7, 1.0, glow_alpha)
+        love.graphics.circle('fill', ex, ey, base_size * 1.8)
+
+        -- Sparkle dots orbiting around the pickup
+        for i = 1, 6 do
+            local angle = t * 3 + i * (math.pi * 2 / 6)
+            local dist = base_size * (1.2 + 0.3 * math.sin(t * 5 + i))
+            local sx = ex + math.cos(angle) * dist
+            local sy = ey + math.sin(angle) * dist
+            local sparkle_alpha = (0.5 + 0.5 * math.sin(t * 8 + i * 1.7)) * alpha
+            love.graphics.setColor(0.6, 0.85, 1.0, sparkle_alpha)
+            love.graphics.circle('fill', sx, sy, 1.5 + math.sin(t * 6 + i) * 0.5)
+        end
+
+        -- Rising bubble particles (purely visual, drawn inline)
+        for i = 1, 4 do
+            local bubble_cycle = (t * 0.8 + i * 0.75) % 2
+            local bubble_y = ey - bubble_cycle * base_size * 2
+            local bubble_x = ex + math.sin(t * 3 + i * 2) * 6
+            local bubble_alpha = (1 - bubble_cycle / 2) * 0.4 * alpha
+            local bubble_r = 1.5 + math.sin(t * 4 + i) * 0.5
+            love.graphics.setColor(0.5, 0.8, 1.0, bubble_alpha)
+            love.graphics.circle('fill', bubble_x, bubble_y, bubble_r)
+        end
+
+        -- The sprite itself (bigger, brighter)
         if self._water_sprite then
             local sprite = self._water_sprite
             local sw, sh = sprite:getWidth(), sprite:getHeight()
-            local scale = pulse * (self._water_draw_size or 24) / math.max(sw, sh)
+            local scale = pulse * base_size * 1.4 / math.max(sw, sh)
             love.graphics.setColor(1, 1, 1, alpha)
-            love.graphics.draw(sprite, entity.x, entity.y, 0, scale, scale, sw / 2, sh / 2)
+            love.graphics.draw(sprite, ex, ey, 0, scale, scale, sw / 2, sh / 2)
         else
             love.graphics.setColor(0.3, 0.7, 1.0, alpha)
-            love.graphics.circle('fill', entity.x, entity.y, 8 * pulse)
+            love.graphics.circle('fill', ex, ey, base_size * 0.5 * pulse)
+        end
+
+    end
+
+    -- Emit actual particles from the game's particle system (once per frame)
+    if game.visual_effects and game.visual_effects.particles then
+        for _, entity in ipairs(waters) do
+            if not entity._water_particle_timer then entity._water_particle_timer = 0 end
+            entity._water_particle_timer = entity._water_particle_timer + (love.timer.getDelta())
+            if entity._water_particle_timer >= 0.3 then
+                entity._water_particle_timer = 0
+                game.visual_effects.particles:emit(entity.x, entity.y, 2, "sparkle", {
+                    color = {0.3, 0.7, 1.0},
+                    speed = 30,
+                    lifetime = 0.8,
+                    size = 2,
+                    direction = -math.pi / 2,
+                    spread = math.pi * 0.6
+                })
+            end
         end
     end
+
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -325,6 +387,34 @@ local INDEXED_COLORS = {
 
 function GameBaseView:getIndexedColor(index)
     return INDEXED_COLORS[((index - 1) % #INDEXED_COLORS) + 1]
+end
+
+-- Draw water carrier effects around an enemy (glow, rings, sparkles)
+function GameBaseView:drawWaterCarrierEffects(cx, cy, radius, t)
+    -- Pulsing glow
+    local glow_alpha = 0.12 + 0.08 * math.sin(t * 4)
+    love.graphics.setColor(0.3, 0.7, 1.0, glow_alpha)
+    love.graphics.circle('fill', cx, cy, radius * 2)
+
+    -- Expanding ring
+    local ring_phase = (t * 1.5) % 2
+    local ring_scale = 1 + ring_phase * 0.6
+    local ring_alpha = (1 - ring_phase / 2) * 0.3
+    love.graphics.setColor(0.3, 0.7, 1.0, ring_alpha)
+    love.graphics.circle('line', cx, cy, radius * ring_scale)
+
+    -- Orbiting sparkles
+    for i = 1, 4 do
+        local angle = t * 2.5 + i * (math.pi * 2 / 4)
+        local dist = radius * (1.1 + 0.2 * math.sin(t * 4 + i))
+        local sx = cx + math.cos(angle) * dist
+        local sy = cy + math.sin(angle) * dist
+        local sparkle_alpha = 0.4 + 0.4 * math.sin(t * 6 + i * 1.5)
+        love.graphics.setColor(0.5, 0.85, 1.0, sparkle_alpha)
+        love.graphics.circle('fill', sx, sy, 1.5)
+    end
+
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- Health-based color: green (healthy) → yellow (damaged) → red (critical)

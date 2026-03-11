@@ -255,6 +255,11 @@ function CheatEngineState:modifyParameter(param_key, new_value, step_size)
         -- Save
         self.save_manager.save(self.player_data)
 
+        -- Visual feedback
+        if self.view and self.view.flashSaved then
+            self.view:flashSaved()
+        end
+
         print(string.format("Modified %s: %s -> %s (cost: %d, budget: %d)",
             param_key, tostring(param.original), tostring(new_value),
             result.cost, result.new_budget))
@@ -282,6 +287,7 @@ function CheatEngineState:resetParameter(param_key)
 
         self.current_modifications = self.player_data:getGameModifications(self.selected_game_id)
         self.save_manager.save(self.player_data)
+        if self.view and self.view.flashSaved then self.view:flashSaved() end
 
         print("Reset " .. param_key .. ", refunded " .. result.refund .. " credits")
     end
@@ -300,6 +306,7 @@ function CheatEngineState:resetAllParameters()
 
         self.current_modifications = {}
         self.save_manager.save(self.player_data)
+        if self.view and self.view.flashSaved then self.view:flashSaved() end
 
         print("Reset all parameters, refunded " .. result.refund .. " credits")
     end

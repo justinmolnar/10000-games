@@ -48,14 +48,15 @@ function StartMenuState:init(di, host)
     self.dnd_threshold = 4
 
     -- Subscribe to Start Menu events
+    self._subscriptions = {}
     if self.event_bus then
-        self.event_bus:subscribe('add_to_start_menu', function(program_id)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('add_to_start_menu', function(program_id)
             self:addProgramToStartMenu(program_id)
         end)
-        self.event_bus:subscribe('remove_from_start_menu', function(program_id)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('remove_from_start_menu', function(program_id)
             self:removeProgramFromStartMenu(program_id)
         end)
-        self.event_bus:subscribe('start_menu_new_folder', function(context)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('start_menu_new_folder', function(context)
             local Constants = require('src.constants')
             local params = {
                 title = Strings.get('menu.new_folder', 'New Folder...'),
@@ -71,10 +72,10 @@ function StartMenuState:init(di, host)
             }
             self.event_bus:publish('launch_program', 'run_dialog', params)
         end)
-        self.event_bus:subscribe('start_menu_open_path', function(path)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('start_menu_open_path', function(path)
             self:openPath(path)
         end)
-        self.event_bus:subscribe('start_menu_delete_fs', function(path)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('start_menu_delete_fs', function(path)
             print('DEBUG: start_menu_delete_fs event received for path:', path)
             local fs = self.file_system
             if fs and fs.deleteEntry then
@@ -105,6 +106,15 @@ function StartMenuState:init(di, host)
             end
         end)
     end
+end
+
+function StartMenuState:destroy()
+    if self.event_bus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.event_bus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
 end
 
 function StartMenuState:addProgramToStartMenu(program_id)

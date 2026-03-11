@@ -606,7 +606,24 @@ function BaseGame:onWaterCollected(entity)
         self.popup_manager:add(entity.x, entity.y, "+" .. (entity.value or 1) .. " WATER", {0.3, 0.7, 1.0})
     end
     if self.visual_effects then
-        self.visual_effects:flash({color = {0.3, 0.7, 1.0, 0.3}, duration = 0.3, mode = "fade_out"})
+        self.visual_effects:flash({color = {0.3, 0.7, 1.0, 0.4}, duration = 0.4, mode = "fade_out"})
+        if self.visual_effects.particles then
+            self.visual_effects.particles:emit(entity.x, entity.y, 20, "sparkle", {
+                color = {0.3, 0.7, 1.0},
+                speed = 120,
+                lifetime = 0.8,
+                size = 4,
+                spread = math.pi * 2
+            })
+            self.visual_effects.particles:emit(entity.x, entity.y, 8, "sparkle", {
+                color = {0.6, 0.9, 1.0},
+                speed = 60,
+                lifetime = 1.2,
+                size = 3,
+                direction = -math.pi / 2,
+                spread = math.pi * 0.8
+            })
+        end
     end
 end
 

@@ -67,8 +67,10 @@ function VMManager:createEmptySlot(slot_index)
         game_instance = nil,
 
         speed_upgrade_level = 0,
-        speed_multiplier = 1,
+        speed_multiplier = 0.25, -- 15fps / 60fps
+        vm_fps = 15,
         headless_mode = false,
+        cheats_enabled = false,
 
         stats = {
             total_runs = 0,
@@ -110,6 +112,7 @@ function VMManager:restoreVMSlot(slot_index, vm_data, player_data)
     slot.speed_upgrade_level = vm_data.speed_upgrade_level or 0
     slot.speed_multiplier = vm_data.speed_multiplier or 1
     slot.headless_mode = vm_data.headless_mode or false
+    slot.cheats_enabled = vm_data.cheats_enabled or false
 
     -- Restore stats
     if vm_data.stats then
@@ -240,13 +243,17 @@ function VMManager:startNewRun(slot, player_data, game_data)
     print("  Total frames: " .. (demo.recording and demo.recording.total_frames or 0))
     print("  Input count: " .. (demo.recording and demo.recording.inputs and #demo.recording.inputs or 0))
 
-    -- Calculate speed multiplier from cpu_speed upgrade
+    -- Calculate FPS from cpu_speed upgrade level
     local cpu_level = (player_data.upgrades and player_data.upgrades.cpu_speed) or 0
-    local cpu_bonus_per_level = Config.vm_cpu_speed_bonus_per_level or 0.1
-    slot.speed_multiplier = 1 + (cpu_level * cpu_bonus_per_level)
+    local base_fps = Config.vm_base_fps or 15
+    local fps_per_level = Config.vm_fps_per_level or 1
+    local max_fps = Config.vm_max_fps or 144
+    local vm_fps = math.min(max_fps, base_fps + cpu_level * fps_per_level)
+    slot.speed_multiplier = vm_fps / 60
+    slot.vm_fps = vm_fps
 
     -- Create game instance
-    local game_instance = self:createGameInstance(slot.assigned_game_id, demo, game_data, player_data, slot.slot_index)
+    local game_instance = self:createGameInstance(slot.assigned_game_id, demo, game_data, player_data, slot.slot_index, slot.cheats_enabled)
     if not game_instance then
         print("Error: Failed to create game instance for " .. slot.assigned_game_id)
         return false
@@ -271,14 +278,14 @@ function VMManager:startNewRun(slot, player_data, game_data)
     slot.current_run.seed = game_instance.seed or 0
     slot.current_run.start_time = os.time()
 
-    print(string.format("  Speed multiplier: %.1fx (CPU level %d), Headless: %s",
-        slot.speed_multiplier, cpu_level, tostring(slot.headless_mode)))
+    print(string.format("  VM FPS: %d (CPU level %d, %.2fx speed), Headless: %s",
+        vm_fps, cpu_level, slot.speed_multiplier, tostring(slot.headless_mode)))
 
     return true
 end
 
 -- Create a game instance for demo playback
-function VMManager:createGameInstance(game_id, demo, game_data, player_data, slot_index)
+function VMManager:createGameInstance(game_id, demo, game_data, player_data, slot_index, cheats_enabled)
     local game_def = game_data:getGame(game_id)
     if not game_def then
         return nil
@@ -295,14 +302,23 @@ function VMManager:createGameInstance(game_id, demo, game_data, player_data, slo
         return nil
     end
 
-    -- Get active cheats for this game
+    -- Get active cheats for this game (only if cheats are enabled for this slot)
     local active_cheats = {}
-    if player_data and player_data.cheat_engine_data and player_data.cheat_engine_data[game_id] then
+    if cheats_enabled and player_data and player_data.cheat_engine_data and player_data.cheat_engine_data[game_id] then
         active_cheats = player_data.cheat_engine_data[game_id].cheats or {}
     end
 
+    -- Apply cheat modifications to variant if cheats are enabled
+    local variant_config = demo.variant_config
+    if cheats_enabled and variant_config and player_data and player_data:hasGameModifications(game_id) then
+        local CheatSystem = require('src.models.cheat_system')
+        local cs = CheatSystem:new(self.di and self.di.config)
+        local modifications = player_data:getGameModifications(game_id)
+        variant_config = cs:getModifiedVariant(variant_config, modifications)
+    end
+
     -- Create game instance with variant config from demo
-    local game_instance = GameClass:new(game_def, active_cheats, self.di, demo.variant_config)
+    local game_instance = GameClass:new(game_def, active_cheats, self.di, variant_config)
 
     -- Enable playback mode (blocks human input)
     if game_instance.setPlaybackMode then
@@ -325,20 +341,14 @@ end
 function VMManager:processRunResult(slot, result, player_data)
     slot.stats.total_runs = slot.stats.total_runs + 1
 
-    local base_tokens = result.tokens or 0
+    local tokens = result.tokens or 0
     local success = result.completed or false
-
-    -- Apply overclock bonus to tokens
-    local overclock_level = (player_data.upgrades and player_data.upgrades.overclock) or 0
-    local overclock_bonus_per_level = Config.vm_overclock_bonus_per_level or 0.05
-    local overclock_multiplier = 1 + (overclock_level * overclock_bonus_per_level)
-    local tokens = math.floor(base_tokens * overclock_multiplier)
 
     local elapsed_time = love.timer.getTime() - (slot.debug_start_time or 0)
     local game_fps = (result.frames_played or 0) / elapsed_time
     local expected_time = (result.frames_played or 0) / 60
-    print(string.format("[VMManager] Run completed - Tokens: %d (base: %d, overclock: %.2fx), Frames: %d | %.1fs real vs %.1fs expected @ 60fps (%.1f actual FPS)",
-        tokens, base_tokens, overclock_multiplier, result.frames_played or 0, elapsed_time, expected_time, game_fps))
+    print(string.format("[VMManager] Run completed - Tokens: %d, Frames: %d | %.1fs real vs %.1fs expected @ 60fps (%.1f actual FPS, VM: %d FPS)",
+        tokens, result.frames_played or 0, elapsed_time, expected_time, game_fps, slot.vm_fps or 15))
 
     -- Reset debug counters
     slot.debug_frame_count = nil
@@ -395,6 +405,7 @@ function VMManager:saveSlotState(slot, player_data)
             speed_upgrade_level = slot.speed_upgrade_level,
             speed_multiplier = slot.speed_multiplier,
             headless_mode = slot.headless_mode,
+            cheats_enabled = slot.cheats_enabled,
             stats = {
                 total_runs = slot.stats.total_runs,
                 successes = slot.stats.successes,
@@ -497,6 +508,23 @@ function VMManager:stopVM(slot_index, player_data)
     end
 
     self:calculateTokensPerMinute()
+    return true
+end
+
+-- Start a stopped VM that still has a demo assigned
+function VMManager:startVM(slot_index, player_data, game_data)
+    local slot = self.vm_slots[slot_index]
+    if not slot then return false end
+    if not slot.assigned_game_id or not slot.assigned_demo_id then return false end
+    if slot.state ~= "IDLE" then return false end
+
+    slot.state = "RESTARTING"
+    slot.restart_timer = 0
+    self:saveSlotState(slot, player_data)
+
+    if self.event_bus then
+        pcall(self.event_bus.publish, self.event_bus, 'vm_started', slot.slot_index, slot.assigned_game_id)
+    end
     return true
 end
 
@@ -612,6 +640,15 @@ function VMManager:upgradeSpeed(slot_index, new_level, new_multiplier, new_headl
     end
 
     return true
+end
+
+-- Toggle cheats for a VM slot
+function VMManager:toggleCheats(slot_index, player_data)
+    local slot = self.vm_slots[slot_index]
+    if not slot then return false end
+    slot.cheats_enabled = not slot.cheats_enabled
+    self:saveSlotState(slot, player_data)
+    return true, slot.cheats_enabled
 end
 
 -- Get VM slot data

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Suno Song Helper</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
+h1 { color: #00d4ff; margin-bottom: 4px; font-size: 1.4em; }
+.subtitle { color: #888; margin-bottom: 16px; font-size: 0.9em; }
+
+.controls { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.controls label { color: #aaa; font-size: 0.85em; }
+.controls select, .controls input { background: #2a2a4a; color: #e0e0e0; border: 1px solid #444; padding: 6px 10px; border-radius: 4px; font-size: 0.9em; }
+.controls select { min-width: 200px; }
+.controls input[type="text"] { width: 220px; }
+
+.stats { color: #888; font-size: 0.85em; margin-bottom: 16px; }
+.stats span { color: #00d4ff; font-weight: bold; }
+
+.song-list { display: flex; flex-direction: column; gap: 8px; }
+
+.song-card { background: #222244; border: 1px solid #333; border-radius: 6px; padding: 12px 16px; transition: border-color 0.2s; }
+.song-card:hover { border-color: #00d4ff; }
+.song-card.done { opacity: 0.4; border-color: #2a4a2a; }
+.song-card.done .song-header { text-decoration: line-through; }
+
+.song-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.song-title { font-weight: bold; color: #fff; font-size: 1em; }
+.song-artist { color: #aaa; font-size: 0.9em; }
+.song-station { color: #00d4ff; font-size: 0.75em; background: #1a1a3e; padding: 2px 8px; border-radius: 10px; border: 1px solid #00d4ff33; }
+.song-duration { color: #888; font-size: 0.8em; }
+.song-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+.field-row { display: flex; align-items: stretch; gap: 6px; margin-top: 6px; }
+.field-label { color: #888; font-size: 0.75em; min-width: 60px; padding-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; }
+.field-value { background: #1a1a2e; border: 1px solid #333; border-radius: 4px; padding: 6px 10px; font-size: 0.85em; flex: 1; white-space: pre-wrap; word-break: break-word; color: #ccc; min-height: 32px; font-family: 'Consolas', monospace; }
+.field-value.lyrics { max-height: 120px; overflow-y: auto; }
+
+.copy-btn { background: #2a2a4a; color: #00d4ff; border: 1px solid #00d4ff44; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 0.8em; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+.copy-btn:hover { background: #00d4ff22; border-color: #00d4ff; }
+.copy-btn.copied { background: #1a4a1a; color: #4eff4e; border-color: #4eff4e44; }
+
+.done-btn { background: #2a4a2a; color: #4eff4e; border: 1px solid #4eff4e44; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 0.8em; white-space: nowrap; margin-left: auto; }
+.done-btn:hover { background: #4eff4e22; }
+.done-btn.is-done { background: #4a2a2a; color: #ff4e4e; border-color: #ff4e4e44; }
+
+.shared-badge { color: #ffaa00; font-size: 0.75em; background: #3a2a1a; padding: 2px 8px; border-radius: 10px; border: 1px solid #ffaa0033; }
+
+.load-area { text-align: center; padding: 60px 20px; }
+.load-area p { color: #888; margin-bottom: 16px; }
+.load-btn { background: #00d4ff22; color: #00d4ff; border: 2px dashed #00d4ff44; border-radius: 8px; padding: 20px 40px; cursor: pointer; font-size: 1.1em; }
+.load-btn:hover { background: #00d4ff33; border-color: #00d4ff; }
+
+.progress-bar { height: 4px; background: #333; border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #4eff4e); transition: width 0.3s; }
+</style>
+</head>
+<body>
+
+<h1>Suno Song Helper</h1>
+<div class="subtitle">Load station JSONs, copy fields into Suno. 542 songs across 12 stations.</div>
+
+<div id="app">
+  <div class="load-area" id="loadArea">
+    <p>Select the <code>sessions/elevenlabs/stations/</code> folder</p>
+    <label class="load-btn" id="loadBtn">
+      📂 Load Station Folder
+      <input type="file" id="folderInput" webkitdirectory multiple style="display:none">
+    </label>
+  </div>
+</div>
+
+<script>
+let allSongs = [];
+let doneSet = new Set(JSON.parse(localStorage.getItem('suno_done') || '[]'));
+
+document.getElementById('folderInput').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files).filter(f => f.name.endsWith('.json'));
+  allSongs = [];
+
+  for (const file of files) {
+    const text = await file.text();
+    let data;
+    try { data = JSON.parse(text); } catch { continue; }
+    const stationName = data.station?.name || file.name.replace('.json', '');
+    const genre = data.station?.genre || '';
+    const playlist = data.playlist || [];
+
+    for (const item of playlist) {
+      if (item.type !== 'song') continue;
+      allSongs.push({
+        id: file.name.replace('.json', '') + '_' + item.id,
+        station: stationName,
+        stationFile: file.name,
+        genre: genre,
+        artist: item.artist || '',
+        title: item.title || '',
+        duration: item.duration_target || '',
+        style: item.suno_style || '',
+        lyrics: item.suno_lyrics || '',
+        flags: item.flags || [],
+        songId: item.id
+      });
+    }
+  }
+
+  allSongs.sort((a, b) => {
+    const sa = a.stationFile.localeCompare(b.stationFile);
+    if (sa !== 0) return sa;
+    const na = parseInt(a.songId.replace('song_', ''));
+    const nb = parseInt(b.songId.replace('song_', ''));
+    return na - nb;
+  });
+
+  renderApp();
+});
+
+function renderApp() {
+  const app = document.getElementById('app');
+  const doneCount = allSongs.filter(s => doneSet.has(s.id)).length;
+
+  app.innerHTML = `
+    <div class="controls">
+      <div>
+        <label>Station</label><br>
+        <select id="stationFilter">
+          <option value="all">All Stations (${allSongs.length})</option>
+          ${[...new Set(allSongs.map(s => s.stationFile))].map(f => {
+            const name = allSongs.find(s => s.stationFile === f).station;
+            const count = allSongs.filter(s => s.stationFile === f).length;
+            return `<option value="${f}">${name} (${count})</option>`;
+          }).join('')}
+        </select>
+      </div>
+      <div>
+        <label>Search</label><br>
+        <input type="text" id="searchInput" placeholder="artist, title, style...">
+      </div>
+      <div>
+        <label>Show</label><br>
+        <select id="showFilter">
+          <option value="all">All</option>
+          <option value="todo">Todo Only</option>
+          <option value="done">Done Only</option>
+        </select>
+      </div>
+      <div>
+        <label>Sort</label><br>
+        <select id="sortBy">
+          <option value="station">By Station</option>
+          <option value="artist">By Artist</option>
+          <option value="title">By Title</option>
+        </select>
+      </div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${(doneCount/allSongs.length*100).toFixed(1)}%"></div></div>
+    <div class="stats">Progress: <span>${doneCount}</span> / <span>${allSongs.length}</span> songs done (${(doneCount/allSongs.length*100).toFixed(1)}%)</div>
+    <div class="song-list" id="songList"></div>
+  `;
+
+  document.getElementById('stationFilter').addEventListener('change', renderList);
+  document.getElementById('searchInput').addEventListener('input', renderList);
+  document.getElementById('showFilter').addEventListener('change', renderList);
+  document.getElementById('sortBy').addEventListener('change', renderList);
+  renderList();
+}
+
+function renderList() {
+  const station = document.getElementById('stationFilter').value;
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const show = document.getElementById('showFilter').value;
+  const sortBy = document.getElementById('sortBy').value;
+
+  let filtered = allSongs.filter(s => {
+    if (station !== 'all' && s.stationFile !== station) return false;
+    if (search && !(s.artist + s.title + s.style + s.lyrics + s.station).toLowerCase().includes(search)) return false;
+    if (show === 'todo' && doneSet.has(s.id)) return false;
+    if (show === 'done' && !doneSet.has(s.id)) return false;
+    return true;
+  });
+
+  if (sortBy === 'artist') filtered.sort((a, b) => a.artist.localeCompare(b.artist));
+  else if (sortBy === 'title') filtered.sort((a, b) => a.title.localeCompare(b.title));
+
+  const list = document.getElementById('songList');
+  list.innerHTML = filtered.map(s => `
+    <div class="song-card ${doneSet.has(s.id) ? 'done' : ''}" data-id="${s.id}">
+      <div class="song-header">
+        <div class="song-meta">
+          <span class="song-title">${esc(s.artist)} — ${esc(s.title)}</span>
+          <span class="song-station">${esc(s.station)}</span>
+          ${s.duration ? `<span class="song-duration">${esc(s.duration)}</span>` : ''}
+          ${s.flags.length > 1 ? `<span class="shared-badge">shared (${s.flags.length} stations)</span>` : ''}
+        </div>
+        <button class="done-btn ${doneSet.has(s.id) ? 'is-done' : ''}" onclick="toggleDone('${s.id}')">${doneSet.has(s.id) ? '↩ Undo' : '✓ Done'}</button>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Title</span>
+        <div class="field-value">${esc(s.title)}</div>
+        <button class="copy-btn" onclick="copyField(this, ${JSON.stringify(s.title).replace(/"/g, '&quot;')})">Copy</button>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Style</span>
+        <div class="field-value">${esc(s.style)}</div>
+        <button class="copy-btn" onclick="copyField(this, ${JSON.stringify(s.style).replace(/"/g, '&quot;')})">Copy</button>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Lyrics</span>
+        <div class="field-value lyrics">${esc(s.lyrics)}</div>
+        <button class="copy-btn" onclick="copyField(this, ${JSON.stringify(s.lyrics).replace(/"/g, '&quot;')})">Copy</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function copyField(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function toggleDone(id) {
+  if (doneSet.has(id)) doneSet.delete(id);
+  else doneSet.add(id);
+  localStorage.setItem('suno_done', JSON.stringify([...doneSet]));
+
+  // Update card in place without rebuilding filters
+  const card = document.querySelector(`.song-card[data-id="${id}"]`);
+  if (card) {
+    const isDone = doneSet.has(id);
+    card.classList.toggle('done', isDone);
+    const btn = card.querySelector('.done-btn');
+    btn.classList.toggle('is-done', isDone);
+    btn.textContent = isDone ? '↩ Undo' : '✓ Done';
+  }
+
+  // Update progress bar and stats
+  const doneCount = allSongs.filter(s => doneSet.has(s.id)).length;
+  const pct = (doneCount / allSongs.length * 100).toFixed(1);
+  const fill = document.querySelector('.progress-fill');
+  if (fill) fill.style.width = pct + '%';
+  const stats = document.querySelector('.stats');
+  if (stats) stats.innerHTML = `Progress: <span>${doneCount}</span> / <span>${allSongs.length}</span> songs done (${pct}%)`;
+}
+
+document.getElementById('loadBtn').addEventListener('click', () => {
+  document.getElementById('folderInput').click();
+});
+</script>
+</body>
+</html>

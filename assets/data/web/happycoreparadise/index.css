@@ -1,0 +1,81 @@
+body {
+    background-color: #1a0a2a;
+    color: #ff99ff;
+    font-family: Comic Sans MS;
+    margin: 20px;
+}
+
+h1 {
+    color: #ffff00;
+    text-align: center;
+    font-size: 20px;
+    letter-spacing: 2px;
+}
+
+.tagline {
+    text-align: center;
+    color: #ff66ff;
+    font-size: 11px;
+}
+
+.bpm {
+    text-align: center;
+    color: #ff3399;
+    font-size: 10px;
+    font-weight: bold;
+    margin-top: 4px;
+}
+
+hr {
+    color: #ff66ff;
+}
+
+.player {
+    text-align: center;
+    margin: 10px;
+    padding: 12px;
+    border: 2px solid #ff66ff;
+    background-color: #220a3a;
+}
+
+.live {
+    color: #ffff00;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.status {
+    color: #ff99ff;
+    font-size: 10px;
+}
+
+.controls {
+    color: #ff66cc;
+    font-size: 11px;
+}
+
+.about {
+    color: #ffaaff;
+    font-size: 11px;
+    text-align: center;
+}
+
+.info {
+    color: #cc77cc;
+    font-size: 9px;
+    text-align: center;
+}
+
+.disclaimer {
+    color: #aa55aa;
+    font-size: 8px;
+    margin-top: 4px;
+}
+
+a {
+    color: #ffff00;
+}
+
+p {
+    margin: 3px;
+}

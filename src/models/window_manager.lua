@@ -40,13 +40,23 @@ function WindowManager:init(di)
 end
 
 function WindowManager:subscribeToEvents()
-    self.event_bus:subscribe('request_window_close', function(window_id) self:closeWindow(window_id) end)
-    self.event_bus:subscribe('request_window_focus', function(window_id) self:focusWindow(window_id) end)
-    self.event_bus:subscribe('request_window_minimize', function(window_id) self:minimizeWindow(window_id) end)
-    self.event_bus:subscribe('request_window_maximize', function(window_id, w, h) self:maximizeWindow(window_id, w, h) end)
-    self.event_bus:subscribe('request_window_restore', function(window_id) self:restoreWindow(window_id) end)
-    self.event_bus:subscribe('request_window_move', function(window_id, x, y) self:updateWindowBounds(window_id, x, y, nil, nil) end)
-    self.event_bus:subscribe('request_window_resize', function(window_id, x, y, w, h) self:updateWindowBounds(window_id, x, y, w, h) end)
+    self._subscriptions = {}
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_window_close', function(window_id) self:closeWindow(window_id) end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_window_focus', function(window_id) self:focusWindow(window_id) end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_window_minimize', function(window_id) self:minimizeWindow(window_id) end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_window_maximize', function(window_id, w, h) self:maximizeWindow(window_id, w, h) end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_window_restore', function(window_id) self:restoreWindow(window_id) end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_window_move', function(window_id, x, y) self:updateWindowBounds(window_id, x, y, nil, nil) end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_window_resize', function(window_id, x, y, w, h) self:updateWindowBounds(window_id, x, y, w, h) end)
+end
+
+function WindowManager:destroy()
+    if self.event_bus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.event_bus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
 end
 
 function WindowManager:setScreenSize(w, h)

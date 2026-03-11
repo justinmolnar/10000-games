@@ -131,6 +131,30 @@ function WebBrowserView:drawContent(viewport_width, viewport_height)
         end
     end
 
+    -- Radio status bar
+    if self.controller.radio_mode and self.controller.audio_source then
+        local bar_h = 18
+        local bar_y = viewport_height - bar_h
+        local g = love.graphics
+
+        g.setColor(0.05, 0.05, 0.12, 0.95)
+        g.rectangle('fill', 0, bar_y, viewport_width, bar_h)
+        g.setColor(0.3, 0.3, 0.3)
+        g.line(0, bar_y, viewport_width, bar_y)
+
+        local font = g.getFont()
+        local indicator = self.controller.audio_playing and ">> " or "|| "
+        local label = indicator .. (self.controller.radio_station_name or "Radio")
+        g.setColor(0.2, 1.0, 0.2)
+        g.print(label, 4, bar_y + 2)
+
+        -- Blinking dot
+        if self.controller.audio_playing and math.floor(love.timer.getTime() * 2) % 2 == 0 then
+            g.setColor(1, 0, 0)
+            g.circle('fill', viewport_width - 10, bar_y + bar_h / 2, 3)
+        end
+    end
+
 end
 
 -- Draw toolbar

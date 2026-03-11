@@ -105,26 +105,23 @@ function DesktopState:init(di)
     self.screensaver_enabled = SettingsManager.get('screensaver_enabled') ~= false
 
     -- Subscribe to EventBus events
+    self._subscriptions = {}
     if self.event_bus then
-        self.event_bus:subscribe('window_closed', function(window_id)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('window_closed', function(window_id)
             local window_data = self.window_states[window_id]
             if window_data and window_data.state and window_data.state.destroy then
                 window_data.state:destroy()
             end
             self.window_states[window_id] = nil
         end)
-        -- Subscribe to wallpaper changes to update live
-        self.event_bus:subscribe('wallpaper_changed', function(new_wallpaper_id)
-            print("[DesktopState] Received wallpaper_changed event: " .. tostring(new_wallpaper_id))
-            self.wallpaper_type = 'image' -- Assume changing image sets type to image
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('wallpaper_changed', function(new_wallpaper_id)
+            self.wallpaper_type = 'image'
             self.wallpaper_image = new_wallpaper_id
-            print("[DesktopState] Set wallpaper_image to: " .. tostring(self.wallpaper_image))
             -- Prewarm cache
             local okW, WP = pcall(require, 'src.utils.wallpapers')
             if okW and WP and WP.getImageCached then pcall(WP.getImageCached, new_wallpaper_id) end
         end)
-        -- Subscribe to other relevant setting changes if needed
-        self.event_bus:subscribe('setting_changed', function(key, old_value, new_value)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('setting_changed', function(key, old_value, new_value)
             if key == 'desktop_bg_type' then
                 self.wallpaper_type = new_value
             elseif key == 'desktop_bg_image' then
@@ -138,21 +135,19 @@ function DesktopState:init(di)
             end
         end)
 
-        -- Subscribe to ContextMenuService events
-        self.event_bus:subscribe('request_icon_recycle', function(program_id)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_icon_recycle', function(program_id)
             self:deleteDesktopIcon(program_id)
         end)
-        self.event_bus:subscribe('ensure_icon_visible', function(program_id)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('ensure_icon_visible', function(program_id)
             self:ensureIconIsVisible(program_id)
         end)
-        self.event_bus:subscribe('request_window_close', function(window_id)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_window_close', function(window_id)
             self:closeWindowById(window_id)
         end)
-        self.event_bus:subscribe('window_state_event', function(window_id, event)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('window_state_event', function(window_id, event)
             self.event_dispatcher:handle(window_id, event, function(wid) self:closeWindowById(wid) end)
         end)
-        -- Subscribe to window move/resize to update viewport coordinates
-        self.event_bus:subscribe('window_moved', function(window_id, new_x, new_y)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('window_moved', function(window_id, new_x, new_y)
             local window_data = self.window_states[window_id]
             local window_state = window_data and window_data.state
             if window_state and window_state.setViewport then
@@ -163,7 +158,7 @@ function DesktopState:init(di)
                 end
             end
         end)
-        self.event_bus:subscribe('window_resized', function(window_id, new_width, new_height)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('window_resized', function(window_id, new_width, new_height)
             local window_data = self.window_states[window_id]
             local window_state = window_data and window_data.state
             if window_state and window_state.setViewport then
@@ -175,8 +170,7 @@ function DesktopState:init(di)
             end
         end)
 
-        -- Subscribe to icon events from DesktopIconController
-        self.event_bus:subscribe('icon_double_clicked', function(program_id)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('icon_double_clicked', function(program_id)
             local program = self.program_registry:getProgram(program_id)
             if not program then return end
 
@@ -196,7 +190,7 @@ function DesktopState:init(di)
             end
         end)
 
-        self.event_bus:subscribe('icon_dropped_on_recycle_bin', function(program_id)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('icon_dropped_on_recycle_bin', function(program_id)
             -- Add to recycle bin with original position for restoration
             local original_pos = self.desktop_icons:getPosition(program_id)
             self.recycle_bin:addItem(program_id, original_pos)
@@ -209,7 +203,15 @@ function DesktopState:init(di)
     -- Initialization finished
 end
 
--- NEW function added as per plan
+function DesktopState:destroy()
+    if self.event_bus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.event_bus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
+end
+
 function DesktopState:registerWindowState(window_id, state)
     self.window_states[window_id] = { state = state }
     -- Important: Re-apply context if needed by state

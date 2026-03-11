@@ -30,11 +30,21 @@ function ContextMenuService:init(di)
     self._suppress_next_mousereleased = false
 
     -- Subscribe to show_context_menu event from handleStateEvent
+    self._subscriptions = {}
     if self.event_bus then
-        self.event_bus:subscribe('show_context_menu', function(x, y, options, context)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('show_context_menu', function(x, y, options, context)
             self:show(x, y, options, context)
         end)
     end
+end
+
+function ContextMenuService:destroy()
+    if self.event_bus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.event_bus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
 end
 
 function ContextMenuService:isOpen()

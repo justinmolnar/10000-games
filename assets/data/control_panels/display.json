@@ -1,0 +1,13 @@
+{
+  "icon_sprite": "monitor_tweakui-0",
+  "elements": [
+    { "type": "section", "label": "Display" },
+    { "type": "dropdown", "id": "display_monitor", "label": "Monitor", "choices_from": "monitors" },
+    { "type": "dropdown", "id": "display_resolution", "label": "Resolution", "choices_from": "resolutions" },
+    { "type": "dropdown", "id": "display_mode", "label": "Window Mode", "choices": [
+      { "label": "Fullscreen", "value": "fullscreen" },
+      { "label": "Borderless", "value": "borderless" },
+      { "label": "Windowed", "value": "windowed" }
+    ]}
+  ]
+}

@@ -2,6 +2,7 @@
 local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
 local Strings = require('src.utils.strings')
+local ThemeManager = require('src.utils.theme_manager')
 
 local RunDialogView = BaseView:extend('RunDialogView')
 
@@ -50,25 +51,25 @@ function RunDialogView:drawContent(w, h)
     local input_y = run_cfg.input_y or 40
     local input_h = run_cfg.input_h or 25
     local btns = run_cfg.buttons or {}
-    local colors = (self.di and self.di.config and self.di.config.ui and self.di.config.ui.colors and self.di.config.ui.colors.run_dialog) or {}
+    local rd = ThemeManager.getSection("run_dialog") or (self.di and self.di.config and self.di.config.ui and self.di.config.ui.colors and self.di.config.ui.colors.run_dialog) or {}
 
     -- Content background
-    love.graphics.setColor(colors.bg or {0.8, 0.8, 0.8})
+    love.graphics.setColor(rd.bg or {0.8, 0.8, 0.8})
     love.graphics.rectangle('fill', 0, 0, w, h)
 
     -- Content
-    love.graphics.setColor(colors.label_text or {0, 0, 0})
+    love.graphics.setColor(rd.label_text or {0, 0, 0})
     love.graphics.print(self.prompt, pad, 12)
 
-    love.graphics.setColor(colors.input_bg or {1, 1, 1})
+    love.graphics.setColor(rd.input_bg or {1, 1, 1})
     love.graphics.rectangle('fill', pad, input_y, w - 2 * pad, input_h)
-    love.graphics.setColor(colors.input_border or {0, 0, 0})
+    love.graphics.setColor(rd.input_border or {0, 0, 0})
     love.graphics.rectangle('line', pad, input_y, w - 2 * pad, input_h)
-    love.graphics.setColor(colors.input_text or {0, 0, 0})
+    love.graphics.setColor(rd.input_text or {0, 0, 0})
     love.graphics.print(text or "", pad + 5, input_y + 5)
 
-    UIComponents.drawButton(w - (btns.ok_offset_x or 180), h - (btns.bottom_margin or 40), btns.ok_w or 80, btns.ok_h or 30, self.ok_label or Strings.get('buttons.ok','OK'), true, false)
-    UIComponents.drawButton(w - (btns.cancel_offset_x or 90), h - (btns.bottom_margin or 40), btns.cancel_w or 80, btns.cancel_h or 30, self.cancel_label or Strings.get('buttons.cancel','Cancel'), true, false)
+    UIComponents.drawButton(w - (btns.ok_offset_x or 180), h - (btns.bottom_margin or 40), btns.ok_w or 80, btns.ok_h or 30, self.ok_label or Strings.get('buttons.ok','OK'), true, false, nil, "confirm")
+    UIComponents.drawButton(w - (btns.cancel_offset_x or 90), h - (btns.bottom_margin or 40), btns.cancel_w or 80, btns.cancel_h or 30, self.cancel_label or Strings.get('buttons.cancel','Cancel'), true, false, nil, "cancel")
 end
 
 function RunDialogView:mousepressed(x, y, button, w, h)

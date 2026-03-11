@@ -204,6 +204,8 @@ end
 --------------------------------------------------------------------------------
 
 function SpaceShooter:updateGameLogic(dt)
+    self.visual_effects:update(dt)
+    self.popup_manager:update(dt)
     self.health_system:update(dt)
     self.lives = self.health_system.lives
 

@@ -182,9 +182,13 @@ function MinigameController:processCompletion()
     -- Stop demo recording if active
     if self.is_recording and self.demo_recorder then
         print("[MinigameController] Stopping demo recording for " .. self.game_data.display_name)
-        local auto_name = self.game_data.display_name .. " Demo"
+        local score = self.current_performance or 0
+        local date_str = os.date("%m/%d %H:%M")
+        local auto_name = string.format("%s - %s (%s)", self.game_data.display_name, tostring(math.floor(score)), date_str)
         local success, demo_or_error = pcall(self.demo_recorder.stopRecording, self.demo_recorder, auto_name, "Auto-recorded gameplay")
         if success and demo_or_error then
+            demo_or_error.metadata.score = self.current_performance
+            demo_or_error.metadata.won = self.game_instance and self.game_instance.won
             self.recorded_demo = demo_or_error
             self.show_save_demo_prompt = true
             print("[MinigameController] Demo recorded successfully, showing save prompt")
@@ -219,12 +223,13 @@ end
 function MinigameController:getSnapshot()
     return {
         game_data = self.game_data,
-        game_instance = self.game_instance, -- Add game instance for variant sprites
+        game_instance = self.game_instance,
         previous_best = self.previous_best,
         base_performance = self.base_performance,
         current_performance = self.current_performance,
         performance_mult = self.performance_mult or 1.0,
         fail_gate_triggered = self.fail_gate_triggered,
+        won = not self.fail_gate_triggered,
         auto_completed_games = self.auto_completed_games,
         auto_complete_power = self.auto_complete_power,
         metrics = self:getMetrics(),

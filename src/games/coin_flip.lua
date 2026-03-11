@@ -4,7 +4,6 @@ local CoinFlipView = require('src.games.views.coin_flip_view')
 local popup_module = require('src.games.score_popup')
 local PopupManager = popup_module.PopupManager
 local VisualEffects = require('src.utils.game_components.visual_effects')
-local AnimationSystem = require('src.utils.game_components.animation_system')
 local SchemaLoader = require('src.utils.game_components.schema_loader')
 local HUDRenderer = require('src.utils.game_components.hud_renderer')
 local VictoryCondition = require('src.utils.game_components.victory_condition')
@@ -86,6 +85,22 @@ function CoinFlip:setupGameState()
     self.auto_flip_timer = 0
     self.time_per_flip_timer = 0
 
+    -- Deferred flip result (processed when coin lands)
+    self.pending_result = nil
+    self.pending_is_correct = nil
+    self.pending_processed = false
+
+    -- Coin physics state
+    self.coin = {
+        y = 0,           -- vertical offset from rest (negative = up)
+        vy = 0,          -- vertical velocity (negative = up)
+        spin = 0,        -- current spin angle (radians)
+        spin_speed = 0,  -- angular velocity (rad/s)
+        landed = false,  -- true once first bounce happens
+        settled = false, -- true once coin stops bouncing
+        bounces = 0,
+    }
+
     self.score = 0
     self.perfect_streak = true
     self.water_round = false
@@ -111,11 +126,13 @@ function CoinFlip:setupComponents()
         particle_effects_enabled = true
     })
 
-    self.flip_animation = AnimationSystem.createFlipAnimation({
-        duration = 0.5,
-        speed_multiplier = self.flip_animation_speed,
-        on_complete = nil
-    })
+    -- Coin flip physics constants
+    self.coin_gravity = 800        -- pixels/s^2 downward
+    self.coin_launch_speed = -500  -- initial upward velocity (negative = up)
+    self.coin_spin_base = 18       -- base spin speed (rad/s)
+    self.coin_restitution = 0.4    -- bounce energy retention
+    self.coin_spin_friction = 0.6  -- spin retention per bounce
+    self.coin_settle_threshold = 20 -- velocity below which coin settles
 
     self.health_system = PlayerController:new({
         mode = "lives",
@@ -177,9 +194,17 @@ function CoinFlip:updateGameLogic(dt)
         end
     end
 
-    self.flip_animation:update(dt)
+    self:updateCoinPhysics(dt)
     self.visual_effects:update(dt)
     self.popup_manager:update(dt)
+
+    -- Process flip result when coin first lands
+    if self.pending_result and not self.pending_processed and self.coin.landed then
+        self.pending_processed = true
+        self:playSound("coin_land", 0.6)
+        self:processFlipResult(self.pending_is_correct, self.pending_result)
+        self.pending_result = nil
+    end
 
     if self.show_result and not self.game_over and not self.victory then
         self.result_display_time = self.result_display_time + dt
@@ -291,14 +316,62 @@ function CoinFlip:generateFlipResult()
     return result
 end
 
+function CoinFlip:launchCoin()
+    local c = self.coin
+    -- Randomize launch speed and spin slightly
+    local speed_var = 1 + (self.rng:random() - 0.5) * 0.3  -- ±15%
+    local spin_var = 1 + (self.rng:random() - 0.5) * 0.5   -- ±25%
+    c.vy = self.coin_launch_speed * speed_var * self.flip_animation_speed
+    c.spin_speed = self.coin_spin_base * spin_var * self.flip_animation_speed
+    c.y = 0
+    c.landed = false
+    c.settled = false
+    c.bounces = 0
+end
+
+function CoinFlip:updateCoinPhysics(dt)
+    local c = self.coin
+    if c.settled then return end
+    if c.vy == 0 and c.y == 0 then return end -- at rest, never launched
+
+    -- Apply gravity
+    c.vy = c.vy + self.coin_gravity * dt
+    c.y = c.y + c.vy * dt
+
+    -- Spin
+    c.spin = c.spin + c.spin_speed * dt
+
+    -- Ground collision (y >= 0 is rest position)
+    if c.y >= 0 and c.vy > 0 then
+        c.y = 0
+        if not c.landed then
+            c.landed = true
+        end
+        c.bounces = c.bounces + 1
+
+        if math.abs(c.vy) < self.coin_settle_threshold or c.bounces >= 4 then
+            -- Coin has settled
+            c.vy = 0
+            c.spin_speed = 0
+            c.settled = true
+        else
+            -- Bounce
+            c.vy = -math.abs(c.vy) * self.coin_restitution
+            c.spin_speed = c.spin_speed * self.coin_spin_friction
+        end
+    end
+end
+
 function CoinFlip:flipCoin()
     self.waiting_for_guess = false
-    self.flip_animation:start()
-    self.flip_timer = 0
+    self:launchCoin()
     self:playSound("coin_spin", 0.7)
 
     local result = self:generateFlipResult()
     self.last_result = result
+    self.pending_result = result
+    self.pending_is_correct = (result == 'heads')
+    self.pending_processed = false
 
     table.insert(self.pattern_history, result == 'heads' and 'H' or 'T')
     while #self.pattern_history > self.params.pattern_history_length do
@@ -306,22 +379,20 @@ function CoinFlip:flipCoin()
     end
 
     self.flips_total = self.flips_total + 1
-
-    -- In auto mode, heads = success
-    local is_correct = (result == 'heads')
-    self:processFlipResult(is_correct, result)
 end
 
 function CoinFlip:makeGuess(guess)
     self.current_guess = guess
     self.last_guess = guess
     self.waiting_for_guess = false
-    self.flip_animation:start()
-    self.flip_timer = 0
+    self:launchCoin()
     self:playSound("coin_spin", 0.7)
 
     local result = self:generateFlipResult()
     self.last_result = result
+    self.pending_result = result
+    self.pending_is_correct = (guess == result)
+    self.pending_processed = false
 
     table.insert(self.pattern_history, result == 'heads' and 'H' or 'T')
     while #self.pattern_history > self.params.pattern_history_length do
@@ -329,14 +400,9 @@ function CoinFlip:makeGuess(guess)
     end
 
     self.flips_total = self.flips_total + 1
-
-    -- In guess mode, correct = guess matches result
-    local is_correct = (guess == result)
-    self:processFlipResult(is_correct, result)
 end
 
 function CoinFlip:processFlipResult(is_correct, result)
-    self:playSound("coin_land", 0.6)
     if is_correct then
         self:onCorrectFlip()
     else

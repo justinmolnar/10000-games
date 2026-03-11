@@ -2,6 +2,7 @@
 -- Reusable component for rendering window chrome (title bar, borders, buttons)
 
 local Object = require('class')
+local ThemeManager = require('src.utils.theme_manager')
 -- Config is expected to be provided by higher-level DI; avoid requiring src.config here.
 local WindowChrome = Object:extend('WindowChrome')
 
@@ -41,7 +42,7 @@ function WindowChrome:drawContentBackground(window)
 
     -- Fill entire content area including space under borders (light gray)
     -- Start at x+1, y+bar+1 to fill under the inner border lines
-    love.graphics.setColor(colors.window_content_bg or {0.9, 0.9, 0.9})
+    love.graphics.setColor(ThemeManager.get("window.content_bg") or colors.window_content_bg or {0.9, 0.9, 0.9})
     love.graphics.rectangle('fill',
         window.x + 1,
         window.y + bar_height + 1,
@@ -51,12 +52,13 @@ end
 
 -- Draw window border
 function WindowChrome:drawBorder(window, is_focused)
-    local color = is_focused and (colors.border_inner_focused or {0.8, 0.8, 0.8}) or (colors.border_inner_unfocused or {0.5, 0.5, 0.5})
-    
+    local wc = ThemeManager.getSection("window") or {}
+    local color = is_focused and (wc.border_inner_focused or colors.border_inner_focused or {0.8, 0.8, 0.8}) or (wc.border_inner_unfocused or colors.border_inner_unfocused or {0.5, 0.5, 0.5})
+
     -- Outer border (raised effect)
-    love.graphics.setColor((colors.border_outer or {1, 1, 1}))
+    love.graphics.setColor(wc.border_outer or colors.border_outer or {1, 1, 1})
     love.graphics.rectangle('line', window.x, window.y, window.width, window.height)
-    
+
     -- Inner border
     love.graphics.setColor(color)
     love.graphics.rectangle('line', 
@@ -69,10 +71,11 @@ function WindowChrome:drawTitleBar(window, is_focused, sprite_loader)
     local bar_height = self.TITLE_BAR_HEIGHT
 
     -- Title bar background (gradient effect)
+    local wc = ThemeManager.getSection("window") or {}
     if is_focused then
-        love.graphics.setColor(colors.titlebar_focused or {0, 0, 0.5})
+        love.graphics.setColor(wc.titlebar_focused or colors.titlebar_focused or {0, 0, 0.5})
     else
-        love.graphics.setColor(colors.titlebar_unfocused or {0.5, 0.5, 0.5})
+        love.graphics.setColor(wc.titlebar_unfocused or colors.titlebar_unfocused or {0.5, 0.5, 0.5})
     end
     love.graphics.rectangle('fill',
         window.x + 2, window.y + 2,
@@ -124,27 +127,28 @@ end
 -- Draw individual button
 function WindowChrome:drawButton(x, y, w, h, button_type, is_focused, disabled)
     disabled = disabled or false
+    local wc = ThemeManager.getSection("window") or {}
     -- Button background
     if disabled then
-        love.graphics.setColor(colors.button_disabled_bg or {0.6, 0.6, 0.6})
+        love.graphics.setColor(wc.button_disabled_bg or colors.button_disabled_bg or {0.6, 0.6, 0.6})
     else
-        love.graphics.setColor(colors.button_bg or {0.75, 0.75, 0.75})
+        love.graphics.setColor(wc.button_bg or colors.button_bg or {0.75, 0.75, 0.75})
     end
     love.graphics.rectangle('fill', x, y, w, h)
-    
+
     -- Button border (raised effect)
-    love.graphics.setColor(colors.button_border_light or {1, 1, 1})
+    love.graphics.setColor(wc.button_border_light or colors.button_border_light or {1, 1, 1})
     love.graphics.line(x, y, x + w, y)
     love.graphics.line(x, y, x, y + h)
-    love.graphics.setColor(colors.button_border_dark or {0.3, 0.3, 0.3})
+    love.graphics.setColor(wc.button_border_dark or colors.button_border_dark or {0.3, 0.3, 0.3})
     love.graphics.line(x + w, y, x + w, y + h)
     love.graphics.line(x, y + h, x + w, y + h)
-    
+
     -- Button icon
     if disabled then
-        love.graphics.setColor(colors.button_disabled_icon or {0.4, 0.4, 0.4})
+        love.graphics.setColor(wc.button_disabled_icon or colors.button_disabled_icon or {0.4, 0.4, 0.4})
     else
-        love.graphics.setColor(colors.button_icon or {0, 0, 0})
+        love.graphics.setColor(wc.button_icon or colors.button_icon or {0, 0, 0})
     end
     local center_x = x + w / 2
     local center_y = y + h / 2

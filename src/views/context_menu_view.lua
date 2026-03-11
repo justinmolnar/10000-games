@@ -1,5 +1,6 @@
 -- src/views/context_menu_view.lua
 local Object = require('class')
+local ThemeManager = require('src.utils.theme_manager')
 local ContextMenuView = Object:extend('ContextMenuView')
 
 function ContextMenuView:init()
@@ -43,13 +44,14 @@ end
 function ContextMenuView:draw()
     if #self.options == 0 then return end -- Don't draw if no options
 
+    local sm = ThemeManager.getSection("start_menu") or {}
     -- Background
-    love.graphics.setColor(0.85, 0.85, 0.85) -- Light grey background
+    love.graphics.setColor(sm.bg or {0.85, 0.85, 0.85})
     love.graphics.rectangle('fill', self.menu_x, self.menu_y, self.menu_w, self.menu_h)
 
     -- Border (Win98 style)
-    love.graphics.setColor(1, 1, 1); love.graphics.line(self.menu_x, self.menu_y, self.menu_x + self.menu_w, self.menu_y); love.graphics.line(self.menu_x, self.menu_y, self.menu_x, self.menu_y + self.menu_h)
-    love.graphics.setColor(0.5, 0.5, 0.5); love.graphics.line(self.menu_x + self.menu_w, self.menu_y + 1, self.menu_x + self.menu_w, self.menu_y + self.menu_h); love.graphics.line(self.menu_x + 1, self.menu_y + self.menu_h, self.menu_x + self.menu_w, self.menu_y + self.menu_h)
+    love.graphics.setColor(sm.border_light or {1, 1, 1}); love.graphics.line(self.menu_x, self.menu_y, self.menu_x + self.menu_w, self.menu_y); love.graphics.line(self.menu_x, self.menu_y, self.menu_x, self.menu_y + self.menu_h)
+    love.graphics.setColor(sm.border_dark or {0.5, 0.5, 0.5}); love.graphics.line(self.menu_x + self.menu_w, self.menu_y + 1, self.menu_x + self.menu_w, self.menu_y + self.menu_h); love.graphics.line(self.menu_x + 1, self.menu_y + self.menu_h, self.menu_x + self.menu_w, self.menu_y + self.menu_h)
     love.graphics.setColor(0.1, 0.1, 0.1); love.graphics.rectangle('line', self.menu_x + 1, self.menu_y + 1, self.menu_w - 2, self.menu_h - 2)
 
     -- Draw Options
@@ -61,21 +63,21 @@ function ContextMenuView:draw()
 
         if is_separator then
             -- Draw separator line
-            love.graphics.setColor(0.5, 0.5, 0.5) -- Dark grey shadow
+            love.graphics.setColor(sm.separator or {0.5, 0.5, 0.5})
             love.graphics.line(self.menu_x + self.padding, current_y + self.item_height / 2, self.menu_x + self.menu_w - self.padding, current_y + self.item_height / 2)
-            love.graphics.setColor(1, 1, 1) -- White highlight
+            love.graphics.setColor(sm.border_light or {1, 1, 1})
             love.graphics.line(self.menu_x + self.padding, current_y + self.item_height / 2 + 1, self.menu_x + self.menu_w - self.padding, current_y + self.item_height / 2 + 1)
         else
             -- Highlight background if hovered
             if is_hovered and is_enabled then
-                love.graphics.setColor(0, 0, 0.5) -- Dark blue highlight
+                love.graphics.setColor(sm.highlight or {0, 0, 0.5})
                 love.graphics.rectangle('fill', self.menu_x + self.padding, current_y, self.menu_w - self.padding * 2, self.item_height)
             end
 
             -- Text color
-            if not is_enabled then love.graphics.setColor(0.5, 0.5, 0.5) -- Grey out disabled text
-            elseif is_hovered then love.graphics.setColor(1, 1, 1) -- White text on highlight
-            else love.graphics.setColor(0, 0, 0) end -- Black text
+            if not is_enabled then love.graphics.setColor(sm.text_disabled or {0.5, 0.5, 0.5})
+            elseif is_hovered then love.graphics.setColor(sm.text_hover or {1, 1, 1})
+            else love.graphics.setColor(sm.text or {0, 0, 0}) end
 
             love.graphics.print(option.label, self.menu_x + self.padding + 5, current_y + 3)
         end

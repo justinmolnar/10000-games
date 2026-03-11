@@ -47,11 +47,13 @@ end
 -- Calculate default grid positions if needed
 function DesktopView:calculateDefaultIconPositionsIfNeeded()
     local desktop_programs = self.program_registry:getDesktopPrograms()
-    if #desktop_programs == #self.default_icon_positions then return end -- Assume up to date
+    local screen_h = love.graphics.getHeight()
+    if #desktop_programs == #self.default_icon_positions and self._cached_screen_h == screen_h then return end
 
     self.default_icon_positions = {} -- Recalculate
+    self._cached_screen_h = screen_h
 
-    local available_height = love.graphics.getHeight() - self.taskbar_height - self.icon_start_y
+    local available_height = screen_h - self.taskbar_height - self.icon_start_y
     local icons_per_column = math.max(1, math.floor(available_height / (self.icon_height + self.icon_padding)))
 
     local col = 0

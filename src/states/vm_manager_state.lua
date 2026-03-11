@@ -32,6 +32,23 @@ function VMManagerState:init(vm_manager, player_data, game_data, state_machine, 
     self.filtered_games = {}
     self.filtered_demos = {}
     self.viewport = nil -- Initialize viewport
+
+    -- Subscribe to demo events for auto-refresh
+    self._subscriptions = {}
+    self.event_bus = di and di.eventBus
+    if self.event_bus then
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('demo_saved', function() self:updateGameList() end)
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('demo_deleted', function() self:updateGameList() end)
+    end
+end
+
+function VMManagerState:destroy()
+    if self.event_bus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.event_bus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
 end
 
 function VMManagerState:enter()
@@ -58,13 +75,31 @@ function VMManagerState:purchaseUpgrade(upgrade_type)
     local Config_ = (self.di and self.di.config) or {}
     local base_costs = Config_.upgrade_costs
 
-    if not base_costs[upgrade_type] then
+    if not base_costs or not base_costs[upgrade_type] then
         print("Error: Unknown upgrade type '" .. upgrade_type .. "'")
         return false
     end
 
     local current_level = self.player_data.upgrades[upgrade_type] or 0
-    local cost = base_costs[upgrade_type] * (current_level + 1)
+
+    -- Cap cpu_speed at max FPS
+    if upgrade_type == "cpu_speed" then
+        local base_fps = Config_.vm_base_fps or 15
+        local fps_per_level = Config_.vm_fps_per_level or 1
+        local max_fps = Config_.vm_max_fps or 144
+        if base_fps + current_level * fps_per_level >= max_fps then
+            print("CPU speed already at max FPS")
+            return false
+        end
+    end
+
+    local cost
+    if upgrade_type == "cpu_speed" then
+        local exponent = base_costs.cpu_speed_exponent or 1.04
+        cost = math.floor(base_costs.cpu_speed * math.pow(exponent, current_level))
+    else
+        cost = base_costs[upgrade_type] * (current_level + 1)
+    end
 
     if self.player_data:spendTokens(cost) then
         self.player_data.upgrades[upgrade_type] = current_level + 1
@@ -229,6 +264,8 @@ function VMManagerState:mousepressed(x, y, button)
         self:upgradeVMSpeed(event.slot_index)
     elseif event.name == "purchase_vm" then
         self:purchaseNewVM()
+    elseif event.name == "toggle_cheats" then
+        self:toggleCheats(event.slot_index)
     elseif event.name == "purchase_upgrade" then
         self:purchaseUpgrade(event.upgrade_type)
     elseif event.name == "modal_opened" then
@@ -371,6 +408,14 @@ function VMManagerState:purchaseNewVM()
     else
         print("Failed to purchase VM: " .. (err or "unknown error"))
         MessageBox.warning("Purchase Failed", "Could not purchase VM: " .. (err or "Not enough tokens?"))
+    end
+end
+
+function VMManagerState:toggleCheats(slot_index)
+    local success, new_state = self.vm_manager:toggleCheats(slot_index, self.player_data)
+    if success then
+        self.save_manager.save(self.player_data)
+        print("VM slot " .. slot_index .. " cheats: " .. tostring(new_state))
     end
 end
 

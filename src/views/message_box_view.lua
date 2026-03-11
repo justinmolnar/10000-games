@@ -2,6 +2,7 @@
 -- Win98-styled message box dialog view
 local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
+local ThemeManager = require('src.utils.theme_manager')
 
 local MessageBoxView = BaseView:extend('MessageBoxView')
 
@@ -64,7 +65,8 @@ end
 
 function MessageBoxView:drawContent(w, h)
     -- Background
-    love.graphics.setColor(0.75, 0.75, 0.75)
+    local mb = ThemeManager.getSection("message_box") or {}
+    love.graphics.setColor(mb.bg or {0.75, 0.75, 0.75})
     love.graphics.rectangle('fill', 0, 0, w, h)
 
     -- Icon
@@ -81,14 +83,18 @@ function MessageBoxView:drawContent(w, h)
     local text_y = 14
     local text_w = w - text_x - 12
     local btn_top = (#self.buttons > 0) and self.buttons[1].y or (h - 40)
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.printf(self.message, text_x, text_y, text_w, "left")
+    love.graphics.setColor(mb.text or {0, 0, 0})
+    local display_msg = self.message
+    if self.countdown and self.countdown > 0 then
+        display_msg = display_msg .. "\n\nReverting in " .. self.countdown .. "s..."
+    end
+    love.graphics.printf(display_msg, text_x, text_y, text_w, "left")
 
     -- Separator line above buttons
     local sep_y = btn_top - 8
-    love.graphics.setColor(0.6, 0.6, 0.6)
+    love.graphics.setColor(mb.button_shadow or {0.6, 0.6, 0.6})
     love.graphics.line(8, sep_y, w - 8, sep_y)
-    love.graphics.setColor(1, 1, 1)
+    love.graphics.setColor(mb.button_highlight or {1, 1, 1})
     love.graphics.line(8, sep_y + 1, w - 8, sep_y + 1)
 
     -- Draw buttons with Win98 3D raised style
@@ -99,27 +105,28 @@ function MessageBoxView:drawContent(w, h)
 end
 
 function MessageBoxView:drawWin98Button(x, y, w, h, label, hovered)
+    local mb = ThemeManager.getSection("message_box") or {}
     -- Face
     if hovered then
-        love.graphics.setColor(0.8, 0.8, 0.8)
+        love.graphics.setColor(mb.button_bg_hover or {0.8, 0.8, 0.8})
     else
-        love.graphics.setColor(0.75, 0.75, 0.75)
+        love.graphics.setColor(mb.button_bg or {0.75, 0.75, 0.75})
     end
     love.graphics.rectangle('fill', x, y, w, h)
 
     -- 3D raised borders: top-left highlight, bottom-right shadow
-    love.graphics.setColor(1, 1, 1)
+    love.graphics.setColor(mb.button_highlight or {1, 1, 1})
     love.graphics.line(x, y, x + w - 1, y)          -- top
     love.graphics.line(x, y, x, y + h - 1)          -- left
-    love.graphics.setColor(0.5, 0.5, 0.5)
+    love.graphics.setColor(mb.button_shadow or {0.5, 0.5, 0.5})
     love.graphics.line(x + w - 1, y, x + w - 1, y + h - 1)  -- right
     love.graphics.line(x, y + h - 1, x + w - 1, y + h - 1)  -- bottom
-    love.graphics.setColor(0.35, 0.35, 0.35)
+    love.graphics.setColor(mb.button_shadow_outer or {0.35, 0.35, 0.35})
     love.graphics.line(x + w, y, x + w, y + h)      -- outer right
     love.graphics.line(x, y + h, x + w, y + h)      -- outer bottom
 
     -- Label centered
-    love.graphics.setColor(0, 0, 0)
+    love.graphics.setColor(mb.text or {0, 0, 0})
     local font = love.graphics.getFont()
     local tw = font:getWidth(label)
     local th = font:getHeight()

@@ -6,6 +6,7 @@ local GameVariantLoader = Object:extend('GameVariantLoader')
 
 function GameVariantLoader:init()
     self.launcher_icons = {}  -- Cache for loaded launcher icons
+    self.boxart_cache = {}    -- Cache for loaded boxart images
     -- Use GameRegistry for auto-discovery (Phase 3 refactor)
     self.game_registry = GameRegistry:new()
 end
@@ -81,6 +82,30 @@ function GameVariantLoader:getLauncherIcon(game_id, game_class)
     else
         -- Cache nil to avoid repeated load attempts
         self.launcher_icons[game_id] = false
+        return nil
+    end
+end
+
+function GameVariantLoader:getBoxart(game_id)
+    if self.boxart_cache[game_id] then
+        return self.boxart_cache[game_id]
+    end
+    if self.boxart_cache[game_id] == false then
+        return nil
+    end
+
+    local variant = self:getVariantData(game_id)
+    if not variant or not variant.boxart then
+        self.boxart_cache[game_id] = false
+        return nil
+    end
+
+    local success, image = pcall(love.graphics.newImage, variant.boxart)
+    if success and image then
+        self.boxart_cache[game_id] = image
+        return image
+    else
+        self.boxart_cache[game_id] = false
         return nil
     end
 end

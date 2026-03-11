@@ -3,6 +3,7 @@ local Strings = require('src.utils.strings')
 local LauncherView = require('src.views.launcher_view')
 local ScrollbarController = require('src.controllers.scrollbar_controller')
 local MessageBox = require('src.utils.message_box')
+local SettingsManager = require('src.utils.settings_manager')
 local LauncherState = Object:extend('LauncherState')
 
 function LauncherState:init(player_data, game_data, state_machine, save_manager, di)
@@ -262,16 +263,24 @@ function LauncherState:launchGame(game_id)
     local is_unlocked = self.player_data:isGameUnlocked(game_id)
 
     if not is_unlocked then
-        -- showUnlockPrompt might internally call launchGame again after unlock,
-        -- or we can handle the return value here. Let's assume it handles it
-        -- and might return a launch event if successful.
-        return self:showUnlockPrompt(game_data) -- showUnlockPrompt needs modification
+        return self:showUnlockPrompt(game_data)
     else
-        -- Load variant data for the game (to get actual variant name)
         local variant_data = self:loadVariantData(game_id)
 
-        -- Return an event for DesktopState to handle, including variant
-        return { type = "event", name = "launch_minigame", game_data = game_data, variant = variant_data }
+        -- Apply cheat modifications if cheats are enabled
+        local modified_variant = variant_data
+        local original_variant = nil
+        if SettingsManager.get('cheats_enabled') and variant_data then
+            local cheat_system = self.di and self.di.cheatSystem
+            local player_data = self.player_data
+            if cheat_system and player_data and player_data:hasGameModifications(game_id) then
+                local modifications = player_data:getGameModifications(game_id)
+                modified_variant = cheat_system:getModifiedVariant(variant_data, modifications)
+                original_variant = variant_data
+            end
+        end
+
+        return { type = "event", name = "launch_minigame", game_data = game_data, variant = modified_variant, original_variant = original_variant }
     end
 end
 
@@ -377,7 +386,13 @@ function LauncherState:mousepressed(x, y, button)
 
     -- Handle the view event as before...
     if view_event then
-        if view_event.name == "filter_changed" then
+        if view_event.name == "cheats_toggled" then
+            local current = SettingsManager.get('cheats_enabled')
+            SettingsManager.set('cheats_enabled', not current)
+            return { type = "content_interaction" }
+        elseif view_event.name == "view_mode_changed" then
+            return { type = "content_interaction" }
+        elseif view_event.name == "filter_changed" then
             self:updateFilter(view_event.category)
             return { type = "content_interaction" } -- Indicate interaction
         elseif view_event.name == "launch_game" then

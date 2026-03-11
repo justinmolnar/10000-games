@@ -2,6 +2,7 @@
 local Object = require('class')
 local Strings = require('src.utils.strings')
 local Constants = require('src.constants')
+local ThemeManager = require('src.utils.theme_manager')
 
 local StartMenuView = Object:extend('StartMenuView')
 
@@ -113,7 +114,7 @@ function StartMenuView:draw(state)
     if not sprite_loader then
         error("StartMenuView: sprite_loader not available in DI")
     end
-    local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
+    local theme = ThemeManager.getSection("start_menu") or (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
     if state.open_panes and #state.open_panes > 0 then self:reflowOpenPanesBounds(state) end
     love.graphics.setColor(theme.bg or {0.75, 0.75, 0.75})
     love.graphics.rectangle('fill', self.start_menu_x, self.start_menu_y, self.start_menu_w, self.start_menu_h)
@@ -221,7 +222,7 @@ function StartMenuView:draw(state)
             local padding2 = start_cfg2.padding or 10
             local idx2 = math.max(1, state.dnd_hover_index or state.dnd_source_index or 1)
             local y2 = pane.bounds.y + padding2 + (idx2 - 1) * item_h2
-            local theme2 = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
+            local theme2 = ThemeManager.getSection("start_menu") or (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
             love.graphics.setColor(theme2.highlight or {0,0,0.5})
             love.graphics.rectangle('fill', pane.bounds.x + 2, y2 - 2, pane.bounds.w - 4, 3)
         end
@@ -570,7 +571,7 @@ end
 -- Legacy submenus drawing
 function StartMenuView:drawProgramsSubmenu(state)
     local bounds = self:getSubmenuBounds(state); if not bounds then return end
-    local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
+    local theme = ThemeManager.getSection("start_menu") or {}
     local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25; local icon_size = start_cfg.icon_size or 20
@@ -608,7 +609,7 @@ end
 
 function StartMenuView:drawDocumentsSubmenu(state)
     local bounds = self:getSubmenuBounds(state); if not bounds then return end
-    local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
+    local theme = ThemeManager.getSection("start_menu") or {}
     local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25; local icon_size = start_cfg.icon_size or 20
@@ -644,7 +645,7 @@ end
 
 function StartMenuView:drawSettingsSubmenu(state)
     local bounds = self:getSubmenuBounds(state); if not bounds then return end
-    local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
+    local theme = ThemeManager.getSection("start_menu") or {}
     local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25; local icon_size = start_cfg.icon_size or 20
@@ -859,7 +860,7 @@ end
 
 function StartMenuView:drawPane(pane, state)
     if not pane or not pane.bounds then return end
-    local theme = (self.config and self.config.ui and self.config.ui.colors and self.config.ui.colors.start_menu) or {}
+    local theme = ThemeManager.getSection("start_menu") or {}
     local sprite_loader = self.sprite_loader or (self.di and self.di.spriteLoader)
     local start_cfg = (((self.config and self.config.ui and self.config.ui.desktop) or {}).start_menu) or {}
     local item_h = start_cfg.item_height or 25

@@ -3,6 +3,7 @@ local BaseView = require('src.views.base_view')
 local UIComponents = require('src.views.ui_components')
 local Strings = require('src.utils.strings')
 local SpriteLoader = require('src.utils.sprite_loader')
+local ThemeManager = require('src.utils.theme_manager')
 
 local ShutdownView = BaseView:extend('ShutdownView')
 
@@ -44,8 +45,8 @@ end
 -- Implements BaseView's abstract drawContent method
 function ShutdownView:drawContent(w, h)
     -- Content background
-    local colors = (self.di and self.di.config and self.di.config.ui and self.di.config.ui.colors and self.di.config.ui.colors.shutdown_dialog) or {}
-    love.graphics.setColor(colors.bg or {0.8, 0.8, 0.8})
+    local sd = ThemeManager.getSection("shutdown_dialog") or {}
+    love.graphics.setColor(sd.bg or {0.8, 0.8, 0.8})
     love.graphics.rectangle('fill', 0, 0, w, h)
 
     -- Icon and prompt
@@ -56,13 +57,14 @@ function ShutdownView:drawContent(w, h)
         sprite_loader:drawSprite(self.icon_name, icon_x, icon_y, self.icon_size, self.icon_size, {1,1,1})
     end
 
-    love.graphics.setColor(colors.text or {0, 0, 0})
+    love.graphics.setColor(sd.text or {0, 0, 0})
     love.graphics.print(self.prompt, icon_x + self.icon_size + 12, icon_y + 12)
 
     -- Draw buttons
     for key, b in pairs(self.buttons) do
         local hovered = false -- Keep simple for now
-        UIComponents.drawButton(b.x, b.y, b.w, b.h, b.label, true, hovered)
+        local role = (key == 'cancel') and 'cancel' or (key == 'shutdown') and 'confirm' or 'neutral'
+        UIComponents.drawButton(b.x, b.y, b.w, b.h, b.label, true, hovered, nil, role)
     end
 end
 

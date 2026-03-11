@@ -26,8 +26,9 @@ function ProgramLauncher:init(di)
     }
 
     -- Subscribe to the launch_program event
+    self._subscriptions = {}
     if self.di.eventBus then
-        self.di.eventBus:subscribe('launch_program', function(program_id, ...)
+        self._subscriptions[#self._subscriptions + 1] = self.di.eventBus:subscribe('launch_program', function(program_id, ...)
             self:launchProgram(program_id, ...)
         end)
     else

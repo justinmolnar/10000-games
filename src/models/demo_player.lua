@@ -103,12 +103,14 @@ function DemoPlayer:update(dt)
         return self:runHeadless()
     end
 
-    -- Accumulate real time and step at fixed 60 FPS intervals
+    -- Accumulate real time and step at the VM's target FPS
+    -- speed_multiplier = vm_fps / 60, so target_fps = speed_multiplier * 60
     local current_time = love.timer.getTime()
     local time_since_last = current_time - self.last_step_time
-    
-    -- Calculate how many 60 FPS frames have elapsed (cap to prevent lag spiral)
-    local steps_to_take = math.min(4, math.floor(time_since_last / (1/60)))
+    local target_fps = (self.speed_multiplier or 1) * 60
+
+    -- Calculate how many game frames have elapsed at target FPS (cap to prevent lag spiral)
+    local steps_to_take = math.min(math.ceil(target_fps / 15), math.floor(time_since_last * target_fps))
 
     if steps_to_take > 0 then
         -- Take the calculated number of steps
@@ -123,7 +125,7 @@ function DemoPlayer:update(dt)
         
         -- Update the last step time by the actual time consumed
         -- This prevents time drift over long playback sessions
-        self.last_step_time = self.last_step_time + (steps_to_take * (1/60))
+        self.last_step_time = self.last_step_time + (steps_to_take / target_fps)
     end
 end
 

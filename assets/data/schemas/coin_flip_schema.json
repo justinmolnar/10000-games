@@ -4,7 +4,7 @@
     "parameters": {
         "streak_target": {
             "type": "integer",
-            "default": 10,
+            "default": 3,
             "min": 1,
             "max": 50,
             "description": "Consecutive correct guesses to win"
@@ -37,10 +37,10 @@
         },
         "flip_animation_speed": {
             "type": "number",
-            "default": 0.5,
-            "min": 0.1,
-            "max": 2.0,
-            "description": "Flip animation duration multiplier"
+            "default": 1.0,
+            "min": 0.3,
+            "max": 3.0,
+            "description": "Flip animation speed multiplier (higher = faster flip)"
         },
         "show_bias_hint": {
             "type": "boolean",

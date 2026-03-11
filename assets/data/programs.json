@@ -219,6 +219,32 @@
     "window_defaults": { "w": 460, "h": 340, "min_w": 460, "min_h": 320, "resizable": false, "single_instance": true }
   },
   {
+    "id": "control_panel_themes",
+    "name": "Themes",
+    "executable": "control_themes.cpl",
+    "state_class_path": "states.control_panel_themes_state",
+    "dependencies": ["window_controller", "di"],
+    "icon_sprite": "settings_gear-0",
+    "icon_color": [0.8, 0.8, 0.8],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 460, "h": 380, "min_w": 460, "min_h": 360, "resizable": false, "single_instance": true }
+  },
+  {
+    "id": "control_panel_display",
+    "name": "Display",
+    "executable": "control_display.cpl",
+    "state_class_path": "states.control_panel_display_state",
+    "dependencies": ["window_controller", "di"],
+    "icon_sprite": "monitor_tweakui-0",
+    "icon_color": [0.8, 0.8, 0.8],
+    "on_desktop": false,
+    "in_start_menu": false,
+    "disabled": false,
+    "window_defaults": { "w": 460, "h": 320, "min_w": 460, "min_h": 300, "resizable": false, "single_instance": true }
+  },
+  {
     "id": "statistics",
     "name": "Statistics",
     "executable": "statistics.exe",

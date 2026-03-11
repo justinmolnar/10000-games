@@ -115,7 +115,7 @@ function FileSystem:createDefaultFilesystem()
         -- Control Panel structure
         ["/Control Panel"] = {
             type = "folder",
-            children = {"General", "Desktop", "Screensavers", "Sounds"}
+            children = {"General", "Desktop", "Display", "Screensavers", "Sounds", "Themes"}
         },
         ["/Control Panel/General"] = {
             type = "executable",
@@ -125,6 +125,10 @@ function FileSystem:createDefaultFilesystem()
             type = "executable",
             program_id = "control_panel_desktop"
         },
+        ["/Control Panel/Display"] = {
+            type = "executable",
+            program_id = "control_panel_display"
+        },
         ["/Control Panel/Screensavers"] = {
             type = "executable",
             program_id = "control_panel_screensavers"
@@ -132,6 +136,10 @@ function FileSystem:createDefaultFilesystem()
         ["/Control Panel/Sounds"] = {
             type = "executable",
             program_id = "control_panel_sounds"
+        },
+        ["/Control Panel/Themes"] = {
+            type = "executable",
+            program_id = "control_panel_themes"
         }
     }
     -- Ensure refined My Computer listing in defaults too
@@ -166,20 +174,29 @@ function FileSystem:normalizeControlPanel()
     local fs = self.filesystem or {}
     local cp = fs["/Control Panel"]
     if not cp then
-        fs["/Control Panel"] = { type = "folder", children = {"General", "Desktop", "Screensavers", "Sounds"} }
+        fs["/Control Panel"] = { type = "folder", children = {"General", "Desktop", "Display", "Screensavers", "Sounds", "Themes"} }
         cp = fs["/Control Panel"]
     end
-    -- Ensure Sounds is in children list
-    local has_sounds = false
-    for _, child in ipairs(cp.children or {}) do
-        if child == "Sounds" then has_sounds = true; break end
+    -- Ensure required items are in children list
+    local required = {"Display", "Sounds", "Themes"}
+    for _, name in ipairs(required) do
+        local found = false
+        for _, child in ipairs(cp.children or {}) do
+            if child == name then found = true; break end
+        end
+        if not found then
+            table.insert(cp.children, name)
+        end
     end
-    if not has_sounds then
-        table.insert(cp.children, "Sounds")
+    -- Ensure nodes exist
+    if not fs["/Control Panel/Display"] then
+        fs["/Control Panel/Display"] = { type = "executable", program_id = "control_panel_display" }
     end
-    -- Ensure node exists
     if not fs["/Control Panel/Sounds"] then
         fs["/Control Panel/Sounds"] = { type = "executable", program_id = "control_panel_sounds" }
+    end
+    if not fs["/Control Panel/Themes"] then
+        fs["/Control Panel/Themes"] = { type = "executable", program_id = "control_panel_themes" }
     end
 end
 

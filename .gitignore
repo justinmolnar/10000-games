@@ -43,8 +43,18 @@ Thumbs.db
 # Ignore audio generation session data
 /assets/data/audio_generation_sessions/
 
+# Ignore sprite generation session data (may contain API keys)
+/assets/data/sprite_generation_sessions/
+
 # Ignore variant backups
 assets/data/variants/*_backup.json
 
 # Ignore generation scripts
 /scripts/
+
+# Ignore Claude settings (may contain API keys in permission rules)
+.claude/settings.local.json
+
+# Ignore env files
+.env
+.env.*

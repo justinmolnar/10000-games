@@ -56,6 +56,8 @@ function VMManagerView:init(controller, vm_manager, player_data, game_data, di)
     self.modal_h = 400 -- Placeholder
     self.modal_item_height = M.item_h or 40
 
+    self.demo_modal_item_height = 50
+
     self.formula_renderer = FormulaRenderer:new(self.di)
     -- Scrollbar is now handled by ScrollbarController in the state
 end
@@ -100,13 +102,11 @@ function VMManagerView:update(dt, viewport_width, viewport_height)
     self.hovered_purchase_vm = false
 
     -- Update hovered upgrade (using local coords)
-    local upgrades = {"cpu_speed", "overclock"}
-    for i, upgrade_type in ipairs(upgrades) do
-        local bx = self.upgrade_x + (i - 1) * (self.upgrade_w + self.upgrade_spacing)
-        local by = self.upgrade_y -- Use layout-calculated y
+    do
+        local bx = self.upgrade_x
+        local by = self.upgrade_y
         if local_mx >= bx and local_mx <= bx + self.upgrade_w and local_my >= by and local_my <= by + self.upgrade_h then
-            self.hovered_upgrade = upgrade_type
-            break
+            self.hovered_upgrade = "cpu_speed"
         end
     end
 
@@ -161,10 +161,6 @@ function VMManagerView:drawContent(viewport_width, viewport_height)
     love.graphics.rectangle('fill', 0, 0, viewport_width, viewport_height)
 
     -- Use relative positions based on viewport_width, viewport_height
-
-    -- Token counter (Top right)
-    local V = (Config_.ui and Config_.ui.views and Config_.ui.views.vm_manager) or {}
-    UIComponents.drawTokenCounter(viewport_width - ((V.tokens and V.tokens.right_offset) or 200), 10, self.player_data.tokens)
 
     -- Tokens per minute display (Top left)
     self:drawTokensPerMinute(10, 10, self.vm_manager.total_tokens_per_minute)
@@ -226,23 +222,26 @@ function VMManagerView:drawContent(viewport_width, viewport_height)
         self:drawPurchaseVMButton(self.purchase_button_x, self.purchase_button_y, cost, can_afford, self.hovered_purchase_vm)
     end
 
-    -- Upgrade buttons (Bottom, next to purchase)
-    local upgrades = {
-        {type = "cpu_speed", label = Strings.get('vm.upgrades.cpu_speed.label','CPU Speed'), desc = Strings.get('vm.upgrades.cpu_speed.desc','Faster cycles')},
-        {type = "overclock", label = Strings.get('vm.upgrades.overclock.label','Overclock'), desc = Strings.get('vm.upgrades.overclock.desc','More power')}
-    }
-    for i, upgrade in ipairs(upgrades) do
-        local bx = self.upgrade_x + (i - 1) * (self.upgrade_w + self.upgrade_spacing)
-        -- Use button coords calculated in updateLayout
-        local by = self.upgrade_y
-    local current_level = (self.player_data.upgrades and self.player_data.upgrades[upgrade.type]) or 0
-    local Config_ = (self.di and self.di.config) or Config
-    local cost = Config_.upgrade_costs[upgrade.type] * (current_level + 1)
-        local can_afford = self.player_data:hasTokens(cost)
-        local is_hovered = (self.hovered_upgrade == upgrade.type)
+    -- CPU Speed upgrade button (Bottom, next to purchase)
+    do
+        local Config_ = (self.di and self.di.config) or {}
+        local current_level = (self.player_data.upgrades and self.player_data.upgrades.cpu_speed) or 0
+        local base_fps = Config_.vm_base_fps or 15
+        local fps_per_level = Config_.vm_fps_per_level or 1
+        local max_fps = Config_.vm_max_fps or 144
+        local current_fps = math.min(max_fps, base_fps + current_level * fps_per_level)
+        local at_max = (current_fps >= max_fps)
 
-        self:drawUpgradeButton(bx, by, self.upgrade_w, self.upgrade_h,
-            upgrade.label, upgrade.desc, current_level, cost, can_afford, is_hovered)
+        local base_cost = Config_.upgrade_costs and Config_.upgrade_costs.cpu_speed or 100
+        local exponent = Config_.upgrade_costs and Config_.upgrade_costs.cpu_speed_exponent or 1.04
+        local cost = at_max and 0 or math.floor(base_cost * math.pow(exponent, current_level))
+        local can_afford = not at_max and self.player_data:hasTokens(cost)
+        local is_hovered = (self.hovered_upgrade == "cpu_speed")
+
+        local label = string.format("CPU: %d FPS", current_fps)
+        local desc = at_max and "MAX" or string.format("+1 FPS -> %d", current_fps + fps_per_level)
+        self:drawUpgradeButton(self.upgrade_x, self.upgrade_y, self.upgrade_w, self.upgrade_h,
+            label, desc, current_level, cost, can_afford and not at_max, is_hovered)
     end
 
     -- Game selection modal (uses modal coords from updateLayout)
@@ -270,12 +269,7 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
     -- Check demo selection modal first
     if self.demo_selection_open then
         if x >= self.modal_x and x <= self.modal_x + self.modal_w and y >= self.modal_y and y <= self.modal_y + self.modal_h then
-            local list_area_y_start = self.modal_y + 40
-            local list_h = self.modal_h - 70
-            local visible_items = math.max(1, math.floor(list_h / self.modal_item_height))
             local demos = self.controller.filtered_demos or {}
-
-            -- Scrollbar is now handled by ScrollbarController in the state
 
             -- Check if delete button was clicked first
             local delete_demo = self:getDeleteButtonAtPosition(x, y, demos)
@@ -345,7 +339,12 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
 
         -- Check if slot is assigned
         if slot.state ~= "IDLE" then
-            -- Click anywhere on assigned slot - remove game (could add confirmation dialog later)
+            -- Check if click is on the cheats toggle area (header right side, "CE" area)
+            if (self.player_data.space_defender_level or 1) >= 3 and
+               local_y < 20 and local_x >= self.slot_width - 70 and local_x < self.slot_width - 42 then
+                return {name = "toggle_cheats", slot_index = clicked_slot_index}
+            end
+            -- Click anywhere else on assigned slot - remove game
             return {name = "remove_game", slot_index = clicked_slot_index}
         else
             -- Empty slot - open game selection
@@ -356,13 +355,20 @@ function VMManagerView:mousepressed(x, y, button, filtered_games, viewport_width
         end
     end
 
-    -- Check upgrade buttons
-    local upgrades = {"cpu_speed", "overclock"}
-    for i, upgrade_type in ipairs(upgrades) do
-        local bx = self.upgrade_x + (i - 1) * (self.upgrade_w + self.upgrade_spacing)
+    -- Check CPU speed upgrade button
+    do
+        local bx = self.upgrade_x
         local by = self.upgrade_y
         if x >= bx and x <= bx + self.upgrade_w and y >= by and y <= by + self.upgrade_h then
-            return {name = "purchase_upgrade", upgrade_type = upgrade_type}
+            -- Check if at max FPS
+            local Config_ = (self.di and self.di.config) or {}
+            local current_level = (self.player_data.upgrades and self.player_data.upgrades.cpu_speed) or 0
+            local base_fps = Config_.vm_base_fps or 15
+            local max_fps = Config_.vm_max_fps or 144
+            local current_fps = math.min(max_fps, base_fps + current_level * (Config_.vm_fps_per_level or 1))
+            if current_fps < max_fps then
+                return {name = "purchase_upgrade", upgrade_type = "cpu_speed"}
+            end
         end
     end
 
@@ -383,8 +389,9 @@ function VMManagerView:wheelmoved(x, y, item_count, viewport_width, viewport_hei
         items = #(self.controller.filtered_demos or {})
     end
 
-    -- Calculate visible items based on modal height
-    local visible_items = math.floor((self.modal_h - 70) / self.modal_item_height)
+    -- Calculate visible items based on modal height (demo modal uses taller items)
+    local item_h = self.demo_selection_open and self.demo_modal_item_height or self.modal_item_height
+    local visible_items = math.floor((self.modal_h - 70) / item_h)
     visible_items = math.max(1, visible_items)
     local max_scroll = math.max(0, items - visible_items)
 
@@ -450,6 +457,7 @@ end
 
 function VMManagerView:getDemoAtPosition(x, y, demos)
     -- Check bounding box of the modal list area
+    local item_h = self.demo_modal_item_height
     local list_area_y_start = self.modal_y + 40
     local list_area_y_end = self.modal_y + self.modal_h - 30
 
@@ -459,12 +467,11 @@ function VMManagerView:getDemoAtPosition(x, y, demos)
     end
 
     local relative_y = y - list_area_y_start
-    local index_in_view = math.floor(relative_y / self.modal_item_height)
+    local index_in_view = math.floor(relative_y / item_h)
     local actual_index = index_in_view + 1 + (self.scroll_offset or 0)
 
     if actual_index >= 1 and actual_index <= #demos then
         local demo = demos[actual_index]
-        -- Return demo with ID for easy lookup
         return { demo_id = demo.demo_id, demo = demo }
     end
 
@@ -472,6 +479,7 @@ function VMManagerView:getDemoAtPosition(x, y, demos)
 end
 
 function VMManagerView:getDeleteButtonAtPosition(x, y, demos)
+    local item_h = self.demo_modal_item_height
     local list_area_y_start = self.modal_y + 40
     local list_area_y_end = self.modal_y + self.modal_h - 30
 
@@ -480,17 +488,16 @@ function VMManagerView:getDeleteButtonAtPosition(x, y, demos)
     end
 
     local relative_y = y - list_area_y_start
-    local index_in_view = math.floor(relative_y / self.modal_item_height)
+    local index_in_view = math.floor(relative_y / item_h)
     local actual_index = index_in_view + 1 + (self.scroll_offset or 0)
 
     if actual_index >= 1 and actual_index <= #demos then
         local demo = demos[actual_index]
-        local item_y = list_area_y_start + index_in_view * self.modal_item_height
+        local item_y = list_area_y_start + index_in_view * item_h
 
-        -- Check if click is on delete button
         local delete_btn_size = 20
         local delete_btn_x = self.modal_x + self.modal_w - 35
-        local delete_btn_y = item_y + (self.modal_item_height - delete_btn_size) / 2
+        local delete_btn_y = item_y + (item_h - delete_btn_size) / 2
 
         if x >= delete_btn_x and x <= delete_btn_x + delete_btn_size and
            y >= delete_btn_y and y <= delete_btn_y + delete_btn_size then
@@ -543,18 +550,30 @@ function VMManagerView:drawVMSlot(x, y, w, h, slot, selected, hovered, context)
     local vm_prefix = Strings.get('vm.vm_prefix', 'VM')
     love.graphics.print(vm_prefix .. " " .. slot.slot_index, x + 5, y + 3, 0, 0.7, 0.7)
 
-    -- Speed indicator in header
+    -- FPS indicator and cheats indicator in header
     if slot.state ~= "IDLE" then
-        local speed_text = ""
+        local speed_text
         if slot.headless_mode then
             speed_text = Config_.vm_demo and Config_.vm_demo.headless_speed_label or "INSTANT"
-        elseif slot.speed_multiplier and slot.speed_multiplier > 1 then
-            speed_text = slot.speed_multiplier .. "x"
         else
-            speed_text = "1x"
+            speed_text = (slot.vm_fps or 15) .. "fps"
         end
         love.graphics.setColor(S.speed_text or {1, 1, 0})
         love.graphics.print(speed_text, x + w - 40, y + 3, 0, 0.7, 0.7)
+
+        -- Cheats toggle button in header (only if CE unlocked)
+        if (self.player_data.space_defender_level or 1) >= 3 then
+            local ce_x = x + w - 68
+            local ce_w = 24
+            if slot.cheats_enabled then
+                love.graphics.setColor(0.6, 0.15, 0.15)
+            else
+                love.graphics.setColor(0.2, 0.2, 0.2)
+            end
+            love.graphics.rectangle('fill', ce_x, y + 2, ce_w, header_h - 4)
+            love.graphics.setColor(slot.cheats_enabled and {1, 0.4, 0.4} or {0.5, 0.5, 0.5})
+            love.graphics.print("CE", ce_x + 2, y + 3, 0, 0.7, 0.7)
+        end
     end
 
     -- Content area (game rendering or info)
@@ -854,12 +873,21 @@ function VMManagerView:drawDemoSelectionModal(demos, scroll_offset, context)
     local MC = (V.colors and V.colors.modal) or {}
     UIComponents.drawPanel(self.modal_x, self.modal_y, self.modal_w, self.modal_h, (MC.panel_bg or {0.2, 0.2, 0.2}))
 
+    -- Better title with game name
+    local title = "Select Demo"
+    if self.selected_game_id then
+        local game = context.game_data:getGame(self.selected_game_id)
+        if game then
+            title = "Select Demo - " .. game.display_name
+        end
+    end
     love.graphics.setColor(MC.item_text or {1,1,1})
-    love.graphics.print(Strings.get('vm.demo_modal_title','Select Demo to Assign'), self.modal_x + 10, self.modal_y + 10, 0, 1.2, 1.2)
+    love.graphics.print(title, self.modal_x + 10, self.modal_y + 10, 0, 1.2, 1.2)
 
+    local demo_item_height = 50 -- Taller items for richer info
     local list_y_start = self.modal_y + 40
     local list_h = self.modal_h - 70
-    local visible_items = math.floor(list_h / self.modal_item_height)
+    local visible_items = math.floor(list_h / demo_item_height)
     visible_items = math.max(1, visible_items)
 
     local start_index = scroll_offset + 1
@@ -871,29 +899,50 @@ function VMManagerView:drawDemoSelectionModal(demos, scroll_offset, context)
     else
         for i = start_index, end_index do
             local demo = demos[i]
-            local item_y = list_y_start + (i - start_index) * self.modal_item_height
+            local item_y = list_y_start + (i - start_index) * demo_item_height
 
-            -- Item background
-            love.graphics.setColor(MC.item_bg or {0.25,0.25,0.25})
-            love.graphics.rectangle('fill', self.modal_x + 10, item_y, self.modal_w - 20, self.modal_item_height - 2)
+            -- In-use detection
+            local is_in_use = context.vm_manager:isDemoAssigned(demo.demo_id)
 
-            -- Demo Name
-            love.graphics.setColor(MC.item_text or {1,1,1})
+            -- Item background (dimmed if in use)
+            if is_in_use then
+                love.graphics.setColor(MC.item_bg_assigned or {0.15, 0.15, 0.15})
+            else
+                love.graphics.setColor(MC.item_bg or {0.25,0.25,0.25})
+            end
+            love.graphics.rectangle('fill', self.modal_x + 10, item_y, self.modal_w - 20, demo_item_height - 2)
+
+            -- Line 1: Demo Name + IN USE badge
+            love.graphics.setColor(is_in_use and (MC.item_text_assigned or {0.5,0.5,0.5}) or (MC.item_text or {1,1,1}))
             local demo_name = (demo.metadata and demo.metadata.demo_name) or "Unnamed Demo"
             love.graphics.print(demo_name, self.modal_x + 15, item_y + 5)
 
-            -- Demo info
+            if is_in_use then
+                love.graphics.setColor(MC.status_in_use or {1, 0, 0})
+                love.graphics.printf("[IN USE]", self.modal_x + 15, item_y + 5, self.modal_w - 70, "right", 0, 0.8, 0.8)
+            end
+
+            -- Line 2: Score, duration, date
+            love.graphics.setColor(is_in_use and {0.4, 0.4, 0.4} or (MC.power_label or {0,1,1}))
+            local info_parts = {}
+            if demo.metadata and demo.metadata.score then
+                table.insert(info_parts, "Score: " .. math.floor(demo.metadata.score))
+            end
             if demo.recording then
-                love.graphics.setColor(MC.power_label or {0,1,1})
                 local frame_count = demo.recording.total_frames or 0
                 local duration = frame_count * (demo.recording.fixed_dt or (1/60))
-                love.graphics.print(string.format("Frames: %d (~%.1fs)", frame_count, duration), self.modal_x + 15, item_y + 20, 0, 0.8, 0.8)
+                table.insert(info_parts, string.format("%.1fs", duration))
             end
+            if demo.recording and demo.recording.recorded_at then
+                table.insert(info_parts, demo.recording.recorded_at)
+            end
+            local info_text = table.concat(info_parts, "  |  ")
+            love.graphics.print(info_text, self.modal_x + 15, item_y + 25, 0, 0.8, 0.8)
 
             -- Delete button (small red X on right)
             local delete_btn_size = 20
             local delete_btn_x = self.modal_x + self.modal_w - 35
-            local delete_btn_y = item_y + (self.modal_item_height - delete_btn_size) / 2
+            local delete_btn_y = item_y + (demo_item_height - delete_btn_size) / 2
             love.graphics.setColor(0.8, 0.2, 0.2)
             love.graphics.rectangle('fill', delete_btn_x, delete_btn_y, delete_btn_size, delete_btn_size)
             love.graphics.setColor(1, 1, 1)
@@ -906,7 +955,7 @@ function VMManagerView:drawDemoSelectionModal(demos, scroll_offset, context)
             if scrollbar then
                 scrollbar:setPosition(self.modal_x, list_y_start)
                 local max_scroll = math.max(0, #demos - visible_items)
-                local geom = scrollbar:compute(self.modal_w, list_h, #demos * self.modal_item_height, scroll_offset or 0, max_scroll)
+                local geom = scrollbar:compute(self.modal_w, list_h, #demos * demo_item_height, scroll_offset or 0, max_scroll)
 
                 if geom then
                     love.graphics.push()

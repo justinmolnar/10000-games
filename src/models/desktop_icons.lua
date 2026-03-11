@@ -27,13 +27,26 @@ function DesktopIcons:init(di)
 end
 
 function DesktopIcons:subscribeToEvents()
-    self.event_bus:subscribe('request_icon_move', function(prog_id, x, y, w, h) self:setPosition(prog_id, x, y, w, h) end)
-    self.event_bus:subscribe('request_icon_delete', function(prog_id) self:deleteIcon(prog_id) end)
-    self.event_bus:subscribe('request_icon_restore', function(prog_id) self:restoreIcon(prog_id) end)
-    self.event_bus:subscribe('request_icon_create', function(prog_id, x, y, w, h) 
-        self:restoreIcon(prog_id) -- Make sure it's not marked as deleted
-        self:setPosition(prog_id, x, y, w, h) 
+    self._subscriptions = {}
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_icon_move', function(prog_id, x, y, w, h) self:setPosition(prog_id, x, y, w, h) end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_icon_delete', function(prog_id) self:deleteIcon(prog_id) end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_icon_restore', function(prog_id) self:restoreIcon(prog_id) end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('request_icon_create', function(prog_id, x, y, w, h)
+        self:restoreIcon(prog_id)
+        self:setPosition(prog_id, x, y, w, h)
     end)
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('display_resolution_changed', function(w, h)
+        self:revalidatePositions(w, h)
+    end)
+end
+
+function DesktopIcons:destroy()
+    if self.event_bus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.event_bus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
 end
 
 -- Helper to get standard icon dimensions
@@ -119,6 +132,85 @@ function DesktopIcons:validatePosition(x, y, desktop_width, desktop_height)
     return x, y
 end
 
+
+-- Revalidate all icon positions against current screen dimensions
+-- Called when resolution changes to pull off-screen icons back into view
+function DesktopIcons:revalidatePositions(desktop_width, desktop_height)
+    if not desktop_width or not desktop_height then return end
+    local icon_w, icon_h = self:getIconDimensions()
+    local changed = false
+
+    for program_id, pos in pairs(self.positions) do
+        local old_x, old_y = pos.x, pos.y
+        local new_x, new_y = self:validatePosition(old_x, old_y, desktop_width, desktop_height)
+        if new_x ~= old_x or new_y ~= old_y then
+            pos.x = new_x
+            pos.y = new_y
+            changed = true
+        end
+    end
+
+    if changed then
+        self:resolveOverlaps(desktop_width, desktop_height)
+        self:save()
+    end
+end
+
+-- Nudge overlapping icons to nearby free grid cells
+function DesktopIcons:resolveOverlaps(desktop_width, desktop_height)
+    local icon_w, icon_h = self:getIconDimensions()
+    local cell_w = icon_w + 20
+    local cell_h = icon_h + 20
+
+    -- Build occupancy set from current positions
+    local occupied = {}
+    local id_order = {}
+    for pid, pos in pairs(self.positions) do
+        table.insert(id_order, pid)
+    end
+    table.sort(id_order)
+
+    for _, pid in ipairs(id_order) do
+        local pos = self.positions[pid]
+        -- Snap to nearest grid cell
+        local gx = math.floor((pos.x + cell_w / 2) / cell_w)
+        local gy = math.floor((pos.y + cell_h / 2) / cell_h)
+        local key = gx .. "," .. gy
+
+        if occupied[key] then
+            -- Find nearest free cell
+            local found = false
+            for radius = 1, 20 do
+                for dy = -radius, radius do
+                    for dx = -radius, radius do
+                        if math.abs(dx) == radius or math.abs(dy) == radius then
+                            local nx, ny = gx + dx, gy + dy
+                            local nk = nx .. "," .. ny
+                            local px = nx * cell_w
+                            local py = ny * cell_h
+                            if not occupied[nk] and px >= 0 and py >= 0 and
+                               px + icon_w <= desktop_width and
+                               py + icon_h <= (desktop_height - TASKBAR_HEIGHT) then
+                                pos.x = px
+                                pos.y = py
+                                occupied[nk] = pid
+                                found = true
+                                break
+                            end
+                        end
+                    end
+                    if found then break end
+                end
+                if found then break end
+            end
+            if not found then
+                occupied[key] = pid
+            end
+        else
+            occupied[key] = pid
+        end
+    end
+end
 
 -- Clear all custom positions (reset to defaults)
 function DesktopIcons:resetPositions()

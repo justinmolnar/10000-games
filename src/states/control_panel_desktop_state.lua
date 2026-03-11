@@ -15,16 +15,24 @@ function ControlPanelDesktopState:init(window_controller, di)
     self.pending = {}
 
     -- Subscribe to wallpaper changes to update preview live
-    if di and di.eventBus then
-        di.eventBus:subscribe('wallpaper_changed', function(new_wallpaper_id)
-            -- Update settings to reflect the change
+    self._subscriptions = {}
+    self.event_bus = di and di.eventBus
+    if self.event_bus then
+        self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('wallpaper_changed', function(new_wallpaper_id)
             self.settings = SettingsManager.getAll()
-            -- ADD wallpaper to pending so it gets saved when user clicks OK/Apply
             self.pending['desktop_bg_image'] = new_wallpaper_id
             self.pending['desktop_bg_type'] = 'image'
-            print("[ControlPanelDesktop] Added to pending: desktop_bg_image=" .. tostring(new_wallpaper_id))
         end)
     end
+end
+
+function ControlPanelDesktopState:destroy()
+    if self.event_bus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.event_bus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
 end
 
 function ControlPanelDesktopState:setViewport(x, y, w, h)

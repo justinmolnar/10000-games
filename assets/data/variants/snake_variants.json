@@ -10,6 +10,7 @@
   {
     "clone_index": 0,
     "name": "Sunday Stroll",
+    "boxart": "assets/boxart/snake/sunday_stroll.jpeg",
     "palette": "green",
     "music_track": "snake_theme_1",
     "sfx_theme": null,
@@ -24,6 +25,7 @@
   {
     "clone_index": 1,
     "name": "Drunk Driver",
+    "boxart": "assets/boxart/snake/drunk_driver.jpeg",
     "palette": "pink",
     "music_track": "snake_theme_2",
     "sfx_theme": null,
@@ -44,6 +46,7 @@
   {
     "clone_index": 2,
     "name": "Fugu",
+    "boxart": "assets/boxart/snake/fugu.jpeg",
     "palette": "red",
     "music_track": "snake_theme_3",
     "sfx_theme": null,
@@ -60,6 +63,7 @@
   {
     "clone_index": 3,
     "name": "Matador",
+    "boxart": "assets/boxart/snake/matador.jpeg",
     "palette": "red",
     "music_track": "snake_theme_3",
     "sfx_theme": null,
@@ -84,6 +88,7 @@
   {
     "clone_index": 4,
     "name": "Sardine Can",
+    "boxart": "assets/boxart/snake/sardine_can.jpeg",
     "palette": "gray",
     "music_track": "snake_theme_3",
     "sfx_theme": null,
@@ -101,6 +106,7 @@
   {
     "clone_index": 5,
     "name": "Prey",
+    "boxart": "assets/boxart/snake/prey.jpeg",
     "palette": "orange",
     "music_track": "snake_theme_3",
     "sfx_theme": null,
@@ -122,6 +128,7 @@
   {
     "clone_index": 6,
     "name": "Panopticon",
+    "boxart": "assets/boxart/snake/panopticon.jpeg",
     "palette": "gray",
     "music_track": "snake_theme_3",
     "sfx_theme": null,
@@ -138,6 +145,7 @@
   {
     "clone_index": 7,
     "name": "Figure Eight",
+    "boxart": "assets/boxart/snake/figure_eight.jpeg",
     "palette": "purple",
     "music_track": "snake_theme_1",
     "sfx_theme": null,
@@ -160,6 +168,7 @@
   {
     "clone_index": 8,
     "name": "Kaiju",
+    "boxart": "assets/boxart/snake/kaiju.jpeg",
     "palette": "orange",
     "music_track": "snake_theme_2",
     "sfx_theme": null,
@@ -178,6 +187,7 @@
   {
     "clone_index": 9,
     "name": "Glacier",
+    "boxart": "assets/boxart/snake/glacier.jpeg",
     "palette": "white",
     "music_track": "snake_theme_1",
     "sfx_theme": null,
@@ -198,6 +208,7 @@
   {
     "clone_index": 10,
     "name": "Flash Sale",
+    "boxart": "assets/boxart/snake/flash_sale.jpeg",
     "palette": "yellow",
     "music_track": "snake_theme_2",
     "sfx_theme": null,
@@ -215,6 +226,7 @@
   {
     "clone_index": 11,
     "name": "Bullet Hell",
+    "boxart": "assets/boxart/snake/bullet_hell.jpeg",
     "palette": "cyan",
     "music_track": "snake_theme_3",
     "sfx_theme": null,
@@ -237,6 +249,7 @@
   {
     "clone_index": 12,
     "name": "Siege",
+    "boxart": "assets/boxart/snake/siege.jpeg",
     "palette": "red",
     "music_track": "snake_theme_2",
     "sfx_theme": null,
@@ -256,6 +269,7 @@
   {
     "clone_index": 13,
     "name": "Anaconda",
+    "boxart": "assets/boxart/snake/anaconda.jpeg",
     "palette": "green",
     "music_track": "snake_theme_2",
     "sfx_theme": null,
@@ -277,6 +291,7 @@
   {
     "clone_index": 14,
     "name": "Conveyor Belt",
+    "boxart": "assets/boxart/snake/conveyor_belt.jpeg",
     "palette": "yellow",
     "music_track": "snake_theme_1",
     "sfx_theme": null,
@@ -296,6 +311,7 @@
   {
     "clone_index": 15,
     "name": "Phantom Zone",
+    "boxart": "assets/boxart/snake/phantom_zone.jpeg",
     "palette": "cyan",
     "music_track": "snake_theme_3",
     "sfx_theme": null,
@@ -317,6 +333,7 @@
   {
     "clone_index": 16,
     "name": "Hivemind",
+    "boxart": "assets/boxart/snake/hivemind.jpeg",
     "palette": "purple",
     "music_track": "snake_theme_2",
     "sfx_theme": null,
@@ -334,6 +351,7 @@
   {
     "clone_index": 17,
     "name": "Last Stand",
+    "boxart": "assets/boxart/snake/last_stand.jpeg",
     "palette": "orange",
     "music_track": "snake_theme_3",
     "sfx_theme": null,
@@ -360,6 +378,7 @@
   {
     "clone_index": 18,
     "name": "Quicksand",
+    "boxart": "assets/boxart/snake/quicksand.jpeg",
     "palette": "yellow",
     "music_track": "snake_theme_2",
     "sfx_theme": null,
@@ -378,6 +397,7 @@
   {
     "clone_index": 19,
     "name": "Warp Speed",
+    "boxart": "assets/boxart/snake/warp_speed.jpeg",
     "palette": "cyan",
     "music_track": "snake_theme_1",
     "sfx_theme": null,

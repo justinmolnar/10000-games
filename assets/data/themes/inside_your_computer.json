@@ -1,0 +1,94 @@
+{
+  "name": "Inside Your Computer",
+  "sound_scheme": "inside_your_computer",
+  "colors": {
+    "desktop": { "wallpaper": [0.05, 0.05, 0.1] },
+    "taskbar": { "bg": [0.12, 0.12, 0.15], "top_line": [0.2, 0.6, 0.2] },
+    "window": {
+      "titlebar_focused": [0.05, 0.3, 0.05],
+      "titlebar_unfocused": [0.2, 0.2, 0.2],
+      "content_bg": [0.1, 0.1, 0.12],
+      "border_outer": [0.2, 0.6, 0.2],
+      "border_inner_focused": [0.15, 0.4, 0.15],
+      "border_inner_unfocused": [0.15, 0.15, 0.15],
+      "button_bg": [0.15, 0.15, 0.18],
+      "button_border_light": [0.2, 0.5, 0.2],
+      "button_border_dark": [0.05, 0.15, 0.05],
+      "button_icon": [0, 0.8, 0],
+      "button_disabled_bg": [0.1, 0.1, 0.1],
+      "button_disabled_icon": [0.2, 0.3, 0.2]
+    },
+    "chrome": {
+      "bg": [0.12, 0.12, 0.15],
+      "bg_hover": [0.18, 0.22, 0.18],
+      "border_light": [0.2, 0.6, 0.2],
+      "border_dark": [0.05, 0.15, 0.05],
+      "text": [0, 0.8, 0],
+      "text_disabled": [0.2, 0.35, 0.2]
+    },
+    "button": {
+      "confirm": { "bg": [0.05, 0.4, 0.05], "bg_hover": [0.1, 0.55, 0.1], "text": [0.8, 1, 0.8] },
+      "cancel": { "bg": [0.4, 0.1, 0.1], "bg_hover": [0.55, 0.15, 0.15], "text": [1, 0.8, 0.8] },
+      "neutral": { "bg": [0.15, 0.15, 0.18], "bg_hover": [0.2, 0.25, 0.2], "text": [0, 0.8, 0] }
+    },
+    "start_button": {
+      "bg": [0.12, 0.12, 0.15],
+      "bg_hover": [0.18, 0.25, 0.18],
+      "border_light": [0.2, 0.6, 0.2],
+      "border_dark": [0.05, 0.15, 0.05],
+      "text": [0, 0.8, 0]
+    },
+    "start_menu": {
+      "bg": [0.1, 0.1, 0.12],
+      "border_light": [0.2, 0.6, 0.2],
+      "border_dark": [0.05, 0.15, 0.05],
+      "highlight": [0.05, 0.35, 0.05],
+      "text": [0, 0.8, 0],
+      "text_disabled": [0.2, 0.35, 0.2],
+      "text_hover": [0.8, 1, 0.8],
+      "separator": [0.15, 0.35, 0.15],
+      "shortcut": [0, 0.5, 0]
+    },
+    "system_tray": {
+      "bg": [0.08, 0.08, 0.1],
+      "border_light": [0.2, 0.6, 0.2],
+      "border_dark": [0.05, 0.15, 0.05],
+      "text": [0, 0.8, 0]
+    },
+    "scrollbar": {
+      "track": [0.1, 0.1, 0.12],
+      "track_border": [0.15, 0.35, 0.15],
+      "thumb": [0.1, 0.35, 0.1],
+      "thumb_border": [0.05, 0.2, 0.05]
+    },
+    "message_box": {
+      "bg": [0.12, 0.12, 0.15],
+      "text": [0, 0.8, 0],
+      "button_bg": [0.15, 0.15, 0.18],
+      "button_bg_hover": [0.2, 0.25, 0.2],
+      "button_highlight": [0.2, 0.6, 0.2],
+      "button_shadow": [0.05, 0.15, 0.05],
+      "button_shadow_outer": [0.03, 0.1, 0.03]
+    },
+    "run_dialog": {
+      "bg": [0.12, 0.12, 0.15],
+      "label_text": [0, 0.8, 0],
+      "input_bg": [0.05, 0.08, 0.05],
+      "input_border": [0.2, 0.6, 0.2],
+      "input_text": [0, 0.9, 0]
+    },
+    "shutdown_dialog": {
+      "bg": [0.12, 0.12, 0.15],
+      "text": [0, 0.8, 0]
+    },
+    "taskbar_button": {
+      "bg": [0.12, 0.12, 0.15],
+      "bg_focused": [0.08, 0.25, 0.08],
+      "bg_hover": [0.18, 0.22, 0.18],
+      "border_light": [0.2, 0.6, 0.2],
+      "border_dark": [0.05, 0.15, 0.05],
+      "text": [0, 0.8, 0],
+      "minimized_overlay": [0, 0.15, 0, 0.5]
+    }
+  }
+}

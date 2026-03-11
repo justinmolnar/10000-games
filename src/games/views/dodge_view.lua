@@ -199,7 +199,11 @@ function DodgeView:drawContent()
 
         local sprite_key = obj.enemy_type and ("enemy_" .. obj.enemy_type) or nil
         local size = obj.radius * 2
-        local carrier_tint = obj.water_carrier and {0.3, 0.7, 1.0} or nil
+        local carrier_tint = obj.water_carrier and {0.6, 0.85, 1.0} or nil
+        if obj.water_carrier then
+            local t = love.timer.getTime()
+            self:drawWaterCarrierEffects(obj.x, obj.y, obj.radius * 1.2, t)
+        end
         self:drawEntityCentered(obj.x, obj.y, size, size, sprite_key, "msg_error-0", {
             rotation = rotation,
             tint = carrier_tint,

@@ -79,9 +79,15 @@ function SpaceShooterView:drawContent()
 
     -- Draw enemies (sprite or fallback) - enemies use corner-based coords
     local enemy_sprite_fallback = self.sprite_manager:getMetricSprite(game.data, "kills") or "game_mine_2-0"
+    local t = love.timer.getTime()
     for _, enemy in ipairs(game.enemies) do
         local sprite_key = enemy.type and ("enemy_" .. enemy.type) or nil
-        local enemy_tint = enemy.water_carrier and {0.3, 0.7, 1.0} or tint
+        local enemy_tint = enemy.water_carrier and {0.6, 0.85, 1.0} or tint
+        if enemy.water_carrier then
+            local cx, cy = enemy.x + enemy.width / 2, enemy.y + enemy.height / 2
+            local r = math.max(enemy.width, enemy.height) * 0.7
+            self:drawWaterCarrierEffects(cx, cy, r, t)
+        end
         self:drawEntityAt(enemy.x, enemy.y, enemy.width, enemy.height, sprite_key, enemy_sprite_fallback, {tint = enemy_tint})
     end
 

@@ -1,0 +1,85 @@
+body {
+    background-color: #0d0a18;
+    color: #bb88dd;
+    font-family: Verdana;
+    margin: 20px;
+}
+
+h1 {
+    color: #dd66ff;
+    text-align: center;
+    font-size: 22px;
+    letter-spacing: 4px;
+    font-weight: bold;
+}
+
+h2 {
+    color: #aa66cc;
+    font-size: 12px;
+}
+
+.tagline {
+    text-align: center;
+    color: #8866aa;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+.genre {
+    text-align: center;
+    color: #665588;
+    font-size: 9px;
+    margin-top: 4px;
+}
+
+hr {
+    color: #2a1a3a;
+}
+
+.player {
+    text-align: center;
+    margin: 10px;
+    padding: 12px;
+    border: 1px solid #2a1a3a;
+    background-color: #120e20;
+}
+
+.live {
+    color: #ff66aa;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.status {
+    color: #8866aa;
+    font-size: 10px;
+}
+
+.controls {
+    color: #665588;
+    font-size: 10px;
+}
+
+.about {
+    color: #9977bb;
+    font-size: 11px;
+}
+
+.info {
+    color: #554477;
+    font-size: 9px;
+}
+
+.disclaimer {
+    color: #443366;
+    font-size: 8px;
+    margin-top: 4px;
+}
+
+a {
+    color: #dd66ff;
+}
+
+p {
+    margin: 3px;
+}

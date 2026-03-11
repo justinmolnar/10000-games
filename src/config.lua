@@ -4,10 +4,9 @@ local Config = {
     -- Player Data
     start_tokens = 20,
     upgrade_costs = {
-        cpu_speed = 500, -- Base cost for level 1
-        overclock = 1000,
+        cpu_speed = 500, -- Base cost for first FPS upgrade
+        cpu_speed_exponent = 1.05, -- Cost = base * exponent^level (exponential scaling)
         auto_dodge = 2000
-        -- Cost multiplier per level: base_cost * (current_level + 1)
     },
 
     -- Water Currency (rare manual-play pickup)
@@ -386,8 +385,9 @@ local Config = {
     vm_cost_exponent = 2, -- Cost scales as base_cost * (exponent ^ (current_slots - 1))
     vm_max_slots = 10,
     vm_base_cycle_time = 60, -- Seconds per cycle before upgrades
-    vm_cpu_speed_bonus_per_level = 0.1, -- 10% faster per level
-    vm_overclock_bonus_per_level = 0.05, -- 5% more power per level
+    vm_base_fps = 15,   -- VMs start at 15 FPS (0.25x speed)
+    vm_max_fps = 144,   -- Max FPS after all upgrades
+    vm_fps_per_level = 1, -- Each cpu_speed level adds 1 FPS
 
     -- Game Data
     -- Game Cloning

@@ -87,6 +87,12 @@ function WebBrowserState:init(file_system, di)
     self.audio_playlist = {}
     self.audio_playlist_index = 0
     self.audio_scrubbing = false
+
+    -- Radio mode state
+    self.radio_mode = false
+    self.radio_playlist = {}
+    self.radio_index = 0
+    self.radio_station_name = nil
 end
 
 -- Set window context
@@ -192,6 +198,9 @@ function WebBrowserState:navigateTo(url, skip_history)
     -- Scan for mp3 links to build audio playlist
     self.audio_playlist = self:scanMp3Links(self.current_layout)
     self.audio_playlist_index = 0
+
+    -- Check for radio station meta tag
+    self:checkRadioStation(dom)
 
     -- Add to history
     if not skip_history then
@@ -574,6 +583,12 @@ function WebBrowserState:stopAudio()
     self.audio_track_name = nil
     self.audio_current_href = nil
     self.audio_playlist_index = 0
+    self.radio_mode = false
+    self.radio_playlist = {}
+    self.radio_durations = {}
+    self.radio_total_duration = 0
+    self.radio_index = 0
+    self.radio_station_name = nil
 end
 
 function WebBrowserState:toggleAudioPause()
@@ -610,9 +625,173 @@ function WebBrowserState:getPlayingTrackInfo()
     return nil
 end
 
+-- Check for radio station meta tag and start radio mode
+function WebBrowserState:checkRadioStation(dom)
+    self.radio_mode = false
+    self.radio_playlist = {}
+    self.radio_durations = {}
+    self.radio_total_duration = 0
+    self.radio_index = 0
+    self.radio_station_name = nil
+
+    local json_path = self:findRadioMeta(dom)
+    if not json_path then return end
+
+    local success, content = pcall(love.filesystem.read, json_path)
+    if not success or not content then return end
+
+    local json = require('lib.json')
+    local ok, data = pcall(json.decode, content)
+    if not ok or not data or not data.tracks then return end
+
+    self.radio_mode = true
+    self.radio_station_name = data.station or "Radio"
+    local audio_base = data.audio_base or ""
+
+    local total_dur = 0
+    for i, track in ipairs(data.tracks) do
+        table.insert(self.radio_playlist, audio_base .. "/" .. track)
+        local dur = (data.durations and data.durations[i]) or 10
+        table.insert(self.radio_durations, dur)
+        total_dur = total_dur + dur
+    end
+    self.radio_total_duration = total_dur
+
+    if #self.radio_playlist > 0 and total_dur > 0 then
+        -- Use real clock time to find position in the looping broadcast
+        local position_in_broadcast = os.time() % math.floor(total_dur)
+        local elapsed = 0
+        local target_idx = 1
+        local seek_offset = 0
+        for i, dur in ipairs(self.radio_durations) do
+            if elapsed + dur > position_in_broadcast then
+                target_idx = i
+                seek_offset = position_in_broadcast - elapsed
+                break
+            end
+            elapsed = elapsed + dur
+        end
+
+        self.radio_index = target_idx
+        self:playRadioTrack(target_idx, seek_offset)
+    end
+end
+
+-- Find <meta name="radio-station" content="..."> in DOM
+function WebBrowserState:findRadioMeta(node)
+    if not node then return nil end
+    if node.tag == "meta" and node.attributes then
+        if node.attributes.name == "radio-station" and node.attributes.content then
+            return node.attributes.content
+        end
+    end
+    if node.children then
+        for _, child in ipairs(node.children) do
+            local result = self:findRadioMeta(child)
+            if result then return result end
+        end
+    end
+    return nil
+end
+
+-- Play a radio track by index, optionally seeking to offset
+function WebBrowserState:playRadioTrack(index, seek_offset)
+    if index < 1 or index > #self.radio_playlist then return end
+
+    if self.audio_source then
+        self.audio_source:stop()
+        self.audio_source = nil
+    end
+
+    local file_path = self.radio_playlist[index]
+    local ok, source = pcall(love.audio.newSource, file_path, "stream")
+    if ok and source then
+        local settings = self.di and self.di.settingsManager
+        local master = (settings and settings:get('master_volume')) or 0.8
+        local music = (settings and settings:get('music_volume')) or 0.6
+        source:setVolume(master * music)
+        if seek_offset and seek_offset > 0 then
+            local dur = source:getDuration()
+            if dur > 0 and seek_offset < dur then
+                source:seek(seek_offset)
+            end
+        end
+        source:play()
+        self.audio_source = source
+        self.audio_playing = true
+        self.audio_track_name = self.radio_station_name
+        self.radio_index = index
+    end
+end
+
+-- Advance to next radio track (loops)
+function WebBrowserState:advanceRadio()
+    if #self.radio_playlist == 0 then return end
+    local next_idx = self.radio_index + 1
+    if next_idx > #self.radio_playlist then
+        next_idx = 1 -- Loop back to start
+    end
+    self:playRadioTrack(next_idx)
+end
+
+-- Switch radio station from a radio:// link without navigating
+function WebBrowserState:switchRadioStation(json_path)
+    if self.audio_source then
+        self.audio_source:stop()
+        self.audio_source = nil
+    end
+
+    local success, content = pcall(love.filesystem.read, json_path)
+    if not success or not content then return end
+
+    local json = require('lib.json')
+    local ok, data = pcall(json.decode, content)
+    if not ok or not data or not data.tracks then return end
+
+    self.radio_mode = true
+    self.radio_station_name = data.station or "Radio"
+    self.radio_playlist = {}
+    self.radio_durations = {}
+    local audio_base = data.audio_base or ""
+
+    local total_dur = 0
+    for i, track in ipairs(data.tracks) do
+        table.insert(self.radio_playlist, audio_base .. "/" .. track)
+        local dur = (data.durations and data.durations[i]) or 10
+        table.insert(self.radio_durations, dur)
+        total_dur = total_dur + dur
+    end
+    self.radio_total_duration = total_dur
+
+    if #self.radio_playlist > 0 and total_dur > 0 then
+        local position_in_broadcast = os.time() % math.floor(total_dur)
+        local elapsed = 0
+        local target_idx = 1
+        local seek_offset = 0
+        for i, dur in ipairs(self.radio_durations) do
+            if elapsed + dur > position_in_broadcast then
+                target_idx = i
+                seek_offset = position_in_broadcast - elapsed
+                break
+            end
+            elapsed = elapsed + dur
+        end
+
+        self.radio_index = target_idx
+        self:playRadioTrack(target_idx, seek_offset)
+    end
+end
+
 -- Handle link click
 function WebBrowserState:handleLinkClick(href)
     if not href then
+        return
+    end
+
+    -- Intercept radio:// links — switch radio station without navigating
+    if href:match("^radio://") then
+        local json_path = href:gsub("^radio://", "")
+        self:switchRadioStation(json_path)
         return
     end
 
@@ -751,7 +930,11 @@ function WebBrowserState:update(dt)
     -- Auto-advance audio when track ends
     if self.audio_source and self.audio_playing and not self.audio_source:isPlaying() then
         self.audio_playing = false
-        self:advanceTrack()
+        if self.radio_mode then
+            self:advanceRadio()
+        else
+            self:advanceTrack()
+        end
     end
 
     self.view:update(dt, self.viewport.width, self.viewport.height)
@@ -1045,6 +1228,16 @@ function WebBrowserState:mousepressed(x, y, button)
                 self:handleLinkClick(href)
                 return true
             end
+        end
+
+        -- Radio mode: click content area to toggle play/pause
+        if self.radio_mode and y >= content_y then
+            if self.audio_source then
+                self:toggleAudioPause()
+            elseif #self.radio_playlist > 0 then
+                self:playRadioTrack(self.radio_index > 0 and self.radio_index or 1)
+            end
+            return true
         end
     end
 

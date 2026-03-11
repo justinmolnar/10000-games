@@ -11,6 +11,7 @@
 local UIComponents = {}
 -- Config provided via UIComponents.inject; avoid direct require
 local Strings = require('src.utils.strings')
+local ThemeManager = require('src.utils.theme_manager')
 
 -- Optional DI injection for config/strings
 UIComponents._config = nil
@@ -22,7 +23,8 @@ function UIComponents.inject(di)
     end
 end
 
-function UIComponents.drawButton(x, y, w, h, text, enabled, hovered, color)
+-- role: "confirm", "cancel", "neutral" (optional, defaults to "confirm" for green)
+function UIComponents.drawButton(x, y, w, h, text, enabled, hovered, color, role)
     -- Background
     if not enabled then
         love.graphics.setColor(0.3, 0.3, 0.3)
@@ -33,22 +35,33 @@ function UIComponents.drawButton(x, y, w, h, text, enabled, hovered, color)
         else
             love.graphics.setColor(r, g, b)
         end
-    elseif hovered then
-        love.graphics.setColor(0.35, 0.6, 0.35)
     else
-        love.graphics.setColor(0, 0.5, 0)
+        local btn_section = ThemeManager.getSection("button")
+        local role_colors = btn_section and btn_section[role or "confirm"]
+        if role_colors then
+            love.graphics.setColor(hovered and (role_colors.bg_hover or role_colors.bg) or role_colors.bg)
+        elseif hovered then
+            love.graphics.setColor(0.35, 0.6, 0.35)
+        else
+            love.graphics.setColor(0, 0.5, 0)
+        end
     end
     love.graphics.rectangle('fill', x, y, w, h)
-    
+
     -- Border
-    love.graphics.setColor(0.5, 0.5, 0.5)
+    local chrome = ThemeManager.getSection("chrome")
+    love.graphics.setColor(chrome and chrome.border_dark or {0.5, 0.5, 0.5})
     love.graphics.rectangle('line', x, y, w, h)
-    
+
     -- Text
-    if enabled then
-        love.graphics.setColor(1, 1, 1)
+    if not enabled then
+        love.graphics.setColor(chrome and chrome.text_disabled or {0.5, 0.5, 0.5})
+    elseif not color then
+        local btn_section = ThemeManager.getSection("button")
+        local role_colors = btn_section and btn_section[role or "confirm"]
+        love.graphics.setColor(role_colors and role_colors.text or {1, 1, 1})
     else
-        love.graphics.setColor(0.5, 0.5, 0.5)
+        love.graphics.setColor(1, 1, 1)
     end
     
     local font = love.graphics.getFont()
@@ -132,19 +145,19 @@ end
 
 function UIComponents.drawWindow(x, y, w, h, title)
     -- Window background
-    love.graphics.setColor(0.75, 0.75, 0.75)
+    love.graphics.setColor(ThemeManager.get("chrome.bg") or {0.75, 0.75, 0.75})
     love.graphics.rectangle('fill', x, y, w, h)
-    
+
     -- Title bar
-    love.graphics.setColor(0, 0, 0.5)
+    love.graphics.setColor(ThemeManager.get("window.titlebar_focused") or {0, 0, 0.5})
     love.graphics.rectangle('fill', x, y, w, 30)
-    
+
     -- Title text
     love.graphics.setColor(1, 1, 1)
     love.graphics.print(title, x + 10, y + 8, 0, 1.2, 1.2)
-    
+
     -- Border
-    love.graphics.setColor(0.5, 0.5, 0.5)
+    love.graphics.setColor(ThemeManager.get("chrome.border_dark") or {0.5, 0.5, 0.5})
     love.graphics.rectangle('line', x, y, w, h)
 end
 
@@ -158,9 +171,9 @@ function UIComponents.drawDialogButtons(w, h, applyEnabled)
     local apply_x = cancel_x + bw + spacing
     local by = h - bottom_margin - bh
     local Strings_ = UIComponents._strings or Strings
-    UIComponents.drawButton(ok_x, by, bw, bh, Strings_.get('buttons.ok','OK'), true, false)
-    UIComponents.drawButton(cancel_x, by, bw, bh, Strings_.get('buttons.cancel','Cancel'), true, false)
-    UIComponents.drawButton(apply_x, by, bw, bh, Strings_.get('buttons.apply','Apply'), applyEnabled ~= false, false)
+    UIComponents.drawButton(ok_x, by, bw, bh, Strings_.get('buttons.ok','OK'), true, false, nil, "confirm")
+    UIComponents.drawButton(cancel_x, by, bw, bh, Strings_.get('buttons.cancel','Cancel'), true, false, nil, "cancel")
+    UIComponents.drawButton(apply_x, by, bw, bh, Strings_.get('buttons.apply','Apply'), applyEnabled ~= false, false, nil, "neutral")
     return {x=ok_x,y=by,w=bw,h=bh}, {x=cancel_x,y=by,w=bw,h=bh}, {x=apply_x,y=by,w=bw,h=bh}
 end
 

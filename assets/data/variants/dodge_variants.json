@@ -17,9 +17,21 @@
       "sfx_theme": null,
       "background": "flowing",
       "bg_colors": [
-        [0.4, 0.0, 0.5],
-        [0.1, 0.0, 0.3],
-        [0.6, 0.1, 0.4]
+        [
+          0.4,
+          0.0,
+          0.5
+        ],
+        [
+          0.1,
+          0.0,
+          0.3
+        ],
+        [
+          0.6,
+          0.1,
+          0.4
+        ]
       ],
       "bg_speed": 0.6,
       "bg_warp": 1.3,
@@ -30,14 +42,25 @@
       "decel_friction": 0.99,
       "bounce_damping": 0.9,
       "enemy_collision": {
-        "bouncer": {"damage": 0, "knockback": 500, "remove": false}
+        "bouncer": {
+          "damage": 0,
+          "knockback": 500,
+          "remove": false
+        }
       },
       "enemies": [
-        {"type": "bouncer", "multiplier": 1},
-        {"type": "obstacle", "multiplier": 2}
+        {
+          "type": "bouncer",
+          "multiplier": 1
+        },
+        {
+          "type": "obstacle",
+          "multiplier": 2
+        }
       ],
       "flavor_text": "Chaotic bouncing with bouncer enemies!",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/pinball.jpeg"
     },
     {
       "clone_index": 1,
@@ -51,7 +74,11 @@
       "sfx_theme": "circus",
       "background": "image",
       "bg_image": "assets/backgrounds/circus_ring.jpeg",
-      "bg_color": [0.3, 0.1, 0.05],
+      "bg_color": [
+        0.3,
+        0.1,
+        0.05
+      ],
       "difficulty_modifier": 1.0,
       "movement_speed": 320,
       "victory_condition": "kills",
@@ -69,17 +96,58 @@
       "seeker_max_steering_angle": 45,
       "disable_obstacle_fallback": true,
       "warnings": false,
-      "collectible_enemies": ["obstacle"],
-      "enemies": [
-        {"type": "obstacle", "multiplier": {"base": 50, "growth": 0.3}},
-        {"type": "chaser", "multiplier": {"base": 20, "growth": 0.3}},
-        {"type": "zigzag", "multiplier": {"base": 15, "growth": 0.2}}
+      "collectible_enemies": [
+        "obstacle"
       ],
-      "enemy_sizes": {"obstacle": [25, 35], "chaser": [30, 40]},
-      "enemy_speeds": {"chaser": [60, 90]},
-      "enemy_orbit": {"zigzag": {"radius": 40, "speed": 3, "descent_speed": 80}},
+      "enemies": [
+        {
+          "type": "obstacle",
+          "multiplier": {
+            "base": 50,
+            "growth": 0.3
+          }
+        },
+        {
+          "type": "chaser",
+          "multiplier": {
+            "base": 20,
+            "growth": 0.3
+          }
+        },
+        {
+          "type": "zigzag",
+          "multiplier": {
+            "base": 15,
+            "growth": 0.2
+          }
+        }
+      ],
+      "enemy_sizes": {
+        "obstacle": [
+          25,
+          35
+        ],
+        "chaser": [
+          30,
+          40
+        ]
+      },
+      "enemy_speeds": {
+        "chaser": [
+          60,
+          90
+        ]
+      },
+      "enemy_orbit": {
+        "zigzag": {
+          "radius": 40,
+          "speed": 3,
+          "descent_speed": 80
+        }
+      },
       "flavor_text": "Circus. Catch 15 balloons. Dodge the clowns.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/big_top.jpeg"
     },
     {
       "clone_index": 0,
@@ -91,7 +159,11 @@
       "sfx_theme": null,
       "background": "image",
       "bg_image": "assets/backgrounds/planets.jpeg",
-      "bg_color": [0.02, 0.02, 0.05],
+      "bg_color": [
+        0.02,
+        0.02,
+        0.05
+      ],
       "difficulty_modifier": 1.0,
       "rotation_speed": 4.5,
       "movement_speed": 580,
@@ -100,15 +172,45 @@
       "area_morph_type": "shape_shifting",
       "area_morph_speed": 1.5,
       "enemies": [
-        {"type": "obstacle", "multiplier": 2},
-        {"type": "bouncer", "multiplier": 0.5},
-        {"type": "zigzag", "multiplier": 1}
+        {
+          "type": "obstacle",
+          "multiplier": 2
+        },
+        {
+          "type": "bouncer",
+          "multiplier": 0.5
+        },
+        {
+          "type": "zigzag",
+          "multiplier": 1
+        }
       ],
-      "enemy_sizes": {"bouncer": [20, 35], "zigzag": [15, 25]},
-      "enemy_speeds": {"bouncer": [80, 130], "zigzag": [120, 180]},
-      "enemy_wave_amps": {"zigzag": 120},
+      "enemy_sizes": {
+        "bouncer": [
+          20,
+          35
+        ],
+        "zigzag": [
+          15,
+          25
+        ]
+      },
+      "enemy_speeds": {
+        "bouncer": [
+          80,
+          130
+        ],
+        "zigzag": [
+          120,
+          180
+        ]
+      },
+      "enemy_wave_amps": {
+        "zigzag": 120
+      },
       "flavor_text": "Circle, square, hex - adapt your flight!",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/shape_shifter.jpeg"
     },
     {
       "clone_index": 3,
@@ -119,7 +221,11 @@
       "music_track": "dodge_theme_1",
       "sfx_theme": "ice_rink",
       "background": "solid",
-      "bg_color": [0.08, 0.10, 0.16],
+      "bg_color": [
+        0.08,
+        0.1,
+        0.16
+      ],
       "arena_image": "assets/backgrounds/hockey_rink.png",
       "arena_base_width": 650,
       "arena_base_height": 400,
@@ -142,11 +248,20 @@
       "seeker_turn_rate": 25,
       "disable_obstacle_fallback": true,
       "enemy_sizes": {
-        "obstacle": [120, 160]
+        "obstacle": [
+          120,
+          160
+        ]
       },
       "enemy_speeds": {
-        "obstacle": [60, 90],
-        "chaser": [40, 60]
+        "obstacle": [
+          60,
+          90
+        ],
+        "chaser": [
+          40,
+          60
+        ]
       },
       "enemy_movement_axis": {
         "obstacle": "horizontal"
@@ -155,15 +270,29 @@
         "obstacle": 2
       },
       "enemy_collision": {
-        "chaser": {"damage": 0, "knockback": 600, "remove": false}
+        "chaser": {
+          "damage": 0,
+          "knockback": 600,
+          "remove": false
+        }
       },
       "enemies": [
-        {"type": "obstacle", "multiplier": 1.0},
-        {"type": "bouncer", "multiplier": 0.6},
-        {"type": "chaser", "multiplier": 0.4}
+        {
+          "type": "obstacle",
+          "multiplier": 1.0
+        },
+        {
+          "type": "bouncer",
+          "multiplier": 0.6
+        },
+        {
+          "type": "chaser",
+          "multiplier": 0.4
+        }
       ],
       "flavor_text": "Ice rink. You're a skater. Zambonis and hockey players don't care about you.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/zamboni_panic.jpeg"
     },
     {
       "clone_index": 4,
@@ -179,20 +308,34 @@
       "difficulty_modifier": 1.0,
       "movement_speed": 300,
       "enemy_sizes": {
-        "chaser": [40, 60]
+        "chaser": [
+          40,
+          60
+        ]
       },
       "enemy_speeds": {
-        "chaser": [80, 120]
+        "chaser": [
+          80,
+          120
+        ]
       },
       "enemy_max_alive": {
         "chaser": 8
       },
       "enemies": [
-        {"type": "chaser", "multiplier": 1.0}
+        {
+          "type": "chaser",
+          "multiplier": 1.0
+        }
       ],
       "flavor_text": "Massive slow chasers! Stay ahead of the giants",
       "intro_cutscene": null,
-      "bg_star_color": [1.0, 0.6, 0.6]
+      "bg_star_color": [
+        1.0,
+        0.6,
+        0.6
+      ],
+      "boxart": "assets/boxart/dodge/giant_hunters.jpeg"
     },
     {
       "clone_index": 5,
@@ -204,43 +347,137 @@
       "sfx_theme": "toilet",
       "background": "image",
       "bg_image": "assets/backgrounds/toilet_bowl.jpeg",
-      "bg_color": [0.08, 0.10, 0.14],
+      "bg_color": [
+        0.08,
+        0.1,
+        0.14
+      ],
       "difficulty_modifier": 1.0,
       "movement_speed": 280,
       "victory_condition": "time",
       "victory_limit": 30,
       "lives": 5,
       "area_vertices": [
-        {"x": 0.7, "y": 0.0},
-        {"x": 0.686, "y": 0.203},
-        {"x": 0.642, "y": 0.396},
-        {"x": 0.572, "y": 0.571},
-        {"x": 0.476, "y": 0.716},
-        {"x": 0.359, "y": 0.826},
-        {"x": 0.227, "y": 0.897},
-        {"x": 0.085, "y": 0.924},
-        {"x": -0.085, "y": 0.924},
-        {"x": -0.227, "y": 0.897},
-        {"x": -0.359, "y": 0.826},
-        {"x": -0.476, "y": 0.716},
-        {"x": -0.572, "y": 0.571},
-        {"x": -0.642, "y": 0.396},
-        {"x": -0.686, "y": 0.203},
-        {"x": -0.7, "y": 0.0},
-        {"x": -0.686, "y": -0.203},
-        {"x": -0.642, "y": -0.396},
-        {"x": -0.572, "y": -0.571},
-        {"x": -0.476, "y": -0.716},
-        {"x": -0.359, "y": -0.826},
-        {"x": -0.227, "y": -0.897},
-        {"x": -0.085, "y": -0.924},
-        {"x": 0.085, "y": -0.924},
-        {"x": 0.227, "y": -0.897},
-        {"x": 0.359, "y": -0.826},
-        {"x": 0.476, "y": -0.716},
-        {"x": 0.572, "y": -0.571},
-        {"x": 0.642, "y": -0.396},
-        {"x": 0.686, "y": -0.203}
+        {
+          "x": 0.7,
+          "y": 0.0
+        },
+        {
+          "x": 0.686,
+          "y": 0.203
+        },
+        {
+          "x": 0.642,
+          "y": 0.396
+        },
+        {
+          "x": 0.572,
+          "y": 0.571
+        },
+        {
+          "x": 0.476,
+          "y": 0.716
+        },
+        {
+          "x": 0.359,
+          "y": 0.826
+        },
+        {
+          "x": 0.227,
+          "y": 0.897
+        },
+        {
+          "x": 0.085,
+          "y": 0.924
+        },
+        {
+          "x": -0.085,
+          "y": 0.924
+        },
+        {
+          "x": -0.227,
+          "y": 0.897
+        },
+        {
+          "x": -0.359,
+          "y": 0.826
+        },
+        {
+          "x": -0.476,
+          "y": 0.716
+        },
+        {
+          "x": -0.572,
+          "y": 0.571
+        },
+        {
+          "x": -0.642,
+          "y": 0.396
+        },
+        {
+          "x": -0.686,
+          "y": 0.203
+        },
+        {
+          "x": -0.7,
+          "y": 0.0
+        },
+        {
+          "x": -0.686,
+          "y": -0.203
+        },
+        {
+          "x": -0.642,
+          "y": -0.396
+        },
+        {
+          "x": -0.572,
+          "y": -0.571
+        },
+        {
+          "x": -0.476,
+          "y": -0.716
+        },
+        {
+          "x": -0.359,
+          "y": -0.826
+        },
+        {
+          "x": -0.227,
+          "y": -0.897
+        },
+        {
+          "x": -0.085,
+          "y": -0.924
+        },
+        {
+          "x": 0.085,
+          "y": -0.924
+        },
+        {
+          "x": 0.227,
+          "y": -0.897
+        },
+        {
+          "x": 0.359,
+          "y": -0.826
+        },
+        {
+          "x": 0.476,
+          "y": -0.716
+        },
+        {
+          "x": 0.572,
+          "y": -0.571
+        },
+        {
+          "x": 0.642,
+          "y": -0.396
+        },
+        {
+          "x": 0.686,
+          "y": -0.203
+        }
       ],
       "area_size": 1.6,
       "initial_safe_radius_fraction": 0.48,
@@ -252,12 +489,31 @@
       "camera_shake_intensity": 2,
       "disable_obstacle_fallback": true,
       "enemies": [
-        {"type": "bouncer", "multiplier": {"base": 25, "growth": 0.3}},
-        {"type": "obstacle", "multiplier": {"base": 30, "growth": 0.2}},
-        {"type": "chaser", "multiplier": {"base": 10, "growth": 0.25}}
+        {
+          "type": "bouncer",
+          "multiplier": {
+            "base": 25,
+            "growth": 0.3
+          }
+        },
+        {
+          "type": "obstacle",
+          "multiplier": {
+            "base": 30,
+            "growth": 0.2
+          }
+        },
+        {
+          "type": "chaser",
+          "multiplier": {
+            "base": 10,
+            "growth": 0.25
+          }
+        }
       ],
       "flavor_text": "Rubber duck in a flushing toilet. Stay afloat.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/flush.jpeg"
     },
     {
       "clone_index": 6,
@@ -269,7 +525,11 @@
       "sfx_theme": null,
       "background": "image",
       "bg_image": "assets/backgrounds/Deep_space_nebula.jpeg",
-      "bg_color": [0.03, 0.01, 0.06],
+      "bg_color": [
+        0.03,
+        0.01,
+        0.06
+      ],
       "difficulty_modifier": 1.0,
       "rotation_speed": 10.0,
       "jump_distance": 100,
@@ -278,14 +538,42 @@
       "area_morph_type": "pulsing",
       "area_morph_speed": 1.5,
       "enemies": [
-        {"type": "teleporter", "multiplier": 2},
-        {"type": "chaser", "multiplier": 1.5},
-        {"type": "obstacle", "multiplier": 1}
+        {
+          "type": "teleporter",
+          "multiplier": 2
+        },
+        {
+          "type": "chaser",
+          "multiplier": 1.5
+        },
+        {
+          "type": "obstacle",
+          "multiplier": 1
+        }
       ],
-      "enemy_sizes": {"teleporter": [20, 30], "chaser": [10, 18]},
-      "enemy_speeds": {"chaser": [70, 110], "teleporter": [80, 120]},
+      "enemy_sizes": {
+        "teleporter": [
+          20,
+          30
+        ],
+        "chaser": [
+          10,
+          18
+        ]
+      },
+      "enemy_speeds": {
+        "chaser": [
+          70,
+          110
+        ],
+        "teleporter": [
+          80,
+          120
+        ]
+      },
       "flavor_text": "Instant teleports - blink across the arena!",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/blink_warp.jpeg"
     },
     {
       "clone_index": 7,
@@ -299,7 +587,11 @@
       "sfx_theme": "school",
       "background": "image",
       "bg_image": "assets/backgrounds/classroom_floor.jpeg",
-      "bg_color": [0.15, 0.12, 0.08],
+      "bg_color": [
+        0.15,
+        0.12,
+        0.08
+      ],
       "difficulty_modifier": 1.0,
       "movement_speed": 320,
       "victory_condition": "time",
@@ -314,28 +606,79 @@
       "disable_obstacle_fallback": true,
       "camera_shake_intensity": 4,
       "enemy_sizes": {
-        "zigzag": [30, 48],
-        "obstacle": [24, 36],
-        "splitter": [42, 60],
-        "bouncer": [30, 42]
+        "zigzag": [
+          30,
+          48
+        ],
+        "obstacle": [
+          24,
+          36
+        ],
+        "splitter": [
+          42,
+          60
+        ],
+        "bouncer": [
+          30,
+          42
+        ]
       },
       "enemy_speeds": {
-        "zigzag": [25, 45],
-        "obstacle": [280, 380],
-        "splitter": [90, 130],
-        "bouncer": [140, 200]
+        "zigzag": [
+          25,
+          45
+        ],
+        "obstacle": [
+          280,
+          380
+        ],
+        "splitter": [
+          90,
+          130
+        ],
+        "bouncer": [
+          140,
+          200
+        ]
       },
       "enemy_wave_amps": {
         "zigzag": 1200
       },
       "enemy_wave_speeds": {
-        "zigzag": [0.05, 0.05]
+        "zigzag": [
+          0.05,
+          0.05
+        ]
       },
       "enemies": [
-        {"type": "obstacle", "multiplier": {"base": 40, "growth": 0.2}},
-        {"type": "zigzag", "multiplier": {"base": 25, "growth": 0.15}},
-        {"type": "splitter", "multiplier": {"base": 10, "growth": 0.3}},
-        {"type": "bouncer", "multiplier": {"base": 10, "growth": 0.25}}
+        {
+          "type": "obstacle",
+          "multiplier": {
+            "base": 40,
+            "growth": 0.2
+          }
+        },
+        {
+          "type": "zigzag",
+          "multiplier": {
+            "base": 25,
+            "growth": 0.15
+          }
+        },
+        {
+          "type": "splitter",
+          "multiplier": {
+            "base": 10,
+            "growth": 0.3
+          }
+        },
+        {
+          "type": "bouncer",
+          "multiplier": {
+            "base": 10,
+            "growth": 0.25
+          }
+        }
       ],
       "formation_column_width": 150,
       "formation_snap_interval": 6,
@@ -344,7 +687,8 @@
       "formation_escalation_time": 40,
       "formation_attack_type": "falling",
       "flavor_text": "Classroom. Mr. Henderson left. Things are falling from the ceiling.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/detention.jpeg"
     },
     {
       "clone_index": 8,
@@ -364,15 +708,43 @@
       "victory_limit": 45,
       "lives": 5,
       "enemies": [
-        {"type": "chaser", "multiplier": 1.5},
-        {"type": "teleporter", "multiplier": 1},
-        {"type": "obstacle", "multiplier": 1.5}
+        {
+          "type": "chaser",
+          "multiplier": 1.5
+        },
+        {
+          "type": "teleporter",
+          "multiplier": 1
+        },
+        {
+          "type": "obstacle",
+          "multiplier": 1.5
+        }
       ],
-      "enemy_sizes": {"chaser": [15, 35], "teleporter": [10, 20]},
-      "enemy_speeds": {"chaser": [50, 90]},
+      "enemy_sizes": {
+        "chaser": [
+          15,
+          35
+        ],
+        "teleporter": [
+          10,
+          20
+        ]
+      },
+      "enemy_speeds": {
+        "chaser": [
+          50,
+          90
+        ]
+      },
       "flavor_text": "Limited visibility! Survive 45 seconds in the fog",
       "intro_cutscene": null,
-      "bg_star_color": [0.6, 0.8, 1.0]
+      "bg_star_color": [
+        0.6,
+        0.8,
+        1.0
+      ],
+      "boxart": "assets/boxart/dodge/fog_runner.jpeg"
     },
     {
       "clone_index": 9,
@@ -384,32 +756,87 @@
       "sfx_theme": "kitchen",
       "background": "image",
       "bg_image": "assets/backgrounds/dirty_microwave.jpeg",
-      "bg_color": [0.12, 0.10, 0.04],
+      "bg_color": [
+        0.12,
+        0.1,
+        0.04
+      ],
       "difficulty_modifier": 1.0,
       "movement_speed": 300,
       "victory_condition": "time",
       "victory_limit": 30,
       "lives": 5,
       "area_shape": "circle",
-      "area_center": [0.5, 0.85],
+      "area_center": [
+        0.5,
+        0.85
+      ],
       "area_size": 1.25,
       "area_vertices": [
-        {"x": 1.000, "y": 0.000},
-        {"x": 0.924, "y": 0.171},
-        {"x": 0.707, "y": 0.318},
-        {"x": 0.383, "y": 0.416},
-        {"x": 0.000, "y": 0.450},
-        {"x": -0.383, "y": 0.416},
-        {"x": -0.707, "y": 0.318},
-        {"x": -0.924, "y": 0.171},
-        {"x": -1.000, "y": 0.000},
-        {"x": -0.924, "y": -0.171},
-        {"x": -0.707, "y": -0.318},
-        {"x": -0.383, "y": -0.416},
-        {"x": 0.000, "y": -0.450},
-        {"x": 0.383, "y": -0.416},
-        {"x": 0.707, "y": -0.318},
-        {"x": 0.924, "y": -0.171}
+        {
+          "x": 1.0,
+          "y": 0.0
+        },
+        {
+          "x": 0.924,
+          "y": 0.171
+        },
+        {
+          "x": 0.707,
+          "y": 0.318
+        },
+        {
+          "x": 0.383,
+          "y": 0.416
+        },
+        {
+          "x": 0.0,
+          "y": 0.45
+        },
+        {
+          "x": -0.383,
+          "y": 0.416
+        },
+        {
+          "x": -0.707,
+          "y": 0.318
+        },
+        {
+          "x": -0.924,
+          "y": 0.171
+        },
+        {
+          "x": -1.0,
+          "y": 0.0
+        },
+        {
+          "x": -0.924,
+          "y": -0.171
+        },
+        {
+          "x": -0.707,
+          "y": -0.318
+        },
+        {
+          "x": -0.383,
+          "y": -0.416
+        },
+        {
+          "x": 0.0,
+          "y": -0.45
+        },
+        {
+          "x": 0.383,
+          "y": -0.416
+        },
+        {
+          "x": 0.707,
+          "y": -0.318
+        },
+        {
+          "x": 0.924,
+          "y": -0.171
+        }
       ],
       "area_morph_type": "none",
       "area_movement_type": "none",
@@ -417,15 +844,38 @@
       "camera_shake_intensity": 2,
       "disable_obstacle_fallback": true,
       "static_enemies": [
-        {"type": "shooter", "size": 55, "spin": 0}
+        {
+          "type": "shooter",
+          "size": 55,
+          "spin": 0
+        }
       ],
       "enemies": [
-        {"type": "teleporter", "multiplier": {"base": 25, "growth": 0.3}},
-        {"type": "obstacle", "multiplier": {"base": 20, "growth": 0.2}},
-        {"type": "bouncer", "multiplier": {"base": 15, "growth": 0.25}}
+        {
+          "type": "teleporter",
+          "multiplier": {
+            "base": 25,
+            "growth": 0.3
+          }
+        },
+        {
+          "type": "obstacle",
+          "multiplier": {
+            "base": 20,
+            "growth": 0.2
+          }
+        },
+        {
+          "type": "bouncer",
+          "multiplier": {
+            "base": 15,
+            "growth": 0.25
+          }
+        }
       ],
       "flavor_text": "Microwave. Fork is sparking. Don't get zapped.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/30_seconds.jpeg"
     },
     {
       "clone_index": 10,
@@ -436,7 +886,23 @@
       "music_track": "dodge_theme_2",
       "sfx_theme": null,
       "background": "plasma",
-      "bg_colors": [[0.04, 0.0, 0.07], [0.0, 0.03, 0.06], [0.05, 0.01, 0.08]],
+      "bg_colors": [
+        [
+          0.04,
+          0.0,
+          0.07
+        ],
+        [
+          0.0,
+          0.03,
+          0.06
+        ],
+        [
+          0.05,
+          0.01,
+          0.08
+        ]
+      ],
       "bg_speed": 0.08,
       "bg_scale": 8.0,
       "difficulty_modifier": 1.0,
@@ -448,15 +914,50 @@
       "shield": 1,
       "shield_recharge_time": 8,
       "enemies": [
-        {"type": "obstacle", "multiplier": 2},
-        {"type": "chaser", "multiplier": 1},
-        {"type": "splitter", "multiplier": 0.8},
-        {"type": "bouncer", "multiplier": 0.7}
+        {
+          "type": "obstacle",
+          "multiplier": 2
+        },
+        {
+          "type": "chaser",
+          "multiplier": 1
+        },
+        {
+          "type": "splitter",
+          "multiplier": 0.8
+        },
+        {
+          "type": "bouncer",
+          "multiplier": 0.7
+        }
       ],
-      "enemy_sizes": {"splitter": [25, 40], "chaser": [18, 28], "bouncer": [12, 22]},
-      "enemy_speeds": {"chaser": [50, 80], "bouncer": [140, 200]},
+      "enemy_sizes": {
+        "splitter": [
+          25,
+          40
+        ],
+        "chaser": [
+          18,
+          28
+        ],
+        "bouncer": [
+          12,
+          22
+        ]
+      },
+      "enemy_speeds": {
+        "chaser": [
+          50,
+          80
+        ],
+        "bouncer": [
+          140,
+          200
+        ]
+      },
       "flavor_text": "Pulled to the center, obstacles hunt you down",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/gravity_well.jpeg"
     },
     {
       "clone_index": 11,
@@ -468,7 +969,11 @@
       "sfx_theme": "backrooms",
       "background": "image",
       "bg_image": "assets/backgrounds/backrooms.jpeg",
-      "bg_color": [0.12, 0.10, 0.06],
+      "bg_color": [
+        0.12,
+        0.1,
+        0.06
+      ],
       "difficulty_modifier": 1.0,
       "movement_speed": 240,
       "victory_condition": "dodge_count",
@@ -485,27 +990,76 @@
       "disable_obstacle_fallback": true,
       "camera_shake_intensity": 2,
       "static_enemies": [
-        {"type": "obstacle", "size": 20, "spin": 0},
-        {"type": "obstacle", "size": 25, "spin": 0},
-        {"type": "obstacle", "size": 18, "spin": 0}
+        {
+          "type": "obstacle",
+          "size": 20,
+          "spin": 0
+        },
+        {
+          "type": "obstacle",
+          "size": 25,
+          "spin": 0
+        },
+        {
+          "type": "obstacle",
+          "size": 18,
+          "spin": 0
+        }
       ],
       "enemy_sizes": {
-        "chaser": [20, 35],
-        "teleporter": [18, 25],
-        "obstacle": [15, 25]
+        "chaser": [
+          20,
+          35
+        ],
+        "teleporter": [
+          18,
+          25
+        ],
+        "obstacle": [
+          15,
+          25
+        ]
       },
       "enemy_speeds": {
-        "chaser": [40, 70],
-        "teleporter": [60, 100],
-        "obstacle": [120, 180]
+        "chaser": [
+          40,
+          70
+        ],
+        "teleporter": [
+          60,
+          100
+        ],
+        "obstacle": [
+          120,
+          180
+        ]
       },
       "enemies": [
-        {"type": "chaser", "multiplier": {"base": 30, "growth": 0.3}},
-        {"type": "teleporter", "multiplier": {"base": 15, "growth": 0.2}},
-        {"type": "obstacle", "multiplier": {"base": 20, "growth": 0.15}}
+        {
+          "type": "chaser",
+          "multiplier": {
+            "base": 30,
+            "growth": 0.3
+          }
+        },
+        {
+          "type": "teleporter",
+          "multiplier": {
+            "base": 15,
+            "growth": 0.2
+          }
+        },
+        {
+          "type": "obstacle",
+          "multiplier": {
+            "base": 20,
+            "growth": 0.15
+          }
+        }
       ],
       "flavor_text": "The Backrooms. The carpet is damp. Something is here.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/level_0.jpeg"
     },
     {
       "clone_index": 12,
@@ -517,21 +1071,51 @@
       "sfx_theme": null,
       "background": "image",
       "bg_image": "assets/backgrounds/Asteroid_field_debris.jpeg",
-      "bg_color": [0.02, 0.02, 0.02],
+      "bg_color": [
+        0.02,
+        0.02,
+        0.02
+      ],
       "difficulty_modifier": 1.0,
       "movement_speed": 280,
       "leaving_area_ends_game": true,
       "area_morph_type": "shrink",
       "enemies": [
-        {"type": "bouncer", "multiplier": 1.5},
-        {"type": "zigzag", "multiplier": 1},
-        {"type": "obstacle", "multiplier": 1.5}
+        {
+          "type": "bouncer",
+          "multiplier": 1.5
+        },
+        {
+          "type": "zigzag",
+          "multiplier": 1
+        },
+        {
+          "type": "obstacle",
+          "multiplier": 1.5
+        }
       ],
-      "enemy_sizes": {"bouncer": [20, 35], "zigzag": [14, 24]},
-      "enemy_speeds": {"bouncer": [120, 180]},
-      "enemy_wave_amps": {"zigzag": 130},
+      "enemy_sizes": {
+        "bouncer": [
+          20,
+          35
+        ],
+        "zigzag": [
+          14,
+          24
+        ]
+      },
+      "enemy_speeds": {
+        "bouncer": [
+          120,
+          180
+        ]
+      },
+      "enemy_wave_amps": {
+        "zigzag": 130
+      },
       "flavor_text": "Cross the line and it's over",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/one_strike.jpeg"
     },
     {
       "clone_index": 13,
@@ -543,7 +1127,11 @@
       "sfx_theme": "kitchen",
       "background": "image",
       "bg_image": "assets/backgrounds/blender_smoothie.jpeg",
-      "bg_color": [0.15, 0.05, 0.08],
+      "bg_color": [
+        0.15,
+        0.05,
+        0.08
+      ],
       "difficulty_modifier": 1.0,
       "movement_speed": 300,
       "victory_condition": "time",
@@ -561,16 +1149,41 @@
       "camera_shake_intensity": 3,
       "disable_obstacle_fallback": true,
       "static_enemies": [
-        {"type": "obstacle", "size": 30, "spin": 360},
-        {"type": "obstacle", "size": 25, "spin": -270},
-        {"type": "obstacle", "size": 35, "spin": 450}
+        {
+          "type": "obstacle",
+          "size": 30,
+          "spin": 360
+        },
+        {
+          "type": "obstacle",
+          "size": 25,
+          "spin": -270
+        },
+        {
+          "type": "obstacle",
+          "size": 35,
+          "spin": 450
+        }
       ],
       "enemies": [
-        {"type": "splitter", "multiplier": {"base": 30, "growth": 0.2}},
-        {"type": "bouncer", "multiplier": {"base": 20, "growth": 0.3}}
+        {
+          "type": "splitter",
+          "multiplier": {
+            "base": 30,
+            "growth": 0.2
+          }
+        },
+        {
+          "type": "bouncer",
+          "multiplier": {
+            "base": 20,
+            "growth": 0.3
+          }
+        }
       ],
       "flavor_text": "You're in a blender. Blades orbit the center. Everything spirals inward.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/will_it_blend.jpeg"
     },
     {
       "clone_index": 14,
@@ -581,7 +1194,23 @@
       "music_track": "dodge_theme_3",
       "sfx_theme": null,
       "background": "plasma",
-      "bg_colors": [[0.05, 0.0, 0.05], [0.0, 0.02, 0.04], [0.06, 0.01, 0.03]],
+      "bg_colors": [
+        [
+          0.05,
+          0.0,
+          0.05
+        ],
+        [
+          0.0,
+          0.02,
+          0.04
+        ],
+        [
+          0.06,
+          0.01,
+          0.03
+        ]
+      ],
       "bg_speed": 0.1,
       "bg_scale": 12.0,
       "bg_plasma_layers": 6,
@@ -593,16 +1222,53 @@
       "fog_of_war_radius": 200,
       "player_trail_length": 10,
       "enemies": [
-        {"type": "obstacle", "multiplier": 1.5},
-        {"type": "zigzag", "multiplier": 1.5},
-        {"type": "bouncer", "multiplier": 1},
-        {"type": "teleporter", "multiplier": 0.5}
+        {
+          "type": "obstacle",
+          "multiplier": 1.5
+        },
+        {
+          "type": "zigzag",
+          "multiplier": 1.5
+        },
+        {
+          "type": "bouncer",
+          "multiplier": 1
+        },
+        {
+          "type": "teleporter",
+          "multiplier": 0.5
+        }
       ],
-      "enemy_sizes": {"zigzag": [14, 26], "bouncer": [18, 30], "teleporter": [10, 18]},
-      "enemy_speeds": {"bouncer": [120, 180], "teleporter": [90, 140]},
-      "enemy_wave_amps": {"zigzag": 100},
+      "enemy_sizes": {
+        "zigzag": [
+          14,
+          26
+        ],
+        "bouncer": [
+          18,
+          30
+        ],
+        "teleporter": [
+          10,
+          18
+        ]
+      },
+      "enemy_speeds": {
+        "bouncer": [
+          120,
+          180
+        ],
+        "teleporter": [
+          90,
+          140
+        ]
+      },
+      "enemy_wave_amps": {
+        "zigzag": 100
+      },
       "flavor_text": "Spiraling obstacles, outward gravity, limited vision",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/spiral_descent.jpeg"
     },
     {
       "clone_index": 15,
@@ -617,12 +1283,31 @@
       "movement_speed": 300,
       "disable_obstacle_fallback": true,
       "enemies": [
-        {"type": "obstacle", "multiplier": {"base": 50, "growth": 0}},
-        {"type": "chaser", "multiplier": {"base": 5, "growth": 0.3}},
-        {"type": "shooter", "multiplier": {"base": 0, "growth": 0.3}}
+        {
+          "type": "obstacle",
+          "multiplier": {
+            "base": 50,
+            "growth": 0
+          }
+        },
+        {
+          "type": "chaser",
+          "multiplier": {
+            "base": 5,
+            "growth": 0.3
+          }
+        },
+        {
+          "type": "shooter",
+          "multiplier": {
+            "base": 0,
+            "growth": 0.3
+          }
+        }
       ],
       "flavor_text": "Starts easy. Gets worse. Shooters appear around 15 seconds.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/escalation.jpeg"
     },
     {
       "clone_index": 16,
@@ -634,9 +1319,21 @@
       "sfx_theme": null,
       "background": "flowing",
       "bg_colors": [
-        [0.08, 0.01, 0.02],
-        [0.03, 0.0, 0.04],
-        [0.1, 0.02, 0.01]
+        [
+          0.08,
+          0.01,
+          0.02
+        ],
+        [
+          0.03,
+          0.0,
+          0.04
+        ],
+        [
+          0.1,
+          0.02,
+          0.01
+        ]
       ],
       "bg_speed": 0.4,
       "bg_warp": 1.8,
@@ -651,16 +1348,47 @@
       "shield_recharge_time": 10,
       "camera_shake_intensity": 0.8,
       "enemies": [
-        {"type": "zigzag", "multiplier": 1.5},
-        {"type": "chaser", "multiplier": 1},
-        {"type": "obstacle", "multiplier": 1.5}
+        {
+          "type": "zigzag",
+          "multiplier": 1.5
+        },
+        {
+          "type": "chaser",
+          "multiplier": 1
+        },
+        {
+          "type": "obstacle",
+          "multiplier": 1.5
+        }
       ],
-      "enemy_sizes": {"zigzag": [18, 30], "chaser": [12, 22]},
-      "enemy_speeds": {"chaser": [60, 100]},
-      "enemy_wave_amps": {"zigzag": 150},
-      "enemy_wave_speeds": {"zigzag": [1.0, 1.5]},
+      "enemy_sizes": {
+        "zigzag": [
+          18,
+          30
+        ],
+        "chaser": [
+          12,
+          22
+        ]
+      },
+      "enemy_speeds": {
+        "chaser": [
+          60,
+          100
+        ]
+      },
+      "enemy_wave_amps": {
+        "zigzag": 150
+      },
+      "enemy_wave_speeds": {
+        "zigzag": [
+          1.0,
+          1.5
+        ]
+      },
       "flavor_text": "The ultimate test. Waves, wind, tracking, minimal survival",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/perfect_storm.jpeg"
     },
     {
       "clone_index": 17,
@@ -672,7 +1400,11 @@
       "sfx_theme": null,
       "background": "image",
       "bg_image": "assets/backgrounds/flesh_tunnel.jpeg",
-      "bg_color": [0.18, 0.06, 0.06],
+      "bg_color": [
+        0.18,
+        0.06,
+        0.06
+      ],
       "arena_image": "assets/backgrounds/flesh_tunnel_mask.png",
       "arena_image_invert": true,
       "arena_base_width": 650,
@@ -687,17 +1419,32 @@
       "area_movement_type": "none",
       "hide_arena": true,
       "area_gravity": 0,
-      "area_gravity_origin": [0.6, 0.4],
+      "area_gravity_origin": [
+        0.6,
+        0.4
+      ],
       "disable_obstacle_fallback": true,
       "obstacle_spawn_rate": 1.0,
       "camera_shake_intensity": 3,
       "phase_cycle": {
         "loop": true,
         "phases": [
-          {"duration": 3, "area_gravity": 150},
-          {"duration": 1, "area_gravity": 0},
-          {"duration": 3, "area_gravity": -150},
-          {"duration": 1, "area_gravity": 0}
+          {
+            "duration": 3,
+            "area_gravity": 150
+          },
+          {
+            "duration": 1,
+            "area_gravity": 0
+          },
+          {
+            "duration": 3,
+            "area_gravity": -150
+          },
+          {
+            "duration": 1,
+            "area_gravity": 0
+          }
         ]
       },
       "timed_events": [
@@ -707,18 +1454,54 @@
           "area_gravity": 400,
           "shake": 5,
           "spawn_rate_mult": 5,
-          "burst": [{"type": "obstacle", "count": 25}]
+          "burst": [
+            {
+              "type": "obstacle",
+              "count": 25
+            }
+          ]
         }
       ],
       "enemies": [
-        {"type": "obstacle", "multiplier": {"base": 30, "growth": 0.2}},
-        {"type": "chaser", "multiplier": {"base": 15, "growth": 0.3}},
-        {"type": "bouncer", "multiplier": {"base": 15, "growth": 0.2}},
-        {"type": "splitter", "multiplier": {"base": 10, "growth": 0.25}},
-        {"type": "lunger", "multiplier": {"base": 3, "growth": 0.4}}
+        {
+          "type": "obstacle",
+          "multiplier": {
+            "base": 30,
+            "growth": 0.2
+          }
+        },
+        {
+          "type": "chaser",
+          "multiplier": {
+            "base": 15,
+            "growth": 0.3
+          }
+        },
+        {
+          "type": "bouncer",
+          "multiplier": {
+            "base": 15,
+            "growth": 0.2
+          }
+        },
+        {
+          "type": "splitter",
+          "multiplier": {
+            "base": 10,
+            "growth": 0.25
+          }
+        },
+        {
+          "type": "lunger",
+          "multiplier": {
+            "base": 3,
+            "growth": 0.4
+          }
+        }
       ],
       "flavor_text": "Dust mite in a nostril. The breathing cycle IS the game.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/nasal_passage.jpeg"
     },
     {
       "clone_index": 18,
@@ -730,7 +1513,11 @@
       "sfx_theme": null,
       "background": "image",
       "bg_image": "assets/backgrounds/Solar_wind_plasma.jpeg",
-      "bg_color": [0.03, 0.01, 0.01],
+      "bg_color": [
+        0.03,
+        0.01,
+        0.01
+      ],
       "difficulty_modifier": 1.0,
       "movement_speed": 320,
       "obstacle_spawn_rate": 2.5,
@@ -739,16 +1526,61 @@
       "fog_of_war_radius": 150,
       "obstacle_trails": 8,
       "enemies": [
-        {"type": "obstacle", "multiplier": 2},
-        {"type": "bouncer", "multiplier": 1},
-        {"type": "zigzag", "multiplier": 0.8},
-        {"type": "teleporter", "multiplier": 0.5}
+        {
+          "type": "obstacle",
+          "multiplier": 2
+        },
+        {
+          "type": "bouncer",
+          "multiplier": 1
+        },
+        {
+          "type": "zigzag",
+          "multiplier": 0.8
+        },
+        {
+          "type": "teleporter",
+          "multiplier": 0.5
+        }
       ],
-      "enemy_sizes": {"bouncer": [8, 16], "zigzag": [8, 14], "teleporter": [8, 14], "obstacle": [8, 16]},
-      "enemy_speeds": {"bouncer": [160, 240], "zigzag": [150, 220], "teleporter": [120, 180]},
-      "enemy_wave_amps": {"zigzag": 60},
+      "enemy_sizes": {
+        "bouncer": [
+          8,
+          16
+        ],
+        "zigzag": [
+          8,
+          14
+        ],
+        "teleporter": [
+          8,
+          14
+        ],
+        "obstacle": [
+          8,
+          16
+        ]
+      },
+      "enemy_speeds": {
+        "bouncer": [
+          160,
+          240
+        ],
+        "zigzag": [
+          150,
+          220
+        ],
+        "teleporter": [
+          120,
+          180
+        ]
+      },
+      "enemy_wave_amps": {
+        "zigzag": 60
+      },
       "flavor_text": "Tiny hitbox, one life, chaos everywhere. Good luck.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/bullet_hell_nano.jpeg"
     },
     {
       "clone_index": 19,
@@ -760,7 +1592,11 @@
       "sfx_theme": "tornado",
       "background": "image",
       "bg_image": "assets/backgrounds/tornado_cornfield.jpeg",
-      "bg_color": [0.06, 0.08, 0.04],
+      "bg_color": [
+        0.06,
+        0.08,
+        0.04
+      ],
       "difficulty_modifier": 1.0,
       "movement_speed": 320,
       "victory_condition": "time",
@@ -777,22 +1613,53 @@
       "obstacle_spawn_rate": 0.8,
       "disable_obstacle_fallback": true,
       "enemy_speeds": {
-        "zigzag": [80, 120]
+        "zigzag": [
+          80,
+          120
+        ]
       },
       "enemy_wave_amps": {
         "zigzag": 300
       },
       "enemy_wave_speeds": {
-        "zigzag": [0.8, 0.4]
+        "zigzag": [
+          0.8,
+          0.4
+        ]
       },
       "enemies": [
-        {"type": "obstacle", "multiplier": {"base": 30, "growth": 0.2}},
-        {"type": "bouncer", "multiplier": {"base": 20, "growth": 0.25}},
-        {"type": "chaser", "multiplier": {"base": 10, "growth": 0.3}},
-        {"type": "zigzag", "multiplier": {"base": 15, "growth": 0.2}}
+        {
+          "type": "obstacle",
+          "multiplier": {
+            "base": 30,
+            "growth": 0.2
+          }
+        },
+        {
+          "type": "bouncer",
+          "multiplier": {
+            "base": 20,
+            "growth": 0.25
+          }
+        },
+        {
+          "type": "chaser",
+          "multiplier": {
+            "base": 10,
+            "growth": 0.3
+          }
+        },
+        {
+          "type": "zigzag",
+          "multiplier": {
+            "base": 15,
+            "growth": 0.2
+          }
+        }
       ],
       "flavor_text": "Tornado. Stay in the eye. Everything else is in the air.",
-      "intro_cutscene": null
+      "intro_cutscene": null,
+      "boxart": "assets/boxart/dodge/storm_chaser.jpeg"
     }
   ]
 }

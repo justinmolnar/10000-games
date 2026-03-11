@@ -60,6 +60,13 @@ function CheatEngineView:init(controller, di)
     -- Cracktro effects
     self.effects = CracktroEffects:new()
     self.dt = 0
+
+    -- Save flash
+    self.save_flash_timer = 0
+end
+
+function CheatEngineView:flashSaved()
+    self.save_flash_timer = 1.5
 end
 
 function CheatEngineView:updateLayout(viewport_width, viewport_height)
@@ -71,6 +78,9 @@ end
 function CheatEngineView:update(dt, games, selected_game_id, params, modifications, step_size, viewport_width, viewport_height, active_tab, player_data)
     self.dt = dt
     self.effects:update(dt)
+    if self.save_flash_timer > 0 then
+        self.save_flash_timer = self.save_flash_timer - dt
+    end
 
     local mx, my = love.mouse.getPosition()
     local view_x = self.controller.viewport and self.controller.viewport.x or 0
@@ -296,11 +306,19 @@ function CheatEngineView:drawGameListPanel(games, selected_game_id, viewport_hei
             end
             love.graphics.rectangle('fill', self.game_list_x + 2, gy, self.game_list_w - 4 - lane_w, self.item_h)
 
+            -- Modification indicator
+            local player_data = self.controller and self.controller.player_data
+            local has_mods = player_data and player_data.hasGameModifications and player_data:hasGameModifications(game.id)
+            if has_mods then
+                love.graphics.setColor(1, 0.85, 0)
+                love.graphics.rectangle('fill', self.game_list_x + self.game_list_w - lane_w - 12, gy + 8, 6, 6)
+            end
+
             -- Text
             if is_selected then
                 love.graphics.setColor(0.0, 1.0, 1.0)
             else
-                love.graphics.setColor(0.0, 0.67, 1.0)
+                love.graphics.setColor(has_mods and {0.0, 1.0, 0.7} or {0.0, 0.67, 1.0})
             end
             love.graphics.print(game.display_name or game.id, self.game_list_x + 8, gy + 5)
         end
@@ -337,6 +355,13 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
     love.graphics.setColor(0.0, 0.67, 1.0)
     love.graphics.print("[= PARAMETERS =]", self.param_panel_x + 5, self.param_panel_y + 4)
 
+    -- Save flash indicator
+    if self.save_flash_timer and self.save_flash_timer > 0 then
+        local alpha = math.min(1, self.save_flash_timer / 0.5)
+        love.graphics.setColor(0, 1, 0, alpha)
+        love.graphics.print("SAVED", self.param_panel_x + self.param_panel_w - 60, self.param_panel_y + 4)
+    end
+
     -- Panel background (semi-transparent)
     love.graphics.setColor(0.02, 0.02, 0.06, 0.85)
     love.graphics.rectangle('fill', self.param_panel_x + 1, self.param_panel_y + 21, self.param_panel_w - 2, self.param_panel_h - 22)
@@ -352,6 +377,17 @@ function CheatEngineView:drawParameterPanel(params, modifications, player_data, 
     love.graphics.setColor(1, 1, 0)
     love.graphics.print(string.format("%d / %d", budget_available, budget_total),
         self.param_panel_x + 80, line_y + 4)
+
+    -- Modification count indicator
+    local mod_count = 0
+    if modifications then
+        for _ in pairs(modifications) do mod_count = mod_count + 1 end
+    end
+    if mod_count > 0 then
+        love.graphics.setColor(0.0, 1.0, 1.0)
+        love.graphics.print(string.format("%d mod%s saved", mod_count, mod_count == 1 and "" or "s"),
+            self.param_panel_x + self.param_panel_w - 140, line_y + 4)
+    end
 
     love.graphics.setColor(0.7, 0.7, 0.7)
     love.graphics.print("Step:", self.param_panel_x + 200, line_y + 4)

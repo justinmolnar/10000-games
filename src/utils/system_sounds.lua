@@ -160,33 +160,43 @@ end
 function SystemSounds:subscribeEvents()
     if not self.event_bus then return end
 
-    self.event_bus:subscribe('window_opened', function()
+    self._subscriptions = {}
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('window_opened', function()
         self:playSystemSound('window_open')
     end)
 
-    self.event_bus:subscribe('window_closed', function()
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('window_closed', function()
         self:playSystemSound('window_close')
     end)
 
-    self.event_bus:subscribe('window_maximized', function()
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('window_maximized', function()
         self:playSystemSound('window_maximize')
     end)
 
-    self.event_bus:subscribe('window_minimized', function()
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('window_minimized', function()
         self:playSystemSound('window_minimize')
     end)
 
-    self.event_bus:subscribe('window_restored', function()
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('window_restored', function()
         self:playSystemSound('window_restore')
     end)
 
-    self.event_bus:subscribe('start_menu_opened', function()
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('start_menu_opened', function()
         self:playSystemSound('menu_open')
     end)
 
-    self.event_bus:subscribe('start_menu_closed', function()
+    self._subscriptions[#self._subscriptions + 1] = self.event_bus:subscribe('start_menu_closed', function()
         self:playSystemSound('menu_command')
     end)
+end
+
+function SystemSounds:destroy()
+    if self.event_bus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.event_bus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
 end
 
 return SystemSounds

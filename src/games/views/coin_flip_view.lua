@@ -6,13 +6,11 @@ function CoinFlipView:init(game)
 end
 
 function CoinFlipView:drawContent()
-    -- Use viewport dimensions if available (for demo playback), otherwise full screen
     local w = self.game.viewport_width or love.graphics.getWidth()
     local h = self.game.viewport_height or love.graphics.getHeight()
 
     -- Background
-    love.graphics.setColor(0.1, 0.1, 0.15)
-    love.graphics.rectangle('fill', 0, 0, w, h)
+    self:drawBackgroundSolid(w, h)
 
     self.game.visual_effects:drawScreenFlash(w, h)
     self.game.visual_effects:drawParticles()
@@ -33,7 +31,7 @@ function CoinFlipView:drawContent()
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("COIN FLIP CHALLENGE", 20, 50, 0, 2, 2)
 
-    -- Pattern history display (complex - uses table.concat)
+    -- Pattern history
     if self.game.params.show_pattern_history and #self.game.pattern_history > 0 then
         local history_str = table.concat(self.game.pattern_history, " ")
         love.graphics.setColor(0.7, 0.7, 0.7)
@@ -43,15 +41,13 @@ function CoinFlipView:drawContent()
     -- Auto-flip countdown
     if self.game.params.auto_flip_interval > 0 and self.game.waiting_for_guess and not self.game.game_over and not self.game.victory then
         love.graphics.setColor(1, 1, 0.3)
-        local countdown = math.ceil(self.game.auto_flip_timer)
-        love.graphics.print("Auto-flip in: " .. countdown .. "s", w - 150, 10)
+        love.graphics.print("Auto-flip in: " .. math.ceil(self.game.auto_flip_timer) .. "s", w - 150, 10)
     end
 
     -- Time per flip countdown
     if self.game.time_per_flip > 0 and self.game.waiting_for_guess and not self.game.game_over and not self.game.victory then
         local time_left = math.ceil(self.game.time_per_flip_timer)
-        local color = time_left <= 3 and {1, 0, 0} or {1, 1, 1}  -- Red if low
-        love.graphics.setColor(color)
+        love.graphics.setColor(time_left <= 3 and {1, 0, 0} or {1, 1, 1})
         love.graphics.print("Time Left: " .. time_left .. "s", w - 150, 30, 0, 1.2, 1.2)
     end
 
@@ -75,59 +71,30 @@ function CoinFlipView:drawContent()
         love.graphics.print("+WATER", wx - 8, wy + 34, 0, 0.8, 0.8)
     end
 
-    -- Coin display area (center)
-    local coin_x = w / 2
-    local coin_y = h / 2
+    -- Coin rendering (physics-driven)
+    self:drawCoin(w, h)
+
+    -- Result message
+    local coin_rest_y = h / 2 + 40
     local coin_radius = 80
-
-    -- Flip animation
-    love.graphics.push()
-    love.graphics.translate(coin_x, coin_y)
-
-    if self.game.flip_animation:isActive() then
-        -- Rotate around Y-axis (create 3D flip illusion by scaling X)
-        local rotation_progress = self.game.flip_animation:getRotation() % (math.pi * 2)
-        local scale_x = math.abs(math.cos(rotation_progress))
-        love.graphics.scale(scale_x, 1)
-    end
-
-    -- Draw coin
-    love.graphics.setColor(0.8, 0.7, 0.2)  -- Gold color
-    love.graphics.circle('fill', 0, 0, coin_radius)
-    love.graphics.setColor(0.6, 0.5, 0.1)
-    love.graphics.circle('line', 0, 0, coin_radius)
-
-    -- Show last result on coin
-    love.graphics.setColor(0.2, 0.2, 0.2)
-    if self.game.last_result then
-        local result_text = self.game.last_result:upper()
-        love.graphics.printf(result_text, -60, -10, 120, 'center')
-    else
-        love.graphics.printf("?", -60, -10, 120, 'center')
-    end
-
-    love.graphics.pop()
-
-    -- Show result message
+    local result_y = coin_rest_y + coin_radius + 20
     if self.game.show_result then
         if self.game.params.flip_mode == "auto" then
-            -- Auto mode: HEADS = success, TAILS = miss
             if self.game.last_result == 'heads' then
                 love.graphics.setColor(0, 1, 0)
-                love.graphics.printf("HEADS!", coin_x - 100, coin_y + 100, 200, 'center', 0, 2, 2)
+                love.graphics.printf("HEADS!", w / 2 - 100, result_y, 200, 'center', 0, 2, 2)
             else
                 love.graphics.setColor(1, 0, 0)
-                love.graphics.printf("TAILS!", coin_x - 100, coin_y + 100, 200, 'center', 0, 2, 2)
+                love.graphics.printf("TAILS!", w / 2 - 100, result_y, 200, 'center', 0, 2, 2)
             end
         else
-            -- Guess mode: show CORRECT/WRONG
             local is_correct = self.game.last_guess == self.game.last_result
             if is_correct then
                 love.graphics.setColor(0, 1, 0)
-                love.graphics.printf("CORRECT!", coin_x - 100, coin_y + 100, 200, 'center', 0, 2, 2)
+                love.graphics.printf("CORRECT!", w / 2 - 100, result_y, 200, 'center', 0, 2, 2)
             else
                 love.graphics.setColor(1, 0, 0)
-                love.graphics.printf("WRONG!", coin_x - 100, coin_y + 100, 200, 'center', 0, 2, 2)
+                love.graphics.printf("WRONG!", w / 2 - 100, result_y, 200, 'center', 0, 2, 2)
             end
         end
     end
@@ -143,6 +110,92 @@ function CoinFlipView:drawContent()
             love.graphics.printf("[H] Heads  |  [T] Tails", 0, h - 60, w, 'center', 0, 1.5, 1.5)
         end
     end
+end
+
+function CoinFlipView:drawCoin(w, h)
+    local coin_x = w / 2
+    local coin_rest_y = h / 2 + 40
+    local coin_radius = 80
+    local edge_thickness = 10
+
+    local c = self.game.coin
+    local spin = c.spin
+    local coin_y = coin_rest_y + c.y
+
+    -- Tumble axis: coin spins around horizontal axis (top-over-bottom)
+    -- sin(spin) gives vertical foreshortening: ±1 = face-on, 0 = edge-on
+    local face_amount = math.sin(spin)
+    local face_scale = math.abs(face_amount)
+    local showing_heads = (face_amount >= 0)
+
+    -- Shadow on the "table" surface — shrinks as coin rises
+    local height_ratio = math.max(0, 1 + c.y / 300) -- 1 at rest, 0 when 300px up
+    local shadow_alpha = 0.25 * height_ratio
+    love.graphics.setColor(0, 0, 0, shadow_alpha)
+    love.graphics.ellipse('fill', coin_x, coin_rest_y + coin_radius * 0.6,
+        coin_radius * 0.9 * height_ratio, coin_radius * 0.18 * height_ratio)
+
+    love.graphics.push()
+    love.graphics.translate(coin_x, coin_y)
+
+    if face_scale < 0.12 then
+        -- Edge-on: draw as a horizontal bar
+        love.graphics.setColor(0.55, 0.42, 0.08)
+        love.graphics.rectangle('fill', -coin_radius, -edge_thickness / 2, coin_radius * 2, edge_thickness)
+        love.graphics.setColor(0.45, 0.34, 0.06)
+        love.graphics.rectangle('line', -coin_radius, -edge_thickness / 2, coin_radius * 2, edge_thickness)
+        -- Ridges
+        love.graphics.setColor(0.65, 0.52, 0.12)
+        for i = 0, 6 do
+            local rx = -coin_radius + 10 + i * ((coin_radius * 2 - 20) / 6)
+            love.graphics.line(rx, -edge_thickness / 2 + 1, rx, edge_thickness / 2 - 1)
+        end
+    else
+        -- Face visible — draw as Y-squashed ellipse
+
+        -- Edge band behind the face (depth cue)
+        if face_scale < 0.85 then
+            local edge_dir = showing_heads and 1 or -1
+            local band_offset = edge_thickness * (1 - face_scale) * edge_dir * 0.5
+            love.graphics.setColor(0.55, 0.42, 0.08)
+            love.graphics.ellipse('fill', 0, band_offset, coin_radius, coin_radius * face_scale)
+        end
+
+        -- Coin face
+        if showing_heads then
+            love.graphics.setColor(0.85, 0.72, 0.2)
+        else
+            love.graphics.setColor(0.78, 0.65, 0.18)
+        end
+        love.graphics.ellipse('fill', 0, 0, coin_radius, coin_radius * face_scale)
+
+        -- Inner ring
+        if face_scale > 0.3 then
+            love.graphics.setColor(0.7, 0.58, 0.15, 0.4 * face_scale)
+            love.graphics.ellipse('line', 0, 0, coin_radius * 0.8, coin_radius * 0.8 * face_scale)
+        end
+
+        -- Border
+        love.graphics.setColor(0.6, 0.5, 0.1)
+        love.graphics.setLineWidth(2)
+        love.graphics.ellipse('line', 0, 0, coin_radius, coin_radius * face_scale)
+        love.graphics.setLineWidth(1)
+
+        -- Text on face (only when mostly face-on)
+        if face_scale > 0.4 then
+            local text_alpha = math.min(1, (face_scale - 0.4) / 0.3)
+            love.graphics.setColor(0.2, 0.15, 0.05, text_alpha)
+            local display_text = "?"
+            if self.game.last_result and c.landed then
+                display_text = self.game.last_result:upper()
+            elseif self.game.last_result and c.spin_speed ~= 0 then
+                display_text = showing_heads and "H" or "T"
+            end
+            love.graphics.printf(display_text, -60, -10 * face_scale, 120, 'center')
+        end
+    end
+
+    love.graphics.pop()
 end
 
 function CoinFlipView:getVictorySubtitle()

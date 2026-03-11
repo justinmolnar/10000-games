@@ -118,7 +118,14 @@ local defaults = {
     desktop_bg_g = 0.5,
     desktop_bg_b = 0.5,
     desktop_icon_snap = true,
-    sound_scheme = "default"
+    sound_scheme = "default",
+    theme = "default",
+    -- Display settings
+    display_monitor = nil,      -- nil = use conf.lua default
+    display_resolution = nil,   -- nil = use conf.lua default
+    display_mode = nil,         -- nil = use conf.lua default ('fullscreen'|'borderless'|'windowed')
+    -- Cheats
+    cheats_enabled = false
 }
 
 -- (current_settings declared above)
@@ -169,8 +176,12 @@ function SettingsManager.load()
             -- Publish settings_loaded event
             local eb = get_event_bus()
             if eb then pcall(eb.publish, eb, 'settings_loaded', current_settings) end
-            SettingsManager.applyAudioSettings() -- Apply volume on load
-            SettingsManager.applyFullscreen() -- Apply fullscreen on load
+            SettingsManager.applyAudioSettings()
+            if current_settings.display_mode then
+                SettingsManager.applyDisplay()
+            else
+                SettingsManager.applyFullscreen()
+            end
             return true
         else
             print("Error decoding settings file: " .. tostring(data) .. ". Using defaults.")
@@ -186,42 +197,104 @@ function SettingsManager.load()
     -- Publish settings_loaded event even when using defaults
     local eb = get_event_bus()
     if eb then pcall(eb.publish, eb, 'settings_loaded', current_settings) end
-    SettingsManager.applyAudioSettings() -- Apply default volume
-    SettingsManager.applyFullscreen() -- Apply default fullscreen
+    SettingsManager.applyAudioSettings()
+    SettingsManager.applyFullscreen()
     return false
 end
 
--- Apply fullscreen setting
+-- Get the display/monitor to use (from settings, then config, then default 1)
+local function getDisplay()
+    local d = current_settings.display_monitor
+    if d then return d end
+    local wf = (ConfigRef and ConfigRef.window and ConfigRef.window.fullscreen) or {}
+    return wf.display or 1
+end
+
+-- Parse resolution string "WxH" into width, height
+local function parseResolution(res_str)
+    if not res_str then return nil, nil end
+    local w, h = res_str:match("(%d+)x(%d+)")
+    if w and h then return tonumber(w), tonumber(h) end
+    return nil, nil
+end
+
+-- Apply display settings (monitor, resolution, window mode)
+function SettingsManager.applyDisplay()
+    local display = getDisplay()
+    local mode = current_settings.display_mode
+
+    -- Parse resolution from settings
+    local res_w, res_h = parseResolution(current_settings.display_resolution)
+
+    if mode == 'fullscreen' then
+        local wf = (ConfigRef and ConfigRef.window and ConfigRef.window.fullscreen) or {}
+        local width = res_w or wf.width or 1920
+        local height = res_h or wf.height or 1080
+        love.window.setMode(width, height, {
+            fullscreen = true,
+            fullscreentype = "exclusive",
+            resizable = false,
+            display = display
+        })
+    elseif mode == 'borderless' then
+        local wf = (ConfigRef and ConfigRef.window and ConfigRef.window.fullscreen) or {}
+        local width = res_w or wf.width or 1920
+        local height = res_h or wf.height or 1080
+        love.window.setMode(width, height, {
+            fullscreen = true,
+            fullscreentype = "desktop",
+            resizable = false,
+            display = display
+        })
+    elseif mode == 'windowed' then
+        local ww = (ConfigRef and ConfigRef.window and ConfigRef.window.windowed) or {}
+        local width = res_w or ww.width or 1280
+        local height = res_h or ww.height or 720
+        love.window.setMode(width, height, {
+            fullscreen = false,
+            resizable = false,
+            display = display
+        })
+    else
+        -- No display_mode set yet - fall back to legacy fullscreen setting
+        SettingsManager.applyFullscreen()
+        return
+    end
+
+    -- Notify listeners that resolution changed
+    local eb = get_event_bus()
+    if eb then
+        local w, h = love.window.getMode()
+        pcall(eb.publish, eb, 'display_resolution_changed', w, h)
+    end
+end
+
+-- Legacy: Apply fullscreen setting (used when display_mode not yet configured)
 function SettingsManager.applyFullscreen()
     local fullscreen = current_settings.fullscreen
     if fullscreen == nil then fullscreen = defaults.fullscreen end
+    local display = getDisplay()
 
     if fullscreen then
-        -- Fullscreen mode - use Config.window.fullscreen if available
         local wf = (ConfigRef and ConfigRef.window and ConfigRef.window.fullscreen) or {}
         local width = wf.width or 1920
         local height = wf.height or 1080
         local fullscreentype = wf.type or "desktop"
-        local resizable = (wf.resizable ~= nil) and wf.resizable or false
         love.window.setMode(width, height, {
             fullscreen = true,
             fullscreentype = fullscreentype,
-            resizable = resizable,
-            display = wf.display or 2
+            resizable = false,
+            display = display
         })
-        print(string.format("Applied fullscreen: true (%dx%d)", width, height))
     else
-        -- Windowed mode - use Config.window.windowed if available
         local ww = (ConfigRef and ConfigRef.window and ConfigRef.window.windowed) or {}
         local width = ww.width or 1280
         local height = ww.height or 720
-        local resizable = (ww.resizable ~= nil) and ww.resizable or false
         love.window.setMode(width, height, {
             fullscreen = false,
-            resizable = resizable,
-            display = ww.display or 2
+            resizable = false,
+            display = display
         })
-        print(string.format("Applied fullscreen: false (%dx%d windowed)", width, height))
     end
 end
 

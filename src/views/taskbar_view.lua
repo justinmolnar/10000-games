@@ -4,6 +4,7 @@
 local Object = require('class')
 local Strings = require('src.utils.strings')
 local UIComponents = require('src.views.ui_components')
+local ThemeManager = require('src.utils.theme_manager')
 
 local TaskbarView = Object:extend('TaskbarView')
 
@@ -41,11 +42,9 @@ function TaskbarView:draw(tokens, windows, focused_window_id, start_menu_open)
     local y = screen_height - self.taskbar_height
 
     -- Draw taskbar background
-    local colors = (self.config.ui and self.config.ui.colors) or {}
-    local taskbar_colors = colors.taskbar or {}
-    love.graphics.setColor(taskbar_colors.bg or {0.75, 0.75, 0.75})
+    love.graphics.setColor(ThemeManager.get("taskbar.bg") or {0.75, 0.75, 0.75})
     love.graphics.rectangle('fill', 0, y, screen_width, self.taskbar_height)
-    love.graphics.setColor(taskbar_colors.top_line or {1, 1, 1})
+    love.graphics.setColor(ThemeManager.get("taskbar.top_line") or {1, 1, 1})
     love.graphics.line(0, y, screen_width, y)
 
     -- Draw components
@@ -86,19 +85,20 @@ function TaskbarView:drawWindowButtons(taskbar_y, windows, focused_window_id)
         local is_hovered = (window.id == self.hovered_taskbar_button_id)
 
         -- Button appearance
+        local tb = ThemeManager.getSection("taskbar_button") or {}
         local top_left_color, bottom_right_color, bg_color
         if is_focused and not is_minimized then
-            bg_color = {0.6, 0.6, 0.6}
-            top_left_color = {0.2, 0.2, 0.2}
-            bottom_right_color = {1, 1, 1}
+            bg_color = tb.bg_focused or {0.6, 0.6, 0.6}
+            top_left_color = tb.border_dark or {0.2, 0.2, 0.2}
+            bottom_right_color = tb.border_light or {1, 1, 1}
         elseif is_hovered then
-            bg_color = {0.85, 0.85, 0.85}
-            top_left_color = {1, 1, 1}
-            bottom_right_color = {0.2, 0.2, 0.2}
+            bg_color = tb.bg_hover or {0.85, 0.85, 0.85}
+            top_left_color = tb.border_light or {1, 1, 1}
+            bottom_right_color = tb.border_dark or {0.2, 0.2, 0.2}
         else
-            bg_color = {0.75, 0.75, 0.75}
-            top_left_color = {1, 1, 1}
-            bottom_right_color = {0.2, 0.2, 0.2}
+            bg_color = tb.bg or {0.75, 0.75, 0.75}
+            top_left_color = tb.border_light or {1, 1, 1}
+            bottom_right_color = tb.border_dark or {0.2, 0.2, 0.2}
         end
 
         -- Draw button background
@@ -123,7 +123,7 @@ function TaskbarView:drawWindowButtons(taskbar_y, windows, focused_window_id)
         end
 
         -- Draw title text
-        love.graphics.setColor(0, 0, 0)
+        love.graphics.setColor(tb.text or {0, 0, 0})
         local text_start_x = window.icon_sprite and (icon_x + icon_size + 3) or (button_x + 5)
         local max_text_width = button_width - (text_start_x - button_x) - 5
         local truncated_title = window.title or "Untitled"
@@ -141,7 +141,7 @@ function TaskbarView:drawWindowButtons(taskbar_y, windows, focused_window_id)
 
         -- Draw minimized overlay
         if is_minimized then
-            love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
+            love.graphics.setColor(tb.minimized_overlay or {0.4, 0.4, 0.4, 0.5})
             love.graphics.rectangle('fill', button_x, button_y, button_width, button_h)
         end
     end
@@ -152,19 +152,19 @@ function TaskbarView:drawStartButton(x, y, size)
     local h = size
     local hovered = self.start_button_hovered
 
-    local colors = (self.config.ui and self.config.ui.colors and self.config.ui.colors.start_button) or {}
-    love.graphics.setColor(hovered and (colors.bg_hover or {0.85, 0.85, 0.85}) or (colors.bg or {0.75, 0.75, 0.75}))
+    local sb = ThemeManager.getSection("start_button") or {}
+    love.graphics.setColor(hovered and (sb.bg_hover or {0.85, 0.85, 0.85}) or (sb.bg or {0.75, 0.75, 0.75}))
     love.graphics.rectangle('fill', x, y, w, h)
 
-    love.graphics.setColor((colors.border_light or {1, 1, 1}))
+    love.graphics.setColor(sb.border_light or {1, 1, 1})
     love.graphics.line(x, y, x + w, y)
     love.graphics.line(x, y, x, y + h)
 
-    love.graphics.setColor((colors.border_dark or {0.2, 0.2, 0.2}))
+    love.graphics.setColor(sb.border_dark or {0.2, 0.2, 0.2})
     love.graphics.line(x + w, y, x + w, y + h)
     love.graphics.line(x, y + h, x + w, y + h)
 
-    love.graphics.setColor(colors.text or {0, 0, 0})
+    love.graphics.setColor(sb.text or {0, 0, 0})
     local tb_text = (self.config.ui and self.config.ui.taskbar_text) or {}
     local start_off = tb_text.start_text_offset or { x = 5, y = 5 }
     local start_scale = tb_text.start_text_scale or 0.9
@@ -172,27 +172,26 @@ function TaskbarView:drawStartButton(x, y, size)
 end
 
 function TaskbarView:drawSystemTray(x, y, w, h, tokens)
-    local colors = (self.config.ui and self.config.ui.colors and self.config.ui.colors.system_tray) or {}
+    local st = ThemeManager.getSection("system_tray") or {}
 
-    love.graphics.setColor(colors.bg or {0.6, 0.6, 0.6})
+    love.graphics.setColor(st.bg or {0.6, 0.6, 0.6})
     love.graphics.rectangle('fill', x, y, w, h)
 
-    love.graphics.setColor(colors.border_dark or {0.2, 0.2, 0.2})
+    love.graphics.setColor(st.border_dark or {0.2, 0.2, 0.2})
     love.graphics.line(x, y, x + w, y)
     love.graphics.line(x, y, x, y + h)
 
-    love.graphics.setColor(colors.border_light or {1, 1, 1})
+    love.graphics.setColor(st.border_light or {1, 1, 1})
     love.graphics.line(x + w, y, x + w, y + h)
     love.graphics.line(x, y + h, x + w, y + h)
 
-    love.graphics.setColor(colors.text or {0, 0, 0})
+    love.graphics.setColor(st.text or {0, 0, 0})
     local tray_cfg = ((self.config.ui and self.config.ui.desktop) or {}).system_tray or {}
-    local clock_off = tray_cfg.clock_right_offset or 50
     local clock_scale = tray_cfg.clock_text_scale or 1.2
-    love.graphics.print(self.current_time, x + w - clock_off, y + 5, 0, clock_scale, clock_scale)
+    local font = love.graphics.getFont()
+    local time_w = font:getWidth(self.current_time) * clock_scale
+    love.graphics.print(self.current_time, x + (w - time_w) / 2, y + (h - font:getHeight() * clock_scale) / 2, 0, clock_scale, clock_scale)
 
-    local token_off = tray_cfg.token_offset or { x = 5, y = 3 }
-    UIComponents.drawTokenCounter(x + token_off.x, y + token_off.y, tokens)
 end
 
 function TaskbarView:isStartButtonHovered(x, y)

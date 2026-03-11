@@ -33,6 +33,8 @@ function MessageBoxState:enter(params)
     params = params or {}
     self.params = params
     self.view:configure(params)
+    self.timeout = params.timeout or nil
+    self.timeout_remaining = self.timeout
 
     -- Update the window title bar
     if self.window_manager and self.window_id and params.title then
@@ -41,7 +43,25 @@ function MessageBoxState:enter(params)
 end
 
 function MessageBoxState:update(dt)
-    -- no-op
+    if self.timeout_remaining then
+        self.timeout_remaining = self.timeout_remaining - dt
+        -- Update countdown in view
+        if self.view then
+            self.view.countdown = math.ceil(self.timeout_remaining)
+        end
+        if self.timeout_remaining <= 0 then
+            self.timeout_remaining = nil
+            -- Timeout: trigger last button (cancel convention)
+            local labels = self.view.button_labels or {}
+            if self.params and self.params.on_button and #labels > 0 then
+                self.params.on_button(#labels, labels[#labels])
+            end
+            -- Close window via window manager
+            if self.window_manager and self.window_id then
+                self.window_manager:closeWindow(self.window_id)
+            end
+        end
+    end
 end
 
 function MessageBoxState:draw()

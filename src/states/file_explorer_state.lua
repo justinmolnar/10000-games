@@ -48,6 +48,9 @@ function FileExplorerState:init(file_system, program_registry, desktop_icons, re
     -- No modal applet state; Control Panel applets are programs
     -- Clipboard for copy/cut/paste
     self.clipboard = nil -- { mode = 'copy'|'cut', src_path = '', name = '' }
+
+    -- Event subscriptions (tracked for cleanup)
+    self._subscriptions = {}
 end
 
 -- Method to receive window context from DesktopState
@@ -57,12 +60,21 @@ function FileExplorerState:setWindowContext(window_id, window_manager)
 
     -- Subscribe to events now that we have window_id
     if self.di.eventBus then
-        self.di.eventBus:subscribe('file_explorer_action', function(action_id, context)
+        self._subscriptions[#self._subscriptions + 1] = self.di.eventBus:subscribe('file_explorer_action', function(action_id, context)
             if context.window_id == self.window_id then
                 self:handleContextMenuAction(action_id, context)
             end
         end)
     end
+end
+
+function FileExplorerState:destroy()
+    if self.di and self.di.eventBus and self._subscriptions then
+        for _, id in ipairs(self._subscriptions) do
+            self.di.eventBus:unsubscribe(id)
+        end
+    end
+    self._subscriptions = nil
 end
 
 function FileExplorerState:setViewport(x, y, width, height)
